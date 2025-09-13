@@ -190,9 +190,7 @@ class TestDisableSegmentFromIndexTask:
 
         return segment
 
-    def test_disable_segment_success(
-        self, db_session_with_containers, mock_index_processor
-    ):
+    def test_disable_segment_success(self, db_session_with_containers, mock_index_processor):
         """
         Test successful segment disabling from index.
 
@@ -266,9 +264,7 @@ class TestDisableSegmentFromIndexTask:
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(tenant, account)
         document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(
-            document, dataset, tenant, account, status="indexing", enabled=True
-        )
+        segment = self._create_test_segment(document, dataset, tenant, account, status="indexing", enabled=True)
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -389,9 +385,7 @@ class TestDisableSegmentFromIndexTask:
         # Verify index processor was not called
         mock_index_processor.clean.assert_not_called()
 
-    def test_disable_segment_document_indexing_not_completed(
-        self, db_session_with_containers, mock_index_processor
-    ):
+    def test_disable_segment_document_indexing_not_completed(self, db_session_with_containers, mock_index_processor):
         """
         Test handling when document indexing is not completed.
 
@@ -418,9 +412,7 @@ class TestDisableSegmentFromIndexTask:
         # Verify index processor was not called
         mock_index_processor.clean.assert_not_called()
 
-    def test_disable_segment_index_processor_exception(
-        self, db_session_with_containers, mock_index_processor
-    ):
+    def test_disable_segment_index_processor_exception(self, db_session_with_containers, mock_index_processor):
         """
         Test handling when index processor raises an exception.
 
@@ -463,9 +455,7 @@ class TestDisableSegmentFromIndexTask:
         # Verify Redis cache was still cleared
         assert redis_client.get(indexing_cache_key) is None
 
-    def test_disable_segment_different_doc_forms(
-        self, db_session_with_containers, mock_index_processor
-    ):
+    def test_disable_segment_different_doc_forms(self, db_session_with_containers, mock_index_processor):
         """
         Test disabling segments with different document forms.
 
@@ -558,9 +548,7 @@ class TestDisableSegmentFromIndexTask:
         execution_time = end_time - start_time
         assert execution_time < 5.0  # Should complete within 5 seconds
 
-    def test_disable_segment_database_session_management(
-        self, db_session_with_containers, mock_index_processor
-    ):
+    def test_disable_segment_database_session_management(self, db_session_with_containers, mock_index_processor):
         """
         Test database session management during task execution.
 
@@ -585,9 +573,7 @@ class TestDisableSegmentFromIndexTask:
         db.session.refresh(segment)
         assert segment.id is not None
 
-    def test_disable_segment_concurrent_execution(
-        self, db_session_with_containers, mock_index_processor
-    ):
+    def test_disable_segment_concurrent_execution(self, db_session_with_containers, mock_index_processor):
         """
         Test concurrent execution of segment disabling tasks.
 
