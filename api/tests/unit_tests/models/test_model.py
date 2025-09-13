@@ -7,7 +7,7 @@ from models.model import Message
 
 
 @pytest.fixture(autouse=True)
-def patch_file_helpers(monkeypatch):
+def patch_file_helpers(monkeypatch: pytest.MonkeyPatch):
     """
     Patch file_helpers.get_signed_file_url to a deterministic stub.
     """
