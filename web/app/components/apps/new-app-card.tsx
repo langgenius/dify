@@ -26,12 +26,14 @@ export type CreateAppCardProps = {
   className?: string
   onSuccess?: () => void
   ref: React.RefObject<HTMLDivElement | null>
+  selectedAppType?: string
 }
 
 const CreateAppCard = ({
   ref,
   className,
   onSuccess,
+  selectedAppType,
 }: CreateAppCardProps) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
@@ -86,6 +88,7 @@ const CreateAppCard = ({
             setShowNewAppTemplateDialog(true)
             setShowNewAppModal(false)
           }}
+          defaultAppMode={selectedAppType !== 'all' ? selectedAppType as any : undefined}
         />
       )}
       {showNewAppTemplateDialog && (

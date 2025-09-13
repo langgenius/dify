@@ -212,7 +212,9 @@ def migrate_annotation_vector_database():
                 if not dataset_collection_binding:
                     click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
-                annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
+                annotations = db.session.scalars(
+                    select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
+                ).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -367,29 +369,25 @@ def migrate_knowledge_vector_database():
                     )
                     raise e
 
-                dataset_documents = (
-                    db.session.query(DatasetDocument)
-                    .where(
+                dataset_documents = db.session.scalars(
+                    select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset.id,
                         DatasetDocument.indexing_status == "completed",
                         DatasetDocument.enabled == True,
                         DatasetDocument.archived == False,
                     )
-                    .all()
-                )
+                ).all()
 
                 documents = []
                 segments_count = 0
                 for dataset_document in dataset_documents:
-                    segments = (
-                        db.session.query(DocumentSegment)
-                        .where(
+                    segments = db.session.scalars(
+                        select(DocumentSegment).where(
                             DocumentSegment.document_id == dataset_document.id,
                             DocumentSegment.status == "completed",
                             DocumentSegment.enabled == True,
                         )
-                        .all()
-                    )
+                    ).all()
 
                     for segment in segments:
                         document = Document(
@@ -479,12 +477,12 @@ def convert_to_agent_apps():
             click.echo(f"Converting app: {app.id}")
 
             try:
-                app.mode = AppMode.AGENT_CHAT.value
+                app.mode = AppMode.AGENT_CHAT
                 db.session.commit()
 
                 # update conversation mode to agent
                 db.session.query(Conversation).where(Conversation.app_id == app.id).update(
-                    {Conversation.mode: AppMode.AGENT_CHAT.value}
+                    {Conversation.mode: AppMode.AGENT_CHAT}
                 )
 
                 db.session.commit()

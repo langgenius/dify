@@ -28,18 +28,20 @@ class TestApiKeyAuthService:
         mock_binding.provider = self.provider
         mock_binding.disabled = False
 
-        mock_session.query.return_value.where.return_value.all.return_value = [mock_binding]
+        mock_session.scalars.return_value.all.return_value = [mock_binding]
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
         assert len(result) == 1
         assert result[0].tenant_id == self.tenant_id
-        mock_session.query.assert_called_once_with(DataSourceApiKeyAuthBinding)
+        assert mock_session.scalars.call_count == 1
+        select_arg = mock_session.scalars.call_args[0][0]
+        assert "data_source_api_key_auth_binding" in str(select_arg).lower()
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_empty(self, mock_session):
         """Test get provider auth list - empty result"""
-        mock_session.query.return_value.where.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.return_value = []
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
@@ -48,13 +50,15 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_filters_disabled(self, mock_session):
         """Test get provider auth list - filters disabled items"""
-        mock_session.query.return_value.where.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.return_value = []
 
         ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
-
-        # Verify where conditions include disabled.is_(False)
-        where_call = mock_session.query.return_value.where.call_args[0]
-        assert len(where_call) == 2  # tenant_id and disabled filter conditions
+        select_stmt = mock_session.scalars.call_args[0][0]
+        where_clauses = list(getattr(select_stmt, "_where_criteria", []) or [])
+        # Ensure both tenant filter and disabled filter exist
+        where_strs = [str(c).lower() for c in where_clauses]
+        assert any("tenant_id" in s for s in where_strs)
+        assert any("disabled" in s for s in where_strs)
 
     @patch("services.auth.api_key_auth_service.db.session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")

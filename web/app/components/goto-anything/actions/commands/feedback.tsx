@@ -13,6 +13,14 @@ type FeedbackDeps = Record<string, never>
 export const feedbackCommand: SlashCommandHandler<FeedbackDeps> = {
   name: 'feedback',
   description: 'Open feedback discussions',
+  mode: 'direct',
+
+  // Direct execution function
+  execute: () => {
+    const url = 'https://github.com/langgenius/dify/discussions/categories/feedbacks'
+    window.open(url, '_blank', 'noopener,noreferrer')
+  },
+
   async search(args: string, locale: string = 'en') {
     return [{
       id: 'feedback',
