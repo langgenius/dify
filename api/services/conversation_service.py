@@ -1,3 +1,5 @@
+import contextlib
+import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Optional, Union
 
@@ -22,6 +24,9 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
+from tasks.delete_conversation_task import delete_conversation_related_data
+
+logger = logging.getLogger(__name__)
 
 
 class ConversationService:
@@ -142,13 +147,11 @@ class ConversationService:
             raise MessageNotExistsError()
 
         # generate conversation name
-        try:
+        with contextlib.suppress(Exception):
             name = LLMGenerator.generate_conversation_name(
                 app_model.tenant_id, message.query, conversation.id, app_model.id
             )
             conversation.name = name
-        except Exception:
-            pass
 
         db.session.commit()
 
@@ -176,11 +179,21 @@ class ConversationService:
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
-        conversation = cls.get_conversation(app_model, conversation_id, user)
+        try:
+            logger.info(
+                "Initiating conversation deletion for app_name %s, conversation_id: %s",
+                app_model.name,
+                conversation_id,
+            )
 
-        conversation.is_deleted = True
-        conversation.updated_at = naive_utc_now()
-        db.session.commit()
+            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
+            db.session.commit()
+
+            delete_conversation_related_data.delay(conversation_id)
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @classmethod
     def get_conversational_variable(
@@ -209,8 +222,8 @@ class ConversationService:
                 # Filter for variables created after the last_id
                 stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
 
-            # Apply limit to query
-            query_stmt = stmt.limit(limit)  # Get one extra to check if there are more
+            # Apply limit to query: fetch one extra row to determine has_more
+            query_stmt = stmt.limit(limit + 1)
             rows = session.scalars(query_stmt).all()
 
         has_more = False
@@ -237,7 +250,7 @@ class ConversationService:
         variable_id: str,
         user: Optional[Union[Account, EndUser]],
         new_value: Any,
-    ) -> dict:
+    ):
         """
         Update a conversation variable's value.
 

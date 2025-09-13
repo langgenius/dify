@@ -2,7 +2,7 @@ from typing import Literal
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -22,6 +22,7 @@ from controllers.console.wraps import (
 )
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
+from models import Account
 from services.file_service import FileService
 
 PREVIEW_WORDS_LIMIT = 3000
@@ -68,6 +69,8 @@ class FileApi(Resource):
             source = None
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("Invalid user account")
             upload_file = FileService.upload_file(
                 filename=file.filename,
                 content=file.read(),

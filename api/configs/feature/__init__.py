@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import (
     AliasChoices,
@@ -31,6 +31,12 @@ class SecurityConfig(BaseSettings):
         description="Duration in minutes for which a password reset token remains valid",
         default=5,
     )
+
+    EMAIL_REGISTER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a email register token remains valid",
+        default=5,
+    )
+
     CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a change email token remains valid",
         default=5,
@@ -639,6 +645,11 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    EMAIL_REGISTER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying email register after exceeding the rate limit.",
+        default=86400,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -794,6 +805,11 @@ class DataSetConfig(BaseSettings):
     PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for message cleanup operations - plan: sandbox",
         default=30,
+    )
+
+    DSL_EXPORT_ENCRYPT_DATASET_ID: bool = Field(
+        description="Enable or disable dataset ID encryption when exporting DSL files",
+        default=True,
     )
 
 
@@ -968,6 +984,26 @@ class AccountConfig(BaseSettings):
     )
 
 
+class WorkflowLogConfig(BaseSettings):
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
+    WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
+        default=100, description="Batch size for workflow run log cleanup operations"
+    )
+
+
+class SwaggerUIConfig(BaseSettings):
+    SWAGGER_UI_ENABLED: bool = Field(
+        description="Whether to enable Swagger UI in api module",
+        default=True,
+    )
+
+    SWAGGER_UI_PATH: str = Field(
+        description="Swagger UI page path in api module",
+        default="/swagger-ui.html",
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -999,9 +1035,11 @@ class FeatureConfig(
     WorkspaceConfig,
     LoginConfig,
     AccountConfig,
+    SwaggerUIConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
+    WorkflowLogConfig,
 ):
     pass

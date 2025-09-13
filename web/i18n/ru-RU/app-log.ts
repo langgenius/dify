@@ -1,7 +1,7 @@
 const translation = {
   title: 'Логирование',
   description: 'В логах записывается состояние работы приложения, включая пользовательский ввод и ответы ИИ.',
-  dateTimeFormat: 'DD.MM.YYYY HH:mm',
+  dateTimeFormat: 'DD.MM.YYYY HH:mm:ss',
   table: {
     header: {
       updatedTime: 'Время обновления',
@@ -93,6 +93,7 @@ const translation = {
     iteration: 'Итерация',
     finalProcessing: 'Окончательная обработка',
   },
+  dateFormat: 'ДД/ММ/ГГГГ',
 }
 
 export default translation

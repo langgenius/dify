@@ -10,6 +10,7 @@ import { login } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -46,13 +47,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
       Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
       return
     }
-    if (!passwordRegex.test(password)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.error.passwordInvalid'),
-      })
-      return
-    }
+
     try {
       setIsLoading(true)
       const loginData: Record<string, any> = {
@@ -74,22 +69,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         else {
           localStorage.setItem('console_token', res.data.access_token)
           localStorage.setItem('refresh_token', res.data.refresh_token)
-          router.replace('/apps')
+          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          router.replace(redirectUrl || '/apps')
         }
       }
-      else if (res.code === 'account_not_found') {
-        if (allowRegistration) {
-          const params = new URLSearchParams()
-          params.append('email', encodeURIComponent(email))
-          params.append('token', encodeURIComponent(res.data))
-          router.replace(`/reset-password/check-code?${params.toString()}`)
-        }
-        else {
-          Toast.notify({
-            type: 'error',
-            message: t('login.error.registrationNotAllowed'),
-          })
-        }
+      else if (res.code === 'authentication_failed') {
+        Toast.notify({
+          type: 'error',
+          message: t('login.error.invalidEmailOrPassword'),
+        })
       }
       else {
         Toast.notify({

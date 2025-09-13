@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 import sqlalchemy as sa
-from celery import states  # type: ignore
+from celery import states
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 

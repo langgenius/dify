@@ -54,7 +54,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         app: App,
-    ) -> None:
+    ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
@@ -68,11 +68,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self.system_user_id = system_user_id
         self._app = app
 
-    def run(self) -> None:
+    def run(self):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            app_record = session.scalar(select(App).where(App.id == app_config.app_id))
+
         if not app_record:
             raise ValueError("App not found")
 
@@ -140,7 +142,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 environment_variables=self._workflow.environment_variables,
                 # Based on the definition of `VariableUnion`,
                 # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
-                conversation_variables=cast(list[VariableUnion], conversation_variables),
+                conversation_variables=conversation_variables,
             )
 
             # init graph
@@ -219,7 +221,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         return False
 
-    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy) -> None:
+    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
         """
         Direct output
         """

@@ -10,7 +10,6 @@
 
 ![Alt text](images/index/image-3.png)
 
-
 在前文中，我们已经知道了供应商无需实现`validate_provider_credential`，Runtime 会自行根据用户在此选择的模型类型和模型名称调用对应的模型层的`validate_credentials`来进行验证。
 
 ### 编写供应商 yaml
@@ -55,6 +54,7 @@ provider_credential_schema:
 随后，我们需要思考在 Xinference 中定义一个模型需要哪些凭据
 
 - 它支持三种不同的模型，因此，我们需要有`model_type`来指定这个模型的类型，它有三种类型，所以我们这么编写
+
 ```yaml
 provider_credential_schema:
   credential_form_schemas:
@@ -76,7 +76,9 @@ provider_credential_schema:
       label:
         en_US: Rerank
 ```
+
 - 每一个模型都有自己的名称`model_name`，因此需要在这里定义
+
 ```yaml
   - variable: model_name
     type: text-input
@@ -88,7 +90,9 @@ provider_credential_schema:
       zh_Hans: 填写模型名称
       en_US: Input model name
 ```
+
 - 填写 Xinference 本地部署的地址
+
 ```yaml
   - variable: server_url
     label:
@@ -100,7 +104,9 @@ provider_credential_schema:
       zh_Hans: 在此输入 Xinference 的服务器地址，如 https://example.com/xxx
       en_US: Enter the url of your Xinference, for example https://example.com/xxx
 ```
+
 - 每个模型都有唯一的 model_uid，因此需要在这里定义
+
 ```yaml
   - variable: model_uid
     label:
@@ -112,6 +118,7 @@ provider_credential_schema:
       zh_Hans: 在此输入您的 Model UID
       en_US: Enter the model uid
 ```
+
 现在，我们就完成了供应商的基础定义。
 
 ### 编写模型代码
@@ -132,7 +139,7 @@ provider_credential_schema:
           -> Union[LLMResult, Generator]:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param prompt_messages: prompt messages
@@ -189,7 +196,7 @@ provider_credential_schema:
   def validate_credentials(self, model: str, credentials: dict) -> None:
       """
       Validate model credentials
-  
+
       :param model: model name
       :param credentials: model credentials
       :return:
@@ -197,78 +204,78 @@ provider_credential_schema:
   ```
 
 - 模型参数 Schema
-  
+
   与自定义类型不同，由于没有在 yaml 文件中定义一个模型支持哪些参数，因此，我们需要动态时间模型参数的 Schema。
-  
+
   如 Xinference 支持`max_tokens` `temperature` `top_p` 这三个模型参数。
-  
+
   但是有的供应商根据不同的模型支持不同的参数，如供应商`OpenLLM`支持`top_k`，但是并不是这个供应商提供的所有模型都支持`top_k`，我们这里举例 A 模型支持`top_k`，B 模型不支持`top_k`，那么我们需要在这里动态生成模型参数的 Schema，如下所示：
-  
-    ```python
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        """
-            used to define customizable model schema
-        """
-        rules = [
-            ParameterRule(
-                name='temperature', type=ParameterType.FLOAT,
-                use_template='temperature',
-                label=I18nObject(
-                    zh_Hans='温度', en_US='Temperature'
-                )
-            ),
-            ParameterRule(
-                name='top_p', type=ParameterType.FLOAT,
-                use_template='top_p',
-                label=I18nObject(
-                    zh_Hans='Top P', en_US='Top P'
-                )
-            ),
-            ParameterRule(
-                name='max_tokens', type=ParameterType.INT,
-                use_template='max_tokens',
-                min=1,
-                default=512,
-                label=I18nObject(
-                    zh_Hans='最大生成长度', en_US='Max Tokens'
-                )
-            )
-        ]
 
-        # if model is A, add top_k to rules
-        if model == 'A':
-            rules.append(
-                ParameterRule(
-                    name='top_k', type=ParameterType.INT,
-                    use_template='top_k',
-                    min=1,
-                    default=50,
-                    label=I18nObject(
-                        zh_Hans='Top K', en_US='Top K'
-                    )
-                )
-            )
+  ```python
+  def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+      """
+          used to define customizable model schema
+      """
+      rules = [
+          ParameterRule(
+              name='temperature', type=ParameterType.FLOAT,
+              use_template='temperature',
+              label=I18nObject(
+                  zh_Hans='温度', en_US='Temperature'
+              )
+          ),
+          ParameterRule(
+              name='top_p', type=ParameterType.FLOAT,
+              use_template='top_p',
+              label=I18nObject(
+                  zh_Hans='Top P', en_US='Top P'
+              )
+          ),
+          ParameterRule(
+              name='max_tokens', type=ParameterType.INT,
+              use_template='max_tokens',
+              min=1,
+              default=512,
+              label=I18nObject(
+                  zh_Hans='最大生成长度', en_US='Max Tokens'
+              )
+          )
+      ]
 
-        """
-            some NOT IMPORTANT code here
-        """
+      # if model is A, add top_k to rules
+      if model == 'A':
+          rules.append(
+              ParameterRule(
+                  name='top_k', type=ParameterType.INT,
+                  use_template='top_k',
+                  min=1,
+                  default=50,
+                  label=I18nObject(
+                      zh_Hans='Top K', en_US='Top K'
+                  )
+              )
+          )
 
-        entity = AIModelEntity(
-            model=model,
-            label=I18nObject(
-                en_US=model
-            ),
-            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_type=model_type,
-            model_properties={ 
-                ModelPropertyKey.MODE:  ModelType.LLM,
-            },
-            parameter_rules=rules
-        )
+      """
+          some NOT IMPORTANT code here
+      """
 
-        return entity
-    ```
-    
+      entity = AIModelEntity(
+          model=model,
+          label=I18nObject(
+              en_US=model
+          ),
+          fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+          model_type=model_type,
+          model_properties={ 
+              ModelPropertyKey.MODE:  ModelType.LLM,
+          },
+          parameter_rules=rules
+      )
+
+      return entity
+  ```
+
 - 调用异常错误映射表
 
   当模型调用异常时需要映射到 Runtime 指定的 `InvokeError` 类型，方便 Dify 针对不同错误做不同后续处理。
@@ -278,7 +285,7 @@ provider_credential_schema:
   - `InvokeConnectionError` 调用连接错误
   - `InvokeServerUnavailableError ` 调用服务方不可用
   - `InvokeRateLimitError ` 调用达到限额
-  - `InvokeAuthorizationError`  调用鉴权失败
+  - `InvokeAuthorizationError` 调用鉴权失败
   - `InvokeBadRequestError ` 调用传参有误
 
   ```python
@@ -289,7 +296,7 @@ provider_credential_schema:
       The key is the error type thrown to the caller
       The value is the error type thrown by the model,
       which needs to be converted into a unified error type for the caller.
-  
+
       :return: Invoke error mapping
       """
   ```

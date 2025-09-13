@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -118,7 +118,7 @@ class QueueIterationNextEvent(AppQueueEvent):
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
     parallel_mode_run_id: Optional[str] = None
-    """iteratoin run in parallel mode run id"""
+    """iteration run in parallel mode run id"""
     node_run_index: int
     output: Optional[Any] = None  # output for the current iteration
     duration: Optional[float] = None
@@ -201,7 +201,7 @@ class QueueLoopNextEvent(AppQueueEvent):
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
     parallel_mode_run_id: Optional[str] = None
-    """iteratoin run in parallel mode run id"""
+    """iteration run in parallel mode run id"""
     node_run_index: int
     output: Optional[Any] = None  # output for the current loop
     duration: Optional[float] = None
@@ -382,7 +382,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """loop id if node is in loop"""
     start_at: datetime
     parallel_mode_run_id: Optional[str] = None
-    """iteratoin run in parallel mode run id"""
+    """iteration run in parallel mode run id"""
     agent_strategy: Optional[AgentNodeStrategyInit] = None
 
 
@@ -432,8 +432,8 @@ class QueueAgentLogEvent(AppQueueEvent):
     id: str
     label: str
     node_execution_id: str
-    parent_id: str | None
-    error: str | None
+    parent_id: str | None = None
+    error: str | None = None
     status: str
     data: Mapping[str, Any]
     metadata: Optional[Mapping[str, Any]] = None
@@ -610,7 +610,7 @@ class QueueErrorEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.ERROR
-    error: Any = None
+    error: Optional[Any] = None
 
 
 class QueuePingEvent(AppQueueEvent):
@@ -626,15 +626,15 @@ class QueueStopEvent(AppQueueEvent):
     QueueStopEvent entity
     """
 
-    class StopBy(Enum):
+    class StopBy(StrEnum):
         """
         Stop by enum
         """
 
-        USER_MANUAL = "user-manual"
-        ANNOTATION_REPLY = "annotation-reply"
-        OUTPUT_MODERATION = "output-moderation"
-        INPUT_MODERATION = "input-moderation"
+        USER_MANUAL = auto()
+        ANNOTATION_REPLY = auto()
+        OUTPUT_MODERATION = auto()
+        INPUT_MODERATION = auto()
 
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy

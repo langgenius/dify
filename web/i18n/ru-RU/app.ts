@@ -276,6 +276,11 @@ const translation = {
       languageCategoryDesc: 'Переключите язык интерфейса',
       themeLightDesc: 'Используйте светлый внешний вид',
       themeSystemDesc: 'Следуйте внешнему виду вашей операционной системы',
+      slashDesc: 'Выполняйте команды, такие как /theme, /lang',
+      accountDesc: 'Перейдите на страницу учетной записи',
+      feedbackDesc: 'Обсуждения обратной связи с открытым сообществом',
+      docDesc: 'Откройте справочную документацию',
+      communityDesc: 'Открытое сообщество Discord',
     },
     emptyState: {
       noPluginsFound: 'Плагины не найдены',
@@ -290,6 +295,7 @@ const translation = {
       plugins: 'Плагины',
       apps: 'Приложения',
       workflowNodes: 'Узлы рабочих процессов',
+      commands: 'Команды',
     },
     searching: 'Поиск...',
     noResults: 'Ничего не найдено',
@@ -309,6 +315,7 @@ const translation = {
     inScope: 'в {{scope}}s',
     noMatchingCommands: 'Соответствующие команды не найдены',
     tryDifferentSearch: 'Попробуйте использовать другой поисковый запрос',
+    slashHint: 'Введите / чтобы увидеть все доступные команды',
   },
 }
 

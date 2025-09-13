@@ -1,11 +1,10 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -51,37 +50,37 @@ class WorkflowTaskState(TaskState):
     answer: str = ""
 
 
-class StreamEvent(Enum):
+class StreamEvent(StrEnum):
     """
     Stream event
     """
 
-    PING = "ping"
-    ERROR = "error"
-    MESSAGE = "message"
-    MESSAGE_END = "message_end"
-    TTS_MESSAGE = "tts_message"
-    TTS_MESSAGE_END = "tts_message_end"
-    MESSAGE_FILE = "message_file"
-    MESSAGE_REPLACE = "message_replace"
-    AGENT_THOUGHT = "agent_thought"
-    AGENT_MESSAGE = "agent_message"
-    WORKFLOW_STARTED = "workflow_started"
-    WORKFLOW_FINISHED = "workflow_finished"
-    NODE_STARTED = "node_started"
-    NODE_FINISHED = "node_finished"
-    NODE_RETRY = "node_retry"
-    PARALLEL_BRANCH_STARTED = "parallel_branch_started"
-    PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
-    ITERATION_STARTED = "iteration_started"
-    ITERATION_NEXT = "iteration_next"
-    ITERATION_COMPLETED = "iteration_completed"
-    LOOP_STARTED = "loop_started"
-    LOOP_NEXT = "loop_next"
-    LOOP_COMPLETED = "loop_completed"
-    TEXT_CHUNK = "text_chunk"
-    TEXT_REPLACE = "text_replace"
-    AGENT_LOG = "agent_log"
+    PING = auto()
+    ERROR = auto()
+    MESSAGE = auto()
+    MESSAGE_END = auto()
+    TTS_MESSAGE = auto()
+    TTS_MESSAGE_END = auto()
+    MESSAGE_FILE = auto()
+    MESSAGE_REPLACE = auto()
+    AGENT_THOUGHT = auto()
+    AGENT_MESSAGE = auto()
+    WORKFLOW_STARTED = auto()
+    WORKFLOW_FINISHED = auto()
+    NODE_STARTED = auto()
+    NODE_FINISHED = auto()
+    NODE_RETRY = auto()
+    PARALLEL_BRANCH_STARTED = auto()
+    PARALLEL_BRANCH_FINISHED = auto()
+    ITERATION_STARTED = auto()
+    ITERATION_NEXT = auto()
+    ITERATION_COMPLETED = auto()
+    LOOP_STARTED = auto()
+    LOOP_NEXT = auto()
+    LOOP_COMPLETED = auto()
+    TEXT_CHUNK = auto()
+    TEXT_REPLACE = auto()
+    AGENT_LOG = auto()
 
 
 class StreamResponse(BaseModel):
@@ -91,9 +90,6 @@ class StreamResponse(BaseModel):
 
     event: StreamEvent
     task_id: str
-
-    def to_dict(self):
-        return jsonable_encoder(self)
 
 
 class ErrorStreamResponse(StreamResponse):
@@ -142,7 +138,7 @@ class MessageEndStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
-    metadata: dict = {}
+    metadata: dict = Field(default_factory=dict)
     files: Optional[Sequence[Mapping[str, Any]]] = None
 
 
@@ -261,7 +257,7 @@ class NodeStartStreamResponse(StreamResponse):
         predecessor_node_id: Optional[str] = None
         inputs: Optional[Mapping[str, Any]] = None
         created_at: int
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parent_parallel_id: Optional[str] = None
@@ -503,7 +499,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         parallel_id: Optional[str] = None
@@ -531,7 +527,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         index: int
         created_at: int
         pre_iteration_output: Optional[Any] = None
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parallel_mode_run_id: Optional[str] = None
@@ -590,7 +586,7 @@ class LoopNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         parallel_id: Optional[str] = None
@@ -618,7 +614,7 @@ class LoopNodeNextStreamResponse(StreamResponse):
         index: int
         created_at: int
         pre_loop_output: Optional[Any] = None
-        extras: dict = {}
+        extras: dict = Field(default_factory=dict)
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parallel_mode_run_id: Optional[str] = None
@@ -745,9 +741,6 @@ class AppBlockingResponse(BaseModel):
 
     task_id: str
 
-    def to_dict(self):
-        return jsonable_encoder(self)
-
 
 class ChatbotAppBlockingResponse(AppBlockingResponse):
     """
@@ -764,7 +757,7 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
         conversation_id: str
         message_id: str
         answer: str
-        metadata: dict = {}
+        metadata: dict = Field(default_factory=dict)
         created_at: int
 
     data: Data
@@ -784,7 +777,7 @@ class CompletionAppBlockingResponse(AppBlockingResponse):
         mode: str
         message_id: str
         answer: str
-        metadata: dict = {}
+        metadata: dict = Field(default_factory=dict)
         created_at: int
 
     data: Data
@@ -828,8 +821,8 @@ class AgentLogStreamResponse(StreamResponse):
         node_execution_id: str
         id: str
         label: str
-        parent_id: str | None
-        error: str | None
+        parent_id: str | None = None
+        error: str | None = None
         status: str
         data: Mapping[str, Any]
         metadata: Optional[Mapping[str, Any]] = None

@@ -415,7 +415,7 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict,
         language: Optional[str] = None,
-    ) -> list[dict]:
+    ):
         """
         Get tts model voices
         """

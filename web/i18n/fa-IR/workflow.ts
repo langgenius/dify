@@ -470,6 +470,12 @@ const translation = {
         fieldNamePlaceholder: 'نام میدان',
         generationTip: 'شما می‌توانید از زبان طبیعی برای ایجاد سریع یک طرح‌واره JSON استفاده کنید.',
       },
+      reasoningFormat: {
+        separated: 'تگ‌های تفکر جداگانه',
+        title: 'فعال‌سازی جداسازی برچسب‌های استدلال',
+        tagged: 'به فکر برچسب‌ها باشید',
+        tooltip: 'محتوا را از تگ‌های تفکر استخراج کرده و در فیلد reasoning_content ذخیره کنید.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'متغیر جستجو',
@@ -842,6 +848,7 @@ const translation = {
           type: 'نوع پشتیبانی. اکنون فقط از تصویر پشتیبانی می کند',
         },
         text: 'محتوای تولید شده توسط عامل',
+        usage: 'اطلاعات استفاده از مدل',
         json: 'عامل JSON را تولید کرد',
       },
       checkList: {
@@ -995,6 +1002,11 @@ const translation = {
     noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
     noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
     copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
+    lastOutput: 'آخرین خروجی',
+  },
+  sidebar: {
+    exportWarning: 'صادرات نسخه ذخیره شده فعلی',
+    exportWarningDesc: 'این نسخه فعلی ذخیره شده از کار خود را صادر خواهد کرد. اگر تغییرات غیرذخیره شده‌ای در ویرایشگر دارید، لطفاً ابتدا از گزینه صادرات در بوم کار برای ذخیره آنها استفاده کنید.',
   },
 }
 

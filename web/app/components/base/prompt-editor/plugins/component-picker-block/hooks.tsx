@@ -4,8 +4,11 @@ import { $insertNodes } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type {
   ContextBlockType,
+  CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
@@ -27,6 +30,7 @@ import { BracketsX } from '@/app/components/base/icons/src/vender/line/developme
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import AppIcon from '@/app/components/base/app-icon'
+import { VarType } from '@/app/components/workflow/types'
 
 export const usePromptOptions = (
   contextBlock?: ContextBlockType,
@@ -267,17 +271,61 @@ export const useOptions = (
   variableBlock?: VariableBlockType,
   externalToolBlockType?: ExternalToolBlockType,
   workflowVariableBlockType?: WorkflowVariableBlockType,
+  currentBlockType?: CurrentBlockType,
+  errorMessageBlockType?: ErrorMessageBlockType,
+  lastRunBlockType?: LastRunBlockType,
   queryString?: string,
 ) => {
   const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
   const variableOptions = useVariableOptions(variableBlock, queryString)
   const externalToolOptions = useExternalToolOptions(externalToolBlockType, queryString)
+
   const workflowVariableOptions = useMemo(() => {
     if (!workflowVariableBlockType?.show)
       return []
-
-    return workflowVariableBlockType.variables || []
-  }, [workflowVariableBlockType])
+    const res = workflowVariableBlockType.variables || []
+    if(errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
+      res.unshift({
+        nodeId: 'error_message',
+        title: 'error_message',
+        isFlat: true,
+        vars: [
+          {
+            variable: 'error_message',
+            type: VarType.string,
+          },
+        ],
+      })
+    }
+    if(lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
+      res.unshift({
+        nodeId: 'last_run',
+        title: 'last_run',
+        isFlat: true,
+        vars: [
+          {
+            variable: 'last_run',
+            type: VarType.object,
+          },
+        ],
+      })
+    }
+    if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
+      const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
+      res.unshift({
+        nodeId: 'current',
+        title,
+        isFlat: true,
+        vars: [
+          {
+            variable: 'current',
+            type: VarType.string,
+          },
+        ],
+      })
+    }
+    return res
+  }, [workflowVariableBlockType?.show, workflowVariableBlockType?.variables, errorMessageBlockType?.show, lastRunBlockType?.show, currentBlockType?.show, currentBlockType?.generatorType])
 
   return useMemo(() => {
     return {

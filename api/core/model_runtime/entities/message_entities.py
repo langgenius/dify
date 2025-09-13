@@ -1,20 +1,20 @@
 from abc import ABC
 from collections.abc import Mapping, Sequence
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import Annotated, Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
-class PromptMessageRole(Enum):
+class PromptMessageRole(StrEnum):
     """
     Enum class for prompt message.
     """
 
-    SYSTEM = "system"
-    USER = "user"
-    ASSISTANT = "assistant"
-    TOOL = "tool"
+    SYSTEM = auto()
+    USER = auto()
+    ASSISTANT = auto()
+    TOOL = auto()
 
     @classmethod
     def value_of(cls, value: str) -> "PromptMessageRole":
@@ -54,11 +54,11 @@ class PromptMessageContentType(StrEnum):
     Enum class for prompt message content type.
     """
 
-    TEXT = "text"
-    IMAGE = "image"
-    AUDIO = "audio"
-    VIDEO = "video"
-    DOCUMENT = "document"
+    TEXT = auto()
+    IMAGE = auto()
+    AUDIO = auto()
+    VIDEO = auto()
+    DOCUMENT = auto()
 
 
 class PromptMessageContent(ABC, BaseModel):
@@ -87,6 +87,7 @@ class MultiModalPromptMessageContent(PromptMessageContent):
     base64_data: str = Field(default="", description="the base64 data of multi-modal file")
     url: str = Field(default="", description="the url of multi-modal file")
     mime_type: str = Field(default=..., description="the mime type of multi-modal file")
+    filename: str = Field(default="", description="the filename of multi-modal file")
 
     @property
     def data(self):
@@ -107,8 +108,8 @@ class ImagePromptMessageContent(MultiModalPromptMessageContent):
     """
 
     class DETAIL(StrEnum):
-        LOW = "low"
-        HIGH = "high"
+        LOW = auto()
+        HIGH = auto()
 
     type: Literal[PromptMessageContentType.IMAGE] = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW

@@ -5,7 +5,7 @@ import pytz
 import sqlalchemy as sa
 from flask import jsonify
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -18,10 +18,10 @@ from models.model import AppMode
 
 
 class WorkflowDailyRunsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -80,10 +80,10 @@ WHERE
 
 
 class WorkflowDailyTerminalsStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -142,10 +142,10 @@ WHERE
 
 
 class WorkflowDailyTokenCostStatistic(Resource):
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 

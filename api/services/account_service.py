@@ -37,7 +37,6 @@ from services.billing_service import BillingService
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountNotLinkTenantError,
     AccountPasswordError,
     AccountRegisterError,
@@ -65,7 +64,13 @@ from tasks.mail_owner_transfer_task import (
     send_old_owner_transfer_notify_email_task,
     send_owner_transfer_confirm_task,
 )
-from tasks.mail_reset_password_task import send_reset_password_mail_task
+from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
+from tasks.mail_reset_password_task import (
+    send_reset_password_mail_task,
+    send_reset_password_mail_task_when_account_not_exist,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class TokenPair(BaseModel):
@@ -80,8 +85,9 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
+    email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
-        prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
+        prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
     email_code_account_deletion_rate_limiter = RateLimiter(
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
@@ -93,6 +99,7 @@ class AccountService:
     FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
+    EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -103,14 +110,14 @@ class AccountService:
         return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
 
     @staticmethod
-    def _store_refresh_token(refresh_token: str, account_id: str) -> None:
+    def _store_refresh_token(refresh_token: str, account_id: str):
         redis_client.setex(AccountService._get_refresh_token_key(refresh_token), REFRESH_TOKEN_EXPIRY, account_id)
         redis_client.setex(
             AccountService._get_account_refresh_token_key(account_id), REFRESH_TOKEN_EXPIRY, refresh_token
         )
 
     @staticmethod
-    def _delete_refresh_token(refresh_token: str, account_id: str) -> None:
+    def _delete_refresh_token(refresh_token: str, account_id: str):
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
@@ -143,8 +150,11 @@ class AccountService:
         if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = naive_utc_now()
             db.session.commit()
-
-        return cast(Account, account)
+        # NOTE: make sure account is accessible outside of a db session
+        # This ensures that it will work correctly after upgrading to Flask version 3.1.2
+        db.session.refresh(account)
+        db.session.close()
+        return account
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
@@ -166,7 +176,7 @@ class AccountService:
 
         account = db.session.query(Account).filter_by(email=email).first()
         if not account:
-            raise AccountNotFoundError()
+            raise AccountPasswordError("Invalid email or password.")
 
         if account.status == AccountStatus.BANNED.value:
             raise AccountLoginError("Account is banned.")
@@ -189,7 +199,7 @@ class AccountService:
 
         db.session.commit()
 
-        return cast(Account, account)
+        return account
 
     @staticmethod
     def update_account_password(account, password, new_password):
@@ -209,6 +219,7 @@ class AccountService:
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
+        db.session.add(account)
         db.session.commit()
         return account
 
@@ -240,6 +251,8 @@ class AccountService:
         account.name = name
 
         if password:
+            valid_password(password)
+
             # generate password salt
             salt = secrets.token_bytes(16)
             base64_salt = base64.b64encode(salt).decode()
@@ -288,7 +301,9 @@ class AccountService:
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
 
-            raise EmailCodeAccountDeletionRateLimitExceededError()
+            raise EmailCodeAccountDeletionRateLimitExceededError(
+                int(cls.email_code_account_deletion_rate_limiter.time_window / 60)
+            )
 
         send_account_deletion_verification_code.delay(to=email, code=code)
 
@@ -306,12 +321,12 @@ class AccountService:
         return True
 
     @staticmethod
-    def delete_account(account: Account) -> None:
+    def delete_account(account: Account):
         """Delete account. This method only adds a task to the queue for deletion."""
         delete_account_task.delay(account.id)
 
     @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
+    def link_account_integrate(provider: str, open_id: str, account: Account):
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
@@ -332,13 +347,13 @@ class AccountService:
                 db.session.add(account_integrate)
 
             db.session.commit()
-            logging.info("Account %s linked %s account %s.", account.id, provider, open_id)
+            logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
         except Exception as e:
-            logging.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
+            logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
             raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
-    def close_account(account: Account) -> None:
+    def close_account(account: Account):
         """Close account"""
         account.status = AccountStatus.CLOSED.value
         db.session.commit()
@@ -346,6 +361,7 @@ class AccountService:
     @staticmethod
     def update_account(account, **kwargs):
         """Update account fields"""
+        account = db.session.merge(account)
         for field, value in kwargs.items():
             if hasattr(account, field):
                 setattr(account, field, value)
@@ -367,7 +383,7 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_login_info(account: Account, *, ip_address: str) -> None:
+    def update_login_info(account: Account, *, ip_address: str):
         """Update last login time and ip"""
         account.last_login_at = naive_utc_now()
         account.last_login_ip = ip_address
@@ -391,7 +407,7 @@ class AccountService:
         return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
     @staticmethod
-    def logout(*, account: Account) -> None:
+    def logout(*, account: Account):
         refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
         if refresh_token:
             AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
@@ -425,7 +441,8 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
+        is_allow_register: bool = False,
     ):
         account_email = account.email if account else email
         if account_email is None:
@@ -434,16 +451,57 @@ class AccountService:
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError
 
-            raise PasswordResetRateLimitExceededError()
+            raise PasswordResetRateLimitExceededError(int(cls.reset_password_rate_limiter.time_window / 60))
 
         code, token = cls.generate_reset_password_token(account_email, account)
 
-        send_reset_password_mail_task.delay(
-            language=language,
-            to=account_email,
-            code=code,
-        )
+        if account:
+            send_reset_password_mail_task.delay(
+                language=language,
+                to=account_email,
+                code=code,
+            )
+        else:
+            send_reset_password_mail_task_when_account_not_exist.delay(
+                language=language,
+                to=account_email,
+                is_allow_register=is_allow_register,
+            )
         cls.reset_password_rate_limiter.increment_rate_limit(account_email)
+        return token
+
+    @classmethod
+    def send_email_register_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: str = "en-US",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        if cls.email_register_rate_limiter.is_rate_limited(account_email):
+            from controllers.console.auth.error import EmailRegisterRateLimitExceededError
+
+            raise EmailRegisterRateLimitExceededError(int(cls.email_register_rate_limiter.time_window / 60))
+
+        code, token = cls.generate_email_register_token(account_email)
+
+        if account:
+            send_email_register_mail_task_when_account_exist.delay(
+                language=language,
+                to=account_email,
+                account_name=account.name,
+            )
+
+        else:
+            send_email_register_mail_task.delay(
+                language=language,
+                to=account_email,
+                code=code,
+            )
+        cls.email_register_rate_limiter.increment_rate_limit(account_email)
         return token
 
     @classmethod
@@ -452,17 +510,19 @@ class AccountService:
         account: Optional[Account] = None,
         email: Optional[str] = None,
         old_email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         phase: Optional[str] = None,
     ):
         account_email = account.email if account else email
         if account_email is None:
             raise ValueError("Email must be provided.")
+        if not phase:
+            raise ValueError("phase must be provided.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
-            raise EmailChangeRateLimitExceededError()
+            raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
         code, token = cls.generate_change_email_token(account_email, account, old_email=old_email)
 
@@ -480,7 +540,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
     ):
         account_email = account.email if account else email
         if account_email is None:
@@ -496,7 +556,7 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         workspace_name: Optional[str] = "",
     ):
         account_email = account.email if account else email
@@ -506,9 +566,10 @@ class AccountService:
         if cls.owner_transfer_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import OwnerTransferRateLimitExceededError
 
-            raise OwnerTransferRateLimitExceededError()
+            raise OwnerTransferRateLimitExceededError(int(cls.owner_transfer_rate_limiter.time_window / 60))
 
         code, token = cls.generate_owner_transfer_token(account_email, account)
+        workspace_name = workspace_name or ""
 
         send_owner_transfer_confirm_task.delay(
             language=language,
@@ -524,13 +585,14 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         workspace_name: Optional[str] = "",
-        new_owner_email: Optional[str] = "",
+        new_owner_email: str = "",
     ):
         account_email = account.email if account else email
         if account_email is None:
             raise ValueError("Email must be provided.")
+        workspace_name = workspace_name or ""
 
         send_old_owner_transfer_notify_email_task.delay(
             language=language,
@@ -544,12 +606,13 @@ class AccountService:
         cls,
         account: Optional[Account] = None,
         email: Optional[str] = None,
-        language: Optional[str] = "en-US",
+        language: str = "en-US",
         workspace_name: Optional[str] = "",
     ):
         account_email = account.email if account else email
         if account_email is None:
             raise ValueError("Email must be provided.")
+        workspace_name = workspace_name or ""
 
         send_new_owner_transfer_notify_email_task.delay(
             language=language,
@@ -571,6 +634,19 @@ class AccountService:
         token = TokenManager.generate_token(
             account=account, email=email, token_type="reset_password", additional_data=additional_data
         )
+        return code, token
+
+    @classmethod
+    def generate_email_register_token(
+        cls,
+        email: str,
+        code: Optional[str] = None,
+        additional_data: dict[str, Any] = {},
+    ):
+        if not code:
+            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        additional_data["code"] = code
+        token = TokenManager.generate_token(email=email, token_type="email_register", additional_data=additional_data)
         return code, token
 
     @classmethod
@@ -612,6 +688,10 @@ class AccountService:
         TokenManager.revoke_token(token, "reset_password")
 
     @classmethod
+    def revoke_email_register_token(cls, token: str):
+        TokenManager.revoke_token(token, "email_register")
+
+    @classmethod
     def revoke_change_email_token(cls, token: str):
         TokenManager.revoke_token(token, "change_email")
 
@@ -624,6 +704,10 @@ class AccountService:
         return TokenManager.get_token_data(token, "reset_password")
 
     @classmethod
+    def get_email_register_data(cls, token: str) -> Optional[dict[str, Any]]:
+        return TokenManager.get_token_data(token, "email_register")
+
+    @classmethod
     def get_change_email_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "change_email")
 
@@ -633,7 +717,10 @@ class AccountService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: str = "en-US",
     ):
         email = account.email if account else email
         if email is None:
@@ -641,7 +728,7 @@ class AccountService:
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
-            raise EmailCodeLoginRateLimitExceededError()
+            raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
@@ -690,7 +777,7 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_login_error_rate_limit(email: str) -> None:
+    def add_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -719,13 +806,23 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_forgot_password_error_rate_limit(email: str) -> None:
+    def add_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
             count = 0
         count = int(count) + 1
         redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def add_email_register_error_rate_limit(email: str) -> None:
+        key = f"email_register_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, dify_config.EMAIL_REGISTER_LOCKOUT_DURATION, count)
 
     @staticmethod
     @redis_fallback(default_return=False)
@@ -747,8 +844,26 @@ class AccountService:
         redis_client.delete(key)
 
     @staticmethod
+    @redis_fallback(default_return=False)
+    def is_email_register_error_rate_limit(email: str) -> bool:
+        key = f"email_register_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+        count = int(count)
+        if count > AccountService.EMAIL_REGISTER_MAX_ERROR_LIMITS:
+            return True
+        return False
+
+    @staticmethod
     @redis_fallback(default_return=None)
-    def add_change_email_error_rate_limit(email: str) -> None:
+    def reset_email_register_error_rate_limit(email: str):
+        key = f"email_register_error_rate_limit:{email}"
+        redis_client.delete(key)
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def add_change_email_error_rate_limit(email: str):
         key = f"change_email_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -776,7 +891,7 @@ class AccountService:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def add_owner_transfer_error_rate_limit(email: str) -> None:
+    def add_owner_transfer_error_rate_limit(email: str):
         key = f"owner_transfer_error_rate_limit:{email}"
         count = redis_client.get(key)
         if count is None:
@@ -917,7 +1032,7 @@ class TenantService:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER.value:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
-                logging.error("Tenant %s has already an owner.", tenant.id)
+                logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
@@ -955,7 +1070,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: Optional[str] = None) -> None:
+    def switch_tenant(account: Account, tenant_id: Optional[str] = None):
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
@@ -1052,7 +1167,7 @@ class TenantService:
         return cast(int, db.session.query(func.count(Tenant.id)).scalar())
 
     @staticmethod
-    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str) -> None:
+    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str):
         """Check member permission"""
         perms = {
             "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
@@ -1072,7 +1187,7 @@ class TenantService:
             raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
-    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account) -> None:
+    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
         """Remove member from tenant"""
         if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
@@ -1087,7 +1202,7 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account) -> None:
+    def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
         """Update member role"""
         TenantService.check_member_permission(tenant, operator, member, "update")
 
@@ -1114,10 +1229,10 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def get_custom_config(tenant_id: str) -> dict:
+    def get_custom_config(tenant_id: str):
         tenant = db.get_or_404(Tenant, tenant_id)
 
-        return cast(dict, tenant.custom_config_dict)
+        return tenant.custom_config_dict
 
     @staticmethod
     def is_owner(account: Account, tenant: Tenant) -> bool:
@@ -1135,7 +1250,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str) -> None:
+    def setup(cls, email: str, name: str, password: str, ip_address: str):
         """
         Setup dify
 
@@ -1169,7 +1284,7 @@ class RegisterService:
             db.session.query(Tenant).delete()
             db.session.commit()
 
-            logging.exception("Setup account failed, email: %s, name: %s", email, name)
+            logger.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
 
     @classmethod
@@ -1214,15 +1329,15 @@ class RegisterService:
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
-            logging.exception("Register failed")
+            logger.exception("Register failed")
             raise AccountRegisterError("Workspace is not allowed to create.")
         except AccountRegisterError as are:
             db.session.rollback()
-            logging.exception("Register failed")
+            logger.exception("Register failed")
             raise are
         except Exception as e:
             db.session.rollback()
-            logging.exception("Register failed")
+            logger.exception("Register failed")
             raise AccountRegisterError(f"Registration failed: {e}") from e
 
         return account
@@ -1260,10 +1375,11 @@ class RegisterService:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         token = cls.generate_invite_token(tenant, account)
+        language = account.interface_language or "en-US"
 
         # send email
         send_invite_member_mail_task.delay(
-            language=account.interface_language,
+            language=language,
             to=email,
             token=token,
             inviter_name=inviter.name if inviter else "Dify",
@@ -1302,7 +1418,7 @@ class RegisterService:
     def get_invitation_if_token_valid(
         cls, workspace_id: Optional[str], email: str, token: str
     ) -> Optional[dict[str, Any]]:
-        invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
+        invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
 
@@ -1339,7 +1455,7 @@ class RegisterService:
         }
 
     @classmethod
-    def _get_invitation_by_token(
+    def get_invitation_by_token(
         cls, token: str, workspace_id: Optional[str] = None, email: Optional[str] = None
     ) -> Optional[dict[str, str]]:
         if workspace_id is not None and email is not None:

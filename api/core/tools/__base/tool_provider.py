@@ -12,7 +12,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 
 class ToolProviderController(ABC):
-    def __init__(self, entity: ToolProviderEntity) -> None:
+    def __init__(self, entity: ToolProviderEntity):
         self.entity = entity
 
     def get_credentials_schema(self) -> list[ProviderConfig]:
@@ -41,7 +41,7 @@ class ToolProviderController(ABC):
         """
         return ToolProviderType.BUILT_IN
 
-    def validate_credentials_format(self, credentials: dict[str, Any]) -> None:
+    def validate_credentials_format(self, credentials: dict[str, Any]):
         """
         validate the format of the credentials of the provider and set the default value if needed
 

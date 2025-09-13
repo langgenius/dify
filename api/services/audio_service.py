@@ -12,7 +12,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.enums import MessageStatus
-from models.model import App, AppMode, AppModelConfig, Message
+from models.model import App, AppMode, Message
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class AudioService:
     @classmethod
     def transcript_asr(cls, app_model: App, file: FileStorage, end_user: Optional[str] = None):
-        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise ValueError("Speech to text is not enabled")
@@ -40,7 +40,9 @@ class AudioService:
             if "speech_to_text" not in features_dict or not features_dict["speech_to_text"].get("enabled"):
                 raise ValueError("Speech to text is not enabled")
         else:
-            app_model_config: AppModelConfig = app_model.app_model_config
+            app_model_config = app_model.app_model_config
+            if not app_model_config:
+                raise ValueError("Speech to text is not enabled")
 
             if not app_model_config.speech_to_text_dict["enabled"]:
                 raise ValueError("Speech to text is not enabled")
@@ -86,7 +88,7 @@ class AudioService:
         def invoke_tts(text_content: str, app_model: App, voice: Optional[str] = None, is_draft: bool = False):
             with app.app_context():
                 if voice is None:
-                    if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+                    if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
                         if is_draft:
                             workflow = WorkflowService().get_draft_workflow(app_model=app_model)
                         else:

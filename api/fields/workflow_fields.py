@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import fields
 
 from core.helper import encrypter
 from core.variables import SecretVariable, SegmentType, Variable
@@ -17,7 +17,7 @@ class EnvironmentVariableField(fields.Raw):
             return {
                 "id": value.id,
                 "name": value.name,
-                "value": encrypter.obfuscated_token(value.value),
+                "value": encrypter.full_mask_token(),
                 "value_type": value.value_type.value,
                 "description": value.description,
             }

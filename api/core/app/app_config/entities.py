@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -61,14 +61,14 @@ class PromptTemplateEntity(BaseModel):
     Prompt Template Entity.
     """
 
-    class PromptType(Enum):
+    class PromptType(StrEnum):
         """
         Prompt Type.
         'simple', 'advanced'
         """
 
-        SIMPLE = "simple"
-        ADVANCED = "advanced"
+        SIMPLE = auto()
+        ADVANCED = auto()
 
         @classmethod
         def value_of(cls, value: str):
@@ -97,6 +97,7 @@ class VariableEntityType(StrEnum):
     EXTERNAL_DATA_TOOL = "external_data_tool"
     FILE = "file"
     FILE_LIST = "file-list"
+    CHECKBOX = "checkbox"
 
 
 class VariableEntity(BaseModel):
@@ -167,7 +168,7 @@ class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = {}
+    completion_params: dict[str, Any] = Field(default_factory=dict)
 
 
 class Condition(BaseModel):
@@ -194,14 +195,14 @@ class DatasetRetrieveConfigEntity(BaseModel):
     Dataset Retrieve Config Entity.
     """
 
-    class RetrieveStrategy(Enum):
+    class RetrieveStrategy(StrEnum):
         """
         Dataset Retrieve Strategy.
         'single' or 'multiple'
         """
 
-        SINGLE = "single"
-        MULTIPLE = "multiple"
+        SINGLE = auto()
+        MULTIPLE = auto()
 
         @classmethod
         def value_of(cls, value: str):
@@ -292,12 +293,12 @@ class AppConfig(BaseModel):
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 
-class EasyUIBasedAppModelConfigFrom(Enum):
+class EasyUIBasedAppModelConfigFrom(StrEnum):
     """
     App Model Config From.
     """
 
-    ARGS = "args"
+    ARGS = auto()
     APP_LATEST_CONFIG = "app-latest-config"
     CONVERSATION_SPECIFIC_CONFIG = "conversation-specific-config"
 

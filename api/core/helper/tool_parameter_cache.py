@@ -1,12 +1,12 @@
 import json
-from enum import Enum
+from enum import StrEnum
 from json import JSONDecodeError
 from typing import Optional
 
 from extensions.ext_redis import redis_client
 
 
-class ToolParameterCacheType(Enum):
+class ToolParameterCacheType(StrEnum):
     PARAMETER = "tool_parameter"
 
 
@@ -15,7 +15,7 @@ class ToolParameterCache:
         self, tenant_id: str, provider: str, tool_name: str, cache_type: ToolParameterCacheType, identity_id: str
     ):
         self.cache_key = (
-            f"{cache_type.value}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}"
+            f"{cache_type}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}"
             f":identity_id:{identity_id}"
         )
 
@@ -37,11 +37,11 @@ class ToolParameterCache:
         else:
             return None
 
-    def set(self, parameters: dict) -> None:
+    def set(self, parameters: dict):
         """Cache model provider credentials."""
         redis_client.setex(self.cache_key, 86400, json.dumps(parameters))
 
-    def delete(self) -> None:
+    def delete(self):
         """
         Delete cached model provider credentials.
 

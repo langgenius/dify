@@ -30,9 +30,10 @@ export type InputProps = {
   wrapperClassName?: string
   styleCss?: CSSProperties
   unit?: string
+  ref?: React.Ref<HTMLInputElement>
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(({
+const Input = ({
   size,
   disabled,
   destructive,
@@ -46,8 +47,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   placeholder,
   onChange = noop,
   unit,
+  ref,
   ...props
-}, ref) => {
+}: InputProps) => {
   const { t } = useTranslation()
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
@@ -93,7 +95,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       }
     </div>
   )
-})
+}
 
 Input.displayName = 'Input'
 

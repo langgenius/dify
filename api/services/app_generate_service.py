@@ -55,12 +55,12 @@ class AppGenerateService:
                 cls.system_rate_limiter.increment_rate_limit(app_model.tenant_id)
 
         # app level rate limiter
-        max_active_request = AppGenerateService._get_max_active_requests(app_model)
+        max_active_request = cls._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
         try:
             request_id = rate_limit.enter(request_id)
-            if app_model.mode == AppMode.COMPLETION.value:
+            if app_model.mode == AppMode.COMPLETION:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
                         CompletionAppGenerator().generate(
@@ -69,7 +69,7 @@ class AppGenerateService:
                     ),
                     request_id=request_id,
                 )
-            elif app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
+            elif app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
@@ -78,7 +78,7 @@ class AppGenerateService:
                     ),
                     request_id,
                 )
-            elif app_model.mode == AppMode.CHAT.value:
+            elif app_model.mode == AppMode.CHAT:
                 return rate_limit.generate(
                     ChatAppGenerator.convert_to_event_stream(
                         ChatAppGenerator().generate(
@@ -87,7 +87,7 @@ class AppGenerateService:
                     ),
                     request_id=request_id,
                 )
-            elif app_model.mode == AppMode.ADVANCED_CHAT.value:
+            elif app_model.mode == AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
                 return rate_limit.generate(
@@ -103,7 +103,7 @@ class AppGenerateService:
                     ),
                     request_id=request_id,
                 )
-            elif app_model.mode == AppMode.WORKFLOW.value:
+            elif app_model.mode == AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
                 return rate_limit.generate(
@@ -155,14 +155,14 @@ class AppGenerateService:
 
     @classmethod
     def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+        if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(
                 AdvancedChatAppGenerator().single_iteration_generate(
                     app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
                 )
             )
-        elif app_model.mode == AppMode.WORKFLOW.value:
+        elif app_model.mode == AppMode.WORKFLOW:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(
                 WorkflowAppGenerator().single_iteration_generate(
@@ -174,14 +174,14 @@ class AppGenerateService:
 
     @classmethod
     def generate_single_loop(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+        if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(
                 AdvancedChatAppGenerator().single_loop_generate(
                     app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
                 )
             )
-        elif app_model.mode == AppMode.WORKFLOW.value:
+        elif app_model.mode == AppMode.WORKFLOW:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(
                 WorkflowAppGenerator().single_loop_generate(
@@ -227,7 +227,7 @@ class AppGenerateService:
         # If workflow_id is specified, get the specific workflow version
         if workflow_id:
             try:
-                workflow_uuid = uuid.UUID(workflow_id)
+                _ = uuid.UUID(workflow_id)
             except ValueError:
                 raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
             workflow = workflow_service.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)

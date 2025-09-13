@@ -233,7 +233,7 @@ FAIL_BRANCH_EDGES = [
 
 def test_code_default_value_continue_on_error():
     error_code = """
-    def main() -> dict:
+    def main():
         return {
             "result": 1 / 0,
         }
@@ -259,7 +259,7 @@ def test_code_default_value_continue_on_error():
 
 def test_code_fail_branch_continue_on_error():
     error_code = """
-    def main() -> dict:
+    def main():
         return {
             "result": 1 / 0,
         }

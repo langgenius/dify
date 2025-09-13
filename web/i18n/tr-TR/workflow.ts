@@ -470,6 +470,12 @@ const translation = {
         addChildField: 'Çocuk Alanı Ekle',
         resultTip: 'İşte oluşturulan sonuç. Eğer memnun değilseniz, geri dönüp isteminizi değiştirebilirsiniz.',
       },
+      reasoningFormat: {
+        separated: 'Ayrı düşünce etiketleri',
+        title: 'Akıl yürütme etiket ayrımını etkinleştir',
+        tagged: 'Etiketleri düşünmeye devam et',
+        tooltip: 'Düşünce etiketlerinden içeriği çıkarın ve bunu reasoning_content alanında saklayın.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Sorgu Değişkeni',
@@ -843,6 +849,7 @@ const translation = {
           url: 'Resim url\'si',
         },
         text: 'Temsilci Tarafından Oluşturulan İçerik',
+        usage: 'Model Kullanım Bilgileri',
         json: 'Aracı tarafından oluşturulan JSON',
       },
       checkList: {
@@ -996,6 +1003,11 @@ const translation = {
     noLastRunFound: 'Önceki çalışmaya rastlanmadı.',
     noMatchingInputsFound: 'Son çalışmadan eşleşen giriş bulunamadı.',
     copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
+    lastOutput: 'Son Çıktı',
+  },
+  sidebar: {
+    exportWarning: 'Mevcut Kaydedilmiş Versiyonu Dışa Aktar',
+    exportWarningDesc: 'Bu, çalışma akışınızın mevcut kaydedilmiş sürümünü dışa aktaracaktır. Editörde kaydedilmemiş değişiklikleriniz varsa, lütfen önce bunları çalışma akışı alanındaki dışa aktarma seçeneğini kullanarak kaydedin.',
   },
 }
 

@@ -1,7 +1,7 @@
-import enum
 import json
 import os
 from collections.abc import Mapping, Sequence
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
@@ -25,9 +25,9 @@ if TYPE_CHECKING:
     from core.file.models import File
 
 
-class ModelMode(enum.StrEnum):
-    COMPLETION = "completion"
-    CHAT = "chat"
+class ModelMode(StrEnum):
+    COMPLETION = auto()
+    CHAT = auto()
 
 
 prompt_file_contents: dict[str, Any] = {}
@@ -101,9 +101,22 @@ class SimplePromptTransform(PromptTransform):
             with_memory_prompt=histories is not None,
         )
 
-        variables = {k: inputs[k] for k in prompt_template_config["custom_variable_keys"] if k in inputs}
+        custom_variable_keys_obj = prompt_template_config["custom_variable_keys"]
+        special_variable_keys_obj = prompt_template_config["special_variable_keys"]
 
-        for v in prompt_template_config["special_variable_keys"]:
+        # Type check for custom_variable_keys
+        if not isinstance(custom_variable_keys_obj, list):
+            raise TypeError(f"Expected list for custom_variable_keys, got {type(custom_variable_keys_obj)}")
+        custom_variable_keys = cast(list[str], custom_variable_keys_obj)
+
+        # Type check for special_variable_keys
+        if not isinstance(special_variable_keys_obj, list):
+            raise TypeError(f"Expected list for special_variable_keys, got {type(special_variable_keys_obj)}")
+        special_variable_keys = cast(list[str], special_variable_keys_obj)
+
+        variables = {k: inputs[k] for k in custom_variable_keys if k in inputs}
+
+        for v in special_variable_keys:
             # support #context#, #query# and #histories#
             if v == "#context#":
                 variables["#context#"] = context or ""
@@ -113,9 +126,16 @@ class SimplePromptTransform(PromptTransform):
                 variables["#histories#"] = histories or ""
 
         prompt_template = prompt_template_config["prompt_template"]
+        if not isinstance(prompt_template, PromptTemplateParser):
+            raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template)}")
+
         prompt = prompt_template.format(variables)
 
-        return prompt, prompt_template_config["prompt_rules"]
+        prompt_rules = prompt_template_config["prompt_rules"]
+        if not isinstance(prompt_rules, dict):
+            raise TypeError(f"Expected dict for prompt_rules, got {type(prompt_rules)}")
+
+        return prompt, prompt_rules
 
     def get_prompt_template(
         self,
@@ -126,11 +146,11 @@ class SimplePromptTransform(PromptTransform):
         has_context: bool,
         query_in_prompt: bool,
         with_memory_prompt: bool = False,
-    ) -> dict:
+    ) -> dict[str, object]:
         prompt_rules = self._get_prompt_rule(app_mode=app_mode, provider=provider, model=model)
 
-        custom_variable_keys = []
-        special_variable_keys = []
+        custom_variable_keys: list[str] = []
+        special_variable_keys: list[str] = []
 
         prompt = ""
         for order in prompt_rules["system_prompt_orders"]:
@@ -265,11 +285,11 @@ class SimplePromptTransform(PromptTransform):
     ) -> UserPromptMessage:
         if files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)
         else:
@@ -277,7 +297,7 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_message
 
-    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str) -> dict:
+    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str):
         """
         Get simple prompt rule.
         :param app_mode: app mode

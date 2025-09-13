@@ -291,6 +291,11 @@ const translation = {
       languageCategoryDesc: 'インターフェース言語を切り替える',
       themeCategoryDesc: 'アプリケーションのテーマを切り替える',
       runDesc: 'クイックコマンドを実行する（テーマ、言語、...）',
+      slashDesc: 'コマンドを実行します、例えば /theme や /lang のように',
+      accountDesc: 'アカウントページに移動する',
+      docDesc: 'ヘルプドキュメントを開く',
+      communityDesc: 'オープンDiscordコミュニティ',
+      feedbackDesc: 'オープンなコミュニティフィードバックディスカッション',
     },
     emptyState: {
       noAppsFound: 'アプリが見つかりません',
@@ -305,9 +310,11 @@ const translation = {
       plugins: 'プラグイン',
       knowledgeBases: 'ナレッジベース',
       workflowNodes: 'ワークフローノード',
+      commands: 'コマンド',
     },
     noMatchingCommands: '一致するコマンドが見つかりません',
     tryDifferentSearch: '別の検索語句をお試しください',
+    slashHint: '/を入力して、利用可能なすべてのコマンドを表示します。',
   },
 }
 

@@ -1,21 +1,22 @@
 import uuid
-from datetime import UTC, datetime
-from enum import Enum
+from datetime import datetime
+from enum import StrEnum, auto
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from libs.datetime_utils import naive_utc_now
 
 
 class RouteNodeState(BaseModel):
-    class Status(Enum):
-        RUNNING = "running"
-        SUCCESS = "success"
-        FAILED = "failed"
-        PAUSED = "paused"
-        EXCEPTION = "exception"
+    class Status(StrEnum):
+        RUNNING = auto()
+        SUCCESS = auto()
+        FAILED = auto()
+        PAUSED = auto()
+        EXCEPTION = auto()
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """node state id"""
@@ -46,7 +47,7 @@ class RouteNodeState(BaseModel):
 
     index: int = 1
 
-    def set_finished(self, run_result: NodeRunResult) -> None:
+    def set_finished(self, run_result: NodeRunResult):
         """
         Node finished
 
@@ -71,7 +72,7 @@ class RouteNodeState(BaseModel):
             raise Exception(f"Invalid route status {run_result.status}")
 
         self.node_run_result = run_result
-        self.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        self.finished_at = naive_utc_now()
 
 
 class RuntimeRouteState(BaseModel):
@@ -89,11 +90,11 @@ class RuntimeRouteState(BaseModel):
 
         :param node_id: node id
         """
-        state = RouteNodeState(node_id=node_id, start_at=datetime.now(UTC).replace(tzinfo=None))
+        state = RouteNodeState(node_id=node_id, start_at=naive_utc_now())
         self.node_state_mapping[state.id] = state
         return state
 
-    def add_route(self, source_node_state_id: str, target_node_state_id: str) -> None:
+    def add_route(self, source_node_state_id: str, target_node_state_id: str):
         """
         Add route to the graph state
 

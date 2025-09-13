@@ -103,7 +103,7 @@ export const AppTypeIcon = React.memo(({ type, className, wrapperClassName, styl
   return null
 })
 
-function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] }) {
+function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['value'] }) {
   const { t } = useTranslation()
   if (!values || values.length === 0) {
     return <div className={cn(

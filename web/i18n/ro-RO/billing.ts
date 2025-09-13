@@ -23,18 +23,13 @@ const translation = {
     contractSales: 'Contactați vânzările',
     contractOwner: 'Contactați managerul echipei',
     startForFree: 'Începe gratuit',
-    getStartedWith: 'Începe cu ',
     contactSales: 'Contactați vânzările',
     talkToSales: 'Vorbiți cu vânzările',
     modelProviders: 'Furnizori de modele',
-    teamMembers: 'Membri ai echipei',
     buildApps: 'Construiește aplicații',
     vectorSpace: 'Spațiu vectorial',
-    vectorSpaceBillingTooltip: 'Fiecare 1MB poate stoca aproximativ 1,2 milioane de caractere de date vectorizate (estimat folosind OpenAI Embeddings, variază în funcție de modele).',
     vectorSpaceTooltip: 'Spațiul vectorial este sistemul de memorie pe termen lung necesar pentru ca LLM-urile să înțeleagă datele dvs.',
-    documentsUploadQuota: 'Cotă de încărcare a documentelor',
     documentProcessingPriority: 'Prioritatea procesării documentelor',
-    documentProcessingPriorityTip: 'Pentru o prioritate mai mare a procesării documentelor, vă rugăm să actualizați planul.',
     documentProcessingPriorityUpgrade: 'Procesați mai multe date cu o acuratețe mai mare și la viteze mai rapide.',
     priority: {
       'standard': 'Standard',
@@ -103,19 +98,16 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       description: '200 de încercări gratuite GPT',
-      includesTitle: 'Include:',
       for: 'Proba gratuită a capacităților de bază',
     },
     professional: {
       name: 'Professional',
       description: 'Pentru persoane fizice și echipe mici pentru a debloca mai multă putere la un preț accesibil.',
-      includesTitle: 'Tot ce este în planul gratuit, plus:',
       for: 'Pentru dezvoltatori independenți / echipe mici',
     },
     team: {
       name: 'Echipă',
       description: 'Colaborați fără limite și bucurați-vă de performanțe de top.',
-      includesTitle: 'Tot ce este în planul Professional, plus:',
       for: 'Pentru echipe de dimensiuni medii',
     },
     enterprise: {
@@ -123,15 +115,6 @@ const translation = {
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
       features: {
-        3: 'Multiple Spații de lucru și Management Enterprise',
-        6: 'Securitate avansată și control',
-        2: 'Funcții exclusive pentru întreprinderi',
-        8: 'Asistență tehnică profesională',
-        4: 'SSO',
-        7: 'Actualizări și întreținere de către Dify Oficial',
-        1: 'Autorizare pentru licență comercială',
-        5: 'SLA-uri negociate de partenerii Dify',
-        0: 'Soluții de desfășurare scalabile de nivel enterprise',
       },
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
@@ -140,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        2: 'Se conformează Licenței Open Source Dify',
-        1: 'Spațiu de lucru unic',
-        0: 'Toate funcțiile de bază lansate sub depozitul public',
       },
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
       btnText: 'Începe cu Comunitatea',
@@ -153,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        1: 'Spațiu de lucru unic',
-        0: 'Fiabilitate autogestionată de diferiți furnizori de cloud',
-        2: 'Personalizarea logo-ului și branding-ului aplicației web',
-        3: 'Suport prioritar prin email și chat',
       },
       btnText: 'Obține Premium în',
       description: 'Pentru organizații și echipe de dimensiuni medii',
@@ -173,8 +149,6 @@ const translation = {
     fullSolution: 'Actualizați-vă planul pentru a obține mai mult spațiu.',
   },
   apps: {
-    fullTipLine1: 'Actualizați-vă planul pentru a',
-    fullTipLine2: 'construi mai multe aplicații.',
     fullTip2des: 'Se recomandă curățarea aplicațiilor inactive pentru a elibera resurse, sau contactați-ne.',
     fullTip2: 'Limita planului a fost atinsă',
     fullTip1des: 'Ați atins limita de aplicații construite pe acest plan',
