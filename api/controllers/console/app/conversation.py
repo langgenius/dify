@@ -26,7 +26,7 @@ from fields.conversation_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models import Conversation, EndUser, Message, MessageAnnotation
+from models import Account, Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode, MessageAgentThought, MessageChain, MessageFeedback, MessageFile, UploadFile
 from models.tools import ToolConversationVariables, ToolFile
 from models.web import PinnedConversation
