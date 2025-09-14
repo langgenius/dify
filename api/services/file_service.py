@@ -120,8 +120,7 @@ class FileService:
 
         return file_size <= file_size_limit
 
-    @staticmethod
-    def upload_text(text: str, text_name: str) -> UploadFile:
+    def upload_text(self, text: str, text_name: str) -> UploadFile:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
@@ -225,3 +224,23 @@ class FileService:
         generator = storage.load(upload_file.key)
 
         return generator, upload_file.mime_type
+
+    def get_file_content(self, file_id: str) -> str:
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            raise NotFound("File not found")
+        content = storage.load(upload_file.key)
+
+        return content.decode("utf-8")
+
+    def delete_file(self, file_id: str):
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            return
+        storage.delete(upload_file.key)
+        session.delete(upload_file)
+        session.commit()
