@@ -2,12 +2,19 @@
 Tencent APM Trace Client - handles network operations, metrics, and API communication
 """
 
+from __future__ import annotations
+
 import importlib
 import logging
 import os
 import socket
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Meter
+    from opentelemetry.metrics._internal.instrument import Histogram
+    from opentelemetry.sdk.metrics.export import MetricReader
 
 from opentelemetry import trace as trace_api
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -16,6 +23,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import SpanKind
+from opentelemetry.util.types import AttributeValue
 
 from configs import dify_config
 
@@ -87,9 +95,9 @@ class TencentTraceClient:
         # Store span contexts for parent-child relationships
         self.span_contexts: dict[int, trace_api.SpanContext] = {}
 
-        self.meter: Optional[object] = None
-        self.hist_llm_duration: Optional[object] = None
-        self.metric_reader: Optional[object] = None
+        self.meter: Optional[Meter] = None
+        self.hist_llm_duration: Optional[Histogram] = None
+        self.metric_reader: Optional[MetricReader] = None
 
         # Metrics exporter and instruments
         try:
@@ -103,6 +111,13 @@ class TencentTraceClient:
 
             # Set preferred temporality for histograms to DELTA
             preferred_temporality: dict[type, AggregationTemporality] = {Histogram: AggregationTemporality.DELTA}
+
+            def _create_metric_exporter(exporter_cls, **kwargs):
+                """Create metric exporter with preferred_temporality support"""
+                try:
+                    return exporter_cls(**kwargs, preferred_temporality=preferred_temporality)
+                except Exception:
+                    return exporter_cls(**kwargs)
 
             metric_reader = None
             if use_http_json:
@@ -119,33 +134,21 @@ class TencentTraceClient:
                     except Exception:
                         continue
                 if exporter_cls is not None:
-                    try:
-                        metric_exporter = exporter_cls(
-                            endpoint=endpoint,
-                            headers={"authorization": f"Bearer {token}"},
-                            preferred_temporality=preferred_temporality,
-                        )
-                    except Exception:
-                        metric_exporter = exporter_cls(
-                            endpoint=endpoint,
-                            headers={"authorization": f"Bearer {token}"},
-                        )
+                    metric_exporter = _create_metric_exporter(
+                        exporter_cls,
+                        endpoint=endpoint,
+                        headers={"authorization": f"Bearer {token}"},
+                    )
                 else:
                     from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
                         OTLPMetricExporter as HttpMetricExporter,
                     )
 
-                    try:
-                        metric_exporter = HttpMetricExporter(
-                            endpoint=endpoint,
-                            headers={"authorization": f"Bearer {token}"},
-                            preferred_temporality=preferred_temporality,
-                        )
-                    except Exception:
-                        metric_exporter = HttpMetricExporter(
-                            endpoint=endpoint,
-                            headers={"authorization": f"Bearer {token}"},
-                        )
+                    metric_exporter = _create_metric_exporter(
+                        HttpMetricExporter,
+                        endpoint=endpoint,
+                        headers={"authorization": f"Bearer {token}"},
+                    )
                 metric_reader = PeriodicExportingMetricReader(
                     metric_exporter, export_interval_millis=self.metrics_export_interval_sec * 1000
                 )
@@ -155,17 +158,11 @@ class TencentTraceClient:
                     OTLPMetricExporter as HttpMetricExporter,
                 )
 
-                try:
-                    metric_exporter = HttpMetricExporter(
-                        endpoint=endpoint,
-                        headers={"authorization": f"Bearer {token}"},
-                        preferred_temporality=preferred_temporality,
-                    )
-                except Exception:
-                    metric_exporter = HttpMetricExporter(
-                        endpoint=endpoint,
-                        headers={"authorization": f"Bearer {token}"},
-                    )
+                metric_exporter = _create_metric_exporter(
+                    HttpMetricExporter,
+                    endpoint=endpoint,
+                    headers={"authorization": f"Bearer {token}"},
+                )
                 metric_reader = PeriodicExportingMetricReader(
                     metric_exporter, export_interval_millis=self.metrics_export_interval_sec * 1000
                 )
@@ -186,19 +183,12 @@ class TencentTraceClient:
                     if "localhost" in endpoint or "127.0.0.1" in endpoint:
                         insecure = True
 
-                try:
-                    metric_exporter = GrpcMetricExporter(
-                        endpoint=grpc_endpoint,
-                        headers={"authorization": f"Bearer {token}"},
-                        insecure=insecure,
-                        preferred_temporality=preferred_temporality,
-                    )
-                except Exception:
-                    metric_exporter = GrpcMetricExporter(
-                        endpoint=grpc_endpoint,
-                        headers={"authorization": f"Bearer {token}"},
-                        insecure=insecure,
-                    )
+                metric_exporter = _create_metric_exporter(
+                    GrpcMetricExporter,
+                    endpoint=grpc_endpoint,
+                    headers={"authorization": f"Bearer {token}"},
+                    insecure=insecure,
+                )
                 metric_reader = PeriodicExportingMetricReader(
                     metric_exporter, export_interval_millis=self.metrics_export_interval_sec * 1000
                 )
@@ -264,8 +254,6 @@ class TencentTraceClient:
             self.span_contexts[span_data.span_id] = span.get_span_context()
 
             if span_data.attributes:
-                from opentelemetry.util.types import AttributeValue
-
                 attributes: dict[str, AttributeValue] = {}
                 for key, value in span_data.attributes.items():
                     if isinstance(value, (int, float, bool)):

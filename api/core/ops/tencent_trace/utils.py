@@ -43,9 +43,9 @@ class TencentTraceUtils:
         return span_id
 
     @staticmethod
-    def convert_datetime_to_nanoseconds(start_time: Optional[datetime]) -> Optional[int]:
+    def convert_datetime_to_nanoseconds(start_time: Optional[datetime]) -> int:
         if start_time is None:
-            return None
+            start_time = datetime.now()
         timestamp_in_seconds = start_time.timestamp()
         return int(timestamp_in_seconds * 1e9)
 

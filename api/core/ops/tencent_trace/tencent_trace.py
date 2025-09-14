@@ -28,7 +28,7 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
 from core.workflow.nodes import NodeType
-from models import Account, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom, db
+from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom, db
 
 logger = logging.getLogger(__name__)
 
@@ -218,8 +218,6 @@ class TencentDataTrace(BaseTraceInstance):
                 app_id = trace_info.metadata.get("app_id")
                 if not app_id:
                     raise ValueError("No app_id found in trace_info metadata")
-
-                from models import App
 
                 app_stmt = select(App).where(App.id == app_id)
                 app = session.scalar(app_stmt)

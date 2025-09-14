@@ -4,6 +4,7 @@ Tencent APM Span Builder - handles all span construction logic
 
 import json
 import logging
+from datetime import datetime
 from typing import Optional
 
 from opentelemetry.trace import Status, StatusCode
@@ -42,6 +43,7 @@ from core.ops.tencent_trace.utils import TencentTraceUtils
 from core.rag.models.document import Document
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 
@@ -50,6 +52,11 @@ logger = logging.getLogger(__name__)
 
 class TencentSpanBuilder:
     """Builder class for constructing different types of spans"""
+
+    @staticmethod
+    def _get_time_nanoseconds(time_value: Optional[datetime]) -> int:
+        """Convert datetime to nanoseconds for span creation."""
+        return TencentTraceUtils.convert_datetime_to_nanoseconds(time_value)
 
     @staticmethod
     def build_workflow_spans(
@@ -92,8 +99,8 @@ class TencentSpanBuilder:
             parent_span_id=None,
             span_id=message_span_id,
             name="message",
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.end_time),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
             attributes={
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
                 GEN_AI_USER_ID: str(user_id),
@@ -134,8 +141,8 @@ class TencentSpanBuilder:
             parent_span_id=message_span_id,
             span_id=workflow_span_id,
             name="workflow",
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.end_time),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
             attributes=attributes,
             status=status,
             links=links,
@@ -155,8 +162,8 @@ class TencentSpanBuilder:
             parent_span_id=workflow_span_id,
             span_id=TencentTraceUtils.convert_to_span_id(node_execution.id, "node"),
             name="GENERATION",
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.finished_at),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.created_at),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.finished_at),
             attributes={
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
                 GEN_AI_SPAN_KIND: GenAISpanKind.GENERATION.value,
@@ -190,8 +197,8 @@ class TencentSpanBuilder:
             parent_span_id=None,
             span_id=TencentTraceUtils.convert_to_span_id(trace_info.message_id, "message"),
             name="message",
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.end_time),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
             attributes={
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
                 GEN_AI_USER_ID: str(user_id),
@@ -217,8 +224,8 @@ class TencentSpanBuilder:
             parent_span_id=parent_span_id,
             span_id=TencentTraceUtils.convert_to_span_id(trace_info.message_id, "tool"),
             name=trace_info.tool_name,
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.end_time),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
             attributes={
                 GEN_AI_SPAN_KIND: GenAISpanKind.TOOL.value,
                 GEN_AI_FRAMEWORK: "dify",
@@ -235,6 +242,8 @@ class TencentSpanBuilder:
     def build_retrieval_span(trace_info: DatasetRetrievalTraceInfo, trace_id: int, parent_span_id: int) -> SpanData:
         """Build dataset retrieval span."""
         status = Status(StatusCode.OK)
+        if trace_info.error:
+            status = Status(StatusCode.ERROR, trace_info.error)
 
         documents_data = TencentSpanBuilder._extract_retrieval_documents(trace_info.documents)
 
@@ -243,8 +252,8 @@ class TencentSpanBuilder:
             parent_span_id=parent_span_id,
             span_id=TencentTraceUtils.convert_to_span_id(trace_info.message_id, "retrieval"),
             name="retrieval",
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(trace_info.end_time),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
             attributes={
                 GEN_AI_SPAN_KIND: GenAISpanKind.RETRIEVER.value,
                 GEN_AI_FRAMEWORK: "dify",
@@ -282,8 +291,8 @@ class TencentSpanBuilder:
             parent_span_id=workflow_span_id,
             span_id=TencentTraceUtils.convert_to_span_id(node_execution.id, "node"),
             name=node_execution.title,
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.finished_at),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.created_at),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.finished_at),
             attributes={
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
                 GEN_AI_SPAN_KIND: GenAISpanKind.RETRIEVER.value,
@@ -301,8 +310,6 @@ class TencentSpanBuilder:
         trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution
     ) -> SpanData:
         """Build tool span for workflow nodes."""
-        from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-
         tool_des = {}
         if node_execution.metadata:
             tool_des = node_execution.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {})
@@ -312,8 +319,8 @@ class TencentSpanBuilder:
             parent_span_id=workflow_span_id,
             span_id=TencentTraceUtils.convert_to_span_id(node_execution.id, "node"),
             name=node_execution.title,
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.finished_at),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.created_at),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.finished_at),
             attributes={
                 GEN_AI_SPAN_KIND: GenAISpanKind.TOOL.value,
                 GEN_AI_FRAMEWORK: "dify",
@@ -336,8 +343,8 @@ class TencentSpanBuilder:
             parent_span_id=workflow_span_id,
             span_id=TencentTraceUtils.convert_to_span_id(node_execution.id, "node"),
             name=node_execution.title,
-            start_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.created_at),
-            end_time=TencentTraceUtils.convert_datetime_to_nanoseconds(node_execution.finished_at),
+            start_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.created_at),
+            end_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.finished_at),
             attributes={
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
                 GEN_AI_SPAN_KIND: GenAISpanKind.TASK.value,

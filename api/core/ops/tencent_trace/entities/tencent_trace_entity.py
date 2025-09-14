@@ -18,5 +18,5 @@ class SpanData(BaseModel):
     events: Sequence[Event] = Field(default_factory=list, description="Events recorded in the span.")
     links: Sequence[trace_api.Link] = Field(default_factory=list, description="Links to other spans.")
     status: Status = Field(default=Status(StatusCode.UNSET), description="The status of the span.")
-    start_time: Optional[int] = Field(..., description="The start time of the span in nanoseconds.")
-    end_time: Optional[int] = Field(..., description="The end time of the span in nanoseconds.")
+    start_time: int = Field(..., description="The start time of the span in nanoseconds.")
+    end_time: int = Field(..., description="The end time of the span in nanoseconds.")

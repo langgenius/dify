@@ -90,6 +90,7 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
 
 class DatasetRetrievalTraceInfo(BaseTraceInfo):
     documents: Any
+    error: Optional[str] = None
 
 
 class ToolTraceInfo(BaseTraceInfo):
