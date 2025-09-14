@@ -16,20 +16,42 @@ api = ExternalApi(
 web_ns = Namespace("web", description="Web application API operations", path="/")
 
 from . import (
-    app,  # pyright: ignore[reportUnusedImport]
-    audio,  # pyright: ignore[reportUnusedImport]
-    completion,  # pyright: ignore[reportUnusedImport]
-    conversation,  # pyright: ignore[reportUnusedImport]
-    feature,  # pyright: ignore[reportUnusedImport]
-    files,  # pyright: ignore[reportUnusedImport]
-    forgot_password,  # pyright: ignore[reportUnusedImport]
-    login,  # pyright: ignore[reportUnusedImport]
-    message,  # pyright: ignore[reportUnusedImport]
-    passport,  # pyright: ignore[reportUnusedImport]
-    remote_files,  # pyright: ignore[reportUnusedImport]
-    saved_message,  # pyright: ignore[reportUnusedImport]
-    site,  # pyright: ignore[reportUnusedImport]
-    workflow,  # pyright: ignore[reportUnusedImport]
+    app,
+    audio,
+    completion,
+    conversation,
+    feature,
+    files,
+    forgot_password,
+    login,
+    message,
+    passport,
+    remote_files,
+    saved_message,
+    site,
+    workflow,
 )
 
 api.add_namespace(web_ns)
+
+__all__ = [
+    "api",
+    # Imported modules for side-effects (Flask route registration)
+    "app",
+    "audio",
+    # Core components
+    "bp",
+    "completion",
+    "conversation",
+    "feature",
+    "files",
+    "forgot_password",
+    "login",
+    "message",
+    "passport",
+    "remote_files",
+    "saved_message",
+    "site",
+    "web_ns",
+    "workflow",
+]

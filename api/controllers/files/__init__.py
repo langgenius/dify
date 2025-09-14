@@ -14,6 +14,17 @@ api = ExternalApi(
 
 files_ns = Namespace("files", description="File operations", path="/")
 
-from . import image_preview, tool_files, upload  # pyright: ignore[reportUnusedImport]
+from . import image_preview, tool_files, upload
 
 api.add_namespace(files_ns)
+
+__all__ = [
+    "api",
+    # Core components
+    "bp",
+    "files_ns",
+    # Imported modules for side-effects (Flask route registration)
+    "image_preview",
+    "tool_files",
+    "upload",
+]

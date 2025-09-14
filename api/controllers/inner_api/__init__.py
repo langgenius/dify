@@ -15,8 +15,19 @@ api = ExternalApi(
 # Create namespace
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
-from . import mail as _mail  # pyright: ignore[reportUnusedImport]
-from .plugin import plugin as _plugin  # pyright: ignore[reportUnusedImport]
-from .workspace import workspace as _workspace  # pyright: ignore[reportUnusedImport]
+from . import mail as _mail
+from .plugin import plugin as _plugin
+from .workspace import workspace as _workspace
 
 api.add_namespace(inner_api_ns)
+
+__all__ = [
+    # Imported modules for side-effects (Flask route registration)
+    "_mail",
+    "_plugin",
+    "_workspace",
+    "api",
+    # Core components
+    "bp",
+    "inner_api_ns",
+]
