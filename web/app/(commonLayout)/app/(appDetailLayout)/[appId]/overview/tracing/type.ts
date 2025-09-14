@@ -7,6 +7,7 @@ export enum TracingProvider {
   weave = 'weave',
   aliyun = 'aliyun',
   mlflow = 'mlflow',
+  databricks = 'databricks',
 }
 
 export type ArizeConfig = {
@@ -60,4 +61,12 @@ export type MLflowConfig = {
   experiment_id: string
   username: string
   password: string
+}
+
+export type DatabricksConfig = {
+  experiment_id: string
+  host: string
+  client_id: string
+  client_secret: string
+  personal_access_token: string
 }

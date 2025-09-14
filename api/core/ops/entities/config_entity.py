@@ -14,6 +14,7 @@ class TracingProviderEnum(StrEnum):
     WEAVE = "weave"
     ALIYUN = "aliyun"
     MLFLOW = "mlflow"
+    DATABRICKS = "databricks"
 
 
 class BaseTracingConfig(BaseModel):
@@ -195,7 +196,6 @@ class AliyunConfig(BaseTracingConfig):
         return cls.validate_endpoint_url(v, "https://tracing-analysis-dc-hz.aliyuncs.com")
 
 
-# TODO: Add Databricks config for managed version
 class MLflowConfig(BaseTracingConfig):
     """
     Model class for MLflow tracing config.
@@ -209,12 +209,35 @@ class MLflowConfig(BaseTracingConfig):
     @field_validator("tracking_uri")
     @classmethod
     def tracking_uri_validator(cls, v, info: ValidationInfo):
+        if isinstance(v, str) and v.startswith("databricks"):
+            raise ValueError(
+                "Please use Databricks tracing config below to record traces to "
+                "Databricks-managed MLflow instances."
+            )
         return validate_url_with_path(v, "http://localhost:5000")
 
     @field_validator("experiment_id")
     @classmethod
     def experiment_id_validator(cls, v, info: ValidationInfo):
         return validate_integer_id(v)
+
+
+class DatabricksConfig(BaseTracingConfig):
+    """
+    Model class for Databricks (Databricks-managed MLflow) tracing config.
+    """
+    experiment_id: str
+    host: str
+    client_id: str | None = None
+    client_secret: str | None = None
+    personal_access_token: str | None = None
+
+    @field_validator("experiment_id")
+    @classmethod
+    def experiment_id_validator(cls, v, info: ValidationInfo):
+        return validate_integer_id(v)
+
+
 
 
 OPS_FILE_PATH = "ops_trace/"

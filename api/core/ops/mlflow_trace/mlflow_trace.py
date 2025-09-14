@@ -11,7 +11,7 @@ from mlflow.tracing.fluent import start_span_no_context, update_current_trace
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.entities.config_entity import MLflowConfig
+from core.ops.entities.config_entity import DatabricksConfig, MLflowConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -39,12 +39,42 @@ def datetime_to_nanoseconds(dt: datetime | None) -> int | None:
 
 
 class MLflowDataTrace(BaseTraceInstance):
-    def __init__(self, mlflow_config: MLflowConfig):
-        super().__init__(mlflow_config)
-        self.mlflow_config = mlflow_config
-        self._setup_mlflow(mlflow_config)
+    def __init__(self, config: MLflowConfig | DatabricksConfig):
+        super().__init__(config)
+        if isinstance(config, DatabricksConfig):
+            self._setup_databricks(config)
+        else:
+            self._setup_mlflow(config)
+
+        # Enable async logging to minimize performance overhead
+        os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] = "true"
+
+    def _setup_databricks(self, config: DatabricksConfig):
+        """Setup connection to Databricks-managed MLflow instances"""
+        os.environ["DATABRICKS_HOST"] = config.host
+
+        if config.client_id:
+            # OAuth: https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m?language=Environment
+            os.environ["DATABRICKS_CLIENT_ID"] = config.client_id
+            os.environ["DATABRICKS_CLIENT_SECRET"] = config.client_secret
+        elif config.personal_access_token:
+            # PAT: https://docs.databricks.com/aws/en/dev-tools/auth/pat
+            os.environ["DATABRICKS_TOKEN"] = config.personal_access_token
+        else:
+            raise ValueError(
+                "Either Databricks token (PAT) or client id and secret (OAuth) must be provided"
+                "See https://docs.databricks.com/aws/en/dev-tools/auth/#what-authorization-option-should-i-choose "
+                "for more information about the authorization options."
+            )
+        mlflow.set_tracking_uri("databricks")
+        mlflow.set_experiment(experiment_id=config.experiment_id)
+
+        # Remove trailing slash from host
+        config.host = config.host.rstrip("/")
+        self._project_url = f"{config.host}/ml/experiments/{config.experiment_id}/traces"
 
     def _setup_mlflow(self, config: MLflowConfig):
+        """Setup connection to MLflow instances"""
         mlflow.set_tracking_uri(config.tracking_uri)
         mlflow.set_experiment(experiment_id=config.experiment_id)
 
@@ -52,6 +82,8 @@ class MLflowDataTrace(BaseTraceInstance):
         if config.username and config.password:
             os.environ["MLFLOW_TRACKING_USERNAME"] = config.username
             os.environ["MLFLOW_TRACKING_PASSWORD"] = config.password
+
+        self._project_url = f"{config.tracking_uri}/#/experiments/{config.experiment_id}/traces"
 
     def trace(self, trace_info: BaseTraceInfo):
         """Simple dispatch to trace methods"""
@@ -483,7 +515,7 @@ class MLflowDataTrace(BaseTraceInstance):
     def _resolve_tool_call_ids(self, messages: list[dict]):
         """
         The tool call message from Dify does not contain tool call ids, which is not
-        great for debugging. This method resolves the tool call ids by matching the
+        ideal for debugging. This method resolves the tool call ids by matching the
         tool call name and parameters with the tool instruction messages.
         """
         tool_call_ids = []
@@ -506,5 +538,4 @@ class MLflowDataTrace(BaseTraceInstance):
             raise ValueError(f"MLflow connection failed: {str(e)}")
 
     def get_project_url(self):
-        """Return MLflow UI URL"""
-        return f"{self.mlflow_config.tracking_uri}/#/"
+        return self._project_url

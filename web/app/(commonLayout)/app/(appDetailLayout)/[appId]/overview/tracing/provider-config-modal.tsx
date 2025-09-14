@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,10 +22,10 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -84,6 +84,14 @@ const mlflowConfigTemplate = {
   password: '',
 }
 
+const databricksConfigTemplate = {
+  experiment_id: '',
+  host: '',
+  client_id: '',
+  client_secret: '',
+  personal_access_token: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -97,32 +105,30 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig>((() => {
     if (isEdit)
       return payload
 
-    if (type === TracingProvider.arize)
-      return arizeConfigTemplate
-
-    else if (type === TracingProvider.phoenix)
-      return phoenixConfigTemplate
-
-    else if (type === TracingProvider.langSmith)
-      return langSmithConfigTemplate
-
-    else if (type === TracingProvider.langfuse)
-      return langFuseConfigTemplate
-
-    else if (type === TracingProvider.opik)
-      return opikConfigTemplate
-
-    else if (type === TracingProvider.aliyun)
-      return aliyunConfigTemplate
-
-    else if (type === TracingProvider.mlflow)
-      return mlflowConfigTemplate
-
-    return weaveConfigTemplate
+    switch (type) {
+      case TracingProvider.arize:
+        return arizeConfigTemplate
+      case TracingProvider.phoenix:
+        return phoenixConfigTemplate
+      case TracingProvider.langSmith:
+        return langSmithConfigTemplate
+      case TracingProvider.langfuse:
+        return langFuseConfigTemplate
+      case TracingProvider.opik:
+        return opikConfigTemplate
+      case TracingProvider.aliyun:
+        return aliyunConfigTemplate
+      case TracingProvider.mlflow:
+        return mlflowConfigTemplate
+      case TracingProvider.databricks:
+        return databricksConfigTemplate
+      case TracingProvider.weave:
+        return weaveConfigTemplate
+    }
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -216,7 +222,14 @@ const ProviderConfigModal: FC<Props> = ({
       const postData = config as MLflowConfig
       if (!errorMessage && !postData.tracking_uri)
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Tracking URI' })
-      // TODO: If tracking URI is set to 'databricks', prompt users to use Databricks tracing config
+    }
+
+    if (type === TracingProvider.databricks) {
+      const postData = config as DatabricksConfig
+      if (!errorMessage && !postData.experiment_id)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Experiment ID' })
+      if (!errorMessage && !postData.host)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Host' })
     }
 
     return errorMessage
@@ -514,6 +527,47 @@ const ProviderConfigModal: FC<Props> = ({
                             value={(config as MLflowConfig).password}
                             onChange={handleConfigChange('password')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.password`) })!}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.databricks && (
+                        <>
+                          <Field
+                            label='Experiment ID'
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).experiment_id}
+                            onChange={handleConfigChange('experiment_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.experimentId`) })!}
+                            isRequired
+                          />
+                          <Field
+                            label='Host'
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).host}
+                            onChange={handleConfigChange('host')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.databricksHost`) })!}
+                            isRequired
+                          />
+                          <Field
+                            label='Client ID'
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).client_id}
+                            onChange={handleConfigChange('client_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.clientId`) })!}
+                          />
+                          <Field
+                            label='Client Secret'
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).client_secret}
+                            onChange={handleConfigChange('client_secret')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.clientSecret`) })!}
+                          />
+                          <Field
+                            label='Personal Access Token (legacy)'
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).personal_access_token}
+                            onChange={handleConfigChange('personal_access_token')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.personalAccessToken`) })!}
                           />
                         </>
                       )}

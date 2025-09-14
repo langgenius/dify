@@ -9,4 +9,5 @@ export const docURL = {
   [TracingProvider.weave]: 'https://weave-docs.wandb.ai/',
   [TracingProvider.aliyun]: 'https://help.aliyun.com/zh/arms/tracing-analysis/untitled-document-1750672984680',
   [TracingProvider.mlflow]: 'https://mlflow.org/docs/latest/genai/',
+  [TracingProvider.databricks]: 'https://docs.databricks.com/aws/en/mlflow3/genai/tracing/',
 }

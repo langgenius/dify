@@ -126,7 +126,17 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 return {
                     "config_class": MLflowConfig,
                     "secret_keys": ["password"],
-                    "other_keys": ["tracking_uri", "experiment_name", "experiment_id", "username"],
+                    "other_keys": ["tracking_uri", "experiment_id", "username"],
+                    "trace_instance": MLflowDataTrace,
+                }
+            case TracingProviderEnum.DATABRICKS:
+                from core.ops.entities.config_entity import DatabricksConfig
+                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+
+                return {
+                    "config_class": DatabricksConfig,
+                    "secret_keys": ["personal_access_token", "client_secret"],
+                    "other_keys": ["host", "client_id", "experiment_id"],
                     "trace_instance": MLflowDataTrace,
                 }
 

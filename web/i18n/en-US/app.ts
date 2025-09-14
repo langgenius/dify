@@ -187,6 +187,10 @@ const translation = {
       title: 'MLflow',
       description: 'MLflow is an open-source platform for experiment management, evaluation, and monitoring of LLM applications.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks offers fully-managed MLflow with strong governance and security for storing your trace data.',
+    },
     inUse: 'In use',
     configProvider: {
       title: 'Configure ',
@@ -201,6 +205,10 @@ const translation = {
       viewDocsLink: 'View {{key}} docs',
       removeConfirmTitle: 'Remove {{key}} configuration?',
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
+      clientId: 'OAuth Client ID',
+      clientSecret: 'OAuth Client Secret',
+      personalAccessToken: 'Personal Access Token. OAuth is recommended.',
+      databricksHost: 'Databricks Workspace or Account Console URL',
     },
   },
   appSelector: {
