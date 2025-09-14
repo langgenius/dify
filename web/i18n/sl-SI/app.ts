@@ -316,6 +316,10 @@ const translation = {
     tryDifferentSearch: 'Poskusite uporabiti drug iskalni izraz',
     noMatchingCommands: 'Ujemajoči se ukazi niso našli',
     slashHint: 'Vnesite / za ogled vseh razpoložljivih ukazov',
+    startTyping: 'Začnite vnašati za iskanje',
+    pressEscToClose: 'Pritisnite ESC za zapiranje',
+    selectToNavigate: 'Izberite za navigacijo',
+    tips: 'Pritisnite ↑↓ za navigacijo',
   },
 }
 
