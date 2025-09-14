@@ -3,7 +3,7 @@ import logging
 from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError
 
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
     NotWorkflowAppError,
@@ -29,16 +29,17 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
+@web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
-    @api.doc("Run Workflow")
-    @api.doc(description="Execute a workflow with provided inputs and files.")
-    @api.doc(
+    @web_ns.doc("Run Workflow")
+    @web_ns.doc(description="Execute a workflow with provided inputs and files.")
+    @web_ns.doc(
         params={
             "inputs": {"description": "Input variables for the workflow", "type": "object", "required": True},
             "files": {"description": "Files to be processed by the workflow", "type": "array", "required": False},
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request",
@@ -84,15 +85,16 @@ class WorkflowRunApi(WebApiResource):
             raise InternalServerError()
 
 
+@web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
-    @api.doc("Stop Workflow Task")
-    @api.doc(description="Stop a running workflow task.")
-    @api.doc(
+    @web_ns.doc("Stop Workflow Task")
+    @web_ns.doc(description="Stop a running workflow task.")
+    @web_ns.doc(
         params={
             "task_id": {"description": "Task ID to stop", "type": "string", "required": True},
         }
     )
-    @api.doc(
+    @web_ns.doc(
         responses={
             200: "Success",
             400: "Bad Request",
@@ -113,7 +115,3 @@ class WorkflowTaskStopApi(WebApiResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
         return {"result": "success"}
-
-
-api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")

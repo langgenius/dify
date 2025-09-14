@@ -70,7 +70,7 @@ class PromptTemplateConfigManager:
         :param config: app model config args
         """
         if not config.get("prompt_type"):
-            config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE.value
+            config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE
 
         prompt_type_vals = [typ.value for typ in PromptTemplateEntity.PromptType]
         if config["prompt_type"] not in prompt_type_vals:
@@ -90,7 +90,7 @@ class PromptTemplateConfigManager:
         if not isinstance(config["completion_prompt_config"], dict):
             raise ValueError("completion_prompt_config must be of object type")
 
-        if config["prompt_type"] == PromptTemplateEntity.PromptType.ADVANCED.value:
+        if config["prompt_type"] == PromptTemplateEntity.PromptType.ADVANCED:
             if not config["chat_prompt_config"] and not config["completion_prompt_config"]:
                 raise ValueError(
                     "chat_prompt_config or completion_prompt_config is required when prompt_type is advanced"
