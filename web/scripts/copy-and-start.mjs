@@ -4,7 +4,7 @@
  * It is intended to be used as a replacement for `next start`.
  */
 
-import { cpSync, existsSync, mkdirSync } from 'node:fs'
+import { cp, mkdir, stat } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 
@@ -23,16 +23,25 @@ const DIRS_TO_COPY = [
 // Path to the server script
 const SERVER_SCRIPT_PATH = path.join('.next', 'standalone', 'server.js')
 
-// Ensure target directory exists
-const ensureDir = (dir) => {
-  if (!existsSync(dir))
-    mkdirSync(dir, { recursive: true })
+// Function to check if a path exists
+const pathExists = async (path) => {
+  try {
+    console.debug(`Checking if path exists: ${path}`)
+    await stat(path)
+    console.debug(`Path exists: ${path}`)
+    return true
+  }
+  catch {
+    console.warn(`Path does not exist: ${path}`)
+    return false
+  }
 }
 
 // Function to recursively copy directories
-const copyDir = (src, dest) => {
+const copyDir = async (src, dest) => {
   try {
-    cpSync(src, dest, { recursive: true })
+    console.debug(`Copying directory from ${src} to ${dest}`)
+    await cp(src, dest, { recursive: true })
     console.info(`Successfully copied ${src} to ${dest}`)
   }
   catch (err) {
@@ -42,38 +51,63 @@ const copyDir = (src, dest) => {
 }
 
 // Process each directory copy operation
-for (const { src, dest } of DIRS_TO_COPY) {
-  ensureDir(dest)
-  if (existsSync(src))
-    copyDir(src, dest)
-  else
-    console.warn(`Warning: ${src} directory does not exist`)
+const copyAllDirs = async () => {
+  console.debug('Starting directory copy operations')
+  for (const { src, dest } of DIRS_TO_COPY) {
+    try {
+      console.debug(`Ensuring destination directory exists: ${dest}`)
+      await mkdir(dest, { recursive: true })
+      if (await pathExists(src))
+        await copyDir(src, dest)
+      else
+        console.warn(`Warning: ${src} directory does not exist`)
+    }
+    catch (err) {
+      console.error(`Error processing ${src}:`, err.message)
+      process.exit(1)
+    }
+  }
+  console.debug('Finished directory copy operations')
 }
 
-// Start server
-const port = process.env.npm_config_port || process.env.PORT || '3000'
-const host = process.env.npm_config_host || process.env.HOSTNAME || 'localhost'
+// Run copy operations and start server
+const main = async () => {
+  console.debug('Starting copy-and-start script')
+  await copyAllDirs()
 
-console.info(`Starting server on ${host}:${port}`)
+  // Start server
+  const port = process.env.npm_config_port || process.env.PORT || '3000'
+  const host = process.env.npm_config_host || process.env.HOSTNAME || 'localhost'
 
-const server = spawn(
-  process.execPath,
-  [SERVER_SCRIPT_PATH],
-  {
-    env: {
-      ...process.env,
-      PORT: port,
-      HOSTNAME: host,
+  console.info(`Starting server on ${host}:${port}`)
+  console.debug(`Server script path: ${SERVER_SCRIPT_PATH}`)
+  console.debug(`Environment variables - PORT: ${port}, HOSTNAME: ${host}`)
+
+  const server = spawn(
+    process.execPath,
+    [SERVER_SCRIPT_PATH],
+    {
+      env: {
+        ...process.env,
+        PORT: port,
+        HOSTNAME: host,
+      },
+      stdio: 'inherit',
     },
-    stdio: 'inherit',
-  },
-)
+  )
 
-server.on('error', (err) => {
-  console.error('Failed to start server:', err)
+  server.on('error', (err) => {
+    console.error('Failed to start server:', err)
+    process.exit(1)
+  })
+
+  server.on('exit', (code) => {
+    console.debug(`Server exited with code: ${code}`)
+    process.exit(code || 0)
+  })
+}
+
+main().catch((err) => {
+  console.error('Unexpected error:', err)
   process.exit(1)
-})
-
-server.on('exit', (code) => {
-  process.exit(code || 0)
 })
