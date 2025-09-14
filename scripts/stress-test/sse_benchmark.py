@@ -7,20 +7,21 @@ measuring key metrics like connection rate, event throughput, and time to first 
 """
 
 import json
-import time
+import logging
+import os
 import random
+import statistics
 import sys
 import threading
-import os
-import logging
-import statistics
-from pathlib import Path
+import time
 from collections import deque
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from dataclasses import dataclass, asdict
-from locust import HttpUser, task, between, events, constant
-from typing import TypedDict, Literal, TypeAlias
+from pathlib import Path
+from typing import Literal, TypeAlias, TypedDict
+
 import requests.exceptions
+from locust import HttpUser, between, constant, events, task
 
 # Add the stress-test directory to path to import common modules
 sys.path.insert(0, str(Path(__file__).parent))
@@ -400,7 +401,7 @@ class DifyWorkflowUser(HttpUser):
 
         # Load questions from file or use defaults
         if QUESTIONS_FILE and os.path.exists(QUESTIONS_FILE):
-            with open(QUESTIONS_FILE, "r") as f:
+            with open(QUESTIONS_FILE) as f:
                 self.questions = [line.strip() for line in f if line.strip()]
         else:
             self.questions = [

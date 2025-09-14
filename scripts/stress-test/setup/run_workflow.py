@@ -5,9 +5,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import httpx
 import json
-from common import config_helper, Logger
+
+import httpx
+from common import Logger, config_helper
 
 
 def run_workflow(question: str = "fake question", streaming: bool = True) -> None:

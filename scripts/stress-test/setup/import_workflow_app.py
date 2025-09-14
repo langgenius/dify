@@ -5,9 +5,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import httpx
 import json
-from common import config_helper, Logger
+
+import httpx
+from common import Logger, config_helper
 
 
 def import_workflow_app() -> None:
@@ -30,7 +31,7 @@ def import_workflow_app() -> None:
         log.error(f"DSL file not found: {dsl_path}")
         return
 
-    with open(dsl_path, "r") as f:
+    with open(dsl_path) as f:
         yaml_content = f.read()
 
     log.step("Importing workflow app from DSL...")

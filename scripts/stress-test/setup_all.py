@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import socket
 import subprocess
 import sys
 import time
-import socket
 from pathlib import Path
 
 from common import Logger, ProgressLogger

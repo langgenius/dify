@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import httpx
-from common import config_helper, Logger
+from common import Logger, config_helper
 
 
 def setup_admin_account() -> None:
