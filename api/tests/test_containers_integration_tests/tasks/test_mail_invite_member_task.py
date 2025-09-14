@@ -543,9 +543,9 @@ class TestMailInviteMemberTask:
         long_inviter_name = "A" * 1000
         long_workspace_name = "B" * 1000
         long_email = (
-          "very.long.email.address.that.might.cause.issues@"
-          "very-long-domain-name-that-might-cause-problems"
-          ".example.com"
+            "very.long.email.address.that.might.cause.issues@"
+            "very-long-domain-name-that-might-cause-problems"
+            ".example.com"
         )
 
         # Act: Execute the task
