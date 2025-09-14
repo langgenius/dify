@@ -37,23 +37,23 @@ from .dataset import (
 from .workspace import models
 
 __all__ = [
-    "index",
     "annotation",
     "app",
     "audio",
     "completion",
     "conversation",
-    "file",
-    "file_preview",
-    "message",
-    "site",
-    "workflow",
     "dataset",
     "document",
+    "file",
+    "file_preview",
     "hit_testing",
+    "index",
+    "message",
     "metadata",
-    "segment",
     "models",
+    "segment",
+    "site",
+    "workflow",
 ]
 
 api.add_namespace(service_api_ns)
