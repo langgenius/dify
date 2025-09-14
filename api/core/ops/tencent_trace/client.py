@@ -60,17 +60,7 @@ class TencentTraceClient:
             }
         )
         # Prepare gRPC endpoint/metadata
-        grpc_endpoint = endpoint
-        insecure = False
-        if endpoint.startswith("http://") or endpoint.startswith("https://"):
-            parsed = urlparse(endpoint)
-            host = parsed.hostname or "localhost"
-            port = parsed.port or 4317
-            grpc_endpoint = f"{host}:{port}"
-            insecure = parsed.scheme == "http"
-        else:
-            if "localhost" in endpoint or "127.0.0.1" in endpoint:
-                insecure = True
+        grpc_endpoint, insecure, _, _ = self._resolve_grpc_target(endpoint)
 
         headers = (("authorization", f"Bearer {token}"),)
 
@@ -171,23 +161,13 @@ class TencentTraceClient:
                     OTLPMetricExporter as GrpcMetricExporter,
                 )
 
-                grpc_endpoint = endpoint
-                insecure = False
-                if endpoint.startswith("http://") or endpoint.startswith("https://"):
-                    parsed = urlparse(endpoint)
-                    host = parsed.hostname or "localhost"
-                    port = parsed.port or 4317
-                    grpc_endpoint = f"{host}:{port}"
-                    insecure = parsed.scheme == "http"
-                else:
-                    if "localhost" in endpoint or "127.0.0.1" in endpoint:
-                        insecure = True
+                m_grpc_endpoint, m_insecure, _, _ = self._resolve_grpc_target(endpoint)
 
                 metric_exporter = _create_metric_exporter(
                     GrpcMetricExporter,
-                    endpoint=grpc_endpoint,
+                    endpoint=m_grpc_endpoint,
                     headers={"authorization": f"Bearer {token}"},
-                    insecure=insecure,
+                    insecure=m_insecure,
                 )
                 metric_reader = PeriodicExportingMetricReader(
                     metric_exporter, export_interval_millis=self.metrics_export_interval_sec * 1000
@@ -278,19 +258,8 @@ class TencentTraceClient:
     def api_check(self) -> bool:
         """Check API connectivity using socket connection test for gRPC endpoints"""
         try:
-            if self.endpoint.startswith("http://127.0.0.1:4317") or self.endpoint.startswith("http://localhost:4317"):
-                host, port = "127.0.0.1", 4317
-            elif self.endpoint.startswith("https://"):
-                parsed = urlparse(self.endpoint)
-                host = parsed.hostname or "localhost"
-                port = parsed.port or 443
-            elif self.endpoint.startswith("http://"):
-                parsed = urlparse(self.endpoint)
-                host = parsed.hostname or "localhost"
-                port = parsed.port or 80
-            else:
-                logger.warning("[Tencent APM] Invalid endpoint format: %s", self.endpoint)
-                return False
+            # Resolve gRPC target consistently with exporters
+            _, _, host, port = self._resolve_grpc_target(self.endpoint)
 
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(5)
@@ -335,3 +304,34 @@ class TencentTraceClient:
 
         except Exception:
             logger.exception("[Tencent APM] Error during client shutdown")
+
+    @staticmethod
+    def _resolve_grpc_target(endpoint: str, default_port: int = 4317) -> tuple[str, bool, str, int]:
+        """Normalize endpoint to gRPC target and security flag.
+
+        Returns:
+            (grpc_endpoint, insecure, host, port)
+        """
+        try:
+            if endpoint.startswith(("http://", "https://")):
+                parsed = urlparse(endpoint)
+                host = parsed.hostname or "localhost"
+                port = parsed.port or default_port
+                insecure = parsed.scheme == "http"
+                return f"{host}:{port}", insecure, host, port
+
+            host = endpoint
+            port = default_port
+            if ":" in endpoint:
+                parts = endpoint.rsplit(":", 1)
+                host = parts[0] or "localhost"
+                try:
+                    port = int(parts[1])
+                except Exception:
+                    port = default_port
+
+            insecure = ("localhost" in host) or ("127.0.0.1" in host)
+            return f"{host}:{port}", insecure, host, port
+        except Exception:
+            host, port = "localhost", default_port
+            return f"{host}:{port}", True, host, port
