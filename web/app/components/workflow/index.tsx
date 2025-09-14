@@ -63,10 +63,13 @@ import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
+import CommentManager from './comment-manager'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import LimitTips from './limit-tips'
+import { CommentCursor, CommentIcon, CommentInput } from './comment'
+import { useWorkflowComment } from './hooks/use-workflow-comment'
 import {
   useStore,
   useWorkflowStore,
@@ -156,6 +159,14 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
   const { eventEmitter } = useEventEmitterContextContext()
+  const {
+    comments,
+    pendingComment,
+    handleCommentSubmit,
+    handleCommentCancel,
+    handleCommentIconClick,
+  } = useWorkflowComment()
+  const mousePosition = useStore(s => s.mousePosition)
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
@@ -297,11 +308,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
         relative h-full w-full min-w-[960px]
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
+        ${controlMode === ControlMode.Comment ? 'cursor-crosshair' : ''}
       `}
       ref={workflowContainerRef}
     >
       <SyncingDataModal />
       <CandidateNode />
+      <CommentManager />
       <div
         className='absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
         style={{ height: controlHeight }}
@@ -324,6 +337,21 @@ export const Workflow: FC<WorkflowProps> = memo(({
         )
       }
       <LimitTips />
+      <CommentCursor mousePosition={mousePosition} />
+      {pendingComment && (
+        <CommentInput
+          position={pendingComment}
+          onSubmit={handleCommentSubmit}
+          onCancel={handleCommentCancel}
+        />
+      )}
+      {comments.map(comment => (
+        <CommentIcon
+          key={comment.id}
+          comment={comment}
+          onClick={() => handleCommentIconClick(comment)}
+        />
+      ))}
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
