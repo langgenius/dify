@@ -55,11 +55,15 @@ def priority_rag_pipeline_run_task(
         start_at = time.perf_counter()
         rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(rag_pipeline_invoke_entities_file_id)
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
+        
+        # Get Flask app object for thread context
+        flask_app = current_app._get_current_object()  # type: ignore
+        
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
             for rag_pipeline_invoke_entity in rag_pipeline_invoke_entities:
-                # Submit task to thread pool
-                future = executor.submit(run_single_rag_pipeline_task, rag_pipeline_invoke_entity)
+                # Submit task to thread pool with Flask app
+                future = executor.submit(run_single_rag_pipeline_task, rag_pipeline_invoke_entity, flask_app)
                 futures.append(future)
             
             # Wait for all tasks to complete
@@ -80,65 +84,63 @@ def priority_rag_pipeline_run_task(
         file_service.delete_file(rag_pipeline_invoke_entities_file_id)
         db.session.close()
 
-def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any]):
-    rag_pipeline_invoke_entity_model = RagPipelineInvokeEntity(**rag_pipeline_invoke_entity)
-    user_id = rag_pipeline_invoke_entity_model.user_id
-    tenant_id = rag_pipeline_invoke_entity_model.tenant_id
-    pipeline_id = rag_pipeline_invoke_entity_model.pipeline_id
-    workflow_id = rag_pipeline_invoke_entity_model.workflow_id
-    streaming = rag_pipeline_invoke_entity_model.streaming
-    workflow_execution_id = rag_pipeline_invoke_entity_model.workflow_execution_id
-    workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
-    application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
-    with Session(db.engine) as session:
-        account = session.query(Account).filter(Account.id == user_id).first()
-        if not account:
-            raise ValueError(f"Account {user_id} not found")
-        tenant = session.query(Tenant).filter(Tenant.id == tenant_id).first()
-        if not tenant:
-            raise ValueError(f"Tenant {tenant_id} not found")
-        account.current_tenant = tenant
+def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], flask_app):
+    # Create Flask application context for this thread
+    with flask_app.app_context():
+        rag_pipeline_invoke_entity_model = RagPipelineInvokeEntity(**rag_pipeline_invoke_entity)
+        user_id = rag_pipeline_invoke_entity_model.user_id
+        tenant_id = rag_pipeline_invoke_entity_model.tenant_id
+        pipeline_id = rag_pipeline_invoke_entity_model.pipeline_id
+        workflow_id = rag_pipeline_invoke_entity_model.workflow_id
+        streaming = rag_pipeline_invoke_entity_model.streaming
+        workflow_execution_id = rag_pipeline_invoke_entity_model.workflow_execution_id
+        workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
+        application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
+        with Session(db.engine) as session:
+            account = session.query(Account).filter(Account.id == user_id).first()
+            if not account:
+                raise ValueError(f"Account {user_id} not found")
+            tenant = session.query(Tenant).filter(Tenant.id == tenant_id).first()
+            if not tenant:
+                raise ValueError(f"Tenant {tenant_id} not found")
+            account.current_tenant = tenant
 
-        pipeline = session.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
-        if not pipeline:
-            raise ValueError(f"Pipeline {pipeline_id} not found")
+            pipeline = session.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+            if not pipeline:
+                raise ValueError(f"Pipeline {pipeline_id} not found")
 
-        workflow = session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
+            workflow = session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
 
-        if not workflow:
-            raise ValueError(f"Workflow {pipeline.workflow_id} not found")
+            if not workflow:
+                raise ValueError(f"Workflow {pipeline.workflow_id} not found")
 
-        if workflow_execution_id is None:
-            workflow_execution_id = str(uuid.uuid4())
+            if workflow_execution_id is None:
+                workflow_execution_id = str(uuid.uuid4())
 
-        # Create application generate entity from dict
-        entity = RagPipelineGenerateEntity(**application_generate_entity)
+            # Create application generate entity from dict
+            entity = RagPipelineGenerateEntity(**application_generate_entity)
 
-        # Create workflow node execution repository
-        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=session_factory,
-            user=account,
-            app_id=entity.app_config.app_id,
-            triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
-        )
+            # Create workflow node execution repository
+            session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+            workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+                session_factory=session_factory,
+                user=account,
+                app_id=entity.app_config.app_id,
+                triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+            )
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=session_factory,
-            user=account,
-            app_id=entity.app_config.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
-        )
-        # Use app context to ensure Flask globals work properly
-        with current_app.app_context():
+            workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+                session_factory=session_factory,
+                user=account,
+                app_id=entity.app_config.app_id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+            )
+            
             # Set the user directly in g for preserve_flask_contexts
             g._login_user = account
 
             # Copy context for thread (after setting user)
             context = contextvars.copy_context()
-
-            # Get Flask app object in the main thread where app context exists
-            flask_app = current_app._get_current_object()  # type: ignore
 
             # Create a wrapper function that passes user context
             def _run_with_user_context():
