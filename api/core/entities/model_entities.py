@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum, auto
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -9,16 +9,16 @@ from core.model_runtime.entities.model_entities import ModelType, ProviderModel
 from core.model_runtime.entities.provider_entities import ProviderEntity
 
 
-class ModelStatus(Enum):
+class ModelStatus(StrEnum):
     """
     Enum class for model status.
     """
 
-    ACTIVE = "active"
+    ACTIVE = auto()
     NO_CONFIGURE = "no-configure"
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
-    DISABLED = "disabled"
+    DISABLED = auto()
     CREDENTIAL_REMOVED = "credential-removed"
 
 

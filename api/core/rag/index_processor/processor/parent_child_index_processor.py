@@ -113,21 +113,33 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         # node_ids is segment's node_ids
         if dataset.indexing_technique == "high_quality":
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
+            precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
             vector = Vector(dataset)
+
             if node_ids:
-                child_node_ids = (
-                    db.session.query(ChildChunk.index_node_id)
-                    .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
-                    .where(
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.index_node_id.in_(node_ids),
-                        ChildChunk.dataset_id == dataset.id,
+                # Use precomputed child_node_ids if available (to avoid race conditions)
+                if precomputed_child_node_ids is not None:
+                    child_node_ids = precomputed_child_node_ids
+                else:
+                    # Fallback to original query (may fail if segments are already deleted)
+                    child_node_ids = (
+                        db.session.query(ChildChunk.index_node_id)
+                        .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                        .where(
+                            DocumentSegment.dataset_id == dataset.id,
+                            DocumentSegment.index_node_id.in_(node_ids),
+                            ChildChunk.dataset_id == dataset.id,
+                        )
+                        .all()
                     )
-                    .all()
-                )
-                child_node_ids = [child_node_id[0] for child_node_id in child_node_ids]
-                vector.delete_by_ids(child_node_ids)
-                if delete_child_chunks:
+                    child_node_ids = [child_node_id[0] for child_node_id in child_node_ids if child_node_id[0]]
+
+                # Delete from vector index
+                if child_node_ids:
+                    vector.delete_by_ids(child_node_ids)
+
+                # Delete from database
+                if delete_child_chunks and child_node_ids:
                     db.session.query(ChildChunk).where(
                         ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
                     ).delete(synchronize_session=False)

@@ -60,7 +60,7 @@ export default function MailAndCodeAuth() {
         <Input id='email' type="email" value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
       </div>
       <div className='mt-3'>
-        <Button loading={loading} disabled={loading || !email} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.continueWithCode')}</Button>
+        <Button loading={loading} disabled={loading || !email} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.signup.verifyMail')}</Button>
       </div>
     </div>
   </form>

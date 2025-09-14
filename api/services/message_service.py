@@ -252,7 +252,7 @@ class MessageService:
 
         model_manager = ModelManager()
 
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+        if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
             if invoke_from == InvokeFrom.DEBUGGER:
                 workflow = workflow_service.get_draft_workflow(app_model=app_model)

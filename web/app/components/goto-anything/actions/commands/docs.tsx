@@ -4,6 +4,7 @@ import { RiBookOpenLine } from '@remixicon/react'
 import i18n from '@/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
 import { defaultDocBaseUrl } from '@/context/i18n'
+import { getDocLanguage } from '@/i18n-config/language'
 
 // Documentation command dependency types - no external dependencies needed
 type DocDeps = Record<string, never>
@@ -11,9 +12,19 @@ type DocDeps = Record<string, never>
 /**
  * Documentation command - Opens help documentation
  */
-export const docCommand: SlashCommandHandler<DocDeps> = {
-  name: 'doc',
+export const docsCommand: SlashCommandHandler<DocDeps> = {
+  name: 'docs',
   description: 'Open documentation',
+  mode: 'direct',
+
+  // Direct execution function
+  execute: () => {
+    const currentLocale = i18n.language
+    const docLanguage = getDocLanguage(currentLocale)
+    const url = `${defaultDocBaseUrl}/${docLanguage}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  },
+
   async search(args: string, locale: string = 'en') {
     return [{
       id: 'doc',
@@ -32,7 +43,10 @@ export const docCommand: SlashCommandHandler<DocDeps> = {
   register(_deps: DocDeps) {
     registerCommands({
       'navigation.doc': async (_args) => {
-        const url = `${defaultDocBaseUrl}`
+        // Get the current language from i18n
+        const currentLocale = i18n.language
+        const docLanguage = getDocLanguage(currentLocale)
+        const url = `${defaultDocBaseUrl}/${docLanguage}`
         window.open(url, '_blank', 'noopener,noreferrer')
       },
     })

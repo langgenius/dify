@@ -46,7 +46,6 @@ from .dataset import (
     hit_testing,  # pyright: ignore[reportUnusedImport]
     metadata,  # pyright: ignore[reportUnusedImport]
     segment,  # pyright: ignore[reportUnusedImport]
-    upload_file,  # pyright: ignore[reportUnusedImport]
 )
 from .workspace import models  # pyright: ignore[reportUnusedImport]
 
