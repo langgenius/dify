@@ -234,12 +234,12 @@ class TestDisableSegmentsFromIndexTask:
         process_rule.dataset_id = dataset.id
         process_rule.mode = "automatic"
         process_rule.rules = (
-            '{'
+            "{"
             '"mode": "automatic", '
             '"rules": {'
             '"pre_processing_rules": [], "segmentation": '
             '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
-            '}'
+            "}"
         )
         process_rule.created_by = dataset.created_by
         process_rule.updated_by = dataset.updated_by
@@ -475,7 +475,7 @@ class TestDisableSegmentsFromIndexTask:
                 db.session.refresh(segments[1])
 
                 # Check that segments are re-enabled after error
-                updated_segments = db.session.query(DocumentSegment).filter(DocumentSegment.id.in_(segment_ids)).all()
+                updated_segments = db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
 
                 for segment in updated_segments:
                     assert segment.enabled is True
