@@ -36,10 +36,8 @@ api.add_namespace(web_ns)
 
 __all__ = [
     "api",
-    # Imported modules for side-effects (Flask route registration)
     "app",
     "audio",
-    # Core components
     "bp",
     "completion",
     "conversation",

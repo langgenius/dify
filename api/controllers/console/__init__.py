@@ -216,7 +216,6 @@ api.add_namespace(console_ns)
 __all__ = [
     "account",
     "activate",
-    # Imported modules for side-effects (Flask route registration)
     "admin",
     "advanced_prompt_template",
     "agent",
@@ -227,7 +226,6 @@ __all__ = [
     "app",
     "audio",
     "billing",
-    # Core components
     "bp",
     "completion",
     "compliance",
