@@ -728,6 +728,7 @@ class TraceTask:
             end_time=timer.get("end"),
             metadata=metadata,
             message_data=message_data.to_dict(),
+            error=kwargs.get("error"),
         )
 
         return dataset_retrieval_trace_info
