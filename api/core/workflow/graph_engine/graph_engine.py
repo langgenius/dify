@@ -106,6 +106,16 @@ class GraphEngine:
         # === Execution Queues ===
         # Queue for nodes ready to execute
         self._ready_queue = InMemoryReadyQueue()
+        # Load ready queue state from GraphRuntimeState if not empty
+        ready_queue_state = self._graph_runtime_state.ready_queue
+        if ready_queue_state:
+            # Import ReadyQueueState here to avoid circular imports
+            from .ready_queue import ReadyQueueState
+
+            # Ensure we have a ReadyQueueState object
+            if isinstance(ready_queue_state, dict):
+                ready_queue_state = ReadyQueueState(**ready_queue_state)  # type: ignore
+            self._ready_queue.loads(ready_queue_state)
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
 

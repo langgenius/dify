@@ -4,6 +4,7 @@ import pytest
 
 from core.workflow.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.graph_engine.ready_queue import ReadyQueueState
 
 
 class TestGraphRuntimeState:
@@ -109,3 +110,30 @@ class TestGraphRuntimeState:
 
         # Original should remain unchanged
         assert state.get_output("nested")["level1"]["level2"]["value"] == "test"
+
+    def test_ready_queue_property(self):
+        variable_pool = VariablePool()
+
+        # Test default empty ready_queue
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+        assert state.ready_queue == {}
+
+        # Test initialization with ready_queue data as ReadyQueueState
+        queue_data = ReadyQueueState(type="InMemoryReadyQueue", version="1.0", items=["node1", "node2"], maxsize=0)
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time(), ready_queue=queue_data)
+        assert state.ready_queue == queue_data
+
+        # Test with different ready_queue data at initialization
+        another_queue_data = ReadyQueueState(
+            type="InMemoryReadyQueue",
+            version="1.0",
+            items=["node3", "node4", "node5"],
+            maxsize=0,
+        )
+        another_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time(), ready_queue=another_queue_data)
+        assert another_state.ready_queue == another_queue_data
+
+        # Test immutability - modifying retrieved queue doesn't affect internal state
+        retrieved_queue = state.ready_queue
+        retrieved_queue["items"].append("node6")
+        assert len(state.ready_queue["items"]) == 2  # Should still be 2, not 3

@@ -5,7 +5,21 @@ This protocol defines the interface for managing the queue of nodes ready
 for execution, supporting both in-memory and persistent storage scenarios.
 """
 
-from typing import Protocol
+from typing import Protocol, TypedDict
+
+
+class ReadyQueueState(TypedDict):
+    """
+    TypedDict for serialized ready queue state.
+
+    This defines the structure of the dictionary returned by dumps()
+    and expected by loads() for ready queue serialization.
+    """
+
+    type: str  # Queue implementation type (e.g., "InMemoryReadyQueue")
+    version: str  # Serialization format version
+    items: list[str]  # List of node IDs in the queue
+    maxsize: int  # Maximum queue size (0 for unlimited)
 
 
 class ReadyQueue(Protocol):
@@ -68,17 +82,17 @@ class ReadyQueue(Protocol):
         """
         ...
 
-    def dumps(self) -> dict[str, object]:
+    def dumps(self) -> ReadyQueueState:
         """
         Serialize the queue state for storage.
 
         Returns:
-            A dictionary containing the serialized queue state
+            A ReadyQueueState dictionary containing the serialized queue state
             that can be persisted and later restored
         """
         ...
 
-    def loads(self, data: dict[str, object]) -> None:
+    def loads(self, data: ReadyQueueState) -> None:
         """
         Restore the queue state from serialized data.
 

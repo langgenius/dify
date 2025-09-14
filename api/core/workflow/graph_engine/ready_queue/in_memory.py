@@ -8,6 +8,8 @@ serialization capabilities for state storage.
 import queue
 from typing import final
 
+from .protocol import ReadyQueueState
+
 
 @final
 class InMemoryReadyQueue:
@@ -80,12 +82,12 @@ class InMemoryReadyQueue:
         """
         return self._queue.qsize()
 
-    def dumps(self) -> dict[str, object]:
+    def dumps(self) -> ReadyQueueState:
         """
         Serialize the queue state for storage.
 
         Returns:
-            A dictionary containing the serialized queue state
+            A ReadyQueueState dictionary containing the serialized queue state
         """
         # Extract all items from the queue without removing them
         items: list[str] = []
@@ -104,14 +106,14 @@ class InMemoryReadyQueue:
         for item in temp_items:
             self._queue.put(item)
 
-        return {
-            "type": "InMemoryReadyQueue",
-            "version": "1.0",
-            "items": items,
-            "maxsize": self._queue.maxsize,
-        }
+        return ReadyQueueState(
+            type="InMemoryReadyQueue",
+            version="1.0",
+            items=items,
+            maxsize=self._queue.maxsize,
+        )
 
-    def loads(self, data: dict[str, object]) -> None:
+    def loads(self, data: ReadyQueueState) -> None:
         """
         Restore the queue state from serialized data.
 

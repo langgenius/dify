@@ -744,3 +744,78 @@ def test_event_sequence_validation_with_table_tests():
         else:
             assert result.event_sequence_match is True
         assert result.success, f"Test {i + 1} failed: {result.event_mismatch_details or result.error}"
+
+
+def test_ready_queue_state_loading():
+    """
+    Test that the ready_queue state is properly loaded from GraphRuntimeState
+    during GraphEngine initialization.
+    """
+    # Use the TableTestRunner to create a proper workflow instance
+    runner = TableTestRunner()
+
+    # Create a simple workflow
+    test_case = WorkflowTestCase(
+        fixture_path="simple_passthrough_workflow",
+        inputs={"query": "test"},
+        expected_outputs={"query": "test"},
+        description="Test ready_queue loading",
+    )
+
+    # Load the workflow fixture
+    workflow_runner = runner.workflow_runner
+    fixture_data = workflow_runner.load_fixture("simple_passthrough_workflow")
+
+    # Create graph and runtime state with pre-populated ready_queue
+    ready_queue_data = {
+        "type": "InMemoryReadyQueue",
+        "version": "1.0",
+        "items": ["node1", "node2", "node3"],
+        "maxsize": 0,
+    }
+
+    # We need to create the graph first, then create a new GraphRuntimeState with ready_queue
+    graph, original_runtime_state = workflow_runner.create_graph_from_fixture(fixture_data, query="test")
+
+    # Create a new GraphRuntimeState with the ready_queue data
+    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.graph_engine.ready_queue import ReadyQueueState
+
+    # Convert ready_queue_data to ReadyQueueState
+    ready_queue_state = ReadyQueueState(**ready_queue_data)
+
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=original_runtime_state.variable_pool,
+        start_at=original_runtime_state.start_at,
+        ready_queue=ready_queue_state,
+    )
+
+    # Update all nodes to use the new GraphRuntimeState
+    for node in graph.nodes.values():
+        node.graph_runtime_state = graph_runtime_state
+
+    # Create GraphEngine
+    command_channel = InMemoryChannel()
+    engine = GraphEngine(
+        tenant_id="test-tenant",
+        app_id="test-app",
+        workflow_id="test-workflow",
+        user_id="test-user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+        graph=graph,
+        graph_config={},
+        graph_runtime_state=graph_runtime_state,
+        command_channel=command_channel,
+    )
+
+    # Verify that the ready_queue was loaded from GraphRuntimeState
+    assert engine._ready_queue.qsize() == 3
+
+    # Verify the initial state matches what was provided
+    initial_queue_state = engine.graph_runtime_state.ready_queue
+    assert initial_queue_state["type"] == "InMemoryReadyQueue"
+    assert initial_queue_state["version"] == "1.0"
+    assert len(initial_queue_state["items"]) == 3
+    assert initial_queue_state["items"] == ["node1", "node2", "node3"]

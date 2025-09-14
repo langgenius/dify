@@ -6,6 +6,6 @@ the queue of nodes ready for execution.
 """
 
 from .in_memory import InMemoryReadyQueue
-from .protocol import ReadyQueue
+from .protocol import ReadyQueue, ReadyQueueState
 
-__all__ = ["InMemoryReadyQueue", "ReadyQueue"]
+__all__ = ["InMemoryReadyQueue", "ReadyQueue", "ReadyQueueState"]
