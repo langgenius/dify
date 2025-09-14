@@ -211,8 +211,7 @@ class MLflowConfig(BaseTracingConfig):
     def tracking_uri_validator(cls, v, info: ValidationInfo):
         if isinstance(v, str) and v.startswith("databricks"):
             raise ValueError(
-                "Please use Databricks tracing config below to record traces to "
-                "Databricks-managed MLflow instances."
+                "Please use Databricks tracing config below to record traces to Databricks-managed MLflow instances."
             )
         return validate_url_with_path(v, "http://localhost:5000")
 
@@ -226,6 +225,7 @@ class DatabricksConfig(BaseTracingConfig):
     """
     Model class for Databricks (Databricks-managed MLflow) tracing config.
     """
+
     experiment_id: str
     host: str
     client_id: str | None = None
@@ -236,8 +236,6 @@ class DatabricksConfig(BaseTracingConfig):
     @classmethod
     def experiment_id_validator(cls, v, info: ValidationInfo):
         return validate_integer_id(v)
-
-
 
 
 OPS_FILE_PATH = "ops_trace/"

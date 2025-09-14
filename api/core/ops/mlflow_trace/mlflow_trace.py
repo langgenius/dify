@@ -149,7 +149,7 @@ class MLflowDataTrace(BaseTraceInstance):
                     inputs, llm_attributes = self._parse_llm_inputs_and_attributes(node)
                     attributes.update(llm_attributes)
                 elif node.node_type == NodeType.HTTP_REQUEST:
-                    inputs = node.process_data # contains request URL
+                    inputs = node.process_data  # contains request URL
 
                 if not inputs:
                     inputs = json.loads(node.inputs) if node.inputs else {}
@@ -166,14 +166,16 @@ class MLflowDataTrace(BaseTraceInstance):
                 # Handle node errors
                 if node.status != "succeeded":
                     node_span.set_status(SpanStatus(SpanStatusCode.ERROR))
-                    node_span.add_event(SpanEvent(
-                        name="exception",
-                        attributes={
-                            "exception.message": f"Node failed with status: {node.status}",
-                            "exception.type": "Error",
-                            "exception.stacktrace": f"Node failed with status: {node.status}",
-                        }
-                    ))
+                    node_span.add_event(
+                        SpanEvent(
+                            name="exception",
+                            attributes={
+                                "exception.message": f"Node failed with status: {node.status}",
+                                "exception.type": "Error",
+                                "exception.stacktrace": f"Node failed with status: {node.status}",
+                            },
+                        )
+                    )
 
                 # End node span
                 finished_at = node.created_at + timedelta(seconds=node.elapsed_time)
@@ -190,14 +192,16 @@ class MLflowDataTrace(BaseTraceInstance):
             # Handle workflow-level errors
             if trace_info.error:
                 workflow_span.set_status(SpanStatus(SpanStatusCode.ERROR))
-                workflow_span.add_event(SpanEvent(
-                    name="exception",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    }
-                ))
+                workflow_span.add_event(
+                    SpanEvent(
+                        name="exception",
+                        attributes={
+                            "exception.message": trace_info.error,
+                            "exception.type": "Error",
+                            "exception.stacktrace": trace_info.error,
+                        },
+                    )
+                )
 
         finally:
             workflow_span.end(
@@ -216,7 +220,7 @@ class MLflowDataTrace(BaseTraceInstance):
         attributes = {
             "model_name": data.get("model_name"),
             "model_provider": data.get("model_provider"),
-            "finish_reason": data.get("finish_reason")
+            "finish_reason": data.get("finish_reason"),
         }
 
         if hasattr(SpanAttributeKey, "MESSAGE_FORMAT"):
@@ -277,11 +281,12 @@ class MLflowDataTrace(BaseTraceInstance):
 
         # Set token usage
         span.set_attribute(
-            SpanAttributeKey.CHAT_USAGE, {
+            SpanAttributeKey.CHAT_USAGE,
+            {
                 TokenUsageKey.INPUT_TOKENS: trace_info.message_tokens or 0,
                 TokenUsageKey.OUTPUT_TOKENS: trace_info.answer_tokens or 0,
                 TokenUsageKey.TOTAL_TOKENS: trace_info.total_tokens or 0,
-            }
+            },
         )
 
         # Set reserved fields in trace-level metadata
@@ -294,14 +299,16 @@ class MLflowDataTrace(BaseTraceInstance):
 
         if trace_info.error:
             span.set_status(SpanStatus(SpanStatusCode.ERROR))
-            span.add_event(SpanEvent(
-                name="error",
-                attributes={
-                    "exception.message": trace_info.error,
-                    "exception.type": "Error",
-                    "exception.stacktrace": trace_info.error,
-                }
-            ))
+            span.add_event(
+                SpanEvent(
+                    name="error",
+                    attributes={
+                        "exception.message": trace_info.error,
+                        "exception.type": "Error",
+                        "exception.stacktrace": trace_info.error,
+                    },
+                )
+            )
 
         span.end(
             outputs=trace_info.message_data.answer,
@@ -309,9 +316,8 @@ class MLflowDataTrace(BaseTraceInstance):
         )
 
     def _get_message_user_id(self, metadata: dict) -> str:
-        if (
-            (end_user_id := metadata.get("from_end_user_id")) and
-            (end_user_data := db.session.query(EndUser).where(EndUser.id == end_user_id).first())
+        if (end_user_id := metadata.get("from_end_user_id")) and (
+            end_user_data := db.session.query(EndUser).where(EndUser.id == end_user_id).first()
         ):
             return end_user_data.session_id
 
@@ -334,14 +340,16 @@ class MLflowDataTrace(BaseTraceInstance):
         # Handle tool errors
         if trace_info.error:
             span.set_status(SpanStatus(SpanStatusCode.ERROR))
-            span.add_event(SpanEvent(
-                name="error",
-                attributes={
-                    "exception.message": trace_info.error,
-                    "exception.type": "Error",
-                    "exception.stacktrace": trace_info.error,
-                }
-            ))
+            span.add_event(
+                SpanEvent(
+                    name="error",
+                    attributes={
+                        "exception.message": trace_info.error,
+                        "exception.type": "Error",
+                        "exception.stacktrace": trace_info.error,
+                    },
+                )
+            )
 
         span.end(
             outputs=trace_info.tool_outputs,
@@ -387,10 +395,7 @@ class MLflowDataTrace(BaseTraceInstance):
             },
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
-        span.end(
-            outputs={"documents": trace_info.documents},
-            end_time_ns=datetime_to_nanoseconds(trace_info.end_time)
-        )
+        span.end(outputs={"documents": trace_info.documents}, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))
 
     def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
         if trace_info.message_data is None:
@@ -414,19 +419,18 @@ class MLflowDataTrace(BaseTraceInstance):
 
         if trace_info.error:
             span.set_status(SpanStatus(SpanStatusCode.ERROR))
-            span.add_event(SpanEvent(
-                name="error",
-                attributes={
-                    "exception.message": trace_info.error,
-                    "exception.type": "Error",
-                    "exception.stacktrace": trace_info.error,
-                }
-            ))
+            span.add_event(
+                SpanEvent(
+                    name="error",
+                    attributes={
+                        "exception.message": trace_info.error,
+                        "exception.type": "Error",
+                        "exception.stacktrace": trace_info.error,
+                    },
+                )
+            )
 
-        span.end(
-            outputs=trace_info.suggested_question,
-            end_time_ns=datetime_to_nanoseconds(end_time)
-        )
+        span.end(outputs=trace_info.suggested_question, end_time_ns=datetime_to_nanoseconds(end_time))
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         span = start_span_no_context(
@@ -437,7 +441,6 @@ class MLflowDataTrace(BaseTraceInstance):
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
         span.end(outputs=trace_info.outputs, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))
-
 
     def _get_workflow_nodes(self, workflow_run_id: str):
         """Helper method to get workflow nodes"""
@@ -473,7 +476,7 @@ class MLflowDataTrace(BaseTraceInstance):
             NodeType.HTTP_REQUEST: SpanType.TOOL,
             NodeType.AGENT: SpanType.AGENT,
         }
-        return node_type_mapping.get(node_type, "CHAIN") # anything else is a chain
+        return node_type_mapping.get(node_type, "CHAIN")  # anything else is a chain
 
     def _set_trace_metadata(self, span: Span, metadata: dict):
         try:
