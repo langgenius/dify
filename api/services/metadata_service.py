@@ -1,6 +1,5 @@
 import copy
 import logging
-from typing import Optional
 
 from flask_login import current_user
 

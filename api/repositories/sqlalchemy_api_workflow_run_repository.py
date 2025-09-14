@@ -22,7 +22,6 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker

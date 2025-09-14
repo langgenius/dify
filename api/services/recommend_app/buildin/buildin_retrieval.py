@@ -1,7 +1,6 @@
 import json
 from os import path
 from pathlib import Path
-from typing import Optional
 
 from flask import current_app
 

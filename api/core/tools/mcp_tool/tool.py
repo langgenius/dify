@@ -1,7 +1,7 @@
 import base64
 import json
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient

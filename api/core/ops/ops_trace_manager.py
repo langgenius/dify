@@ -5,7 +5,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Optional, Union
+from typing import Any, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache

@@ -5,7 +5,6 @@ from typing import (
     Any,
     Generic,
     Literal,
-    Optional,
     TypeAlias,
     TypeVar,
 )

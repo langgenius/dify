@@ -2,7 +2,7 @@ import base64
 import hashlib
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes

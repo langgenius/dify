@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.file import File, FileTransferMethod

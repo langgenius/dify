@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from yarl import URL
 

@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import File

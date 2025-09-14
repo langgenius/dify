@@ -5,7 +5,7 @@ Therefore, a model manager is needed to list/invoke/validate models.
 """
 
 import json
-from typing import Optional, cast
+from typing import cast
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult

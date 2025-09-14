@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map

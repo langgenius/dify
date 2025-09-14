@@ -1,4 +1,4 @@
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select

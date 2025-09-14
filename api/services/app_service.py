@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, TypedDict, cast
+from typing import TypedDict, cast
 
 from flask_sqlalchemy.pagination import Pagination
 

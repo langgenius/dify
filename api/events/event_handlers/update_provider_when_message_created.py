@@ -1,7 +1,7 @@
 import logging
 import time as time_module
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import update

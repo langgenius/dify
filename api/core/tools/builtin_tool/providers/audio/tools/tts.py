@@ -1,6 +1,6 @@
 import io
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType

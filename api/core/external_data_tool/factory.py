@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.extension.extensible import ExtensionModule
 from extensions.ext_code_based_extension import code_based_extension

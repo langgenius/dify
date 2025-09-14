@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.variables import ArrayFileSegment, FileSegment
 from core.workflow.entities.node_entities import NodeRunResult

@@ -6,7 +6,7 @@ from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
 from datetime import datetime
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from flask import Flask, current_app
 

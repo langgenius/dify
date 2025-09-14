@@ -1,7 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import os
-from typing import Optional, cast
+from typing import cast
 
 import pandas as pd
 from openpyxl import load_workbook

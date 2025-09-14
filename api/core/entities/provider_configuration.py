@@ -4,7 +4,6 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
@@ -793,9 +792,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderModelCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_custom_model_credential(
-        self, model_type: ModelType, model: str, credential_id: str | None
-    ) -> dict | None:
+    def get_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str | None) -> dict | None:
         """
         Get custom model credentials.
 

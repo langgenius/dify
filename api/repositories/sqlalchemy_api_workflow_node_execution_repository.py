@@ -7,7 +7,6 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import delete, desc, select
 from sqlalchemy.orm import Session, sessionmaker

@@ -1,7 +1,7 @@
 import json
 import logging
 import operator
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import requests
 from sqlalchemy import select

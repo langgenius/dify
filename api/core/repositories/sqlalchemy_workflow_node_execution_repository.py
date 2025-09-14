@@ -5,7 +5,7 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select

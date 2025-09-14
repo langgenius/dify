@@ -6,7 +6,6 @@ According to ClickZetta's permission model, different Volume types have differen
 
 import logging
 from enum import StrEnum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -621,9 +620,7 @@ class VolumePermissionError(Exception):
         super().__init__(message)
 
 
-def check_volume_permission(
-    permission_manager: VolumePermissionManager, operation: str, dataset_id: str | None = None
-):
+def check_volume_permission(permission_manager: VolumePermissionManager, operation: str, dataset_id: str | None = None):
     """Permission check decorator function
 
     Args:

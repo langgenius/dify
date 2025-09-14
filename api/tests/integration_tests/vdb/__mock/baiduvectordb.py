@@ -1,6 +1,5 @@
 import os
 from collections import UserDict
-from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest

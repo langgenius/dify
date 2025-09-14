@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from typing import Any
 
 from flask import Flask, current_app
 

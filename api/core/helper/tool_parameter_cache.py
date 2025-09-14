@@ -1,7 +1,6 @@
 import json
 from enum import StrEnum
 from json import JSONDecodeError
-from typing import Optional
 
 from extensions.ext_redis import redis_client
 

@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes

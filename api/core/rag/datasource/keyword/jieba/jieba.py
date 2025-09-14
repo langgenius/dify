@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 import orjson
 from pydantic import BaseModel

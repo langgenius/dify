@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import select
 

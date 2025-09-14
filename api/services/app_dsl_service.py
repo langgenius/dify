@@ -4,7 +4,6 @@ import logging
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 

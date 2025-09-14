@@ -4,7 +4,7 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker

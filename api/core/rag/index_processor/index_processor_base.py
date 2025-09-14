@@ -1,7 +1,6 @@
 """Abstract interface for document loader implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from configs import dify_config
 from core.model_manager import ModelInstance

@@ -2,7 +2,7 @@ import base64
 import contextlib
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 

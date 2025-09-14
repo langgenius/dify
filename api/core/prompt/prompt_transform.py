@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory

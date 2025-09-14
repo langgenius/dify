@@ -4,7 +4,6 @@ import json
 import os
 import secrets
 import urllib.parse
-from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import httpx

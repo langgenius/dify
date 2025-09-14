@@ -8,7 +8,7 @@ eliminates the need for repetitive language switching logic.
 
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from flask import render_template
 from pydantic import BaseModel, Field

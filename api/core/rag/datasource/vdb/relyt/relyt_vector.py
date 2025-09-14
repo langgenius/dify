@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert

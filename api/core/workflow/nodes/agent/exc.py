@@ -1,6 +1,3 @@
-from typing import Optional
-
-
 class AgentNodeError(Exception):
     """Base exception for all agent node errors."""
 

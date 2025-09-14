@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from flask import Flask, current_app
 

@@ -1,4 +1,4 @@
-from typing import IO, Optional
+from typing import IO
 
 from pydantic import ConfigDict
 

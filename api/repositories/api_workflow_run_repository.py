@@ -36,7 +36,7 @@ Example:
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Protocol
 
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination

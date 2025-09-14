@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 import json_repair
 

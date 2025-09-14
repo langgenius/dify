@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 from pytz import timezone as pytz_timezone
 

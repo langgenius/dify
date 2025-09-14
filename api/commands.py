@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 import secrets
-from typing import Any, Optional
+from typing import Any
 
 import click
 import sqlalchemy as sa

@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Optional
+from typing import Any
 
 # Mock redis_client before importing dataset_service
 from unittest.mock import Mock, create_autospec, patch

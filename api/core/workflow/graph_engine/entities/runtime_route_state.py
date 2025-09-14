@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum, auto
-from typing import Optional
 
 from pydantic import BaseModel, Field
 

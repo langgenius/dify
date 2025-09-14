@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination

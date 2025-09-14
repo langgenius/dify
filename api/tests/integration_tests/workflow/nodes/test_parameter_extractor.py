@@ -1,7 +1,6 @@
 import os
 import time
 import uuid
-from typing import Optional
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom

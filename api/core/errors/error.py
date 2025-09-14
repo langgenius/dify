@@ -1,6 +1,3 @@
-from typing import Optional
-
-
 class LLMError(ValueError):
     """Base class for all LLM exceptions."""
 

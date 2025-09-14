@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 from core.tools.entities.tool_entities import ToolParameter

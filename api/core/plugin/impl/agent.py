@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.agent.entities import AgentInvokeMessage
 from core.plugin.entities.plugin import GenericProviderID

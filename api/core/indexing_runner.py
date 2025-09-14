@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from flask import current_app
 from sqlalchemy import select

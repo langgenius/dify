@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Generic, Optional, Self, TypeVar
+from typing import Any, Generic, Self, TypeVar
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel

@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 

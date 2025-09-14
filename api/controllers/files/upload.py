@@ -1,5 +1,4 @@
 from mimetypes import guess_extension
-from typing import Optional
 
 from flask_restx import Resource, reqparse
 from flask_restx.api import HTTPStatus

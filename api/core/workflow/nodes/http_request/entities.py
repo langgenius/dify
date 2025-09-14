@@ -1,7 +1,7 @@
 import mimetypes
 from collections.abc import Sequence
 from email.message import Message
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator

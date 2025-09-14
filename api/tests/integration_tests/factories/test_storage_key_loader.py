@@ -1,6 +1,5 @@
 import unittest
 from datetime import UTC, datetime
-from typing import Optional
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -101,9 +100,7 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         return tool_file
 
-    def _create_file(
-        self, related_id: str, transfer_method: FileTransferMethod, tenant_id: str | None = None
-    ) -> File:
+    def _create_file(self, related_id: str, transfer_method: FileTransferMethod, tenant_id: str | None = None) -> File:
         """Helper method to create a File object for testing."""
         if tenant_id is None:
             tenant_id = self.tenant_id

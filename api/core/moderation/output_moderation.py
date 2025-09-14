@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, ConfigDict

@@ -7,7 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker

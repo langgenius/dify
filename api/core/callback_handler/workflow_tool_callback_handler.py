@@ -1,5 +1,5 @@
 from collections.abc import Generator, Iterable, Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler, print_text
 from core.ops.ops_trace_manager import TraceQueueManager

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import wraps
-from typing import Concatenate, Optional, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource

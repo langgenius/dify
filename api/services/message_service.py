@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Union
+from typing import Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom

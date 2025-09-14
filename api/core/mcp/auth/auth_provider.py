@@ -1,5 +1,3 @@
-from typing import Optional
-
 from configs import dify_config
 from core.mcp.types import (
     OAuthClientInformation,

@@ -1,7 +1,7 @@
 import calendar
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage

@@ -1,7 +1,7 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 

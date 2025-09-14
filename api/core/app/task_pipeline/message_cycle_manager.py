@@ -1,6 +1,6 @@
 import logging
 from threading import Thread
-from typing import Optional, Union
+from typing import Union
 
 from flask import Flask, current_app
 from sqlalchemy import select

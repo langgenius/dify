@@ -2,7 +2,6 @@ import hashlib
 import logging
 from collections.abc import Sequence
 from threading import Lock
-from typing import Optional
 
 import contexts
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType

@@ -1,7 +1,6 @@
 """Abstract interface for document loader implementations."""
 
 import csv
-from typing import Optional
 
 import pandas as pd
 

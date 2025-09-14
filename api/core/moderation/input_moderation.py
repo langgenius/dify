@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import AppConfig
 from core.moderation.base import ModerationAction, ModerationError

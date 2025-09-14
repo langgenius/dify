@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Optional, cast
+from typing import cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import file_manager

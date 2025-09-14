@@ -1,7 +1,6 @@
 """Paragraph index processor."""
 
 import uuid
-from typing import Optional
 
 from configs import dify_config
 from core.model_manager import ModelInstance

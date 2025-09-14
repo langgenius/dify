@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Optional, Union
+from typing import Any, Union
 from urllib.parse import urlencode
 
 import httpx

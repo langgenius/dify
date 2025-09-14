@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 import chromadb
 from chromadb import QueryResult, Settings

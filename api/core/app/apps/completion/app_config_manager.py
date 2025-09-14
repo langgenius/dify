@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager

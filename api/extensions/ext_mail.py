@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from flask import Flask
 

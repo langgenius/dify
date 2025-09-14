@@ -1,7 +1,7 @@
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session

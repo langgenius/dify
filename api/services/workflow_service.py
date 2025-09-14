@@ -2,7 +2,7 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy import exists, select

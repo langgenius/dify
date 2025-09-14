@@ -1,6 +1,5 @@
 import contextvars
 import threading
-from typing import Optional
 
 import pytest
 from flask import Flask

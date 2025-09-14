@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from langfuse import Langfuse  # type: ignore
 from sqlalchemy.orm import sessionmaker

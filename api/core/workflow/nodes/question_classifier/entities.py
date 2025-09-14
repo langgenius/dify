@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig

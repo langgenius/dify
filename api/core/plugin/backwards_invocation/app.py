@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

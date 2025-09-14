@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 import click
 from celery import shared_task

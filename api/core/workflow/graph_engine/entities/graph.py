@@ -1,7 +1,7 @@
 import uuid
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 

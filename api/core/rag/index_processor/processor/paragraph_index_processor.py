@@ -1,7 +1,6 @@
 """Paragraph index processor."""
 
 import uuid
-from typing import Optional
 
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword

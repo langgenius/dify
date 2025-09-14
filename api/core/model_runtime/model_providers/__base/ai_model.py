@@ -1,7 +1,6 @@
 import decimal
 import hashlib
 from threading import Lock
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 

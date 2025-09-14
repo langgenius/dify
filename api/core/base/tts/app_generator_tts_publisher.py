@@ -5,7 +5,6 @@ import queue
 import re
 import threading
 from collections.abc import Iterable
-from typing import Optional
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,

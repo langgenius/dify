@@ -1,7 +1,7 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy import or_, select
 

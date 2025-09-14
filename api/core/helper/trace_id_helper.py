@@ -1,7 +1,7 @@
 import contextlib
 import re
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 
 def is_valid_trace_id(trace_id: str) -> bool:

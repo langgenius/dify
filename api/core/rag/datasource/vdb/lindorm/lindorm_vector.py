@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError

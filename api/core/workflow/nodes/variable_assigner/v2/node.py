@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable

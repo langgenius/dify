@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union, final
+from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
 

@@ -1,7 +1,6 @@
 import base64
 import uuid
 from collections.abc import Sequence
-from typing import Optional
 from unittest import mock
 
 import pytest

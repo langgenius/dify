@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from core.tools.entities.api_entities import ToolProviderTypeApiLiteral
 from core.tools.tool_manager import ToolManager

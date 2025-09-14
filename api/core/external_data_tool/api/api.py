@@ -1,5 +1,3 @@
-from typing import Optional
-
 from sqlalchemy import select
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor

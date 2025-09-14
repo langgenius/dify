@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
 from core.tools.builtin_tool.tool import BuiltinTool

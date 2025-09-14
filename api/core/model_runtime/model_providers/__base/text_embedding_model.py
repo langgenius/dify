@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType

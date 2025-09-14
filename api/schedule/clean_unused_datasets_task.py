@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import click
 from sqlalchemy import func, select

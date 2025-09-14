@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.agent.entities import AgentEntity, AgentPromptEntity, AgentToolEntity
 from core.agent.prompt.template import REACT_PROMPT_TEMPLATES
 

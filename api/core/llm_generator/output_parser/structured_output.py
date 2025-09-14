@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
 from enum import StrEnum
-from typing import Any, Literal, Optional, cast, overload
+from typing import Any, Literal, cast, overload
 
 import json_repair
 from pydantic import TypeAdapter, ValidationError

@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 

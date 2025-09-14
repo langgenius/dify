@@ -1,5 +1,5 @@
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed

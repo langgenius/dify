@@ -1,6 +1,6 @@
 import json
 from enum import StrEnum, auto
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,9 +12,7 @@ from core.workflow.nodes.base.entities import NumberType
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
-    icon: str | None = Field(
-        default=None, description="The icon of the option, can be a url or a base64 encoded image"
-    )
+    icon: str | None = Field(default=None, description="The icon of the option, can be a url or a base64 encoded image")
 
     @field_validator("value", mode="before")
     @classmethod

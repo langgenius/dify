@@ -1,5 +1,3 @@
-from typing import Optional
-
 from configs import dify_config
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
 

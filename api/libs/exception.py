@@ -1,5 +1,3 @@
-from typing import Optional
-
 from werkzeug.exceptions import HTTPException
 
 

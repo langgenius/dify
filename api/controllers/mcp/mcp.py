@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from flask import Response
 from flask_restx import Resource, reqparse

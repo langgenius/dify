@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, ParamSpec, TypeVar, Union
+from typing import ParamSpec, TypeVar, Union
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db

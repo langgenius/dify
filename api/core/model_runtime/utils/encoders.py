@@ -8,7 +8,7 @@ from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6
 from pathlib import Path, PurePath
 from re import Pattern
 from types import GeneratorType
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 from uuid import UUID
 
 from pydantic import BaseModel

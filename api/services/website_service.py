@@ -1,7 +1,7 @@
 import datetime
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import requests
 from flask_login import current_user

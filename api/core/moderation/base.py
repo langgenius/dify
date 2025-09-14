@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum, auto
-from typing import Optional
 
 from pydantic import BaseModel, Field
 

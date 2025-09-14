@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import (
     DatasetEntity,

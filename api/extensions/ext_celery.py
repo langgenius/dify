@@ -1,6 +1,6 @@
 import ssl
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 from celery import Celery, Task

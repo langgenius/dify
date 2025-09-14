@@ -1,6 +1,6 @@
 import io
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.file.enums import FileType
 from core.file.file_manager import download

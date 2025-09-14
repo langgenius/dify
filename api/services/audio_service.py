@@ -2,7 +2,6 @@ import io
 import logging
 import uuid
 from collections.abc import Generator
-from typing import Optional
 
 from flask import Response, stream_with_context
 from werkzeug.datastructures import FileStorage

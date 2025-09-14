@@ -1,7 +1,7 @@
 from abc import ABC
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
 

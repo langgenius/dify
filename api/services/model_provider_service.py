@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
@@ -128,9 +127,7 @@ class ModelProviderService:
             for model in provider_configurations.get_models(provider=provider)
         ]
 
-    def get_provider_credential(
-        self, tenant_id: str, provider: str, credential_id: str | None = None
-    ) -> dict | None:
+    def get_provider_credential(self, tenant_id: str, provider: str, credential_id: str | None = None) -> dict | None:
         """
         get provider credentials.
 

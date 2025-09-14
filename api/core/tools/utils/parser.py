@@ -2,7 +2,6 @@ import re
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from typing import Optional
 
 from flask import request
 from requests import get

@@ -1,7 +1,7 @@
 import json
 import logging
 import ssl
-from typing import Any, Optional
+from typing import Any
 
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, model_validator

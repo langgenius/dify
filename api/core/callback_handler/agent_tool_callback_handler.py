@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping
-from typing import Any, Optional, TextIO, Union
+from typing import Any, TextIO, Union
 
 from pydantic import BaseModel
 

@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError

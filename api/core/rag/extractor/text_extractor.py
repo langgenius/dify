@@ -1,7 +1,6 @@
 """Abstract interface for document loader implementations."""
 
 from pathlib import Path
-from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings

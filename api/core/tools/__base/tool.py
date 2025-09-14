@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from models.model import File

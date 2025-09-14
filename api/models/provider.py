@@ -1,7 +1,6 @@
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
-from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text

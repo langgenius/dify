@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
 
@@ -38,9 +36,7 @@ class ElasticsearchConfig(BaseSettings):
         description="Full URL for Elastic Cloud deployment (e.g., 'https://example.es.region.aws.found.io:443')",
         default=None,
     )
-    ELASTICSEARCH_API_KEY: str | None = Field(
-        description="API key for authenticating with Elastic Cloud", default=None
-    )
+    ELASTICSEARCH_API_KEY: str | None = Field(description="API key for authenticating with Elastic Cloud", default=None)
 
     # Common options
     ELASTICSEARCH_CA_CERTS: str | None = Field(

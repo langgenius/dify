@@ -1,6 +1,6 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from packaging.version import Version
 from pydantic import ValidationError

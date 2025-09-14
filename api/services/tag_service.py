@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 from flask_login import current_user
 from sqlalchemy import func, select

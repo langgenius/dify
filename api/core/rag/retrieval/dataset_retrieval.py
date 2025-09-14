@@ -4,7 +4,7 @@ import re
 import threading
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from flask import Flask, current_app
 from sqlalchemy import Float, and_, or_, select, text
@@ -505,9 +505,7 @@ class DatasetRetrieval:
 
         return all_documents
 
-    def _on_retrieval_end(
-        self, documents: list[Document], message_id: str | None = None, timer: dict | None = None
-    ):
+    def _on_retrieval_end(self, documents: list[Document], message_id: str | None = None, timer: dict | None = None):
         """Handle retrieval end."""
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:

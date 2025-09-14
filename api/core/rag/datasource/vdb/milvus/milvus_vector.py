@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from packaging import version
 from pydantic import BaseModel, model_validator

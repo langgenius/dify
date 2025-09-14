@@ -5,7 +5,7 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -996,9 +996,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(
-        account: Account, name: str | None = None, is_setup: bool | None = False
-    ):
+    def create_owner_tenant_if_not_exist(account: Account, name: str | None = None, is_setup: bool | None = False):
         """Check if user have a workspace or not"""
         available_ta = (
             db.session.query(TenantAccountJoin)
@@ -1415,9 +1413,7 @@ class RegisterService:
             redis_client.delete(cls._get_invitation_token_key(token))
 
     @classmethod
-    def get_invitation_if_token_valid(
-        cls, workspace_id: str | None, email: str, token: str
-    ) -> dict[str, Any] | None:
+    def get_invitation_if_token_valid(cls, workspace_id: str | None, email: str, token: str) -> dict[str, Any] | None:
         invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None

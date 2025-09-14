@@ -3,7 +3,7 @@ import logging
 import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session

@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import requests
 from flask import current_app, redirect, request

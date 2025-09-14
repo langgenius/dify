@@ -2,7 +2,7 @@ import json
 import logging
 import math
 from collections.abc import Iterable
-from typing import Any, Optional
+from typing import Any
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator

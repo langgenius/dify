@@ -1,6 +1,6 @@
 import binascii
 from collections.abc import Generator, Sequence
-from typing import IO, Optional
+from typing import IO
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool

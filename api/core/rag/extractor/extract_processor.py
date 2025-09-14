@@ -1,7 +1,7 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 from urllib.parse import unquote
 
 from configs import dify_config

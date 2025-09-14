@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 import chardet
 import docx

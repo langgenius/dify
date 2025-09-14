@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.plugin.impl.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format

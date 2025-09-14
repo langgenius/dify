@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError

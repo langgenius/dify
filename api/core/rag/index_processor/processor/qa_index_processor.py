@@ -4,7 +4,6 @@ import logging
 import re
 import threading
 import uuid
-from typing import Optional
 
 import pandas as pd
 from flask import Flask, current_app

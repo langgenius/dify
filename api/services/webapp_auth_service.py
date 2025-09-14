@@ -1,7 +1,7 @@
 import enum
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from werkzeug.exceptions import NotFound, Unauthorized
 

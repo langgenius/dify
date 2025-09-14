@@ -4,7 +4,7 @@ import logging
 import os
 from enum import StrEnum, auto
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 

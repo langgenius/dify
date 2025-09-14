@@ -5,8 +5,6 @@ from decimal import Decimal
 from json import dumps
 
 # import monkeypatch
-from typing import Optional
-
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool

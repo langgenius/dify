@@ -3,7 +3,7 @@ import time
 import uuid
 from collections.abc import Generator, Mapping
 from datetime import timedelta
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client

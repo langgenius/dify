@@ -1,6 +1,5 @@
 import threading
 from collections.abc import Sequence
-from typing import Optional
 
 from sqlalchemy.orm import sessionmaker
 

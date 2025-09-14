@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from typing import Optional
 
 from sqlalchemy import select
 

@@ -1,6 +1,5 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 from flask import Flask, current_app
 from sqlalchemy import select

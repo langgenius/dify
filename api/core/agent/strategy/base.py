@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyParameter

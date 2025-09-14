@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session

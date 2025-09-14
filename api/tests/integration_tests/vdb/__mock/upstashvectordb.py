@@ -1,6 +1,5 @@
 import os
 from collections import UserDict
-from typing import Optional
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch

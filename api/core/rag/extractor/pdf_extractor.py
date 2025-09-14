@@ -2,7 +2,6 @@
 
 import contextlib
 from collections.abc import Iterator
-from typing import Optional
 
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor

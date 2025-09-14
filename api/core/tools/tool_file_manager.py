@@ -6,7 +6,7 @@ import os
 import time
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Optional, Union
+from typing import Union
 from uuid import uuid4
 
 import httpx

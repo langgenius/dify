@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from core.mcp.client.sse_client import sse_client
@@ -59,9 +59,7 @@ class MCPClient:
         self._initialized = True
         return self
 
-    def __exit__(
-        self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None
-    ):
+    def __exit__(self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None):
         self.cleanup()
 
     def _initialize(

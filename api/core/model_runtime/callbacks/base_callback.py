@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Optional
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool

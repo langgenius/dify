@@ -7,7 +7,6 @@ import uuid
 from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
 import requests
 from opentelemetry import trace as trace_api

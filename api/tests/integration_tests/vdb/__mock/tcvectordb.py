@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Union
+from typing import Union
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch

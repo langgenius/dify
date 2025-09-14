@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, Optional, ParamSpec, TypeVar
+from typing import Any, Concatenate, ParamSpec, TypeVar
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator

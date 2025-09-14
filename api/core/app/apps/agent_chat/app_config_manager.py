@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.agent.entities import AgentEntity
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager

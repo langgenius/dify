@@ -1,5 +1,3 @@
-from typing import Optional
-
 from flask import Flask
 from pydantic import BaseModel
 

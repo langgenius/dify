@@ -3,7 +3,6 @@ from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from mimetypes import guess_extension
-from typing import Optional
 from uuid import UUID
 
 import numpy as np

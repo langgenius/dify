@@ -10,7 +10,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

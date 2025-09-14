@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage

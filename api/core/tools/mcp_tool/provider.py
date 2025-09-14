@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional, Self
+from typing import Any, Self
 
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController

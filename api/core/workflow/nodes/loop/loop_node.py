@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from configs import dify_config
 from core.variables import (

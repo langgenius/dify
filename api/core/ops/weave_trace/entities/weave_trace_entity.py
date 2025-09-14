@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo

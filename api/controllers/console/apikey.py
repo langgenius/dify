@@ -1,5 +1,3 @@
-from typing import Optional
-
 import flask_restx
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with

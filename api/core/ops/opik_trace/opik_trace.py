@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7

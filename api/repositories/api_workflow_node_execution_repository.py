@@ -11,7 +11,7 @@ tenant_id, app_id, triggered_from, etc., which are not part of the core domain m
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Protocol
 
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel

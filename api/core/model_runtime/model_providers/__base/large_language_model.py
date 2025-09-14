@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Sequence
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import ConfigDict
 

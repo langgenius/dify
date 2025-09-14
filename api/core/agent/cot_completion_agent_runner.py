@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.model_runtime.entities.message_entities import (

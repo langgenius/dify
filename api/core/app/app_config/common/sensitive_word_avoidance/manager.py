@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.app.app_config.entities import SensitiveWordAvoidanceEntity
 from core.moderation.factory import ModerationFactory
 

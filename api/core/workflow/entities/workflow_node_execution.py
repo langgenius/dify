@@ -9,7 +9,7 @@ and don't contain implementation details like tenant_id, app_id, etc.
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 

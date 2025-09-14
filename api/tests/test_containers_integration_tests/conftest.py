@@ -11,7 +11,6 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from flask import Flask

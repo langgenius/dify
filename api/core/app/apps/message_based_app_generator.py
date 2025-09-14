@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

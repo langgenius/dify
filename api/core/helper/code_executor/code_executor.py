@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
 from httpx import Timeout, post
 from pydantic import BaseModel

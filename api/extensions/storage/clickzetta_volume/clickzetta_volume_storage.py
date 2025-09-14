@@ -10,7 +10,6 @@ import tempfile
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
 
 import clickzetta  # type: ignore[import]
 from pydantic import BaseModel, model_validator

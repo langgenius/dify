@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.variables.segments import Segment
 from core.workflow.entities.node_entities import NodeRunResult

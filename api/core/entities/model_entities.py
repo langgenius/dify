@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 

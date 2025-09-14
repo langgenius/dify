@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from core.extension.extensible import Extensible, ExtensionModule
 

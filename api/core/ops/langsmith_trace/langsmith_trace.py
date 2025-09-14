@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast
 
 from langsmith import Client
 from langsmith.schemas import RunBase

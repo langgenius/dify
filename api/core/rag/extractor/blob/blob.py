@@ -12,7 +12,7 @@ import mimetypes
 from collections.abc import Generator, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import Path, PurePath
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 

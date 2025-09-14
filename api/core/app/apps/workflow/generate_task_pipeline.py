@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy.orm import Session
 

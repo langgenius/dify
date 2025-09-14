@@ -2,7 +2,7 @@ import queue
 import time
 from abc import abstractmethod
 from enum import IntEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import DeclarativeMeta
 

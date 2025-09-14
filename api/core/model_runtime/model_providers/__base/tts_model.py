@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Iterable
-from typing import Optional
 
 from pydantic import ConfigDict
 

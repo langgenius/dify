@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.model_manager import ModelInstance
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner

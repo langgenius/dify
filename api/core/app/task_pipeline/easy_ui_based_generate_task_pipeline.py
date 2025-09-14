@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
