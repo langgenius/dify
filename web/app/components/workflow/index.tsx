@@ -358,6 +358,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
