@@ -15,6 +15,7 @@ from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.trigger import TriggerSubscription
+from services.trigger_debug_service import TriggerDebugService
 from services.trigger_service import TriggerService
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ def dispatch_triggered_workflows_async(
     endpoint_id: str,
     provider_id: str,
     subscription_id: str,
+    timestamp: int,
     triggers: list[str],
     request_id: str,
 ) -> dict:
@@ -39,6 +41,7 @@ def dispatch_triggered_workflows_async(
         endpoint_id: Endpoint ID
         provider_id: Provider ID
         subscription_id: Subscription ID
+        timestamp: Timestamp of the event
         triggers: List of triggers to dispatch
         request_id: Unique ID of the stored request
 
@@ -47,10 +50,11 @@ def dispatch_triggered_workflows_async(
     """
     try:
         logger.info(
-            "Starting async trigger dispatching for endpoint=%s, triggers=%s, request_id=%s",
+            "Starting async trigger dispatching for endpoint=%s, triggers=%s, request_id=%s, timestamp=%s",
             endpoint_id,
             triggers,
             request_id,
+            timestamp,
         )
 
         # Verify request exists in storage
@@ -106,9 +110,11 @@ def dispatch_triggered_workflows_async(
 
             # Dispatch to debug sessions after processing all triggers
             try:
-                debug_dispatched = TriggerService.dispatch_debugging_sessions(
+                debug_dispatched = TriggerDebugService.dispatch_debug_event(
+                    tenant_id=subscription.tenant_id,
                     subscription_id=subscription_id,
                     triggers=triggers,
+                    timestamp=timestamp,
                     request_id=request_id,
                 )
             except Exception:

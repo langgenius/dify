@@ -29,6 +29,15 @@ class NodeType(StrEnum):
     TRIGGER_SCHEDULE = "trigger-schedule"
     TRIGGER_PLUGIN = "trigger-plugin"
 
+    @property
+    def is_start_node(self) -> bool:
+        return self in [
+            NodeType.START,
+            NodeType.TRIGGER_WEBHOOK,
+            NodeType.TRIGGER_SCHEDULE,
+            NodeType.TRIGGER_PLUGIN,
+        ]
+
 
 class ErrorStrategy(StrEnum):
     FAIL_BRANCH = "fail-branch"

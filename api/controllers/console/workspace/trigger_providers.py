@@ -92,6 +92,17 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
             raise
 
 
+class TriggerSubscriptionBuilderGetApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider, subscription_builder_id):
+        """Get a subscription instance for a trigger provider"""
+        return jsonable_encoder(
+            TriggerSubscriptionBuilderService.get_subscription_builder_by_id(subscription_builder_id)
+        )
+
+
 class TriggerSubscriptionBuilderVerifyApi(Resource):
     @setup_required
     @login_required
@@ -332,6 +343,7 @@ class TriggerOAuthAuthorizeApi(Resource):
                     {
                         "authorization_url": authorization_url_response.authorization_url,
                         "subscription_builder_id": subscription_builder.id,
+                        "subscription_builder": subscription_builder,
                     }
                 )
             )
@@ -531,6 +543,10 @@ api.add_resource(
 api.add_resource(
     TriggerSubscriptionBuilderCreateApi,
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/create",
+)
+api.add_resource(
+    TriggerSubscriptionBuilderGetApi,
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/<path:subscription_builder_id>",
 )
 api.add_resource(
     TriggerSubscriptionBuilderUpdateApi,

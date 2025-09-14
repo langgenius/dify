@@ -204,6 +204,7 @@ class TriggerSubscriptionBuilderService:
     def builder_to_api_entity(
         cls, controller: PluginTriggerProviderController, entity: SubscriptionBuilder
     ) -> SubscriptionBuilderApiEntity:
+        credential_type = CredentialType.of(entity.credential_type or CredentialType.UNAUTHORIZED.value)
         return SubscriptionBuilderApiEntity(
             id=entity.id,
             name=entity.name or "",
@@ -211,9 +212,9 @@ class TriggerSubscriptionBuilderService:
             endpoint=parse_endpoint_id(entity.endpoint_id),
             parameters=entity.parameters,
             properties=entity.properties,
-            credential_type=CredentialType(entity.credential_type),
+            credential_type=credential_type,
             credentials=masked_credentials(
-                schemas=controller.get_credentials_schema(CredentialType(entity.credential_type)),
+                schemas=controller.get_credentials_schema(credential_type),
                 credentials=entity.credentials,
             ),
         )
@@ -301,3 +302,16 @@ class TriggerSubscriptionBuilderService:
         # append the request log
         cls.append_log(endpoint_id, request, response.response)
         return response.response
+
+    @classmethod
+    def get_subscription_builder_by_id(cls, subscription_builder_id: str) -> SubscriptionBuilderApiEntity:
+        """Get a trigger subscription builder API entity."""
+        subscription_builder = cls.get_subscription_builder(subscription_builder_id)
+        if not subscription_builder:
+            raise ValueError(f"Subscription builder {subscription_builder_id} not found")
+        return cls.builder_to_api_entity(
+            controller=TriggerManager.get_trigger_provider(
+                subscription_builder.tenant_id, TriggerProviderID(subscription_builder.provider_id)
+            ),
+            entity=subscription_builder,
+        )

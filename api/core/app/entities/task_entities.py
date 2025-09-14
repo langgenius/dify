@@ -82,11 +82,6 @@ class StreamEvent(Enum):
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
-    # Trigger debug events
-    TRIGGER_LISTENING_STARTED = "trigger_listening_started"
-    TRIGGER_LISTENING_TIMEOUT = "trigger_listening_timeout"
-    TRIGGER_TRIGGERED = "trigger_triggered"
-    TRIGGER_NODE_FINISHED = "trigger_node_finished"
 
 
 class StreamResponse(BaseModel):
@@ -842,52 +837,3 @@ class AgentLogStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data
-
-
-# Trigger Debug Stream Responses
-class TriggerListeningStartedResponse(StreamResponse):
-    """
-    TriggerListeningStartedResponse entity
-    """
-
-    event: StreamEvent = StreamEvent.TRIGGER_LISTENING_STARTED
-    session_id: str
-    webhook_url: str
-    timeout: int
-
-
-class TriggerTriggeredResponse(StreamResponse):
-    """
-    TriggerTriggeredResponse entity
-    """
-
-    event: StreamEvent = StreamEvent.TRIGGER_TRIGGERED
-    subscription_id: str
-    triggers: list[str]
-    request_id: str
-    timestamp: float
-
-
-class TriggerNodeFinishedResponse(StreamResponse):
-    """
-    TriggerNodeFinishedResponse entity
-    """
-
-    event: StreamEvent = StreamEvent.TRIGGER_NODE_FINISHED
-    id: str
-    node_id: str
-    node_type: str
-    status: str
-    outputs: Optional[Mapping[str, Any]] = None
-    error: Optional[str] = None
-    elapsed_time: float
-    execution_metadata: Optional[Mapping[str, Any]] = None
-
-
-class TriggerListeningTimeoutResponse(StreamResponse):
-    """
-    TriggerListeningTimeoutResponse entity
-    """
-
-    event: StreamEvent = StreamEvent.TRIGGER_LISTENING_TIMEOUT
-    error: str = "Timeout waiting for trigger"

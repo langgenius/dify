@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.utils.http_parser import serialize_request
-from core.trigger.entities.entities import TriggerEntity, TriggerEventData, TriggerInputs
+from core.trigger.entities.entities import TriggerEntity, TriggerInputs
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -18,7 +18,6 @@ from models.trigger import TriggerSubscription
 from models.workflow import Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger_debug_service import TriggerDebugService
 from services.workflow.entities import PluginTriggerData
 
 logger = logging.getLogger(__name__)
@@ -122,33 +121,6 @@ class TriggerService:
             return dispatched_count
 
     @classmethod
-    def dispatch_debugging_sessions(cls, subscription_id: str, triggers: list[str], request_id: str) -> int:
-        """
-        Dispatch to debug sessions - simplified version.
-
-        Args:
-            subscription_id: Subscription ID
-            triggers: List of trigger names
-            request_id: Request ID for storage reference
-        """
-        try:
-            # Prepare streamlined event data using Pydantic model
-            debug_data = TriggerEventData(
-                subscription_id=subscription_id,
-                triggers=triggers,
-                request_id=request_id,
-                timestamp=time.time(),
-            )
-            return TriggerDebugService.dispatch_to_debug_sessions(
-                subscription_id=subscription_id, event_data=debug_data
-            )
-
-        except Exception as e:
-            # Silent failure, don't affect production
-            logger.exception("Debug dispatch failed", exc_info=e)
-            return 0
-
-    @classmethod
     def process_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
         """
         Extract and process data from incoming endpoint request.
@@ -157,6 +129,7 @@ class TriggerService:
             endpoint_id: Endpoint ID
             request: Request
         """
+        timestamp = int(time.time())
         subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
         if not subscription:
             return None
@@ -175,12 +148,14 @@ class TriggerService:
             serialized_request = serialize_request(request)
             storage.save(f"triggers/{request_id}", serialized_request)
 
+            # Production dispatch
             from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 
             dispatch_triggered_workflows_async(
                 endpoint_id=endpoint_id,
                 provider_id=subscription.provider_id,
                 subscription_id=subscription.id,
+                timestamp=timestamp,
                 triggers=list(dispatch_response.triggers),
                 request_id=request_id,
             )
@@ -191,7 +166,6 @@ class TriggerService:
                 endpoint_id,
                 request_id,
             )
-
         return dispatch_response.response
 
     @classmethod

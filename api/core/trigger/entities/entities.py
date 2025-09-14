@@ -270,15 +270,6 @@ class TriggerInputs(BaseModel):
     subscription_id: str
 
     @classmethod
-    def from_trigger_data(cls, trigger_data: TriggerEventData) -> "TriggerInputs":
-        """Create from debug event data."""
-        return cls(
-            request_id=trigger_data.request_id,
-            trigger_name=trigger_data.triggers[0] if trigger_data.triggers else "",
-            subscription_id=trigger_data.subscription_id,
-        )
-
-    @classmethod
     def from_trigger_entity(cls, request_id: str, subscription_id: str, trigger: TriggerEntity) -> "TriggerInputs":
         """Create from trigger entity (for production)."""
         return cls(request_id=request_id, trigger_name=trigger.identity.name, subscription_id=subscription_id)
