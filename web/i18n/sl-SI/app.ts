@@ -180,6 +180,10 @@ const translation = {
       title: 'MLflow',
       description: 'Odprtokodna platforma LLMOps za sledenje eksperimentom, opazljivost in ocenjevanje, za gradnjo aplikacij AI/LLM z zaupanjem.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks ponuja popolnoma upravljan MLflow z močnim upravljanjem in varnostjo za shranjevanje podatkov sledenja.',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',

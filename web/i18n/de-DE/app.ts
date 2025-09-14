@@ -164,6 +164,10 @@ const translation = {
       title: 'MLflow',
       description: 'Open-Source-LLMOps-Plattform mit Experiment-Tracking, Observability und Evaluierungen für die sichere Entwicklung von AI/LLM-Anwendungen.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks bietet vollständig verwaltetes MLflow mit starker Governance und Sicherheit für die Speicherung von Trace-Daten.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',

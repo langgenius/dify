@@ -196,6 +196,10 @@ const translation = {
       title: 'MLflow',
       description: '开源LLMOps平台，提供实验跟踪、可观测性和评估功能，帮助您自信地构建AI/LLM应用。',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks提供完全托管的MLflow，具有强大的治理和安全功能，用于存储跟踪数据。',
+    },
   },
   appSelector: {
     label: '应用',

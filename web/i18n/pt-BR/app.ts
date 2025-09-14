@@ -167,6 +167,10 @@ const translation = {
       title: 'MLflow',
       description: 'Plataforma LLMOps de código aberto para rastreamento de experimentos, observabilidade e avaliação, para construir aplicações de IA/LLM com confiança.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks oferece MLflow totalmente gerenciado com forte governança e segurança para armazenar dados de rastreamento.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',

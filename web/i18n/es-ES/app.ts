@@ -167,6 +167,10 @@ const translation = {
       title: 'MLflow',
       description: 'Plataforma LLMOps de código abierto para seguimiento de experimentos, observabilidad y evaluación, para construir aplicaciones de IA/LLM con confianza.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks ofrece MLflow completamente gestionado con fuerte gobernanza y seguridad para almacenar datos de trazabilidad.',
+    },
   },
   answerIcon: {
     title: 'Usar el icono de la aplicación web para reemplazar 🤖',

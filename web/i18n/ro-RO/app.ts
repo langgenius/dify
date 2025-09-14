@@ -167,6 +167,10 @@ const translation = {
       title: 'MLflow',
       description: 'Platformă LLMOps open source pentru urmărirea experimentelor, observabilitate și evaluare, pentru a construi aplicații AI/LLM cu încredere.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks oferă MLflow complet gestionat cu o puternică guvernanță și securitate pentru stocarea datelor de urmărire.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Dacă să utilizați pictograma web app pentru a înlocui 🤖 în Explore',

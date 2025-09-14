@@ -167,6 +167,10 @@ const translation = {
       title: 'MLflow',
       description: 'Nền tảng LLMOps mã nguồn mở cho theo dõi thử nghiệm, khả năng quan sát và đánh giá, để xây dựng ứng dụng AI/LLM với sự tự tin.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks cung cấp MLflow được quản lý hoàn toàn với quản trị mạnh mẽ và bảo mật để lưu trữ dữ liệu theo dõi.',
+    },
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',

@@ -171,6 +171,10 @@ const translation = {
       title: 'MLflow',
       description: 'Deney takibi, gözlemlenebilirlik ve değerlendirme için açık kaynaklı LLMOps platformu, AI/LLM uygulamalarını güvenle oluşturmak için.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks, iz veri depolama için güçlü yönetişim ve güvenlik ile tamamen yönetilen MLflow sunar.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 web app simgesinin kullanılıp kullanılmayacağı',

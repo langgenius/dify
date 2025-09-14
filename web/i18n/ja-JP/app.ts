@@ -170,6 +170,10 @@ const translation = {
       viewDocsLink: '{{key}}に関するドキュメントを見る',
       removeConfirmTitle: '{{key}}の設定を削除しますか？',
       removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
+      clientId: 'OAuthクライアントID',
+      clientSecret: 'OAuthクライアントシークレット',
+      personalAccessToken: '（非推奨）アクセストークン',
+      databricksHost: 'DatabricksワークスペースのURL',
     },
     weave: {
       title: '織る',
@@ -182,6 +186,10 @@ const translation = {
     mlflow: {
       title: 'MLflow',
       description: 'MLflowはLLMアプリケーションの実験管理・評価・監視を行うためのオープンソースプラットフォームです。Difyアプリの実行をトレースし、デバッグや改善に役立てることができます。',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'DatabricksはフルマネージドのMLflowサービスを提供し、本番環境のトレースデータを強力なガバナンスとセキュリティの元で保存することができます。',
     },
   },
   answerIcon: {

@@ -533,7 +533,7 @@ const ProviderConfigModal: FC<Props> = ({
                       {type === TracingProvider.databricks && (
                         <>
                           <Field
-                            label='Experiment ID'
+                            label={t(`${I18N_PREFIX}.experimentId`)!}
                             labelClassName='!text-sm'
                             value={(config as DatabricksConfig).experiment_id}
                             onChange={handleConfigChange('experiment_id')}
@@ -541,7 +541,7 @@ const ProviderConfigModal: FC<Props> = ({
                             isRequired
                           />
                           <Field
-                            label='Host'
+                            label={t(`${I18N_PREFIX}.databricksHost`)!}
                             labelClassName='!text-sm'
                             value={(config as DatabricksConfig).host}
                             onChange={handleConfigChange('host')}
@@ -549,21 +549,21 @@ const ProviderConfigModal: FC<Props> = ({
                             isRequired
                           />
                           <Field
-                            label='Client ID'
+                            label={t(`${I18N_PREFIX}.clientId`)!}
                             labelClassName='!text-sm'
                             value={(config as DatabricksConfig).client_id}
                             onChange={handleConfigChange('client_id')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.clientId`) })!}
                           />
                           <Field
-                            label='Client Secret'
+                            label={t(`${I18N_PREFIX}.clientSecret`)!}
                             labelClassName='!text-sm'
                             value={(config as DatabricksConfig).client_secret}
                             onChange={handleConfigChange('client_secret')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.clientSecret`) })!}
                           />
                           <Field
-                            label='Personal Access Token (legacy)'
+                            label={t(`${I18N_PREFIX}.personalAccessToken`)!}
                             labelClassName='!text-sm'
                             value={(config as DatabricksConfig).personal_access_token}
                             onChange={handleConfigChange('personal_access_token')}

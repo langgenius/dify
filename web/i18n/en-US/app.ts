@@ -189,7 +189,7 @@ const translation = {
     },
     databricks: {
       title: 'Databricks',
-      description: 'Databricks offers fully-managed MLflow with strong governance and security for storing your trace data.',
+      description: 'Databricks offers fully-managed MLflow with strong governance and security for storing trace data.',
     },
     inUse: 'In use',
     configProvider: {
@@ -207,8 +207,8 @@ const translation = {
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
       clientId: 'OAuth Client ID',
       clientSecret: 'OAuth Client Secret',
-      personalAccessToken: 'Personal Access Token. OAuth is recommended.',
-      databricksHost: 'Databricks Workspace or Account Console URL',
+      personalAccessToken: 'Personal Access Token (legacy)',
+      databricksHost: 'Databricks Workspace URL',
     },
   },
   appSelector: {

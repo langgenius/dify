@@ -182,6 +182,10 @@ const translation = {
       title: 'MLflow',
       description: '실험 추적, 관찰 가능성 및 평가를 위한 오픈 소스 LLMOps 플랫폼으로 AI/LLM 앱을 자신있게 구축합니다.',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks는 강력한 거버넌스와 보안을 갖춘 완전 관리형 MLflow를 제공하여 트레이스 데이터 저장을 지원합니다.',
+    },
   },
   answerIcon: {
     description:

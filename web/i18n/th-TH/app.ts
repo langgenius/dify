@@ -176,6 +176,10 @@ const translation = {
       title: 'MLflow',
       description: 'แพลตฟอร์ม LLMOps โอเพนซอร์สสำหรับการติดตามการทดลอง การสังเกตการณ์ และการประเมินผล เพื่อสร้างแอป AI/LLM ด้วยความมั่นใจ',
     },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks ให้บริการ MLflow ที่จัดการแบบเต็มรูปแบบพร้อมการกำกับดูแลและความปลอดภัยที่แข็งแกร่งสำหรับการจัดเก็บข้อมูลการติดตาม',
+    },
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',
