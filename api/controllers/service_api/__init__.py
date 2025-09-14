@@ -10,9 +10,11 @@ api = ExternalApi(
     version="1.0",
     title="Service API",
     description="API for application services",
+    doc="/docs",  # Enable Swagger UI at /v1/docs
 )
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
+
 
 from . import index  # pyright: ignore[reportUnusedImport]
 from .app import (
@@ -24,6 +26,17 @@ from .app import (
     file,  # pyright: ignore[reportUnusedImport]
     file_preview,  # pyright: ignore[reportUnusedImport]
     message,  # pyright: ignore[reportUnusedImport]
+    site,  # pyright: ignore[reportUnusedImport]
+    workflow,  # pyright: ignore[reportUnusedImport]
+    annotation,  # pyright: ignore[reportUnusedImport]
+    app,  # pyright: ignore[reportUnusedImport]
+    audio,  # pyright: ignore[reportUnusedImport]
+    completion,  # pyright: ignore[reportUnusedImport]
+    conversation,  # pyright: ignore[reportUnusedImport]
+    file,  # pyright: ignore[reportUnusedImport]
+    file_preview,  # pyright: ignore[reportUnusedImport]
+    message,  # pyright: ignore[reportUnusedImport]
+    node_executions,  # pyright: ignore[reportUnusedImport]
     site,  # pyright: ignore[reportUnusedImport]
     workflow,  # pyright: ignore[reportUnusedImport]
 )
