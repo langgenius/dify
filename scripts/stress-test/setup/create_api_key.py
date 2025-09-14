@@ -90,9 +90,7 @@ def create_api_key() -> None:
                     }
 
                     if config_helper.write_config("api_key_config", api_key_config):
-                        log.info(
-                            f"API key saved to: {config_helper.get_config_path('benchmark_state')}"
-                        )
+                        log.info(f"API key saved to: {config_helper.get_config_path('benchmark_state')}")
                 else:
                     log.error("No API token received")
                     log.debug(f"Response: {json.dumps(response_data, indent=2)}")
@@ -101,9 +99,7 @@ def create_api_key() -> None:
                 log.error("API key creation failed: Unauthorized")
                 log.info("Token may have expired. Please run login_admin.py again")
             else:
-                log.error(
-                    f"API key creation failed with status code: {response.status_code}"
-                )
+                log.error(f"API key creation failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

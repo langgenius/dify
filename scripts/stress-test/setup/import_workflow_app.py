@@ -87,9 +87,7 @@ def import_workflow_app() -> None:
                         log.success("Workflow app imported successfully!")
                         log.key_value("App ID", app_id)
                         log.key_value("App Mode", response_data.get("app_mode"))
-                        log.key_value(
-                            "DSL Version", response_data.get("imported_dsl_version")
-                        )
+                        log.key_value("DSL Version", response_data.get("imported_dsl_version"))
 
                         # Save app_id to config
                         app_config = {
@@ -100,9 +98,7 @@ def import_workflow_app() -> None:
                         }
 
                         if config_helper.write_config("app_config", app_config):
-                            log.info(
-                                f"App config saved to: {config_helper.get_config_path('benchmark_state')}"
-                            )
+                            log.info(f"App config saved to: {config_helper.get_config_path('benchmark_state')}")
                     else:
                         log.error("Import completed but no app_id received")
                         log.debug(f"Response: {json.dumps(response_data, indent=2)}")

@@ -15,9 +15,7 @@ class DifyClient:
         }
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(
-            method, url, json=json, params=params, headers=headers, stream=stream
-        )
+        response = requests.request(method, url, json=json, params=params, headers=headers, stream=stream)
 
         return response
 
@@ -25,9 +23,7 @@ class DifyClient:
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(
-            method, url, data=data, headers=headers, files=files
-        )
+        response = requests.request(method, url, data=data, headers=headers, files=files)
 
         return response
 
@@ -41,9 +37,7 @@ class DifyClient:
 
     def file_upload(self, user: str, files: dict):
         data = {"user": user}
-        return self._send_request_with_files(
-            "POST", "/files/upload", data=data, files=files
-        )
+        return self._send_request_with_files("POST", "/files/upload", data=data, files=files)
 
     def text_to_audio(self, text: str, user: str, streaming: bool = False):
         data = {"text": text, "user": user, "streaming": streaming}
@@ -99,9 +93,7 @@ class ChatClient(DifyClient):
 
     def get_suggested(self, message_id: str, user: str):
         params = {"user": user}
-        return self._send_request(
-            "GET", f"/messages/{message_id}/suggested", params=params
-        )
+        return self._send_request("GET", f"/messages/{message_id}/suggested", params=params)
 
     def stop_message(self, task_id: str, user: str):
         data = {"user": user}
@@ -135,13 +127,9 @@ class ChatClient(DifyClient):
 
         return self._send_request("GET", "/messages", params=params)
 
-    def rename_conversation(
-        self, conversation_id: str, name: str, auto_generate: bool, user: str
-    ):
+    def rename_conversation(self, conversation_id: str, name: str, auto_generate: bool, user: str):
         data = {"name": name, "auto_generate": auto_generate, "user": user}
-        return self._send_request(
-            "POST", f"/conversations/{conversation_id}/name", data
-        )
+        return self._send_request("POST", f"/conversations/{conversation_id}/name", data)
 
     def delete_conversation(self, conversation_id: str, user: str):
         data = {"user": user}
@@ -196,13 +184,9 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", "/datasets", {"name": name}, **kwargs)
 
     def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs):
-        return self._send_request(
-            "GET", f"/datasets?page={page}&limit={page_size}", **kwargs
-        )
+        return self._send_request("GET", f"/datasets?page={page}&limit={page_size}", **kwargs)
 
-    def create_document_by_text(
-        self, name, text, extra_params: dict | None = None, **kwargs
-    ):
+    def create_document_by_text(self, name, text, extra_params: dict | None = None, **kwargs):
         """
         Create a document by text.
 
@@ -271,9 +255,7 @@ class KnowledgeBaseClient(DifyClient):
         data = {"name": name, "text": text}
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
-        url = (
-            f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_text"
-        )
+        url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_text"
         return self._send_request("POST", url, json=data, **kwargs)
 
     def create_document_by_file(
@@ -314,9 +296,7 @@ class KnowledgeBaseClient(DifyClient):
         if original_document_id is not None:
             data["original_document_id"] = original_document_id
         url = f"/datasets/{self._get_dataset_id()}/document/create_by_file"
-        return self._send_request_with_files(
-            "POST", url, {"data": json.dumps(data)}, files
-        )
+        return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
     def update_document_by_file(
         self, document_id: str, file_path: str, extra_params: dict | None = None
@@ -350,12 +330,8 @@ class KnowledgeBaseClient(DifyClient):
         data = {}
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
-        url = (
-            f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
-        )
-        return self._send_request_with_files(
-            "POST", url, {"data": json.dumps(data)}, files
-        )
+        url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
+        return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
     def batch_indexing_status(self, batch_id: str, **kwargs):
         """

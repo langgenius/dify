@@ -28,20 +28,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common.config_helper import ConfigHelper  # type: ignore[import-not-found]
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Configuration from environment
 WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", "/v1/workflows/run")
 CONNECT_TIMEOUT = float(os.getenv("CONNECT_TIMEOUT", "10"))
 READ_TIMEOUT = float(os.getenv("READ_TIMEOUT", "60"))
-TERMINAL_EVENTS = [
-    e.strip()
-    for e in os.getenv("TERMINAL_EVENTS", "workflow_finished,error").split(",")
-    if e.strip()
-]
+TERMINAL_EVENTS = [e.strip() for e in os.getenv("TERMINAL_EVENTS", "workflow_finished,error").split(",") if e.strip()]
 QUESTIONS_FILE = os.getenv("QUESTIONS_FILE", "")
 
 
@@ -245,9 +239,7 @@ class MetricsTracker:
                 max_ttfe = max(self.ttfe_samples)
                 p50_ttfe = statistics.median(self.ttfe_samples)
                 if len(self.ttfe_samples) >= 2:
-                    quantiles = statistics.quantiles(
-                        self.ttfe_samples, n=20, method="inclusive"
-                    )
+                    quantiles = statistics.quantiles(self.ttfe_samples, n=20, method="inclusive")
                     p95_ttfe = quantiles[18]  # 19th of 19 quantiles = 95th percentile
                 else:
                     p95_ttfe = max_ttfe
@@ -267,9 +259,7 @@ class MetricsTracker:
                     if durations
                     else 0
                 )
-                events_per_stream_avg = (
-                    statistics.mean(events_per_stream) if events_per_stream else 0
-                )
+                events_per_stream_avg = statistics.mean(events_per_stream) if events_per_stream else 0
 
                 # Calculate inter-event latency statistics
                 all_inter_event_times = []
@@ -280,32 +270,20 @@ class MetricsTracker:
                     inter_event_latency_avg = statistics.mean(all_inter_event_times)
                     inter_event_latency_p50 = statistics.median(all_inter_event_times)
                     inter_event_latency_p95 = (
-                        statistics.quantiles(
-                            all_inter_event_times, n=20, method="inclusive"
-                        )[18]
+                        statistics.quantiles(all_inter_event_times, n=20, method="inclusive")[18]
                         if len(all_inter_event_times) >= 2
                         else max(all_inter_event_times)
                     )
                 else:
-                    inter_event_latency_avg = inter_event_latency_p50 = (
-                        inter_event_latency_p95
-                    ) = 0
+                    inter_event_latency_avg = inter_event_latency_p50 = inter_event_latency_p95 = 0
             else:
-                stream_duration_avg = stream_duration_p50 = stream_duration_p95 = (
-                    events_per_stream_avg
-                ) = 0
-                inter_event_latency_avg = inter_event_latency_p50 = (
-                    inter_event_latency_p95
-                ) = 0
+                stream_duration_avg = stream_duration_p50 = stream_duration_p95 = events_per_stream_avg = 0
+                inter_event_latency_avg = inter_event_latency_p50 = inter_event_latency_p95 = 0
 
             # Also calculate overall average rates
             total_elapsed = current_time - self.start_time
-            overall_conn_rate = (
-                self.total_connections / total_elapsed if total_elapsed > 0 else 0
-            )
-            overall_event_rate = (
-                self.total_events / total_elapsed if total_elapsed > 0 else 0
-            )
+            overall_conn_rate = self.total_connections / total_elapsed if total_elapsed > 0 else 0
+            overall_event_rate = self.total_events / total_elapsed if total_elapsed > 0 else 0
 
             return MetricsSnapshot(
                 active_connections=self.active_connections,
@@ -463,18 +441,13 @@ class DifyWorkflowUser(HttpUser):
             try:
                 # Validate response
                 if response.status_code >= 400:
-                    error_type: ErrorType = (
-                        "http_4xx" if response.status_code < 500 else "http_5xx"
-                    )
+                    error_type: ErrorType = "http_4xx" if response.status_code < 500 else "http_5xx"
                     metrics.record_error(error_type)
                     response.failure(f"HTTP {response.status_code}")
                     return
 
                 content_type = response.headers.get("Content-Type", "")
-                if (
-                    "text/event-stream" not in content_type
-                    and "application/json" not in content_type
-                ):
+                if "text/event-stream" not in content_type and "application/json" not in content_type:
                     logger.error(f"Expected text/event-stream, got: {content_type}")
                     metrics.record_error("invalid_response")
                     response.failure(f"Invalid content type: {content_type}")
@@ -504,9 +477,7 @@ class DifyWorkflowUser(HttpUser):
 
                         # Track inter-event timing
                         if last_event_time:
-                            inter_event_times.append(
-                                (current_time - last_event_time) * 1000
-                            )
+                            inter_event_times.append((current_time - last_event_time) * 1000)
                         last_event_time = current_time
 
                         if first_event_time is None:
@@ -524,20 +495,14 @@ class DifyWorkflowUser(HttpUser):
                                     break
 
                                 try:
-                                    parsed_event: ParsedEventData = json.loads(
-                                        event_data
-                                    )
+                                    parsed_event: ParsedEventData = json.loads(event_data)
                                     # Check for terminal events
                                     if parsed_event.get("event") in TERMINAL_EVENTS:
-                                        logger.debug(
-                                            f"Received terminal event: {parsed_event.get('event')}"
-                                        )
+                                        logger.debug(f"Received terminal event: {parsed_event.get('event')}")
                                         request_success = True
                                         break
                                 except json.JSONDecodeError as e:
-                                    logger.debug(
-                                        f"JSON decode error: {e} for data: {event_data[:100]}"
-                                    )
+                                    logger.debug(f"JSON decode error: {e} for data: {event_data[:100]}")
                                     metrics.record_error("invalid_json")
 
                         except Exception as e:
@@ -610,9 +575,7 @@ def on_test_start(environment: object, **kwargs: object) -> None:
 
                 # Only log on master node in distributed mode
                 is_master = (
-                    not getattr(environment.runner, "worker_id", None)
-                    if hasattr(environment, "runner")
-                    else True
+                    not getattr(environment.runner, "worker_id", None) if hasattr(environment, "runner") else True
                 )
                 if is_master:
                     # Clear previous lines and show updated stats
@@ -647,16 +610,12 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                     logger.info(
                         f"{'Window Samples':<25} {stats.ttfe_samples:>15,d} (last {min(10000, stats.ttfe_total_samples):,d} samples)"
                     )
-                    logger.info(
-                        f"{'Total Samples':<25} {stats.ttfe_total_samples:>15,d}"
-                    )
+                    logger.info(f"{'Total Samples':<25} {stats.ttfe_total_samples:>15,d}")
 
                     # Inter-event latency
                     if stats.inter_event_latency_avg > 0:
                         logger.info("-" * 80)
-                        logger.info(
-                            f"{'INTER-EVENT LATENCY':<25} {'AVG':>15} {'P50':>10} {'P95':>10}"
-                        )
+                        logger.info(f"{'INTER-EVENT LATENCY':<25} {'AVG':>15} {'P50':>10} {'P95':>10}")
                         logger.info(
                             f"{'(ms between events)':<25} {stats.inter_event_latency_avg:>15.1f} {stats.inter_event_latency_p50:>10.1f} {stats.inter_event_latency_p95:>10.1f}"
                         )
@@ -672,9 +631,7 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                     logger.info("=" * 80)
 
                     # Show Locust stats summary
-                    if hasattr(environment, "stats") and hasattr(
-                        environment.stats, "total"
-                    ):
+                    if hasattr(environment, "stats") and hasattr(environment.stats, "total"):
                         total = environment.stats.total
                         if hasattr(total, "num_requests") and total.num_requests > 0:
                             logger.info(
@@ -714,21 +671,15 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info("")
     logger.info("EVENTS")
     logger.info(f"  {'Total Events Received:':<30} {stats.total_events:>10,d}")
-    logger.info(
-        f"  {'Average Throughput:':<30} {stats.overall_event_rate:>10.2f} events/s"
-    )
-    logger.info(
-        f"  {'Final Rate (10s window):':<30} {stats.event_rate:>10.2f} events/s"
-    )
+    logger.info(f"  {'Average Throughput:':<30} {stats.overall_event_rate:>10.2f} events/s")
+    logger.info(f"  {'Final Rate (10s window):':<30} {stats.event_rate:>10.2f} events/s")
 
     logger.info("")
     logger.info("STREAM METRICS")
     logger.info(f"  {'Avg Stream Duration:':<30} {stats.stream_duration_avg:>10.1f} ms")
     logger.info(f"  {'P50 Stream Duration:':<30} {stats.stream_duration_p50:>10.1f} ms")
     logger.info(f"  {'P95 Stream Duration:':<30} {stats.stream_duration_p95:>10.1f} ms")
-    logger.info(
-        f"  {'Avg Events per Stream:':<30} {stats.events_per_stream_avg:>10.1f}"
-    )
+    logger.info(f"  {'Avg Events per Stream:':<30} {stats.events_per_stream_avg:>10.1f}")
 
     logger.info("")
     logger.info("INTER-EVENT LATENCY")
@@ -759,18 +710,12 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info("=" * 80 + "\n")
 
     # Export machine-readable report (only on master node)
-    is_master = (
-        not getattr(environment.runner, "worker_id", None)
-        if hasattr(environment, "runner")
-        else True
-    )
+    is_master = not getattr(environment.runner, "worker_id", None) if hasattr(environment, "runner") else True
     if is_master:
         export_json_report(stats, test_duration, environment)
 
 
-def export_json_report(
-    stats: MetricsSnapshot, duration: float, environment: object
-) -> None:
+def export_json_report(stats: MetricsSnapshot, duration: float, environment: object) -> None:
     """Export metrics to JSON file for CI/CD analysis"""
 
     reports_dir = Path(__file__).parent / "reports"
