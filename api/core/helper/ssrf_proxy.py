@@ -13,18 +13,18 @@ logger = logging.getLogger(__name__)
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
-HTTP_REQUEST_NODE_SSL_VERIFY = True  # Default value for HTTP_REQUEST_NODE_SSL_VERIFY is True
+http_request_node_ssl_verify = True  # Default value for http_request_node_ssl_verify is True
 try:
-    HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
-    http_request_node_ssl_verify_lower = str(HTTP_REQUEST_NODE_SSL_VERIFY).lower()
+    config_value = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
+    http_request_node_ssl_verify_lower = str(config_value).lower()
     if http_request_node_ssl_verify_lower == "true":
-        HTTP_REQUEST_NODE_SSL_VERIFY = True
+        http_request_node_ssl_verify = True
     elif http_request_node_ssl_verify_lower == "false":
-        HTTP_REQUEST_NODE_SSL_VERIFY = False
+        http_request_node_ssl_verify = False
     else:
         raise ValueError("Invalid value. HTTP_REQUEST_NODE_SSL_VERIFY should be 'True' or 'False'")
 except NameError:
-    HTTP_REQUEST_NODE_SSL_VERIFY = True
+    http_request_node_ssl_verify = True
 
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
@@ -51,7 +51,7 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         )
 
     if "ssl_verify" not in kwargs:
-        kwargs["ssl_verify"] = HTTP_REQUEST_NODE_SSL_VERIFY
+        kwargs["ssl_verify"] = http_request_node_ssl_verify
 
     ssl_verify = kwargs.pop("ssl_verify")
 

@@ -31,6 +31,12 @@ class SecurityConfig(BaseSettings):
         description="Duration in minutes for which a password reset token remains valid",
         default=5,
     )
+
+    EMAIL_REGISTER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a email register token remains valid",
+        default=5,
+    )
+
     CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a change email token remains valid",
         default=5,
@@ -639,6 +645,11 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    EMAIL_REGISTER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying email register after exceeding the rate limit.",
+        default=86400,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -794,6 +805,11 @@ class DataSetConfig(BaseSettings):
     PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for message cleanup operations - plan: sandbox",
         default=30,
+    )
+
+    DSL_EXPORT_ENCRYPT_DATASET_ID: bool = Field(
+        description="Enable or disable dataset ID encryption when exporting DSL files",
+        default=True,
     )
 
 

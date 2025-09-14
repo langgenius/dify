@@ -222,8 +222,8 @@ class ConversationService:
                 # Filter for variables created after the last_id
                 stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
 
-            # Apply limit to query
-            query_stmt = stmt.limit(limit)  # Get one extra to check if there are more
+            # Apply limit to query: fetch one extra row to determine has_more
+            query_stmt = stmt.limit(limit + 1)
             rows = session.scalars(query_stmt).all()
 
         has_more = False

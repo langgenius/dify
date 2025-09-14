@@ -18,6 +18,7 @@ from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -64,7 +65,7 @@ class WorkflowConverter:
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
-        new_app.mode = AppMode.ADVANCED_CHAT.value if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
         new_app.icon_type = icon_type or app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
@@ -202,7 +203,7 @@ class WorkflowConverter:
         app_mode_enum = AppMode.value_of(app_model.mode)
         app_config: EasyUIBasedAppConfig
         if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
-            app_model.mode = AppMode.AGENT_CHAT.value
+            app_model.mode = AppMode.AGENT_CHAT
             app_config = AgentChatAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config
             )
@@ -278,7 +279,7 @@ class WorkflowConverter:
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
                     "inputs": inputs,
-                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT.value else "",
+                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT else "",
                 },
             }
 
@@ -420,7 +421,11 @@ class WorkflowConverter:
                     query_in_prompt=False,
                 )
 
-                template = prompt_template_config["prompt_template"].template
+                prompt_template_obj = prompt_template_config["prompt_template"]
+                if not isinstance(prompt_template_obj, PromptTemplateParser):
+                    raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template_obj)}")
+
+                template = prompt_template_obj.template
                 if not template:
                     prompts = []
                 else:
@@ -457,7 +462,11 @@ class WorkflowConverter:
                     query_in_prompt=False,
                 )
 
-                template = prompt_template_config["prompt_template"].template
+                prompt_template_obj = prompt_template_config["prompt_template"]
+                if not isinstance(prompt_template_obj, PromptTemplateParser):
+                    raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template_obj)}")
+
+                template = prompt_template_obj.template
                 template = self._replace_template_variables(
                     template=template,
                     variables=start_node["data"]["variables"],
@@ -467,6 +476,9 @@ class WorkflowConverter:
                 prompts = {"text": template}
 
                 prompt_rules = prompt_template_config["prompt_rules"]
+                if not isinstance(prompt_rules, dict):
+                    raise TypeError(f"Expected dict for prompt_rules, got {type(prompt_rules)}")
+
                 role_prefix = {
                     "user": prompt_rules.get("human_prefix", "Human"),
                     "assistant": prompt_rules.get("assistant_prefix", "Assistant"),
@@ -606,7 +618,7 @@ class WorkflowConverter:
         :param app_model: App instance
         :return: AppMode
         """
-        if app_model.mode == AppMode.COMPLETION.value:
+        if app_model.mode == AppMode.COMPLETION:
             return AppMode.WORKFLOW
         else:
             return AppMode.ADVANCED_CHAT

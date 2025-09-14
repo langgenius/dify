@@ -174,7 +174,7 @@ export const useNodesInteractions = () => {
 
       if (x !== 0 && y !== 0) {
         // selecting a note will trigger a drag stop event with x and y as 0
-        saveStateToHistory(WorkflowHistoryEvent.NodeDragStop)
+        saveStateToHistory(WorkflowHistoryEvent.NodeDragStop, { nodeId: node.id })
       }
     }
   }, [workflowStore, getNodesReadOnly, saveStateToHistory, handleSyncWorkflowDraft])
@@ -423,7 +423,7 @@ export const useNodesInteractions = () => {
       setEdges(newEdges)
 
       handleSyncWorkflowDraft()
-      saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
+      saveStateToHistory(WorkflowHistoryEvent.NodeConnect, { nodeId: targetNode?.id })
     }
     else {
       const {
@@ -659,10 +659,10 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
 
     if (currentNode.type === CUSTOM_NOTE_NODE)
-      saveStateToHistory(WorkflowHistoryEvent.NoteDelete)
+      saveStateToHistory(WorkflowHistoryEvent.NoteDelete, { nodeId: currentNode.id })
 
     else
-      saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
+      saveStateToHistory(WorkflowHistoryEvent.NodeDelete, { nodeId: currentNode.id })
   }, [getNodesReadOnly, store, deleteNodeInspectorVars, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
@@ -699,7 +699,7 @@ export const useNodesInteractions = () => {
       data: {
         ...NODES_INITIAL_DATA[nodeType],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-        ...(toolDefaultValue || {}),
+        ...toolDefaultValue,
         selected: true,
         _showAddVariablePopup: (nodeType === BlockEnum.VariableAssigner || nodeType === BlockEnum.VariableAggregator) && !!prevNodeId,
         _holdAddVariablePopup: false,
@@ -1100,7 +1100,7 @@ export const useNodesInteractions = () => {
       setEdges(newEdges)
     }
     handleSyncWorkflowDraft()
-    saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
   }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
 
   const handleNodeChange = useCallback((
@@ -1131,7 +1131,7 @@ export const useNodesInteractions = () => {
       data: {
         ...NODES_INITIAL_DATA[nodeType],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-        ...(toolDefaultValue || {}),
+        ...toolDefaultValue,
         _connectedSourceHandleIds: [],
         _connectedTargetHandleIds: [],
         selected: currentNode.data.selected,
@@ -1149,9 +1149,7 @@ export const useNodesInteractions = () => {
       zIndex: currentNode.zIndex,
     })
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
-      [
-        ...connectedEdges.map(edge => ({ type: 'remove', edge })),
-      ],
+      connectedEdges.map(edge => ({ type: 'remove', edge })),
       nodes,
     )
     const newNodes = produce(nodes, (draft) => {
@@ -1182,7 +1180,7 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
     handleSyncWorkflowDraft()
 
-    saveStateToHistory(WorkflowHistoryEvent.NodeChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeChange, { nodeId: currentNodeId })
   }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodesCancelSelected = useCallback(() => {
@@ -1404,7 +1402,7 @@ export const useNodesInteractions = () => {
 
       setNodes([...nodes, ...nodesToPaste])
       setEdges([...edges, ...edgesToPaste])
-      saveStateToHistory(WorkflowHistoryEvent.NodePaste)
+      saveStateToHistory(WorkflowHistoryEvent.NodePaste, { nodeId: nodesToPaste?.[0]?.id })
       handleSyncWorkflowDraft()
     }
   }, [getNodesReadOnly, workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft, handleNodeIterationChildrenCopy, handleNodeLoopChildrenCopy])
@@ -1501,7 +1499,7 @@ export const useNodesInteractions = () => {
     })
     setNodes(newNodes)
     handleSyncWorkflowDraft()
-    saveStateToHistory(WorkflowHistoryEvent.NodeResize)
+    saveStateToHistory(WorkflowHistoryEvent.NodeResize, { nodeId })
   }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodeDisconnect = useCallback((nodeId: string) => {

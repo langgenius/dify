@@ -1,8 +1,9 @@
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Optional
+from typing import Any, Concatenate, Optional, ParamSpec, TypeVar
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -17,6 +18,9 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class MatrixoneConfig(BaseModel):
@@ -41,16 +45,6 @@ class MatrixoneConfig(BaseModel):
         if not values["database"]:
             raise ValueError("config database is required")
         return values
-
-
-def ensure_client(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if self.client is None:
-            self.client = self._get_client(None, False)
-        return func(self, *args, **kwargs)
-
-    return wrapper
 
 
 class MatrixoneVector(BaseVector):
@@ -99,9 +93,9 @@ class MatrixoneVector(BaseVector):
                 return client
             try:
                 client.create_full_text_index()
+                redis_client.set(collection_exist_cache_key, 1, ex=3600)
             except Exception:
                 logger.exception("Failed to create full text index")
-            redis_client.set(collection_exist_cache_key, 1, ex=3600)
             return client
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -210,6 +204,19 @@ class MatrixoneVector(BaseVector):
     def delete(self):
         assert self.client is not None
         self.client.delete()
+
+
+T = TypeVar("T", bound=MatrixoneVector)
+
+
+def ensure_client(func: Callable[Concatenate[T, P], R]):
+    @wraps(func)
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
+        if self.client is None:
+            self.client = self._get_client(None, False)
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class MatrixoneVectorFactory(AbstractVectorFactory):

@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 class TencentConfig(BaseModel):
     url: str
-    api_key: Optional[str]
+    api_key: Optional[str] = None
     timeout: float = 30
-    username: Optional[str]
-    database: Optional[str]
+    username: Optional[str] = None
+    database: Optional[str] = None
     index_type: str = "HNSW"
     metric_type: str = "IP"
     shard: int = 1
