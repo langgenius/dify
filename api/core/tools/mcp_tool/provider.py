@@ -25,9 +25,9 @@ class MCPToolProviderController(ToolProviderController):
         provider_id: str,
         tenant_id: str,
         server_url: str,
-        headers: Optional[dict[str, str]] = None,
-        timeout: Optional[float] = None,
-        sse_read_timeout: Optional[float] = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity

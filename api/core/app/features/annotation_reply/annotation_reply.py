@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AnnotationReplyFeature:
     def query(
         self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
-    ) -> Optional[MessageAnnotation]:
+    ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
         :param app_record: app record

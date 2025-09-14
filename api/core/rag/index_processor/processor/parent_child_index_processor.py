@@ -109,7 +109,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     ]
                     vector.create(formatted_child_documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids
         if dataset.indexing_technique == "high_quality":
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
@@ -187,7 +187,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         document_node: Document,
         rules: Rule,
         process_rule_mode: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
     ) -> list[ChildDocument]:
         if not rules.subchunk_segmentation:
             raise ValueError("No subchunk segmentation found in rules.")

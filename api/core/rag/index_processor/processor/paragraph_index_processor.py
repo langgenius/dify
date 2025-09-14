@@ -85,7 +85,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.add_texts(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:

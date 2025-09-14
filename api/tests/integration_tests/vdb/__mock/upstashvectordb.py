@@ -34,7 +34,7 @@ class MockIndex:
         include_vectors: bool = False,
         include_metadata: bool = False,
         filter: str = "",
-        data: Optional[str] = None,
+        data: str | None = None,
         namespace: str = "",
         include_data: bool = False,
     ):

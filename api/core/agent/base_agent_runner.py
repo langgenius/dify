@@ -60,8 +60,8 @@ class BaseAgentRunner(AppRunner):
         message: Message,
         user_id: str,
         model_instance: ModelInstance,
-        memory: Optional[TokenBufferMemory] = None,
-        prompt_messages: Optional[list[PromptMessage]] = None,
+        memory: TokenBufferMemory | None = None,
+        prompt_messages: list[PromptMessage] | None = None,
     ):
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
@@ -112,7 +112,7 @@ class BaseAgentRunner(AppRunner):
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
         self.files = application_generate_entity.files if ModelFeature.VISION in features else []
-        self.query: Optional[str] = ""
+        self.query: str | None = ""
         self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(

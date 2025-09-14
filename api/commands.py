@@ -639,7 +639,7 @@ def old_metadata_migration():
 @click.option("--email", prompt=True, help="Tenant account email.")
 @click.option("--name", prompt=True, help="Workspace name.")
 @click.option("--language", prompt=True, help="Account language, default: en-US.")
-def create_tenant(email: str, language: Optional[str] = None, name: Optional[str] = None):
+def create_tenant(email: str, language: str | None = None, name: str | None = None):
     """
     Create tenant account
     """

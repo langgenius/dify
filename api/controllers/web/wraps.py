@@ -21,7 +21,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def validate_jwt_token(view: Optional[Callable[Concatenate[App, EndUser, P], R]] = None):
+def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = None):
     def decorator(view: Callable[Concatenate[App, EndUser, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):

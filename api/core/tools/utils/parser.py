@@ -198,9 +198,9 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
-    def _get_tool_parameter_type(parameter: dict) -> Optional[ToolParameter.ToolParameterType]:
+    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: Optional[str] = None
+        typ: str | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 

@@ -60,7 +60,7 @@ class ToolFileMessageTransformer:
         messages: Generator[ToolInvokeMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Transform tool message and handle file download
@@ -165,5 +165,5 @@ class ToolFileMessageTransformer:
                 yield message
 
     @classmethod
-    def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
+    def get_tool_file_url(cls, tool_file_id: str, extension: str | None) -> str:
         return f"/files/tools/{tool_file_id}{extension or '.bin'}"

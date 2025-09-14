@@ -39,7 +39,7 @@ class WorkflowTool(Tool):
         entity: ToolEntity,
         runtime: ToolRuntime,
         label: str = "Workflow",
-        thread_pool_id: Optional[str] = None,
+        thread_pool_id: str | None = None,
     ):
         self.workflow_app_id = workflow_app_id
         self.workflow_as_tool_id = workflow_as_tool_id
@@ -63,9 +63,9 @@ class WorkflowTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke the tool

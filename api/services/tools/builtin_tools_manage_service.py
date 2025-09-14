@@ -604,7 +604,7 @@ class BuiltinToolManageService:
         return BuiltinToolProviderSort.sort(result)
 
     @staticmethod
-    def get_builtin_provider(provider_name: str, tenant_id: str) -> Optional[BuiltinToolProvider]:
+    def get_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:
         """
         This method is used to fetch the builtin provider from the database
         1.if the default provider exists, return the default provider
@@ -665,8 +665,8 @@ class BuiltinToolManageService:
     def save_custom_oauth_client_params(
         tenant_id: str,
         provider: str,
-        client_params: Optional[dict] = None,
-        enable_oauth_custom_client: Optional[bool] = None,
+        client_params: dict | None = None,
+        enable_oauth_custom_client: bool | None = None,
     ):
         """
         setup oauth custom client

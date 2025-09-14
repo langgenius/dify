@@ -24,7 +24,7 @@ class BaseAppGenerator:
     def _prepare_user_inputs(
         self,
         *,
-        user_inputs: Optional[Mapping[str, Any]],
+        user_inputs: Mapping[str, Any] | None,
         variables: Sequence["VariableEntity"],
         tenant_id: str,
         strict_type_validation: bool = False,

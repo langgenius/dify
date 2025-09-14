@@ -36,8 +36,8 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: Optional[DocumentModel] = None,
-        notion_access_token: Optional[str] = None,
+        document_model: DocumentModel | None = None,
+        notion_access_token: str | None = None,
     ):
         self._notion_access_token = None
         self._document_model = document_model
@@ -328,7 +328,7 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: Optional[DocumentModel]):
+    def update_last_edited_time(self, document_model: DocumentModel | None):
         if not document_model:
             return
 

@@ -96,7 +96,7 @@ class TokenBufferMemory:
                 return AssistantPromptMessage(content=prompt_message_contents)
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
+        self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
@@ -187,7 +187,7 @@ class TokenBufferMemory:
         human_prefix: str = "Human",
         ai_prefix: str = "Assistant",
         max_token_limit: int = 2000,
-        message_limit: Optional[int] = None,
+        message_limit: int | None = None,
     ) -> str:
         """
         Get history prompt text.

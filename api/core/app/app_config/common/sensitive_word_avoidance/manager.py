@@ -6,7 +6,7 @@ from core.moderation.factory import ModerationFactory
 
 class SensitiveWordAvoidanceConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[SensitiveWordAvoidanceEntity]:
+    def convert(cls, config: dict) -> SensitiveWordAvoidanceEntity | None:
         sensitive_word_avoidance_dict = config.get("sensitive_word_avoidance")
         if not sensitive_word_avoidance_dict:
             return None

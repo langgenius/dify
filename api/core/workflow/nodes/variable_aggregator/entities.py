@@ -33,4 +33,4 @@ class VariableAssignerNodeData(BaseNodeData):
     type: str = "variable-assigner"
     output_type: str
     variables: list[list[str]]
-    advanced_settings: Optional[AdvancedSettings] = None
+    advanced_settings: AdvancedSettings | None = None

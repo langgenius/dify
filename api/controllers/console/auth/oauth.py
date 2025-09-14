@@ -157,8 +157,8 @@ class OAuthCallback(Resource):
         )
 
 
-def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
-    account: Optional[Account] = Account.get_by_openid(provider, user_info.id)
+def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:
+    account: Account | None = Account.get_by_openid(provider, user_info.id)
 
     if not account:
         with Session(db.engine) as session:

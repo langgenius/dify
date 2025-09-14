@@ -13,7 +13,7 @@ class DatasetRetrieverBaseTool(BaseModel, ABC):
     description: str = "use this to retrieve a dataset. "
     tenant_id: str
     top_k: int = 4
-    score_threshold: Optional[float] = None
+    score_threshold: float | None = None
     hit_callbacks: list[DatasetIndexToolCallbackHandler] = []
     return_resource: bool
     retriever_from: str

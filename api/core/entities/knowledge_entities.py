@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class PreviewDetail(BaseModel):
     content: str
-    child_chunks: Optional[list[str]] = None
+    child_chunks: list[str] | None = None
 
 
 class QAPreviewDetail(BaseModel):
@@ -16,4 +16,4 @@ class QAPreviewDetail(BaseModel):
 class IndexingEstimate(BaseModel):
     total_segments: int
     preview: list[PreviewDetail]
-    qa_preview: Optional[list[QAPreviewDetail]] = None
+    qa_preview: list[QAPreviewDetail] | None = None

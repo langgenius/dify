@@ -101,7 +101,7 @@ class BasedGenerateTaskPipeline:
         """
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
-    def _init_output_moderation(self) -> Optional[OutputModeration]:
+    def _init_output_moderation(self) -> OutputModeration | None:
         """
         Init output moderation.
         :return:
@@ -118,7 +118,7 @@ class BasedGenerateTaskPipeline:
             )
         return None
 
-    def handle_output_moderation_when_task_finished(self, completion: str) -> Optional[str]:
+    def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """
         Handle output moderation when task finished.
         :param completion: completion

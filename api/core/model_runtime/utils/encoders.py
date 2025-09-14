@@ -98,7 +98,7 @@ def jsonable_encoder(
     exclude_unset: bool = False,
     exclude_defaults: bool = False,
     exclude_none: bool = False,
-    custom_encoder: Optional[dict[Any, Callable[[Any], Any]]] = None,
+    custom_encoder: dict[Any, Callable[[Any], Any]] | None = None,
     sqlalchemy_safe: bool = True,
 ) -> Any:
     custom_encoder = custom_encoder or {}

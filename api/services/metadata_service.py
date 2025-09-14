@@ -237,7 +237,7 @@ class MetadataService:
                 redis_client.delete(lock_key)
 
     @staticmethod
-    def knowledge_base_metadata_lock_check(dataset_id: Optional[str], document_id: Optional[str]):
+    def knowledge_base_metadata_lock_check(dataset_id: str | None, document_id: str | None):
         if dataset_id:
             lock_key = f"dataset_metadata_lock_{dataset_id}"
             if redis_client.get(lock_key):

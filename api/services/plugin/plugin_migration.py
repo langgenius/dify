@@ -281,7 +281,7 @@ class PluginMigration:
             return result
 
     @classmethod
-    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> Optional[str]:
+    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> str | None:
         """
         Fetch plugin unique identifier using plugin id.
         """

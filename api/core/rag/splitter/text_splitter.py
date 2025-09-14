@@ -71,7 +71,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
-    def create_documents(self, texts: list[str], metadatas: Optional[list[dict]] = None) -> list[Document]:
+    def create_documents(self, texts: list[str], metadatas: list[dict] | None = None) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []
@@ -94,7 +94,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             metadatas.append(doc.metadata or {})
         return self.create_documents(texts, metadatas=metadatas)
 
-    def _join_docs(self, docs: list[str], separator: str) -> Optional[str]:
+    def _join_docs(self, docs: list[str], separator: str) -> str | None:
         text = separator.join(docs)
         text = text.strip()
         if text == "":
@@ -194,7 +194,7 @@ class TokenTextSplitter(TextSplitter):
     def __init__(
         self,
         encoding_name: str = "gpt2",
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         allowed_special: Union[Literal["all"], Set[str]] = set(),
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",
         **kwargs: Any,
@@ -245,7 +245,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
 
     def __init__(
         self,
-        separators: Optional[list[str]] = None,
+        separators: list[str] | None = None,
         keep_separator: bool = True,
         **kwargs: Any,
     ):

@@ -16,14 +16,14 @@ class ApiToolBundle(BaseModel):
     # method
     method: str
     # summary
-    summary: Optional[str] = None
+    summary: str | None = None
     # operation_id
-    operation_id: Optional[str] = None
+    operation_id: str | None = None
     # parameters
-    parameters: Optional[list[ToolParameter]] = None
+    parameters: list[ToolParameter] | None = None
     # author
     author: str
     # icon
-    icon: Optional[str] = None
+    icon: str | None = None
     # openapi operation
     openapi: dict

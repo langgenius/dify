@@ -25,7 +25,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def get_recommend_app_detail(cls, app_id: str) -> Optional[dict]:
+    def get_recommend_app_detail(cls, app_id: str) -> dict | None:
         """
         Get recommend app detail.
         :param app_id: app id

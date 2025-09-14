@@ -31,10 +31,10 @@ class Callback(ABC):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
+        user: str | None = None,
     ):
         """
         Before invoke callback
@@ -60,10 +60,10 @@ class Callback(ABC):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
+        user: str | None = None,
     ):
         """
         On new chunk callback
@@ -90,10 +90,10 @@ class Callback(ABC):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
+        user: str | None = None,
     ):
         """
         After invoke callback
@@ -120,10 +120,10 @@ class Callback(ABC):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
+        user: str | None = None,
     ):
         """
         Invoke error callback
@@ -141,7 +141,7 @@ class Callback(ABC):
         """
         raise NotImplementedError()
 
-    def print_text(self, text: str, color: Optional[str] = None, end: str = ""):
+    def print_text(self, text: str, color: str | None = None, end: str = ""):
         """Print text with highlighting and no end characters."""
         text_to_print = self._get_colored_text(text, color) if color else text
         print(text_to_print, end=end)

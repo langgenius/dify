@@ -212,7 +212,7 @@ class BaseSession(
         request: SendRequestT,
         result_type: type[ReceiveResultT],
         request_read_timeout_seconds: timedelta | None = None,
-        metadata: Optional[MessageMetadata] = None,
+        metadata: MessageMetadata | None = None,
     ) -> ReceiveResultT:
         """
         Sends a request and wait for a response. Raises an McpError if the

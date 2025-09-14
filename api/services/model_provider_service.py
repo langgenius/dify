@@ -52,7 +52,7 @@ class ModelProviderService:
 
         return provider_configuration
 
-    def get_provider_list(self, tenant_id: str, model_type: Optional[str] = None) -> list[ProviderResponse]:
+    def get_provider_list(self, tenant_id: str, model_type: str | None = None) -> list[ProviderResponse]:
         """
         get provider list.
 
@@ -129,8 +129,8 @@ class ModelProviderService:
         ]
 
     def get_provider_credential(
-        self, tenant_id: str, provider: str, credential_id: Optional[str] = None
-    ) -> Optional[dict]:
+        self, tenant_id: str, provider: str, credential_id: str | None = None
+    ) -> dict | None:
         """
         get provider credentials.
 
@@ -216,7 +216,7 @@ class ModelProviderService:
 
     def get_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str | None
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Retrieve model-specific credentials.
 
@@ -449,7 +449,7 @@ class ModelProviderService:
 
         return model_schema.parameter_rules if model_schema else []
 
-    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelResponse]:
+    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> DefaultModelResponse | None:
         """
         get default model of model type.
 
@@ -498,7 +498,7 @@ class ModelProviderService:
 
     def get_model_provider_icon(
         self, tenant_id: str, provider: str, icon_type: str, lang: str
-    ) -> tuple[Optional[bytes], Optional[str]]:
+    ) -> tuple[bytes | None, str | None]:
         """
         get model provider icon.
 

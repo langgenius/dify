@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-_tokenizer: Optional[Any] = None
+_tokenizer: Any | None = None
 _lock = Lock()
 
 

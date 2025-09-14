@@ -43,5 +43,5 @@ class MetadataCondition(BaseModel):
     Metadata Condition.
     """
 
-    logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
+    logical_operator: Literal["and", "or"] | None = "and"
+    conditions: list[Condition] | None = Field(default=None, deprecated=True)

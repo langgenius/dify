@@ -207,7 +207,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:  # type: ignore
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
         """
         get tool by name
 

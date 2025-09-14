@@ -18,7 +18,7 @@ class ModelConfig(BaseModel):
 
 class ContextConfig(BaseModel):
     enabled: bool
-    variable_selector: Optional[list[str]] = None
+    variable_selector: list[str] | None = None
 
 
 class VisionConfigOptions(BaseModel):
@@ -51,18 +51,18 @@ class PromptConfig(BaseModel):
 
 class LLMNodeChatModelMessage(ChatModelMessage):
     text: str = ""
-    jinja2_text: Optional[str] = None
+    jinja2_text: str | None = None
 
 
 class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
-    jinja2_text: Optional[str] = None
+    jinja2_text: str | None = None
 
 
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)
-    memory: Optional[MemoryConfig] = None
+    memory: MemoryConfig | None = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
     structured_output: Mapping[str, Any] | None = None

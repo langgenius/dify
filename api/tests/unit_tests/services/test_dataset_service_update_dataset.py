@@ -24,9 +24,9 @@ class DatasetUpdateTestDataFactory:
         description: str = "old_description",
         indexing_technique: str = "high_quality",
         retrieval_model: str = "old_model",
-        embedding_model_provider: Optional[str] = None,
-        embedding_model: Optional[str] = None,
-        collection_binding_id: Optional[str] = None,
+        embedding_model_provider: str | None = None,
+        embedding_model: str | None = None,
+        collection_binding_id: str | None = None,
         **kwargs,
     ) -> Mock:
         """Create a mock dataset with specified attributes."""

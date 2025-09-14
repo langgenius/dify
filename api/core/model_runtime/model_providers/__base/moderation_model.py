@@ -18,7 +18,7 @@ class ModerationModel(AIModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, credentials: dict, text: str, user: Optional[str] = None) -> bool:
+    def invoke(self, model: str, credentials: dict, text: str, user: str | None = None) -> bool:
         """
         Invoke moderation model
 

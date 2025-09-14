@@ -206,9 +206,9 @@ class ModelProviderFactory:
     def get_models(
         self,
         *,
-        provider: Optional[str] = None,
-        model_type: Optional[ModelType] = None,
-        provider_configs: Optional[list[ProviderConfig]] = None,
+        provider: str | None = None,
+        model_type: ModelType | None = None,
+        provider_configs: list[ProviderConfig] | None = None,
     ) -> list[SimpleProviderEntity]:
         """
         Get all models for given model type

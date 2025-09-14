@@ -40,17 +40,17 @@ class HostedOpenAiConfig(BaseSettings):
     Configuration for hosted OpenAI service
     """
 
-    HOSTED_OPENAI_API_KEY: Optional[str] = Field(
+    HOSTED_OPENAI_API_KEY: str | None = Field(
         description="API key for hosted OpenAI service",
         default=None,
     )
 
-    HOSTED_OPENAI_API_BASE: Optional[str] = Field(
+    HOSTED_OPENAI_API_BASE: str | None = Field(
         description="Base URL for hosted OpenAI API",
         default=None,
     )
 
-    HOSTED_OPENAI_API_ORGANIZATION: Optional[str] = Field(
+    HOSTED_OPENAI_API_ORGANIZATION: str | None = Field(
         description="Organization ID for hosted OpenAI service",
         default=None,
     )
@@ -110,12 +110,12 @@ class HostedAzureOpenAiConfig(BaseSettings):
         default=False,
     )
 
-    HOSTED_AZURE_OPENAI_API_KEY: Optional[str] = Field(
+    HOSTED_AZURE_OPENAI_API_KEY: str | None = Field(
         description="API key for hosted Azure OpenAI service",
         default=None,
     )
 
-    HOSTED_AZURE_OPENAI_API_BASE: Optional[str] = Field(
+    HOSTED_AZURE_OPENAI_API_BASE: str | None = Field(
         description="Base URL for hosted Azure OpenAI API",
         default=None,
     )
@@ -131,12 +131,12 @@ class HostedAnthropicConfig(BaseSettings):
     Configuration for hosted Anthropic service
     """
 
-    HOSTED_ANTHROPIC_API_BASE: Optional[str] = Field(
+    HOSTED_ANTHROPIC_API_BASE: str | None = Field(
         description="Base URL for hosted Anthropic API",
         default=None,
     )
 
-    HOSTED_ANTHROPIC_API_KEY: Optional[str] = Field(
+    HOSTED_ANTHROPIC_API_KEY: str | None = Field(
         description="API key for hosted Anthropic service",
         default=None,
     )

@@ -6,7 +6,7 @@ from core.agent.prompt.template import REACT_PROMPT_TEMPLATES
 
 class AgentConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[AgentEntity]:
+    def convert(cls, config: dict) -> AgentEntity | None:
         """
         Convert model config to model config
 

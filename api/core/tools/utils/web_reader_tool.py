@@ -27,7 +27,7 @@ def page_result(text: str, cursor: int, max_length: int) -> str:
     return text[cursor : cursor + max_length]
 
 
-def get_url(url: str, user_agent: Optional[str] = None) -> str:
+def get_url(url: str, user_agent: str | None = None) -> str:
     """Fetch URL and return the contents as a string."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"

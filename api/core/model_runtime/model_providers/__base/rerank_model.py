@@ -19,9 +19,9 @@ class RerankModel(AIModel):
         credentials: dict,
         query: str,
         docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model

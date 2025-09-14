@@ -23,7 +23,7 @@ class AgentHistoryPromptTransform(PromptTransform):
         model_config: ModelConfigWithCredentialsEntity,
         prompt_messages: list[PromptMessage],
         history_messages: list[PromptMessage],
-        memory: Optional[TokenBufferMemory] = None,
+        memory: TokenBufferMemory | None = None,
     ):
         self.model_config = model_config
         self.prompt_messages = prompt_messages

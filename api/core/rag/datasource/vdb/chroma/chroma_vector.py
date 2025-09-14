@@ -20,8 +20,8 @@ class ChromaConfig(BaseModel):
     port: int
     tenant: str
     database: str
-    auth_provider: Optional[str] = None
-    auth_credentials: Optional[str] = None
+    auth_provider: str | None = None
+    auth_credentials: str | None = None
 
     def to_chroma_params(self):
         settings = Settings(

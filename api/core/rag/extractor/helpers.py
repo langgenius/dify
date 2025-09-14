@@ -7,11 +7,11 @@ from typing import NamedTuple, Optional, cast
 class FileEncoding(NamedTuple):
     """A file encoding as the NamedTuple."""
 
-    encoding: Optional[str]
+    encoding: str | None
     """The encoding of the file."""
     confidence: float
     """The confidence of the encoding."""
-    language: Optional[str]
+    language: str | None
     """The language of the file."""
 
 

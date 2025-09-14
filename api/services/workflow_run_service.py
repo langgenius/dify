@@ -80,7 +80,7 @@ class WorkflowRunService:
             last_id=last_id,
         )
 
-    def get_workflow_run(self, app_model: App, run_id: str) -> Optional[WorkflowRun]:
+    def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun | None:
         """
         Get workflow run detail
 

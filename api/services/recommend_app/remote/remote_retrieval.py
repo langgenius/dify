@@ -36,7 +36,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return RecommendAppType.REMOTE
 
     @classmethod
-    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> Optional[dict]:
+    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> dict | None:
         """
         Fetch recommended app detail from dify official.
         :param app_id: App ID

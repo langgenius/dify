@@ -130,7 +130,7 @@ class Workflow(Base):
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -499,18 +499,18 @@ class WorkflowRun(Base):
     type: Mapped[str] = mapped_column(String(255))
     triggered_from: Mapped[str] = mapped_column(String(255))
     version: Mapped[str] = mapped_column(String(255))
-    graph: Mapped[Optional[str]] = mapped_column(sa.Text)
-    inputs: Mapped[Optional[str]] = mapped_column(sa.Text)
+    graph: Mapped[str | None] = mapped_column(sa.Text)
+    inputs: Mapped[str | None] = mapped_column(sa.Text)
     status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
-    outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
-    error: Mapped[Optional[str]] = mapped_column(sa.Text)
+    outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}")
+    error: Mapped[str | None] = mapped_column(sa.Text)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
     @property
@@ -706,24 +706,24 @@ class WorkflowNodeExecutionModel(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
     triggered_from: Mapped[str] = mapped_column(String(255))
-    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     index: Mapped[int] = mapped_column(sa.Integer)
-    predecessor_node_id: Mapped[Optional[str]] = mapped_column(String(255))
-    node_execution_id: Mapped[Optional[str]] = mapped_column(String(255))
+    predecessor_node_id: Mapped[str | None] = mapped_column(String(255))
+    node_execution_id: Mapped[str | None] = mapped_column(String(255))
     node_id: Mapped[str] = mapped_column(String(255))
     node_type: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
-    inputs: Mapped[Optional[str]] = mapped_column(sa.Text)
-    process_data: Mapped[Optional[str]] = mapped_column(sa.Text)
-    outputs: Mapped[Optional[str]] = mapped_column(sa.Text)
+    inputs: Mapped[str | None] = mapped_column(sa.Text)
+    process_data: Mapped[str | None] = mapped_column(sa.Text)
+    outputs: Mapped[str | None] = mapped_column(sa.Text)
     status: Mapped[str] = mapped_column(String(255))
-    error: Mapped[Optional[str]] = mapped_column(sa.Text)
+    error: Mapped[str | None] = mapped_column(sa.Text)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
-    execution_metadata: Mapped[Optional[str]] = mapped_column(sa.Text)
+    execution_metadata: Mapped[str | None] = mapped_column(sa.Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     created_by_role: Mapped[str] = mapped_column(String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     @property
     def created_by_account(self):

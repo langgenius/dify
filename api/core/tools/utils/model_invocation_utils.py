@@ -51,7 +51,7 @@ class ModelInvocationUtils:
         if not schema:
             raise InvokeModelError("No model schema found")
 
-        max_tokens: Optional[int] = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE, None)
+        max_tokens: int | None = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE, None)
         if max_tokens is None:
             return 2048
 

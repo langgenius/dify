@@ -9,12 +9,12 @@ class WeaviateConfig(BaseSettings):
     Configuration settings for Weaviate vector database
     """
 
-    WEAVIATE_ENDPOINT: Optional[str] = Field(
+    WEAVIATE_ENDPOINT: str | None = Field(
         description="URL of the Weaviate server (e.g., 'http://localhost:8080' or 'https://weaviate.example.com')",
         default=None,
     )
 
-    WEAVIATE_API_KEY: Optional[str] = Field(
+    WEAVIATE_API_KEY: str | None = Field(
         description="API key for authenticating with the Weaviate server",
         default=None,
     )

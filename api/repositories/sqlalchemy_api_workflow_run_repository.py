@@ -61,7 +61,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         triggered_from: str,
         limit: int = 20,
-        last_id: Optional[str] = None,
+        last_id: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -107,7 +107,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         run_id: str,
-    ) -> Optional[WorkflowRun]:
+    ) -> WorkflowRun | None:
         """
         Get a specific workflow run by ID with tenant and app isolation.
         """

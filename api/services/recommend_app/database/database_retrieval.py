@@ -72,7 +72,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         return {"recommended_apps": recommended_apps_result, "categories": sorted(categories)}
 
     @classmethod
-    def fetch_recommended_app_detail_from_db(cls, app_id: str) -> Optional[dict]:
+    def fetch_recommended_app_detail_from_db(cls, app_id: str) -> dict | None:
         """
         Fetch recommended app detail from db.
         :param app_id: App ID

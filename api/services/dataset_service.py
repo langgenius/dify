@@ -185,16 +185,16 @@ class DatasetService:
     def create_empty_dataset(
         tenant_id: str,
         name: str,
-        description: Optional[str],
-        indexing_technique: Optional[str],
+        description: str | None,
+        indexing_technique: str | None,
         account: Account,
-        permission: Optional[str] = None,
+        permission: str | None = None,
         provider: str = "vendor",
-        external_knowledge_api_id: Optional[str] = None,
-        external_knowledge_id: Optional[str] = None,
-        embedding_model_provider: Optional[str] = None,
-        embedding_model_name: Optional[str] = None,
-        retrieval_model: Optional[RetrievalModel] = None,
+        external_knowledge_api_id: str | None = None,
+        external_knowledge_id: str | None = None,
+        embedding_model_provider: str | None = None,
+        embedding_model_name: str | None = None,
+        retrieval_model: RetrievalModel | None = None,
     ):
         # check if dataset name already exists
         if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
@@ -257,8 +257,8 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def get_dataset(dataset_id) -> Optional[Dataset]:
-        dataset: Optional[Dataset] = db.session.query(Dataset).filter_by(id=dataset_id).first()
+    def get_dataset(dataset_id) -> Dataset | None:
+        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
         return dataset
 
     @staticmethod
@@ -694,7 +694,7 @@ class DatasetService:
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
-    def check_dataset_operator_permission(user: Optional[Account] = None, dataset: Optional[Dataset] = None):
+    def check_dataset_operator_permission(user: Account | None = None, dataset: Dataset | None = None):
         if not dataset:
             raise ValueError("Dataset not found")
 
@@ -868,7 +868,7 @@ class DocumentService:
     }
 
     @staticmethod
-    def get_document(dataset_id: str, document_id: Optional[str] = None) -> Optional[Document]:
+    def get_document(dataset_id: str, document_id: str | None = None) -> Document | None:
         if document_id:
             document = (
                 db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
@@ -878,7 +878,7 @@ class DocumentService:
             return None
 
     @staticmethod
-    def get_document_by_id(document_id: str) -> Optional[Document]:
+    def get_document_by_id(document_id: str) -> Document | None:
         document = db.session.query(Document).where(Document.id == document_id).first()
 
         return document
@@ -1099,7 +1099,7 @@ class DocumentService:
         dataset: Dataset,
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
-        dataset_process_rule: Optional[DatasetProcessRule] = None,
+        dataset_process_rule: DatasetProcessRule | None = None,
         created_from: str = "web",
     ) -> tuple[list[Document], str]:
         # check doc_form
@@ -1463,7 +1463,7 @@ class DocumentService:
         dataset: Dataset,
         document_data: KnowledgeConfig,
         account: Account,
-        dataset_process_rule: Optional[DatasetProcessRule] = None,
+        dataset_process_rule: DatasetProcessRule | None = None,
         created_from: str = "web",
     ):
         assert isinstance(current_user, Account)
@@ -2655,7 +2655,7 @@ class SegmentService:
 
     @classmethod
     def get_child_chunks(
-        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: Optional[str] = None
+        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str | None = None
     ):
         assert isinstance(current_user, Account)
 
@@ -2674,7 +2674,7 @@ class SegmentService:
         return db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
     @classmethod
-    def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> Optional[ChildChunk]:
+    def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
         result = (
             db.session.query(ChildChunk)
@@ -2711,7 +2711,7 @@ class SegmentService:
         return paginated_segments.items, paginated_segments.total
 
     @classmethod
-    def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> Optional[DocumentSegment]:
+    def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
         """Get a segment by its ID."""
         result = (
             db.session.query(DocumentSegment)

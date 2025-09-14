@@ -42,7 +42,7 @@ class AppAnnotationService:
             if not message:
                 raise NotFound("Message Not Exists.")
 
-            annotation: Optional[MessageAnnotation] = message.annotation
+            annotation: MessageAnnotation | None = message.annotation
             # save the message annotation
             if annotation:
                 annotation.content = args["answer"]

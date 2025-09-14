@@ -160,7 +160,7 @@ class RelytVector(BaseVector):
         else:
             return None
 
-    def delete_by_uuids(self, ids: Optional[list[str]] = None):
+    def delete_by_uuids(self, ids: list[str] | None = None):
         """Delete by vector IDs.
 
         Args:
@@ -241,7 +241,7 @@ class RelytVector(BaseVector):
         self,
         embedding: list[float],
         k: int = 4,
-        filter: Optional[dict] = None,
+        filter: dict | None = None,
     ) -> list[tuple[Document, float]]:
         # Add the filter if provided
 

@@ -37,7 +37,7 @@ _TEXT_COLOR_MAPPING = {
 
 class WorkflowLoggingCallback(WorkflowCallback):
     def __init__(self):
-        self.current_node_id: Optional[str] = None
+        self.current_node_id: str | None = None
 
     def on_event(self, event: GraphEngineEvent):
         if isinstance(event, GraphRunStartedEvent):
@@ -250,7 +250,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         )
         self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
 
-    def print_text(self, text: str, color: Optional[str] = None, end: str = "\n"):
+    def print_text(self, text: str, color: str | None = None, end: str = "\n"):
         """Print text with highlighting and no end characters."""
         text_to_print = self._get_colored_text(text, color) if color else text
         print(f"{text_to_print}", end=end)

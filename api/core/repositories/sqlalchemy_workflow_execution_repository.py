@@ -44,8 +44,8 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowRunTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowRunTriggeredFrom | None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.

@@ -140,7 +140,7 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeStartStreamResponse]:
+    ) -> NodeStartStreamResponse | None:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -190,7 +190,7 @@ class WorkflowResponseConverter:
         | QueueNodeExceptionEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeFinishStreamResponse]:
+    ) -> NodeFinishStreamResponse | None:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -235,7 +235,7 @@ class WorkflowResponseConverter:
         event: QueueNodeRetryEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
+    ) -> Union[NodeRetryStreamResponse, NodeFinishStreamResponse] | None:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:

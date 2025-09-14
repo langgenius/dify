@@ -20,7 +20,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
     account: str
     account_password: str
     namespace: str = "dify"
-    namespace_password: Optional[str] = None
+    namespace_password: str | None = None
     metrics: str = "cosine"
     read_timeout: int = 60000
 

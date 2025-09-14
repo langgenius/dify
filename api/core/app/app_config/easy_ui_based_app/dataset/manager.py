@@ -14,7 +14,7 @@ from services.dataset_service import DatasetService
 
 class DatasetConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[DatasetEntity]:
+    def convert(cls, config: dict) -> DatasetEntity | None:
         """
         Convert model config to model config
 

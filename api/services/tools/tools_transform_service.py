@@ -94,7 +94,7 @@ class ToolTransformService:
     def builtin_provider_to_user_provider(
         cls,
         provider_controller: BuiltinToolProviderController | PluginToolProviderController,
-        db_provider: Optional[BuiltinToolProvider],
+        db_provider: BuiltinToolProvider | None,
         decrypt_credentials: bool = True,
     ) -> ToolProviderApiEntity:
         """

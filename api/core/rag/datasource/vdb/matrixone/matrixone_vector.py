@@ -74,7 +74,7 @@ class MatrixoneVector(BaseVector):
             self.client = self._get_client(len(embeddings[0]), True)
         return self.add_texts(texts, embeddings)
 
-    def _get_client(self, dimension: Optional[int] = None, create_table: bool = False) -> MoVectorClient:
+    def _get_client(self, dimension: int | None = None, create_table: bool = False) -> MoVectorClient:
         """
         Create a new client for the collection.
 

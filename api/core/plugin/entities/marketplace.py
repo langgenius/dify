@@ -19,11 +19,11 @@ class MarketplacePluginDeclaration(BaseModel):
     resource: PluginResourceRequirements = Field(
         ..., description="Specification of computational resources needed to run the plugin"
     )
-    endpoint: Optional[EndpointProviderDeclaration] = Field(
+    endpoint: EndpointProviderDeclaration | None = Field(
         None, description="Configuration for the plugin's API endpoint, if applicable"
     )
-    model: Optional[ProviderEntity] = Field(None, description="Details of the AI model used by the plugin, if any")
-    tool: Optional[ToolProviderEntity] = Field(
+    model: ProviderEntity | None = Field(None, description="Details of the AI model used by the plugin, if any")
+    tool: ToolProviderEntity | None = Field(
         None, description="Information about the tool functionality provided by the plugin, if any"
     )
     latest_version: str = Field(

@@ -82,10 +82,10 @@ class PluginAgentClient(BasePluginClient):
         agent_provider: str,
         agent_strategy: str,
         agent_params: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
-        context: Optional[PluginInvokeContext] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        context: PluginInvokeContext | None = None,
     ) -> Generator[AgentInvokeMessage, None, None]:
         """
         Invoke the agent with the given tenant, user, plugin, provider, name and parameters.

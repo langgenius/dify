@@ -390,7 +390,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        conversation: Optional[Conversation] = None,
+        conversation: Conversation | None = None,
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:

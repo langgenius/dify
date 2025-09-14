@@ -9,9 +9,9 @@ class I18nObject(BaseModel):
     """
 
     en_US: str
-    zh_Hans: Optional[str] = Field(default=None)
-    pt_BR: Optional[str] = Field(default=None)
-    ja_JP: Optional[str] = Field(default=None)
+    zh_Hans: str | None = Field(default=None)
+    pt_BR: str | None = Field(default=None)
+    ja_JP: str | None = Field(default=None)
 
     def __init__(self, **data):
         super().__init__(**data)

@@ -12,7 +12,7 @@ from core.workflow.nodes.base.entities import NumberType
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
-    icon: Optional[str] = Field(
+    icon: str | None = Field(
         default=None, description="The icon of the option, can be a url or a base64 encoded image"
     )
 
@@ -74,15 +74,15 @@ class PluginParameterTemplate(BaseModel):
 class PluginParameter(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
-    placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
+    placeholder: I18nObject | None = Field(default=None, description="The placeholder presented to the user")
     scope: str | None = None
-    auto_generate: Optional[PluginParameterAutoGenerate] = None
-    template: Optional[PluginParameterTemplate] = None
+    auto_generate: PluginParameterAutoGenerate | None = None
+    template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Optional[Union[float, int, str]] = None
-    min: Optional[Union[float, int]] = None
-    max: Optional[Union[float, int]] = None
-    precision: Optional[int] = None
+    default: Union[float, int, str] | None = None
+    min: Union[float, int] | None = None
+    max: Union[float, int] | None = None
+    precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
     @field_validator("options", mode="before")

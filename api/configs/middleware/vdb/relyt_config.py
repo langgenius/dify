@@ -9,7 +9,7 @@ class RelytConfig(BaseSettings):
     Configuration settings for Relyt database
     """
 
-    RELYT_HOST: Optional[str] = Field(
+    RELYT_HOST: str | None = Field(
         description="Hostname or IP address of the Relyt server (e.g., 'localhost' or 'relyt.example.com')",
         default=None,
     )
@@ -19,17 +19,17 @@ class RelytConfig(BaseSettings):
         default=9200,
     )
 
-    RELYT_USER: Optional[str] = Field(
+    RELYT_USER: str | None = Field(
         description="Username for authenticating with the Relyt database",
         default=None,
     )
 
-    RELYT_PASSWORD: Optional[str] = Field(
+    RELYT_PASSWORD: str | None = Field(
         description="Password for authenticating with the Relyt database",
         default=None,
     )
 
-    RELYT_DATABASE: Optional[str] = Field(
+    RELYT_DATABASE: str | None = Field(
         description="Name of the Relyt database to connect to (default is 'default')",
         default="default",
     )

@@ -37,7 +37,7 @@ class DocumentBatchUpdateTestDataFactory:
         enabled: bool = True,
         archived: bool = False,
         indexing_status: str = "completed",
-        completed_at: Optional[datetime.datetime] = None,
+        completed_at: datetime.datetime | None = None,
         **kwargs,
     ) -> Mock:
         """Create a mock document with specified attributes."""

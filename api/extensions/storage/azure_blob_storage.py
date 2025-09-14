@@ -21,7 +21,7 @@ class AzureBlobStorage(BaseStorage):
         self.account_name = dify_config.AZURE_BLOB_ACCOUNT_NAME
         self.account_key = dify_config.AZURE_BLOB_ACCOUNT_KEY
 
-        self.credential: Optional[ChainedTokenCredential] = None
+        self.credential: ChainedTokenCredential | None = None
         if self.account_key == "managedidentity":
             self.credential = DefaultAzureCredential()
         else:

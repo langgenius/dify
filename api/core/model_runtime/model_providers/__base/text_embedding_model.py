@@ -24,7 +24,7 @@ class TextEmbeddingModel(AIModel):
         model: str,
         credentials: dict,
         texts: list[str],
-        user: Optional[str] = None,
+        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """

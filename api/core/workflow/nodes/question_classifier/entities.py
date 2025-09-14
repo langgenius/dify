@@ -16,8 +16,8 @@ class QuestionClassifierNodeData(BaseNodeData):
     query_variable_selector: list[str]
     model: ModelConfig
     classes: list[ClassConfig]
-    instruction: Optional[str] = None
-    memory: Optional[MemoryConfig] = None
+    instruction: str | None = None
+    memory: MemoryConfig | None = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
 
     @property

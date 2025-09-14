@@ -24,8 +24,8 @@ class CodeExecutionError(Exception):
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: Optional[str] = None
-        error: Optional[str] = None
+        stdout: str | None = None
+        error: str | None = None
 
     code: int
     message: str

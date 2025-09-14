@@ -9,7 +9,7 @@ class BaiduVectorDBConfig(BaseSettings):
     Configuration settings for Baidu Vector Database
     """
 
-    BAIDU_VECTOR_DB_ENDPOINT: Optional[str] = Field(
+    BAIDU_VECTOR_DB_ENDPOINT: str | None = Field(
         description="URL of the Baidu Vector Database service (e.g., 'http://vdb.bj.baidubce.com')",
         default=None,
     )
@@ -19,17 +19,17 @@ class BaiduVectorDBConfig(BaseSettings):
         default=30000,
     )
 
-    BAIDU_VECTOR_DB_ACCOUNT: Optional[str] = Field(
+    BAIDU_VECTOR_DB_ACCOUNT: str | None = Field(
         description="Account for authenticating with the Baidu Vector Database",
         default=None,
     )
 
-    BAIDU_VECTOR_DB_API_KEY: Optional[str] = Field(
+    BAIDU_VECTOR_DB_API_KEY: str | None = Field(
         description="API key for authenticating with the Baidu Vector Database service",
         default=None,
     )
 
-    BAIDU_VECTOR_DB_DATABASE: Optional[str] = Field(
+    BAIDU_VECTOR_DB_DATABASE: str | None = Field(
         description="Name of the specific Baidu Vector Database to connect to",
         default=None,
     )

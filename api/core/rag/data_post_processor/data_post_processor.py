@@ -18,8 +18,8 @@ class DataPostProcessor:
         self,
         tenant_id: str,
         reranking_mode: str,
-        reranking_model: Optional[dict] = None,
-        weights: Optional[dict] = None,
+        reranking_model: dict | None = None,
+        weights: dict | None = None,
         reorder_enabled: bool = False,
     ):
         self.rerank_runner = self._get_rerank_runner(reranking_mode, tenant_id, reranking_model, weights)
@@ -29,9 +29,9 @@ class DataPostProcessor:
         self,
         query: str,
         documents: list[Document],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> list[Document]:
         if self.rerank_runner:
             documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user)
@@ -45,9 +45,9 @@ class DataPostProcessor:
         self,
         reranking_mode: str,
         tenant_id: str,
-        reranking_model: Optional[dict] = None,
-        weights: Optional[dict] = None,
-    ) -> Optional[BaseRerankRunner]:
+        reranking_model: dict | None = None,
+        weights: dict | None = None,
+    ) -> BaseRerankRunner | None:
         if reranking_mode == RerankMode.WEIGHTED_SCORE.value and weights:
             runner = RerankRunnerFactory.create_rerank_runner(
                 runner_type=reranking_mode,
@@ -74,12 +74,12 @@ class DataPostProcessor:
             return runner
         return None
 
-    def _get_reorder_runner(self, reorder_enabled) -> Optional[ReorderRunner]:
+    def _get_reorder_runner(self, reorder_enabled) -> ReorderRunner | None:
         if reorder_enabled:
             return ReorderRunner()
         return None
 
-    def _get_rerank_model_instance(self, tenant_id: str, reranking_model: Optional[dict]) -> ModelInstance | None:
+    def _get_rerank_model_instance(self, tenant_id: str, reranking_model: dict | None) -> ModelInstance | None:
         if reranking_model:
             try:
                 model_manager = ModelManager()

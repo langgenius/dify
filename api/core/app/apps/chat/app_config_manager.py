@@ -32,8 +32,8 @@ class ChatAppConfigManager(BaseAppConfigManager):
         cls,
         app_model: App,
         app_model_config: AppModelConfig,
-        conversation: Optional[Conversation] = None,
-        override_config_dict: Optional[dict] = None,
+        conversation: Conversation | None = None,
+        override_config_dict: dict | None = None,
     ) -> ChatAppConfig:
         """
         Convert app model config to chat app config

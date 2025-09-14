@@ -45,7 +45,7 @@ class WorkflowExecution(BaseModel):
     graph: Mapping[str, Any] = Field(...)
 
     inputs: Mapping[str, Any] = Field(...)
-    outputs: Optional[Mapping[str, Any]] = None
+    outputs: Mapping[str, Any] | None = None
 
     status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING
     error_message: str = Field(default="")
@@ -54,7 +54,7 @@ class WorkflowExecution(BaseModel):
     exceptions_count: int = Field(default=0)
 
     started_at: datetime = Field(...)
-    finished_at: Optional[datetime] = None
+    finished_at: datetime | None = None
 
     @property
     def elapsed_time(self) -> float:

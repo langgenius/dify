@@ -50,11 +50,11 @@ class AgentScratchpadUnit(BaseModel):
                 "action_input": self.action_input,
             }
 
-    agent_response: Optional[str] = None
-    thought: Optional[str] = None
-    action_str: Optional[str] = None
-    observation: Optional[str] = None
-    action: Optional[Action] = None
+    agent_response: str | None = None
+    thought: str | None = None
+    action_str: str | None = None
+    observation: str | None = None
+    action: Action | None = None
 
     def is_final(self) -> bool:
         """
@@ -81,8 +81,8 @@ class AgentEntity(BaseModel):
     provider: str
     model: str
     strategy: Strategy
-    prompt: Optional[AgentPromptEntity] = None
-    tools: Optional[list[AgentToolEntity]] = None
+    prompt: AgentPromptEntity | None = None
+    tools: list[AgentToolEntity] | None = None
     max_iteration: int = 10
 
 

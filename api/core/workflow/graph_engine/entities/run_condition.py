@@ -10,10 +10,10 @@ class RunCondition(BaseModel):
     type: Literal["branch_identify", "condition"]
     """condition type"""
 
-    branch_identify: Optional[str] = None
+    branch_identify: str | None = None
     """branch identify like: sourceHandle, required when type is branch_identify"""
 
-    conditions: Optional[list[Condition]] = None
+    conditions: list[Condition] | None = None
     """conditions to run the node, required when type is condition"""
 
     @property

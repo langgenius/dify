@@ -123,7 +123,7 @@ class AliyunDataTrace(BaseTraceInstance):
 
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:

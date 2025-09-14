@@ -56,7 +56,7 @@ class Dataset(Base):
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'::character varying"))
     permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'::character varying"))
     data_source_type = mapped_column(String(255))
-    indexing_technique: Mapped[Optional[str]] = mapped_column(String(255))
+    indexing_technique: Mapped[str | None] = mapped_column(String(255))
     index_struct = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -330,42 +330,42 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
-    processing_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # parsing
     file_id = mapped_column(sa.Text, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
-    parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
+    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # cleaning
-    cleaning_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # split
-    splitting_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # indexing
-    tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    indexing_latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # pause
-    is_paused: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
     paused_by = mapped_column(StringUUID, nullable=True)
-    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # error
     error = mapped_column(sa.Text, nullable=True)
-    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # basic fields
     indexing_status = mapped_column(String(255), nullable=False, server_default=sa.text("'waiting'::character varying"))
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
-    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
@@ -677,17 +677,17 @@ class DocumentSegment(Base):
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(sa.Text, nullable=True)
-    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
     def dataset(self):
@@ -829,8 +829,8 @@ class ChildChunk(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
-    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(sa.Text, nullable=True)
 
     @property

@@ -37,7 +37,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
     dataset_id: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
     retrieve_config: DatasetRetrieveConfigEntity
     inputs: dict
 
