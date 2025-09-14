@@ -40,7 +40,7 @@ def test_file_preview_valid_replaced():
     assert url not in out
 
 
-def test_file_preview_misspelled_not_replaced_after_fix():
+def test_file_preview_misspelled_not_replaced():
     """
     Misspelled endpoint 'file-previe?timestamp=' should NOT be rewritten.
     """
@@ -69,7 +69,7 @@ def test_image_preview_valid_replaced():
     assert url not in out
 
 
-def test_image_preview_misspelled_not_replaced_after_fix():
+def test_image_preview_misspelled_not_replaced():
     """
     Misspelled endpoint 'image-previe?timestamp=' should NOT be rewritten.
     """
