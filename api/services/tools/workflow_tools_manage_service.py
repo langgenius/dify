@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
@@ -186,7 +186,9 @@ class WorkflowToolManageService:
         :param tenant_id: the tenant id
         :return: the list of tools
         """
-        db_tools = db.session.query(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id).all()
+        db_tools = db.session.scalars(
+            select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
+        ).all()
 
         tools: list[WorkflowToolProviderController] = []
         for provider in db_tools:

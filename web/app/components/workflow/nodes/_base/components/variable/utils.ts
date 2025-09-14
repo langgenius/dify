@@ -589,7 +589,7 @@ const formatItem = (
       return false
 
     const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
-    return obj?.children && ((obj?.children as Var[]).length > 0 || Object.keys((obj?.children as StructuredOutput)?.schema?.properties || {}).length > 0)
+    return hasValidChildren(obj?.children)
   }).map((v) => {
     const isFile = v.type === VarType.file
 
@@ -813,7 +813,7 @@ export const getVarType = ({
   if (isIterationInnerVar) {
     if (valueSelector[1] === 'item') {
       const itemType = getIterationItemType({
-        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        valueSelector: (parentNode?.data as any)?.iterator_selector || [],
         beforeNodesOutputVars,
       })
       return itemType
@@ -832,7 +832,7 @@ export const getVarType = ({
   if (isLoopInnerVar) {
     if (valueSelector[1] === 'item') {
       const itemType = getLoopItemType({
-        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        valueSelector: (parentNode?.data as any)?.iterator_selector || [],
         beforeNodesOutputVars,
       })
       return itemType

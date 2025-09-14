@@ -65,7 +65,7 @@ class WorkflowConverter:
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
-        new_app.mode = AppMode.ADVANCED_CHAT.value if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
         new_app.icon_type = icon_type or app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
@@ -203,7 +203,7 @@ class WorkflowConverter:
         app_mode_enum = AppMode.value_of(app_model.mode)
         app_config: EasyUIBasedAppConfig
         if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
-            app_model.mode = AppMode.AGENT_CHAT.value
+            app_model.mode = AppMode.AGENT_CHAT
             app_config = AgentChatAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config
             )
@@ -279,7 +279,7 @@ class WorkflowConverter:
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
                     "inputs": inputs,
-                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT.value else "",
+                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT else "",
                 },
             }
 
@@ -618,7 +618,7 @@ class WorkflowConverter:
         :param app_model: App instance
         :return: AppMode
         """
-        if app_model.mode == AppMode.COMPLETION.value:
+        if app_model.mode == AppMode.COMPLETION:
             return AppMode.WORKFLOW
         else:
             return AppMode.ADVANCED_CHAT
