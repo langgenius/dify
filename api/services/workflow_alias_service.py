@@ -51,8 +51,8 @@ class WorkflowAliasService:
             existing_alias.workflow_id = request.workflow_id
             existing_alias.updated_at = func.current_timestamp()
 
-            existing_alias._is_transferred = True
-            existing_alias._old_workflow_id = old_workflow_id
+            existing_alias._is_transferred = True  # type: ignore[reportPrivateUsage]
+            existing_alias._old_workflow_id = old_workflow_id  # type: ignore[reportPrivateUsage]
             return existing_alias
 
         alias = WorkflowNameAlias(

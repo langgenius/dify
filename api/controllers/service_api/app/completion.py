@@ -200,10 +200,9 @@ class ChatApi(Resource):
 
         args = chat_parser.parse_args()
 
-        if args.get("workflow_alias"):
-            workflow_id = self._fetch_workflow_id_by_alias(
-                app_model=app_model, workflow_alias=args.get("workflow_alias")
-            )
+        workflow_alias = args.get("workflow_alias")
+        if workflow_alias:
+            workflow_id = self._fetch_workflow_id_by_alias(app_model=app_model, workflow_alias=workflow_alias)
             args["workflow_id"] = workflow_id
 
         external_trace_id = get_external_trace_id(request)

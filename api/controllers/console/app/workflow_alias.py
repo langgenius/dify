@@ -40,7 +40,7 @@ class WorkflowAliasApi(Resource):
     )
     def get(self, app_model: App):
         assert isinstance(current_user, Account)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -99,7 +99,7 @@ class WorkflowAliasApi(Resource):
     )
     def post(self, app_model: App):
         assert isinstance(current_user, Account)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -116,8 +116,8 @@ class WorkflowAliasApi(Resource):
         try:
             request = WorkflowAliasArgs(
                 app_id=app_model.id,
-                workflow_id=workflow_id.strip(),
-                name=name.strip(),
+                workflow_id=workflow_id.strip() if workflow_id else "",
+                name=name.strip() if name else "",
             )
 
             alias = workflow_alias_service.create_or_update_alias(
@@ -151,7 +151,7 @@ class WorkflowAliasApi(Resource):
     )
     def delete(self, app_model: App, alias_id: str):
         assert isinstance(current_user, Account)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         workflow_alias_service = WorkflowAliasService()
