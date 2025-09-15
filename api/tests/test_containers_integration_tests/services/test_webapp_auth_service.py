@@ -1,3 +1,5 @@
+import time
+import uuid
 from unittest.mock import patch
 
 import pytest
@@ -248,9 +250,15 @@ class TestWebAppAuthService:
         - Proper error handling for non-existent accounts
         - Correct exception type and message
         """
-        # Arrange: Use non-existent email
-        fake = Faker()
-        non_existent_email = fake.email()
+        # Arrange: Generate a guaranteed non-existent email
+        # Use UUID and timestamp to ensure uniqueness
+        unique_id = str(uuid.uuid4()).replace("-", "")
+        timestamp = str(int(time.time() * 1000000))  # microseconds
+        non_existent_email = f"nonexistent_{unique_id}_{timestamp}@test-domain-that-never-exists.invalid"
+
+        # Double-check this email doesn't exist in the database
+        existing_account = db_session_with_containers.query(Account).filter_by(email=non_existent_email).first()
+        assert existing_account is None, f"Test email {non_existent_email} already exists in database"
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountNotFoundError):
