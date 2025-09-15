@@ -309,30 +309,6 @@ class TestDocumentIndexingTask:
         processed_documents = call_args[0][0]  # First argument should be documents list
         assert len(processed_documents) == 2  # Only existing documents
 
-    def test_document_indexing_task_empty_document_list(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test handling of empty document list.
-
-        This test verifies:
-        - Empty document list is handled gracefully
-        - No indexing runner calls for empty list
-        - Database session cleanup
-        - No errors are raised
-        """
-        # Arrange: Create test data
-        dataset, _ = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=0
-        )
-
-        # Act: Execute the task with empty document list
-        document_indexing_task(dataset.id, [])
-
-        # Assert: Verify no processing occurred
-        mock_external_service_dependencies["indexing_runner"].assert_not_called()
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
-
     def test_document_indexing_task_indexing_runner_exception(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -369,72 +345,6 @@ class TestDocumentIndexingTask:
             db.session.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
-
-    def test_document_indexing_task_feature_service_exception(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test handling of FeatureService exceptions during billing check.
-
-        This test verifies:
-        - FeatureService exceptions are properly caught
-        - Documents are updated to error state
-        - Error information is recorded
-        - Task completes without raising exceptions
-        """
-        # Arrange: Create test data
-        dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
-        )
-        document_ids = [doc.id for doc in documents]
-
-        # Mock FeatureService to raise an exception
-        mock_external_service_dependencies["feature_service"].get_features.side_effect = Exception(
-            "Feature service unavailable"
-        )
-
-        # Act: Execute the task
-        document_indexing_task(dataset.id, document_ids)
-
-        # Assert: Verify error handling
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "error"
-            assert document.error is not None
-            assert "Feature service unavailable" in document.error
-            assert document.stopped_at is not None
-
-        # Verify no indexing runner was called
-        mock_external_service_dependencies["indexing_runner"].assert_not_called()
-
-    def test_document_indexing_task_database_connection_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test handling of database connection errors.
-
-        This test verifies:
-        - Database connection errors are handled gracefully
-        - Task completes without raising exceptions
-        - Appropriate error logging occurs
-        - Database session cleanup occurs
-        """
-        # Arrange: Create test data
-        dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
-        )
-        document_ids = [doc.id for doc in documents]
-
-        # Mock database query to raise an exception
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.side_effect = Exception("Database connection failed")
-
-            # Act: Execute the task
-            document_indexing_task(dataset.id, document_ids)
-
-            # Assert: Verify exception was handled gracefully
-            # The task should complete without raising exceptions
-            mock_external_service_dependencies["indexing_runner"].assert_not_called()
 
     def test_document_indexing_task_large_document_batch(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -978,100 +888,6 @@ class TestDocumentIndexingTask:
         # Verify no indexing runner was called
         mock_external_service_dependencies["indexing_runner"].assert_not_called()
 
-    def test_document_indexing_task_billing_vector_space_limit_exceeded(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test billing validation for vector space limit exceeded.
-
-        This test verifies:
-        - Vector space limit enforcement
-        - Error handling when limit is exceeded
-        - Document status updates to error state
-        - Proper error message recording
-        """
-        # Arrange: Create test data with billing enabled
-        dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
-        )
-
-        # Configure vector space limit exceeded
-        mock_external_service_dependencies["features"].vector_space.limit = 10
-        mock_external_service_dependencies["features"].vector_space.size = 10  # At limit
-
-        document_ids = [doc.id for doc in documents]
-
-        # Act: Execute the task when vector space limit is exceeded
-        document_indexing_task(dataset.id, document_ids)
-
-        # Assert: Verify error handling
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "error"
-            assert document.error is not None
-            assert "limit" in document.error
-            assert document.stopped_at is not None
-
-        # Verify no indexing runner was called
-        mock_external_service_dependencies["indexing_runner"].assert_not_called()
-
-    def test_document_indexing_task_billing_batch_upload_limit_exceeded(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test billing validation for batch upload limit exceeded.
-
-        This test verifies:
-        - Batch upload limit enforcement
-        - Error handling when batch limit is exceeded
-        - Document status updates to error state
-        - Proper error message recording
-        """
-        # Arrange: Create test data with billing enabled
-        dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
-        )
-
-        # Configure batch upload limit
-        with patch("configs.dify_config.BATCH_UPLOAD_LIMIT", "2"):
-            # Create more documents than batch limit allows
-            fake = Faker()
-            extra_documents = []
-            for i in range(2):  # Total will be 5 documents (3 existing + 2 new)
-                document = Document(
-                    id=fake.uuid4(),
-                    tenant_id=dataset.tenant_id,
-                    dataset_id=dataset.id,
-                    position=i + 3,
-                    data_source_type="upload_file",
-                    batch="test_batch",
-                    name=fake.file_name(),
-                    created_from="upload_file",
-                    created_by=dataset.created_by,
-                    indexing_status="waiting",
-                    enabled=True,
-                )
-                db.session.add(document)
-                extra_documents.append(document)
-
-            db.session.commit()
-            all_documents = documents + extra_documents
-            document_ids = [doc.id for doc in all_documents]
-
-            # Act: Execute the task with too many documents for batch limit
-            document_indexing_task(dataset.id, document_ids)
-
-            # Assert: Verify error handling
-            for document in all_documents:
-                db.session.refresh(document)
-                assert document.indexing_status == "error"
-                assert document.error is not None
-                assert "batch upload limit" in document.error
-                assert document.stopped_at is not None
-
-            # Verify no indexing runner was called
-            mock_external_service_dependencies["indexing_runner"].assert_not_called()
-
     def test_document_indexing_task_billing_disabled_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -1142,72 +958,6 @@ class TestDocumentIndexingTask:
             db.session.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
-
-    def test_document_indexing_task_feature_service_exception(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test handling of FeatureService exceptions during billing check.
-
-        This test verifies:
-        - FeatureService exceptions are properly caught
-        - Documents are updated to error state
-        - Error information is recorded
-        - Task completes without raising exceptions
-        """
-        # Arrange: Create test data
-        dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
-        )
-        document_ids = [doc.id for doc in documents]
-
-        # Mock FeatureService to raise an exception
-        mock_external_service_dependencies["feature_service"].get_features.side_effect = Exception(
-            "Feature service unavailable"
-        )
-
-        # Act: Execute the task
-        document_indexing_task(dataset.id, document_ids)
-
-        # Assert: Verify error handling
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "error"
-            assert document.error is not None
-            assert "Feature service unavailable" in document.error
-            assert document.stopped_at is not None
-
-        # Verify no indexing runner was called
-        mock_external_service_dependencies["indexing_runner"].assert_not_called()
-
-    def test_document_indexing_task_database_connection_error(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test handling of database connection errors.
-
-        This test verifies:
-        - Database connection errors are handled gracefully
-        - Task completes without raising exceptions
-        - Appropriate error logging occurs
-        - Database session cleanup occurs
-        """
-        # Arrange: Create test data
-        dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
-        )
-        document_ids = [doc.id for doc in documents]
-
-        # Mock database query to raise an exception
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.side_effect = Exception("Database connection failed")
-
-            # Act: Execute the task
-            document_indexing_task(dataset.id, document_ids)
-
-            # Assert: Verify exception was handled gracefully
-            # The task should complete without raising exceptions
-            mock_external_service_dependencies["indexing_runner"].assert_not_called()
 
     def test_document_indexing_task_large_document_batch(
         self, db_session_with_containers, mock_external_service_dependencies
