@@ -127,7 +127,7 @@ export const useDeleteWorkflowAlias = (appId: string) => {
 
   return useMutation({
     mutationFn: async (aliasId: string) => {
-      return del(`/apps/${appId}/workflow-aliases?alias_id=${aliasId}`)
+      return del(`/apps/${appId}/workflow-aliases/${aliasId}`)
     },
     onSuccess: (data, variables) => {
       // Instead of invalidating all queries, update the specific cache

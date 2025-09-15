@@ -118,12 +118,14 @@ class WorkflowAliasApi(Resource):
                 app_id=app_model.id,
                 workflow_id=workflow_id.strip() if workflow_id else "",
                 name=name.strip() if name else "",
+                created_by=current_user.id,
             )
 
             alias = workflow_alias_service.create_or_update_alias(
                 session=db.session,
                 request=request,
             )
+            db.session.commit()
 
             return alias
 
@@ -162,6 +164,7 @@ class WorkflowAliasApi(Resource):
                 alias_id=alias_id,
                 app_id=app_model.id,
             )
+            db.session.commit()
 
             return {"message": "Workflow alias deleted successfully"}
 
