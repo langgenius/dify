@@ -19,7 +19,7 @@ class WorkflowAliasArgs(BaseModel):
     app_id: str = Field(..., description="App ID")
     workflow_id: str = Field(..., description="Workflow ID")
     name: str = Field(..., description="Alias name", max_length=255)
-    created_by: Optional[str] = Field(default=None, description="User ID who created the alias")
+    created_by: str | None = Field(default=None, description="User ID who created the alias")
 
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class WorkflowAliasService:
         self,
         session: Union[Session, "scoped_session"],
         app_id: str,
-        workflow_ids: Optional[list[str]] = None,
+        workflow_ids: list[str] | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[WorkflowNameAlias]:
@@ -94,7 +94,7 @@ class WorkflowAliasService:
         session: Union[Session, "scoped_session"],
         app_id: str,
         name: str,
-    ) -> Optional[Workflow]:
+    ) -> Workflow | None:
         alias = session.scalar(
             select(WorkflowNameAlias).where(
                 WorkflowNameAlias.app_id == app_id,
