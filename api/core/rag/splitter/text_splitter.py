@@ -110,8 +110,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         docs = []
         current_doc: list[str] = []
         total = 0
-        for i,d in enumerate(splits):
-            _len = lengths[i]
+        for d, _len in zip(splits, lengths):
             if total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size:
                 if total > self._chunk_size:
                     logger.warning(
