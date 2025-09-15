@@ -1,16 +1,17 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import type { WorkflowComment } from '@/service/workflow-comment'
+import Avatar from '@/app/components/base/avatar'
+import type { WorkflowCommentList } from '@/service/workflow-comment'
 
 type CommentIconProps = {
-  comment: WorkflowComment
+  comment: WorkflowCommentList
   onClick: () => void
 }
 
 export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => {
   return (
     <div
-      className="absolute z-40 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600"
+      className="absolute z-40 cursor-pointer"
       style={{
         left: comment.position_x,
         top: comment.position_y,
@@ -18,8 +19,19 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => 
       }}
       onClick={onClick}
     >
-      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-medium text-blue-500">
-        {'A'}
+      <div className="relative h-14 w-14 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full">
+        <div className="absolute inset-1 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="h-10 w-10 overflow-hidden rounded-full">
+              <Avatar
+                avatar={comment.created_by_account.avatar_url}
+                name={comment.created_by_account.name}
+                size={40}
+                className="h-full w-full"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

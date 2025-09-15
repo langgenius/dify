@@ -1,6 +1,6 @@
 from flask_restful import fields
 
-from libs.helper import TimestampField
+from libs.helper import AvatarUrlField, TimestampField
 
 # Basic account fields for comment creators/resolvers
 comment_account_fields = {"id": fields.String, "name": fields.String, "email": fields.String}
@@ -26,7 +26,7 @@ workflow_comment_participant_fields = {
     "id": fields.String,
     "name": fields.String,
     "email": fields.String,
-    "avatar": fields.String,
+    "avatar_url": AvatarUrlField,
 }
 
 # Basic comment fields (for list views)

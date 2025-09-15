@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import type { WorkflowComment } from '@/service/workflow-comment'
-import { createWorkflowComment } from '@/service/workflow-comment'
+import { createWorkflowComment, fetchWorkflowComments } from '@/service/workflow-comment'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -13,6 +13,29 @@ export const useWorkflowComment = () => {
   const pendingComment = useStore(s => s.pendingComment)
   const setPendingComment = useStore(s => s.setPendingComment)
   const [comments, setComments] = useState<WorkflowComment[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // 加载评论列表
+  const loadComments = useCallback(async () => {
+    if (!appId) return
+
+    setLoading(true)
+    try {
+      const commentsData = await fetchWorkflowComments(appId)
+      setComments(commentsData)
+    }
+ catch (error) {
+      console.error('Failed to fetch comments:', error)
+    }
+ finally {
+      setLoading(false)
+    }
+  }, [appId])
+
+  // 初始化时加载评论
+  useEffect(() => {
+    loadComments()
+  }, [loadComments])
 
   const handleCommentSubmit = useCallback(async (content: string) => {
     if (!pendingComment) return
@@ -77,10 +100,12 @@ export const useWorkflowComment = () => {
 
   return {
     comments,
+    loading,
     pendingComment,
     handleCommentSubmit,
     handleCommentCancel,
     handleCommentIconClick,
     handleCreateComment,
+    loadComments,
   }
 }

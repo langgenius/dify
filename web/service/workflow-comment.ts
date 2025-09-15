@@ -1,26 +1,56 @@
 import { del, get, post, put } from './base'
 import type { CommonResponse } from '@/models/common'
 
-export type WorkflowComment = {
+export type UserProfile = {
   id: string
-  app_id: string
+  name: string
+  email: string
+  avatar_url?: string
+}
+
+export type WorkflowCommentList = {
+  id: string
   position_x: number
   position_y: number
   content: string
   created_by: string
+  created_by_account: UserProfile
   created_at: string
   updated_at: string
   resolved: boolean
   resolved_by?: string
+  resolved_by_account?: UserProfile
   resolved_at?: string
-  mentioned_user_ids: string[]
-  replies_count: number
-  author: {
-    id: string
-    name: string
-    email: string
-    avatar?: string
-  }
+  mention_count: number
+  reply_count: number
+  participants: UserProfile[]
+}
+
+export type WorkflowCommentDetail = {
+  id: string
+  position_x: number
+  position_y: number
+  content: string
+  created_by: string
+  created_by_account: UserProfile
+  created_at: string
+  updated_at: string
+  resolved: boolean
+  resolved_by?: string
+  resolved_by_account?: UserProfile
+  resolved_at?: string
+  replies: []
+  mentions: []
+}
+
+export type WorkflowCommentCreateRes = {
+  id: string
+  created_at: string
+}
+
+export type WorkflowCommentUpdateRes = {
+  id: string
+  updated_at: string
 }
 
 export type WorkflowCommentReply = {
@@ -58,21 +88,21 @@ export type CreateReplyParams = {
   mentioned_user_ids?: string[]
 }
 
-export const fetchWorkflowComments = async (appId: string): Promise<WorkflowComment[]> => {
-  const response = await get<{ data: WorkflowComment[] }>(`apps/${appId}/workflow/comments`)
+export const fetchWorkflowComments = async (appId: string): Promise<WorkflowCommentList[]> => {
+  const response = await get<{ data: WorkflowCommentList[] }>(`apps/${appId}/workflow/comments`)
   return response.data
 }
 
-export const createWorkflowComment = async (appId: string, params: CreateCommentParams): Promise<WorkflowComment> => {
-  return post<WorkflowComment>(`apps/${appId}/workflow/comments`, { body: params })
+export const createWorkflowComment = async (appId: string, params: CreateCommentParams): Promise<WorkflowCommentCreateRes> => {
+  return post<WorkflowCommentCreateRes>(`apps/${appId}/workflow/comments`, { body: params })
 }
 
-export const fetchWorkflowComment = async (appId: string, commentId: string): Promise<WorkflowComment> => {
-  return get<WorkflowComment>(`apps/${appId}/workflow/comments/${commentId}`)
+export const fetchWorkflowComment = async (appId: string, commentId: string): Promise<WorkflowCommentDetail> => {
+  return get<WorkflowCommentDetail>(`apps/${appId}/workflow/comments/${commentId}`)
 }
 
-export const updateWorkflowComment = async (appId: string, commentId: string, params: UpdateCommentParams): Promise<WorkflowComment> => {
-  return put<WorkflowComment>(`apps/${appId}/workflow/comments/${commentId}`, { body: params })
+export const updateWorkflowComment = async (appId: string, commentId: string, params: UpdateCommentParams): Promise<WorkflowCommentUpdateRes> => {
+  return put<WorkflowCommentUpdateRes>(`apps/${appId}/workflow/comments/${commentId}`, { body: params })
 }
 
 export const deleteWorkflowComment = async (appId: string, commentId: string): Promise<CommonResponse> => {
