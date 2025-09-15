@@ -91,8 +91,8 @@ importers:
         specifier: ^0.30.0
         version: 0.30.0
       '@lexical/text':
-        specifier: ^0.30.0
-        version: 0.30.0
+        specifier: ^0.35.0
+        version: 0.35.0
       '@lexical/utils':
         specifier: ^0.30.0
         version: 0.30.0
@@ -2118,6 +2118,9 @@ packages:
 
   '@lexical/text@0.30.0':
     resolution: {integrity: sha512-P0ptriFwwP/hoDpz/MoBbzHxrFHqh0kCGzASWUdRZ1zrU0yPvJ9vV/UNMhyolH7xx+eAGI1Yl+m74NlpGmXqTg==}
+
+  '@lexical/text@0.35.0':
+    resolution: {integrity: sha512-uaMh46BkysV8hK8wQwp5g/ByZW+2hPDt8ahAErxtf8NuzQem1FHG/f5RTchmFqqUDVHO3qLNTv4AehEGmXv8MA==}
 
   '@lexical/utils@0.30.0':
     resolution: {integrity: sha512-VJlAUhupCZmnbYYX3zMWovd4viu2guR01sAqKGbbOMbP+4rlaymixFbinvNPaRKDBloOARi+fpiveQFxnyr/Ew==}
@@ -6353,6 +6356,9 @@ packages:
 
   lexical@0.30.0:
     resolution: {integrity: sha512-6gxYeXaJiAcreJD0whCofvO0MuJmnWoIgIl1w7L5FTigfhnEohuCx2SoI/oywzfzXE9gzZnyr3rVvZrMItPL8A==}
+
+  lexical@0.35.0:
+    resolution: {integrity: sha512-3VuV8xXhh5xJA6tzvfDvE0YBCMkIZUmxtRilJQDDdCgJCc+eut6qAv2qbN+pbqvarqcQqPN1UF+8YvsjmyOZpw==}
 
   lib0@0.2.114:
     resolution: {integrity: sha512-gcxmNFzA4hv8UYi8j43uPlQ7CGcyMJ2KQb5kZASw6SnAKAf10hK12i2fjrS3Cl/ugZa5Ui6WwIu1/6MIXiHttQ==}
@@ -10776,6 +10782,10 @@ snapshots:
   '@lexical/text@0.30.0':
     dependencies:
       lexical: 0.30.0
+
+  '@lexical/text@0.35.0':
+    dependencies:
+      lexical: 0.35.0
 
   '@lexical/utils@0.30.0':
     dependencies:
@@ -15864,6 +15874,8 @@ snapshots:
       type-check: 0.4.0
 
   lexical@0.30.0: {}
+
+  lexical@0.35.0: {}
 
   lib0@0.2.114:
     dependencies:
