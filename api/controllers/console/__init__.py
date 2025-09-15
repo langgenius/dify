@@ -133,6 +133,7 @@ __all__ += [
     "login",
     "oauth",
     "oauth_server",
+    "email_register"
 ]
 
 # Import billing controllers
