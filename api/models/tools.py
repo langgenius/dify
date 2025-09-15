@@ -1,7 +1,7 @@
 import json
 from collections.abc import Mapping
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa

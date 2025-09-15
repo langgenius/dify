@@ -9,7 +9,6 @@ import contextvars
 import queue
 import threading
 import time
-from typing import Optional
 from unittest.mock import MagicMock
 
 from flask import Flask, g

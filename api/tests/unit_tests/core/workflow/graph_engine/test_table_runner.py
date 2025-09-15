@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
