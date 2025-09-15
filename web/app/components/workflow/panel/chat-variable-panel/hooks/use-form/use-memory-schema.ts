@@ -118,7 +118,6 @@ export const useMemorySchema = () => {
       label: 'Node',
       type: FormTypeEnum.nodeSelector,
       fieldClassName: 'flex justify-between',
-      inputClassName: 'w-[102px]',
       default: '',
       show_on: [
         {
