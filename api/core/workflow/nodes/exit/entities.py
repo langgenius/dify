@@ -10,10 +10,3 @@ class ExitNodeData(BaseNodeData):
     """
 
     outputs: list[VariableSelector] = Field(default_factory=list)
-
-
-class ExitStreamParam(BaseModel):
-    """
-    ExitStreamParam entity
-    """
-    pass
