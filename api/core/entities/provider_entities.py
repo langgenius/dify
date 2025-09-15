@@ -1,5 +1,5 @@
 from enum import StrEnum, auto
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,7 +49,7 @@ class SystemConfigurationStatus(StrEnum):
 
 class RestrictModel(BaseModel):
     model: str
-    base_model_name: Optional[str] = None
+    base_model_name: str | None = None
     model_type: ModelType
 
     # pydantic configs
@@ -84,9 +84,9 @@ class SystemConfiguration(BaseModel):
     """
 
     enabled: bool
-    current_quota_type: Optional[ProviderQuotaType] = None
+    current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: Optional[dict] = None
+    credentials: dict | None = None
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -95,8 +95,8 @@ class CustomProviderConfiguration(BaseModel):
     """
 
     credentials: dict
-    current_credential_id: Optional[str] = None
-    current_credential_name: Optional[str] = None
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
     available_credentials: list[CredentialConfiguration] = []
 
 
@@ -108,10 +108,10 @@ class CustomModelConfiguration(BaseModel):
     model: str
     model_type: ModelType
     credentials: dict | None = None
-    current_credential_id: Optional[str] = None
-    current_credential_name: Optional[str] = None
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
     available_model_credentials: list[CredentialConfiguration] = []
-    unadded_to_model_list: Optional[bool] = False
+    unadded_to_model_list: bool | None = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -131,7 +131,7 @@ class CustomConfiguration(BaseModel):
     Model class for provider custom configuration.
     """
 
-    provider: Optional[CustomProviderConfiguration] = None
+    provider: CustomProviderConfiguration | None = None
     models: list[CustomModelConfiguration] = []
     can_added_models: list[UnaddedModelConfiguration] = []
 
@@ -205,12 +205,12 @@ class ProviderConfig(BasicProviderConfig):
 
     scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
     required: bool = False
-    default: Optional[Union[int, str, float, bool]] = None
-    options: Optional[list[Option]] = None
-    label: Optional[I18nObject] = None
-    help: Optional[I18nObject] = None
-    url: Optional[str] = None
-    placeholder: Optional[I18nObject] = None
+    default: Union[int, str, float, bool] | None = None
+    options: list[Option] | None = None
+    label: I18nObject | None = None
+    help: I18nObject | None = None
+    url: str | None = None
+    placeholder: I18nObject | None = None
 
     def to_basic_provider_config(self) -> BasicProviderConfig:
         return BasicProviderConfig(type=self.type, name=self.name)

@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, ParamSpec, TypeVar, cast
+from typing import ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -54,7 +54,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view: Optional[Callable[P, R]] = None):
+def get_user_tenant(view: Callable[P, R] | None = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
@@ -106,7 +106,7 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
         return decorator(view)
 
 
-def plugin_data(view: Optional[Callable[P, R]] = None, *, payload_type: type[BaseModel]):
+def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):
     def decorator(view_func: Callable[P, R]):
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
             try:
