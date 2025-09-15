@@ -71,7 +71,7 @@ const ValueContent = ({
       setValue(currentVar.value)
     }
     if (showJSONEditor)
-      setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
+      setJson(currentVar.value != null ? JSON.stringify(currentVar.value, null, 2) : '')
 
     if (showFileEditor)
       setFileValue(formatFileValue(currentVar))

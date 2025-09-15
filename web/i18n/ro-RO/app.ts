@@ -316,6 +316,10 @@ const translation = {
     noMatchingCommands: 'Nu s-au găsit comenzi potrivite',
     tryDifferentSearch: 'Încercați un alt termen de căutare',
     slashHint: 'Tastați / pentru a vedea toate comenzile disponibile',
+    selectToNavigate: 'Selectați pentru a naviga',
+    startTyping: 'Începeți să tastați pentru a căuta',
+    tips: 'Apăsați ↑↓ pentru a naviga',
+    pressEscToClose: 'Apăsați ESC pentru a închide',
   },
 }
 

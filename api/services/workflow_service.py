@@ -828,7 +828,7 @@ class WorkflowService:
         # chatbot convert to workflow mode
         workflow_converter = WorkflowConverter()
 
-        if app_model.mode not in {AppMode.CHAT.value, AppMode.COMPLETION.value}:
+        if app_model.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
@@ -844,11 +844,11 @@ class WorkflowService:
         return new_app
 
     def validate_features_structure(self, app_model: App, features: dict):
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+        if app_model.mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
-        elif app_model.mode == AppMode.WORKFLOW.value:
+        elif app_model.mode == AppMode.WORKFLOW:
             return WorkflowAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )

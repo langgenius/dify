@@ -143,15 +143,11 @@ def test_remove_first_from_array():
     node.init_node_data(node_config["data"])
 
     # Skip the mock assertion since we're in a test environment
-    # Print the variable before running
-    print(f"Before: {variable_pool.get(['conversation', conversation_variable.name]).to_object()}")
 
     # Run the node
     result = list(node.run())
 
-    # Print the variable after running and the result
-    print(f"After: {variable_pool.get(['conversation', conversation_variable.name]).to_object()}")
-    print(f"Result: {result}")
+    # Completed run
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None

@@ -1,5 +1,5 @@
 import json
-
+from typing import Literal
 import requests
 
 
@@ -8,7 +8,7 @@ class DifyClient:
         self.api_key = api_key
         self.base_url = base_url
 
-    def _send_request(self, method, endpoint, json=None, params=None, stream=False):
+    def _send_request(self, method: str, endpoint: str, json: dict | None = None, params: dict | None = None, stream: bool = False):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -31,15 +31,15 @@ class DifyClient:
 
         return response
 
-    def message_feedback(self, message_id, rating, user):
+    def message_feedback(self, message_id: str, rating: Literal["like", "dislike"], user: str):
         data = {"rating": rating, "user": user}
         return self._send_request("POST", f"/messages/{message_id}/feedbacks", data)
 
-    def get_application_parameters(self, user):
+    def get_application_parameters(self, user: str):
         params = {"user": user}
         return self._send_request("GET", "/parameters", params=params)
 
-    def file_upload(self, user, files):
+    def file_upload(self, user: str, files: dict):
         data = {"user": user}
         return self._send_request_with_files(
             "POST", "/files/upload", data=data, files=files
@@ -49,13 +49,13 @@ class DifyClient:
         data = {"text": text, "user": user, "streaming": streaming}
         return self._send_request("POST", "/text-to-audio", json=data)
 
-    def get_meta(self, user):
+    def get_meta(self, user: str):
         params = {"user": user}
         return self._send_request("GET", "/meta", params=params)
 
 
 class CompletionClient(DifyClient):
-    def create_completion_message(self, inputs, response_mode, user, files=None):
+    def create_completion_message(self, inputs: dict, response_mode: Literal["blocking", "streaming"], user: str, files: dict | None = None):
         data = {
             "inputs": inputs,
             "response_mode": response_mode,
@@ -76,7 +76,7 @@ class ChatClient(DifyClient):
         inputs: dict,
         query: str,
         user: str,
-        response_mode: str = "blocking",
+        response_mode: Literal["blocking", "streaming"] = "blocking",
         conversation_id: str | None = None,
         files: dict | None = None,
     ):
@@ -156,7 +156,7 @@ class ChatClient(DifyClient):
 
 class WorkflowClient(DifyClient):
     def run(
-        self, inputs: dict, response_mode: str = "streaming", user: str = "abc-123"
+        self, inputs: dict, response_mode: Literal["blocking", "streaming"] = "streaming", user: str = "abc-123"
     ):
         data = {"inputs": inputs, "response_mode": response_mode, "user": user}
         return self._send_request("POST", "/workflows/run", data)
@@ -172,7 +172,7 @@ class WorkflowClient(DifyClient):
 class KnowledgeBaseClient(DifyClient):
     def __init__(
         self,
-        api_key,
+        api_key: str,
         base_url: str = "https://api.dify.ai/v1",
         dataset_id: str | None = None,
     ):
@@ -241,7 +241,7 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", url, json=data, **kwargs)
 
     def update_document_by_text(
-        self, document_id, name, text, extra_params: dict | None = None, **kwargs
+        self, document_id: str, name: str, text: str, extra_params: dict | None = None, **kwargs
     ):
         """
         Update a document by text.
@@ -278,7 +278,7 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", url, json=data, **kwargs)
 
     def create_document_by_file(
-        self, file_path, original_document_id=None, extra_params: dict | None = None
+        self, file_path: str, original_document_id: str | None = None, extra_params: dict | None = None
     ):
         """
         Create a document by file.
@@ -320,7 +320,7 @@ class KnowledgeBaseClient(DifyClient):
         )
 
     def update_document_by_file(
-        self, document_id, file_path, extra_params: dict | None = None
+        self, document_id: str, file_path: str, extra_params: dict | None = None
     ):
         """
         Update a document by file.
@@ -377,7 +377,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}"
         return self._send_request("DELETE", url)
 
-    def delete_document(self, document_id):
+    def delete_document(self, document_id: str):
         """
         Delete a document.
 
@@ -409,7 +409,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/documents"
         return self._send_request("GET", url, params=params, **kwargs)
 
-    def add_segments(self, document_id, segments, **kwargs):
+    def add_segments(self, document_id: str, segments: list[dict], **kwargs):
         """
         Add segments to a document.
 
@@ -423,7 +423,7 @@ class KnowledgeBaseClient(DifyClient):
 
     def query_segments(
         self,
-        document_id,
+        document_id: str,
         keyword: str | None = None,
         status: str | None = None,
         **kwargs,
@@ -445,7 +445,7 @@ class KnowledgeBaseClient(DifyClient):
             params.update(kwargs["params"])
         return self._send_request("GET", url, params=params, **kwargs)
 
-    def delete_document_segment(self, document_id, segment_id):
+    def delete_document_segment(self, document_id: str, segment_id: str):
         """
         Delete a segment from a document.
 
@@ -456,7 +456,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments/{segment_id}"
         return self._send_request("DELETE", url)
 
-    def update_document_segment(self, document_id, segment_id, segment_data, **kwargs):
+    def update_document_segment(self, document_id: str, segment_id: str, segment_data: dict, **kwargs):
         """
         Update a segment in a document.
 
