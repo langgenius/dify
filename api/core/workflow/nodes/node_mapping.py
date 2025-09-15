@@ -7,6 +7,7 @@ from core.workflow.nodes.code import CodeNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.end import EndNode
 from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.exit import ExitNode
 from core.workflow.nodes.http_request import HttpRequestNode
 from core.workflow.nodes.if_else import IfElseNode
 from core.workflow.nodes.iteration import IterationNode, IterationStartNode
@@ -38,6 +39,10 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     NodeType.END: {
         LATEST_VERSION: EndNode,
         "1": EndNode,
+    },
+    NodeType.EXIT: {
+        LATEST_VERSION: ExitNode,
+        "1": ExitNode,
     },
     NodeType.ANSWER: {
         LATEST_VERSION: AnswerNode,

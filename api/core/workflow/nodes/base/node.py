@@ -65,6 +65,12 @@ class BaseNode:
         try:
             result = self._run()
         except Exception as e:
+            # Check if this is a WorkflowExitException - let it pass through
+            from core.workflow.nodes.exit.exceptions import WorkflowExitException
+            if isinstance(e, WorkflowExitException):
+                # Re-raise WorkflowExitException to be handled by graph engine
+                raise e
+
             logger.exception("Node %s failed to run", self.node_id)
             result = NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,

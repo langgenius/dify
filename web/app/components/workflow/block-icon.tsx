@@ -41,6 +41,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.LLM]: <Llm className={className} />,
     [BlockEnum.Code]: <Code className={className} />,
     [BlockEnum.End]: <End className={className} />,
+    [BlockEnum.Exit]: <End className={className} />,
     [BlockEnum.IfElse]: <IfElse className={className} />,
     [BlockEnum.HttpRequest]: <Http className={className} />,
     [BlockEnum.Answer]: <Answer className={className} />,

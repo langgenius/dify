@@ -26,6 +26,12 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Default,
+    type: BlockEnum.Exit,
+    title: 'Exit',
+    description: 'Terminate workflow with custom status and outputs',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.Answer,
     title: 'Direct Answer',
   },

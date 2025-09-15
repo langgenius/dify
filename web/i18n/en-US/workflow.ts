@@ -244,6 +244,7 @@ const translation = {
   blocks: {
     'start': 'Start',
     'end': 'End',
+    'exit': 'Exit',
     'answer': 'Answer',
     'llm': 'LLM',
     'knowledge-retrieval': 'Knowledge Retrieval',
@@ -420,6 +421,18 @@ const translation = {
         'plain-text': 'Plain Text',
         'structured': 'Structured',
       },
+    },
+    exit: {
+      outputs: 'Outputs',
+      output: {
+        // type: 'output type',
+        variable: 'output variable',
+      },
+      // type: {
+      //   'none': 'None',
+      //   'plain-text': 'Plain Text',
+      //   'structured': 'Structured',
+      // },
     },
     answer: {
       answer: 'Answer',

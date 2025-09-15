@@ -172,13 +172,17 @@ class GraphEngine:
                         )
                         return
                     elif isinstance(item, NodeRunSucceededEvent):
-                        if item.node_type == NodeType.END:
+                        if item.node_type in (NodeType.END, NodeType.EXIT):
                             self.graph_runtime_state.outputs = (
                                 dict(item.route_node_state.node_run_result.outputs)
                                 if item.route_node_state.node_run_result
                                 and item.route_node_state.node_run_result.outputs
                                 else {}
                             )
+                            # For EXIT nodes, the exit info is already in outputs
+                            if item.node_type == NodeType.EXIT and item.route_node_state.node_run_result:
+                                # Exit info is already included in the outputs from the exception handler
+                                pass
                         elif item.node_type == NodeType.ANSWER:
                             if "answer" not in self.graph_runtime_state.outputs:
                                 self.graph_runtime_state.outputs["answer"] = ""
@@ -194,6 +198,13 @@ class GraphEngine:
                                 "answer"
                             ].strip()
                 except Exception as e:
+                    # Check if this is a WorkflowExitException
+                    from core.workflow.nodes.exit.exceptions import WorkflowExitException
+                    if isinstance(e, WorkflowExitException):
+                        # Re-raise to be handled by workflow entry
+                        raise e
+
+                    # Handle regular exceptions as failures
                     logger.exception("Graph run failed")
                     yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
                     return
@@ -303,6 +314,12 @@ class GraphEngine:
                         source_node_state_id=previous_route_node_state.id, target_node_state_id=route_node_state.id
                     )
             except Exception as e:
+                # Check if this is a WorkflowExitException - let it pass through
+                from core.workflow.nodes.exit.exceptions import WorkflowExitException
+                if isinstance(e, WorkflowExitException):
+                    # Re-raise WorkflowExitException to be handled at workflow level
+                    raise e
+
                 route_node_state.status = RouteNodeState.Status.FAILED
                 route_node_state.failed_reason = str(e)
                 yield NodeRunFailedEvent(
@@ -321,10 +338,8 @@ class GraphEngine:
                 raise e
 
             # It may not be necessary, but it is necessary. :)
-            if (
-                self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower()
-                == NodeType.END.value
-            ):
+            node_type_value = self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower()
+            if node_type_value in (NodeType.END.value, NodeType.EXIT.value):
                 break
 
             previous_route_node_state = route_node_state
@@ -585,16 +600,33 @@ class GraphEngine:
                     )
                 )
             except Exception as e:
-                logger.exception("Unknown Error when generating in parallel")
-                q.put(
-                    ParallelBranchRunFailedEvent(
-                        parallel_id=parallel_id,
-                        parallel_start_node_id=parallel_start_node_id,
-                        parent_parallel_id=parent_parallel_id,
-                        parent_parallel_start_node_id=parent_parallel_start_node_id,
-                        error=str(e),
+                # Check if this is a WorkflowExitException - handle it specially
+                from core.workflow.nodes.exit.exceptions import WorkflowExitException
+                if isinstance(e, WorkflowExitException):
+                    # For EXIT nodes in parallel execution, we still want to terminate
+                    # but we need to signal this properly to the parent execution
+                    q.put(
+                        ParallelBranchRunFailedEvent(
+                            parallel_id=parallel_id,
+                            parallel_start_node_id=parallel_start_node_id,
+                            parent_parallel_id=parent_parallel_id,
+                            parent_parallel_start_node_id=parent_parallel_start_node_id,
+                            error="EXIT: workflow terminated",
+                        )
                     )
-                )
+                    # Re-raise to terminate the parallel branch
+                    raise e
+                else:
+                    logger.exception("Unknown Error when generating in parallel")
+                    q.put(
+                        ParallelBranchRunFailedEvent(
+                            parallel_id=parallel_id,
+                            parallel_start_node_id=parallel_start_node_id,
+                            parent_parallel_id=parent_parallel_id,
+                            parent_parallel_start_node_id=parent_parallel_start_node_id,
+                            error=str(e),
+                        )
+                    )
 
     def _run_node(
         self,
@@ -843,8 +875,46 @@ class GraphEngine:
                 )
                 return
             except Exception as e:
-                logger.exception("Node %s run failed", node.title)
-                raise e
+                # Check if this is a WorkflowExitException (import here to avoid circular imports)
+                from core.workflow.nodes.exit.exceptions import WorkflowExitException
+                if isinstance(e, WorkflowExitException):
+                    # Handle exit node - create a successful result with exit outputs
+
+                    # Add exit outputs to variable pool
+                    for variable_key, variable_value in e.outputs.items():
+                        self.graph_runtime_state.variable_pool.add(
+                            [node.node_id, variable_key], variable_value
+                        )
+
+                    # Create a successful run result with exit info in outputs
+                    exit_outputs = dict(e.outputs) if e.outputs else {}
+
+                    run_result = NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=e.outputs,
+                        outputs=exit_outputs,
+                    )
+
+                    route_node_state.set_finished(run_result=run_result)
+
+                    yield NodeRunSucceededEvent(
+                        id=node.id,
+                        node_id=node.node_id,
+                        node_type=node.type_,
+                        node_data=node.get_base_node_data(),
+                        route_node_state=route_node_state,
+                        parallel_id=parallel_id,
+                        parallel_start_node_id=parallel_start_node_id,
+                        parent_parallel_id=parent_parallel_id,
+                        parent_parallel_start_node_id=parent_parallel_start_node_id,
+                        node_version=node.version(),
+                    )
+
+                    # Re-raise the exception to terminate workflow execution
+                    raise e
+                else:
+                    logger.exception("Node %s run failed", node.title)
+                    raise e
 
     def _is_timed_out(self, start_at: float, max_execution_time: int) -> bool:
         """
