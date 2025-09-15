@@ -73,6 +73,7 @@ class MemoryBlockWithVisibility(BaseModel):
     id: str
     name: str
     value: str
+    version: int
     end_user_visible: bool
     end_user_editable: bool
 
