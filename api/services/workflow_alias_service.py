@@ -1,7 +1,7 @@
 import logging
 import re
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
