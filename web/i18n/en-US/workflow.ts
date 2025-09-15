@@ -727,6 +727,12 @@ const translation = {
     triggerPlugin: {
       authorized: 'Authorized',
       notConfigured: 'Not Configured',
+      notAuthorized: 'Not Authorized',
+      selectSubscription: 'Select Subscription',
+      availableSubscriptions: 'Available Subscriptions',
+      addSubscription: 'Add New Subscription',
+      removeSubscription: 'Remove Subscription',
+      subscriptionRemoved: 'Subscription removed successfully',
       error: 'Error',
       configuration: 'Configuration',
       remove: 'Remove',

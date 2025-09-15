@@ -97,6 +97,7 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
   credential_id?: string
+  subscription_id?: string
   _dimmed?: boolean
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 

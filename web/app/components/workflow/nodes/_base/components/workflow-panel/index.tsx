@@ -280,6 +280,15 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
+  const handleSubscriptionChange = useCallback((subscription_id: string) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        subscription_id,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+
   if(logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -428,6 +437,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   <NodeAuth
                     data={data}
                     onAuthorizationChange={handleAuthorizationItemClick}
+                    onSubscriptionChange={handleSubscriptionChange}
                   />
                 </div>
               </PluginAuth>
@@ -451,6 +461,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 <NodeAuth
                   data={data}
                   onAuthorizationChange={handleAuthorizationItemClick}
+                  onSubscriptionChange={handleSubscriptionChange}
                 />
               </div>
             )

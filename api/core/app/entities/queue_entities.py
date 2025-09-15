@@ -52,6 +52,7 @@ class QueueEvent(StrEnum):
     STOP = "stop"
     RETRY = "retry"
 
+
 class AppQueueEvent(BaseModel):
     """
     QueueEvent abstract entity

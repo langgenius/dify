@@ -7,7 +7,6 @@ import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import { canFindTool } from '@/utils'
 import { useStore } from '@/app/components/workflow/store'
 import AuthenticationMenu from '@/app/components/workflow/nodes/trigger-plugin/components/authentication-menu'
-import type { AuthSubscription } from '@/app/components/workflow/nodes/trigger-plugin/components/authentication-menu'
 import {
   useDeleteTriggerSubscription,
   useInitiateTriggerOAuth,
@@ -20,9 +19,10 @@ import { openOAuthPopup } from '@/hooks/use-oauth'
 type NodeAuthProps = {
   data: Node['data']
   onAuthorizationChange: (credential_id: string) => void
+  onSubscriptionChange?: (subscription_id: string) => void
 }
 
-const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
+const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange, onSubscriptionChange }) => {
   const { t } = useTranslation()
   const buildInTools = useStore(s => s.buildInTools)
   const { notify } = useToastContext()
@@ -51,39 +51,8 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
 
-  // Convert TriggerSubscription to AuthSubscription format
-  const authSubscription: AuthSubscription = useMemo(() => {
-    if (data.type !== BlockEnum.TriggerPlugin) {
-      return {
-        id: '',
-        name: '',
-        status: 'not_configured',
-        credentials: {},
-      }
-    }
-
-    const subscription = subscriptions[0] // Use first subscription if available
-
-    if (!subscription) {
-      return {
-        id: '',
-        name: '',
-        status: 'not_configured',
-        credentials: {},
-      }
-    }
-
-    const status = subscription.credential_type === 'unauthorized'
-      ? 'not_configured'
-      : 'authorized'
-
-    return {
-      id: subscription.id,
-      name: subscription.name,
-      status,
-      credentials: subscription.credentials,
-    }
-  }, [data.type, subscriptions])
+  // Get selected subscription ID from node data
+  const selectedSubscriptionId = data.subscription_id
 
   const handleConfigure = useCallback(async () => {
     if (!provider) return
@@ -117,10 +86,35 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
     }
   }, [provider, initiateTriggerOAuth, invalidateSubscriptions, notify])
 
-  const handleRemove = useCallback(() => {
-    if (authSubscription.id)
-      deleteSubscription.mutate(authSubscription.id)
-  }, [authSubscription.id, deleteSubscription])
+  const handleRemove = useCallback(async (subscriptionId: string) => {
+    if (!subscriptionId) return
+
+    try {
+      await deleteSubscription.mutateAsync(subscriptionId)
+      // Clear subscription_id from node data
+      if (onSubscriptionChange)
+        onSubscriptionChange('')
+
+      // Refresh subscriptions list
+      invalidateSubscriptions(provider)
+
+      notify({
+        type: 'success',
+        message: t('workflow.nodes.triggerPlugin.subscriptionRemoved'),
+      })
+    }
+    catch (error: any) {
+      notify({
+        type: 'error',
+        message: `Failed to remove subscription: ${error.message}`,
+      })
+    }
+  }, [deleteSubscription, invalidateSubscriptions, notify, onSubscriptionChange, provider, t])
+
+  const handleSubscriptionSelect = useCallback((subscriptionId: string) => {
+    if (onSubscriptionChange)
+      onSubscriptionChange(subscriptionId)
+  }, [onSubscriptionChange])
 
   // Tool authentication
   if (data.type === BlockEnum.Tool && currCollection?.allow_delete) {
@@ -140,7 +134,9 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange }) => {
   if (data.type === BlockEnum.TriggerPlugin) {
     return (
       <AuthenticationMenu
-        subscription={authSubscription}
+        subscriptions={subscriptions}
+        selectedSubscriptionId={selectedSubscriptionId}
+        onSubscriptionSelect={handleSubscriptionSelect}
         onConfigure={handleConfigure}
         onRemove={handleRemove}
       />

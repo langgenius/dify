@@ -4,6 +4,8 @@ from .create_document_index import handle
 from .create_installed_app_when_app_created import handle
 from .create_site_record_when_app_created import handle
 from .delete_tool_parameters_cache_when_sync_draft_workflow import handle
+from .sync_plugin_trigger_when_app_created import handle
+from .sync_webhook_when_app_created import handle
 from .sync_workflow_schedule_when_app_published import handle
 from .update_app_dataset_join_when_app_model_config_updated import handle
 from .update_app_dataset_join_when_app_published_workflow_updated import handle

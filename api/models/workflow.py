@@ -1484,7 +1484,7 @@ class WorkflowPluginTrigger(Base):
     - node_id (varchar) Node ID which node in the workflow
     - tenant_id (uuid) Workspace ID
     - provider_id (varchar) Plugin provider ID
-    - trigger_name (varchar) trigger name (github_issues_trigger)
+    - trigger_name (varchar) trigger name
     - subscription_id (varchar) Subscription ID
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 TRIGGER_DEBUG_EVENT_TTL = 300
 
+
 class TriggerDebugEvent(BaseModel):
     subscription_id: str
     request_id: str
