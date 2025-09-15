@@ -14,6 +14,12 @@ api = ExternalApi(
 
 files_ns = Namespace("files", description="File operations", path="/")
 
-from . import image_preview, tool_files, upload  # pyright: ignore[reportUnusedImport]
+from . import image_preview, tool_files, upload
+
+__all__ = [
+    "image_preview",
+    "tool_files",
+    "upload"
+]
 
 api.add_namespace(files_ns)

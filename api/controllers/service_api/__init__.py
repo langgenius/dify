@@ -55,5 +55,4 @@ __all__ = [
     "site",
     "workflow",
 ]
-
 api.add_namespace(service_api_ns)
