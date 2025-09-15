@@ -39,6 +39,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleEmbeddingModelChange,
     handleRetrievalSearchMethodChange,
     handleHybridSearchModeChange,
+    handleRerankingModelEnabledChange,
     handleWeighedScoreChange,
     handleRerankingModelChange,
     handleTopKChange,
@@ -150,6 +151,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                   onHybridSearchModeChange={handleHybridSearchModeChange}
                   weightedScore={data.retrieval_model.weights}
                   onWeightedScoreChange={handleWeighedScoreChange}
+                  rerankingModelEnabled={data.retrieval_model.reranking_enable}
+                  onRerankingModelEnabledChange={handleRerankingModelEnabledChange}
                   rerankingModel={data.retrieval_model.reranking_model}
                   onRerankingModelChange={handleRerankingModelChange}
                   topK={data.retrieval_model.top_k}

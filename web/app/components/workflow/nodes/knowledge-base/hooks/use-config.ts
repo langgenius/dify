@@ -114,6 +114,16 @@ export const useConfig = (id: string) => {
     })
   }, [getNodeData, handleNodeDataUpdate])
 
+  const handleRerankingModelEnabledChange = useCallback((rerankingModelEnabled: boolean) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      retrieval_model: {
+        ...nodeData?.data.retrieval_model,
+        reranking_enable: rerankingModelEnabled,
+      },
+    })
+  }, [getNodeData, handleNodeDataUpdate])
+
   const handleWeighedScoreChange = useCallback((weightedScore: { value: number[] }) => {
     const nodeData = getNodeData()
     handleNodeDataUpdate({
@@ -190,6 +200,7 @@ export const useConfig = (id: string) => {
     handleEmbeddingModelChange,
     handleRetrievalSearchMethodChange,
     handleHybridSearchModeChange,
+    handleRerankingModelEnabledChange,
     handleWeighedScoreChange,
     handleRerankingModelChange,
     handleTopKChange,
