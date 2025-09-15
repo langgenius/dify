@@ -105,7 +105,7 @@ class ChatflowMemoryService:
                         memory_id=memory.spec.id,
                         name=memory.spec.name,
                         value=memory.value,
-                        description=""
+                        description=memory.spec.description
                     )
                     session.add(draft_var)
                 session.commit()
