@@ -266,6 +266,7 @@ class PipelineGenerator(BaseAppGenerator):
             else:
                 priority_rag_pipeline_run_task.delay(  # type: ignore
                     rag_pipeline_invoke_entities_file_id=upload_file.id,
+                    tenant_id=dataset.tenant_id,
                 )
 
         # return batch, dataset, documents
