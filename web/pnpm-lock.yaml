@@ -91,8 +91,8 @@ importers:
         specifier: ^0.30.0
         version: 0.30.0
       '@lexical/text':
-        specifier: ^0.30.0
-        version: 0.30.0
+        specifier: ^0.35.0
+        version: 0.35.0
       '@lexical/utils':
         specifier: ^0.30.0
         version: 0.30.0
@@ -230,10 +230,10 @@ importers:
         version: 0.6.4
       next:
         specifier: 15.5.0
-        version: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)
+        version: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
       next-pwa:
         specifier: ^5.6.0
-        version: 5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+        version: 5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       next-themes:
         specifier: ^0.4.3
         version: 0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -331,8 +331,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       scheduler:
-        specifier: ^0.23.0
-        version: 0.23.2
+        specifier: ^0.26.0
+        version: 0.26.0
       semver:
         specifier: ^7.6.3
         version: 7.7.2
@@ -359,7 +359,7 @@ importers:
         version: 7.0.10
       use-context-selector:
         specifier: ^2.0.0
-        version: 2.0.0(react@19.1.1)(scheduler@0.23.2)
+        version: 2.0.0(react@19.1.1)(scheduler@0.26.0)
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -407,8 +407,8 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0(@types/react@19.1.11)(react@19.1.1)
       '@next/bundle-analyzer':
-        specifier: 15.5.0
-        version: 15.5.0
+        specifier: 15.5.3
+        version: 15.5.3
       '@next/eslint-plugin-next':
         specifier: 15.5.0
         version: 15.5.0
@@ -438,7 +438,7 @@ importers:
         version: 8.5.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(storybook@8.5.0)
       '@storybook/nextjs':
         specifier: 8.5.0
-        version: 8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+        version: 8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       '@storybook/react':
         specifier: 8.5.0
         version: 8.5.0(@storybook/test@8.5.0(storybook@8.5.0))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(storybook@8.5.0)(typescript@5.8.3)
@@ -569,8 +569,8 @@ importers:
         specifier: ^8.4.47
         version: 8.5.6
       sass:
-        specifier: ^1.80.3
-        version: 1.89.2
+        specifier: ^1.92.1
+        version: 1.92.1
       storybook:
         specifier: 8.5.0
         version: 8.5.0
@@ -2119,6 +2119,9 @@ packages:
   '@lexical/text@0.30.0':
     resolution: {integrity: sha512-P0ptriFwwP/hoDpz/MoBbzHxrFHqh0kCGzASWUdRZ1zrU0yPvJ9vV/UNMhyolH7xx+eAGI1Yl+m74NlpGmXqTg==}
 
+  '@lexical/text@0.35.0':
+    resolution: {integrity: sha512-uaMh46BkysV8hK8wQwp5g/ByZW+2hPDt8ahAErxtf8NuzQem1FHG/f5RTchmFqqUDVHO3qLNTv4AehEGmXv8MA==}
+
   '@lexical/utils@0.30.0':
     resolution: {integrity: sha512-VJlAUhupCZmnbYYX3zMWovd4viu2guR01sAqKGbbOMbP+4rlaymixFbinvNPaRKDBloOARi+fpiveQFxnyr/Ew==}
 
@@ -2164,8 +2167,8 @@ packages:
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
 
-  '@next/bundle-analyzer@15.5.0':
-    resolution: {integrity: sha512-6pSHKzl4lcxqgmdNGXeVShYBBJuJkgXIx8cP15XtdzPtFn/ZllDI8b/2OqtU0HDPcsq53yMq1hjUBze1GoSKXQ==}
+  '@next/bundle-analyzer@15.5.3':
+    resolution: {integrity: sha512-l2NxnWHP2gWHbomAlz/wFnN2jNCx/dpr7P/XWeOLhULiyKkXSac8O8SjxRO/8FNhr2l4JNtWVKk82Uya4cZYTw==}
 
   '@next/env@15.5.0':
     resolution: {integrity: sha512-sDaprBAfzCQiOgo2pO+LhnV0Wt2wBgartjrr+dpcTORYVnnXD0gwhHhiiyIih9hQbq+JnbqH4odgcFWhqCGidw==}
@@ -4811,6 +4814,10 @@ packages:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
 
+  detect-libc@2.1.0:
+    resolution: {integrity: sha512-vEtk+OcP7VBRtQZ1EJ3bdgzSfBjgnEalLTp5zjJrS+2Z1w2KZly4SBdac/WDU3hhsNAZ9E8SC96ME4Ey8MZ7cg==}
+    engines: {node: '>=8'}
+
   detect-newline@3.1.0:
     resolution: {integrity: sha512-TLz+x/vEXm/Y7P7wn1EJFNLxYpUD4TgMosxY6fAVJUnJMbupHBOncxyWUG9OpTaH9EBD7uFI5LfEgmMOc54DsA==}
     engines: {node: '>=8'}
@@ -6354,6 +6361,9 @@ packages:
   lexical@0.30.0:
     resolution: {integrity: sha512-6gxYeXaJiAcreJD0whCofvO0MuJmnWoIgIl1w7L5FTigfhnEohuCx2SoI/oywzfzXE9gzZnyr3rVvZrMItPL8A==}
 
+  lexical@0.35.0:
+    resolution: {integrity: sha512-3VuV8xXhh5xJA6tzvfDvE0YBCMkIZUmxtRilJQDDdCgJCc+eut6qAv2qbN+pbqvarqcQqPN1UF+8YvsjmyOZpw==}
+
   lib0@0.2.114:
     resolution: {integrity: sha512-gcxmNFzA4hv8UYi8j43uPlQ7CGcyMJ2KQb5kZASw6SnAKAf10hK12i2fjrS3Cl/ugZa5Ui6WwIu1/6MIXiHttQ==}
     engines: {node: '>=16'}
@@ -7858,8 +7868,8 @@ packages:
       webpack:
         optional: true
 
-  sass@1.89.2:
-    resolution: {integrity: sha512-xCmtksBKd/jdJ9Bt9p7nPKiuqrlBMBuuGkQlkhZjjQk3Ty48lv93k5Dq6OPkKt4XwxDJ7tvlfrTa1MPA9bf+QA==}
+  sass@1.92.1:
+    resolution: {integrity: sha512-ffmsdbwqb3XeyR8jJR6KelIXARM9bFQe8A6Q3W4Klmwy5Ckd5gz7jgUNHo4UOqutU5Sk1DtKLbpDP0nLCg1xqQ==}
     engines: {node: '>=14.0.0'}
     hasBin: true
 
@@ -10777,6 +10787,10 @@ snapshots:
     dependencies:
       lexical: 0.30.0
 
+  '@lexical/text@0.35.0':
+    dependencies:
+      lexical: 0.35.0
+
   '@lexical/utils@0.30.0':
     dependencies:
       '@lexical/list': 0.30.0
@@ -10793,7 +10807,7 @@ snapshots:
 
   '@mapbox/node-pre-gyp@1.0.11':
     dependencies:
-      detect-libc: 2.0.4
+      detect-libc: 2.1.0
       https-proxy-agent: 5.0.1
       make-dir: 3.1.0
       node-fetch: 2.7.0
@@ -10881,7 +10895,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.0
     optional: true
 
-  '@next/bundle-analyzer@15.5.0':
+  '@next/bundle-analyzer@15.5.3':
     dependencies:
       webpack-bundle-analyzer: 4.10.1
     transitivePeerDependencies:
@@ -11763,7 +11777,7 @@ snapshots:
     dependencies:
       storybook: 8.5.0
 
-  '@storybook/nextjs@8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))':
+  '@storybook/nextjs@8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))':
     dependencies:
       '@babel/core': 7.28.3
       '@babel/plugin-syntax-bigint': 7.8.3(@babel/core@7.28.3)
@@ -11789,7 +11803,7 @@ snapshots:
       find-up: 5.0.0
       image-size: 1.2.1
       loader-utils: 3.3.1
-      next: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)
+      next: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
       node-polyfill-webpack-plugin: 2.0.1(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       pnp-webpack-plugin: 1.7.0(typescript@5.8.3)
       postcss: 8.5.6
@@ -11798,7 +11812,7 @@ snapshots:
       react-dom: 19.1.1(react@19.1.1)
       react-refresh: 0.14.2
       resolve-url-loader: 5.0.0
-      sass-loader: 14.2.1(sass@1.89.2)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+      sass-loader: 14.2.1(sass@1.92.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       semver: 7.7.2
       storybook: 8.5.0
       style-loader: 3.3.4(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
@@ -13820,6 +13834,9 @@ snapshots:
     optional: true
 
   detect-libc@2.0.4: {}
+
+  detect-libc@2.1.0:
+    optional: true
 
   detect-newline@3.1.0: {}
 
@@ -15865,6 +15882,8 @@ snapshots:
 
   lexical@0.30.0: {}
 
+  lexical@0.35.0: {}
+
   lib0@0.2.114:
     dependencies:
       isomorphic.js: 0.2.5
@@ -16652,12 +16671,12 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-pwa@5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
+  next-pwa@5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
       babel-loader: 8.4.1(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       clean-webpack-plugin: 4.0.0(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       globby: 11.1.0
-      next: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)
+      next: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
       terser-webpack-plugin: 5.3.14(esbuild@0.25.0)(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       workbox-webpack-plugin: 6.6.0(@types/babel__core@7.20.5)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       workbox-window: 6.6.0
@@ -16675,7 +16694,7 @@ snapshots:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2):
+  next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1):
     dependencies:
       '@next/env': 15.5.0
       '@swc/helpers': 0.5.15
@@ -16693,7 +16712,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 15.5.0
       '@next/swc-win32-arm64-msvc': 15.5.0
       '@next/swc-win32-x64-msvc': 15.5.0
-      sass: 1.89.2
+      sass: 1.92.1
       sharp: 0.34.3
     transitivePeerDependencies:
       - '@babel/core'
@@ -17793,14 +17812,14 @@ snapshots:
 
   rw@1.3.3: {}
 
-  sass-loader@14.2.1(sass@1.89.2)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
+  sass-loader@14.2.1(sass@1.92.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
       neo-async: 2.6.2
     optionalDependencies:
-      sass: 1.89.2
+      sass: 1.92.1
       webpack: 5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)
 
-  sass@1.89.2:
+  sass@1.92.1:
     dependencies:
       chokidar: 4.0.3
       immutable: 5.1.3
@@ -18527,10 +18546,10 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.1.11
 
-  use-context-selector@2.0.0(react@19.1.1)(scheduler@0.23.2):
+  use-context-selector@2.0.0(react@19.1.1)(scheduler@0.26.0):
     dependencies:
       react: 19.1.1
-      scheduler: 0.23.2
+      scheduler: 0.26.0
 
   use-isomorphic-layout-effect@1.2.1(@types/react@19.1.11)(react@19.1.1):
     dependencies:
