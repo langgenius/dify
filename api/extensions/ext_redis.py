@@ -3,7 +3,7 @@ import logging
 import ssl
 from collections.abc import Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import redis
 from redis import RedisError
@@ -246,7 +246,7 @@ def init_app(app: DifyApp):
     app.extensions["redis"] = redis_client
 
 
-def redis_fallback(default_return: Optional[Any] = None):
+def redis_fallback(default_return: Any | None = None):
     """
     decorator to handle Redis operation exceptions and return a default value when Redis is unavailable.
 
