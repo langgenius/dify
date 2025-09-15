@@ -23,9 +23,9 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     id: provider.plugin_id || provider.name,
     name: provider.name,
     author: provider.author,
-    description: provider.description, // Already TypeWithI18N format
+    description: provider.description,
     icon: provider.icon || '',
-    label: provider.label, // Already TypeWithI18N format
+    label: provider.label,
     type: CollectionType.builtIn,
     team_credentials: {},
     is_team_authorization: false,
@@ -35,11 +35,11 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     triggers: provider.triggers.map(trigger => ({
       name: trigger.name,
       author: provider.author,
-      label: trigger.description.human, // Already TypeWithI18N format
-      description: trigger.description.llm, // Already TypeWithI18N format
+      label: trigger.identity.label,
+      description: trigger.description.llm,
       parameters: trigger.parameters.map(param => ({
         name: param.name,
-        label: param.label, // Already TypeWithI18N format
+        label: param.label,
         human_description: param.description || param.label,
         type: param.type,
         form: param.type,
