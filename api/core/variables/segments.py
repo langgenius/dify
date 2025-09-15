@@ -221,6 +221,22 @@ class VersionedMemoryValue(BaseModel):
             }
         )
 
+class VersionedMemorySegment(Segment):
+    value_type: SegmentType = SegmentType.VERSIONED_MEMORY
+    value: VersionedMemoryValue
+
+    @property
+    def text(self) -> str:
+        return self.value.current_value
+
+    @property
+    def log(self) -> str:
+        return self.value.current_value
+
+    @property
+    def markdown(self) -> str:
+        return self.value.current_value
+
 
 def get_segment_discriminator(v: Any) -> SegmentType | None:
     if isinstance(v, Segment):
@@ -260,6 +276,7 @@ SegmentUnion: TypeAlias = Annotated[
         | Annotated[ArrayNumberSegment, Tag(SegmentType.ARRAY_NUMBER)]
         | Annotated[ArrayObjectSegment, Tag(SegmentType.ARRAY_OBJECT)]
         | Annotated[ArrayFileSegment, Tag(SegmentType.ARRAY_FILE)]
+        | Annotated[VersionedMemorySegment, Tag(SegmentType.VERSIONED_MEMORY)]
     ),
     Discriminator(get_segment_discriminator),
 ]

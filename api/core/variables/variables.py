@@ -20,7 +20,7 @@ from .segments import (
     ObjectSegment,
     Segment,
     StringSegment,
-    get_segment_discriminator,
+    get_segment_discriminator, VersionedMemorySegment,
 )
 from .types import SegmentType
 
@@ -99,6 +99,8 @@ class FileVariable(FileSegment, Variable):
 class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
     pass
 
+class VersionedMemoryVariable(VersionedMemorySegment, Variable):
+    pass
 
 # The `VariableUnion`` type is used to enable serialization and deserialization with Pydantic.
 # Use `Variable` for type hinting when serialization is not required.
@@ -120,6 +122,7 @@ VariableUnion: TypeAlias = Annotated[
         | Annotated[ArrayObjectVariable, Tag(SegmentType.ARRAY_OBJECT)]
         | Annotated[ArrayFileVariable, Tag(SegmentType.ARRAY_FILE)]
         | Annotated[SecretVariable, Tag(SegmentType.SECRET)]
+        | Annotated[VersionedMemoryVariable, Tag(SegmentType.VERSIONED_MEMORY)]
     ),
     Discriminator(get_segment_discriminator),
 ]

@@ -34,6 +34,8 @@ class SegmentType(StrEnum):
     ARRAY_OBJECT = "array[object]"
     ARRAY_FILE = "array[file]"
 
+    VERSIONED_MEMORY = "versioned_memory"
+
     NONE = "none"
 
     GROUP = "group"
