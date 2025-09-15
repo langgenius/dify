@@ -28,8 +28,8 @@ def create_ssl_context() -> ssl.SSLContext:
 
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
-    username: str | None
-    password: str | None
+    username: str | None = None
+    password: str | None = None
 
     @model_validator(mode="before")
     @classmethod

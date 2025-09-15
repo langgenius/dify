@@ -181,7 +181,7 @@ class ExternalDatasetService:
         do http request depending on api bundle
         """
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "url": settings.url,
             "headers": settings.headers,
             "follow_redirects": True,
