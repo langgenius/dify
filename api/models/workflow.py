@@ -1277,7 +1277,7 @@ class WorkflowDraftVariable(Base):
     def new_memory_block_variable(
         *,
         app_id: str,
-        node_id: Optional[str] = None,
+        node_id: str | None = None,
         memory_id: str,
         name: str,
         value: str,

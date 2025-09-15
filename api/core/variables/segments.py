@@ -1,7 +1,7 @@
 import json
 import sys
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, TypeAlias, Self
+from typing import Annotated, Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
@@ -211,8 +211,8 @@ class VersionedMemoryValue(BaseModel):
     def add_version(
         self,
         new_value: str,
-        version_name: Optional[str] = None
-    ) -> Self:
+        version_name: str | None = None
+    ) -> "VersionedMemoryValue":
         if version_name is None:
             version_name = str(len(self.versions) + 1)
         if version_name in self.versions.keys():
@@ -228,7 +228,7 @@ class VersionedMemoryValue(BaseModel):
 
 class VersionedMemorySegment(Segment):
     value_type: SegmentType = SegmentType.VERSIONED_MEMORY
-    value: VersionedMemoryValue
+    value: VersionedMemoryValue = None  # type: ignore
 
     @property
     def text(self) -> str:
