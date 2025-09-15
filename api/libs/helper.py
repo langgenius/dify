@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from models.account import Account
     from models.model import EndUser
 
+logger = logging.getLogger(__name__)
+
 
 def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
     """
@@ -66,7 +68,7 @@ class AppIconUrlField(fields.Raw):
         if isinstance(obj, dict) and "app" in obj:
             obj = obj["app"]
 
-        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
+        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(obj.icon)
         return None
 
@@ -165,13 +167,6 @@ class DatetimeString:
         return value
 
 
-def _get_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"{value} is not a valid float")
-
-
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
@@ -183,7 +178,7 @@ def timezone(timezone_string):
 def generate_string(n):
     letters_digits = string.ascii_letters + string.digits
     result = ""
-    for i in range(n):
+    for _ in range(n):
         result += secrets.choice(letters_digits)
 
     return result
@@ -274,8 +269,8 @@ class TokenManager:
         cls,
         token_type: str,
         account: Optional["Account"] = None,
-        email: Optional[str] = None,
-        additional_data: Optional[dict] = None,
+        email: str | None = None,
+        additional_data: dict | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")
@@ -299,8 +294,8 @@ class TokenManager:
         if expiry_minutes is None:
             raise ValueError(f"Expiry minutes for {token_type} token is not set")
         token_key = cls._get_token_key(token, token_type)
-        expiry_time = int(expiry_minutes * 60)
-        redis_client.setex(token_key, expiry_time, json.dumps(token_data))
+        expiry_seconds = int(expiry_minutes * 60)
+        redis_client.setex(token_key, expiry_seconds, json.dumps(token_data))
 
         if account_id:
             cls._set_current_token_for_account(account_id, token, token_type, expiry_minutes)
@@ -317,28 +312,28 @@ class TokenManager:
         redis_client.delete(token_key)
 
     @classmethod
-    def get_token_data(cls, token: str, token_type: str) -> Optional[dict[str, Any]]:
+    def get_token_data(cls, token: str, token_type: str) -> dict[str, Any] | None:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
-            logging.warning("%s token %s not found with key %s", token_type, token, key)
+            logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
+        token_data: dict[str, Any] | None = json.loads(token_data_json)
         return token_data
 
     @classmethod
-    def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
+    def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:
         key = cls._get_account_token_key(account_id, token_type)
-        current_token: Optional[str] = redis_client.get(key)
+        current_token: str | None = redis_client.get(key)
         return current_token
 
     @classmethod
     def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
+        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
     ):
         key = cls._get_account_token_key(account_id, token_type)
-        expiry_time = int(expiry_hours * 60 * 60)
-        redis_client.setex(key, expiry_time, token)
+        expiry_seconds = int(expiry_minutes * 60)
+        redis_client.setex(key, expiry_seconds, token)
 
     @classmethod
     def _get_account_token_key(cls, account_id: str, token_type: str) -> str:

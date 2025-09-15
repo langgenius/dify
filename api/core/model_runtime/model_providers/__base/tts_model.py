@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Iterable
-from typing import Optional
 
 from pydantic import ConfigDict
 
@@ -28,7 +27,7 @@ class TTSModel(AIModel):
         credentials: dict,
         content_text: str,
         voice: str,
-        user: Optional[str] = None,
+        user: str | None = None,
     ) -> Iterable[bytes]:
         """
         Invoke large language model
@@ -56,7 +55,7 @@ class TTSModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
-    def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list[dict]:
+    def get_tts_model_voices(self, model: str, credentials: dict, language: str | None = None):
         """
         Retrieves the list of voices supported by a given text-to-speech (TTS) model.
 

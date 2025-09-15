@@ -2,7 +2,6 @@ const translation = {
   title: 'Тестування вибірки',
   desc: 'Тестування ефективності пошуку знань на основі наданого текстового запиту.',
   dateTimeFormat: 'DD/MM/YYYY HH:mm A',
-  recents: 'Останні',
   table: {
     header: {
       source: 'Джерело',

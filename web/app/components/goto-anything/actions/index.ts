@@ -169,6 +169,7 @@ import { pluginAction } from './plugin'
 import { workflowNodesAction } from './workflow-nodes'
 import type { ActionItem, SearchResult } from './types'
 import { slashAction } from './commands'
+import { slashCommandRegistry } from './commands/registry'
 
 export const Actions = {
   slash: slashAction,
@@ -205,7 +206,7 @@ export const searchAnything = async (
       const results = await action.search(query, query, locale)
       return { success: true, data: results, actionType: action.key }
     }
- catch (error) {
+    catch (error) {
       console.warn(`Search failed for ${action.key}:`, error)
       return { success: false, data: [], actionType: action.key, error }
     }
@@ -220,7 +221,7 @@ export const searchAnything = async (
     if (result.status === 'fulfilled' && result.value.success) {
       allResults.push(...result.value.data)
     }
- else {
+    else {
       const actionKey = globalSearchActions[index]?.key || 'unknown'
       failedActions.push(actionKey)
     }
@@ -234,9 +235,23 @@ export const searchAnything = async (
 
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
   return Object.values(actions).find((action) => {
-    // Special handling for slash commands to allow direct /theme, /lang
-    if (action.key === '/')
-      return query.startsWith('/')
+    // Special handling for slash commands
+    if (action.key === '/') {
+      // Get all registered commands from the registry
+      const allCommands = slashCommandRegistry.getAllCommands()
+
+      // Check if query matches any registered command
+      return allCommands.some((cmd) => {
+        const cmdPattern = `/${cmd.name}`
+
+        // For direct mode commands, don't match (keep in command selector)
+        if (cmd.mode === 'direct')
+          return false
+
+        // For submenu mode commands, match when complete command is entered
+        return query === cmdPattern || query.startsWith(`${cmdPattern} `)
+      })
+    }
 
     const reg = new RegExp(`^(${action.key}|${action.shortcut})(?:\\s|$)`)
     return reg.test(query)

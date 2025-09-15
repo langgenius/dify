@@ -11,6 +11,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from services.feature_service import FeatureService
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
 def document_indexing_task(dataset_id: str, document_ids: list):
@@ -26,7 +28,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
 
     dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
-        logging.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
+        logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
         db.session.close()
         return
     # check document limit
@@ -60,7 +62,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
         return
 
     for document_id in document_ids:
-        logging.info(click.style(f"Start process document: {document_id}", fg="green"))
+        logger.info(click.style(f"Start process document: {document_id}", fg="green"))
 
         document = (
             db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
@@ -77,10 +79,10 @@ def document_indexing_task(dataset_id: str, document_ids: list):
         indexing_runner = IndexingRunner()
         indexing_runner.run(documents)
         end_at = time.perf_counter()
-        logging.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
-        logging.info(click.style(str(ex), fg="yellow"))
+        logger.info(click.style(str(ex), fg="yellow"))
     except Exception:
-        logging.exception("Document indexing task failed, dataset_id: %s", dataset_id)
+        logger.exception("Document indexing task failed, dataset_id: %s", dataset_id)
     finally:
         db.session.close()

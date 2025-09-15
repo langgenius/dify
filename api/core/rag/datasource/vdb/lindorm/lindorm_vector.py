@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
@@ -29,14 +29,14 @@ UGC_INDEX_PREFIX = "ugc_index"
 
 class LindormVectorStoreConfig(BaseModel):
     hosts: str
-    username: Optional[str] = None
-    password: Optional[str] = None
-    using_ugc: Optional[bool] = False
-    request_timeout: Optional[float] = 1.0  # timeout units: s
+    username: str | None = None
+    password: str | None = None
+    using_ugc: bool | None = False
+    request_timeout: float | None = 1.0  # timeout units: s
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["hosts"]:
             raise ValueError("config URL is required")
         if not values["username"]:
@@ -167,7 +167,7 @@ class LindormVectorStore(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """Delete documents by their IDs in batch.
 
         Args:
@@ -213,7 +213,7 @@ class LindormVectorStore(BaseVector):
                     else:
                         logger.exception("Error deleting document: %s", error)
 
-    def delete(self) -> None:
+    def delete(self):
         if self._using_ugc:
             routing_filter_query = {
                 "query": {"bool": {"must": [{"term": {f"{self._routing_field}.keyword": self._routing}}]}}
@@ -275,7 +275,7 @@ class LindormVectorStore(BaseVector):
         docs = []
         for doc, score in docs_and_scores:
             score_threshold = kwargs.get("score_threshold", 0.0) or 0.0
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
                 docs.append(doc)
@@ -372,7 +372,7 @@ class LindormVectorStore(BaseVector):
             # logger.info(f"create index success: {self._collection_name}")
 
 
-def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dict:
+def default_text_mapping(dimension: int, method_name: str, **kwargs: Any):
     excludes_from_source = kwargs.get("excludes_from_source", False)
     analyzer = kwargs.get("analyzer", "ik_max_word")
     text_field = kwargs.get("text_field", Field.CONTENT_KEY.value)
@@ -448,15 +448,15 @@ def default_text_search_query(
     query_text: str,
     k: int = 4,
     text_field: str = Field.CONTENT_KEY.value,
-    must: Optional[list[dict]] = None,
-    must_not: Optional[list[dict]] = None,
-    should: Optional[list[dict]] = None,
+    must: list[dict] | None = None,
+    must_not: list[dict] | None = None,
+    should: list[dict] | None = None,
     minimum_should_match: int = 0,
-    filters: Optional[list[dict]] = None,
-    routing: Optional[str] = None,
-    routing_field: Optional[str] = None,
+    filters: list[dict] | None = None,
+    routing: str | None = None,
+    routing_field: str | None = None,
     **kwargs,
-) -> dict:
+):
     query_clause: dict[str, Any] = {}
     if routing is not None:
         query_clause = {
@@ -505,15 +505,15 @@ def default_vector_search_query(
     query_vector: list[float],
     k: int = 4,
     min_score: str = "0.0",
-    ef_search: Optional[str] = None,  # only for hnsw
-    nprobe: Optional[str] = None,  # "2000"
-    reorder_factor: Optional[str] = None,  # "20"
-    client_refactor: Optional[str] = None,  # "true"
+    ef_search: str | None = None,  # only for hnsw
+    nprobe: str | None = None,  # "2000"
+    reorder_factor: str | None = None,  # "20"
+    client_refactor: str | None = None,  # "true"
     vector_field: str = Field.VECTOR.value,
-    filters: Optional[list[dict]] = None,
-    filter_type: Optional[str] = None,
+    filters: list[dict] | None = None,
+    filter_type: str | None = None,
     **kwargs,
-) -> dict:
+):
     if filters is not None:
         filter_type = "pre_filter" if filter_type is None else filter_type
         if not isinstance(filters, list):

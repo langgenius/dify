@@ -15,7 +15,7 @@ const originalEnv = process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 function setupEnvironment(value?: string) {
   if (value)
     process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT = value
-   else
+  else
     delete process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 
   // Clear module cache to force re-evaluation
@@ -25,7 +25,7 @@ function setupEnvironment(value?: string) {
 function restoreEnvironment() {
   if (originalEnv)
     process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT = originalEnv
-   else
+  else
     delete process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 
   jest.resetModules()

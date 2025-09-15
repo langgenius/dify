@@ -60,6 +60,7 @@ const translation = {
     downloadSuccess: 'Pobieranie zakończone.',
     deSelectAll: 'Odznacz wszystkie',
     selectAll: 'Zaznacz wszystkie',
+    config: 'Konfiguracja',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -203,7 +204,6 @@ const translation = {
     showAppLength: 'Pokaż {{length}} aplikacje',
     delete: 'Usuń konto',
     deleteTip: 'Usunięcie konta spowoduje trwałe usunięcie wszystkich danych i nie będzie można ich odzyskać.',
-    deleteConfirmTip: 'Aby potwierdzić, wyślij następujące informacje z zarejestrowanego adresu e-mail na adres ',
     myAccount: 'Moje konto',
     studio: 'Dify Studio',
     account: 'Rachunek',
@@ -482,6 +482,28 @@ const translation = {
     toBeConfigured: 'Do skonfigurowania',
     configureTip: 'Konfigurowanie klucza interfejsu API lub dodawanie modelu do użycia',
     emptyProviderTitle: 'Dostawca modelu nie jest skonfigurowany',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Dodaj model',
+        title: 'Konfiguracja autoryzacji klucza API',
+        desc: 'Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą korzystać z tego modelu podczas orkiestracji aplikacji.',
+      },
+      addApiKey: 'Dodaj klucz API',
+      configModel: 'Skonfiguruj model',
+      modelCredentials: 'Uprawnienia modelu',
+      configLoadBalancing: 'Konfiguracja równoważenia obciążenia',
+      unAuthorized: 'Nieautoryzowany',
+      specifyModelCredentialTip: 'Użyj skonfigurowanych poświadczeń modelu.',
+      addCredential: 'Dodaj dane uwierzytelniające',
+      providerManagedTip: 'Bieżąca konfiguracja jest hostowana przez dostawcę.',
+      specifyModelCredential: 'Określ dane uwierzytelniające modelu',
+      authorizationError: 'Błąd autoryzacji',
+      apiKeys: 'Klucze API',
+      providerManaged: 'Zarządzane przez dostawcę',
+      addNewModel: 'Dodaj nowy model',
+      authRemoved: 'Autoryzacja usunięta',
+      addModelCredential: 'Dodaj dane uwierzytelniające modelu',
+    },
   },
   dataSource: {
     add: 'Dodaj źródło danych',
@@ -737,6 +759,12 @@ const translation = {
   avatar: {
     deleteTitle: 'Usuń awatar',
     deleteDescription: 'Czy na pewno chcesz usunąć swoje zdjęcie profilowe? Twoje konto będzie używać domyślnego, początkowego awatara.',
+  },
+  feedback: {
+    title: 'Przekaż opinie',
+    content: 'Treść opinii',
+    subtitle: 'Proszę powiedz nam, co poszło nie tak z tą odpowiedzią.',
+    placeholder: 'Proszę opisać, co poszło nie tak lub jak możemy poprawić...',
   },
 }
 

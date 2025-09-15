@@ -60,6 +60,7 @@ const translation = {
     format: 'Formato',
     selectAll: 'Seleziona tutto',
     deSelectAll: 'Deseleziona tutto',
+    config: 'Config',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -208,8 +209,6 @@ const translation = {
     delete: 'Elimina Account',
     deleteTip:
       'Eliminando il tuo account cancellerai permanentemente tutti i tuoi dati e non sarà possibile recuperarli.',
-    deleteConfirmTip:
-      'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
     myAccount: 'Il mio account',
     account: 'Conto',
     studio: 'Dify Studio',
@@ -496,6 +495,28 @@ const translation = {
     emptyProviderTip: 'Si prega di installare prima un fornitore di modelli.',
     discoverMore: 'Scopri di più in',
     emptyProviderTitle: 'Provider di modelli non configurato',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Aggiungi modello',
+        title: 'Configurazione dell\'autorizzazione della chiave API',
+        desc: 'Dopo aver configurato le credenziali, tutti i membri all\'interno dello spazio di lavoro possono utilizzare questo modello quando orchestrano applicazioni.',
+      },
+      modelCredentials: 'Credenziali del modello',
+      providerManaged: 'Fornitore gestito',
+      apiKeys: 'Chiavi API',
+      authRemoved: 'Autore rimosso',
+      specifyModelCredential: 'Specifica le credenziali del modello',
+      addApiKey: 'Aggiungi la chiave API',
+      addModelCredential: 'Aggiungi le credenziali del modello',
+      addNewModel: 'Aggiungi un nuovo modello',
+      providerManagedTip: 'La configurazione attuale è ospitata dal fornitore.',
+      addCredential: 'Aggiungi credenziali',
+      authorizationError: 'Errore di autorizzazione',
+      configLoadBalancing: 'Configurazione del bilanciamento del carico',
+      unAuthorized: 'Non autorizzato',
+      specifyModelCredentialTip: 'Usa una credenziale di modello configurato.',
+      configModel: 'Configura modello',
+    },
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
@@ -750,6 +771,12 @@ const translation = {
   avatar: {
     deleteTitle: 'Rimuovi avatar',
     deleteDescription: 'Sei sicuro di voler rimuovere la tua immagine del profilo? Il tuo account utilizzerà l\'avatar iniziale predefinito.',
+  },
+  feedback: {
+    title: 'Fornire feedback',
+    content: 'Contenuto del feedback',
+    subtitle: 'Per favore, dicci cosa è andato storto con questa risposta.',
+    placeholder: 'Per favore descrivi cosa è andato storto o come possiamo migliorare...',
   },
 }
 

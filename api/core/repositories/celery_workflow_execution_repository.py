@@ -6,7 +6,7 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -39,8 +39,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
     _session_factory: sessionmaker
     _tenant_id: str
-    _app_id: Optional[str]
-    _triggered_from: Optional[WorkflowRunTriggeredFrom]
+    _app_id: str | None
+    _triggered_from: WorkflowRunTriggeredFrom | None
     _creator_user_id: str
     _creator_user_role: CreatorUserRole
 
@@ -48,8 +48,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowRunTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowRunTriggeredFrom | None,
     ):
         """
         Initialize the repository with Celery task configuration and context information.
@@ -93,7 +93,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             self._triggered_from,
         )
 
-    def save(self, execution: WorkflowExecution) -> None:
+    def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution instance asynchronously using Celery.
 
@@ -119,7 +119,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             logger.debug("Queued async save for workflow execution: %s", execution.id_)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to queue save operation for execution %s", execution.id_)
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception

@@ -5,11 +5,14 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
+import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
+from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.workflow_node_execution import (
@@ -21,6 +24,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
+from libs.uuid_utils import uuidv7
 from models import (
     Account,
     CreatorUserRole,
@@ -48,8 +52,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -186,18 +190,29 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.finished_at = domain_model.finished_at
         return db_model
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def _is_duplicate_key_error(self, exception: BaseException) -> bool:
+        """Check if the exception is a duplicate key constraint violation."""
+        return isinstance(exception, IntegrityError) and isinstance(exception.orig, psycopg2.errors.UniqueViolation)
+
+    def _regenerate_id_on_duplicate(self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel):
+        """Regenerate UUID v7 for both domain and database models when duplicate key detected."""
+        new_id = str(uuidv7())
+        logger.warning(
+            "Duplicate key conflict for workflow node execution ID %s, generating new UUID v7: %s", db_model.id, new_id
+        )
+        db_model.id = new_id
+        execution.id = new_id
+
+    def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a NodeExecution domain entity to the database.
 
         This method serves as a domain-to-database adapter that:
         1. Converts the domain entity to its database representation
-        2. Persists the database model using SQLAlchemy's merge operation
+        2. Checks for existing records and updates or inserts accordingly
         3. Maintains proper multi-tenancy by including tenant context during conversion
         4. Updates the in-memory cache for faster subsequent lookups
-
-        The method handles both creating new records and updating existing ones through
-        SQLAlchemy's merge operation.
+        5. Handles duplicate key conflicts by retrying with a new UUID v7
 
         Args:
             execution: The NodeExecution domain entity to persist
@@ -205,23 +220,66 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Convert domain model to database model using tenant context and other attributes
         db_model = self.to_db_model(execution)
 
-        # Create a new database session
-        with self._session_factory() as session:
-            # SQLAlchemy merge intelligently handles both insert and update operations
-            # based on the presence of the primary key
-            session.merge(db_model)
-            session.commit()
+        # Use tenacity for retry logic with duplicate key handling
+        @retry(
+            stop=stop_after_attempt(3),
+            retry=retry_if_exception(self._is_duplicate_key_error),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            reraise=True,
+        )
+        def _save_with_retry():
+            try:
+                self._persist_to_database(db_model)
+            except IntegrityError as e:
+                if self._is_duplicate_key_error(e):
+                    # Generate new UUID and retry
+                    self._regenerate_id_on_duplicate(execution, db_model)
+                    raise  # Let tenacity handle the retry
+                else:
+                    # Different integrity error, don't retry
+                    logger.exception("Non-duplicate key integrity error while saving workflow node execution")
+                    raise
 
-            # Update the in-memory cache for faster subsequent lookups
-            # Only cache if we have a node_execution_id to use as the cache key
+        try:
+            _save_with_retry()
+
+            # Update the in-memory cache after successful save
             if db_model.node_execution_id:
                 logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
+        except Exception:
+            logger.exception("Failed to save workflow node execution after all retries")
+            raise
+
+    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
+        """
+        Persist the database model to the database.
+
+        Checks if a record with the same ID exists and either updates it or creates a new one.
+
+        Args:
+            db_model: The database model to persist
+        """
+        with self._session_factory() as session:
+            # Check if record already exists
+            existing = session.get(WorkflowNodeExecutionModel, db_model.id)
+
+            if existing:
+                # Update existing record by copying all non-private attributes
+                for key, value in db_model.__dict__.items():
+                    if not key.startswith("_"):
+                        setattr(existing, key, value)
+            else:
+                # Add new record
+                session.add(db_model)
+
+            session.commit()
+
     def get_db_models_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -276,7 +334,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.

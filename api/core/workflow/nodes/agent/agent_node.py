@@ -1,6 +1,6 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from packaging.version import Version
 from pydantic import ValidationError
@@ -66,10 +66,10 @@ class AgentNode(BaseNode):
     _node_type = NodeType.AGENT
     _node_data: AgentNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = AgentNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -78,7 +78,7 @@ class AgentNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -153,7 +153,7 @@ class AgentNode(BaseNode):
                 messages=message_stream,
                 tool_info={
                     "icon": self.agent_strategy_icon,
-                    "agent_strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
+                    "agent_strategy": self._node_data.agent_strategy_name,
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
@@ -394,15 +394,14 @@ class AgentNode(BaseNode):
             current_plugin = next(
                 plugin
                 for plugin in plugins
-                if f"{plugin.plugin_id}/{plugin.name}"
-                == cast(AgentNodeData, self._node_data).agent_strategy_provider_name
+                if f"{plugin.plugin_id}/{plugin.name}" == self._node_data.agent_strategy_provider_name
             )
             icon = current_plugin.declaration.icon
         except StopIteration:
             icon = None
         return icon
 
-    def _fetch_memory(self, model_instance: ModelInstance) -> Optional[TokenBufferMemory]:
+    def _fetch_memory(self, model_instance: ModelInstance) -> TokenBufferMemory | None:
         # get conversation id
         conversation_id_variable = self.graph_runtime_state.variable_pool.get(
             ["sys", SystemVariableKey.CONVERSATION_ID.value]

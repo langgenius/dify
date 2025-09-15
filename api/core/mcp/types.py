@@ -5,7 +5,6 @@ from typing import (
     Any,
     Generic,
     Literal,
-    Optional,
     TypeAlias,
     TypeVar,
 )
@@ -809,7 +808,7 @@ class LoggingMessageNotificationParams(NotificationParams):
     """The severity of this log message."""
     logger: str | None = None
     """An optional name of the logger issuing this message."""
-    data: Any
+    data: Any = None
     """
     The data to be logged, such as a string message or an object. Any JSON serializable
     type is allowed here.
@@ -1173,45 +1172,45 @@ class SessionMessage:
     """A message with specific metadata for transport-specific features."""
 
     message: JSONRPCMessage
-    metadata: Optional[MessageMetadata] = None
+    metadata: MessageMetadata | None = None
 
 
 class OAuthClientMetadata(BaseModel):
     client_name: str
     redirect_uris: list[str]
-    grant_types: Optional[list[str]] = None
-    response_types: Optional[list[str]] = None
-    token_endpoint_auth_method: Optional[str] = None
-    client_uri: Optional[str] = None
-    scope: Optional[str] = None
+    grant_types: list[str] | None = None
+    response_types: list[str] | None = None
+    token_endpoint_auth_method: str | None = None
+    client_uri: str | None = None
+    scope: str | None = None
 
 
 class OAuthClientInformation(BaseModel):
     client_id: str
-    client_secret: Optional[str] = None
+    client_secret: str | None = None
 
 
 class OAuthClientInformationFull(OAuthClientInformation):
     client_name: str | None = None
     redirect_uris: list[str]
-    scope: Optional[str] = None
-    grant_types: Optional[list[str]] = None
-    response_types: Optional[list[str]] = None
-    token_endpoint_auth_method: Optional[str] = None
+    scope: str | None = None
+    grant_types: list[str] | None = None
+    response_types: list[str] | None = None
+    token_endpoint_auth_method: str | None = None
 
 
 class OAuthTokens(BaseModel):
     access_token: str
     token_type: str
-    expires_in: Optional[int] = None
-    refresh_token: Optional[str] = None
-    scope: Optional[str] = None
+    expires_in: int | None = None
+    refresh_token: str | None = None
+    scope: str | None = None
 
 
 class OAuthMetadata(BaseModel):
     authorization_endpoint: str
     token_endpoint: str
-    registration_endpoint: Optional[str] = None
+    registration_endpoint: str | None = None
     response_types_supported: list[str]
-    grant_types_supported: Optional[list[str]] = None
-    code_challenge_methods_supported: Optional[list[str]] = None
+    grant_types_supported: list[str] | None = None
+    code_challenge_methods_supported: list[str] | None = None

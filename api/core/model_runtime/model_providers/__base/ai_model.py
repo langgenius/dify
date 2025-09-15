@@ -1,7 +1,6 @@
 import decimal
 import hashlib
 from threading import Lock
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -99,7 +98,7 @@ class AIModel(BaseModel):
         model_schema = self.get_model_schema(model, credentials)
 
         # get price info from predefined model schema
-        price_config: Optional[PriceConfig] = None
+        price_config: PriceConfig | None = None
         if model_schema and model_schema.pricing:
             price_config = model_schema.pricing
 
@@ -132,7 +131,7 @@ class AIModel(BaseModel):
             currency=price_config.currency,
         )
 
-    def get_model_schema(self, model: str, credentials: Optional[dict] = None) -> Optional[AIModelEntity]:
+    def get_model_schema(self, model: str, credentials: dict | None = None) -> AIModelEntity | None:
         """
         Get model schema by model name and credentials
 
@@ -171,7 +170,7 @@ class AIModel(BaseModel):
 
             return schema
 
-    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
         Get customizable model schema from credentials
 
@@ -229,7 +228,7 @@ class AIModel(BaseModel):
 
         return schema
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
         Get customizable model schema
 
@@ -239,7 +238,7 @@ class AIModel(BaseModel):
         """
         return None
 
-    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName) -> dict:
+    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName):
         """
         Get default parameter rule for given name
 

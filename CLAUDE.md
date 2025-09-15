@@ -32,7 +32,7 @@ uv run --project api pytest tests/integration_tests/  # Integration tests
 ./dev/reformat                    # Run all formatters and linters
 uv run --project api ruff check --fix ./    # Fix linting issues
 uv run --project api ruff format ./         # Format code
-uv run --project api mypy .                 # Type checking
+uv run --directory api basedpyright         # Type checking
 ```
 
 ### Frontend (Web)
@@ -86,3 +86,4 @@ pnpm test                         # Run Jest tests
 ## Project-Specific Conventions
 
 - All async tasks use Celery with Redis as broker
+- **Internationalization**: Frontend supports multiple languages with English (`web/i18n/en-US/`) as the source. All user-facing text must use i18n keys, no hardcoded strings. Edit corresponding module files in `en-US/` directory for translations.

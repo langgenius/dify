@@ -1,7 +1,7 @@
 import datetime
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import requests
 from flask_login import current_user
@@ -21,9 +21,9 @@ class CrawlOptions:
     limit: int = 1
     crawl_sub_pages: bool = False
     only_main_content: bool = False
-    includes: Optional[str] = None
-    excludes: Optional[str] = None
-    max_depth: Optional[int] = None
+    includes: str | None = None
+    excludes: str | None = None
+    max_depth: int | None = None
     use_sitemap: bool = True
 
     def get_include_paths(self) -> list[str]:
@@ -132,7 +132,7 @@ class WebsiteService:
         return encrypter.decrypt_token(tenant_id=tenant_id, token=api_key)
 
     @classmethod
-    def document_create_args_validate(cls, args: dict) -> None:
+    def document_create_args_validate(cls, args: dict):
         """Validate arguments for document creation."""
         try:
             WebsiteCrawlApiRequest.from_args(args)

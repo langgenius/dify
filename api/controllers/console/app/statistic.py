@@ -5,9 +5,9 @@ import pytz
 import sqlalchemy as sa
 from flask import jsonify
 from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -17,11 +17,25 @@ from libs.login import login_required
 from models import AppMode, Message
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/daily-messages")
 class DailyMessageStatistic(Resource):
+    @api.doc("get_daily_message_statistics")
+    @api.doc(description="Get daily message statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Daily message statistics retrieved successfully",
+        fields.List(fields.Raw(description="Daily message count data")),
+    )
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -74,11 +88,25 @@ WHERE
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/daily-conversations")
 class DailyConversationStatistic(Resource):
+    @api.doc("get_daily_conversation_statistics")
+    @api.doc(description="Get daily conversation statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Daily conversation statistics retrieved successfully",
+        fields.List(fields.Raw(description="Daily conversation count data")),
+    )
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -126,11 +154,25 @@ class DailyConversationStatistic(Resource):
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/daily-end-users")
 class DailyTerminalsStatistic(Resource):
+    @api.doc("get_daily_terminals_statistics")
+    @api.doc(description="Get daily terminal/end-user statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Daily terminal statistics retrieved successfully",
+        fields.List(fields.Raw(description="Daily terminal count data")),
+    )
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -183,11 +225,25 @@ WHERE
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/token-costs")
 class DailyTokenCostStatistic(Resource):
+    @api.doc("get_daily_token_cost_statistics")
+    @api.doc(description="Get daily token cost statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Daily token cost statistics retrieved successfully",
+        fields.List(fields.Raw(description="Daily token cost data")),
+    )
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -243,7 +299,21 @@ WHERE
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/average-session-interactions")
 class AverageSessionInteractionStatistic(Resource):
+    @api.doc("get_average_session_interaction_statistics")
+    @api.doc(description="Get average session interaction statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Average session interaction statistics retrieved successfully",
+        fields.List(fields.Raw(description="Average session interaction data")),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -319,11 +389,25 @@ ORDER BY
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/user-satisfaction-rate")
 class UserSatisfactionRateStatistic(Resource):
+    @api.doc("get_user_satisfaction_rate_statistics")
+    @api.doc(description="Get user satisfaction rate statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "User satisfaction rate statistics retrieved successfully",
+        fields.List(fields.Raw(description="User satisfaction rate data")),
+    )
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -385,7 +469,21 @@ WHERE
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/average-response-time")
 class AverageResponseTimeStatistic(Resource):
+    @api.doc("get_average_response_time_statistics")
+    @api.doc(description="Get average response time statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Average response time statistics retrieved successfully",
+        fields.List(fields.Raw(description="Average response time data")),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -442,11 +540,25 @@ WHERE
         return jsonify({"data": response_data})
 
 
+@console_ns.route("/apps/<uuid:app_id>/statistics/tokens-per-second")
 class TokensPerSecondStatistic(Resource):
+    @api.doc("get_tokens_per_second_statistics")
+    @api.doc(description="Get tokens per second statistics for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+    )
+    @api.response(
+        200,
+        "Tokens per second statistics retrieved successfully",
+        fields.List(fields.Raw(description="Tokens per second data")),
+    )
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         account = current_user
 
@@ -500,13 +612,3 @@ WHERE
                 response_data.append({"date": str(i.date), "tps": round(i.tokens_per_second, 4)})
 
         return jsonify({"data": response_data})
-
-
-api.add_resource(DailyMessageStatistic, "/apps/<uuid:app_id>/statistics/daily-messages")
-api.add_resource(DailyConversationStatistic, "/apps/<uuid:app_id>/statistics/daily-conversations")
-api.add_resource(DailyTerminalsStatistic, "/apps/<uuid:app_id>/statistics/daily-end-users")
-api.add_resource(DailyTokenCostStatistic, "/apps/<uuid:app_id>/statistics/token-costs")
-api.add_resource(AverageSessionInteractionStatistic, "/apps/<uuid:app_id>/statistics/average-session-interactions")
-api.add_resource(UserSatisfactionRateStatistic, "/apps/<uuid:app_id>/statistics/user-satisfaction-rate")
-api.add_resource(AverageResponseTimeStatistic, "/apps/<uuid:app_id>/statistics/average-response-time")
-api.add_resource(TokensPerSecondStatistic, "/apps/<uuid:app_id>/statistics/tokens-per-second")

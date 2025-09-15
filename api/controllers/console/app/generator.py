@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 
 from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -19,7 +19,23 @@ from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 
 
+@console_ns.route("/rule-generate")
 class RuleGenerateApi(Resource):
+    @api.doc("generate_rule_config")
+    @api.doc(description="Generate rule configuration using LLM")
+    @api.expect(
+        api.model(
+            "RuleGenerateRequest",
+            {
+                "instruction": fields.String(required=True, description="Rule generation instruction"),
+                "model_config": fields.Raw(required=True, description="Model configuration"),
+                "no_variable": fields.Boolean(required=True, default=False, description="Whether to exclude variables"),
+            },
+        )
+    )
+    @api.response(200, "Rule configuration generated successfully")
+    @api.response(400, "Invalid request parameters")
+    @api.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -50,7 +66,26 @@ class RuleGenerateApi(Resource):
         return rules
 
 
+@console_ns.route("/rule-code-generate")
 class RuleCodeGenerateApi(Resource):
+    @api.doc("generate_rule_code")
+    @api.doc(description="Generate code rules using LLM")
+    @api.expect(
+        api.model(
+            "RuleCodeGenerateRequest",
+            {
+                "instruction": fields.String(required=True, description="Code generation instruction"),
+                "model_config": fields.Raw(required=True, description="Model configuration"),
+                "no_variable": fields.Boolean(required=True, default=False, description="Whether to exclude variables"),
+                "code_language": fields.String(
+                    default="javascript", description="Programming language for code generation"
+                ),
+            },
+        )
+    )
+    @api.response(200, "Code rules generated successfully")
+    @api.response(400, "Invalid request parameters")
+    @api.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -82,7 +117,22 @@ class RuleCodeGenerateApi(Resource):
         return code_result
 
 
+@console_ns.route("/rule-structured-output-generate")
 class RuleStructuredOutputGenerateApi(Resource):
+    @api.doc("generate_structured_output")
+    @api.doc(description="Generate structured output rules using LLM")
+    @api.expect(
+        api.model(
+            "StructuredOutputGenerateRequest",
+            {
+                "instruction": fields.String(required=True, description="Structured output generation instruction"),
+                "model_config": fields.Raw(required=True, description="Model configuration"),
+            },
+        )
+    )
+    @api.response(200, "Structured output generated successfully")
+    @api.response(400, "Invalid request parameters")
+    @api.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -111,7 +161,27 @@ class RuleStructuredOutputGenerateApi(Resource):
         return structured_output
 
 
+@console_ns.route("/instruction-generate")
 class InstructionGenerateApi(Resource):
+    @api.doc("generate_instruction")
+    @api.doc(description="Generate instruction for workflow nodes or general use")
+    @api.expect(
+        api.model(
+            "InstructionGenerateRequest",
+            {
+                "flow_id": fields.String(required=True, description="Workflow/Flow ID"),
+                "node_id": fields.String(description="Node ID for workflow context"),
+                "current": fields.String(description="Current instruction text"),
+                "language": fields.String(default="javascript", description="Programming language (javascript/python)"),
+                "instruction": fields.String(required=True, description="Instruction for generation"),
+                "model_config": fields.Raw(required=True, description="Model configuration"),
+                "ideal_output": fields.String(description="Expected ideal output"),
+            },
+        )
+    )
+    @api.response(200, "Instruction generated successfully")
+    @api.response(400, "Invalid request parameters or flow/workflow not found")
+    @api.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -203,11 +273,25 @@ class InstructionGenerateApi(Resource):
             raise CompletionRequestError(e.description)
 
 
+@console_ns.route("/instruction-generate/template")
 class InstructionGenerationTemplateApi(Resource):
+    @api.doc("get_instruction_template")
+    @api.doc(description="Get instruction generation template")
+    @api.expect(
+        api.model(
+            "InstructionTemplateRequest",
+            {
+                "instruction": fields.String(required=True, description="Template instruction"),
+                "ideal_output": fields.String(description="Expected ideal output"),
+            },
+        )
+    )
+    @api.response(200, "Template retrieved successfully")
+    @api.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self) -> dict:
+    def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, default=False, location="json")
         args = parser.parse_args()
@@ -222,10 +306,3 @@ class InstructionGenerationTemplateApi(Resource):
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
                 raise ValueError(f"Invalid type: {args['type']}")
-
-
-api.add_resource(RuleGenerateApi, "/rule-generate")
-api.add_resource(RuleCodeGenerateApi, "/rule-code-generate")
-api.add_resource(RuleStructuredOutputGenerateApi, "/rule-structured-output-generate")
-api.add_resource(InstructionGenerateApi, "/instruction-generate")
-api.add_resource(InstructionGenerationTemplateApi, "/instruction-generate/template")

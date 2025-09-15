@@ -273,6 +273,10 @@ const translation = {
       themeLightDesc: 'ใช้รูปลักษณ์ที่มีความสว่าง',
       themeSystemDesc: 'ติดตามรูปลักษณ์ของระบบปฏิบัติการของคุณ',
       slashDesc: 'ใช้คำสั่งเช่น /theme, /lang',
+      feedbackDesc: 'การอภิปรายข้อเสนอแนะแบบเปิดในชุมชน',
+      accountDesc: 'ไปที่หน้าบัญชี',
+      docDesc: 'เปิดเอกสารช่วยเหลือ',
+      communityDesc: 'เปิดชุมชน Discord',
     },
     emptyState: {
       noPluginsFound: 'ไม่พบปลั๊กอิน',
@@ -307,6 +311,11 @@ const translation = {
     inScope: 'ใน {{scope}}s',
     noMatchingCommands: 'ไม่พบคำสั่งที่ตรงกัน',
     tryDifferentSearch: 'ลองใช้ข้อความค้นหาอื่น',
+    slashHint: 'พิมพ์ / เพื่อดูคำสั่งที่มีให้ทั้งหมด',
+    pressEscToClose: 'กด ESC เพื่อปิด',
+    selectToNavigate: 'เลือกเพื่อนำทาง',
+    startTyping: 'เริ่มพิมพ์เพื่อค้นหา',
+    tips: 'กด ↑↓ เพื่อเลื่อนดู',
   },
 }
 

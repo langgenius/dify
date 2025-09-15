@@ -180,9 +180,11 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
+  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
+  jsonObject = 'json_object', // only object support define json schema
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
   singleFile = 'file',
@@ -208,6 +210,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
+  json_schema?: string // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -258,6 +261,7 @@ export type Memory = {
 export enum VarType {
   string = 'string',
   number = 'number',
+  integer = 'integer',
   secret = 'secret',
   boolean = 'boolean',
   object = 'object',
@@ -266,6 +270,7 @@ export enum VarType {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',
@@ -448,6 +453,7 @@ export enum VersionHistoryContextMenuOptions {
   restore = 'restore',
   edit = 'edit',
   delete = 'delete',
+  exportDSL = 'exportDSL',
   copyId = 'copyId',
 }
 
