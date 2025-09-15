@@ -107,6 +107,31 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
     }, 0)
   }, [])
 
+  const handleMentionButtonClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    console.log('Mention button clicked!')
+
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const cursorPosition = textarea.selectionStart || 0
+    const newContent = `${content.slice(0, cursorPosition)}@${content.slice(cursorPosition)}`
+
+    setContent(newContent)
+
+    setTimeout(() => {
+      const newCursorPos = cursorPosition + 1
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+      textarea.focus()
+
+      setMentionQuery('')
+      setMentionPosition(cursorPosition)
+      setShowMentionDropdown(true)
+      setSelectedMentionIndex(0)
+    }, 0)
+  }, [content])
+
   const insertMention = useCallback((user: UserProfile) => {
     const textarea = textareaRef.current
     if (!textarea) return
@@ -126,7 +151,13 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
     }, 0)
   }, [content, mentionPosition])
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    console.log('Submit button clicked!')
+
     try {
       if (content.trim()) {
         onSubmit(content.trim(), mentionedUserIds)
@@ -180,6 +211,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
         left: screenPosition.x,
         top: screenPosition.y,
       }}
+      data-comment-input
     >
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
@@ -209,7 +241,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
                 <Textarea
                   ref={textareaRef}
                   className={cn(
-                    'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
+                    'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 caret-primary-500 outline-none',
                   )}
                   placeholder="Add a comment"
                   autoFocus
@@ -222,14 +254,17 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
                   onKeyDown={handleKeyDown}
                 />
               </div>
-              <div className="absolute bottom-0 right-1 flex items-end gap-1">
-                <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover">
+              <div className="absolute bottom-0 right-1 z-20 flex items-end gap-1">
+                <div
+                  className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
+                  onClick={handleMentionButtonClick}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M13.3334 8.00004C13.3334 5.05452 10.9456 2.66671 8.00004 2.66671C5.05452 2.66671 2.66671 5.05452 2.66671 8.00004C2.66671 10.9456 5.05452 13.3334 8.00004 13.3334C9.09457 13.3334 10.1121 13.0036 10.9588 12.4381L11.6984 13.5476C10.6402 14.2546 9.36824 14.6667 8.00004 14.6667C4.31814 14.6667 1.33337 11.6819 1.33337 8.00004C1.33337 4.31814 4.31814 1.33337 8.00004 1.33337C11.6819 1.33337 14.6667 4.31814 14.6667 8.00004V9.00004C14.6667 10.2887 13.622 11.3334 12.3334 11.3334C11.5306 11.3334 10.8224 10.9279 10.4026 10.3106C9.79617 10.941 8.94391 11.3334 8.00004 11.3334C6.15909 11.3334 4.66671 9.84097 4.66671 8.00004C4.66671 6.15909 6.15909 4.66671 8.00004 4.66671C8.75057 4.66671 9.44317 4.91477 10.0004 5.33337H11.3334V9.00004C11.3334 9.55231 11.7811 10 12.3334 10C12.8856 10 13.3334 9.55231 13.3334 9.00004V8.00004ZM8.00004 6.00004C6.89544 6.00004 6.00004 6.89544 6.00004 8.00004C6.00004 9.10464 6.89544 10 8.00004 10C9.10464 10 10 9.10464 10 8.00004C10 6.89544 9.10464 6.00004 8.00004 6.00004Z" fill="#676F83"/>
                   </svg>
                 </div>
                 <Button
-                  className='ml-2 w-8 px-0'
+                  className='z-20 ml-2 w-8 px-0'
                   variant='primary'
                   disabled={!content.trim()}
                   onClick={handleSubmit}
@@ -249,6 +284,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
             left: dropdownPosition.x,
             top: dropdownPosition.y,
           }}
+          data-mention-dropdown
         >
           {filteredMentionUsers.map((user, index) => (
             <div

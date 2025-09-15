@@ -10,8 +10,14 @@ const CommentManager = () => {
     const { controlMode, mousePosition } = workflowStore.getState()
 
     if (controlMode === 'comment') {
-      e.preventDefault()
-      handleCreateComment(mousePosition)
+      const target = e.target as HTMLElement
+      const isInDropdown = target.closest('[data-mention-dropdown]')
+      const isInCommentInput = target.closest('[data-comment-input]')
+
+      if (!isInDropdown && !isInCommentInput) {
+        e.preventDefault()
+        handleCreateComment(mousePosition)
+      }
     }
   })
 
