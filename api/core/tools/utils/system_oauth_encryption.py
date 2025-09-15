@@ -2,7 +2,7 @@ import base64
 import hashlib
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -28,7 +28,7 @@ class SystemOAuthEncrypter:
     using AES-CBC mode with a key derived from the application's SECRET_KEY.
     """
 
-    def __init__(self, secret_key: Optional[str] = None):
+    def __init__(self, secret_key: str | None = None):
         """
         Initialize the OAuth encrypter.
 
@@ -130,7 +130,7 @@ class SystemOAuthEncrypter:
 
 
 # Factory function for creating encrypter instances
-def create_system_oauth_encrypter(secret_key: Optional[str] = None) -> SystemOAuthEncrypter:
+def create_system_oauth_encrypter(secret_key: str | None = None) -> SystemOAuthEncrypter:
     """
     Create an OAuth encrypter instance.
 
@@ -144,7 +144,7 @@ def create_system_oauth_encrypter(secret_key: Optional[str] = None) -> SystemOAu
 
 
 # Global encrypter instance (for backward compatibility)
-_oauth_encrypter: Optional[SystemOAuthEncrypter] = None
+_oauth_encrypter: SystemOAuthEncrypter | None = None
 
 
 def get_system_oauth_encrypter() -> SystemOAuthEncrypter:

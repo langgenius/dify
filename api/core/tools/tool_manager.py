@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -157,7 +157,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -358,7 +358,7 @@ class ToolManager:
         app_id: str,
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: VariablePool | None = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -400,7 +400,7 @@ class ToolManager:
         node_id: str,
         workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: VariablePool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -443,7 +443,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Tool:
         """
         get tool runtime from plugin
@@ -977,7 +977,7 @@ class ToolManager:
     def _convert_tool_parameters_type(
         cls,
         parameters: list[ToolParameter],
-        variable_pool: Optional[VariablePool],
+        variable_pool: VariablePool | None,
         tool_configurations: dict[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:

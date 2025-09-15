@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel
 
@@ -34,7 +34,7 @@ class CodeNodeData(BaseNodeData):
 
     class Output(BaseModel):
         type: Annotated[SegmentType, AfterValidator(_validate_type)]
-        children: Optional[dict[str, "CodeNodeData.Output"]] = None
+        children: dict[str, "CodeNodeData.Output"] | None = None
 
     class Dependency(BaseModel):
         name: str
@@ -44,4 +44,4 @@ class CodeNodeData(BaseNodeData):
     code_language: Literal[CodeLanguage.PYTHON3, CodeLanguage.JAVASCRIPT]
     code: str
     outputs: dict[str, Output]
-    dependencies: Optional[list[Dependency]] = None
+    dependencies: list[Dependency] | None = None

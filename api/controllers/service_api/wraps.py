@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, Optional, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -42,7 +42,7 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Optional[Callable[P, R]] = None, *, fetch_user_arg: Optional[FetchUserArg] = None):
+def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
@@ -189,7 +189,7 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def validate_dataset_token(view: Optional[Callable[Concatenate[T, P], R]] = None):
+def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
     def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -267,7 +267,7 @@ def validate_and_get_api_token(scope: str | None = None):
     return api_token
 
 
-def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str] = None) -> EndUser:
+def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
     """
     Create or update session terminal based on user ID.
     """
