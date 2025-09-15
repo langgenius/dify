@@ -1,16 +1,19 @@
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Textarea from 'react-textarea-autosize'
 import { RiSendPlane2Fill } from '@remixicon/react'
+import { useParams } from 'next/navigation'
 import { useReactFlow, useViewport } from 'reactflow'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
+import { type UserProfile, fetchMentionableUsers } from '@/service/workflow-comment'
 
 type CommentInputProps = {
   position: { x: number; y: number }
-  onSubmit: (content: string) => void
+  onSubmit: (content: string, mentionedUserIds: string[]) => void
   onCancel: () => void
 }
 
@@ -20,10 +23,34 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
   const { userProfile } = useAppContext()
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
+  const params = useParams()
+  const appId = params.appId as string
+
+  const [mentionUsers, setMentionUsers] = useState<UserProfile[]>([])
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionPosition, setMentionPosition] = useState(0)
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
 
   const screenPosition = useMemo(() => {
     return flowToScreenPosition(position)
   }, [position.x, position.y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
+
+  const loadMentionableUsers = useCallback(async () => {
+    if (!appId) return
+    try {
+      const users = await fetchMentionableUsers(appId)
+      setMentionUsers(users)
+    }
+ catch (error) {
+      console.error('Failed to load mentionable users:', error)
+    }
+  }, [appId])
+
+  useEffect(() => {
+    loadMentionableUsers()
+  }, [loadMentionableUsers])
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -40,27 +67,111 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
     }
   }, [onCancel])
 
+  const filteredMentionUsers = useMemo(() => {
+    if (!mentionQuery) return mentionUsers
+    return mentionUsers.filter(user =>
+      user.name.toLowerCase().includes(mentionQuery.toLowerCase())
+      || user.email.toLowerCase().includes(mentionQuery.toLowerCase()),
+    )
+  }, [mentionUsers, mentionQuery])
+
+  const dropdownPosition = useMemo(() => {
+    if (!showMentionDropdown || !textareaRef.current)
+      return { x: 0, y: 0 }
+
+    const textareaRect = textareaRef.current.getBoundingClientRect()
+    return {
+      x: textareaRect.left,
+      y: textareaRect.bottom + 4,
+    }
+  }, [showMentionDropdown])
+
+  const handleContentChange = useCallback((value: string) => {
+    setContent(value)
+
+    // Delay getting cursor position to ensure the textarea has updated
+    setTimeout(() => {
+      const cursorPosition = textareaRef.current?.selectionStart || 0
+      const textBeforeCursor = value.slice(0, cursorPosition)
+      const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
+
+      if (mentionMatch) {
+        setMentionQuery(mentionMatch[1])
+        setMentionPosition(cursorPosition - mentionMatch[0].length)
+        setShowMentionDropdown(true)
+        setSelectedMentionIndex(0)
+      }
+ else {
+        setShowMentionDropdown(false)
+      }
+    }, 0)
+  }, [])
+
+  const insertMention = useCallback((user: UserProfile) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const beforeMention = content.slice(0, mentionPosition)
+    const afterMention = content.slice(textarea.selectionStart || 0)
+    const newContent = `${beforeMention}@${user.name} ${afterMention}`
+
+    setContent(newContent)
+    setShowMentionDropdown(false)
+    setMentionedUserIds(prev => [...prev, user.id])
+
+    setTimeout(() => {
+      const newCursorPos = mentionPosition + user.name.length + 2 // @ + name + space
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+      textarea.focus()
+    }, 0)
+  }, [content, mentionPosition])
+
   const handleSubmit = useCallback(() => {
     try {
       if (content.trim()) {
-        onSubmit(content.trim())
+        onSubmit(content.trim(), mentionedUserIds)
         setContent('')
+        setMentionedUserIds([])
       }
     }
     catch (error) {
       console.error('Error in CommentInput handleSubmit:', error)
     }
-  }, [content, onSubmit])
+  }, [content, mentionedUserIds, onSubmit])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (showMentionDropdown) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev =>
+          prev < filteredMentionUsers.length - 1 ? prev + 1 : 0,
+        )
+      }
+ else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedMentionIndex(prev =>
+          prev > 0 ? prev - 1 : filteredMentionUsers.length - 1,
+        )
+      }
+ else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (filteredMentionUsers[selectedMentionIndex])
+          insertMention(filteredMentionUsers[selectedMentionIndex])
+
+        return
+      }
+ else if (e.key === 'Escape') {
+        e.preventDefault()
+        setShowMentionDropdown(false)
+        return
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey && !showMentionDropdown) {
       e.preventDefault()
       handleSubmit()
     }
-    else if (e.key === 'Escape') {
-      onCancel()
-    }
-  }, [handleSubmit, onCancel])
+  }, [showMentionDropdown, filteredMentionUsers, selectedMentionIndex, insertMention, handleSubmit])
 
   return (
     <div
@@ -92,7 +203,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
             'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
           )}
         >
-          <div className='relative overflow-hidden px-[9px] pt-[9px]'>
+          <div className='relative px-[9px] pt-[9px]'>
             <div className='relative'>
               <div className='relative flex w-full grow items-start'>
                 <Textarea
@@ -106,7 +217,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
                   maxRows={4}
                   value={content}
                   onChange={(e) => {
-                    setContent(e.target.value)
+                    handleContentChange(e.target.value)
                   }}
                   onKeyDown={handleKeyDown}
                 />
@@ -130,6 +241,43 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
           </div>
         </div>
       </div>
+
+      {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-white shadow-lg"
+          style={{
+            left: dropdownPosition.x,
+            top: dropdownPosition.y,
+          }}
+        >
+          {filteredMentionUsers.map((user, index) => (
+            <div
+              key={user.id}
+              className={cn(
+                'flex cursor-pointer items-center gap-2 p-2 hover:bg-state-base-hover',
+                index === selectedMentionIndex && 'bg-state-base-hover',
+              )}
+              onClick={() => insertMention(user)}
+            >
+              <Avatar
+                avatar={user.avatar_url || null}
+                name={user.name}
+                size={24}
+                className="shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-text-primary">
+                  {user.name}
+                </div>
+                <div className="truncate text-xs text-text-tertiary">
+                  {user.email}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>,
+        document.body,
+      )}
     </div>
   )
 })

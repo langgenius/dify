@@ -37,10 +37,10 @@ export const useWorkflowComment = () => {
     loadComments()
   }, [loadComments])
 
-  const handleCommentSubmit = useCallback(async (content: string) => {
+  const handleCommentSubmit = useCallback(async (content: string, mentionedUserIds: string[] = []) => {
     if (!pendingComment) return
 
-    console.log('Submitting comment:', { appId, pendingComment, content })
+    console.log('Submitting comment:', { appId, pendingComment, content, mentionedUserIds })
 
     if (!appId) {
       console.error('AppId is missing')
@@ -52,7 +52,7 @@ export const useWorkflowComment = () => {
         position_x: pendingComment.x,
         position_y: pendingComment.y,
         content,
-        mentioned_user_ids: [],
+        mentioned_user_ids: mentionedUserIds,
       })
 
       console.log('Comment created successfully:', newComment)

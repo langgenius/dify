@@ -126,6 +126,6 @@ export const deleteWorkflowCommentReply = async (appId: string, commentId: strin
 }
 
 export const fetchMentionableUsers = async (appId: string) => {
-  const response = await get<{ users: Array<{ id: string; name: string; email: string; avatar?: string }> }>(`apps/${appId}/workflow/comments/mention-users`)
+  const response = await get<{ users: Array<UserProfile> }>(`apps/${appId}/workflow/comments/mention-users`)
   return response.users
 }
