@@ -219,9 +219,8 @@ api.add_resource(
 # Register workflow alias routes
 from .app.workflow_alias import WorkflowAliasApi
 
-api.add_resource(WorkflowAliasApi,
-    "/apps/<uuid:app_id>/workflow-aliases",
-    "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
+api.add_resource(
+    WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases", "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
 )
 
 api.add_namespace(console_ns)
