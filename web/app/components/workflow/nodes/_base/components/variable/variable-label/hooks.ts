@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import { BubbleX, Env, Memory } from '@/app/components/base/icons/src/vender/line/others'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+
 import {
   isConversationVar,
   isENV,
@@ -9,12 +10,15 @@ import {
 } from '../utils'
 import { VarInInspectType } from '@/types/workflow'
 
-export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
+export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string, isMemoryVariable?: boolean) => {
   if (variableCategory === 'loop')
     return Loop
 
   if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
     return Env
+
+  if (isMemoryVariable)
+    return Memory
 
   if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
     return BubbleX

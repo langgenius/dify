@@ -288,6 +288,7 @@ export enum VarType {
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',
+  memory = 'memory',
 }
 
 export enum ValueType {

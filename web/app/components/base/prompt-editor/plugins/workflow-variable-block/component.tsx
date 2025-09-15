@@ -63,7 +63,8 @@ const WorkflowVariableBlockComponent = ({
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[0]]
   const isEnv = isENV(variables)
-  const isChatVar = isConversationVar(variables)
+  const isChatVar = isConversationVar(variables) && conversationVariables?.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}` && v.type !== 'memory')
+  const isMemoryVar = isConversationVar(variables) && conversationVariables?.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}` && v.type === 'memory')
   const isException = isExceptionVariable(varName, node?.type)
 
   let variableValid = true
@@ -129,6 +130,7 @@ const WorkflowVariableBlockComponent = ({
         handleVariableJump()
       }}
       isExceptionVariable={isException}
+      isMemoryVariable={isMemoryVar}
       errorMsg={!variableValid ? t('workflow.errorMsg.invalidVariable') : undefined}
       isSelected={isSelected}
       ref={ref}

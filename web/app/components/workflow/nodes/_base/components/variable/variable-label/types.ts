@@ -13,6 +13,7 @@ export type VariablePayload = {
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void
   errorMsg?: string
   isExceptionVariable?: boolean
+  isMemoryVariable?: boolean
   ref?: React.Ref<HTMLDivElement>
   notShowFullPath?: boolean
   rightSlot?: ReactNode

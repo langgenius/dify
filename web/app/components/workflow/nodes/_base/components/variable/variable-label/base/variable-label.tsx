@@ -21,6 +21,7 @@ const VariableLabel = ({
   errorMsg,
   onClick,
   isExceptionVariable,
+  isMemoryVariable,
   ref,
   notShowFullPath,
   rightSlot,
@@ -50,6 +51,7 @@ const VariableLabel = ({
       <VariableIcon
         variables={variables}
         className={varColorClassName}
+        isMemoryVariable={isMemoryVariable}
       />
       <VariableName
         variables={variables}
