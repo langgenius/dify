@@ -17,7 +17,7 @@ class GraphRuntimeState(BaseModel):
     _start_at: float = PrivateAttr()
     _total_tokens: int = PrivateAttr(default=0)
     _llm_usage: LLMUsage = PrivateAttr(default_factory=LLMUsage.empty_usage)
-    _outputs: dict[str, Any] = PrivateAttr(default_factory=dict)
+    _outputs: dict[str, object] = PrivateAttr(default_factory=dict[str, object])
     _node_run_steps: int = PrivateAttr(default=0)
     _ready_queue: "ReadyQueueState | dict[str, object]" = PrivateAttr(default_factory=dict)
 
