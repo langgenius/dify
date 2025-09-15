@@ -46,6 +46,21 @@ dev-clean:
 	@rm -rf api/storage
 	@echo "✅ Cleanup complete"
 
+dev-api:
+	@echo "🔧 Starting API..."
+	@cd api && uv run python -m flask run --host 0.0.0.0 --port=5001 --debug
+	@echo "✅ API started"
+
+dev-web:
+	@echo "🔧 Starting Web..."
+	@cd web && pnpm dev
+	@echo "✅ Web started"
+
+dev-worker:
+	@echo "🔧 Starting Worker..."
+	@cd api && uv run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage
+	@echo "✅ Worker started"
+
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
@@ -89,6 +104,9 @@ help:
 	@echo "  make prepare-web    - Set up web environment"
 	@echo "  make prepare-api    - Set up API environment"
 	@echo "  make dev-clean      - Stop Docker middleware containers"
+	@echo "  make dev-api        - Start API development server"
+	@echo "  make dev-web        - Start Web development server"
+	@echo "  make dev-worker     - Start Worker development server"
 	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
@@ -98,4 +116,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help
+.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help dev-api dev-web dev-worker
