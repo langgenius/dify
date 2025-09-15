@@ -6,6 +6,7 @@ import dataSourceDefault from '@/app/components/workflow/nodes/data-source/defau
 import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-empty/default'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
@@ -59,7 +60,10 @@ export const useAvailableNodesMetaData = () => {
   return useMemo(() => {
     return {
       nodes: availableNodesMetaData,
-      nodesMap: availableNodesMetaDataMap,
+      nodesMap: {
+        ...availableNodesMetaDataMap,
+        [BlockEnum.VariableAssigner]: availableNodesMetaDataMap?.[BlockEnum.VariableAggregator],
+      },
     }
   }, [availableNodesMetaData, availableNodesMetaDataMap])
 }
