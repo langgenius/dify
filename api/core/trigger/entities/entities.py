@@ -282,6 +282,10 @@ class TriggerInputs(BaseModel):
         """Convert to dict (alias for model_dump)."""
         return self.model_dump()
 
+class TriggerCreationMethod(StrEnum):
+    OAUTH = "OAUTH"
+    APIKEY = "APIKEY"
+    MANUAL = "MANUAL"
 
 # Export all entities
 __all__ = [
@@ -289,6 +293,7 @@ __all__ = [
     "RequestLog",
     "Subscription",
     "SubscriptionBuilder",
+    "TriggerCreationMethod",
     "TriggerDescription",
     "TriggerEntity",
     "TriggerEventData",

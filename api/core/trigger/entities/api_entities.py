@@ -8,6 +8,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import (
     SubscriptionSchema,
+    TriggerCreationMethod,
     TriggerDescription,
     TriggerIdentity,
     TriggerParameter,
@@ -45,6 +46,11 @@ class TriggerProviderApiEntity(BaseModel):
 
     plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
     plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
+
+    supported_creation_methods: list[TriggerCreationMethod] = Field(
+        default_factory=list,
+        description="Supported creation methods for the trigger provider. Possible values: 'OAUTH', 'APIKEY', 'MANUAL'."
+    )
 
     credentials_schema: list[ProviderConfig] = Field(description="The credentials schema of the trigger provider")
     oauth_client_schema: list[ProviderConfig] = Field(

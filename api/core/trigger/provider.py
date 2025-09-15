@@ -21,6 +21,7 @@ from core.trigger.entities.entities import (
     ProviderConfig,
     Subscription,
     SubscriptionSchema,
+    TriggerCreationMethod,
     TriggerEntity,
     TriggerProviderEntity,
     TriggerProviderIdentity,
@@ -80,6 +81,13 @@ class PluginTriggerProviderController:
             if self.entity.identity.icon_dark
             else None
         )
+        supported_creation_methods = []
+        if self.entity.oauth_schema:
+            supported_creation_methods.append(TriggerCreationMethod.OAUTH)
+        if self.entity.credentials_schema:
+            supported_creation_methods.append(TriggerCreationMethod.APIKEY)
+        if self.entity.subscription_schema:
+            supported_creation_methods.append(TriggerCreationMethod.MANUAL)
         return TriggerProviderApiEntity(
             author=self.entity.identity.author,
             name=self.entity.identity.name,
@@ -93,6 +101,7 @@ class PluginTriggerProviderController:
             credentials_schema=self.entity.credentials_schema,
             oauth_client_schema=self.entity.oauth_schema.client_schema if self.entity.oauth_schema else [],
             subscription_schema=self.entity.subscription_schema,
+            supported_creation_methods=supported_creation_methods,
             triggers=[
                 TriggerApiEntity(
                     name=trigger.identity.name,
