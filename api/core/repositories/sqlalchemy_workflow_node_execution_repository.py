@@ -5,7 +5,7 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
@@ -48,8 +48,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -274,7 +274,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_db_models_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -329,7 +329,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.

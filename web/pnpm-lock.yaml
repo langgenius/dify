@@ -43,6 +43,7 @@ overrides:
   string.prototype.trimend: npm:@nolyfill/string.prototype.trimend@^1
   typed-array-buffer: npm:@nolyfill/typed-array-buffer@^1
   which-typed-array: npm:@nolyfill/which-typed-array@^1
+  devalue@<5.3.2: 5.3.2
 
 importers:
 
@@ -4825,8 +4826,8 @@ packages:
   detect-node-es@1.1.0:
     resolution: {integrity: sha512-ypdmJU/TbBby2Dxibuv7ZLW3Bs1QEmM7nHjEANfohJLvE0XVujisn1qPJcZxg+qDucsr+bP6fLD1rPS3AhJ7EQ==}
 
-  devalue@5.1.1:
-    resolution: {integrity: sha512-maua5KUiapvEwiEAe+XnlZ3Rh0GD+qI1J/nb9vrJc3muPXvcF/8gXYTWF76+5DAqHyDUtOIImEuo0YKE9mshVw==}
+  devalue@5.3.2:
+    resolution: {integrity: sha512-UDsjUbpQn9kvm68slnrs+mfxwFkIflOhkanmyabZ8zOYk8SMEIbJ3TK+88g70hSIeytu4y18f0z/hYHMTrXIWw==}
 
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
@@ -11981,7 +11982,7 @@ snapshots:
       '@tanstack/form-core': 1.14.0
       '@tanstack/react-store': 0.7.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       decode-formdata: 0.9.0
-      devalue: 5.1.1
+      devalue: 5.3.2
       react: 19.1.1
     transitivePeerDependencies:
       - react-dom
@@ -13842,7 +13843,7 @@ snapshots:
 
   detect-node-es@1.1.0: {}
 
-  devalue@5.1.1: {}
+  devalue@5.3.2: {}
 
   devlop@1.1.0:
     dependencies:

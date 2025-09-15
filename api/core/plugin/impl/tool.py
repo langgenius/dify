@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -81,9 +81,9 @@ class PluginToolManager(BasePluginClient):
         credentials: dict[str, Any],
         credential_type: CredentialType,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
@@ -153,9 +153,9 @@ class PluginToolManager(BasePluginClient):
         provider: str,
         credentials: dict[str, Any],
         tool: str,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> list[ToolParameter]:
         """
         get the runtime parameters of the tool

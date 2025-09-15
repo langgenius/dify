@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast
 
 from langsmith import Client
 from langsmith.schemas import RunBase
@@ -246,7 +246,7 @@ class LangSmithDataTrace(BaseTraceInstance):
     def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
         file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
         file_list.append(file_url)
         metadata = trace_info.metadata
@@ -259,7 +259,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         metadata["user_id"] = user_id
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:

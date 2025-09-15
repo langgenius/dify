@@ -1,7 +1,7 @@
 import base64
 import json
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
@@ -20,9 +20,9 @@ class MCPTool(Tool):
         icon: str,
         server_url: str,
         provider_id: str,
-        headers: Optional[dict[str, str]] = None,
-        timeout: Optional[float] = None,
-        sse_read_timeout: Optional[float] = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
@@ -40,9 +40,9 @@ class MCPTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         from core.tools.errors import ToolInvokeError
 

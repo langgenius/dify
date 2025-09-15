@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 import json_repair
 
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 class LLMGenerator:
     @classmethod
     def generate_conversation_name(
-        cls, tenant_id: str, query, conversation_id: Optional[str] = None, app_id: Optional[str] = None
+        cls, tenant_id: str, query, conversation_id: str | None = None, app_id: str | None = None
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 

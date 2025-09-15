@@ -2,7 +2,7 @@ import queue
 import time
 from abc import abstractmethod
 from enum import IntEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -116,7 +116,7 @@ class AppQueueManager:
         Set task stop flag
         :return:
         """
-        result: Optional[Any] = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
             return
 

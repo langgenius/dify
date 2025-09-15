@@ -1,6 +1,6 @@
 import ssl
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 from celery import Celery, Task
@@ -10,7 +10,7 @@ from configs import dify_config
 from dify_app import DifyApp
 
 
-def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
+def _get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
     # Use REDIS_USE_SSL for consistency with the main Redis client
     # Only apply SSL if we're using Redis as broker/backend
