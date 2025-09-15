@@ -6,7 +6,6 @@ According to ClickZetta's permission model, different Volume types have differen
 
 import logging
 from enum import StrEnum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class VolumePermission(StrEnum):
 class VolumePermissionManager:
     """Volume permission manager"""
 
-    def __init__(self, connection_or_config, volume_type: str | None = None, volume_name: Optional[str] = None):
+    def __init__(self, connection_or_config, volume_type: str | None = None, volume_name: str | None = None):
         """Initialize permission manager
 
         Args:
@@ -63,7 +62,7 @@ class VolumePermissionManager:
         self._permission_cache: dict[str, set[str]] = {}
         self._current_username = None  # Will get current username from connection
 
-    def check_permission(self, operation: VolumePermission, dataset_id: Optional[str] = None) -> bool:
+    def check_permission(self, operation: VolumePermission, dataset_id: str | None = None) -> bool:
         """Check if user has permission to perform specific operation
 
         Args:
@@ -126,7 +125,7 @@ class VolumePermissionManager:
             logger.info("User Volume permission check failed, but permission checking is disabled in this version")
             return False
 
-    def _check_table_volume_permission(self, operation: VolumePermission, dataset_id: Optional[str]) -> bool:
+    def _check_table_volume_permission(self, operation: VolumePermission, dataset_id: str | None) -> bool:
         """Check Table Volume permission
 
         Table Volume permission rules:
@@ -440,7 +439,7 @@ class VolumePermissionManager:
         self._permission_cache.clear()
         logger.debug("Permission cache cleared")
 
-    def get_permission_summary(self, dataset_id: Optional[str] = None) -> dict[str, bool]:
+    def get_permission_summary(self, dataset_id: str | None = None) -> dict[str, bool]:
         """Get permission summary
 
         Args:
@@ -582,7 +581,7 @@ class VolumePermissionManager:
 
         return any(pattern in file_path_lower for pattern in sensitive_patterns)
 
-    def validate_operation(self, operation: str, dataset_id: Optional[str] = None) -> bool:
+    def validate_operation(self, operation: str, dataset_id: str | None = None) -> bool:
         """Validate operation permission
 
         Args:
@@ -614,16 +613,14 @@ class VolumePermissionManager:
 class VolumePermissionError(Exception):
     """Volume permission error exception"""
 
-    def __init__(self, message: str, operation: str, volume_type: str, dataset_id: Optional[str] = None):
+    def __init__(self, message: str, operation: str, volume_type: str, dataset_id: str | None = None):
         self.operation = operation
         self.volume_type = volume_type
         self.dataset_id = dataset_id
         super().__init__(message)
 
 
-def check_volume_permission(
-    permission_manager: VolumePermissionManager, operation: str, dataset_id: Optional[str] = None
-):
+def check_volume_permission(permission_manager: VolumePermissionManager, operation: str, dataset_id: str | None = None):
     """Permission check decorator function
 
     Args:
