@@ -1,6 +1,11 @@
 import type { FC } from 'react'
-import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { memo, useCallback, useRef, useState } from 'react'
+import Textarea from 'react-textarea-autosize'
+import { RiSendPlane2Fill } from '@remixicon/react'
+import cn from '@/utils/classnames'
+import Button from '@/app/components/base/button'
+import Avatar from '@/app/components/base/avatar'
+import { useAppContext } from '@/context/app-context'
 
 type CommentInputProps = {
   position: { x: number; y: number }
@@ -9,8 +14,9 @@ type CommentInputProps = {
 }
 
 export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, onCancel }) => {
-  const { t } = useTranslation()
   const [content, setContent] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { userProfile } = useAppContext()
 
   const handleSubmit = useCallback(() => {
     try {
@@ -36,35 +42,71 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
 
   return (
     <div
-      className="absolute z-50 w-64 rounded-lg border bg-white shadow-lg"
+      className="absolute z-50 w-96"
       style={{
         left: position.x + 10,
         top: position.y + 10,
       }}
     >
-      <textarea
-        autoFocus
-        value={content}
-        onChange={e => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Add comment..."
-        className="w-full resize-none rounded-t-lg border-0 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        rows={3}
-      />
-      <div className="flex justify-end gap-2 border-t bg-gray-50 p-2">
-        <button
-          onClick={onCancel}
-          className="rounded px-3 py-1 text-sm text-gray-500 hover:bg-gray-100"
+      <div className="flex items-start gap-3">
+        <div className="relative shrink-0">
+          <div className="relative h-14 w-14 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-primary-500">
+            <div className="absolute inset-1 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="h-10 w-10 overflow-hidden rounded-full">
+                  <Avatar
+                    avatar={userProfile.avatar_url}
+                    name={userProfile.name}
+                    size={40}
+                    className="h-full w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          )}
         >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={!content.trim()}
-          className="rounded bg-blue-500 px-3 py-1 text-sm text-white hover:bg-blue-600 disabled:bg-gray-300"
-        >
-          Submit
-        </button>
+          <div className='relative overflow-hidden px-[9px] pt-[9px]'>
+            <div className='relative'>
+              <div className='relative flex w-full grow items-start'>
+                <Textarea
+                  ref={textareaRef}
+                  className={cn(
+                    'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
+                  )}
+                  placeholder="Add a comment"
+                  autoFocus
+                  minRows={1}
+                  maxRows={4}
+                  value={content}
+                  onChange={(e) => {
+                    setContent(e.target.value)
+                  }}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+              <div className="absolute bottom-0 right-1 flex items-end gap-1">
+                <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M13.3334 8.00004C13.3334 5.05452 10.9456 2.66671 8.00004 2.66671C5.05452 2.66671 2.66671 5.05452 2.66671 8.00004C2.66671 10.9456 5.05452 13.3334 8.00004 13.3334C9.09457 13.3334 10.1121 13.0036 10.9588 12.4381L11.6984 13.5476C10.6402 14.2546 9.36824 14.6667 8.00004 14.6667C4.31814 14.6667 1.33337 11.6819 1.33337 8.00004C1.33337 4.31814 4.31814 1.33337 8.00004 1.33337C11.6819 1.33337 14.6667 4.31814 14.6667 8.00004V9.00004C14.6667 10.2887 13.622 11.3334 12.3334 11.3334C11.5306 11.3334 10.8224 10.9279 10.4026 10.3106C9.79617 10.941 8.94391 11.3334 8.00004 11.3334C6.15909 11.3334 4.66671 9.84097 4.66671 8.00004C4.66671 6.15909 6.15909 4.66671 8.00004 4.66671C8.75057 4.66671 9.44317 4.91477 10.0004 5.33337H11.3334V9.00004C11.3334 9.55231 11.7811 10 12.3334 10C12.8856 10 13.3334 9.55231 13.3334 9.00004V8.00004ZM8.00004 6.00004C6.89544 6.00004 6.00004 6.89544 6.00004 8.00004C6.00004 9.10464 6.89544 10 8.00004 10C9.10464 10 10 9.10464 10 8.00004C10 6.89544 9.10464 6.00004 8.00004 6.00004Z" fill="#676F83"/>
+                  </svg>
+                </div>
+                <Button
+                  className='ml-2 w-8 px-0'
+                  variant='primary'
+                  disabled={!content.trim()}
+                  onClick={handleSubmit}
+                >
+                  <RiSendPlane2Fill className='h-4 w-4' />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
