@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import Textarea from 'react-textarea-autosize'
 import { RiSendPlane2Fill } from '@remixicon/react'
 import cn from '@/utils/classnames'
@@ -17,6 +17,21 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { userProfile } = useAppContext()
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onCancel()
+      }
+    }
+
+    document.addEventListener('keydown', handleGlobalKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown, true)
+    }
+  }, [onCancel])
 
   const handleSubmit = useCallback(() => {
     try {
