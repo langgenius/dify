@@ -14,6 +14,7 @@ from core.file.constants import maybe_file_object
 from core.file.models import File
 from core.memory.entities import MemoryBlockSpec
 from core.variables import utils as variable_utils
+from core.variables.segments import VersionedMemoryValue
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -1280,7 +1281,7 @@ class WorkflowDraftVariable(Base):
         node_id: str | None = None,
         memory_id: str,
         name: str,
-        value: str,
+        value: VersionedMemoryValue,
         description: str = "",
     ) -> "WorkflowDraftVariable":
         """Create a new memory block draft variable."""
@@ -1289,11 +1290,11 @@ class WorkflowDraftVariable(Base):
             app_id=app_id,
             node_id=MEMORY_BLOCK_VARIABLE_NODE_ID,
             name=name,
-            value=value,
+            value=value.model_dump_json(),
             description=description,
             selector=[MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id] if node_id is None else
             [MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id, node_id],
-            value_type=SegmentType.STRING,
+            value_type=SegmentType.VERSIONED_MEMORY,
             visible=True,
             editable=True,
         )
