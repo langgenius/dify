@@ -5,21 +5,23 @@ This protocol defines the interface for managing the queue of nodes ready
 for execution, supporting both in-memory and persistent storage scenarios.
 """
 
-from typing import Protocol, TypedDict
+from collections.abc import Sequence
+from typing import Protocol
+
+from pydantic import BaseModel, Field
 
 
-class ReadyQueueState(TypedDict):
+class ReadyQueueState(BaseModel):
     """
-    TypedDict for serialized ready queue state.
+    Pydantic model for serialized ready queue state.
 
-    This defines the structure of the dictionary returned by dumps()
+    This defines the structure of the data returned by dumps()
     and expected by loads() for ready queue serialization.
     """
 
-    type: str  # Queue implementation type (e.g., "InMemoryReadyQueue")
-    version: str  # Serialization format version
-    items: list[str]  # List of node IDs in the queue
-    maxsize: int  # Maximum queue size (0 for unlimited)
+    type: str = Field(description="Queue implementation type (e.g., 'InMemoryReadyQueue')")
+    version: str = Field(description="Serialization format version")
+    items: Sequence[str] = Field(default_factory=list, description="List of node IDs in the queue")
 
 
 class ReadyQueue(Protocol):
@@ -82,21 +84,21 @@ class ReadyQueue(Protocol):
         """
         ...
 
-    def dumps(self) -> ReadyQueueState:
+    def dumps(self) -> str:
         """
-        Serialize the queue state for storage.
+        Serialize the queue state to a JSON string for storage.
 
         Returns:
-            A ReadyQueueState dictionary containing the serialized queue state
+            A JSON string containing the serialized queue state
             that can be persisted and later restored
         """
         ...
 
-    def loads(self, data: ReadyQueueState) -> None:
+    def loads(self, data: str) -> None:
         """
-        Restore the queue state from serialized data.
+        Restore the queue state from a JSON string.
 
         Args:
-            data: The serialized queue state to restore
+            data: The JSON string containing the serialized queue state to restore
         """
         ...

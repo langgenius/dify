@@ -82,12 +82,12 @@ class InMemoryReadyQueue:
         """
         return self._queue.qsize()
 
-    def dumps(self) -> ReadyQueueState:
+    def dumps(self) -> str:
         """
-        Serialize the queue state for storage.
+        Serialize the queue state to a JSON string for storage.
 
         Returns:
-            A ReadyQueueState dictionary containing the serialized queue state
+            A JSON string containing the serialized queue state
         """
         # Extract all items from the queue without removing them
         items: list[str] = []
@@ -106,25 +106,27 @@ class InMemoryReadyQueue:
         for item in temp_items:
             self._queue.put(item)
 
-        return ReadyQueueState(
+        state = ReadyQueueState(
             type="InMemoryReadyQueue",
             version="1.0",
             items=items,
-            maxsize=self._queue.maxsize,
         )
+        return state.model_dump_json()
 
-    def loads(self, data: ReadyQueueState) -> None:
+    def loads(self, data: str) -> None:
         """
-        Restore the queue state from serialized data.
+        Restore the queue state from a JSON string.
 
         Args:
-            data: The serialized queue state to restore
+            data: The JSON string containing the serialized queue state to restore
         """
-        if data.get("type") != "InMemoryReadyQueue":
-            raise ValueError(f"Invalid serialized data type: {data.get('type')}")
+        state = ReadyQueueState.model_validate_json(data)
 
-        if data.get("version") != "1.0":
-            raise ValueError(f"Unsupported version: {data.get('version')}")
+        if state.type != "InMemoryReadyQueue":
+            raise ValueError(f"Invalid serialized data type: {state.type}")
+
+        if state.version != "1.0":
+            raise ValueError(f"Unsupported version: {state.version}")
 
         # Clear the current queue
         while not self._queue.empty():
@@ -134,11 +136,5 @@ class InMemoryReadyQueue:
                 break
 
         # Restore items
-        items = data.get("items", [])
-        if not isinstance(items, list):
-            raise ValueError("Invalid items data: expected list")
-
-        for item in items:
-            if not isinstance(item, str):
-                raise ValueError(f"Invalid item type: expected str, got {type(item).__name__}")
+        for item in state.items:
             self._queue.put(item)

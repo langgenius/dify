@@ -19,7 +19,7 @@ class Path:
     Note: This is an internal class not exposed in the public API.
     """
 
-    edges: list[EdgeID] = field(default_factory=list)
+    edges: list[EdgeID] = field(default_factory=list[EdgeID])
 
     def contains_edge(self, edge_id: EdgeID) -> bool:
         """Check if this path contains the given edge."""

@@ -1,14 +1,10 @@
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, PrivateAttr
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 
 from .variable_pool import VariablePool
-
-if TYPE_CHECKING:
-    from core.workflow.graph_engine.ready_queue import ReadyQueueState
 
 
 class GraphRuntimeState(BaseModel):
@@ -19,17 +15,18 @@ class GraphRuntimeState(BaseModel):
     _llm_usage: LLMUsage = PrivateAttr(default_factory=LLMUsage.empty_usage)
     _outputs: dict[str, object] = PrivateAttr(default_factory=dict[str, object])
     _node_run_steps: int = PrivateAttr(default=0)
-    _ready_queue: "ReadyQueueState | dict[str, object]" = PrivateAttr(default_factory=dict)
+    _ready_queue_json: str = PrivateAttr()
 
     def __init__(
         self,
+        *,
         variable_pool: VariablePool,
         start_at: float,
         total_tokens: int = 0,
         llm_usage: LLMUsage | None = None,
-        outputs: dict[str, Any] | None = None,
+        outputs: dict[str, object] | None = None,
         node_run_steps: int = 0,
-        ready_queue: "ReadyQueueState | dict[str, object] | None" = None,
+        ready_queue_json: str = "",
         **kwargs: object,
     ):
         """Initialize the GraphRuntimeState with validation."""
@@ -56,9 +53,7 @@ class GraphRuntimeState(BaseModel):
             raise ValueError("node_run_steps must be non-negative")
         self._node_run_steps = node_run_steps
 
-        if ready_queue is None:
-            ready_queue = {}
-        self._ready_queue = deepcopy(ready_queue)
+        self._ready_queue_json = ready_queue_json
 
     @property
     def variable_pool(self) -> VariablePool:
@@ -99,24 +94,24 @@ class GraphRuntimeState(BaseModel):
         self._llm_usage = value.model_copy()
 
     @property
-    def outputs(self) -> dict[str, Any]:
+    def outputs(self) -> dict[str, object]:
         """Get a copy of the outputs dictionary."""
         return deepcopy(self._outputs)
 
     @outputs.setter
-    def outputs(self, value: dict[str, Any]) -> None:
+    def outputs(self, value: dict[str, object]) -> None:
         """Set the outputs dictionary."""
         self._outputs = deepcopy(value)
 
-    def set_output(self, key: str, value: Any) -> None:
+    def set_output(self, key: str, value: object) -> None:
         """Set a single output value."""
         self._outputs[key] = deepcopy(value)
 
-    def get_output(self, key: str, default: Any = None) -> Any:
+    def get_output(self, key: str, default: object = None) -> object:
         """Get a single output value."""
         return deepcopy(self._outputs.get(key, default))
 
-    def update_outputs(self, updates: dict[str, Any]) -> None:
+    def update_outputs(self, updates: dict[str, object]) -> None:
         """Update multiple output values."""
         for key, value in updates.items():
             self._outputs[key] = deepcopy(value)
@@ -144,6 +139,6 @@ class GraphRuntimeState(BaseModel):
         self._total_tokens += tokens
 
     @property
-    def ready_queue(self) -> "ReadyQueueState | dict[str, object]":
+    def ready_queue_json(self) -> str:
         """Get a copy of the ready queue state."""
-        return deepcopy(self._ready_queue)
+        return self._ready_queue_json

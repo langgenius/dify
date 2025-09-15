@@ -18,6 +18,7 @@ from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
+from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphNodeEventBase,
@@ -38,7 +39,7 @@ from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
-from .ready_queue import InMemoryReadyQueue
+from .ready_queue import ReadyQueueState, create_ready_queue_from_state
 from .response_coordinator import ResponseStreamCoordinator
 from .worker_management import WorkerPool
 
@@ -104,18 +105,13 @@ class GraphEngine:
         self._scale_down_idle_time = scale_down_idle_time
 
         # === Execution Queues ===
-        # Queue for nodes ready to execute
-        self._ready_queue = InMemoryReadyQueue()
-        # Load ready queue state from GraphRuntimeState if not empty
-        ready_queue_state = self._graph_runtime_state.ready_queue
-        if ready_queue_state:
-            # Import ReadyQueueState here to avoid circular imports
-            from .ready_queue import ReadyQueueState
+        # Create ready queue from saved state or initialize new one
+        if self._graph_runtime_state.ready_queue_json == "":
+            self._ready_queue = InMemoryReadyQueue()
+        else:
+            ready_queue_state = ReadyQueueState.model_validate_json(self._graph_runtime_state.ready_queue_json)
+            self._ready_queue = create_ready_queue_from_state(ready_queue_state)
 
-            # Ensure we have a ReadyQueueState object
-            if isinstance(ready_queue_state, dict):
-                ready_queue_state = ReadyQueueState(**ready_queue_state)  # type: ignore
-            self._ready_queue.loads(ready_queue_state)
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
 

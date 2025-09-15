@@ -31,7 +31,6 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
     core.workflow.nodes.loop.loop_node -> core.workflow.graph
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
-    core.workflow.entities.graph_runtime_state -> core.workflow.graph_engine.ready_queue
 
 [importlinter:contract:rsc]
 name = RSC
