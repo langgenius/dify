@@ -92,6 +92,15 @@
 
 如果在設定過程中遇到任何問題，歡迎隨時詢問。
 
+### Coding Agents 規則
+
+請參考 [AGENTS.md](https://agents.md/) 文件中的規則。
+
+透過`symlink`將主流Coding Agents規則文件連結到 [AGENTS.md](https://agents.md/),只需要維護一份規則即可。
+
+`symlink`在不同平台底層實現不一樣，對於Windows用戶需要重新生成一次`symlink`，可以透過運行
+`npx rule-link create --list "Claude Code" Augment Cline Windsurf -F` 快速生成。
+
 ## 尋求協助
 
 如果你在貢獻過程中遇到困難或有急切的問題，可以透過相關的 GitHub 議題詢問，或加入我們的 [Discord](https://discord.gg/8Tpq4AcN9c) 進行即時交流。

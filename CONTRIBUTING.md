@@ -92,6 +92,15 @@ We recommend reviewing this document carefully before proceeding with the setup,
 
 Feel free to reach out if you encounter any issues during the setup process.
 
+### Coding Agents Rules
+
+Please refer to the rules in the [AGENTS.md](https://agents.md/) file.
+
+Use symlinks to link mainstream Coding Agents rule files to [AGENTS.md](https://agents.md/), so you only need to maintain one set of rules.
+
+Symlinks are implemented differently across platforms. For Windows users, you need to regenerate the symlink, which can be done quickly by running:
+`npx rule-link create --list "Claude Code" Augment Cline Windsurf -F`
+
 ## Getting Help
 
 If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.

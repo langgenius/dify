@@ -92,6 +92,15 @@ Chúng tôi khuyến nghị xem xét kỹ tài liệu này trước khi tiến h
 
 Đừng ngần ngại liên hệ nếu bạn gặp bất kỳ vấn đề nào trong quá trình thiết lập.
 
+### Quy tắc Coding Agents
+
+Vui lòng tham khảo các quy tắc trong file [AGENTS.md](https://agents.md/).
+
+Sử dụng symlink để liên kết các file quy tắc Coding Agents chính với [AGENTS.md](https://agents.md/), để bạn chỉ cần duy trì một bộ quy tắc duy nhất.
+
+Symlink được triển khai khác nhau trên các nền tảng khác nhau. Đối với người dùng Windows, bạn cần tạo lại symlink, điều này có thể được thực hiện nhanh chóng bằng cách chạy:
+`npx rule-link create --list "Claude Code" Augment Cline Windsurf -F`
+
 ## Nhận trợ giúp
 
 Nếu bạn bị mắc kẹt hoặc có câu hỏi cấp bách trong quá trình đóng góp, chỉ cần gửi câu hỏi của bạn thông qua issue GitHub liên quan, hoặc tham gia [Discord](https://discord.gg/8Tpq4AcN9c) của chúng tôi để trò chuyện nhanh.

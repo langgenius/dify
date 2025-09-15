@@ -92,6 +92,15 @@ PR 설명에 기존 이슈를 연결하거나 새 이슈를 여는 것을 잊지
 
 설정 과정에서 문제가 발생하면 언제든지 연락해 주세요.
 
+### 코딩 에이전트 규칙
+
+[AGENTS.md](https://agents.md/) 파일의 규칙을 참조하세요.
+
+주요 코딩 에이전트 규칙 파일을 [AGENTS.md](https://agents.md/)에 심볼릭 링크로 연결하여 하나의 규칙 집합만 유지하세요.
+
+심볼릭 링크는 플랫폼마다 다르게 구현됩니다. Windows 사용자의 경우 심볼릭 링크를 다시 생성해야 하며, 다음 명령을 실행하여 빠르게 수행할 수 있습니다:
+`npx rule-link create --list "Claude Code" Augment Cline Windsurf -F`
+
 ## 도움 받기
 
 기여하는 동안 막히거나 긴급한 질문이 있으면, 관련 GitHub 이슈를 통해 질문을 보내거나, 빠른 대화를 위해 우리의 [Discord](https://discord.gg/8Tpq4AcN9c)에 참여하세요.
