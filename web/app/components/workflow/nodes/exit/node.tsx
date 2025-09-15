@@ -21,9 +21,7 @@ const Node: FC<NodeProps<ExitNodeType>> = ({
   const { getCurrentVariableType } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
 
-  const startNode = availableNodes.find((node: any) => {
-    return node.data.type === BlockEnum.Start
-  })
+  const startNode = availableNodes.find(node => node.data.type === BlockEnum.Start)
 
   const getNode = (id: string) => {
     return availableNodes.find(node => node.id === id) || startNode

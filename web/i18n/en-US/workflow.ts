@@ -425,14 +425,8 @@ const translation = {
     exit: {
       outputs: 'Outputs',
       output: {
-        // type: 'output type',
         variable: 'output variable',
       },
-      // type: {
-      //   'none': 'None',
-      //   'plain-text': 'Plain Text',
-      //   'structured': 'Structured',
-      // },
     },
     answer: {
       answer: 'Answer',
