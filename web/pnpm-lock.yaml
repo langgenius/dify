@@ -331,8 +331,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       scheduler:
-        specifier: ^0.23.0
-        version: 0.23.2
+        specifier: ^0.26.0
+        version: 0.26.0
       semver:
         specifier: ^7.6.3
         version: 7.7.2
@@ -359,7 +359,7 @@ importers:
         version: 7.0.10
       use-context-selector:
         specifier: ^2.0.0
-        version: 2.0.0(react@19.1.1)(scheduler@0.23.2)
+        version: 2.0.0(react@19.1.1)(scheduler@0.26.0)
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -18527,10 +18527,10 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.1.11
 
-  use-context-selector@2.0.0(react@19.1.1)(scheduler@0.23.2):
+  use-context-selector@2.0.0(react@19.1.1)(scheduler@0.26.0):
     dependencies:
       react: 19.1.1
-      scheduler: 0.23.2
+      scheduler: 0.26.0
 
   use-isomorphic-layout-effect@1.2.1(@types/react@19.1.11)(react@19.1.1):
     dependencies:

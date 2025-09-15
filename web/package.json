@@ -139,7 +139,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
-    "scheduler": "^0.23.0",
+    "scheduler": "^0.26.0",
     "semver": "^7.6.3",
     "server-only": "^0.0.1",
     "sharp": "^0.33.2",
