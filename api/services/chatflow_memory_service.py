@@ -146,7 +146,7 @@ class ChatflowMemoryService:
                 if draft_vars:
                     draft_var = draft_vars[0]
                     return MemoryBlock(
-                        value=draft_var.value,
+                        value=draft_var.get_value().text,
                         tenant_id=tenant_id,
                         app_id=app_id,
                         conversation_id=conversation_id,
