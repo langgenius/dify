@@ -220,7 +220,7 @@
     "lodash": "^4.17.21",
     "magicast": "^0.3.4",
     "postcss": "^8.4.47",
-    "sass": "^1.80.3",
+    "sass": "^1.92.1",
     "storybook": "8.5.0",
     "tailwindcss": "^3.4.14",
     "ts-node": "^10.9.2",
