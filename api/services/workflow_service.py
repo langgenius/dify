@@ -375,13 +375,14 @@ class WorkflowService:
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
-        Validate that an LLM model configuration can fetch valid credentials.
+        Validate that an LLM model configuration can fetch valid credentials and has active status.
 
         This method attempts to get the model instance and validates that:
         1. The provider exists and is configured
         2. The model exists in the provider
         3. Credentials can be fetched for the model
         4. The credentials pass policy compliance checks
+        5. The model status is ACTIVE (not NO_CONFIGURE, DISABLED, etc.)
 
         :param tenant_id: The tenant ID
         :param provider: The provider name
@@ -391,6 +392,7 @@ class WorkflowService:
         try:
             from core.model_manager import ModelManager
             from core.model_runtime.entities.model_entities import ModelType
+            from core.provider_manager import ProviderManager
 
             # Get model instance to validate provider+model combination
             model_manager = ModelManager()
@@ -401,6 +403,22 @@ class WorkflowService:
             # The ModelInstance constructor will automatically check credential policy compliance
             # via ProviderConfiguration.get_current_credentials() -> _check_credential_policy_compliance()
             # If it fails, an exception will be raised
+
+            # Additionally, check the model status to ensure it's ACTIVE
+            provider_manager = ProviderManager()
+            provider_configurations = provider_manager.get_configurations(tenant_id)
+            models = provider_configurations.get_models(provider=provider, model_type=ModelType.LLM)
+            
+            target_model = None
+            for model in models:
+                if model.model == model_name and model.provider.provider == provider:
+                    target_model = model
+                    break
+            
+            if target_model:
+                target_model.raise_for_status()
+            else:
+                raise ValueError(f"Model {model_name} not found for provider {provider}")
 
         except Exception as e:
             raise ValueError(
