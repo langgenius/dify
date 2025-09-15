@@ -19,10 +19,6 @@ from . import mail as _mail
 from .plugin import plugin as _plugin
 from .workspace import workspace as _workspace
 
-__all__ = [
-    "_mail",
-    "_plugin",
-    "_workspace"
-]
+__all__ = ["_mail", "_plugin", "_workspace"]
 
 api.add_namespace(inner_api_ns)

@@ -63,18 +63,8 @@ from . import (
     setup,
     version,
 )
-from . import admin, apikey, extension, feature, ping, setup, version
 
-__all__ = [
-    "admin",
-    "apikey",
-    "extension",
-    "feature",
-    "init_validate",
-    "ping",
-    "setup",
-    "version"
-]
+__all__ = ["admin", "apikey", "extension", "feature", "init_validate", "ping", "setup", "version"]
 
 # Import app controllers
 from .app import (

@@ -46,7 +46,7 @@ __all__ = [
     "remote_files",
     "saved_message",
     "site",
-    "workflow"
+    "workflow",
 ]
 
 api.add_namespace(web_ns)
