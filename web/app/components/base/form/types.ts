@@ -42,6 +42,7 @@ export enum FormTypeEnum {
   boolean = 'boolean',
   booleanList = 'boolean-list',
   switch = 'switch',
+  nodeSelector = 'node-selector', // used in memory variable form
 }
 
 export type FormOption = {

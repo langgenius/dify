@@ -95,12 +95,12 @@ export const useMemorySchema = () => {
       inputClassName: 'w-[102px]',
       options: [
         {
-          label: 'Conversation',
-          value: 'conversation',
-        },
-        {
           label: 'App',
           value: 'app',
+        },
+        {
+          label: 'Node',
+          value: 'node',
         },
       ],
       show_on: [
@@ -112,6 +112,24 @@ export const useMemorySchema = () => {
       selfFormProps: {
         withTopDivider: true,
       },
+    },
+    {
+      name: 'node',
+      label: 'Node',
+      type: FormTypeEnum.nodeSelector,
+      fieldClassName: 'flex justify-between',
+      inputClassName: 'w-[102px]',
+      default: '',
+      show_on: [
+        {
+          variable: 'value_type',
+          value: [ChatVarType.Memory],
+        },
+        {
+          variable: 'scope',
+          value: 'node',
+        },
+      ],
     },
     {
       name: 'term',
@@ -216,7 +234,7 @@ export const useMemoryDefaultValues = () => {
     instruction: '',
     strategy: 'on_turns',
     update_turns: 0,
-    scope: 'conversation',
+    scope: 'app',
     term: 'session',
     more: false,
     model: '',

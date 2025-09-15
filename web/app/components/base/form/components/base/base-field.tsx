@@ -33,6 +33,7 @@ import PromptGeneratorBtn from '@/app/components/workflow/nodes/llm/components/p
 import Slider from '@/app/components/base/slider'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '../../../switch'
+import NodeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/node-selector'
 
 export type BaseFieldProps = {
   fieldClassName?: string
@@ -168,7 +169,7 @@ const BaseField = ({
               <RiArrowDownSFill
                 className={cn(
                   'h-4 w-4 text-text-quaternary',
-                  value && '-rotate-90',
+                  !value && '-rotate-90',
                 )}
               />
             )
@@ -409,6 +410,14 @@ const BaseField = ({
                 readonly={disabled}
                 scope={formSchema.scope}
                 isAdvancedMode
+              />
+            )
+          }
+          {
+            type === FormTypeEnum.nodeSelector && (
+              <NodeSelector
+                value={value}
+                onChange={handleChange}
               />
             )
           }
