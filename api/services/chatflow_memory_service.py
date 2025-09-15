@@ -71,23 +71,22 @@ class ChatflowMemoryService:
                 app_id=memory.app_id,
                 node_id=memory.node_id,
                 conversation_id=memory.conversation_id
-            ).first()
-            if existing:
-                existing.value = memory.value
-            else:
-                session.add(
-                    ChatflowMemoryVariable(
-                        memory_id=memory.spec.id,
-                        tenant_id=memory.tenant_id,
-                        app_id=memory.app_id,
-                        node_id=memory.node_id,
-                        conversation_id=memory.conversation_id,
-                        name=memory.spec.name,
-                        value=memory.value,
-                        term=memory.spec.term,
-                        scope=memory.spec.scope,
-                    )
+            ).order_by(ChatflowMemoryVariable.version.desc()).first()
+            new_version = 1 if not existing else existing.version + 1
+            session.add(
+                ChatflowMemoryVariable(
+                    memory_id=memory.spec.id,
+                    tenant_id=memory.tenant_id,
+                    app_id=memory.app_id,
+                    node_id=memory.node_id,
+                    conversation_id=memory.conversation_id,
+                    name=memory.spec.name,
+                    value=memory.value,
+                    term=memory.spec.term,
+                    scope=memory.spec.scope,
+                    version=new_version,
                 )
+            )
             session.commit()
 
         if is_draft:
@@ -163,7 +162,7 @@ class ChatflowMemoryService:
                     ChatflowMemoryVariable.conversation_id == \
                         (conversation_id if spec.term == MemoryTerm.SESSION else None),
                 )
-            )
+            ).order_by(ChatflowMemoryVariable.version.desc()).limit(1)
             result = session.execute(stmt).scalar()
             if result:
                 return MemoryBlock(
