@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -26,7 +26,7 @@ class FileUploadConfig(BaseModel):
     File Upload Entity.
     """
 
-    image_config: Optional[ImageConfig] = None
+    image_config: ImageConfig | None = None
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
     allowed_file_extensions: Sequence[str] = Field(default_factory=list)
     allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
@@ -38,21 +38,21 @@ class File(BaseModel):
     # new and old data formats during serialization and deserialization.
     dify_model_identity: str = FILE_MODEL_IDENTITY
 
-    id: Optional[str] = None  # message file id
+    id: str | None = None  # message file id
     tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
     # If `transfer_method` is `FileTransferMethod.remote_url`, the
     # `remote_url` attribute must not be `None`.
-    remote_url: Optional[str] = None  # remote url
+    remote_url: str | None = None  # remote url
     # If `transfer_method` is `FileTransferMethod.local_file` or
     # `FileTransferMethod.tool_file`, the `related_id` attribute must not be `None`.
     #
     # It should be set to `ToolFile.id` when `transfer_method` is `tool_file`.
-    related_id: Optional[str] = None
-    filename: Optional[str] = None
-    extension: Optional[str] = Field(default=None, description="File extension, should contain dot")
-    mime_type: Optional[str] = None
+    related_id: str | None = None
+    filename: str | None = None
+    extension: str | None = Field(default=None, description="File extension, should contain dot")
+    mime_type: str | None = None
     size: int = -1
 
     # Those properties are private, should not be exposed to the outside.
@@ -61,19 +61,19 @@ class File(BaseModel):
     def __init__(
         self,
         *,
-        id: Optional[str] = None,
+        id: str | None = None,
         tenant_id: str,
         type: FileType,
         transfer_method: FileTransferMethod,
-        remote_url: Optional[str] = None,
-        related_id: Optional[str] = None,
-        filename: Optional[str] = None,
-        extension: Optional[str] = None,
-        mime_type: Optional[str] = None,
+        remote_url: str | None = None,
+        related_id: str | None = None,
+        filename: str | None = None,
+        extension: str | None = None,
+        mime_type: str | None = None,
         size: int = -1,
-        storage_key: Optional[str] = None,
-        dify_model_identity: Optional[str] = FILE_MODEL_IDENTITY,
-        url: Optional[str] = None,
+        storage_key: str | None = None,
+        dify_model_identity: str | None = FILE_MODEL_IDENTITY,
+        url: str | None = None,
     ):
         super().__init__(
             id=id,
@@ -108,7 +108,7 @@ class File(BaseModel):
 
         return text
 
-    def generate_url(self) -> Optional[str]:
+    def generate_url(self) -> str | None:
         if self.transfer_method == FileTransferMethod.REMOTE_URL:
             return self.remote_url
         elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
@@ -146,3 +146,11 @@ class File(BaseModel):
                 if not self.related_id:
                     raise ValueError("Missing file related_id")
         return self
+
+    @property
+    def storage_key(self) -> str:
+        return self._storage_key
+
+    @storage_key.setter
+    def storage_key(self, value: str):
+        self._storage_key = value

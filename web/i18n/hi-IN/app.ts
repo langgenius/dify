@@ -316,6 +316,10 @@ const translation = {
     tryDifferentSearch: 'एक अलग खोज शब्द आजमाएँ',
     noMatchingCommands: 'कोई मिलती-जुलती कमांड्स नहीं मिलीं',
     slashHint: 'सभी उपलब्ध कमांड देखने के लिए टाइप करें /',
+    pressEscToClose: 'बंद करने के लिए ESC दबाएं',
+    startTyping: 'खोजने के लिए टाइप करना शुरू करें',
+    selectToNavigate: 'नेविगेट करने के लिए चुनें',
+    tips: 'नेविगेट करने के लिए ↑↓ दबाएँ',
   },
 }
 

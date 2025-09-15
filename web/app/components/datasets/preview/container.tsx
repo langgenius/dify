@@ -1,14 +1,14 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
-import { forwardRef } from 'react'
 import classNames from '@/utils/classnames'
 
 export type PreviewContainerProps = ComponentProps<'div'> & {
   header: ReactNode
   mainClassName?: string
+  ref?: React.Ref<HTMLDivElement>
 }
 
-export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, ref) => {
-  const { children, className, header, mainClassName, ...rest } = props
+export const PreviewContainer: FC<PreviewContainerProps> = (props) => {
+  const { children, className, header, mainClassName, ref, ...rest } = props
   return <div className={className}>
     <div
       {...rest}
@@ -25,5 +25,5 @@ export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, re
       </main>
     </div>
   </div>
-})
+}
 PreviewContainer.displayName = 'PreviewContainer'

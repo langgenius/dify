@@ -198,6 +198,7 @@ sdks/python-client/dify_client.egg-info
 !.vscode/launch.json.template
 !.vscode/README.md
 api/.vscode
+web/.vscode
 # vscode Code History Extension
 .history
 
@@ -215,7 +216,18 @@ mise.toml
 # Next.js build output
 .next/
 
+# PWA generated files
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/fallback-*.js
+
 # AI Assistant
 .roo/
 api/.env.backup
 /clickzetta
+
+# Benchmark
+scripts/stress-test/setup/config/
+scripts/stress-test/reports/

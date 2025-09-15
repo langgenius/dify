@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from yarl import URL
 
@@ -94,7 +94,7 @@ class ToolTransformService:
     def builtin_provider_to_user_provider(
         cls,
         provider_controller: BuiltinToolProviderController | PluginToolProviderController,
-        db_provider: Optional[BuiltinToolProvider],
+        db_provider: BuiltinToolProvider | None,
         decrypt_credentials: bool = True,
     ) -> ToolProviderApiEntity:
         """
@@ -237,6 +237,10 @@ class ToolTransformService:
             label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
             description=I18nObject(en_US="", zh_Hans=""),
             server_identifier=db_provider.server_identifier,
+            timeout=db_provider.timeout,
+            sse_read_timeout=db_provider.sse_read_timeout,
+            masked_headers=db_provider.masked_headers,
+            original_headers=db_provider.decrypted_headers,
         )
 
     @staticmethod

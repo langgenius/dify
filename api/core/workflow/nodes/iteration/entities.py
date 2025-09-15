@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import Field
 
@@ -17,7 +17,7 @@ class IterationNodeData(BaseIterationNodeData):
     Iteration Node Data.
     """
 
-    parent_loop_id: Optional[str] = None  # redundant field, not used currently
+    parent_loop_id: str | None = None  # redundant field, not used currently
     iterator_selector: list[str]  # variable selector
     output_selector: list[str]  # output selector
     is_parallel: bool = False  # open the parallel mode or not
@@ -39,7 +39,7 @@ class IterationState(BaseIterationState):
     """
 
     outputs: list[Any] = Field(default_factory=list)
-    current_output: Optional[Any] = None
+    current_output: Any | None = None
 
     class MetaData(BaseIterationState.MetaData):
         """
@@ -48,7 +48,7 @@ class IterationState(BaseIterationState):
 
         iterator_length: int
 
-    def get_last_output(self) -> Optional[Any]:
+    def get_last_output(self) -> Any | None:
         """
         Get last output.
         """
@@ -56,7 +56,7 @@ class IterationState(BaseIterationState):
             return self.outputs[-1]
         return None
 
-    def get_current_output(self) -> Optional[Any]:
+    def get_current_output(self) -> Any | None:
         """
         Get current output.
         """

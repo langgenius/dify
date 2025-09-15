@@ -1,8 +1,8 @@
-from enum import Enum
+from enum import StrEnum, auto
 
 
-class PlanningStrategy(Enum):
-    ROUTER = "router"
-    REACT_ROUTER = "react_router"
-    REACT = "react"
-    FUNCTION_CALL = "function_call"
+class PlanningStrategy(StrEnum):
+    ROUTER = auto()
+    REACT_ROUTER = auto()
+    REACT = auto()
+    FUNCTION_CALL = auto()
