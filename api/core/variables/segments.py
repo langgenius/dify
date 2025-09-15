@@ -203,8 +203,8 @@ class ArrayFileSegment(ArraySegment):
         return ""
 
 class VersionedMemoryValue(BaseModel):
-    current_value: str
-    versions: Mapping[str, str]
+    current_value: str = None  # type: ignore
+    versions: Mapping[str, str] = dict()
 
     model_config = ConfigDict(frozen=True)
 
