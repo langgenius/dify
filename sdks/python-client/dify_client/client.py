@@ -8,7 +8,9 @@ class DifyClient:
         self.api_key = api_key
         self.base_url = base_url
 
-    def _send_request(self, method: str, endpoint: str, json: dict | None = None, params: dict | None = None, stream: bool = False):
+    def _send_request(
+        self, method: str, endpoint: str, json: dict | None = None, params: dict | None = None, stream: bool = False
+    ):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -49,7 +51,9 @@ class DifyClient:
 
 
 class CompletionClient(DifyClient):
-    def create_completion_message(self, inputs: dict, response_mode: Literal["blocking", "streaming"], user: str, files: dict | None = None):
+    def create_completion_message(
+        self, inputs: dict, response_mode: Literal["blocking", "streaming"], user: str, files: dict | None = None
+    ):
         data = {
             "inputs": inputs,
             "response_mode": response_mode,
@@ -142,9 +146,7 @@ class ChatClient(DifyClient):
 
 
 class WorkflowClient(DifyClient):
-    def run(
-        self, inputs: dict, response_mode: Literal["blocking", "streaming"] = "streaming", user: str = "abc-123"
-    ):
+    def run(self, inputs: dict, response_mode: Literal["blocking", "streaming"] = "streaming", user: str = "abc-123"):
         data = {"inputs": inputs, "response_mode": response_mode, "user": user}
         return self._send_request("POST", "/workflows/run", data)
 
@@ -298,9 +300,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/document/create_by_file"
         return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
-    def update_document_by_file(
-        self, document_id: str, file_path: str, extra_params: dict | None = None
-    ):
+    def update_document_by_file(self, document_id: str, file_path: str, extra_params: dict | None = None):
         """
         Update a document by file.
 
