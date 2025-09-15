@@ -99,3 +99,7 @@ export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promi
   const { items } = (await get(`apps/${appId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
 }
+
+export const toggleWorkflowNodeStream = (appId: string, nodeId: string) => {
+  return post(`/apps/${appId}/workflows/draft/nodes/${nodeId}/stream-toggle`)
+}
