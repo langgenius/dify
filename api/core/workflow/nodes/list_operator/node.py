@@ -178,7 +178,7 @@ class ListOperatorNode(BaseNode):
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             else:
-                raise AssertionError("this statment should be unreachable.")
+                raise AssertionError("this statement should be unreachable.")
         return variable
 
     def _apply_order(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
@@ -191,7 +191,7 @@ class ListOperatorNode(BaseNode):
             )
             variable = variable.model_copy(update={"value": result})
         else:
-            raise AssertionError("this statement should be unreachable")
+            raise AssertionError("this statement should be unreachable.")
 
         return variable
 
