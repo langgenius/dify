@@ -1,7 +1,8 @@
 import type { FC } from 'react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Textarea from 'react-textarea-autosize'
 import { RiSendPlane2Fill } from '@remixicon/react'
+import { useReactFlow, useViewport } from 'reactflow'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
@@ -17,6 +18,12 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { userProfile } = useAppContext()
+  const { flowToScreenPosition } = useReactFlow()
+  const viewport = useViewport()
+
+  const screenPosition = useMemo(() => {
+    return flowToScreenPosition(position)
+  }, [position.x, position.y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -59,8 +66,8 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
     <div
       className="absolute z-50 w-96"
       style={{
-        left: position.x + 10,
-        top: position.y + 10,
+        left: screenPosition.x,
+        top: screenPosition.y,
       }}
     >
       <div className="flex items-start gap-3">
