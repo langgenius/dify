@@ -65,7 +65,6 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.dataset_service import DatasetService
 from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
@@ -346,6 +345,8 @@ class RagPipelineService:
 
         graph = workflow.graph_dict
         nodes = graph.get("nodes", [])
+        from services.dataset_service import DatasetService
+
         for node in nodes:
             if node.get("data", {}).get("type") == "knowledge-index":
                 knowledge_configuration = node.get("data", {})
