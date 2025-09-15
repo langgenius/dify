@@ -20,7 +20,7 @@ class AppParameterApi(InstalledAppResource):
         if app_model is None:
             raise AppUnavailableError()
 
-        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()

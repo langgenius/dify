@@ -55,6 +55,7 @@ const translation = {
     passwordInvalid: 'Le mot de passe doit contenir des lettres et des chiffres, et la longueur doit être supérieure à 8.',
     passwordLengthInValid: 'Le mot de passe doit comporter au moins 8 caractères.',
     registrationNotAllowed: 'Compte introuvable. Veuillez contacter l’administrateur système pour vous inscrire.',
+    invalidEmailOrPassword: 'Adresse e-mail ou mot de passe invalide.',
   },
   license: {
     tip: 'Avant de commencer Dify Community Edition, lisez le GitHub',
@@ -109,6 +110,15 @@ const translation = {
     noLoginMethod: 'Méthode d\'authentification non configurée pour l\'application web',
     disabled: 'L\'authentification de l\'application web est désactivée. Veuillez contacter l\'administrateur du système pour l\'activer. Vous pouvez essayer d\'utiliser l\'application directement.',
     login: 'Connexion',
+  },
+  signup: {
+    signUp: 'S\'inscrire',
+    noAccount: 'Vous n\'avez pas de compte ?',
+    welcome: '👋 Bienvenue ! Veuillez remplir les détails pour commencer.',
+    signIn: 'Se connecter',
+    haveAccount: 'Vous avez déjà un compte ?',
+    verifyMail: 'Continuez avec le code de vérification',
+    createAccount: 'Créez votre compte',
   },
 }
 

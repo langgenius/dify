@@ -92,7 +92,7 @@ class MessageCycleManager:
             if not conversation:
                 return
 
-            if conversation.mode != AppMode.COMPLETION.value:
+            if conversation.mode != AppMode.COMPLETION:
                 app_model = conversation.app
                 if not app_model:
                     return
