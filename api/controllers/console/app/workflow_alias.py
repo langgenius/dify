@@ -139,7 +139,6 @@ class WorkflowAliasApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_alias_fields)
     @api.doc("delete_workflow_alias")
     @api.doc(description="Delete a workflow alias")
     @api.doc(params={"app_id": "App ID", "alias_id": "Alias ID"})
