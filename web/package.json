@@ -166,7 +166,7 @@
     "@happy-dom/jest-environment": "^17.4.4",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
-    "@next/bundle-analyzer": "15.5.0",
+    "@next/bundle-analyzer": "15.5.3",
     "@next/eslint-plugin-next": "15.5.0",
     "@next/mdx": "15.5.0",
     "@rgrove/parse-xml": "^4.1.0",
