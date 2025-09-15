@@ -1,7 +1,7 @@
 import json
 import sys
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, TypeAlias
+from typing import Annotated, Any, TypeAlias, Self, Optional
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
@@ -196,6 +196,30 @@ class ArrayFileSegment(ArraySegment):
     @property
     def text(self) -> str:
         return ""
+
+class VersionedMemoryValue(BaseModel):
+    current_value: str
+    versions: Mapping[str, str]
+
+    model_config = ConfigDict(frozen=True)
+
+    def add_version(
+        self,
+        new_value: str,
+        version_name: Optional[str] = None
+    ) -> Self:
+        if version_name is None:
+            version_name = str(len(self.versions) + 1)
+        if version_name in self.versions.keys():
+            raise ValueError(f"Version '{version_name}' already exists.")
+        self.current_value = new_value
+        return VersionedMemoryValue(
+            current_value=new_value,
+            versions={
+                version_name: new_value,
+                **self.versions,
+            }
+        )
 
 
 def get_segment_discriminator(v: Any) -> SegmentType | None:
