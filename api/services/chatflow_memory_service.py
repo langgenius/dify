@@ -18,6 +18,7 @@ from core.memory.entities import (
 )
 from core.memory.errors import MemorySyncTimeoutError
 from core.model_runtime.entities.message_entities import PromptMessage
+from core.variables.segments import VersionedMemoryValue
 from core.workflow.constants import MEMORY_BLOCK_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
 from extensions.ext_database import db
@@ -98,13 +99,15 @@ class ChatflowMemoryService:
                 )
                 if existing_vars:
                     draft_var = existing_vars[0]
-                    draft_var.value = memory.value
+                    draft_var.value = VersionedMemoryValue.model_validate_json(draft_var.value)\
+                        .add_version(memory.value)\
+                        .model_dump_json()
                 else:
                     draft_var = WorkflowDraftVariable.new_memory_block_variable(
                         app_id=memory.app_id,
                         memory_id=memory.spec.id,
                         name=memory.spec.name,
-                        value=memory.value,
+                        value=VersionedMemoryValue().add_version(memory.value),
                         description=memory.spec.description
                     )
                     session.add(draft_var)
