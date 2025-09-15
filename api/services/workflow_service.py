@@ -84,7 +84,7 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: Optional[str] = None) -> Optional[Workflow]:
+    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
         """
         Get draft workflow
         """
@@ -104,7 +104,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
+    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Workflow | None:
         """
         fetch published workflow by workflow_id
         """
@@ -126,7 +126,7 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
+    def get_published_workflow(self, app_model: App) -> Workflow | None:
         """
         Get published workflow
         """
@@ -191,7 +191,7 @@ class WorkflowService:
         app_model: App,
         graph: dict,
         features: dict,
-        unique_hash: Optional[str],
+        unique_hash: str | None,
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
@@ -883,7 +883,7 @@ class WorkflowService:
 
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
-    ) -> Optional[Workflow]:
+    ) -> Workflow | None:
         """
         Update workflow attributes
 

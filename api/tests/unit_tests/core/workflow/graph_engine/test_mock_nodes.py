@@ -64,7 +64,7 @@ class MockNodeMixin:
 
         return default_outputs
 
-    def _should_simulate_error(self) -> Optional[str]:
+    def _should_simulate_error(self) -> str | None:
         """Check if this node should simulate an error."""
         if not self.mock_config:
             return None

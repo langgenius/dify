@@ -157,7 +157,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -446,7 +446,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Tool:
         """
         get tool runtime from plugin

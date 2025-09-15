@@ -60,14 +60,14 @@ class WorkflowTestCase:
     query: str = ""
     description: str = ""
     timeout: float = 30.0
-    mock_config: Optional[MockConfig] = None
+    mock_config: MockConfig | None = None
     use_auto_mock: bool = False
-    expected_event_sequence: Optional[Sequence[type[GraphEngineEvent]]] = None
+    expected_event_sequence: Sequence[type[GraphEngineEvent]] | None = None
     tags: list[str] = field(default_factory=list)
     skip: bool = False
     skip_reason: str = ""
     retry_count: int = 0
-    custom_validator: Optional[Callable[[dict[str, Any]], bool]] = None
+    custom_validator: Callable[[dict[str, Any]], bool] | None = None
 
 
 @dataclass
@@ -76,14 +76,14 @@ class WorkflowTestResult:
 
     test_case: WorkflowTestCase
     success: bool
-    error: Optional[Exception] = None
-    actual_outputs: Optional[dict[str, Any]] = None
+    error: Exception | None = None
+    actual_outputs: dict[str, Any] | None = None
     execution_time: float = 0.0
-    event_sequence_match: Optional[bool] = None
-    event_mismatch_details: Optional[str] = None
+    event_sequence_match: bool | None = None
+    event_mismatch_details: str | None = None
     events: list[GraphEngineEvent] = field(default_factory=list)
     retry_attempts: int = 0
-    validation_details: Optional[str] = None
+    validation_details: str | None = None
 
 
 @dataclass
@@ -116,7 +116,7 @@ class TestSuiteResult:
 class WorkflowRunner:
     """Core workflow execution engine for tests."""
 
-    def __init__(self, fixtures_dir: Optional[Path] = None):
+    def __init__(self, fixtures_dir: Path | None = None):
         """Initialize the workflow runner."""
         if fixtures_dir is None:
             # Use the new central fixtures location
@@ -147,9 +147,9 @@ class WorkflowRunner:
         self,
         fixture_data: dict[str, Any],
         query: str = "",
-        inputs: Optional[dict[str, Any]] = None,
+        inputs: dict[str, Any] | None = None,
         use_mock_factory: bool = False,
-        mock_config: Optional[MockConfig] = None,
+        mock_config: MockConfig | None = None,
     ) -> tuple[Graph, GraphRuntimeState]:
         """Create a Graph instance from fixture data."""
         workflow_config = fixture_data.get("workflow", {})
@@ -240,7 +240,7 @@ class TableTestRunner:
 
     def __init__(
         self,
-        fixtures_dir: Optional[Path] = None,
+        fixtures_dir: Path | None = None,
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",
@@ -467,8 +467,8 @@ class TableTestRunner:
         self,
         expected_outputs: dict[str, Any],
         actual_outputs: dict[str, Any],
-        custom_validator: Optional[Callable[[dict[str, Any]], bool]] = None,
-    ) -> tuple[bool, Optional[str]]:
+        custom_validator: Callable[[dict[str, Any]], bool] | None = None,
+    ) -> tuple[bool, str | None]:
         """
         Validate actual outputs against expected outputs.
 
@@ -517,7 +517,7 @@ class TableTestRunner:
 
     def _validate_event_sequence(
         self, expected_sequence: list[type[GraphEngineEvent]], actual_events: list[GraphEngineEvent]
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Validate that actual events match the expected event sequence.
 
@@ -549,7 +549,7 @@ class TableTestRunner:
         self,
         test_cases: list[WorkflowTestCase],
         parallel: bool = False,
-        tags_filter: Optional[list[str]] = None,
+        tags_filter: list[str] | None = None,
         fail_fast: bool = False,
     ) -> TestSuiteResult:
         """

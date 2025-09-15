@@ -220,7 +220,7 @@ class OpsTraceManager:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -244,7 +244,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Optional[Union[UUID, str]] = None,
+        app_id: Union[UUID, str] | None = None,
     ):
         """
         Get ops trace through model config
@@ -257,7 +257,7 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app: App | None = db.session.query(App).where(App.id == app_id).first()
 
         if app is None:
             return None
@@ -331,7 +331,7 @@ class OpsTraceManager:
         except KeyError:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app_config: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
             raise ValueError("App not found")
         app_config.tracing = json.dumps(
@@ -349,7 +349,7 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app:
             raise ValueError("App not found")
         if not app.tracing:
@@ -407,11 +407,11 @@ class TraceTask:
     def __init__(
         self,
         trace_type: Any,
-        message_id: Optional[str] = None,
+        message_id: str | None = None,
         workflow_execution: Optional["WorkflowExecution"] = None,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        timer: Optional[Any] = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        timer: Any | None = None,
         **kwargs,
     ):
         self.trace_type = trace_type
@@ -825,7 +825,7 @@ class TraceTask:
         return generate_name_trace_info
 
 
-trace_manager_timer: Optional[threading.Timer] = None
+trace_manager_timer: threading.Timer | None = None
 trace_manager_queue: queue.Queue = queue.Queue()
 trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 5))
 trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
