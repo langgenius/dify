@@ -316,6 +316,10 @@ const translation = {
     noMatchingCommands: 'Соответствующие команды не найдены',
     tryDifferentSearch: 'Попробуйте использовать другой поисковый запрос',
     slashHint: 'Введите / чтобы увидеть все доступные команды',
+    startTyping: 'Начните вводить для поиска',
+    tips: 'Нажмите ↑↓ для навигации',
+    selectToNavigate: 'Выберите для навигации',
+    pressEscToClose: 'Нажмите ESC для закрытия',
   },
 }
 
