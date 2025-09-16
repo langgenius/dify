@@ -696,6 +696,11 @@ class MailConfig(BaseSettings):
         default=TemplateMode.SANDBOX,
     )
 
+    MAIL_TEMPLATING_TIMEOUT: int = Field(
+        description="Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. Only available in sandbox mode.",
+        default=3,
+    )
+
     MAIL_TYPE: str | None = Field(
         description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
         default=None,

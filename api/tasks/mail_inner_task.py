@@ -5,23 +5,35 @@ from collections.abc import Mapping
 import click
 from celery import shared_task
 from flask import render_template_string
-from jinja2.sandbox import SandboxedEnvironment
-
+from jinja2.sandbox import ImmutableSandboxedEnvironment
+from jinja2.runtime import Context
 from configs import dify_config
 from configs.feature import TemplateMode
 from extensions.ext_mail import mail
 from libs.email_i18n import get_email_i18n_service
+from typing import Any
 
 logger = logging.getLogger(__name__)
-SANDBOX_ENV = SandboxedEnvironment()
+
+
+class SandboxedEnvironment(ImmutableSandboxedEnvironment):
+    def __init__(self, timeout: int, *args: Any, **kwargs: Any):
+        self._timeout_time = time.time() + timeout
+        super().__init__(*args, **kwargs)
+
+    def call(__self, __context: Context, __obj: Any, *args: Any, **kwargs: Any) -> Any:
+        if time.time() > __self._timeout_time:
+            raise TimeoutError("Template rendering timeout")
+        return super().call(__context, __obj, *args, **kwargs)
 
 
 def _render_template_with_strategy(body: str, substitutions: Mapping[str, str]) -> str:
     mode = dify_config.MAIL_TEMPLATING_MODE
+    timeout = dify_config.MAIL_TEMPLATING_TIMEOUT
     if mode == TemplateMode.UNSAFE:
         return render_template_string(body, **substitutions)
     if mode == TemplateMode.SANDBOX:
-        tmpl = SANDBOX_ENV.from_string(body)
+        tmpl = SandboxedEnvironment(timeout=timeout).from_string(body)
         return tmpl.render(substitutions)
     if mode == TemplateMode.DISABLED:
         return body
