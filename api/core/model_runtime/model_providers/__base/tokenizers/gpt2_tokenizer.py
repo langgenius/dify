@@ -1,10 +1,10 @@
 import logging
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_tokenizer: Optional[Any] = None
+_tokenizer: Any | None = None
 _lock = Lock()
 
 

@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
@@ -28,10 +28,10 @@ UGC_INDEX_PREFIX = "ugc_index"
 
 class LindormVectorStoreConfig(BaseModel):
     hosts: str
-    username: Optional[str] = None
-    password: Optional[str] = None
-    using_ugc: Optional[bool] = False
-    request_timeout: Optional[float] = 1.0  # timeout units: s
+    username: str | None = None
+    password: str | None = None
+    using_ugc: bool | None = False
+    request_timeout: float | None = 1.0  # timeout units: s
 
     @model_validator(mode="before")
     @classmethod
@@ -327,7 +327,7 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self, embeddings: list, metadatas: list[dict] = None, index_params: dict = None
     ):
         if not embeddings:
             raise ValueError(f"Embeddings list cannot be empty for collection create '{self._collection_name}'")
@@ -369,7 +369,6 @@ class LindormVectorStore(BaseVector):
                 logger.info("Creating Lindorm Search index %s", self._collection_name)
                 self._client.indices.create(index=self._collection_name, body=index_body)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
-
 
 class LindormVectorStoreFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:

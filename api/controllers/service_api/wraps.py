@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, Optional, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -13,14 +13,13 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
-from core.file.constants import DEFAULT_SERVICE_API_USER_ID
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, EndUser
+from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
 from services.feature_service import FeatureService
 
 P = ParamSpec("P")
@@ -43,7 +42,7 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Optional[Callable[P, R]] = None, *, fetch_user_arg: Optional[FetchUserArg] = None):
+def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
@@ -190,7 +189,7 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def validate_dataset_token(view: Optional[Callable[Concatenate[T, P], R]] = None):
+def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
     def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -268,12 +267,12 @@ def validate_and_get_api_token(scope: str | None = None):
     return api_token
 
 
-def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str] = None) -> EndUser:
+def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
     """
     Create or update session terminal based on user ID.
     """
     if not user_id:
-        user_id = DEFAULT_SERVICE_API_USER_ID
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
     with Session(db.engine, expire_on_commit=False) as session:
         end_user = (
@@ -292,7 +291,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type="service_api",
-                is_anonymous=user_id == DEFAULT_SERVICE_API_USER_ID,
+                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value,
                 session_id=user_id,
             )
             session.add(end_user)

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, TypedDict, cast
+from typing import TypedDict, cast
 
 from flask_sqlalchemy.pagination import Pagination
 
@@ -40,15 +40,15 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if args["mode"] == "workflow":
-            filters.append(App.mode == AppMode.WORKFLOW.value)
+            filters.append(App.mode == AppMode.WORKFLOW)
         elif args["mode"] == "completion":
-            filters.append(App.mode == AppMode.COMPLETION.value)
+            filters.append(App.mode == AppMode.COMPLETION)
         elif args["mode"] == "chat":
-            filters.append(App.mode == AppMode.CHAT.value)
+            filters.append(App.mode == AppMode.CHAT)
         elif args["mode"] == "advanced-chat":
-            filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
+            filters.append(App.mode == AppMode.ADVANCED_CHAT)
         elif args["mode"] == "agent-chat":
-            filters.append(App.mode == AppMode.AGENT_CHAT.value)
+            filters.append(App.mode == AppMode.AGENT_CHAT)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
@@ -171,7 +171,7 @@ class AppService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # get original app model config
-        if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
+        if app.mode == AppMode.AGENT_CHAT or app.is_agent:
             model_config = app.app_model_config
             if not model_config:
                 return app
@@ -370,7 +370,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
+            app_model_config: AppModelConfig | None = app_model.app_model_config
 
             if not app_model_config:
                 return meta
@@ -393,7 +393,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: Optional[ApiToolProvider] = (
+                        provider: ApiToolProvider | None = (
                             db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
                         )
                         if provider is None:

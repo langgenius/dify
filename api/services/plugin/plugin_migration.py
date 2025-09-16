@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import click
@@ -256,7 +256,7 @@ class PluginMigration:
                 return []
 
             agent_app_model_config_ids = [
-                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT.value
+                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT
             ]
 
             rs = session.query(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
@@ -281,7 +281,7 @@ class PluginMigration:
             return result
 
     @classmethod
-    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> Optional[str]:
+    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> str | None:
         """
         Fetch plugin unique identifier using plugin id.
         """

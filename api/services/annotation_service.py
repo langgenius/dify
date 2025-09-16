@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy import or_, select
@@ -42,7 +41,7 @@ class AppAnnotationService:
             if not message:
                 raise NotFound("Message Not Exists.")
 
-            annotation: Optional[MessageAnnotation] = message.annotation
+            annotation: MessageAnnotation | None = message.annotation
             # save the message annotation
             if annotation:
                 annotation.content = args["answer"]
@@ -263,11 +262,9 @@ class AppAnnotationService:
 
         db.session.delete(annotation)
 
-        annotation_hit_histories = (
-            db.session.query(AppAnnotationHitHistory)
-            .where(AppAnnotationHitHistory.annotation_id == annotation_id)
-            .all()
-        )
+        annotation_hit_histories = db.session.scalars(
+            select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation_id)
+        ).all()
         if annotation_hit_histories:
             for annotation_hit_history in annotation_hit_histories:
                 db.session.delete(annotation_hit_history)
