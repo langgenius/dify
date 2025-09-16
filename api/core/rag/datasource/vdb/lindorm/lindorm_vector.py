@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, Optional
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
@@ -327,7 +327,7 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: list[dict] = None, index_params: dict = None
+        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
     ):
         if not embeddings:
             raise ValueError(f"Embeddings list cannot be empty for collection create '{self._collection_name}'")
