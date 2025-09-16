@@ -865,7 +865,7 @@ class PublishedAllWorkflowApi(Resource):
             }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
 class WorkflowByIdApi(Resource):
     @api.doc("update_workflow_by_id")
     @api.doc(description="Update workflow by ID")
