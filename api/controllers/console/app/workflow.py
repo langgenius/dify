@@ -886,9 +886,9 @@ class DraftWorkflowTriggerRunApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="json")
-        parser.add_argument("trigger_name", type=str, required=True, location="json")
-        parser.add_argument("subscription_id", type=str, required=True, location="json")
+        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("trigger_name", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("subscription_id", type=str, required=True, location="json", nullable=False)
         args = parser.parse_args()
         node_id = args["node_id"]
         trigger_name = args["trigger_name"]
