@@ -408,13 +408,13 @@ class WorkflowService:
             provider_manager = ProviderManager()
             provider_configurations = provider_manager.get_configurations(tenant_id)
             models = provider_configurations.get_models(provider=provider, model_type=ModelType.LLM)
-            
+
             target_model = None
             for model in models:
                 if model.model == model_name and model.provider.provider == provider:
                     target_model = model
                     break
-            
+
             if target_model:
                 target_model.raise_for_status()
             else:
