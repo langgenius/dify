@@ -5,7 +5,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import { ActionButton } from '@/app/components/base/action-button'
-import { SupportedCreationMethods } from '../../types'
+import { SupportedCreationMethods } from '../../../types'
 import type { TriggerOAuthConfig } from '@/app/components/workflow/block-selector/types'
 
 type Props = {

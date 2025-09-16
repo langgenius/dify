@@ -4,22 +4,20 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import SubscriptionCard from './subscription-card'
 import { SubscriptionCreateModal } from './subscription-create-modal'
-import { CreateTypeDropdown } from './create-type-dropdown'
+import { CreateTypeDropdown } from './create/create-type-dropdown'
 import CreateSubscriptionButton, { ButtonType, DEFAULT_METHOD } from './create-subscription-button'
 import Tooltip from '@/app/components/base/tooltip'
 import { useTriggerOAuthConfig, useTriggerProviderInfo, useTriggerSubscriptions } from '@/service/use-triggers'
-import type { PluginDetail } from '@/app/components/plugins/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
+import { usePluginStore } from '../store'
 
-type Props = {
-  detail: PluginDetail
-}
-
-export const SubscriptionList = ({ detail }: Props) => {
+export const SubscriptionList = () => {
   const { t } = useTranslation()
-  const showTopBorder = detail.declaration.tool || detail.declaration.endpoint
-  const provider = `${detail.plugin_id}/${detail.declaration.name}`
+  const detail = usePluginStore(state => state.detail)
+
+  const showTopBorder = detail?.declaration.tool || detail?.declaration.endpoint
+  const provider = `${detail?.plugin_id}/${detail?.declaration.name}`
 
   const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(provider)
   const { data: providerInfo } = useTriggerProviderInfo(provider)
@@ -133,7 +131,6 @@ export const SubscriptionList = ({ detail }: Props) => {
         <SubscriptionCreateModal
           type={selectedCreateType}
           oauthConfig={oauthConfig}
-          pluginDetail={detail}
           onClose={handleModalClose}
           onSuccess={handleRefreshList}
         />

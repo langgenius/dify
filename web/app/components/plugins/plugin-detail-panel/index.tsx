@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { FC } from 'react'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
@@ -11,6 +11,7 @@ import { TriggerEventsList } from './trigger-events-list'
 import Drawer from '@/app/components/base/drawer'
 import { type PluginDetail, PluginType } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
+import { usePluginStore } from './store'
 
 type Props = {
   detail?: PluginDetail
@@ -28,6 +29,12 @@ const PluginDetailPanel: FC<Props> = ({
       onHide()
     onUpdate()
   }
+  const { setDetail } = usePluginStore()
+
+  useEffect(() => {
+    if (detail)
+      setDetail(detail)
+  }, [detail])
 
   if (!detail)
     return null
@@ -52,8 +59,8 @@ const PluginDetailPanel: FC<Props> = ({
           <div className='grow overflow-y-auto'>
             {detail.declaration.category === PluginType.trigger && (
               <>
-                <SubscriptionList detail={detail} />
-                <TriggerEventsList detail={detail} />
+                <SubscriptionList />
+                <TriggerEventsList />
               </>
             )}
             {!!detail.declaration.tool && <ActionList detail={detail} />}
