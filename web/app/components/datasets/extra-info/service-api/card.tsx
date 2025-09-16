@@ -15,12 +15,12 @@ import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal
 
 type CardProps = {
   apiEnabled: boolean
-  apiaBaseUrl: string
+  apiBaseUrl: string
 }
 
 const Card = ({
   apiEnabled,
-  apiaBaseUrl,
+  apiBaseUrl,
 }: CardProps) => {
   const { t } = useTranslation()
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
@@ -90,11 +90,11 @@ const Card = ({
           <div className='flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2'>
             <div className='flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1'>
               <div className='system-xs-medium truncate text-text-secondary'>
-                {apiaBaseUrl}
+                {apiBaseUrl}
               </div>
             </div>
             <CopyFeedback
-              content={apiaBaseUrl}
+              content={apiBaseUrl}
             />
           </div>
         </div>

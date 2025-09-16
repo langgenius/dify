@@ -8,13 +8,13 @@ import Card from './card'
 
 type ServiceApiProps = {
   expand: boolean
-  apiaBaseUrl: string
+  apiBaseUrl: string
   apiEnabled: boolean
 }
 
 const ServiceApi = ({
   expand,
-  apiaBaseUrl,
+  apiBaseUrl,
   apiEnabled,
 }: ServiceApiProps) => {
   const { t } = useTranslation()
@@ -56,7 +56,7 @@ const ServiceApi = ({
         <PortalToFollowElemContent>
           <Card
             apiEnabled={apiEnabled}
-            apiaBaseUrl={apiaBaseUrl}
+            apiBaseUrl={apiBaseUrl}
           />
         </PortalToFollowElemContent>
       </PortalToFollowElem>

@@ -30,7 +30,7 @@ const ExtraInfo = ({
       )}
       <ServiceApi
         expand={expand}
-        apiaBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+        apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
         apiEnabled={apiEnabled ?? false}
       />
     </>
