@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useContext } from 'use-context-selector'
 import { useStore } from 'zustand'
 import { FeaturesContext } from './context'
 import type { FeatureStoreState } from './store'

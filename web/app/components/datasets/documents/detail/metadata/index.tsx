@@ -1,11 +1,10 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { get } from 'lodash-es'
-import { useDocumentContext } from '../index'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
@@ -24,6 +23,7 @@ import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
+import { useDocumentContext } from '@/app/components/datasets/documents/detail'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -53,6 +53,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const textNeedWrap = getTextWidthWithCanvas(displayedValue) > 190
   const editAlignTop = showEdit && inputType === 'textarea'
   const readAlignTop = !showEdit && textNeedWrap
@@ -75,6 +76,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
             />
             : inputType === 'textarea'
               ? <AutoHeightTextarea
+                ref={textareaRef}
                 onChange={e => onUpdate && onUpdate(e.target.value)}
                 value={value}
                 className={s.textArea}
@@ -135,16 +137,10 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const businessDocCategoryMap = useBusinessDocCategories()
   const [editStatus, setEditStatus] = useState(!doc_type) // if no documentType, in editing status by default
   // the initial values are according to the documentType
-  const [metadataParams, setMetadataParams] = useState<{
-    documentType?: DocType | ''
-    metadata: { [key: string]: string }
-  }>(
-    doc_type
-      ? {
-        documentType: doc_type,
-        metadata: doc_metadata || {},
-      }
-      : { metadata: {} })
+  const [metadataParams, setMetadataParams] = useState<any>({
+    documentType: doc_type !== 'others' ? doc_type : undefined,
+    metadata: doc_metadata || {},
+  })
   const [showDocTypes, setShowDocTypes] = useState(!doc_type) // whether show doc types
   const [tempDocType, setTempDocType] = useState<DocType | undefined | ''>('') // for remember icon click
   const [saveLoading, setSaveLoading] = useState(false)
@@ -157,7 +153,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
     if (docDetail?.doc_type) {
       setEditStatus(false)
       setShowDocTypes(false)
-      setTempDocType(docDetail?.doc_type)
+      setTempDocType(docDetail?.doc_type as any)
       setMetadataParams({
         documentType: docDetail?.doc_type,
         metadata: docDetail?.doc_metadata || {},
@@ -272,7 +268,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
           inputType={fieldMap[field]?.inputType || 'input'}
           showEdit={canEdit}
           onUpdate={(val) => {
-            setMetadataParams(pre => ({ ...pre, metadata: { ...pre.metadata, [field]: val } }))
+            setMetadataParams((pre: any) => ({ ...pre, metadata: { ...pre.metadata, [field]: val } }))
           }}
           selectOptions={map2Options(getTargetMap(field))}
         />
@@ -339,15 +335,15 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
             {/* show selected doc type and changing entry */}
             {!editStatus
               ? <div className={s.documentTypeShow}>
-                <TypeIcon iconName={metadataMap[doc_type || 'book']?.iconName || ''} className={s.iconShow} />
-                {metadataMap[doc_type || 'book'].text}
+                <TypeIcon iconName={metadataMap[doc_type === 'others' ? 'book' : (doc_type || 'book')]?.iconName || ''} className={s.iconShow} />
+                {metadataMap[doc_type === 'others' ? 'book' : (doc_type || 'book')].text}
               </div>
               : showDocTypes
                 ? null
                 : <div className={s.documentTypeShow}>
                   {metadataParams.documentType && <>
-                    <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
-                    {metadataMap[metadataParams.documentType || 'book'].text}
+                    <TypeIcon iconName={(metadataMap as any)[metadataParams.documentType || 'book']?.iconName || ''} className={s.iconShow} />
+                    {(metadataMap as any)[metadataParams.documentType || 'book']?.text}
                     {editStatus && <div className='ml-1 inline-flex items-center gap-1'>
                       ·
                       <div

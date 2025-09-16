@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, useContextSelector } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type {
   ConfigurationMethodEnum,
@@ -122,8 +122,6 @@ const ModalContext = createContext<ModalContextState>({
   setShowEducationExpireNoticeModal: noop,
 })
 
-export const useModalContext = () => useContext(ModalContext)
-
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T =>
@@ -132,6 +130,7 @@ export const useModalContextSelector = <T,>(selector: (state: ModalContextState)
 type ModalContextProviderProps = {
   children: React.ReactNode
 }
+
 export const ModalContextProvider = ({
   children,
 }: ModalContextProviderProps) => {

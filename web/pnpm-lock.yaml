@@ -248,13 +248,13 @@ importers:
         specifier: ^6.13.0
         version: 6.14.0
       react:
-        specifier: 19.1.1
+        specifier: ^19.0.0
         version: 19.1.1
       react-18-input-autosize:
         specifier: ^3.0.0
         version: 3.0.0(react@19.1.1)
       react-dom:
-        specifier: 19.1.1
+        specifier: ^19.0.0
         version: 19.1.1(react@19.1.1)
       react-easy-crop:
         specifier: ^5.1.0

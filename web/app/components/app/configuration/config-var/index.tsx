@@ -18,7 +18,7 @@ import Confirm from '@/app/components/base/confirm'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
 import type { ExternalDataTool } from '@/models/common'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -104,7 +104,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     return true
   }
 
-  const { setShowExternalDataToolModal } = useModalContext()
+  const { setShowExternalDataToolModal } = useContext(ModalContext)
 
   const handleOpenExternalDataToolModal = (
     { key, type, index, name, config, icon, icon_background }: ExternalDataToolParams,
@@ -119,7 +119,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         icon,
         icon_background,
       },
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool, _formValues?: Record<string, any>) => {
+        if (!newExternalDataTool) return
         const newPromptVariables = oldPromptVariables.map((item, i) => {
           if (i === index) {
             return {

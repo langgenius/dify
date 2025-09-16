@@ -241,7 +241,19 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     },
   },
   datasetConfigsRef: {
-    current: null,
+    current: {
+      retrieval_model: RETRIEVE_TYPE.multiWay,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
+      },
+      top_k: 2,
+      score_threshold_enabled: false,
+      score_threshold: 0.7,
+      datasets: {
+        datasets: [],
+      },
+    },
   },
   setDatasetConfigs: noop,
   hasSetContextVar: false,

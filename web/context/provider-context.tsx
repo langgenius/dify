@@ -60,7 +60,7 @@ type ProviderContextState = {
       size: number
       limit: number
     }
-  },
+  }
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
 }
@@ -253,6 +253,7 @@ export const ProviderContextProvider = ({
       licenseLimit,
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
+
     }}>
       {children}
     </ProviderContext.Provider>

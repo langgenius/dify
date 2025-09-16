@@ -13,8 +13,7 @@ import type { IItem } from '@/app/components/header/account-setting/collapse'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'
-import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
+import useAppContext from '@/context/app-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { IS_CE_EDITION } from '@/config'
@@ -38,8 +37,9 @@ export default function AccountPage() {
   const { systemFeatures } = useGlobalPublicStore()
   const { data: appList } = useSWR({ url: '/apps', params: { page: 1, limit: 100, name: '' } }, fetchAppList)
   const apps = appList?.data || []
-  const { mutateUserProfile, userProfile } = useAppContext()
-  const { isEducationAccount } = useProviderContext()
+  const appContext = useContext(useAppContext)
+  const mutateUserProfile = appContext.mutateUserProfile
+  const userProfile = appContext.userProfile
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
@@ -53,6 +53,9 @@ export default function AccountPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showUpdateEmail, setShowUpdateEmail] = useState(false)
+
+  // Define isEducationAccount based on userProfile
+  const isEducationAccount = userProfile?.account_type === 'education'
 
   const handleEditName = () => {
     setEditNameModalVisible(true)

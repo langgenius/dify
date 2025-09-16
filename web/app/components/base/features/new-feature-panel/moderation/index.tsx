@@ -11,7 +11,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { fetchCodeBasedExtensionList } from '@/service/common'
-import { useModalContext } from '@/context/modal-context'
+import ModalContext from '@/context/modal-context'
 import I18n from '@/context/i18n'
 
 type Props = {
@@ -24,7 +24,7 @@ const Moderation = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { setShowModerationSettingModal } = useModalContext()
+  const { setShowModerationSettingModal } = useContext(ModalContext)
   const { locale } = useContext(I18n)
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures(s => s.features.moderation)

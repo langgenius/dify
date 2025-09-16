@@ -40,12 +40,12 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import ModalContext from '@/context/modal-context'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
+import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
   collection: Collection
@@ -66,13 +66,13 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager } = useContext(AppContext)
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
-  const { setShowModelModal } = useModalContext()
+  const { setShowModelModal } = useContext(ModalContext)
   const { modelProviders: providers } = useProviderContext()
   const showSettingAuthModal = () => {
     if (isModel) {
@@ -120,7 +120,7 @@ const ProviderDetail = ({
   const getCustomProvider = useCallback(async () => {
     setIsDetailLoading(true)
     const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+    if (res.credentials.auth_type === AuthType.apiKeyHeader && !res.credentials.api_key_header_prefix) {
       if (res.credentials.api_key_value)
         res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
     }

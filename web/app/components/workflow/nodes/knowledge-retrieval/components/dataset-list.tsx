@@ -1,12 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
+import { useContextSelector } from 'use-context-selector'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import Item from './dataset-item'
 import type { DataSet } from '@/models/datasets'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
+import type { AppContextValue } from '@/context/app-context'
 
 type Props = {
   list: DataSet[]
@@ -20,7 +22,7 @@ const DatasetList: FC<Props> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const userProfile = useContextSelector(AppContext, (s: AppContextValue) => s.userProfile)
 
   const handleRemove = useCallback((index: number) => {
     return () => {

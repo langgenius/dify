@@ -7,7 +7,6 @@ import { omit } from 'lodash-es'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
 import { FieldInfo } from '../metadata'
-import { useDocumentContext } from '../index'
 import { IndexingType } from '../../../create/step-two'
 import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
 import EmbeddingSkeleton from './skeleton'
@@ -25,6 +24,7 @@ import {
   pauseDocIndexing,
   resumeDocIndexing,
 } from '@/service/datasets'
+import { DocumentContext } from '@/app/components/datasets/documents/detail'
 
 type IEmbeddingDetailProps = {
   datasetId?: string
@@ -161,8 +161,9 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
-  const datasetId = useDocumentContext(s => s.datasetId)
-  const documentId = useDocumentContext(s => s.documentId)
+  const context = useContext(DocumentContext) as any
+  const datasetId = context?.datasetId || ''
+  const documentId = context?.documentId || ''
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 

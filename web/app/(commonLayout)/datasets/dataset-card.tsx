@@ -1,6 +1,6 @@
 'use client'
 
-import { useContext } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +20,7 @@ import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import CornerLabel from '@/app/components/base/corner-label'
-import { useAppContext } from '@/context/app-context'
+import AppContext from '@/context/app-context'
 
 export type DatasetCardProps = {
   dataset: DataSet
@@ -36,7 +36,7 @@ const DatasetCard = ({
   const { push } = useRouter()
   const EXTERNAL_PROVIDER = 'external' as const
 
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const isCurrentWorkspaceDatasetOperator = useContextSelector(AppContext, v => v.isCurrentWorkspaceDatasetOperator)
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
 
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -61,10 +61,10 @@ const DatasetCard = ({
 
       // Clear SWR cache to prevent stale data in knowledge retrieval nodes
       mutate(
-        (key) => {
+        (key: string | { url?: string }) => {
           if (typeof key === 'string') return key.includes('/datasets')
-          if (typeof key === 'object' && key !== null)
-            return key.url === '/datasets' || key.url?.includes('/datasets')
+          if (typeof key === 'object' && key !== null && 'url' in key)
+            return (key as { url?: string }).url?.includes('/datasets')
           return false
         },
         undefined,

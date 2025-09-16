@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { use } from 'react'
 import {
   useStore as useZustandStore,
 } from 'zustand'
@@ -60,7 +60,7 @@ export const createNoteEditorStore = () => {
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(NoteEditorContext)
+  const store = use(NoteEditorContext)
   if (!store)
     throw new Error('Missing NoteEditorContext.Provider in the tree')
 
@@ -68,5 +68,5 @@ export function useStore<T>(selector: (state: Shape) => T): T {
 }
 
 export const useNoteEditorStore = () => {
-  return useContext(NoteEditorContext)!
+  return use(NoteEditorContext)!
 }
