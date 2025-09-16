@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 
-class WorkflowExitException(Exception):
+class WorkflowExitError(Exception):
     """
     Exception raised when an EXIT node is executed to terminate workflow early.
     This allows the workflow to exit gracefully with custom outputs.

@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -26,8 +26,8 @@ class BaseNode:
         graph_init_params: "GraphInitParams",
         graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: str | None = None,
-        thread_pool_id: str | None = None,
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
     ):
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
@@ -65,10 +65,10 @@ class BaseNode:
         try:
             result = self._run()
         except Exception as e:
-            # Check if this is a WorkflowExitException - let it pass through
-            from core.workflow.nodes.exit.exceptions import WorkflowExitException
-            if isinstance(e, WorkflowExitException):
-                # Re-raise WorkflowExitException to be handled by graph engine
+            # Check if this is a WorkflowExitError - let it pass through
+            from core.workflow.nodes.exit.exceptions import WorkflowExitError
+            if isinstance(e, WorkflowExitError):
+                # Re-raise WorkflowExitError to be handled by graph engine
                 raise e
 
             logger.exception("Node %s failed to run", self.node_id)
@@ -147,7 +147,7 @@ class BaseNode:
         return {}
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Optional[dict] = None):
         return {}
 
     @property
@@ -176,7 +176,7 @@ class BaseNode:
     # to BaseNodeData properties in a type-safe way
 
     @abstractmethod
-    def _get_error_strategy(self) -> ErrorStrategy | None:
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
         """Get the error strategy for this node."""
         ...
 
@@ -191,7 +191,7 @@ class BaseNode:
         ...
 
     @abstractmethod
-    def _get_description(self) -> str | None:
+    def _get_description(self) -> Optional[str]:
         """Get the node description."""
         ...
 
@@ -207,7 +207,7 @@ class BaseNode:
 
     # Public interface properties that delegate to abstract methods
     @property
-    def error_strategy(self) -> ErrorStrategy | None:
+    def error_strategy(self) -> Optional[ErrorStrategy]:
         """Get the error strategy for this node."""
         return self._get_error_strategy()
 
@@ -222,7 +222,7 @@ class BaseNode:
         return self._get_title()
 
     @property
-    def description(self) -> str | None:
+    def description(self) -> Optional[str]:
         """Get the node description."""
         return self._get_description()
 

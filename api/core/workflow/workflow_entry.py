@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, Optional
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -20,7 +20,7 @@ from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
-from core.workflow.nodes.exit.exceptions import WorkflowExitException
+from core.workflow.nodes.exit.exceptions import WorkflowExitError
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -48,7 +48,7 @@ class WorkflowEntry:
         invoke_from: InvokeFrom,
         call_depth: int,
         variable_pool: VariablePool,
-        thread_pool_id: str | None = None,
+        thread_pool_id: Optional[str] = None,
     ):
         """
         Init workflow entry
@@ -110,7 +110,7 @@ class WorkflowEntry:
         except GenerateTaskStoppedError:
             pass
         except Exception as e:
-            if isinstance(e, WorkflowExitException):
+            if isinstance(e, WorkflowExitError):
                 # For EXIT nodes, generate success event
                 from core.workflow.graph_engine.entities.event import (
                     GraphRunSucceededEvent,
@@ -325,7 +325,7 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
-    def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
         # NOTE(QuantumGhost): Avoid using this function in new code.
         # Keep values structured as long as possible and only convert to dict
         # immediately before serialization (e.g., JSON serialization) to maintain

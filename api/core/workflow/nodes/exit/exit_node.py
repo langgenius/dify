@@ -6,7 +6,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.exit.entities import ExitNodeData
-from core.workflow.nodes.exit.exceptions import WorkflowExitException
+from core.workflow.nodes.exit.exceptions import WorkflowExitError
 
 
 class ExitNode(BaseNode):
@@ -42,7 +42,7 @@ class ExitNode(BaseNode):
     def _run(self) -> NodeRunResult:
         """
         Run node - this will terminate the workflow execution early
-        by raising a WorkflowExitException.
+        by raising a WorkflowExitError.
         """
         output_variables = self._node_data.outputs
 
@@ -55,6 +55,6 @@ class ExitNode(BaseNode):
             outputs[variable_selector.variable] = value
 
         # Raise the exit exception to terminate workflow execution
-        raise WorkflowExitException(
+        raise WorkflowExitError(
             outputs=outputs,
         ) 

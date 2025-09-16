@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from flask import Flask, current_app
 
@@ -51,7 +51,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.exit.exceptions import WorkflowExitException
+from core.workflow.nodes.exit.exceptions import WorkflowExitError
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
@@ -105,7 +105,7 @@ class GraphEngine:
         graph_runtime_state: GraphRuntimeState,
         max_execution_steps: int,
         max_execution_time: int,
-        thread_pool_id: str | None = None,
+        thread_pool_id: Optional[str] = None,
     ):
         thread_pool_max_submit_count = dify_config.MAX_SUBMIT_COUNT
         thread_pool_max_workers = 10
@@ -200,7 +200,7 @@ class GraphEngine:
                                 "answer"
                             ].strip()
                 except Exception as e:
-                    if isinstance(e, WorkflowExitException):
+                    if isinstance(e, WorkflowExitError):
                         # Re-raise to be handled by workflow entry
                         raise e
 
@@ -234,9 +234,9 @@ class GraphEngine:
     def _run(
         self,
         start_node_id: str,
-        in_parallel_id: str | None = None,
-        parent_parallel_id: str | None = None,
-        parent_parallel_start_node_id: str | None = None,
+        in_parallel_id: Optional[str] = None,
+        parent_parallel_id: Optional[str] = None,
+        parent_parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
         parallel_start_node_id = None
@@ -244,7 +244,7 @@ class GraphEngine:
             parallel_start_node_id = start_node_id
 
         next_node_id = start_node_id
-        previous_route_node_state: RouteNodeState | None = None
+        previous_route_node_state: Optional[RouteNodeState] = None
         while True:
             # max steps reached
             if self.graph_runtime_state.node_run_steps > self.max_execution_steps:
@@ -314,8 +314,8 @@ class GraphEngine:
                         source_node_state_id=previous_route_node_state.id, target_node_state_id=route_node_state.id
                     )
             except Exception as e:
-                if isinstance(e, WorkflowExitException):
-                    # Re-raise WorkflowExitException to be handled at workflow level
+                if isinstance(e, WorkflowExitError):
+                    # Re-raise WorkflowExitError to be handled at workflow level
                     raise e
 
                 route_node_state.status = RouteNodeState.Status.FAILED
@@ -414,11 +414,20 @@ class GraphEngine:
                                 handle_exceptions=handle_exceptions,
                             )
 
-                            for parallel_result in parallel_generator:
-                                if isinstance(parallel_result, str):
-                                    final_node_id = parallel_result
+                            try:
+                                for parallel_result in parallel_generator:
+                                    if isinstance(parallel_result, str):
+                                        final_node_id = parallel_result
+                                    else:
+                                        yield parallel_result
+                            except Exception as e:
+                                if isinstance(e, WorkflowExitError):
+                                    # Handle graceful exit by updating outputs and stopping execution
+                                    self.graph_runtime_state.outputs.update(e.outputs)
+                                    return
                                 else:
-                                    yield parallel_result
+                                    # Re-raise other exceptions
+                                    raise e
 
                         break
 
@@ -440,11 +449,20 @@ class GraphEngine:
                         handle_exceptions=handle_exceptions,
                     )
 
-                    for generated_item in parallel_generator:
-                        if isinstance(generated_item, str):
-                            final_node_id = generated_item
+                    try:
+                        for generated_item in parallel_generator:
+                            if isinstance(generated_item, str):
+                                final_node_id = generated_item
+                            else:
+                                yield generated_item
+                    except Exception as e:
+                        if isinstance(e, WorkflowExitError):
+                            # Handle graceful exit by updating outputs and stopping execution
+                            self.graph_runtime_state.outputs.update(e.outputs)
+                            return
                         else:
-                            yield generated_item
+                            # Re-raise other exceptions
+                            raise e
 
                     if not final_node_id:
                         break
@@ -457,8 +475,8 @@ class GraphEngine:
     def _run_parallel_branches(
         self,
         edge_mappings: list[GraphEdge],
-        in_parallel_id: str | None = None,
-        parallel_start_node_id: str | None = None,
+        in_parallel_id: Optional[str] = None,
+        parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent | str, None, None]:
         # if nodes has no run conditions, parallel run all nodes
@@ -530,7 +548,7 @@ class GraphEngine:
                     elif isinstance(event, ParallelBranchRunFailedEvent):
                         raise GraphRunFailedError(event.error)
                     elif isinstance(event, ParallelBranchRunExitedEvent):
-                        raise WorkflowExitException(outputs=event.outputs)
+                        raise WorkflowExitError(outputs=event.outputs)
             except queue.Empty:
                 continue
 
@@ -549,8 +567,8 @@ class GraphEngine:
         q: queue.Queue,
         parallel_id: str,
         parallel_start_node_id: str,
-        parent_parallel_id: str | None = None,
-        parent_parallel_start_node_id: str | None = None,
+        parent_parallel_id: Optional[str] = None,
+        parent_parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ):
         """
@@ -600,7 +618,7 @@ class GraphEngine:
                     )
                 )
             except Exception as e:
-                if isinstance(e, WorkflowExitException):
+                if isinstance(e, WorkflowExitError):
                     # For EXIT nodes in parallel execution, we want to signal
                     # a graceful exit with outputs, not a failure
                     q.put(
@@ -630,10 +648,10 @@ class GraphEngine:
         self,
         node: BaseNode,
         route_node_state: RouteNodeState,
-        parallel_id: str | None = None,
-        parallel_start_node_id: str | None = None,
-        parent_parallel_id: str | None = None,
-        parent_parallel_start_node_id: str | None = None,
+        parallel_id: Optional[str] = None,
+        parallel_start_node_id: Optional[str] = None,
+        parent_parallel_id: Optional[str] = None,
+        parent_parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
         """
@@ -873,7 +891,7 @@ class GraphEngine:
                 )
                 return
             except Exception as e:
-                if isinstance(e, WorkflowExitException):
+                if isinstance(e, WorkflowExitError):
                     # Handle exit node - create a successful result with exit outputs
 
                     # Add exit outputs to variable pool

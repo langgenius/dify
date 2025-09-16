@@ -1,7 +1,7 @@
 import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import Any, Optional, Union, cast
 
 from sqlalchemy.orm import Session
 
@@ -141,7 +141,7 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> NodeStartStreamResponse | None:
+    ) -> Optional[NodeStartStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -191,7 +191,7 @@ class WorkflowResponseConverter:
         | QueueNodeExceptionEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> NodeFinishStreamResponse | None:
+    ) -> Optional[NodeFinishStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -236,7 +236,7 @@ class WorkflowResponseConverter:
         event: QueueNodeRetryEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Union[NodeRetryStreamResponse, NodeFinishStreamResponse] | None:
+    ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -302,7 +302,9 @@ class WorkflowResponseConverter:
         *,
         task_id: str,
         workflow_execution_id: str,
-        event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent | QueueParallelBranchRunExitedEvent,
+        event: QueueParallelBranchRunSucceededEvent
+        | QueueParallelBranchRunFailedEvent
+        | QueueParallelBranchRunExitedEvent,
     ) -> ParallelBranchFinishedStreamResponse:
         if isinstance(event, QueueParallelBranchRunSucceededEvent):
             status = "succeeded"
