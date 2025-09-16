@@ -3,7 +3,7 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-import opendal  # type: ignore[import]
+import opendal  
 from dotenv import dotenv_values
 
 from extensions.storage.base_storage import BaseStorage
@@ -34,7 +34,7 @@ class OpenDALStorage(BaseStorage):
             root = kwargs.get("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
-        self.op = opendal.Operator(scheme=scheme, **kwargs)  # type: ignore
+        self.op = opendal.Operator(scheme=scheme, **kwargs)  
         logger.debug("opendal operator created with scheme %s", scheme)
         retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
         self.op = self.op.layer(retry_layer)

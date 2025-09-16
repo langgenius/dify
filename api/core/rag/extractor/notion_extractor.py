@@ -339,7 +339,7 @@ class NotionExtractor(BaseExtractor):
 
         db.session.query(DocumentModel).filter_by(id=document_model.id).update(
             {DocumentModel.data_source_info: json.dumps(data_source_info)}
-        )  # type: ignore
+        )  
         db.session.commit()
 
     def get_notion_last_edited_time(self) -> str:

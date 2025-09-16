@@ -46,7 +46,7 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
+    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  
         # check if metadata name is too long
         if len(name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
@@ -89,7 +89,7 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
-            return metadata  # type: ignore
+            return metadata  
         except Exception:
             logger.exception("Update metadata name failed")
         finally:

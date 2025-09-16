@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin  # type: ignore[import-untyped]
+from flask_login import UserMixin  
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -24,7 +24,7 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
-from libs.helper import generate_string  # type: ignore[import-not-found]
+from libs.helper import generate_string  
 
 from .account import Account, Tenant
 from .base import Base

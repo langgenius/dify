@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Union, cast
 
 from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS  # type: ignore
+from flask_login.config import EXEMPT_METHODS  
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
@@ -58,7 +58,7 @@ def login_required(func: Callable[P, R]):
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:
-            return current_app.login_manager.unauthorized()  # type: ignore
+            return current_app.login_manager.unauthorized()  
         return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view
@@ -67,8 +67,8 @@ def login_required(func: Callable[P, R]):
 def _get_user() -> EndUser | Account | None:
     if has_request_context():
         if "_login_user" not in g:
-            current_app.login_manager._load_user()  # type: ignore
+            current_app.login_manager._load_user()  
 
-        return g._login_user  # type: ignore
+        return g._login_user  
 
     return None

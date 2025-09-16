@@ -1,6 +1,6 @@
 import logging
 
-import pypandoc  # type: ignore
+import pypandoc  
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document

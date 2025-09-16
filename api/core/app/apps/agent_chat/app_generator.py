@@ -191,7 +191,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
+                "flask_app": current_app._get_current_object(),  
                 "context": context,
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
@@ -212,7 +212,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
         )
         # FIXME: Type hinting issue here, ignore it for now, will fix it later
-        return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)  # type: ignore
+        return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)  
 
     def _generate_worker(
         self,

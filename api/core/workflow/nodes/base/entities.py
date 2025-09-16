@@ -39,7 +39,7 @@ class DefaultValue(BaseModel):
     def _validate_array(value: Any, element_type: DefaultValueType) -> bool:
         """Unified array type validation"""
         # FIXME, type ignore here for do not find the reason mypy complain, if find the root cause, please fix it
-        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)  # type: ignore
+        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)  
 
     @staticmethod
     def _convert_number(value: str) -> float:

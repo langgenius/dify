@@ -99,7 +99,7 @@ class WorkflowToolProviderController(ToolProviderController):
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
         def fetch_workflow_variable(variable_name: str) -> VariableEntity | None:
-            return next(filter(lambda x: x.variable == variable_name, variables), None)  # type: ignore
+            return next(filter(lambda x: x.variable == variable_name, variables), None)  
 
         user = db_provider.user
 
@@ -206,7 +206,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:  
         """
         get tool by name
 

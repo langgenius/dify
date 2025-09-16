@@ -153,11 +153,11 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore
+    def get_tool(self, tool_name: str) -> BuiltinTool | None:  
         """
         returns the tool that the provider can provide
         """
-        return next(filter(lambda x: x.entity.identity.name == tool_name, self.get_tools()), None)  # type: ignore
+        return next(filter(lambda x: x.entity.identity.name == tool_name, self.get_tools()), None)  
 
     @property
     def need_credentials(self) -> bool:

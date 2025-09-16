@@ -8,11 +8,11 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
-import clickzetta  # type: ignore
+import clickzetta  
 from pydantic import BaseModel, model_validator
 
 if TYPE_CHECKING:
-    from clickzetta.connector.v0.connection import Connection  # type: ignore
+    from clickzetta.connector.v0.connection import Connection  
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field

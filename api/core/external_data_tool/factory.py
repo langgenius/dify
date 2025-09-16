@@ -24,7 +24,7 @@ class ExternalDataToolFactory:
         """
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
         # FIXME mypy issue here, figure out how to fix it
-        extension_class.validate_config(tenant_id, config)  # type: ignore
+        extension_class.validate_config(tenant_id, config)  
 
     def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
         """

@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 import click
-from kombu.utils.url import parse_url  # type: ignore
+from kombu.utils.url import parse_url  
 from redis import Redis
 
 import app

@@ -5,14 +5,14 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from couchbase import search  # type: ignore
-from couchbase.auth import PasswordAuthenticator  # type: ignore
-from couchbase.cluster import Cluster  # type: ignore
-from couchbase.management.search import SearchIndex  # type: ignore
+from couchbase import search  
+from couchbase.auth import PasswordAuthenticator  
+from couchbase.cluster import Cluster  
+from couchbase.management.search import SearchIndex  
 
 # needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
-from couchbase.options import ClusterOptions, SearchOptions  # type: ignore
-from couchbase.vector_search import VectorQuery, VectorSearch  # type: ignore
+from couchbase.options import ClusterOptions, SearchOptions  
+from couchbase.vector_search import VectorQuery, VectorSearch  
 from flask import current_app
 from pydantic import BaseModel, model_validator
 

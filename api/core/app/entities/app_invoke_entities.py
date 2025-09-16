@@ -123,7 +123,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: EasyUIBasedAppConfig = None  # type: ignore
+    app_config: EasyUIBasedAppConfig = None  
     model_conf: ModelConfigWithCredentialsEntity
 
     query: str | None = None
@@ -186,7 +186,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
+    app_config: WorkflowUIBasedAppConfig = None  
 
     workflow_run_id: str | None = None
     query: str
@@ -218,7 +218,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
+    app_config: WorkflowUIBasedAppConfig = None  
     workflow_execution_id: str
 
     class SingleIterationRunEntity(BaseModel):

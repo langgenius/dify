@@ -73,7 +73,7 @@ def batch_create_segment_to_index_task(
             with tempfile.TemporaryDirectory() as temp_dir:
                 suffix = Path(upload_file.key).suffix
                 # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
-                file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+                file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  
                 storage.download(upload_file.key, file_path)
 
                 # Skip the first row
@@ -108,7 +108,7 @@ def batch_create_segment_to_index_task(
         for segment, tokens in zip(content, tokens_list):
             content = segment["content"]
             doc_id = str(uuid.uuid4())
-            segment_hash = helper.generate_text_hash(content)  # type: ignore
+            segment_hash = helper.generate_text_hash(content)  
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
                 .where(DocumentSegment.document_id == dataset_document.id)

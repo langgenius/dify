@@ -1853,7 +1853,7 @@ class ProviderConfigurations(BaseModel):
         if "/" not in key:
             key = str(ModelProviderID(key))
 
-        return self.configurations.get(key, default)  # type: ignore
+        return self.configurations.get(key, default)  
 
 
 class ProviderModelBundle(BaseModel):

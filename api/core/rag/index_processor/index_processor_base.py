@@ -81,4 +81,4 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter  

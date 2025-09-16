@@ -4,6 +4,7 @@ import pytz  # pip install pytz
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
+import sqlalchemy as sa
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
@@ -70,7 +71,7 @@ class CompletionConversationApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(
+        query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
 
@@ -106,7 +107,7 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
+            query = query.options(joinedload(Conversation.message_annotations)).join(  
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -236,7 +237,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
+        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
             keyword_filter = f"%{args['keyword']}%"
@@ -289,7 +290,7 @@ class ChatConversationApi(Resource):
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
+            query = query.options(joinedload(Conversation.message_annotations)).join(  
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -301,7 +302,7 @@ class ChatConversationApi(Resource):
 
         if args["message_count_gte"] and args["message_count_gte"] >= 1:
             query = (
-                query.options(joinedload(Conversation.messages))  # type: ignore
+                query.options(joinedload(Conversation.messages))  
                 .join(Message, Message.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
                 .having(func.count(Message.id) >= args["message_count_gte"])

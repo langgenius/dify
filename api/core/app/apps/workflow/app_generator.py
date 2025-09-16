@@ -233,7 +233,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
+                "flask_app": current_app._get_current_object(),  
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "context": context,

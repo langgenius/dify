@@ -65,7 +65,7 @@ class CacheEmbedding(Embeddings):
                     for vector in embedding_result.embeddings:
                         try:
                             # FIXME: type ignore for numpy here
-                            normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
+                            normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  
                             # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
                             if np.isnan(normalized_embedding).any():
                                 # for issue #11827  float values are not json compliant
@@ -117,7 +117,7 @@ class CacheEmbedding(Embeddings):
 
             embedding_results = embedding_result.embeddings[0]
             # FIXME: type ignore for numpy here
-            embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()  # type: ignore
+            embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()  
             if np.isnan(embedding_results).any():
                 raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
@@ -141,4 +141,4 @@ class CacheEmbedding(Embeddings):
                 )
             raise ex
 
-        return embedding_results  # type: ignore
+        return embedding_results  

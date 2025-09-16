@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from numpy import ndarray
-from pgvecto_rs.sqlalchemy import VECTOR  # type: ignore
+from pgvecto_rs.sqlalchemy import VECTOR  
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Float, create_engine, insert, select, text
 from sqlalchemy import text as sql_text
