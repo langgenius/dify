@@ -36,11 +36,9 @@ const Drawer = ({
     onClose()
   }, { exactMatch: true, useCapture: true })
 
-  const onDownCapture = useCallback((e: PointerEvent) => {
-    if (!open || modal) return
+  const shouldCloseDrawer = useCallback((target: Node | null) => {
     const panelContent = panelContentRef.current
-    if (!panelContent) return
-    const target = e.target as Node | null
+    if (!panelContent) return false
     const chunks = document.querySelectorAll('.chunk-card')
     const childChunks = document.querySelectorAll('.child-chunk')
     const isClickOnChunk = Array.from(chunks).some((chunk) => {
@@ -51,9 +49,17 @@ const Drawer = ({
     })
     const reopenChunkDetail = (currSegment.showModal && isClickOnChildChunk)
       || (currChildChunk.showModal && isClickOnChunk && !isClickOnChildChunk)
-    if (target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail))
+    return target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail)
+  }, [currSegment, currChildChunk, needCheckChunks])
+
+  const onDownCapture = useCallback((e: PointerEvent) => {
+    if (!open || modal) return
+    const panelContent = panelContentRef.current
+    if (!panelContent) return
+    const target = e.target as Node | null
+    if (shouldCloseDrawer(target))
       queueMicrotask(onClose)
-  }, [currSegment, currChildChunk, needCheckChunks, onClose, open])
+  }, [shouldCloseDrawer, onClose, open, modal])
 
   useEffect(() => {
     window.addEventListener('pointerdown', onDownCapture, { capture: true })
