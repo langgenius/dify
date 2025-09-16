@@ -65,9 +65,9 @@ class ConfigHelper:
             return None
 
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             print(f"❌ Error reading {filename}: {e}")
             return None
 
@@ -101,7 +101,7 @@ class ConfigHelper:
             with open(config_path, "w") as f:
                 json.dump(data, f, indent=2)
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"❌ Error writing {filename}: {e}")
             return False
 
@@ -133,7 +133,7 @@ class ConfigHelper:
         try:
             config_path.unlink()
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"❌ Error deleting {filename}: {e}")
             return False
 
@@ -148,9 +148,9 @@ class ConfigHelper:
             return None
 
         try:
-            with open(state_path, "r") as f:
+            with open(state_path) as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             print(f"❌ Error reading {self.state_file}: {e}")
             return None
 
@@ -170,7 +170,7 @@ class ConfigHelper:
             with open(state_path, "w") as f:
                 json.dump(data, f, indent=2)
             return True
-        except IOError as e:
+        except OSError as e:
             print(f"❌ Error writing {self.state_file}: {e}")
             return False
 
