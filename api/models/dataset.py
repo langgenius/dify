@@ -1225,7 +1225,7 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     __tablename__ = "pipeline_built_in_templates"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
     chunk_structure = db.Column(db.String(255), nullable=False)
@@ -1256,7 +1256,7 @@ class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
         db.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -1283,7 +1283,7 @@ class Pipeline(Base):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
@@ -1306,7 +1306,7 @@ class DocumentPipelineExecutionLog(Base):
         db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     pipeline_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
     datasource_type = db.Column(db.String(255), nullable=False)
@@ -1321,7 +1321,7 @@ class PipelineRecommendedPlugin(Base):
     __tablename__ = "pipeline_recommended_plugins"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     plugin_id = db.Column(db.Text, nullable=False)
     provider_name = db.Column(db.Text, nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)

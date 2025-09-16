@@ -9,9 +9,10 @@ import type {
   ProcessRuleResponse,
   RelatedAppResponse,
 } from '@/models/datasets'
-import { get } from '../base'
+import { get, post } from '../base'
 import { useInvalid } from '../use-base'
 import qs from 'qs'
+import type { CommonResponse } from '@/models/common'
 
 const NAME_SPACE = 'dataset'
 
@@ -73,5 +74,26 @@ export const useProcessRule = (documentId: string) => {
   return useQuery<ProcessRuleResponse>({
     queryKey: [NAME_SPACE, 'process-rule', documentId],
     queryFn: () => get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } }),
+  })
+}
+
+export const useDatasetApiBaseUrl = () => {
+  return useQuery<{ api_base_url: string }>({
+    queryKey: [NAME_SPACE, 'api-base-info'],
+    queryFn: () => get<{ api_base_url: string }>('/datasets/api-base-info'),
+  })
+}
+
+export const useEnableDatasetServiceApi = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'enable-api'],
+    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/enable`),
+  })
+}
+
+export const useDisableDatasetServiceApi = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'disable-api'],
+    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/disable`),
   })
 }

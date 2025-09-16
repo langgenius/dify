@@ -203,10 +203,6 @@ export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Re
   return post<CreateApiKeyResponse>(url, body)
 }
 
-export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
-  return get<{ api_base_url: string }>(url)
-}
-
 export const fetchDataSources = () => {
   return get<CommonResponse>('api-key-auth/data-source')
 }
