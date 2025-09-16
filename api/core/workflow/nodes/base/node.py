@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Union
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -26,8 +26,8 @@ class BaseNode:
         graph_init_params: "GraphInitParams",
         graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
+        previous_node_id: str | None = None,
+        thread_pool_id: str | None = None,
     ):
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
@@ -147,7 +147,7 @@ class BaseNode:
         return {}
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None):
+    def get_default_config(cls, filters: dict | None = None):
         return {}
 
     @property
@@ -176,7 +176,7 @@ class BaseNode:
     # to BaseNodeData properties in a type-safe way
 
     @abstractmethod
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         """Get the error strategy for this node."""
         ...
 
@@ -191,7 +191,7 @@ class BaseNode:
         ...
 
     @abstractmethod
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         """Get the node description."""
         ...
 
@@ -207,7 +207,7 @@ class BaseNode:
 
     # Public interface properties that delegate to abstract methods
     @property
-    def error_strategy(self) -> Optional[ErrorStrategy]:
+    def error_strategy(self) -> ErrorStrategy | None:
         """Get the error strategy for this node."""
         return self._get_error_strategy()
 
@@ -222,7 +222,7 @@ class BaseNode:
         return self._get_title()
 
     @property
-    def description(self) -> Optional[str]:
+    def description(self) -> str | None:
         """Get the node description."""
         return self._get_description()
 

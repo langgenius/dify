@@ -1,7 +1,7 @@
 from abc import ABC
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
@@ -146,8 +146,8 @@ class PromptMessage(ABC, BaseModel):
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContentUnionTypes]] = None
-    name: Optional[str] = None
+    content: str | list[PromptMessageContentUnionTypes] | None = None
+    name: str | None = None
 
     def is_empty(self) -> bool:
         """
@@ -193,8 +193,8 @@ class PromptMessage(ABC, BaseModel):
 
     @field_serializer("content")
     def serialize_content(
-        self, content: Optional[Union[str, Sequence[PromptMessageContent]]]
-    ) -> Optional[str | list[dict[str, Any] | PromptMessageContent] | Sequence[PromptMessageContent]]:
+        self, content: Union[str, Sequence[PromptMessageContent]] | None
+    ) -> str | list[dict[str, Any] | PromptMessageContent] | Sequence[PromptMessageContent] | None:
         if content is None or isinstance(content, str):
             return content
         if isinstance(content, list):
