@@ -2,7 +2,7 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -85,7 +85,7 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: Optional[str] = None) -> Optional[Workflow]:
+    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
         """
         Get draft workflow
         """
@@ -105,7 +105,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
+    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Workflow | None:
         """
         fetch published workflow by workflow_id
         """
@@ -127,7 +127,7 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
+    def get_published_workflow(self, app_model: App) -> Workflow | None:
         """
         Get published workflow
         """
@@ -192,7 +192,7 @@ class WorkflowService:
         app_model: App,
         graph: dict,
         features: dict,
-        unique_hash: Optional[str],
+        unique_hash: str | None,
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
@@ -559,7 +559,7 @@ class WorkflowService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
+    def get_default_block_config(self, node_type: str, filters: dict | None = None) -> dict | None:
         """
         Get default config of node.
         :param node_type: node type
@@ -856,7 +856,7 @@ class WorkflowService:
         # chatbot convert to workflow mode
         workflow_converter = WorkflowConverter()
 
-        if app_model.mode not in {AppMode.CHAT.value, AppMode.COMPLETION.value}:
+        if app_model.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
@@ -872,11 +872,11 @@ class WorkflowService:
         return new_app
 
     def validate_features_structure(self, app_model: App, features: dict):
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+        if app_model.mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
-        elif app_model.mode == AppMode.WORKFLOW.value:
+        elif app_model.mode == AppMode.WORKFLOW:
             return WorkflowAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
@@ -885,7 +885,7 @@ class WorkflowService:
 
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
-    ) -> Optional[Workflow]:
+    ) -> Workflow | None:
         """
         Update workflow attributes
 

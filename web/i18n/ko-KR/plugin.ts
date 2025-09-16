@@ -251,6 +251,7 @@ const translation = {
     unavailable: '사용할 수 없음',
     credentialUnavailable: '현재 자격 증명이 사용 불가능합니다. 관리자에게 문의하십시오.',
     customCredentialUnavailable: '현재 사용자 정의 자격 증명이 사용 불가능합니다.',
+    credentialUnavailableInButton: '자격 증명 사용 불가능',
     connectedWorkspace: '연결된 작업 공간',
     emptyAuth: '인증을 구성하십시오.',
   },

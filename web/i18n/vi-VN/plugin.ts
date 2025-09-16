@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'Không có sẵn',
     customCredentialUnavailable: 'Thông tin đăng nhập tùy chỉnh hiện không khả dụng',
     credentialUnavailable: 'Thông tin đăng nhập hiện không khả dụng. Vui lòng liên hệ với quản trị viên.',
+    credentialUnavailableInButton: 'Thông tin xác thực không khả dụng',
     emptyAuth: 'Vui lòng định cấu hình xác thực',
     connectedWorkspace: 'Không gian làm việc được kết nối',
   },

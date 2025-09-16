@@ -1,6 +1,6 @@
 import contextlib
 from copy import deepcopy
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
@@ -13,7 +13,7 @@ class ProviderConfigCache(Protocol):
     Interface for provider configuration cache operations
     """
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> dict | None:
         """Get cached provider configuration"""
         ...
 

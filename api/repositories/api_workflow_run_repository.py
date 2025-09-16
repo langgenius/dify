@@ -36,7 +36,7 @@ Example:
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Protocol
 
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -58,7 +58,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         app_id: str,
         triggered_from: str,
         limit: int = 20,
-        last_id: Optional[str] = None,
+        last_id: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -90,7 +90,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_id: str,
         app_id: str,
         run_id: str,
-    ) -> Optional[WorkflowRun]:
+    ) -> WorkflowRun | None:
         """
         Get a specific workflow run by ID.
 

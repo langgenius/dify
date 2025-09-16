@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -79,9 +79,9 @@ class QueueIterationStartEvent(AppQueueEvent):
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[Mapping[str, Any]] = None
-    predecessor_node_id: Optional[str] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    predecessor_node_id: str | None = None
+    metadata: Mapping[str, Any] | None = None
 
 
 class QueueIterationNextEvent(AppQueueEvent):
@@ -114,12 +114,12 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
     steps: int = 0
 
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class QueueLoopStartEvent(AppQueueEvent):
@@ -132,20 +132,20 @@ class QueueLoopStartEvent(AppQueueEvent):
     node_id: str
     node_type: NodeType
     node_title: str
-    parallel_id: Optional[str] = None
+    parallel_id: str | None = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[Mapping[str, Any]] = None
-    predecessor_node_id: Optional[str] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    predecessor_node_id: str | None = None
+    metadata: Mapping[str, Any] | None = None
 
 
 class QueueLoopNextEvent(AppQueueEvent):
@@ -160,15 +160,15 @@ class QueueLoopNextEvent(AppQueueEvent):
     node_id: str
     node_type: NodeType
     node_title: str
-    parallel_id: Optional[str] = None
+    parallel_id: str | None = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    parallel_mode_run_id: Optional[str] = None
+    parallel_mode_run_id: str | None = None
     """iteration run in parallel mode run id"""
     node_run_index: int
     output: Optional[Any] = None  # output for the current loop
@@ -187,21 +187,21 @@ class QueueLoopCompletedEvent(AppQueueEvent):
     node_title: str
     parallel_id: Optional[str] = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
     steps: int = 0
 
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class QueueTextChunkEvent(AppQueueEvent):
@@ -211,11 +211,11 @@ class QueueTextChunkEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
-    from_variable_selector: Optional[list[str]] = None
+    from_variable_selector: list[str] | None = None
     """from variable selector"""
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
 
 
@@ -252,9 +252,9 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: Sequence[RetrievalSourceMetadata]
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
 
 
@@ -273,7 +273,7 @@ class QueueMessageEndEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.MESSAGE_END
-    llm_result: Optional[LLMResult] = None
+    llm_result: LLMResult | None = None
 
 
 class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
@@ -299,7 +299,7 @@ class QueueWorkflowSucceededEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.WORKFLOW_SUCCEEDED
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, Any] | None = None
 
 
 class QueueWorkflowFailedEvent(AppQueueEvent):
@@ -319,7 +319,7 @@ class QueueWorkflowPartialSuccessEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_PARTIAL_SUCCEEDED
     exceptions_count: int
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, Any] | None = None
 
 
 class QueueNodeStartedEvent(AppQueueEvent):
@@ -362,22 +362,22 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     node_type: NodeType
     parallel_id: Optional[str] = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
 
-    inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    process_data: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
 
     error: Optional[str] = None
 
@@ -391,11 +391,11 @@ class QueueAgentLogEvent(AppQueueEvent):
     id: str
     label: str
     node_execution_id: str
-    parent_id: str | None
-    error: str | None
+    parent_id: str | None = None
+    error: str | None = None
     status: str
     data: Mapping[str, Any]
-    metadata: Optional[Mapping[str, Any]] = None
+    metadata: Mapping[str, Any] | None = None
     node_id: str
 
 
@@ -404,10 +404,10 @@ class QueueNodeRetryEvent(QueueNodeStartedEvent):
 
     event: QueueEvent = QueueEvent.RETRY
 
-    inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    process_data: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
 
     error: str
     retry_index: int  # retry index
@@ -425,22 +425,22 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     node_type: NodeType
     parallel_id: Optional[str] = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
 
-    inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    process_data: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
 
     error: str
 
@@ -458,14 +458,14 @@ class QueueNodeFailedEvent(AppQueueEvent):
     parallel_id: Optional[str] = None
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
 
-    inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    process_data: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
 
     error: str
 
@@ -494,7 +494,7 @@ class QueueErrorEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.ERROR
-    error: Optional[Any] = None
+    error: Any | None = None
 
 
 class QueuePingEvent(AppQueueEvent):
@@ -510,15 +510,15 @@ class QueueStopEvent(AppQueueEvent):
     QueueStopEvent entity
     """
 
-    class StopBy(Enum):
+    class StopBy(StrEnum):
         """
         Stop by enum
         """
 
-        USER_MANUAL = "user-manual"
-        ANNOTATION_REPLY = "annotation-reply"
-        OUTPUT_MODERATION = "output-moderation"
-        INPUT_MODERATION = "input-moderation"
+        USER_MANUAL = auto()
+        ANNOTATION_REPLY = auto()
+        OUTPUT_MODERATION = auto()
+        INPUT_MODERATION = auto()
 
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy

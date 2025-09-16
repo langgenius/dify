@@ -2,7 +2,7 @@ import json
 import logging
 import math
 from collections.abc import Iterable
-from typing import Any, Optional
+from typing import Any
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 class TableStoreConfig(BaseModel):
-    access_key_id: Optional[str] = None
-    access_key_secret: Optional[str] = None
-    instance_name: Optional[str] = None
-    endpoint: Optional[str] = None
-    normalize_full_text_bm25_score: Optional[bool] = False
+    access_key_id: str | None = None
+    access_key_secret: str | None = None
+    instance_name: str | None = None
+    endpoint: str | None = None
+    normalize_full_text_bm25_score: bool | None = False
 
     @model_validator(mode="before")
     @classmethod

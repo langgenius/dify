@@ -6,10 +6,12 @@ from pydantic import BaseModel
 from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
+logger = logging.getLogger(__name__)
+
 
 class PluginCredentialType(enum.Enum):
-    MODEL = 0
-    TOOL = 1
+    MODEL = 0  # must be 0 for API contract compatibility
+    TOOL = 1  # must be 1 for API contract compatibility
 
     def to_number(self):
         return self.value
@@ -49,5 +51,7 @@ class PluginManagerService:
 
         logging.debug(
             "Credential policy compliance checked for %s with credential %s, result: %s",
-            body.provider, body.dify_credential_id, ret.get('result', False)
+            body.provider,
+            body.dify_credential_id,
+            ret.get("result", False),
         )

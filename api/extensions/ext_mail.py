@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from flask import Flask
 
@@ -68,7 +67,7 @@ class Mail:
             case _:
                 raise ValueError(f"Unsupported mail type {mail_type}")
 
-    def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
+    def send(self, to: str, subject: str, html: str, from_: str | None = None):
         if not self._client:
             raise ValueError("Mail client is not initialized")
 

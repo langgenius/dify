@@ -252,6 +252,7 @@ const translation = {
     unavailable: '利用できません',
     customCredentialUnavailable: 'カスタム資格情報は現在利用できません',
     credentialUnavailable: '現在、資格情報は利用できません。管理者にご連絡ください。',
+    credentialUnavailableInButton: '資格情報が利用できません',
     connectedWorkspace: '接続されたワークスペース',
     emptyAuth: '認証を設定してください',
   },

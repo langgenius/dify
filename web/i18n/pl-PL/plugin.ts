@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'Niedostępny',
     customCredentialUnavailable: 'Niestandardowe dane logowania są obecnie niedostępne',
     credentialUnavailable: 'Kredencje są obecnie niedostępne. Proszę skontaktować się z administratorem.',
+    credentialUnavailableInButton: 'Credential niedostępny',
     connectedWorkspace: 'Połączona przestrzeń robocza',
     emptyAuth: 'Skonfiguruj uwierzytelnianie',
   },

@@ -23,6 +23,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
+from models import Account
 from services.file_service import FileService
 
 PREVIEW_WORDS_LIMIT = 3000
@@ -67,6 +68,9 @@ class FileApi(Resource):
 
         if source not in ("datasets", None):
             source = None
+
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
 
         try:
             upload_file = FileService(db.engine).upload_file(

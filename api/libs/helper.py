@@ -68,7 +68,7 @@ class AppIconUrlField(fields.Raw):
         if isinstance(obj, dict) and "app" in obj:
             obj = obj["app"]
 
-        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
+        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(obj.icon)
         return None
 
@@ -165,13 +165,6 @@ class DatetimeString:
             raise ValueError(error)
 
         return value
-
-
-def _get_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"{value} is not a valid float")
 
 
 def timezone(timezone_string):
@@ -276,8 +269,8 @@ class TokenManager:
         cls,
         token_type: str,
         account: Optional["Account"] = None,
-        email: Optional[str] = None,
-        additional_data: Optional[dict] = None,
+        email: str | None = None,
+        additional_data: dict | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")
@@ -319,19 +312,19 @@ class TokenManager:
         redis_client.delete(token_key)
 
     @classmethod
-    def get_token_data(cls, token: str, token_type: str) -> Optional[dict[str, Any]]:
+    def get_token_data(cls, token: str, token_type: str) -> dict[str, Any] | None:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
+        token_data: dict[str, Any] | None = json.loads(token_data_json)
         return token_data
 
     @classmethod
-    def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
+    def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:
         key = cls._get_account_token_key(account_id, token_type)
-        current_token: Optional[str] = redis_client.get(key)
+        current_token: str | None = redis_client.get(key)
         return current_token
 
     @classmethod
