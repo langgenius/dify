@@ -39,7 +39,7 @@ export type RetrievalSetting = {
   top_k: number
   score_threshold_enabled: boolean
   score_threshold: number
-  hybridSearchMode?: RerankingModeEnum
+  reranking_mode?: RerankingModeEnum
 }
 export type KnowledgeBaseNodeType = CommonNodeType & {
   index_chunk_variable_selector: string[]

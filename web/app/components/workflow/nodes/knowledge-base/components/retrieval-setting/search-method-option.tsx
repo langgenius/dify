@@ -178,13 +178,11 @@ const SearchMethodOption = ({
                   </div>
                 )
               }
-              {rerankingModelEnabled && (
-                <RerankingModelSelector
-                  rerankingModel={rerankingModel}
-                  onRerankingModelChange={onRerankingModelChange}
-                  readonly={readonly}
-                />
-              )}
+              <RerankingModelSelector
+                rerankingModel={rerankingModel}
+                onRerankingModelChange={onRerankingModelChange}
+                readonly={readonly}
+              />
             </div>
           )
         }
