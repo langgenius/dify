@@ -39,6 +39,17 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 logger = logging.getLogger(__name__)
 
 
+# Define a custom type for environment variables to include 'from_version'
+def environment_variable(value):
+    if not isinstance(value, dict):
+        raise ValueError("Must be a dictionary")
+    # Basic validation, can be expanded
+    if "name" not in value or "value_type" not in value:
+        raise ValueError("Missing 'name' or 'value_type'")
+    # 'from_version' is optional
+    return value
+
+
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
 # at the controller level rather than in the workflow logic. This would improve separation
 # of concerns and make the code more maintainable.
@@ -125,7 +136,9 @@ class DraftWorkflowApi(Resource):
             parser.add_argument("graph", type=dict, required=True, nullable=False, location="json")
             parser.add_argument("features", type=dict, required=True, nullable=False, location="json")
             parser.add_argument("hash", type=str, required=False, location="json")
-            parser.add_argument("environment_variables", type=list, required=True, location="json")
+            parser.add_argument(
+                "environment_variables", type=environment_variable, required=True, location="json", action="append"
+            )
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
@@ -156,9 +169,10 @@ class DraftWorkflowApi(Resource):
 
         try:
             environment_variables_list = args.get("environment_variables") or []
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
+
+            # Note: We will pass the raw list to the service layer.
+            # The factory build will be handled inside the service to access from_version.
+
             conversation_variables_list = args.get("conversation_variables") or []
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
@@ -169,7 +183,7 @@ class DraftWorkflowApi(Resource):
                 features=args["features"],
                 unique_hash=args.get("hash"),
                 account=current_user,
-                environment_variables=environment_variables,
+                raw_environment_variables=environment_variables_list,
                 conversation_variables=conversation_variables,
             )
         except WorkflowHashNotEqualError:

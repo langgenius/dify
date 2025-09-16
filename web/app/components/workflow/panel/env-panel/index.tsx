@@ -27,6 +27,8 @@ const EnvPanel = () => {
   const envSecrets = useStore(s => s.envSecrets)
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
   const setEnvSecrets = useStore(s => s.setEnvSecrets)
+  const restoredSecretsInfo = useStore(s => s.restoredSecretsInfo)
+  const setRestoredSecretsInfo = useStore(s => s.setRestoredSecretsInfo)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const [showVariableModal, setShowVariableModal] = useState(false)
@@ -90,61 +92,50 @@ const EnvPanel = () => {
   }, [getEffectedNodes, handleDelete])
 
   const handleSave = useCallback(async (env: EnvironmentVariable) => {
-    // add env
-    let newEnv = env
-    if (!currentVar) {
-      if (env.value_type === 'secret') {
-        setEnvSecrets({
-          ...envSecrets,
-          [env.id]: formatSecret(env.value),
-        })
-      }
-      const newList = [env, ...envList]
-      updateEnvList(newList)
-      await doSyncWorkflowDraft()
-      updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
-      return
+    const { getNodes, setNodes } = store.getState()
+
+    // 1. Prepare new states in memory
+    const newEnvSecrets = { ...envSecrets }
+    const newRestoredSecretsInfo = { ...restoredSecretsInfo }
+
+    if (env.value_type === 'secret') {
+      newEnvSecrets[env.id] = formatSecret(env.value) // Store MASKED value for UI
+      if (currentVar && restoredSecretsInfo[currentVar.id])
+        delete newRestoredSecretsInfo[currentVar.id]
     }
-    else if (currentVar.value_type === 'secret') {
-      if (env.value_type === 'secret') {
-        if (envSecrets[currentVar.id] !== env.value) {
-          newEnv = env
-          setEnvSecrets({
-            ...envSecrets,
-            [env.id]: formatSecret(env.value),
-          })
-        }
-        else {
-          newEnv = { ...env, value: '[__HIDDEN__]' }
-        }
-      }
+ else if (currentVar?.value_type === 'secret') {
+      delete newEnvSecrets[currentVar.id]
     }
-    else {
-      if (env.value_type === 'secret') {
-        newEnv = env
-        setEnvSecrets({
-          ...envSecrets,
-          [env.id]: formatSecret(env.value),
-        })
-      }
-    }
-    const newList = envList.map(e => e.id === currentVar.id ? newEnv : e)
-    updateEnvList(newList)
-    // side effects of rename env
-    if (currentVar.name !== env.name) {
-      const { getNodes, setNodes } = store.getState()
+
+    // 2. Prepare two lists: one for UI (safe), one for backend sync (with plaintext)
+    const listForSync = !currentVar
+      ? [env, ...envList]
+      : envList.map(e => e.id === currentVar.id ? env : e)
+
+    const uiEnv = { ...env, value: env.value_type === 'secret' ? '[__HIDDEN__]' : env.value }
+    const listForUI = !currentVar
+      ? [uiEnv, ...envList]
+      : envList.map(e => e.id === currentVar.id ? uiEnv : e)
+
+    // 3. Atomically update all UI-related states with safe values
+    setEnvSecrets(newEnvSecrets)
+    setRestoredSecretsInfo(newRestoredSecretsInfo)
+    updateEnvList(listForUI)
+
+    // 4. Handle rename side effect
+    if (currentVar && currentVar.name !== env.name) {
       const effectedNodes = getEffectedNodes(currentVar)
       const newNodes = getNodes().map((node) => {
         if (effectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, ['env', currentVar.name], ['env', env.name])
-
         return node
       })
       setNodes(newNodes)
     }
-    await doSyncWorkflowDraft()
-    updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
-  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, getEffectedNodes, setEnvSecrets, store, updateEnvList])
+
+    // 5. Sync with backend, passing the temporary list with plaintext as an override
+    await doSyncWorkflowDraft(undefined, undefined, listForSync)
+  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, getEffectedNodes, setEnvSecrets, store, updateEnvList, restoredSecretsInfo, setRestoredSecretsInfo])
 
   return (
     <div

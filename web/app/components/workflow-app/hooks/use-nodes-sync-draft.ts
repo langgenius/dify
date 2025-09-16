@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, type EnvironmentVariable } from '@/app/components/workflow/types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
@@ -22,7 +22,7 @@ export const useNodesSyncDraft = () => {
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const params = useParams()
 
-  const getPostParams = useCallback(() => {
+  const getPostParams = useCallback((overrideEnv?: EnvironmentVariable[]) => {
     const {
       getNodes,
       edges,
@@ -32,9 +32,12 @@ export const useNodesSyncDraft = () => {
     const {
       appId,
       conversationVariables,
-      environmentVariables,
+      environmentVariables: environmentVariablesFromStore,
       syncWorkflowDraftHash,
+      restoredSecretsInfo,
     } = workflowStore.getState()
+
+    const environmentVariables = overrideEnv || environmentVariablesFromStore
 
     if (appId) {
       const nodes = getNodes()
@@ -82,7 +85,23 @@ export const useNodesSyncDraft = () => {
             sensitive_word_avoidance: features.moderation,
             file_upload: features.file,
           },
-          environment_variables: environmentVariables,
+          environment_variables: environmentVariables.map((item: EnvironmentVariable) => {
+            // If it's a restored secret, send the from_version field
+            if (item.value_type === 'secret' && restoredSecretsInfo[item.id]) {
+              return {
+                id: item.id,
+                name: item.name,
+                value_type: item.value_type,
+                from_version: restoredSecretsInfo[item.id].from_version,
+                // value and description are required by type but not used by backend for restored secrets
+                value: '',
+                description: '',
+              }
+            }
+            // For all other cases, pass the value as is.
+            // For secrets, this will be the plaintext value during the save operation.
+            return item
+          }),
           conversation_variables: conversationVariables,
           hash: syncWorkflowDraftHash,
         },
@@ -110,10 +129,11 @@ export const useNodesSyncDraft = () => {
       onError?: () => void
       onSettled?: () => void
     },
+    overrideEnv?: EnvironmentVariable[],
   ) => {
     if (getNodesReadOnly())
       return
-    const postParams = getPostParams()
+    const postParams = getPostParams(overrideEnv)
 
     if (postParams) {
       const {
