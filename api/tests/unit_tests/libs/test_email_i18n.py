@@ -246,6 +246,43 @@ class TestEmailI18nService:
         sent_email = mock_sender.sent_emails[0]
         assert sent_email["subject"] == "Reset Your Dify Password"
 
+    def test_subject_format_keyerror_fallback_path(
+        self,
+        mock_renderer: MockEmailRenderer,
+        mock_sender: MockEmailSender,
+    ):
+        """Trigger subject KeyError and cover except branch."""
+        # Config with subject that references an unknown key (no {application_title} to avoid second format)
+        config = EmailI18nConfig(
+            templates={
+                EmailType.INVITE_MEMBER: {
+                    EmailLanguage.EN_US: EmailTemplate(
+                        subject="Invite: {unknown_placeholder}",
+                        template_path="invite_member_en.html",
+                        branded_template_path="branded/invite_member_en.html",
+                    ),
+                }
+            }
+        )
+        branding_service = MockBrandingService(enabled=False)
+        service = EmailI18nService(
+            config=config,
+            renderer=mock_renderer,
+            branding_service=branding_service,
+            sender=mock_sender,
+        )
+
+        # Will raise KeyError on subject.format(**full_context), then hit except branch and skip fallback
+        service.send_email(
+            email_type=EmailType.INVITE_MEMBER,
+            language_code="en-US",
+            to="test@example.com",
+        )
+
+        assert len(mock_sender.sent_emails) == 1
+        # Subject is left unformatted due to KeyError fallback path without application_title
+        assert mock_sender.sent_emails[0]["subject"] == "Invite: {unknown_placeholder}"
+
     def test_send_change_email_old_phase(
         self,
         email_config: EmailI18nConfig,

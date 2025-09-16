@@ -13,7 +13,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
@@ -91,6 +90,28 @@ class TestAccountService:
         assert account.password is None
         assert account.password_salt is None
 
+    def test_create_account_password_invalid_new_password(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test account create with invalid new password format.
+        """
+        fake = Faker()
+        email = fake.email()
+        name = fake.name()
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Test with too short password (assuming minimum length validation)
+        with pytest.raises(ValueError):  # Password validation error
+            AccountService.create_account(
+                email=email,
+                name=name,
+                interface_language="en-US",
+                password="invalid_new_password",
+            )
+
     def test_create_account_registration_disabled(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test account creation when registration is disabled.
@@ -139,7 +160,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         password = fake.password(length=12)
-        with pytest.raises(AccountNotFoundError):
+        with pytest.raises(AccountPasswordError):
             AccountService.authenticate(email, password)
 
     def test_authenticate_banned_account(self, db_session_with_containers, mock_external_service_dependencies):
@@ -940,7 +961,8 @@ class TestAccountService:
         Test getting user through non-existent email.
         """
         fake = Faker()
-        non_existent_email = fake.email()
+        domain = f"test-{fake.random_letters(10)}.com"
+        non_existent_email = fake.email(domain=domain)
         found_user = AccountService.get_user_through_email(non_existent_email)
         assert found_user is None
 
@@ -3278,7 +3300,7 @@ class TestRegisterService:
         redis_client.setex(cache_key, 24 * 60 * 60, account_id)
 
         # Execute invitation retrieval
-        result = RegisterService._get_invitation_by_token(
+        result = RegisterService.get_invitation_by_token(
             token=token,
             workspace_id=workspace_id,
             email=email,
@@ -3316,7 +3338,7 @@ class TestRegisterService:
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
 
         # Execute invitation retrieval
-        result = RegisterService._get_invitation_by_token(token=token)
+        result = RegisterService.get_invitation_by_token(token=token)
 
         # Verify result contains expected data
         assert result is not None

@@ -1,3 +1,4 @@
+import collections
 import json
 import logging
 import os
@@ -5,7 +6,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Optional, Union
+from typing import Any, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -40,7 +41,7 @@ from tasks.ops_trace_task import process_trace_tasks
 logger = logging.getLogger(__name__)
 
 
-class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
+class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
             case TracingProviderEnum.LANGFUSE:
@@ -121,7 +122,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
-provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
+provider_config_map = OpsTraceProviderConfigMap()
 
 
 class OpsTraceManager:
@@ -218,7 +219,7 @@ class OpsTraceManager:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -242,7 +243,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Optional[Union[UUID, str]] = None,
+        app_id: Union[UUID, str] | None = None,
     ):
         """
         Get ops trace through model config
@@ -255,7 +256,7 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app: App | None = db.session.query(App).where(App.id == app_id).first()
 
         if app is None:
             return None
@@ -323,16 +324,13 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if enabled:
-            try:
+        try:
+            if enabled or tracing_provider is not None:
                 provider_config_map[tracing_provider]
-            except KeyError:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-        else:
-            if tracing_provider is None:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+        except KeyError:
+            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app_config: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
             raise ValueError("App not found")
         app_config.tracing = json.dumps(
@@ -350,7 +348,7 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: Optional[App] = db.session.query(App).where(App.id == app_id).first()
+        app: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app:
             raise ValueError("App not found")
         if not app.tracing:
@@ -408,11 +406,11 @@ class TraceTask:
     def __init__(
         self,
         trace_type: Any,
-        message_id: Optional[str] = None,
-        workflow_execution: Optional[WorkflowExecution] = None,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        timer: Optional[Any] = None,
+        message_id: str | None = None,
+        workflow_execution: WorkflowExecution | None = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        timer: Any | None = None,
         **kwargs,
     ):
         self.trace_type = trace_type
@@ -826,7 +824,7 @@ class TraceTask:
         return generate_name_trace_info
 
 
-trace_manager_timer: Optional[threading.Timer] = None
+trace_manager_timer: threading.Timer | None = None
 trace_manager_queue: queue.Queue = queue.Queue()
 trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 5))
 trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))

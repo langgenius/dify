@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -55,8 +55,8 @@ class PromptTransform:
         memory: TokenBufferMemory,
         memory_config: MemoryConfig,
         max_token_limit: int,
-        human_prefix: Optional[str] = None,
-        ai_prefix: Optional[str] = None,
+        human_prefix: str | None = None,
+        ai_prefix: str | None = None,
     ) -> str:
         """Get memory messages."""
         kwargs: dict[str, Any] = {"max_token_limit": max_token_limit}

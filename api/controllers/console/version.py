@@ -2,18 +2,41 @@ import json
 import logging
 
 import requests
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from packaging import version
 
 from configs import dify_config
 
-from . import api
+from . import api, console_ns
 
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/version")
 class VersionApi(Resource):
+    @api.doc("check_version_update")
+    @api.doc(description="Check for application version updates")
+    @api.expect(
+        api.parser().add_argument(
+            "current_version", type=str, required=True, location="args", help="Current application version"
+        )
+    )
+    @api.response(
+        200,
+        "Success",
+        api.model(
+            "VersionResponse",
+            {
+                "version": fields.String(description="Latest version number"),
+                "release_date": fields.String(description="Release date of latest version"),
+                "release_notes": fields.String(description="Release notes for latest version"),
+                "can_auto_update": fields.Boolean(description="Whether auto-update is supported"),
+                "features": fields.Raw(description="Feature flags and capabilities"),
+            },
+        ),
+    )
     def get(self):
+        """Check for application version updates"""
         parser = reqparse.RequestParser()
         parser.add_argument("current_version", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -34,14 +57,14 @@ class VersionApi(Resource):
             return result
 
         try:
-            response = requests.get(check_update_url, {"current_version": args.get("current_version")}, timeout=(3, 10))
+            response = requests.get(check_update_url, {"current_version": args["current_version"]}, timeout=(3, 10))
         except Exception as error:
             logger.warning("Check update version error: %s.", str(error))
-            result["version"] = args.get("current_version")
+            result["version"] = args["current_version"]
             return result
 
         content = json.loads(response.content)
-        if _has_new_version(latest_version=content["version"], current_version=f"{args.get('current_version')}"):
+        if _has_new_version(latest_version=content["version"], current_version=f"{args['current_version']}"):
             result["version"] = content["version"]
             result["release_date"] = content["releaseDate"]
             result["release_notes"] = content["releaseNotes"]
@@ -59,6 +82,3 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     except version.InvalidVersion:
         logger.warning("Invalid version format: latest=%s, current=%s", latest_version, current_version)
         return False
-
-
-api.add_resource(VersionApi, "/version")

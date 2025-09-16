@@ -1,5 +1,5 @@
-import enum
-from typing import Literal, Optional
+from enum import Enum
+from typing import Literal
 
 from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings
@@ -10,7 +10,7 @@ class OpenSearchConfig(BaseSettings):
     Configuration settings for OpenSearch
     """
 
-    class AuthMethod(enum.StrEnum):
+    class AuthMethod(Enum):
         """
         Authentication method for OpenSearch
         """
@@ -18,7 +18,7 @@ class OpenSearchConfig(BaseSettings):
         BASIC = "basic"
         AWS_MANAGED_IAM = "aws_managed_iam"
 
-    OPENSEARCH_HOST: Optional[str] = Field(
+    OPENSEARCH_HOST: str | None = Field(
         description="Hostname or IP address of the OpenSearch server (e.g., 'localhost' or 'opensearch.example.com')",
         default=None,
     )
@@ -43,21 +43,21 @@ class OpenSearchConfig(BaseSettings):
         default=AuthMethod.BASIC,
     )
 
-    OPENSEARCH_USER: Optional[str] = Field(
+    OPENSEARCH_USER: str | None = Field(
         description="Username for authenticating with OpenSearch",
         default=None,
     )
 
-    OPENSEARCH_PASSWORD: Optional[str] = Field(
+    OPENSEARCH_PASSWORD: str | None = Field(
         description="Password for authenticating with OpenSearch",
         default=None,
     )
 
-    OPENSEARCH_AWS_REGION: Optional[str] = Field(
+    OPENSEARCH_AWS_REGION: str | None = Field(
         description="AWS region for OpenSearch (e.g. 'us-west-2')",
         default=None,
     )
 
-    OPENSEARCH_AWS_SERVICE: Optional[Literal["es", "aoss"]] = Field(
+    OPENSEARCH_AWS_SERVICE: Literal["es", "aoss"] | None = Field(
         description="AWS service for OpenSearch (e.g. 'aoss' for OpenSearch Serverless)", default=None
     )

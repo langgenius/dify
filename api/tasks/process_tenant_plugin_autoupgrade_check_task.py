@@ -1,3 +1,4 @@
+import operator
 import traceback
 import typing
 
@@ -118,7 +119,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                     current_version = version
                     latest_version = manifest.latest_version
 
-                    def fix_only_checker(latest_version, current_version):
+                    def fix_only_checker(latest_version: str, current_version: str):
                         latest_version_tuple = tuple(int(val) for val in latest_version.split("."))
                         current_version_tuple = tuple(int(val) for val in current_version.split("."))
 
@@ -130,8 +131,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                         return False
 
                     version_checker = {
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: lambda latest_version,
-                        current_version: latest_version != current_version,
+                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: operator.ne,
                         TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY: fix_only_checker,
                     }
 
