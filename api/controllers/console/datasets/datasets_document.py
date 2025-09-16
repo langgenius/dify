@@ -301,7 +301,7 @@ class DatasetDocumentListApi(Resource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         args = parser.parse_args()
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
 
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
@@ -391,7 +391,7 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
