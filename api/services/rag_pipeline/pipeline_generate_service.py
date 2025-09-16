@@ -32,9 +32,9 @@ class PipelineGenerateService:
         """
         try:
             workflow = cls._get_workflow(pipeline, invoke_from)
-            if args.get("original_document_id"):
+            if original_document_id := args.get("original_document_id"):
                 # update document status to waiting
-                cls.update_document_status(args.get("original_document_id", ""))
+                cls.update_document_status(original_document_id)
             return PipelineGenerator.convert_to_event_stream(
                 PipelineGenerator().generate(
                     pipeline=pipeline,
