@@ -55,6 +55,7 @@ const translation = {
     passwordLengthInValid: 'Şifre en az 8 karakterden oluşmalıdır',
     passwordInvalid: 'Şifre harf ve rakamlardan oluşmalı ve uzunluğu 8 karakterden fazla olmalıdır',
     registrationNotAllowed: 'Hesap bulunamadı. Kayıt olmak için lütfen sistem yöneticisi ile iletişime geçin.',
+    invalidEmailOrPassword: 'Geçersiz e-posta veya şifre.',
   },
   license: {
     tip: 'Dify Community Edition\'ı başlatmadan önce GitHub\'daki',
@@ -109,6 +110,15 @@ const translation = {
     noLoginMethod: 'Web uygulaması için kimlik doğrulama yöntemi yapılandırılmamış',
     noLoginMethodTip: 'Lütfen bir kimlik doğrulama yöntemi eklemek için sistem yöneticisi ile iletişime geçin.',
     login: 'Giriş',
+  },
+  signup: {
+    noAccount: 'Hesabınız yok mu?',
+    signIn: 'Giriş Yap',
+    signUp: 'Kaydol',
+    createAccount: 'Hesabınızı oluşturun',
+    verifyMail: 'Doğrulama kodu ile devam et',
+    haveAccount: 'Zaten bir hesabınız var mı?',
+    welcome: '👋 Hoş geldiniz! Başlamak için lütfen detayları doldurun.',
   },
 }
 

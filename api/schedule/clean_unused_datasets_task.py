@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import click
 from sqlalchemy import func, select
@@ -17,7 +17,7 @@ from services.feature_service import FeatureService
 
 class CleanupConfig(TypedDict):
     clean_day: datetime.datetime
-    plan_filter: Optional[str]
+    plan_filter: str | None
     add_logs: bool
 
 
@@ -96,11 +96,11 @@ def clean_unused_datasets_task():
                 break
 
             for dataset in datasets:
-                dataset_query = (
-                    db.session.query(DatasetQuery)
-                    .where(DatasetQuery.created_at > clean_day, DatasetQuery.dataset_id == dataset.id)
-                    .all()
-                )
+                dataset_query = db.session.scalars(
+                    select(DatasetQuery).where(
+                        DatasetQuery.created_at > clean_day, DatasetQuery.dataset_id == dataset.id
+                    )
+                ).all()
 
                 if not dataset_query or len(dataset_query) == 0:
                     try:
@@ -121,15 +121,13 @@ def clean_unused_datasets_task():
                         if should_clean:
                             # Add auto disable log if required
                             if add_logs:
-                                documents = (
-                                    db.session.query(Document)
-                                    .where(
+                                documents = db.session.scalars(
+                                    select(Document).where(
                                         Document.dataset_id == dataset.id,
                                         Document.enabled == True,
                                         Document.archived == False,
                                     )
-                                    .all()
-                                )
+                                ).all()
                                 for document in documents:
                                     dataset_auto_disable_log = DatasetAutoDisableLog(
                                         tenant_id=dataset.tenant_id,

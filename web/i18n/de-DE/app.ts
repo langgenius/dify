@@ -318,6 +318,10 @@ const translation = {
     noMatchingCommands: 'Keine übereinstimmenden Befehle gefunden',
     tryDifferentSearch: 'Versuchen Sie es mit einem anderen Suchbegriff',
     slashHint: 'Geben Sie / ein, um alle verfügbaren Befehle anzuzeigen.',
+    tips: 'Drücken Sie ↑↓, um zu navigieren',
+    pressEscToClose: 'Drücken Sie ESC, um zu schließen',
+    startTyping: 'Beginnen Sie mit der Eingabe, um zu suchen',
+    selectToNavigate: 'Auswählen, um zu navigieren',
   },
 }
 

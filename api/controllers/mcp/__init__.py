@@ -10,7 +10,6 @@ api = ExternalApi(
     version="1.0",
     title="MCP API",
     description="API for Model Context Protocol operations",
-    doc="/docs",  # Enable Swagger UI at /mcp/docs
 )
 
 mcp_ns = Namespace("mcp", description="MCP operations", path="/")
@@ -18,3 +17,10 @@ mcp_ns = Namespace("mcp", description="MCP operations", path="/")
 from . import mcp
 
 api.add_namespace(mcp_ns)
+
+__all__ = [
+    "api",
+    "bp",
+    "mcp",
+    "mcp_ns",
+]
