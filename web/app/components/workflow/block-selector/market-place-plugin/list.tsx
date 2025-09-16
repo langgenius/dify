@@ -11,7 +11,7 @@ import { noop } from 'lodash-es'
 import { getMarketplaceUrl } from '@/utils/var'
 
 export type ListProps = {
-  wrapElemRef: React.RefObject<HTMLElement>
+  wrapElemRef: React.RefObject<HTMLElement | null>
   list: Plugin[]
   searchText: string
   tags: string[]
