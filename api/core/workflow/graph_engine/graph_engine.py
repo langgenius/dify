@@ -68,6 +68,8 @@ class GraphEngine:
 
         # Graph execution tracks the overall execution state
         self._graph_execution = GraphExecution(workflow_id=workflow_id)
+        if graph_runtime_state.graph_execution_json != "":
+            self._graph_execution.loads(graph_runtime_state.graph_execution_json)
 
         # === Core Dependencies ===
         # Graph structure and configuration
