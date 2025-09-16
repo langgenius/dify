@@ -60,7 +60,7 @@ class TriggerProviderService:
         """List all trigger subscriptions for the current tenant"""
         subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
         workflows_in_use_map: dict[str, int] = {}
-        with Session(db.engine, autoflush=False) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             # Get all subscriptions
             subscriptions_db = (
                 session.query(TriggerSubscription)
@@ -128,7 +128,7 @@ class TriggerProviderService:
         """
         try:
             provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-            with Session(db.engine, autoflush=False) as session:
+            with Session(db.engine, expire_on_commit=False) as session:
                 # Use distributed lock to prevent race conditions
                 lock_key = f"trigger_provider_create_lock:{tenant_id}_{provider_id}"
                 with redis_client.lock(lock_key, timeout=20):
@@ -317,7 +317,7 @@ class TriggerProviderService:
         :return: OAuth client configuration or None
         """
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-        with Session(db.engine, autoflush=False) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             tenant_client: TriggerOAuthTenantClient | None = (
                 session.query(TriggerOAuthTenantClient)
                 .filter_by(
@@ -485,7 +485,7 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: True if enabled, False otherwise
         """
-        with Session(db.engine, autoflush=False) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             custom_client = (
                 session.query(TriggerOAuthTenantClient)
                 .filter_by(
@@ -503,7 +503,7 @@ class TriggerProviderService:
         """
         Get a trigger subscription by the endpoint ID.
         """
-        with Session(db.engine, autoflush=False) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             subscription = session.query(TriggerSubscription).filter_by(endpoint_id=endpoint_id).first()
             if not subscription:
                 return None
