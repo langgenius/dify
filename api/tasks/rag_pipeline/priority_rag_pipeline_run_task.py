@@ -17,7 +17,6 @@ from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEnti
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from models.account import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
@@ -25,8 +24,8 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.file_service import FileService
 
 
-@shared_task(queue="pipeline")
-def rag_pipeline_run_task(
+@shared_task(queue="priority_pipeline")
+def priority_rag_pipeline_run_task(
     rag_pipeline_invoke_entities_file_id: str,
     tenant_id: str,
 ):
@@ -84,26 +83,6 @@ def rag_pipeline_run_task(
         logging.exception(click.style(f"Error running rag pipeline, tenant_id: {tenant_id}", fg="red"))
         raise
     finally:
-        tenant_self_pipeline_task_queue = f"tenant_self_pipeline_task_queue:{tenant_id}"
-        tenant_pipeline_task_key = f"tenant_pipeline_task:{tenant_id}"
-
-        # Check if there are waiting tasks in the queue
-        # Use rpop to get the next task from the queue (FIFO order)
-        next_file_id = redis_client.rpop(tenant_self_pipeline_task_queue)
-
-        if next_file_id:
-            # Process the next waiting task
-            # Keep the flag set to indicate a task is running
-            redis_client.setex(tenant_pipeline_task_key, 60 * 60, 1)
-            rag_pipeline_run_task.delay(  # type: ignore
-                rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
-                if isinstance(next_file_id, bytes)
-                else next_file_id,
-                tenant_id=tenant_id,
-            )
-        else:
-            # No more waiting tasks, clear the flag
-            redis_client.delete(tenant_pipeline_task_key)
         file_service = FileService(db.engine)
         file_service.delete_file(rag_pipeline_invoke_entities_file_id)
         db.session.close()
@@ -190,5 +169,5 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     workflow_thread_pool_id=workflow_thread_pool_id,
                 )
         except Exception:
-            logging.exception("Error in pipeline task")
+            logging.exception("Error in priority pipeline task")
             raise

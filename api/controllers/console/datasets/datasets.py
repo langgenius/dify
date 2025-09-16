@@ -741,6 +741,19 @@ class DatasetApiDeleteApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<str:status>")
+class DatasetEnableApiApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, status):
+        dataset_id_str = str(dataset_id)
+
+        DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
+
+        return {"result": "success"}, 200
+
+
 @console_ns.route("/datasets/api-base-info")
 class DatasetApiBaseUrlApi(Resource):
     @api.doc("get_dataset_api_base_info")

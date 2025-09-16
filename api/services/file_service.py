@@ -19,7 +19,6 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
-from libs.login import current_user
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
@@ -120,34 +119,30 @@ class FileService:
 
         return file_size <= file_size_limit
 
-    @staticmethod
-    def upload_text(text: str, text_name: str) -> UploadFile:
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-
+    def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:
             text_name = text_name[:200]
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
-        file_key = "upload_files/" + current_user.current_tenant_id + "/" + file_uuid + ".txt"
+        file_key = "upload_files/" + tenant_id + "/" + file_uuid + ".txt"
 
         # save file to storage
         storage.save(file_key, text.encode("utf-8"))
 
         # save file to db
         upload_file = UploadFile(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=tenant_id,
             storage_type=dify_config.STORAGE_TYPE,
             key=file_key,
             name=text_name,
             size=len(text),
             extension="txt",
             mime_type="text/plain",
-            created_by=current_user.id,
+            created_by=user_id,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_at=naive_utc_now(),
             used=True,
-            used_by=current_user.id,
+            used_by=user_id,
             used_at=naive_utc_now(),
         )
 
@@ -225,3 +220,23 @@ class FileService:
         generator = storage.load(upload_file.key)
 
         return generator, upload_file.mime_type
+
+    def get_file_content(self, file_id: str) -> str:
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            raise NotFound("File not found")
+        content = storage.load(upload_file.key)
+
+        return content.decode("utf-8")
+
+    def delete_file(self, file_id: str):
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            return
+        storage.delete(upload_file.key)
+        session.delete(upload_file)
+        session.commit()

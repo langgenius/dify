@@ -72,6 +72,7 @@ class Dataset(Base):
     runtime_mode = db.Column(db.String(255), nullable=True, server_default=db.text("'general'::character varying"))
     pipeline_id = db.Column(StringUUID, nullable=True)
     chunk_structure = db.Column(db.String(255), nullable=True)
+    enable_api = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
 
     @property
     def total_documents(self):

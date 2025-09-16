@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, cast
+from typing import Any, Optional, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -54,7 +55,14 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Document, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin  # type: ignore
+from models.dataset import (  # type: ignore
+    Dataset,
+    Document,
+    DocumentPipelineExecutionLog,
+    Pipeline,
+    PipelineCustomizedTemplate,
+    PipelineRecommendedPlugin,
+)
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
@@ -65,7 +73,6 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.dataset_service import DatasetService
 from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
@@ -346,6 +353,8 @@ class RagPipelineService:
 
         graph = workflow.graph_dict
         nodes = graph.get("nodes", [])
+        from services.dataset_service import DatasetService
+
         for node in nodes:
             if node.get("data", {}).get("type") == "knowledge-index":
                 knowledge_configuration = node.get("data", {})
@@ -1311,3 +1320,39 @@ class RagPipelineService:
             "installed_recommended_plugins": installed_plugin_list,
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
+
+    def retry_error_document(self, dataset: Dataset, document: Document, user: Union[Account, EndUser]):
+        """
+        Retry error document
+        """
+        document_pipeline_excution_log = (
+            db.session.query(DocumentPipelineExecutionLog)
+            .filter(DocumentPipelineExecutionLog.document_id == document.id)
+            .first()
+        )
+        if not document_pipeline_excution_log:
+            raise ValueError("Document pipeline execution log not found")
+        pipeline = db.session.query(Pipeline).filter(Pipeline.id == document_pipeline_excution_log.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+        # convert to app config
+        workflow = self.get_published_workflow(pipeline)
+        if not workflow:
+            raise ValueError("Workflow not found")
+        PipelineGenerator().generate(
+            pipeline=pipeline,
+            workflow=workflow,
+            user=user,
+            args={
+                "inputs": document_pipeline_excution_log.input_data,
+                "start_node_id": document_pipeline_excution_log.datasource_node_id,
+                "datasource_type": document_pipeline_excution_log.datasource_type,
+                "datasource_info_list": [json.loads(document_pipeline_excution_log.datasource_info)],
+            },
+            invoke_from=InvokeFrom.PUBLISHED,
+            streaming=False,
+            call_depth=0,
+            workflow_thread_pool_id=None,
+            is_retry=True,
+            documents=[document],
+        )

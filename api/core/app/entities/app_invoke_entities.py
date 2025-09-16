@@ -257,6 +257,7 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     dataset_id: str
     batch: str
     document_id: Optional[str] = None
+    original_document_id: Optional[str] = None
     start_node_id: Optional[str] = None
 
     class SingleIterationRunEntity(BaseModel):
