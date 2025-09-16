@@ -249,6 +249,7 @@ const translation = {
     customCredentialUnavailable: 'Credenciais personalizadas atualmente indisponíveis',
     unavailable: 'Indisponível',
     credentialUnavailable: 'Credenciais atualmente indisponíveis. Por favor, contate o administrador.',
+    credentialUnavailableInButton: 'Credencial indisponível',
   },
   deprecated: 'Obsoleto',
   autoUpdate: {

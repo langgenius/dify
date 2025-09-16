@@ -9,19 +9,19 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum, auto
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class FileStatus(Enum):
+class FileStatus(StrEnum):
     """File status enumeration"""
 
-    ACTIVE = "active"  # Active status
-    ARCHIVED = "archived"  # Archived
-    DELETED = "deleted"  # Deleted (soft delete)
-    BACKUP = "backup"  # Backup file
+    ACTIVE = auto()  # Active status
+    ARCHIVED = auto()  # Archived
+    DELETED = auto()  # Deleted (soft delete)
+    BACKUP = auto()  # Backup file
 
 
 @dataclass
@@ -34,9 +34,9 @@ class FileMetadata:
     modified_at: datetime
     version: int | None
     status: FileStatus
-    checksum: Optional[str] = None
-    tags: Optional[dict[str, str]] = None
-    parent_version: Optional[int] = None
+    checksum: str | None = None
+    tags: dict[str, str] | None = None
+    parent_version: int | None = None
 
     def to_dict(self):
         """Convert to dictionary format"""
@@ -59,7 +59,7 @@ class FileMetadata:
 class FileLifecycleManager:
     """File lifecycle manager"""
 
-    def __init__(self, storage, dataset_id: Optional[str] = None):
+    def __init__(self, storage, dataset_id: str | None = None):
         """Initialize lifecycle manager
 
         Args:
@@ -74,9 +74,9 @@ class FileLifecycleManager:
         self._deleted_prefix = ".deleted/"
 
         # Get permission manager (if exists)
-        self._permission_manager: Optional[Any] = getattr(storage, "_permission_manager", None)
+        self._permission_manager: Any | None = getattr(storage, "_permission_manager", None)
 
-    def save_with_lifecycle(self, filename: str, data: bytes, tags: Optional[dict[str, str]] = None) -> FileMetadata:
+    def save_with_lifecycle(self, filename: str, data: bytes, tags: dict[str, str] | None = None) -> FileMetadata:
         """Save file and manage lifecycle
 
         Args:
@@ -150,7 +150,7 @@ class FileLifecycleManager:
             logger.exception("Failed to save file with lifecycle")
             raise
 
-    def get_file_metadata(self, filename: str) -> Optional[FileMetadata]:
+    def get_file_metadata(self, filename: str) -> FileMetadata | None:
         """Get file metadata
 
         Args:
