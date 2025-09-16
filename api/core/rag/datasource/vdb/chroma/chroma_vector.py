@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 import chromadb
 from chromadb import QueryResult, Settings
@@ -20,8 +20,8 @@ class ChromaConfig(BaseModel):
     port: int
     tenant: str
     database: str
-    auth_provider: Optional[str] = None
-    auth_credentials: Optional[str] = None
+    auth_provider: str | None = None
+    auth_credentials: str | None = None
 
     def to_chroma_params(self):
         settings = Settings(
