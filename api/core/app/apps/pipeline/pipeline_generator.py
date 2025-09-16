@@ -48,7 +48,6 @@ from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFro
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
-from services.dataset_service import DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -72,6 +71,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        is_retry: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None: ...
 
     @overload
@@ -86,6 +86,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        is_retry: bool = False,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -100,6 +101,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        is_retry: bool = False,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
@@ -113,6 +115,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
+        is_retry: bool = False,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # Add null check for dataset
 
@@ -132,7 +135,8 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=start_node_id
         )
         documents = []
-        if invoke_from == InvokeFrom.PUBLISHED:
+        if invoke_from == InvokeFrom.PUBLISHED and not is_retry:
+            from services.dataset_service import DocumentService
             for datasource_info in datasource_info_list:
                 position = DocumentService.get_documents_position(dataset.id)
                 document = self._build_document(
@@ -156,7 +160,7 @@ class PipelineGenerator(BaseAppGenerator):
         for i, datasource_info in enumerate(datasource_info_list):
             workflow_run_id = str(uuid.uuid4())
             document_id = None
-            if invoke_from == InvokeFrom.PUBLISHED:
+            if invoke_from == InvokeFrom.PUBLISHED and not is_retry:
                 document_id = documents[i].id
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document_id,
@@ -246,7 +250,7 @@ class PipelineGenerator(BaseAppGenerator):
             name = "rag_pipeline_invoke_entities.json"
             # Convert list to proper JSON string
             json_text = json.dumps(text)
-            upload_file = FileService(db.engine).upload_text(json_text, name)
+            upload_file = FileService(db.engine).upload_text(json_text, name, user.id, dataset.tenant_id)
             features = FeatureService.get_features(dataset.tenant_id)
             if features.billing.subscription.plan == "sandbox":
                 tenant_pipeline_task_key = f"tenant_pipeline_task:{dataset.tenant_id}"

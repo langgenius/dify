@@ -543,24 +543,24 @@ class DatasetService:
         """
         if dataset.runtime_mode != "rag_pipeline":
             return
-            
+
         pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
         if not pipeline:
             return
-            
+
         try:
             rag_pipeline_service = RagPipelineService()
             published_workflow = rag_pipeline_service.get_published_workflow(pipeline)
             draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline)
-            
+
             # update knowledge nodes
             def update_knowledge_nodes(workflow_graph: str) -> str:
                 """Update knowledge-index nodes in workflow graph."""
                 data: dict[str, Any] = json.loads(workflow_graph)
-                    
+
                 nodes = data.get("nodes", [])
                 updated = False
-                
+
                 for node in nodes:
                     if node.get("data", {}).get("type") == "knowledge-index":
                         try:
@@ -576,12 +576,12 @@ class DatasetService:
                         except Exception:
                             logging.exception("Failed to update knowledge node")
                             continue
-                
+
                 if updated:
                     data["nodes"] = nodes
                     return json.dumps(data)
                 return workflow_graph
-            
+
             # Update published workflow
             if published_workflow:
                 updated_graph = update_knowledge_nodes(published_workflow.graph)
@@ -602,17 +602,17 @@ class DatasetService:
                         marked_comment="",
                     )
                     db.session.add(workflow)
-            
+
             # Update draft workflow
             if draft_workflow:
                 updated_graph = update_knowledge_nodes(draft_workflow.graph)
                 if updated_graph != draft_workflow.graph:
                     draft_workflow.graph = updated_graph
                     db.session.add(draft_workflow)
-            
+
             # Commit all changes in one transaction
             db.session.commit()
-            
+
         except Exception:
             logging.exception("Failed to update pipeline knowledge base node data")
             db.session.rollback()
@@ -1360,7 +1360,7 @@ class DocumentService:
             redis_client.setex(retry_indexing_cache_key, 600, 1)
         # trigger async task
         document_ids = [document.id for document in documents]
-        retry_document_indexing_task.delay(dataset_id, document_ids)
+        retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod
     def sync_website_document(dataset_id: str, document: Document):

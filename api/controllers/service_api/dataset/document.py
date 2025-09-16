@@ -123,7 +123,8 @@ class DocumentAddByTextApi(DatasetApiResource):
                 args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
-        upload_file = FileService(db.engine).upload_text(text=str(text), text_name=str(name))
+        upload_file = FileService(db.engine).upload_text(text=str(text), 
+        text_name=str(name), user_id=current_user.id, tenant_id=tenant_id)
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -201,7 +202,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             name = args.get("name")
             if text is None or name is None:
                 raise ValueError("Both text and name must be strings.")
-            upload_file = FileService(db.engine).upload_text(text=str(text), text_name=str(name))
+            upload_file = FileService(db.engine).upload_text(text=str(text), 
+            text_name=str(name), user_id=current_user.id, tenant_id=tenant_id)
             data_source = {
                 "type": "upload_file",
                 "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
