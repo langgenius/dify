@@ -93,7 +93,7 @@ class TriggerSubscriptionBuilderService:
         credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED.value)
         if credential_type == CredentialType.UNAUTHORIZED:
             # manually create
-            TriggerProviderService.add_trigger_provider(
+            TriggerProviderService.add_trigger_subscription(
                 subscription_id=subscription_builder.id,
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -118,7 +118,7 @@ class TriggerSubscriptionBuilderService:
                 credentials=subscription_builder.credentials,
             )
 
-            TriggerProviderService.add_trigger_provider(
+            TriggerProviderService.add_trigger_subscription(
                 subscription_id=subscription_builder.id,
                 tenant_id=tenant_id,
                 user_id=user_id,

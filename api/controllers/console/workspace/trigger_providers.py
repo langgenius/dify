@@ -37,6 +37,20 @@ class TriggerProviderListApi(Resource):
         return jsonable_encoder(TriggerProviderService.list_trigger_providers(user.current_tenant_id))
 
 
+class TriggerProviderInfoApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        """Get info for a trigger provider"""
+        user = current_user
+        assert isinstance(user, Account)
+        assert user.current_tenant_id is not None
+        return jsonable_encoder(
+            TriggerProviderService.get_trigger_provider(user.current_tenant_id, TriggerProviderID(provider))
+        )
+
+
 class TriggerSubscriptionListApi(Resource):
     @setup_required
     @login_required
@@ -533,6 +547,7 @@ class TriggerOAuthClientManageApi(Resource):
 
 # Trigger Subscription
 api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
+api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
 api.add_resource(TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
 api.add_resource(
     TriggerSubscriptionDeleteApi,

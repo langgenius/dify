@@ -44,6 +44,11 @@ class TriggerProviderService:
     __MAX_TRIGGER_PROVIDER_COUNT__ = 10
 
     @classmethod
+    def get_trigger_provider(cls, tenant_id: str, provider: TriggerProviderID) -> TriggerProviderApiEntity:
+        """Get info for a trigger provider"""
+        return TriggerManager.get_trigger_provider(tenant_id, provider).to_api_entity()
+
+    @classmethod
     def list_trigger_providers(cls, tenant_id: str) -> list[TriggerProviderApiEntity]:
         """List all trigger providers for the current tenant"""
         return [provider.to_api_entity() for provider in TriggerManager.list_all_trigger_providers(tenant_id)]
@@ -94,7 +99,7 @@ class TriggerProviderService:
         return subscriptions
 
     @classmethod
-    def add_trigger_provider(
+    def add_trigger_subscription(
         cls,
         tenant_id: str,
         user_id: str,
