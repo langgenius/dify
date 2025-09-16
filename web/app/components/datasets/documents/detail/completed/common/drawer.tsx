@@ -49,7 +49,7 @@ const Drawer = ({
       return chunk && chunk.contains(target)
     })
     const reopenChunkDetail = (currSegment.showModal && isClickOnChildChunk)
-      || (currChildChunk.showModal && isClickOnChunk && !isClickOnChildChunk)
+      || (currChildChunk.showModal && isClickOnChunk && !isClickOnChildChunk) || (!isClickOnChunk && !isClickOnChildChunk)
     return target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail)
   }, [currSegment, currChildChunk, needCheckChunks])
 
