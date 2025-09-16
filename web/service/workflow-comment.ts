@@ -15,12 +15,12 @@ export type WorkflowCommentList = {
   content: string
   created_by: string
   created_by_account: UserProfile
-  created_at: string
-  updated_at: string
+  created_at: number
+  updated_at: number
   resolved: boolean
   resolved_by?: string
   resolved_by_account?: UserProfile
-  resolved_at?: string
+  resolved_at?: number
   mention_count: number
   reply_count: number
   participants: UserProfile[]
