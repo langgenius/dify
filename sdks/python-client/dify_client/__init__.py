@@ -1,7 +1,15 @@
 from dify_client.client import (
     ChatClient,
     CompletionClient,
-    WorkflowClient,
-    KnowledgeBaseClient,
     DifyClient,
+    KnowledgeBaseClient,
+    WorkflowClient,
 )
+
+__all__ = [
+    "ChatClient",
+    "CompletionClient",
+    "DifyClient",
+    "KnowledgeBaseClient",
+    "WorkflowClient",
+]

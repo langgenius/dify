@@ -156,7 +156,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             else None
         )
         db_model.status = domain_model.status
-        db_model.error = domain_model.error_message if domain_model.error_message else None
+        db_model.error = domain_model.error_message or None
         db_model.total_tokens = domain_model.total_tokens
         db_model.total_steps = domain_model.total_steps
         db_model.exceptions_count = domain_model.exceptions_count

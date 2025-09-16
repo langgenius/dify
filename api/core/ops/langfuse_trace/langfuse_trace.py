@@ -144,13 +144,13 @@ class LangFuseDataTrace(BaseTraceInstance):
             if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
@@ -163,7 +163,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     "status": status,
                 }
             )
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
             model_provider = process_data.get("model_provider", None)
             model_name = process_data.get("model_name", None)
             if model_provider is not None and model_name is not None:

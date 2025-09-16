@@ -641,7 +641,7 @@ class ClickzettaVector(BaseVector):
 
         for doc, embedding in zip(batch_docs, batch_embeddings):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata if doc.metadata else {}
+            metadata = doc.metadata or {}
 
             if not isinstance(metadata, dict):
                 metadata = {}

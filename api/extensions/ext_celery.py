@@ -141,9 +141,7 @@ def init_app(app: DifyApp) -> Celery:
         imports.append("schedule.queue_monitor_task")
         beat_schedule["datasets-queue-monitor"] = {
             "task": "schedule.queue_monitor_task.queue_monitor_task",
-            "schedule": timedelta(
-                minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
-            ),
+            "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
