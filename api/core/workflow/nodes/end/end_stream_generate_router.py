@@ -119,7 +119,7 @@ class EndStreamGeneratorRouter:
         current_node_id: str,
         end_node_id: str,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]], # type: ignore
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore
         end_dependencies: dict[str, list[str]],
     ):
         """

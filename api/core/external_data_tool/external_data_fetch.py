@@ -37,7 +37,7 @@ class ExternalDataFetch:
             for tool in external_data_tools:
                 future: Future[tuple[str | None, str | None]] = executor.submit(
                     self._query_external_data_tool,
-                    current_app._get_current_object(), # type: ignore
+                    current_app._get_current_object(),  # type: ignore
                     tenant_id,
                     app_id,
                     tool,

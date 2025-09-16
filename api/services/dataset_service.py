@@ -1283,7 +1283,7 @@ class DocumentService:
                         documents.append(document)
                         position += 1
                 elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list # type: ignore
+                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                     if not notion_info_list:
                         raise ValueError("No notion info list found.")
                     exist_page_ids = []
@@ -1324,7 +1324,7 @@ class DocumentService:
                                 data_source_info = {
                                     "notion_workspace_id": workspace_id,
                                     "notion_page_id": page.page_id,
-                                    "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None, # type: ignore
+                                    "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
                                     "type": page.type,
                                 }
                                 # Truncate page name to 255 characters to prevent DB field length errors
@@ -1362,7 +1362,7 @@ class DocumentService:
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content, # type: ignore
+                            "only_main_content": website_info.only_main_content,  # type: ignore
                             "mode": "crawl",
                         }
                         if len(url) > 255:
@@ -1546,7 +1546,7 @@ class DocumentService:
                         data_source_info = {
                             "notion_workspace_id": workspace_id,
                             "notion_page_id": page.page_id,
-                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None, # type: ignore
+                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
                             "type": page.type,
                         }
             elif document_data.data_source.info_list.data_source_type == "website_crawl":
@@ -1558,7 +1558,7 @@ class DocumentService:
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content, # type: ignore
+                            "only_main_content": website_info.only_main_content,  # type: ignore
                             "mode": "crawl",
                         }
             document.data_source_type = document_data.data_source.info_list.data_source_type
@@ -2290,7 +2290,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0] # type: ignore # type: ignore
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content

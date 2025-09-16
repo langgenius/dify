@@ -20,7 +20,7 @@ class TTSTool(BuiltinTool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        provider, model = tool_parameters.get("model").split("#") # type: ignore
+        provider, model = tool_parameters.get("model").split("#")  # type: ignore
         voice = tool_parameters.get(f"voice#{provider}#{model}")
         model_manager = ModelManager()
         if not self.runtime:
@@ -40,7 +40,7 @@ class TTSTool(BuiltinTool):
             else:
                 raise ValueError("Sorry, no voice available.")
         tts = model_instance.invoke_tts(
-            content_text=tool_parameters.get("text"), # type: ignore
+            content_text=tool_parameters.get("text"),  # type: ignore
             user=user_id,
             tenant_id=self.runtime.tenant_id,
             voice=voice,

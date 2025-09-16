@@ -484,7 +484,7 @@ class GraphEngine:
             future = self.thread_pool.submit(
                 self._run_parallel_node,
                 **{
-                    "flask_app": current_app._get_current_object(), # type: ignore
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "q": q,
                     "context": contextvars.copy_context(),
                     "parallel_id": parallel_id,
@@ -745,7 +745,7 @@ class GraphEngine:
                                 ):
                                     # plus state total_tokens
                                     self.graph_runtime_state.total_tokens += int(
-                                        run_result.metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) # type: ignore
+                                        run_result.metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS)  # type: ignore
                                     )
 
                                 if run_result.llm_usage:

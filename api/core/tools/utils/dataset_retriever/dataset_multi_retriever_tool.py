@@ -53,7 +53,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             retrieval_thread = threading.Thread(
                 target=self._retriever,
                 kwargs={
-                    "flask_app": current_app._get_current_object(), # type: ignore
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "all_documents": all_documents,

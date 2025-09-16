@@ -214,7 +214,7 @@ class IterationNode(BaseNode):
                 for index, item in enumerate(iterator_list_value):
                     future: Future = thread_pool.submit(
                         self._run_single_iter_parallel,
-                        flask_app=current_app._get_current_object(), # type: ignore
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         q=q,
                         context=contextvars.copy_context(),
                         iterator_list_value=iterator_list_value,
