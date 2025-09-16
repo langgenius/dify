@@ -7,7 +7,7 @@ class EndStreamGeneratorRouter:
     def init(
         cls,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
         node_parallel_mapping: dict[str, str],
     ) -> EndStreamParam:
         """
@@ -88,7 +88,7 @@ class EndStreamGeneratorRouter:
     def _fetch_ends_dependencies(
         cls,
         end_node_ids: list[str],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
         node_id_config_mapping: dict[str, dict],
     ) -> dict[str, list[str]]:
         """
