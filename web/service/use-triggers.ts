@@ -32,6 +32,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     allow_delete: false,
     labels: provider.tags || [],
     plugin_id: provider.plugin_id,
+    plugin_unique_identifier: provider.plugin_unique_identifier || '',
     triggers: provider.triggers.map(trigger => ({
       name: trigger.name,
       author: provider.author,

@@ -57,6 +57,15 @@ class PluginTriggerData(TriggerData):
     plugin_id: str
     endpoint_id: str
 
+class PluginTriggerDispatchData(BaseModel):
+    """Plugin trigger dispatch data for Celery tasks"""
+
+    endpoint_id: str
+    provider_id: str
+    subscription_id: str
+    timestamp: int
+    triggers: list[str]
+    request_id: str
 
 class WorkflowTaskData(BaseModel):
     """Lightweight data structure for Celery workflow tasks"""

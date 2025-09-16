@@ -66,6 +66,7 @@ const TriggerPluginActionItem: FC<Props> = ({
             trigger_name: payload.name,
             trigger_label: payload.label[language],
             trigger_description: payload.description[language],
+            plugin_unique_identifier: provider.plugin_unique_identifier,
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,
             output_schema: payload.output_schema || {},

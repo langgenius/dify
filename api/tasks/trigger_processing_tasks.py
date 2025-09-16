@@ -17,6 +17,7 @@ from extensions.ext_storage import storage
 from models.trigger import TriggerSubscription
 from services.trigger_debug_service import TriggerDebugService
 from services.trigger_service import TriggerService
+from services.workflow.entities import PluginTriggerDispatchData
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +25,9 @@ logger = logging.getLogger(__name__)
 TRIGGER_QUEUE = "triggered_workflow_dispatcher"
 
 
-@shared_task(queue=TRIGGER_QUEUE, bind=True, max_retries=3)
+@shared_task(queue=TRIGGER_QUEUE)
 def dispatch_triggered_workflows_async(
-    self,
-    endpoint_id: str,
-    provider_id: str,
-    subscription_id: str,
-    timestamp: int,
-    triggers: list[str],
-    request_id: str,
+    dispatch_data: dict,
 ) -> dict:
     """
     Dispatch triggers asynchronously.
@@ -48,6 +43,16 @@ def dispatch_triggered_workflows_async(
     Returns:
         dict: Execution result with status and dispatched trigger count
     """
+    dispatch_params: PluginTriggerDispatchData = PluginTriggerDispatchData.model_validate(
+        dispatch_data
+    )
+    endpoint_id = dispatch_params.endpoint_id
+    provider_id = dispatch_params.provider_id
+    subscription_id = dispatch_params.subscription_id
+    timestamp = dispatch_params.timestamp
+    triggers = dispatch_params.triggers
+    request_id = dispatch_params.request_id
+
     try:
         logger.info(
             "Starting async trigger dispatching for endpoint=%s, triggers=%s, request_id=%s, timestamp=%s",
@@ -141,17 +146,11 @@ def dispatch_triggered_workflows_async(
 
     except Exception as e:
         logger.exception(
-            "Error in async trigger dispatching for endpoint %s",
+            "Error in async trigger dispatching for endpoint %s data %s",
             endpoint_id,
+            dispatch_data,
         )
-        # Retry the task if not exceeded max retries
-        if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=60 * (self.request.retries + 1))
-
-        # Note: Stored request is not deleted even on failure. See comment above for cleanup strategy.
-
         return {
             "status": "failed",
             "error": str(e),
-            "retries": self.request.retries,
         }

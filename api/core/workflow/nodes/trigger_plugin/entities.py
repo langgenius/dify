@@ -15,6 +15,7 @@ class PluginTriggerData(BaseNodeData):
     provider_id: str = Field(..., description="Provider ID")
     trigger_name: str = Field(..., description="Trigger name")
     subscription_id: str = Field(..., description="Subscription ID")
+    plugin_unique_identifier: str = Field(..., description="Plugin unique identifier")
     parameters: dict[str, Any] = Field(default_factory=dict, description="Trigger parameters")
 
     # Error handling

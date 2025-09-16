@@ -25,6 +25,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     TOTAL_PRICE = "total_price"
     CURRENCY = "currency"
     TOOL_INFO = "tool_info"
+    TRIGGER_INFO = "trigger_info"
     AGENT_LOG = "agent_log"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"

@@ -18,7 +18,7 @@ from models.trigger import TriggerSubscription
 from models.workflow import Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.workflow.entities import PluginTriggerData
+from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
 
 logger = logging.getLogger(__name__)
 
@@ -150,8 +150,7 @@ class TriggerService:
 
             # Production dispatch
             from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
-
-            dispatch_triggered_workflows_async(
+            plugin_trigger_dispatch_data = PluginTriggerDispatchData(
                 endpoint_id=endpoint_id,
                 provider_id=subscription.provider_id,
                 subscription_id=subscription.id,
@@ -159,6 +158,8 @@ class TriggerService:
                 triggers=list(dispatch_response.triggers),
                 request_id=request_id,
             )
+            dispatch_data = plugin_trigger_dispatch_data.model_dump(mode="json")
+            dispatch_triggered_workflows_async.delay(dispatch_data)
 
             logger.info(
                 "Queued async dispatching for %d triggers on endpoint %s with request_id %s",

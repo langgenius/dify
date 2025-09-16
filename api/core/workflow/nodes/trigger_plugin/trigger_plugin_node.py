@@ -2,11 +2,12 @@ from collections.abc import Mapping
 from typing import Any, Optional
 
 from core.plugin.entities.plugin import TriggerProviderID
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.utils.http_parser import deserialize_request
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.enums import ErrorStrategy, NodeType
@@ -69,6 +70,14 @@ class TriggerPluginNode(BaseNode):
 
         # Get trigger data passed when workflow was triggered
         trigger_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        metadata = {
+            WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
+                **trigger_inputs,
+                "provider_id": self._node_data.provider_id,
+                "trigger_name": self._node_data.trigger_name,
+                "plugin_unique_identifier": self._node_data.plugin_unique_identifier,
+            },
+        }
 
         request_id = trigger_inputs.get("request_id")
         trigger_name = trigger_inputs.get("trigger_name", "")
@@ -80,14 +89,24 @@ class TriggerPluginNode(BaseNode):
                 inputs=trigger_inputs,
                 outputs={"error": "No request ID or subscription ID available"},
             )
-
         try:
             subscription: TriggerProviderSubscriptionApiEntity | None = TriggerProviderService.get_subscription_by_id(
                 tenant_id=self.tenant_id, subscription_id=subscription_id
             )
             if not subscription:
-                raise ValueError(f"Subscription {subscription_id} not found")
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=trigger_inputs,
+                    outputs={"error": f"Invalid subscription {subscription_id} not found"},
+                )
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=trigger_inputs,
+                outputs={"error": f"Failed to get subscription: {str(e)}"},
+            )
 
+        try:
             request = deserialize_request(storage.load_once(f"triggers/{request_id}"))
             parameters = self._node_data.parameters if hasattr(self, "_node_data") and self._node_data else {}
             invoke_response = TriggerManager.invoke_trigger(
@@ -102,9 +121,31 @@ class TriggerPluginNode(BaseNode):
             )
             outputs = invoke_response.event.variables or {}
             return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=trigger_inputs, outputs=outputs)
+        except PluginInvokeError as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=trigger_inputs,
+                metadata=metadata,
+                error="An error occurred in the plugin, "
+                f"please contact the author of {subscription.provider} for help, "
+                f"error type: {e.get_error_type()}, "
+                f"error details: {e.get_error_message()}",
+                error_type=type(e).__name__,
+            )
+        except PluginDaemonClientSideError as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=trigger_inputs,
+                metadata=metadata,
+                error=f"Failed to invoke trigger, error: {e.description}",
+                error_type=type(e).__name__,
+            )
+
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=trigger_inputs,
-                outputs={"error": f"Failed to invoke trigger: {str(e)}", "request_id": request_id},
+                metadata=metadata,
+                error=f"Failed to invoke trigger: {str(e)}",
+                error_type=type(e).__name__,
             )

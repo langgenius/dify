@@ -35,11 +35,12 @@ export type TriggerDefaultValue = PluginDefaultValue & {
   trigger_label: string
   trigger_description: string
   title: string
+  plugin_unique_identifier: string
   is_team_authorization: boolean
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
-  credential_id?: string
+  subscription_id?: string
   meta?: PluginMeta
 }
 
@@ -149,7 +150,7 @@ export type TriggerProviderApiEntity = {
   icon_dark?: string
   tags: string[]
   plugin_id?: string
-  plugin_unique_identifier?: string
+  plugin_unique_identifier: string
   credentials_schema: TriggerCredentialField[]
   oauth_client_schema: TriggerCredentialField[]
   subscription_schema: TriggerSubscriptionSchema
@@ -160,6 +161,7 @@ export type TriggerProviderApiEntity = {
 export type TriggerWithProvider = Collection & {
   triggers: Trigger[]
   meta: PluginMeta
+  plugin_unique_identifier: string
   credentials_schema?: TriggerCredentialField[]
   oauth_client_schema?: TriggerCredentialField[]
   subscription_schema?: TriggerSubscriptionSchema
