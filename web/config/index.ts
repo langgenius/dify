@@ -3,6 +3,7 @@ import { AgentStrategy } from '@/types/app'
 import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { DatasetAttr } from '@/types/feature'
+import pkg from '../package.json'
 
 const getBooleanConfig = (
   envVar: string | undefined,
@@ -399,5 +400,6 @@ export const ZENDESK_FIELD_IDS = {
     '',
   ),
 }
+export const APP_VERSION = pkg.version
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
