@@ -3,7 +3,7 @@ import time
 import uuid
 from collections.abc import Generator, Mapping
 from datetime import timedelta
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client
@@ -19,7 +19,7 @@ class RateLimit:
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
     _instance_dict: dict[str, "RateLimit"] = {}
 
-    def __new__(cls: type["RateLimit"], client_id: str, max_active_requests: int):
+    def __new__(cls, client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
             instance = super().__new__(cls)
             cls._instance_dict[client_id] = instance
@@ -63,7 +63,7 @@ class RateLimit:
         if timeout_requests:
             redis_client.hdel(self.active_requests_key, *timeout_requests)
 
-    def enter(self, request_id: Optional[str] = None) -> str:
+    def enter(self, request_id: str | None = None) -> str:
         if self.disabled():
             return RateLimit._UNLIMITED_REQUEST_ID
         if time.time() - self.last_recalculate_time > RateLimit._ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL:

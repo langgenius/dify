@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,7 +24,7 @@ class PluginDaemonBasicResponse(BaseModel, Generic[T]):
 
     code: int
     message: str
-    data: Optional[T]
+    data: T | None = None
 
 
 class InstallPluginMessage(BaseModel):
@@ -174,7 +174,7 @@ class PluginVerification(BaseModel):
 class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
-    verification: Optional[PluginVerification] = Field(default=None, description="Basic verification information")
+    verification: PluginVerification | None = Field(default=None, description="Basic verification information")
 
 
 class PluginOAuthAuthorizationUrlResponse(BaseModel):

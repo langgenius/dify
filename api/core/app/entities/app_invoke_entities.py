@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -95,8 +95,8 @@ class AppGenerateEntity(BaseModel):
     task_id: str
 
     # app config
-    app_config: Any
-    file_upload_config: Optional[FileUploadConfig] = None
+    app_config: Any = None
+    file_upload_config: FileUploadConfig | None = None
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
@@ -114,7 +114,7 @@ class AppGenerateEntity(BaseModel):
 
     # tracing instance
     # Using Any to avoid circular import with TraceQueueManager
-    trace_manager: Optional[Any] = None
+    trace_manager: Any | None = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -123,10 +123,10 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: EasyUIBasedAppConfig
+    app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: Optional[str] = None
+    query: str | None = None
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -137,8 +137,8 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     Base entity for conversation-based app generation.
     """
 
-    conversation_id: Optional[str] = None
-    parent_message_id: Optional[str] = Field(
+    conversation_id: str | None = None
+    parent_message_id: str | None = Field(
         default=None,
         description=(
             "Starting from v0.9.0, parent_message_id is used to support message regeneration for internal chat API."
@@ -186,9 +186,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
-    workflow_run_id: Optional[str] = None
+    workflow_run_id: str | None = None
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -199,7 +199,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         node_id: str
         inputs: Mapping
 
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
+    single_iteration_run: SingleIterationRunEntity | None = None
 
     class SingleLoopRunEntity(BaseModel):
         """
@@ -209,7 +209,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         node_id: str
         inputs: Mapping
 
-    single_loop_run: Optional[SingleLoopRunEntity] = None
+    single_loop_run: SingleLoopRunEntity | None = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
@@ -218,7 +218,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -229,7 +229,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
+    single_iteration_run: SingleIterationRunEntity | None = None
 
     class SingleLoopRunEntity(BaseModel):
         """
@@ -239,4 +239,4 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_loop_run: Optional[SingleLoopRunEntity] = None
+    single_loop_run: SingleLoopRunEntity | None = None

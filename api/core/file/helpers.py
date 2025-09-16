@@ -24,10 +24,6 @@ def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str,
     # Plugin access should use internal URL for Docker network communication
     base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
     url = f"{base_url}/files/upload/for-plugin"
-
-    if user_id is None:
-        user_id = "DEFAULT-USER"
-
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
     key = dify_config.SECRET_KEY.encode()
@@ -39,11 +35,8 @@ def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str,
 
 
 def verify_plugin_file_signature(
-    *, filename: str, mimetype: str, tenant_id: str, user_id: str | None, timestamp: str, nonce: str, sign: str
+    *, filename: str, mimetype: str, tenant_id: str, user_id: str, timestamp: str, nonce: str, sign: str
 ) -> bool:
-    if user_id is None:
-        user_id = "DEFAULT-USER"
-
     data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
     secret_key = dify_config.SECRET_KEY.encode()
     recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
