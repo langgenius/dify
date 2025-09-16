@@ -46,7 +46,6 @@ class ToolProviderApiEntity(BaseModel):
     timeout: Optional[float] = Field(default=30.0, description="The timeout of the MCP tool")
     sse_read_timeout: Optional[float] = Field(default=300.0, description="The SSE read timeout of the MCP tool")
     masked_headers: Optional[dict[str, str]] = Field(default=None, description="The masked headers of the MCP tool")
-    original_headers: Optional[dict[str, str]] = Field(default=None, description="The original headers of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -72,7 +71,6 @@ class ToolProviderApiEntity(BaseModel):
             optional_fields.update(self.optional_field("timeout", self.timeout))
             optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
             optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
-            optional_fields.update(self.optional_field("original_headers", self.original_headers))
         return {
             "id": self.id,
             "author": self.author,

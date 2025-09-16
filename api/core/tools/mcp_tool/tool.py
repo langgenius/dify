@@ -4,8 +4,8 @@ from collections.abc import Generator
 from typing import Any, Optional
 
 from core.mcp.auth.auth_flow import auth
-from core.mcp.error import MCPAuthError, MCPConnectionError
-from core.mcp.mcp_client import MCPClient
+from core.mcp.auth_client import MCPClientWithAuthRetry
+from core.mcp.error import MCPConnectionError
 from core.mcp.types import CallToolResult, ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -118,59 +118,37 @@ class MCPTool(Tool):
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
 
-        # Initialize auth provider
-        from core.mcp.auth.auth_provider import OAuthClientProvider
+        # Get provider entity to access tokens
+        from sqlalchemy.orm import Session
 
-        provider = None
+        from extensions.ext_database import db
+        from services.tools.mcp_oauth_service import MCPOAuthService
 
         try:
-            provider = OAuthClientProvider(self.provider_id, self.tenant_id, for_list=False)
-        except Exception as e:
-            # If provider initialization fails, continue without auth
+            with Session(db.engine) as session:
+                oauth_service = MCPOAuthService(session=session)
+                provider_entity = oauth_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
+
+                # Try to get existing token and add to headers
+                tokens = provider_entity.retrieve_tokens()
+                if tokens and tokens.access_token:
+                    headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
+        except Exception:
+            # If provider retrieval or token fails, continue without auth
             pass
 
-        # Try to get existing token and add to headers
-        if provider:
-            try:
-                token = provider.tokens()
-                if token:
-                    headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"
-            except Exception:
-                # If token retrieval fails, continue without auth header
-                pass
-
-        # Define a helper function to invoke the tool
-        def _invoke_with_client(client_headers: dict[str, str]) -> CallToolResult:
-            with MCPClient(
-                self.server_url,
-                headers=client_headers,
+        # Use MCPClientWithAuthRetry to handle authentication automatically
+        try:
+            with MCPClientWithAuthRetry(
+                server_url=provider_entity.decrypt_server_url() if provider_entity else self.server_url,
+                headers=headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
+                provider_entity=provider_entity,
+                auth_callback=auth,
+                by_server_id=True,
             ) as mcp_client:
                 return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
-
-        try:
-            # First attempt with current headers
-            return _invoke_with_client(headers)
-        except MCPAuthError as e:
-            # Authentication required - try to authenticate
-            if not provider:
-                raise ToolInvokeError("Authentication required but no auth provider available") from e
-
-            try:
-                # Perform authentication flow
-                auth(provider, self.server_url, None, None, False)
-                token = provider.tokens()
-                if not token:
-                    raise ToolInvokeError("Authentication failed - no token received")
-
-                # Update headers with new token while preserving other headers
-                headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"
-
-                # Retry with authenticated headers
-                return _invoke_with_client(headers)
-            except MCPAuthError as auth_error:
-                raise ToolInvokeError("Authentication failed") from auth_error
         except MCPConnectionError as e:
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
