@@ -863,6 +863,7 @@ class DatasetService:
                             embedding_model.provider, embedding_model.model
                         )
                         dataset.collection_binding_id = dataset_collection_binding.id
+                        dataset.indexing_technique = knowledge_configuration.indexing_technique
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
