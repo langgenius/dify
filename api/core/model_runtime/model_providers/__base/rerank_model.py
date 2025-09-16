@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -19,9 +17,9 @@ class RerankModel(AIModel):
         credentials: dict,
         query: str,
         docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model

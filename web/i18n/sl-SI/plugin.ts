@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'Nedostopno',
     customCredentialUnavailable: 'Trenutno niso na voljo prilagojene prijave.',
     credentialUnavailable: 'Trenutno niso na voljo poverilnice. Prosimo, kontaktirajte administratorja.',
+    credentialUnavailableInButton: 'Pogodba ni na voljo',
   },
   deprecated: 'Zastaran',
   autoUpdate: {

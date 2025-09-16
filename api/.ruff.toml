@@ -5,7 +5,7 @@ line-length = 120
 quote-style = "double"
 
 [lint]
-preview = false
+preview = true
 select = [
     "B",       # flake8-bugbear rules
     "C4",      # flake8-comprehensions
@@ -45,6 +45,7 @@ select = [
     "G001", # don't use str format to logging messages
     "G003", # don't use + in logging messages
     "G004", # don't use f-strings to format logging messages
+    "UP042", # use StrEnum
 ]
 
 ignore = [
@@ -64,6 +65,7 @@ ignore = [
     "B006",    # mutable-argument-default
     "B007",    # unused-loop-control-variable
     "B026",    # star-arg-unpacking-after-keyword-arg
+    "B901",    # allow return in yield
     "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except
     "B905",    # zip-without-explicit-strict

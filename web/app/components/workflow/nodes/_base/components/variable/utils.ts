@@ -411,8 +411,8 @@ const formatItem = (
           outputSchema.push({
             variable: outputKey,
             type: dataType === 'array'
-              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
+              ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleLowerCase() + output.items.type.slice(1) : 'Unknown'}]`
+              : `${output.type ? output.type.slice(0, 1).toLocaleLowerCase() + output.type.slice(1) : 'Unknown'}`,
             description: output.description,
             children: output.type === 'object' ? {
               schema: {
@@ -507,8 +507,8 @@ const formatItem = (
         outputs.push({
           variable: outputKey,
           type: output.type === 'array'
-            ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]` as VarType
-            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}` as VarType,
+            ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType
+            : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType,
         })
       })
       res.vars = [
@@ -589,7 +589,7 @@ const formatItem = (
       return false
 
     const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
-    return obj?.children && ((obj?.children as Var[]).length > 0 || Object.keys((obj?.children as StructuredOutput)?.schema?.properties || {}).length > 0)
+    return hasValidChildren(obj?.children)
   }).map((v) => {
     const isFile = v.type === VarType.file
 
@@ -813,7 +813,7 @@ export const getVarType = ({
   if (isIterationInnerVar) {
     if (valueSelector[1] === 'item') {
       const itemType = getIterationItemType({
-        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        valueSelector: (parentNode?.data as any)?.iterator_selector || [],
         beforeNodesOutputVars,
       })
       return itemType
@@ -832,7 +832,7 @@ export const getVarType = ({
   if (isLoopInnerVar) {
     if (valueSelector[1] === 'item') {
       const itemType = getLoopItemType({
-        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        valueSelector: (parentNode?.data as any)?.iterator_selector || [],
         beforeNodesOutputVars,
       })
       return itemType

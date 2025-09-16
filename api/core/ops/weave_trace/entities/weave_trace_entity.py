@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -8,24 +8,24 @@ from core.ops.utils import replace_text_with_content
 
 
 class WeaveTokenUsage(BaseModel):
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
-    total_tokens: Optional[int] = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 class WeaveMultiModel(BaseModel):
-    file_list: Optional[list[str]] = Field(None, description="List of files")
+    file_list: list[str] | None = Field(None, description="List of files")
 
 
 class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
     id: str = Field(..., description="ID of the trace")
     op: str = Field(..., description="Name of the operation")
-    inputs: Optional[Union[str, Mapping[str, Any], list, None]] = Field(None, description="Inputs of the trace")
-    outputs: Optional[Union[str, Mapping[str, Any], list, None]] = Field(None, description="Outputs of the trace")
-    attributes: Optional[Union[str, dict[str, Any], list, None]] = Field(
+    inputs: Union[str, Mapping[str, Any], list, None] | None = Field(None, description="Inputs of the trace")
+    outputs: Union[str, Mapping[str, Any], list, None] | None = Field(None, description="Outputs of the trace")
+    attributes: Union[str, dict[str, Any], list, None] | None = Field(
         None, description="Metadata and attributes associated with trace"
     )
-    exception: Optional[str] = Field(None, description="Exception message of the trace")
+    exception: str | None = Field(None, description="Exception message of the trace")
 
     @field_validator("inputs", "outputs")
     @classmethod

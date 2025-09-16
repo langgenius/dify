@@ -1,4 +1,5 @@
 from pydantic import Field
+from sqlalchemy import select
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_provider import ToolProviderController
@@ -176,11 +177,11 @@ class ApiToolProviderController(ToolProviderController):
         tools: list[ApiTool] = []
 
         # get tenant api providers
-        db_providers: list[ApiToolProvider] = (
-            db.session.query(ApiToolProvider)
-            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
-            .all()
-        )
+        db_providers = db.session.scalars(
+            select(ApiToolProvider).where(
+                ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
+            )
+        ).all()
 
         if db_providers and len(db_providers) != 0:
             for db_provider in db_providers:

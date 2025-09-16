@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'در دسترس نیست',
     credentialUnavailable: 'دسترسی به مدارک در حال حاضر امکان‌پذیر نیست. لطفاً با مدیر تماس بگیرید.',
     customCredentialUnavailable: 'اعتبارنامه‌های سفارشی در حال حاضر در دسترس نیستند',
+    credentialUnavailableInButton: 'گواهی در دسترس نیست',
   },
   deprecated: 'منسوخ شده',
   autoUpdate: {
