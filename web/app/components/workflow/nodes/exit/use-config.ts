@@ -25,4 +25,4 @@ const useConfig = (id: string, payload: ExitNodeType) => {
   }
 }
 
-export default useConfig 
+export default useConfig

@@ -55,4 +55,4 @@ const Node: FC<NodeProps<ExitNodeType>> = ({
   )
 }
 
-export default React.memo(Node) 
+export default React.memo(Node)

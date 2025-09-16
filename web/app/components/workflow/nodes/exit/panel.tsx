@@ -47,4 +47,4 @@ const Panel: FC<NodePanelProps<ExitNodeType>> = ({
   )
 }
 
-export default React.memo(Panel) 
+export default React.memo(Panel)

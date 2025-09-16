@@ -24,4 +24,4 @@ const nodeDefault: NodeDefault<ExitNodeType> = {
   },
 }
 
-export default nodeDefault 
+export default nodeDefault
