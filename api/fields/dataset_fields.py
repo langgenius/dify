@@ -95,6 +95,7 @@ dataset_detail_fields = {
     "is_published": fields.Boolean,
     "total_documents": fields.Integer,
     "total_available_documents": fields.Integer,
+    "enable_api": fields.Boolean,
 }
 
 dataset_query_detail_fields = {
