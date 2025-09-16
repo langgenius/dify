@@ -73,9 +73,16 @@ export const useWorkflowComment = () => {
   }, [setControlMode, setPendingComment])
 
   const handleCommentIconClick = useCallback((comment: WorkflowCommentList) => {
-    // TODO: display comment details
-    console.log('Comment clicked:', comment)
-  }, [])
+    try {
+      const store = useStore.getState()
+      store.setControlMode(ControlMode.Comment)
+      store.setActiveCommentId(comment.id)
+      reactflow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
+    }
+    catch (e) {
+      console.error('Failed to open comments panel:', e)
+    }
+  }, [reactflow])
 
   const handleCreateComment = useCallback((mousePosition: { pageX: number; pageY: number }) => {
     if (controlMode === ControlMode.Comment) {

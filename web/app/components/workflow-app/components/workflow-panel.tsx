@@ -11,6 +11,7 @@ import ChatRecord from '@/app/components/workflow/panel/chat-record'
 import ChatVariablePanel from '@/app/components/workflow/panel/chat-variable-panel'
 import GlobalVariablePanel from '@/app/components/workflow/panel/global-variable-panel'
 import VersionHistoryPanel from '@/app/components/workflow/panel/version-history-panel'
+import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import type { PanelProps } from '@/app/components/workflow/panel'
@@ -50,6 +51,7 @@ const WorkflowPanelOnRight = () => {
   const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
   const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
+  const controlMode = useStore(s => s.controlMode)
 
   return (
     <>
@@ -88,6 +90,7 @@ const WorkflowPanelOnRight = () => {
           <VersionHistoryPanel/>
         )
       }
+      {controlMode === 'comment' && <CommentsPanel />}
     </>
   )
 }
