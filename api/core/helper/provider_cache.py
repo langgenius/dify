@@ -1,8 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
-from typing import TYPE_CHECKING, Any, Optional
-
+from typing import TYPE_CHECKING, Any
 
 from extensions.ext_redis import redis_client
 

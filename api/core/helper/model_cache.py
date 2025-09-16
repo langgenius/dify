@@ -7,7 +7,7 @@ model_cache: dict[str, AIModel] = {}
 
 
 class ModelTypeInstanceCache:
-    def __init__(self, model_type: Optional[ModelType] = None, provider: str = ""):
+    def __init__(self, model_type: ModelType | None = None, provider: str = ""):
         self.cache_key = f"model_type_instance:model_type:{model_type.value if model_type else ''}:provider:{provider}"
 
     def get(self):
