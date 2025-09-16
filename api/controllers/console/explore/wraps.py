@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from functools import wraps
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask_login import current_user
 from flask_restx import Resource
@@ -13,19 +15,15 @@ from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
-def installed_app_required(view=None):
-    def decorator(view):
+
+def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
-            if not kwargs.get("installed_app_id"):
-                raise ValueError("missing installed_app_id in path parameters")
-
-            installed_app_id = kwargs.get("installed_app_id")
-            installed_app_id = str(installed_app_id)
-
-            del kwargs["installed_app_id"]
-
+        def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
             installed_app = (
                 db.session.query(InstalledApp)
                 .where(
@@ -52,10 +50,10 @@ def installed_app_required(view=None):
     return decorator
 
 
-def user_allowed_to_access_app(view=None):
-    def decorator(view):
+def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
-        def decorated(installed_app: InstalledApp, *args, **kwargs):
+        def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
                 app_id = installed_app.app_id

@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import (
     AliasChoices,
@@ -31,6 +31,12 @@ class SecurityConfig(BaseSettings):
         description="Duration in minutes for which a password reset token remains valid",
         default=5,
     )
+
+    EMAIL_REGISTER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a email register token remains valid",
+        default=5,
+    )
+
     CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a change email token remains valid",
         default=5,
@@ -51,7 +57,7 @@ class SecurityConfig(BaseSettings):
         default=False,
     )
 
-    ADMIN_API_KEY: Optional[str] = Field(
+    ADMIN_API_KEY: str | None = Field(
         description="admin api key for authentication",
         default=None,
     )
@@ -91,17 +97,17 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default="dify-sandbox",
     )
 
-    CODE_EXECUTION_CONNECT_TIMEOUT: Optional[float] = Field(
+    CODE_EXECUTION_CONNECT_TIMEOUT: float | None = Field(
         description="Connection timeout in seconds for code execution requests",
         default=10.0,
     )
 
-    CODE_EXECUTION_READ_TIMEOUT: Optional[float] = Field(
+    CODE_EXECUTION_READ_TIMEOUT: float | None = Field(
         description="Read timeout in seconds for code execution requests",
         default=60.0,
     )
 
-    CODE_EXECUTION_WRITE_TIMEOUT: Optional[float] = Field(
+    CODE_EXECUTION_WRITE_TIMEOUT: float | None = Field(
         description="Write timeout in seconds for code execution request",
         default=10.0,
     )
@@ -362,17 +368,17 @@ class HttpConfig(BaseSettings):
         default=3,
     )
 
-    SSRF_PROXY_ALL_URL: Optional[str] = Field(
+    SSRF_PROXY_ALL_URL: str | None = Field(
         description="Proxy URL for HTTP or HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
 
-    SSRF_PROXY_HTTP_URL: Optional[str] = Field(
+    SSRF_PROXY_HTTP_URL: str | None = Field(
         description="Proxy URL for HTTP requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
 
-    SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
+    SSRF_PROXY_HTTPS_URL: str | None = Field(
         description="Proxy URL for HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
@@ -414,7 +420,7 @@ class InnerAPIConfig(BaseSettings):
         default=False,
     )
 
-    INNER_API_KEY: Optional[str] = Field(
+    INNER_API_KEY: str | None = Field(
         description="API key for accessing the internal API",
         default=None,
     )
@@ -430,7 +436,7 @@ class LoggingConfig(BaseSettings):
         default="INFO",
     )
 
-    LOG_FILE: Optional[str] = Field(
+    LOG_FILE: str | None = Field(
         description="File path for log output.",
         default=None,
     )
@@ -450,12 +456,12 @@ class LoggingConfig(BaseSettings):
         default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
     )
 
-    LOG_DATEFORMAT: Optional[str] = Field(
+    LOG_DATEFORMAT: str | None = Field(
         description="Date format string for log timestamps",
         default=None,
     )
 
-    LOG_TZ: Optional[str] = Field(
+    LOG_TZ: str | None = Field(
         description="Timezone for log timestamps (e.g., 'America/New_York')",
         default="UTC",
     )
@@ -589,22 +595,22 @@ class AuthConfig(BaseSettings):
         default="/console/api/oauth/authorize",
     )
 
-    GITHUB_CLIENT_ID: Optional[str] = Field(
+    GITHUB_CLIENT_ID: str | None = Field(
         description="GitHub OAuth client ID",
         default=None,
     )
 
-    GITHUB_CLIENT_SECRET: Optional[str] = Field(
+    GITHUB_CLIENT_SECRET: str | None = Field(
         description="GitHub OAuth client secret",
         default=None,
     )
 
-    GOOGLE_CLIENT_ID: Optional[str] = Field(
+    GOOGLE_CLIENT_ID: str | None = Field(
         description="Google OAuth client ID",
         default=None,
     )
 
-    GOOGLE_CLIENT_SECRET: Optional[str] = Field(
+    GOOGLE_CLIENT_SECRET: str | None = Field(
         description="Google OAuth client secret",
         default=None,
     )
@@ -639,6 +645,11 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    EMAIL_REGISTER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying email register after exceeding the rate limit.",
+        default=86400,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -667,42 +678,42 @@ class MailConfig(BaseSettings):
     Configuration for email services
     """
 
-    MAIL_TYPE: Optional[str] = Field(
+    MAIL_TYPE: str | None = Field(
         description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
         default=None,
     )
 
-    MAIL_DEFAULT_SEND_FROM: Optional[str] = Field(
+    MAIL_DEFAULT_SEND_FROM: str | None = Field(
         description="Default email address to use as the sender",
         default=None,
     )
 
-    RESEND_API_KEY: Optional[str] = Field(
+    RESEND_API_KEY: str | None = Field(
         description="API key for Resend email service",
         default=None,
     )
 
-    RESEND_API_URL: Optional[str] = Field(
+    RESEND_API_URL: str | None = Field(
         description="API URL for Resend email service",
         default=None,
     )
 
-    SMTP_SERVER: Optional[str] = Field(
+    SMTP_SERVER: str | None = Field(
         description="SMTP server hostname",
         default=None,
     )
 
-    SMTP_PORT: Optional[int] = Field(
+    SMTP_PORT: int | None = Field(
         description="SMTP server port number",
         default=465,
     )
 
-    SMTP_USERNAME: Optional[str] = Field(
+    SMTP_USERNAME: str | None = Field(
         description="Username for SMTP authentication",
         default=None,
     )
 
-    SMTP_PASSWORD: Optional[str] = Field(
+    SMTP_PASSWORD: str | None = Field(
         description="Password for SMTP authentication",
         default=None,
     )
@@ -722,7 +733,7 @@ class MailConfig(BaseSettings):
         default=50,
     )
 
-    SENDGRID_API_KEY: Optional[str] = Field(
+    SENDGRID_API_KEY: str | None = Field(
         description="API key for SendGrid service",
         default=None,
     )
@@ -745,17 +756,17 @@ class RagEtlConfig(BaseSettings):
         default="database",
     )
 
-    UNSTRUCTURED_API_URL: Optional[str] = Field(
+    UNSTRUCTURED_API_URL: str | None = Field(
         description="API URL for Unstructured.io service",
         default=None,
     )
 
-    UNSTRUCTURED_API_KEY: Optional[str] = Field(
+    UNSTRUCTURED_API_KEY: str | None = Field(
         description="API key for Unstructured.io service",
         default="",
     )
 
-    SCARF_NO_ANALYTICS: Optional[str] = Field(
+    SCARF_NO_ANALYTICS: str | None = Field(
         description="This is about whether to disable Scarf analytics in Unstructured library.",
         default="false",
     )
@@ -794,6 +805,11 @@ class DataSetConfig(BaseSettings):
     PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for message cleanup operations - plan: sandbox",
         default=30,
+    )
+
+    DSL_EXPORT_ENCRYPT_DATASET_ID: bool = Field(
+        description="Enable or disable dataset ID encryption when exporting DSL files",
+        default=True,
     )
 
 

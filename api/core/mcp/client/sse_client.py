@@ -23,13 +23,13 @@ DEFAULT_QUEUE_READ_TIMEOUT = 3
 @final
 class _StatusReady:
     def __init__(self, endpoint_url: str):
-        self._endpoint_url = endpoint_url
+        self.endpoint_url = endpoint_url
 
 
 @final
 class _StatusError:
     def __init__(self, exc: Exception):
-        self._exc = exc
+        self.exc = exc
 
 
 # Type aliases for better readability
@@ -211,9 +211,9 @@ class SSETransport:
             raise ValueError("failed to get endpoint URL")
 
         if isinstance(status, _StatusReady):
-            return status._endpoint_url
+            return status.endpoint_url
         elif isinstance(status, _StatusError):
-            raise status._exc
+            raise status.exc
         else:
             raise ValueError("failed to get endpoint URL")
 

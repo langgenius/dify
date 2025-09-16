@@ -279,8 +279,6 @@ def test_structured_output_parser():
     ]
 
     for case in testcases:
-        print(f"Running test case: {case['name']}")
-
         # Setup model entity
         model_schema = get_model_entity(case["provider"], case["model_name"], case["support_structure_output"])
 

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
@@ -24,7 +22,7 @@ class TextEmbeddingModel(AIModel):
         model: str,
         credentials: dict,
         texts: list[str],
-        user: Optional[str] = None,
+        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
@@ -47,7 +45,7 @@ class TextEmbeddingModel(AIModel):
                 model=model,
                 credentials=credentials,
                 texts=texts,
-                input_type=input_type.value,
+                input_type=input_type,
             )
         except Exception as e:
             raise self._transform_invoke_error(e)
