@@ -61,6 +61,7 @@ from . import (
     init_validate,
     ping,
     setup,
+    spec,
     version,
 )
 
