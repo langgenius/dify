@@ -46,6 +46,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.provider_ids import ModelProviderID
+from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
