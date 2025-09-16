@@ -3,7 +3,7 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-import opendal  
+import opendal
 from dotenv import dotenv_values
 
 from extensions.storage.base_storage import BaseStorage

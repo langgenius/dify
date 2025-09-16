@@ -225,7 +225,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        return provider_configuration.get_custom_model_credential(  
+        return provider_configuration.get_custom_model_credential(
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 

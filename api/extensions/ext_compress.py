@@ -7,7 +7,7 @@ def is_enabled() -> bool:
 
 
 def init_app(app: DifyApp):
-    from flask_compress import Compress  
+    from flask_compress import Compress
 
     compress = Compress()
     compress.init_app(app)

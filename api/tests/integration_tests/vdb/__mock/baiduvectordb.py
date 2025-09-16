@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from pymochow import MochowClient  
-from pymochow.model.database import Database  
-from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState  
-from pymochow.model.schema import HNSWParams, VectorIndex  
-from pymochow.model.table import Table  
+from pymochow import MochowClient
+from pymochow.model.database import Database
+from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState
+from pymochow.model.schema import HNSWParams, VectorIndex
+from pymochow.model.table import Table
 from requests.adapters import HTTPAdapter
 
 

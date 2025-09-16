@@ -268,7 +268,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_empty_credentials(self):
         """Test API key auth args validation - empty credentials"""
         args = self.mock_args.copy()
-        args["credentials"] = None  
+        args["credentials"] = None 
 
         with pytest.raises(ValueError, match="credentials is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)

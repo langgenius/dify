@@ -23,7 +23,7 @@ from hashlib import sha1
 
 import Crypto.Hash.SHA1
 import Crypto.Util.number
-import gmpy2  
+import gmpy2
 from Crypto import Random
 from Crypto.Signature.pss import MGF1
 from Crypto.Util.number import bytes_to_long, ceil_div, long_to_bytes

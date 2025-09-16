@@ -10,10 +10,10 @@ from typing import Any
 import chardet
 import docx
 import pandas as pd
-import pypandoc  
-import pypdfium2  
-import webvtt  
-import yaml  
+import pypandoc
+import pypdfium2
+import webvtt
+import yaml
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
@@ -345,7 +345,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
                     file=file,
                     metadata_filename=temp_file.name,
                     api_url=dify_config.UNSTRUCTURED_API_URL,
-                    api_key=dify_config.UNSTRUCTURED_API_KEY,  
+                    api_key=dify_config.UNSTRUCTURED_API_KEY, 
                 )
             os.unlink(temp_file.name)
         return "\n".join([getattr(element, "text", "") for element in elements])
@@ -543,7 +543,7 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,  
+                        api_key=dify_config.UNSTRUCTURED_API_KEY, 
                     )
                 os.unlink(temp_file.name)
         else:
@@ -569,7 +569,7 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,  
+                        api_key=dify_config.UNSTRUCTURED_API_KEY, 
                     )
                 os.unlink(temp_file.name)
         else:
@@ -594,7 +594,7 @@ def _extract_text_from_epub(file_content: bytes) -> str:
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,  
+                        api_key=dify_config.UNSTRUCTURED_API_KEY, 
                     )
                 os.unlink(temp_file.name)
         else:

@@ -6,8 +6,8 @@ from typing import Any, cast
 from urllib.parse import unquote
 
 import chardet
-import cloudscraper  
-from readabilipy import simple_json_from_html_string  
+import cloudscraper
+from readabilipy import simple_json_from_html_string
 
 from core.helper import ssrf_proxy
 from core.rag.extractor import extract_processor

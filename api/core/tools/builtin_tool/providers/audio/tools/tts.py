@@ -40,10 +40,10 @@ class TTSTool(BuiltinTool):
             else:
                 raise ValueError("Sorry, no voice available.")
         tts = model_instance.invoke_tts(
-            content_text=tool_parameters.get("text"),  
+            content_text=tool_parameters.get("text"), 
             user=user_id,
             tenant_id=self.runtime.tenant_id,
-            voice=voice,  
+            voice=voice, 
         )
         buffer = io.BytesIO()
         for chunk in tts:

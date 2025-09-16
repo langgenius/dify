@@ -156,8 +156,8 @@ class DatasetRetrieval:
             query,
             tenant_id,
             user_id,
-            retrieve_config.metadata_filtering_mode,  
-            retrieve_config.metadata_model_config,  
+            retrieve_config.metadata_filtering_mode, 
+            retrieve_config.metadata_model_config, 
             retrieve_config.metadata_filtering_conditions,
             inputs,
         )
@@ -468,7 +468,7 @@ class DatasetRetrieval:
             retrieval_thread = threading.Thread(
                 target=self._retriever,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),  
+                    "flask_app": current_app._get_current_object(), 
                     "dataset_id": dataset.id,
                     "query": query,
                     "top_k": top_k,
@@ -873,22 +873,22 @@ class DatasetRetrieval:
                 for sequence, filter in enumerate(automatic_metadata_filters):
                     self._process_metadata_filter_func(
                         sequence,
-                        filter.get("condition"),  
-                        filter.get("metadata_name"),  
+                        filter.get("condition"), 
+                        filter.get("metadata_name"), 
                         filter.get("value"),
-                        filters,  
+                        filters, 
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"),  
-                            comparison_operator=filter.get("condition"),  
+                            name=filter.get("metadata_name"), 
+                            comparison_operator=filter.get("condition"), 
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator
                     if metadata_filtering_conditions
-                    else "or",  
+                    else "or", 
                     conditions=conditions,
                 )
         elif metadata_filtering_mode == "manual":
@@ -927,7 +927,7 @@ class DatasetRetrieval:
                 document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  
+        metadata_filter_document_ids = defaultdict(list) if documents else None 
         for document in documents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)  
         return metadata_filter_document_ids, metadata_condition

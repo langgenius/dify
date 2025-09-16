@@ -76,8 +76,8 @@ class QAIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         if preview:
             self._format_qa_document(
-                current_app._get_current_object(),  
-                kwargs.get("tenant_id"),  
+                current_app._get_current_object(), 
+                kwargs.get("tenant_id"), 
                 all_documents[0],
                 all_qa_documents,
                 kwargs.get("doc_language", "English"),
@@ -90,8 +90,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_format_thread = threading.Thread(
                         target=self._format_qa_document,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),  
-                            "tenant_id": kwargs.get("tenant_id"),  
+                            "flask_app": current_app._get_current_object(), 
+                            "tenant_id": kwargs.get("tenant_id"), 
                             "document_node": doc,
                             "all_qa_documents": all_qa_documents,
                             "document_language": kwargs.get("doc_language", "English"),

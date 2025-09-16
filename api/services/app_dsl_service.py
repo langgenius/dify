@@ -7,7 +7,7 @@ from enum import StrEnum
 from urllib.parse import urlparse
 from uuid import uuid4
 
-import yaml  
+import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging import version

@@ -60,7 +60,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
-                        flask_app=current_app._get_current_object(),  
+                        flask_app=current_app._get_current_object(), 
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -73,7 +73,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.embedding_search,
-                        flask_app=current_app._get_current_object(),  
+                        flask_app=current_app._get_current_object(), 
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -89,7 +89,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.full_text_index_search,
-                        flask_app=current_app._get_current_object(),  
+                        flask_app=current_app._get_current_object(), 
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -391,7 +391,7 @@ class RetrievalService:
                     include_segment_ids.add(segment.id)
                     record = {
                         "segment": segment,
-                        "score": document.metadata.get("score"),  
+                        "score": document.metadata.get("score"), 
                     }
                     records.append(record)
 

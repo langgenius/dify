@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 import sqlalchemy as sa
-from flask_login import UserMixin  
+from flask_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
 from typing_extensions import deprecated

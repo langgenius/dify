@@ -15,7 +15,7 @@ class AnswerStreamGeneratorRouter:
     def init(
         cls,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  
+        reverse_edge_mapping: dict[str, list["GraphEdge"]], 
     ) -> AnswerStreamGenerateRoute:
         """
         Get stream generate routes.
@@ -101,7 +101,7 @@ class AnswerStreamGeneratorRouter:
     def _fetch_answers_dependencies(
         cls,
         answer_node_ids: list[str],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  
+        reverse_edge_mapping: dict[str, list["GraphEdge"]], 
         node_id_config_mapping: dict[str, dict],
     ) -> dict[str, list[str]]:
         """
@@ -132,7 +132,7 @@ class AnswerStreamGeneratorRouter:
         current_node_id: str,
         answer_node_id: str,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  
+        reverse_edge_mapping: dict[str, list["GraphEdge"]], 
         answer_dependencies: dict[str, list[str]],
     ):
         """

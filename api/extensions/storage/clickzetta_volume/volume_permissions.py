@@ -34,7 +34,7 @@ class VolumePermissionManager:
         # Support two initialization methods: connection object or configuration dictionary
         if isinstance(connection_or_config, dict):
             # Create connection from configuration dictionary
-            import clickzetta  
+            import clickzetta
 
             config = connection_or_config
             self._connection = clickzetta.connect(

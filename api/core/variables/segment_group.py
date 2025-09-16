@@ -4,7 +4,7 @@ from .types import SegmentType
 
 class SegmentGroup(Segment):
     value_type: SegmentType = SegmentType.GROUP
-    value: list[Segment] = None  
+    value: list[Segment] = None 
 
     @property
     def text(self):

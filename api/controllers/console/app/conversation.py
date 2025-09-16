@@ -1,10 +1,10 @@
 from datetime import datetime
 
 import pytz  # pip install pytz
+import sqlalchemy as sa
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
-import sqlalchemy as sa
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
@@ -107,7 +107,7 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  
+            query = query.options(joinedload(Conversation.message_annotations)).join(
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -290,7 +290,7 @@ class ChatConversationApi(Resource):
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  
+            query = query.options(joinedload(Conversation.message_annotations)).join(
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":

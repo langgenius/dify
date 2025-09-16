@@ -534,7 +534,7 @@ class IndexingRunner:
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  
+                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents), 
             )
             create_keyword_thread.start()
 
@@ -557,7 +557,7 @@ class IndexingRunner:
                     futures.append(
                         executor.submit(
                             self._process_chunk,
-                            current_app._get_current_object(),  
+                            current_app._get_current_object(), 
                             index_processor,
                             chunk_documents,
                             dataset,

@@ -198,7 +198,7 @@ class KnowledgeRetrievalNode(BaseNode):
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
                 process_data=None,
-                outputs=outputs,  
+                outputs=outputs, 
             )
 
         except KnowledgeRetrievalNodeError as e:
@@ -440,19 +440,19 @@ class KnowledgeRetrievalNode(BaseNode):
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
                         filter.get("value"),
-                        filters,  
+                        filters, 
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"),  
-                            comparison_operator=filter.get("condition"),  
+                            name=filter.get("metadata_name"), 
+                            comparison_operator=filter.get("condition"), 
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator
                     if node_data.metadata_filtering_conditions
-                    else "or",  
+                    else "or", 
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
@@ -502,7 +502,7 @@ class KnowledgeRetrievalNode(BaseNode):
                 document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  
+        metadata_filter_document_ids = defaultdict(list) if documents else None 
         for document in documents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)  
         return metadata_filter_document_ids, metadata_condition

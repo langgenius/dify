@@ -232,9 +232,9 @@ class DatasetService:
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None  
-        dataset.embedding_model = embedding_model.model if embedding_model else None  
-        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None  
+        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None 
+        dataset.embedding_model = embedding_model.model if embedding_model else None 
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None 
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -1262,8 +1262,8 @@ class DocumentService:
                                 continue
                         document = DocumentService.build_document(
                             dataset,
-                            dataset_process_rule.id,  
-                            knowledge_config.data_source.info_list.data_source_type,  
+                            dataset_process_rule.id, 
+                            knowledge_config.data_source.info_list.data_source_type, 
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -1327,8 +1327,8 @@ class DocumentService:
                                 truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                                 document = DocumentService.build_document(
                                     dataset,
-                                    dataset_process_rule.id,  
-                                    knowledge_config.data_source.info_list.data_source_type,  
+                                    dataset_process_rule.id, 
+                                    knowledge_config.data_source.info_list.data_source_type, 
                                     knowledge_config.doc_form,
                                     knowledge_config.doc_language,
                                     data_source_info,
@@ -1367,8 +1367,8 @@ class DocumentService:
                             document_name = url
                         document = DocumentService.build_document(
                             dataset,
-                            dataset_process_rule.id,  
-                            knowledge_config.data_source.info_list.data_source_type,  
+                            dataset_process_rule.id, 
+                            knowledge_config.data_source.info_list.data_source_type, 
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -1542,7 +1542,7 @@ class DocumentService:
                         data_source_info = {
                             "notion_workspace_id": workspace_id,
                             "notion_page_id": page.page_id,
-                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  
+                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None, 
                             "type": page.type,
                         }
             elif document_data.data_source.info_list.data_source_type == "website_crawl":
@@ -1554,7 +1554,7 @@ class DocumentService:
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content,  
+                            "only_main_content": website_info.only_main_content, 
                             "mode": "crawl",
                         }
             document.data_source_type = document_data.data_source.info_list.data_source_type
@@ -1624,8 +1624,8 @@ class DocumentService:
         retrieval_model = None
         if knowledge_config.indexing_technique == "high_quality":
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                knowledge_config.embedding_model_provider,  
-                knowledge_config.embedding_model,  
+                knowledge_config.embedding_model_provider, 
+                knowledge_config.embedding_model, 
             )
             dataset_collection_binding_id = dataset_collection_binding.id
         if knowledge_config.retrieval_model:
@@ -1642,7 +1642,7 @@ class DocumentService:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
-            data_source_type=knowledge_config.data_source.info_list.data_source_type,  
+            data_source_type=knowledge_config.data_source.info_list.data_source_type, 
             indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
             embedding_model=knowledge_config.embedding_model,

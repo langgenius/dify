@@ -50,7 +50,7 @@ class PdfExtractor(BaseExtractor):
 
     def parse(self, blob: Blob) -> Iterator[Document]:
         """Lazily parse the blob."""
-        import pypdfium2  
+        import pypdfium2
 
         with blob.as_bytes_io() as file_path:
             pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)

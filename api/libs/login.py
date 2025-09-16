@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Union, cast
 
 from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS  
+from flask_login.config import EXEMPT_METHODS
 from werkzeug.local import LocalProxy
 
 from configs import dify_config

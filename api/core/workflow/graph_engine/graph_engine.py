@@ -484,7 +484,7 @@ class GraphEngine:
             future = self.thread_pool.submit(
                 self._run_parallel_node,
                 **{
-                    "flask_app": current_app._get_current_object(),  
+                    "flask_app": current_app._get_current_object(), 
                     "q": q,
                     "context": contextvars.copy_context(),
                     "parallel_id": parallel_id,

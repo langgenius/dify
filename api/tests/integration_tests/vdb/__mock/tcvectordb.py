@@ -4,15 +4,15 @@ from typing import Union
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests.adapters import HTTPAdapter
-from tcvectordb import RPCVectorDBClient  
+from tcvectordb import RPCVectorDBClient
 from tcvectordb.model import enum
 from tcvectordb.model.collection import FilterIndexConfig
-from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank  
-from tcvectordb.model.enum import ReadConsistency  
-from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex  
+from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank
+from tcvectordb.model.enum import ReadConsistency
+from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex
 from tcvectordb.rpc.model.collection import RPCCollection
 from tcvectordb.rpc.model.database import RPCDatabase
-from xinference_client.types import Embedding  
+from xinference_client.types import Embedding
 
 
 class MockTcvectordbClass:

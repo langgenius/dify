@@ -198,13 +198,13 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
                                     dataset_name=dataset.name,
-                                    document_id=document.id,  
-                                    document_name=document.name,  
-                                    data_source_type=document.data_source_type,  
+                                    document_id=document.id, 
+                                    document_name=document.name, 
+                                    data_source_type=document.data_source_type, 
                                     segment_id=segment.id,
                                     retriever_from=self.retriever_from,
                                     score=record.score or 0.0,
-                                    doc_metadata=document.doc_metadata,  
+                                    doc_metadata=document.doc_metadata, 
                                 )
 
                                 if self.retriever_from == "dev":

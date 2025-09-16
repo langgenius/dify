@@ -1,4 +1,4 @@
-import boto3  
+import boto3
 
 from configs import dify_config
 

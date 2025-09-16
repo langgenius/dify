@@ -4,7 +4,7 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient, l2_distance  
+from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient, l2_distance
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 

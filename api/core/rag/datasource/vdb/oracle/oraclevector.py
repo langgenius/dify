@@ -4,7 +4,7 @@ import re
 import uuid
 from typing import Any
 
-import jieba.posseg as pseg  
+import jieba.posseg as pseg
 import numpy
 import oracledb
 from oracledb.connection import Connection
@@ -268,8 +268,8 @@ class OracleVector(BaseVector):
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # lazy import
-        import nltk  
-        from nltk.corpus import stopwords  
+        import nltk
+        from nltk.corpus import stopwords
 
         # Validate and sanitize top_k to prevent SQL injection
         top_k = kwargs.get("top_k", 5)
