@@ -501,6 +501,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         return response, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(DocumentResource):
     @setup_required
     @login_required
@@ -594,6 +595,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise IndexingEstimateError(str(e))
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 class DocumentBatchIndexingStatusApi(DocumentResource):
     @setup_required
     @login_required
@@ -913,6 +915,7 @@ class DocumentMetadataApi(DocumentResource):
         return {"result": "success", "message": "Document metadata updated."}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(DocumentResource):
     @setup_required
     @login_required
@@ -949,6 +952,7 @@ class DocumentStatusApi(DocumentResource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
 class DocumentPauseApi(DocumentResource):
     @setup_required
     @login_required
@@ -982,6 +986,7 @@ class DocumentPauseApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 class DocumentRecoverApi(DocumentResource):
     @setup_required
     @login_required
@@ -1012,6 +1017,7 @@ class DocumentRecoverApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(DocumentResource):
     @setup_required
     @login_required
@@ -1055,6 +1061,7 @@ class DocumentRetryApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 class DocumentRenameApi(DocumentResource):
     @setup_required
     @login_required
@@ -1078,6 +1085,7 @@ class DocumentRenameApi(DocumentResource):
         return document
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
 class WebsiteDocumentSyncApi(DocumentResource):
     @setup_required
     @login_required
