@@ -316,6 +316,10 @@ const translation = {
     noMatchingCommands: 'Nenhum comando correspondente encontrado',
     tryDifferentSearch: 'Tente um termo de pesquisa diferente',
     slashHint: 'Digite / para ver todos os comandos disponíveis',
+    tips: 'Pressione ↑↓ para navegar',
+    selectToNavigate: 'Selecione para navegar',
+    pressEscToClose: 'Pressione ESC para fechar',
+    startTyping: 'Comece a digitar para pesquisar',
   },
 }
 

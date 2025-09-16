@@ -1,7 +1,7 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 
@@ -32,7 +32,7 @@ class AbstractVectorFactory(ABC):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: Optional[list] = None):
+    def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
             attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self._dataset = dataset
@@ -180,7 +180,7 @@ class Vector:
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    def create(self, texts: Optional[list] = None, **kwargs):
+    def create(self, texts: list | None = None, **kwargs):
         if texts:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
