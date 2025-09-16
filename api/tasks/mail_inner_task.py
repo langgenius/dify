@@ -38,7 +38,7 @@ def _render_template_with_strategy(body: str, substitutions: Mapping[str, str]) 
         return tmpl.render(substitutions)
     if mode == TemplateMode.DISABLED:
         return body
-    raise ValueError(f"Unsupported mail templating mode: {dify_config.MAIL_TEMPLATING_MODE}")
+    raise ValueError(f"Unsupported mail templating mode: {mode}")
 
 
 @shared_task(queue="mail")
