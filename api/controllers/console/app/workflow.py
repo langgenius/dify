@@ -682,7 +682,7 @@ class PublishedWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 class DefaultBlockConfigsApi(Resource):
     @api.doc("get_default_block_configs")
     @api.doc(description="Get default block configurations for workflow")
@@ -792,6 +792,7 @@ class ConvertToWorkflowApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/config")
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/config")
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
 
