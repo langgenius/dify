@@ -103,7 +103,7 @@ class MatrixoneVector(BaseVector):
             self.client = self._get_client(len(embeddings[0]), True)
         assert self.client is not None
         ids = []
-        for _, doc in enumerate(documents):
+        for doc in documents:
             if doc.metadata is not None:
                 doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
                 ids.append(doc_id)
