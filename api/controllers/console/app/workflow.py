@@ -513,7 +513,7 @@ class DraftWorkflowRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
     @api.doc("stop_workflow_task")
     @api.doc(description="Stop running workflow task")
@@ -791,7 +791,6 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/config")
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/config")
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
