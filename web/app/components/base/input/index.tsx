@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ChangeEventHandler } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
@@ -46,11 +46,33 @@ const Input = ({
   value,
   placeholder,
   onChange = noop,
+  onBlur = noop,
   unit,
   ref,
   ...props
 }: InputProps) => {
   const { t } = useTranslation()
+  const handleNumberChange: ChangeEventHandler<HTMLInputElement> = (e) => {
+    if (value === 0) {
+      // remove leading zeros
+      const formattedValue = e.target.value.replace(/^(-?)0+(?=\d)/, '$1')
+      if (e.target.value !== formattedValue)
+        e.target.value = formattedValue
+    }
+    onChange(e)
+  }
+  const handleNumberCommit: React.FocusEventHandler<HTMLInputElement> = (e) => {
+    // remove leading zeros
+    const formattedValue = e.target.value.replace(/^(-?)0+(?=\d)/, '$1')
+    if (e.target.value !== formattedValue) {
+      e.target.value = formattedValue
+      onChange({
+        ...e,
+        type: 'change',
+      })
+    }
+    onBlur(e)
+  }
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
       {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
@@ -74,7 +96,8 @@ const Input = ({
           ? (t('common.operation.search') || '')
           : (t('common.placeholder.input') || ''))}
         value={value}
-        onChange={onChange}
+        onChange={props.type === 'number' ? handleNumberChange : onChange}
+        onBlur={props.type === 'number' ? handleNumberCommit : onBlur}
         disabled={disabled}
         {...props}
       />
