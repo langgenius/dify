@@ -46,6 +46,7 @@ class QueueEvent(StrEnum):
     PARALLEL_BRANCH_RUN_STARTED = "parallel_branch_run_started"
     PARALLEL_BRANCH_RUN_SUCCEEDED = "parallel_branch_run_succeeded"
     PARALLEL_BRANCH_RUN_FAILED = "parallel_branch_run_failed"
+    PARALLEL_BRANCH_RUN_EXITED = "parallel_branch_run_exited"
     AGENT_LOG = "agent_log"
     ERROR = "error"
     PING = "ping"
@@ -736,3 +737,23 @@ class QueueParallelBranchRunFailedEvent(AppQueueEvent):
     in_loop_id: Optional[str] = None
     """loop id if node is in loop"""
     error: str
+
+
+class QueueParallelBranchRunExitedEvent(AppQueueEvent):
+    """
+    QueueParallelBranchRunExitedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.PARALLEL_BRANCH_RUN_EXITED
+
+    parallel_id: str
+    parallel_start_node_id: str
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
+    in_loop_id: Optional[str] = None
+    """loop id if node is in loop"""
+    outputs: dict

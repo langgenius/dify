@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueParallelBranchRunFailedEvent,
     QueueParallelBranchRunStartedEvent,
     QueueParallelBranchRunSucceededEvent,
+    QueueParallelBranchRunExitedEvent,
 )
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
@@ -301,8 +302,18 @@ class WorkflowResponseConverter:
         *,
         task_id: str,
         workflow_execution_id: str,
-        event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
+        event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent | QueueParallelBranchRunExitedEvent,
     ) -> ParallelBranchFinishedStreamResponse:
+        if isinstance(event, QueueParallelBranchRunSucceededEvent):
+            status = "succeeded"
+            error = None
+        elif isinstance(event, QueueParallelBranchRunFailedEvent):
+            status = "failed"
+            error = event.error
+        else:  # QueueParallelBranchRunExitedEvent
+            status = "exited"
+            error = None
+
         return ParallelBranchFinishedStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -313,8 +324,8 @@ class WorkflowResponseConverter:
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
-                status="succeeded" if isinstance(event, QueueParallelBranchRunSucceededEvent) else "failed",
-                error=event.error if isinstance(event, QueueParallelBranchRunFailedEvent) else None,
+                status=status,
+                error=error,
                 created_at=int(time.time()),
             ),
         )

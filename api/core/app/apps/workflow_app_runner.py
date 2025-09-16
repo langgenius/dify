@@ -21,6 +21,7 @@ from core.app.entities.queue_entities import (
     QueueParallelBranchRunFailedEvent,
     QueueParallelBranchRunStartedEvent,
     QueueParallelBranchRunSucceededEvent,
+    QueueParallelBranchRunExitedEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -57,6 +58,7 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunFailedEvent,
     ParallelBranchRunStartedEvent,
     ParallelBranchRunSucceededEvent,
+    ParallelBranchRunExitedEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
@@ -579,6 +581,18 @@ class WorkflowBasedAppRunner:
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     error=event.error,
+                )
+            )
+        elif isinstance(event, ParallelBranchRunExitedEvent):
+            self._publish_event(
+                QueueParallelBranchRunExitedEvent(
+                    parallel_id=event.parallel_id,
+                    parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    in_iteration_id=event.in_iteration_id,
+                    in_loop_id=event.in_loop_id,
+                    outputs=event.outputs,
                 )
             )
         elif isinstance(event, IterationRunStartedEvent):

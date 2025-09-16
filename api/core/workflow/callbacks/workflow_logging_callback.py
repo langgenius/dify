@@ -22,6 +22,7 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunFailedEvent,
     ParallelBranchRunStartedEvent,
     ParallelBranchRunSucceededEvent,
+    ParallelBranchRunExitedEvent,
 )
 
 from .base_workflow_callback import WorkflowCallback
@@ -58,7 +59,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
             self.on_node_text_chunk(event=event)
         elif isinstance(event, ParallelBranchRunStartedEvent):
             self.on_workflow_parallel_started(event=event)
-        elif isinstance(event, ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent):
+        elif isinstance(event, ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent | ParallelBranchRunExitedEvent):
             self.on_workflow_parallel_completed(event=event)
         elif isinstance(event, IterationRunStartedEvent):
             self.on_workflow_iteration_started(event=event)
@@ -173,7 +174,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         if event.in_loop_id:
             self.print_text(f"Loop ID: {event.in_loop_id}", color="blue")
 
-    def on_workflow_parallel_completed(self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent):
+    def on_workflow_parallel_completed(self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent | ParallelBranchRunExitedEvent):
         """
         Publish parallel completed
         """
@@ -181,13 +182,17 @@ class WorkflowLoggingCallback(WorkflowCallback):
             color = "blue"
         elif isinstance(event, ParallelBranchRunFailedEvent):
             color = "red"
+        elif isinstance(event, ParallelBranchRunExitedEvent):
+            color = "green"
 
-        self.print_text(
-            "\n[ParallelBranchRunSucceededEvent]"
-            if isinstance(event, ParallelBranchRunSucceededEvent)
-            else "\n[ParallelBranchRunFailedEvent]",
-            color=color,
-        )
+        if isinstance(event, ParallelBranchRunSucceededEvent):
+            event_name = "[ParallelBranchRunSucceededEvent]"
+        elif isinstance(event, ParallelBranchRunFailedEvent):
+            event_name = "[ParallelBranchRunFailedEvent]"
+        else:
+            event_name = "[ParallelBranchRunExitedEvent]"
+
+        self.print_text(f"\n{event_name}", color=color)
         self.print_text(f"Parallel ID: {event.parallel_id}", color=color)
         self.print_text(f"Branch ID: {event.parallel_start_node_id}", color=color)
         if event.in_iteration_id:
@@ -197,6 +202,8 @@ class WorkflowLoggingCallback(WorkflowCallback):
 
         if isinstance(event, ParallelBranchRunFailedEvent):
             self.print_text(f"Error: {event.error}", color=color)
+        elif isinstance(event, ParallelBranchRunExitedEvent):
+            self.print_text(f"Exit outputs: {event.outputs}", color=color)
 
     def on_workflow_iteration_started(self, event: IterationRunStartedEvent):
         """

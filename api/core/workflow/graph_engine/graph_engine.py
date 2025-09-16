@@ -36,6 +36,7 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunFailedEvent,
     ParallelBranchRunStartedEvent,
     ParallelBranchRunSucceededEvent,
+    ParallelBranchRunExitedEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph, GraphEdge
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
@@ -180,6 +181,10 @@ class GraphEngine:
                                 and item.route_node_state.node_run_result.outputs
                                 else {}
                             )
+                            # For EXIT nodes, the exit info is already in outputs
+                            if item.node_type == NodeType.EXIT and item.route_node_state.node_run_result:
+                                # Exit info is already included in the outputs from the exception handler
+                                pass
                         elif item.node_type == NodeType.ANSWER:
                             if "answer" not in self.graph_runtime_state.outputs:
                                 self.graph_runtime_state.outputs["answer"] = ""
@@ -524,6 +529,8 @@ class GraphEngine:
                         continue
                     elif isinstance(event, ParallelBranchRunFailedEvent):
                         raise GraphRunFailedError(event.error)
+                    elif isinstance(event, ParallelBranchRunExitedEvent):
+                        raise WorkflowExitException(outputs=event.outputs)
             except queue.Empty:
                 continue
 
@@ -594,15 +601,15 @@ class GraphEngine:
                 )
             except Exception as e:
                 if isinstance(e, WorkflowExitException):
-                    # For EXIT nodes in parallel execution, we still want to terminate
-                    # but we need to signal this properly to the parent execution
+                    # For EXIT nodes in parallel execution, we want to signal
+                    # a graceful exit with outputs, not a failure
                     q.put(
-                        ParallelBranchRunFailedEvent(
+                        ParallelBranchRunExitedEvent(
                             parallel_id=parallel_id,
                             parallel_start_node_id=parallel_start_node_id,
                             parent_parallel_id=parent_parallel_id,
                             parent_parallel_start_node_id=parent_parallel_start_node_id,
-                            error="EXIT: workflow terminated",
+                            outputs=e.outputs,
                         )
                     )
                     # Re-raise to terminate the parallel branch
