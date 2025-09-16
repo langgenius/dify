@@ -34,27 +34,56 @@ logger = logging.getLogger(__name__)
 
 class ChatflowMemoryService:
     @staticmethod
-    def get_persistent_memories(app: App) -> Sequence[MemoryBlockWithVisibility]:
-        stmt = select(ChatflowMemoryVariable).where(
-            and_(
-                ChatflowMemoryVariable.tenant_id == app.tenant_id,
-                ChatflowMemoryVariable.app_id == app.id,
-                ChatflowMemoryVariable.conversation_id == None
+    def get_persistent_memories(
+        app: App,
+        version: int | None = None
+    ) -> Sequence[MemoryBlockWithVisibility]:
+        if version is None:
+            # If version not specified, get the latest version
+            stmt = select(ChatflowMemoryVariable).distinct(ChatflowMemoryVariable.memory_id).where(
+                and_(
+                    ChatflowMemoryVariable.tenant_id == app.tenant_id,
+                    ChatflowMemoryVariable.app_id == app.id,
+                    ChatflowMemoryVariable.conversation_id == None
+                )
+            ).order_by(ChatflowMemoryVariable.version.desc())
+        else:
+            stmt = select(ChatflowMemoryVariable).where(
+                and_(
+                    ChatflowMemoryVariable.tenant_id == app.tenant_id,
+                    ChatflowMemoryVariable.app_id == app.id,
+                    ChatflowMemoryVariable.conversation_id == None,
+                    ChatflowMemoryVariable.version == version
+                )
             )
-        )
         with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
         return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
 
     @staticmethod
-    def get_session_memories(app: App, conversation_id: str) -> Sequence[MemoryBlockWithVisibility]:
-        stmt = select(ChatflowMemoryVariable).where(
-            and_(
-                ChatflowMemoryVariable.tenant_id == app.tenant_id,
-                ChatflowMemoryVariable.app_id == app.id,
-                ChatflowMemoryVariable.conversation_id == conversation_id
+    def get_session_memories(
+        app: App,
+        conversation_id: str,
+        version: int | None = None
+    ) -> Sequence[MemoryBlockWithVisibility]:
+        if version is None:
+            # If version not specified, get the latest version
+            stmt = select(ChatflowMemoryVariable).distinct(ChatflowMemoryVariable.memory_id).where(
+                and_(
+                    ChatflowMemoryVariable.tenant_id == app.tenant_id,
+                    ChatflowMemoryVariable.app_id == app.id,
+                    ChatflowMemoryVariable.conversation_id == conversation_id
+                )
+            ).order_by(ChatflowMemoryVariable.version.desc())
+        else:
+            stmt = select(ChatflowMemoryVariable).where(
+                and_(
+                    ChatflowMemoryVariable.tenant_id == app.tenant_id,
+                    ChatflowMemoryVariable.app_id == app.id,
+                    ChatflowMemoryVariable.conversation_id == conversation_id,
+                    ChatflowMemoryVariable.version == version
+                )
             )
-        )
         with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
         return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
@@ -340,6 +369,7 @@ class ChatflowMemoryService:
                         value=chatflow_memory_variable.value,
                         end_user_editable=spec.end_user_editable,
                         end_user_visible=spec.end_user_visible,
+                        version=chatflow_memory_variable.version
                     )
                 )
         return results
