@@ -2,45 +2,47 @@
 import React from 'react'
 // import { useTranslation } from 'react-i18next'
 // import Modal from '@/app/components/base/modal'
-import ManualAddModal from './manual-add-modal'
-import ApiKeyAddModal from './api-key-add-modal'
-import OAuthAddModal from './oauth-add-modal'
+import { ManualCreateModal } from './manual-create-modal'
+import { ApiKeyCreateModal } from './api-key-create-modal'
+import { OAuthCreateModal } from './oauth-create-modal'
 import type { PluginDetail } from '@/app/components/plugins/types'
-
-type SubscriptionAddType = 'api-key' | 'oauth' | 'manual'
+import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import type { TriggerOAuthConfig } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
-  type: SubscriptionAddType
+  type: SupportedCreationMethods
   pluginDetail: PluginDetail
+  oauthConfig?: TriggerOAuthConfig
   onClose: () => void
   onSuccess: () => void
 }
 
-const SubscriptionAddModal = ({ type, pluginDetail, onClose, onSuccess }: Props) => {
+export const SubscriptionCreateModal = ({ type, pluginDetail, oauthConfig, onClose, onSuccess }: Props) => {
   // const { t } = useTranslation()
 
   const renderModalContent = () => {
     switch (type) {
-      case 'manual':
+      case SupportedCreationMethods.MANUAL:
         return (
-          <ManualAddModal
+          <ManualCreateModal
             pluginDetail={pluginDetail}
             onClose={onClose}
             onSuccess={onSuccess}
           />
         )
-      case 'api-key':
+      case SupportedCreationMethods.APIKEY:
         return (
-          <ApiKeyAddModal
+          <ApiKeyCreateModal
             pluginDetail={pluginDetail}
             onClose={onClose}
             onSuccess={onSuccess}
           />
         )
-      case 'oauth':
+      case SupportedCreationMethods.OAUTH:
         return (
-          <OAuthAddModal
+          <OAuthCreateModal
             pluginDetail={pluginDetail}
+            oauthConfig={oauthConfig}
             onClose={onClose}
             onSuccess={onSuccess}
           />
@@ -52,5 +54,3 @@ const SubscriptionAddModal = ({ type, pluginDetail, onClose, onSuccess }: Props)
 
   return renderModalContent()
 }
-
-export default SubscriptionAddModal

@@ -1,4 +1,4 @@
-import type { PluginMeta } from '../../plugins/types'
+import type { PluginMeta, SupportedCreationMethods } from '../../plugins/types'
 import type { Collection, Trigger } from '../../tools/types'
 import type { TypeWithI18N } from '../../base/form/types'
 
@@ -151,6 +151,7 @@ export type TriggerProviderApiEntity = {
   tags: string[]
   plugin_id?: string
   plugin_unique_identifier: string
+  supported_creation_methods: SupportedCreationMethods[]
   credentials_schema: TriggerCredentialField[]
   oauth_client_schema: TriggerCredentialField[]
   subscription_schema: TriggerSubscriptionSchema

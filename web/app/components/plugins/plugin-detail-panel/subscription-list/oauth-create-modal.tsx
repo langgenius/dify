@@ -15,15 +15,15 @@ import type { FormRefObject } from '@/app/components/base/form/types'
 import {
   useBuildTriggerSubscription,
   useInitiateTriggerOAuth,
-  useTriggerOAuthConfig,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import ActionButton from '@/app/components/base/action-button'
-import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
   pluginDetail: PluginDetail
+  oauthConfig?: TriggerOAuthConfig
   onClose: () => void
   onSuccess: () => void
 }
@@ -39,7 +39,7 @@ enum AuthorizationStatusEnum {
   Failed = 'failed',
 }
 
-const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
+export const OAuthCreateModal = ({ pluginDetail, oauthConfig, onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
 
   const [currentStep, setCurrentStep] = useState<OAuthStepEnum>(OAuthStepEnum.Setup)
@@ -58,8 +58,6 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
   const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
-
-  const { data: oauthConfig } = useTriggerOAuthConfig(providerName)
 
   useEffect(() => {
     initiateOAuth(providerName, {
@@ -290,5 +288,3 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     </Modal>
   )
 }
-
-export default OAuthAddModal

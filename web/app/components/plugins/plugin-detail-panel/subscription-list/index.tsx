@@ -2,50 +2,59 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { RiAddLine } from '@remixicon/react'
 import SubscriptionCard from './subscription-card'
-import SubscriptionAddModal from './subscription-add-modal'
-import AddTypeDropdown from './add-type-dropdown'
-import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
+import { SubscriptionCreateModal } from './subscription-create-modal'
+import { CreateTypeDropdown } from './create-type-dropdown'
+import CreateSubscriptionButton, { ButtonType, DEFAULT_METHOD } from './create-subscription-button'
 import Tooltip from '@/app/components/base/tooltip'
-import { useTriggerSubscriptions } from '@/service/use-triggers'
+import { useTriggerOAuthConfig, useTriggerProviderInfo, useTriggerSubscriptions } from '@/service/use-triggers'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
 type Props = {
   detail: PluginDetail
 }
 
-type SubscriptionAddType = 'api-key' | 'oauth' | 'manual'
-
 export const SubscriptionList = ({ detail }: Props) => {
   const { t } = useTranslation()
   const showTopBorder = detail.declaration.tool || detail.declaration.endpoint
+  const provider = `${detail.plugin_id}/${detail.declaration.name}`
 
-  const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(`${detail.plugin_id}/${detail.declaration.name}`)
+  const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(provider)
+  const { data: providerInfo } = useTriggerProviderInfo(provider)
+  const { data: oauthConfig } = useTriggerOAuthConfig(provider, providerInfo?.supported_creation_methods.includes(SupportedCreationMethods.OAUTH))
 
-  const [isShowAddModal, {
-    setTrue: showAddModal,
-    setFalse: hideAddModal,
+  const [isShowCreateDropdown, {
+    setTrue: showCreateDropdown,
+    setFalse: hideCreateDropdown,
   }] = useBoolean(false)
 
-  const [selectedAddType, setSelectedAddType] = React.useState<SubscriptionAddType | null>(null)
+  const [selectedCreateType, setSelectedCreateType] = React.useState<SupportedCreationMethods | null>(null)
 
-  const [isShowAddDropdown, {
-    setTrue: showAddDropdown,
-    setFalse: hideAddDropdown,
+  const [isShowCreateModal, {
+    setTrue: showCreateModal,
+    setFalse: hideCreateModal,
   }] = useBoolean(false)
 
-  const handleAddTypeSelect = (type: SubscriptionAddType) => {
-    setSelectedAddType(type)
-    hideAddDropdown()
-    showAddModal()
+  const handleCreateSubscription = (type?: SupportedCreationMethods | typeof DEFAULT_METHOD) => {
+    if (type === DEFAULT_METHOD) {
+      showCreateDropdown()
+      return
+    }
+    setSelectedCreateType(type as SupportedCreationMethods)
+    showCreateModal()
+  }
+
+  const handleCreateTypeSelect = (type: SupportedCreationMethods) => {
+    setSelectedCreateType(type)
+    hideCreateDropdown()
+    showCreateModal()
   }
 
   const handleModalClose = () => {
-    hideAddModal()
-    setSelectedAddType(null)
+    hideCreateModal()
+    setSelectedCreateType(null)
   }
 
   const handleRefreshList = () => {
@@ -68,19 +77,18 @@ export const SubscriptionList = ({ detail }: Props) => {
     <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
       {!hasSubscriptions ? (
         <div className='relative w-full'>
-          <Button
-            variant='primary'
-            size='medium'
+          <CreateSubscriptionButton
+            supportedMethods={providerInfo?.supported_creation_methods || []}
+            onClick={handleCreateSubscription}
             className='w-full'
-            onClick={showAddDropdown}
-          >
-            <RiAddLine className='mr-2 h-4 w-4' />
-            {t('pluginTrigger.subscription.empty.button')}
-          </Button>
-          {isShowAddDropdown && (
-            <AddTypeDropdown
-              onSelect={handleAddTypeSelect}
-              onClose={hideAddDropdown}
+            oauthConfig={oauthConfig}
+          />
+          {isShowCreateDropdown && (
+            <CreateTypeDropdown
+              onSelect={handleCreateTypeSelect}
+              onClose={hideCreateDropdown}
+              supportedMethods={providerInfo?.supported_creation_methods || []}
+              oauthConfig={oauthConfig}
             />
           )}
         </div>
@@ -93,13 +101,18 @@ export const SubscriptionList = ({ detail }: Props) => {
               </span>
               <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
             </div>
-            <ActionButton onClick={showAddDropdown}>
-              <RiAddLine className='h-4 w-4' />
-            </ActionButton>
-            {isShowAddDropdown && (
-              <AddTypeDropdown
-                onSelect={handleAddTypeSelect}
-                onClose={hideAddDropdown}
+            <CreateSubscriptionButton
+              supportedMethods={providerInfo?.supported_creation_methods || []}
+              onClick={handleCreateSubscription}
+              buttonType={ButtonType.ICON_BUTTON}
+              oauthConfig={oauthConfig}
+            />
+            {isShowCreateDropdown && (
+              <CreateTypeDropdown
+                onSelect={handleCreateTypeSelect}
+                onClose={hideCreateDropdown}
+                supportedMethods={providerInfo?.supported_creation_methods || []}
+                oauthConfig={oauthConfig}
               />
             )}
           </div>
@@ -116,9 +129,10 @@ export const SubscriptionList = ({ detail }: Props) => {
         </>
       )}
 
-      {isShowAddModal && selectedAddType && (
-        <SubscriptionAddModal
-          type={selectedAddType}
+      {isShowCreateModal && selectedCreateType && (
+        <SubscriptionCreateModal
+          type={selectedCreateType}
+          oauthConfig={oauthConfig}
           pluginDetail={detail}
           onClose={handleModalClose}
           onSuccess={handleRefreshList}

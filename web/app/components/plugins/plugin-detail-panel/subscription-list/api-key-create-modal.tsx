@@ -31,7 +31,7 @@ enum ApiKeyStep {
   Configuration = 'configuration',
 }
 
-const ApiKeyAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
+export const ApiKeyCreateModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
 
   // State
@@ -310,5 +310,3 @@ const ApiKeyAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     </Modal>
   )
 }
-
-export default ApiKeyAddModal

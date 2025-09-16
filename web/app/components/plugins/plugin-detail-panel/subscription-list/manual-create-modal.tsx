@@ -29,7 +29,7 @@ type Props = {
   onSuccess: () => void
 }
 
-const ManualAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
+export const ManualCreateModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
 
   const [subscriptionName, setSubscriptionName] = useState('')
@@ -217,5 +217,3 @@ const ManualAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     </Modal>
   )
 }
-
-export default ManualAddModal

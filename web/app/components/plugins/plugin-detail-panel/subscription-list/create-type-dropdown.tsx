@@ -5,21 +5,19 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import { ActionButton } from '@/app/components/base/action-button'
-
-enum SubscriptionAddTypeEnum {
-  OAuth = 'oauth',
-  APIKey = 'api-key',
-  Manual = 'manual',
-}
+import { SupportedCreationMethods } from '../../types'
+import type { TriggerOAuthConfig } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
-  onSelect: (type: SubscriptionAddTypeEnum) => void
+  onSelect: (type: SupportedCreationMethods) => void
   onClose: () => void
   position?: 'bottom' | 'right'
   className?: string
+  supportedMethods: SupportedCreationMethods[]
+  oauthConfig?: TriggerOAuthConfig
 }
 
-const AddTypeDropdown = ({ onSelect, onClose, position = 'bottom', className }: Props) => {
+export const CreateTypeDropdown = ({ onSelect, onClose, position = 'bottom', className, supportedMethods }: Props) => {
   const { t } = useTranslation()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -37,24 +35,29 @@ const AddTypeDropdown = ({ onSelect, onClose, position = 'bottom', className }: 
     // todo: show client settings
   }
 
-  const options = [
+  const allOptions = [
     {
-      key: SubscriptionAddTypeEnum.OAuth,
+      key: SupportedCreationMethods.OAUTH,
       title: t('pluginTrigger.subscription.addType.options.oauth.title'),
       extraContent: <ActionButton onClick={onClickClientSettings}><RiEqualizer2Line className='h-4 w-4 text-text-tertiary' /></ActionButton>,
+      show: supportedMethods.includes(SupportedCreationMethods.OAUTH),
     },
     {
-      key: SubscriptionAddTypeEnum.APIKey,
+      key: SupportedCreationMethods.APIKEY,
       title: t('pluginTrigger.subscription.addType.options.apiKey.title'),
+      show: supportedMethods.includes(SupportedCreationMethods.APIKEY),
     },
     {
-      key: SubscriptionAddTypeEnum.Manual,
+      key: SupportedCreationMethods.MANUAL,
       title: t('pluginTrigger.subscription.addType.options.manual.description'), // 使用 description 作为标题
       tooltip: t('pluginTrigger.subscription.addType.options.manual.tip'),
+      show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
     },
   ]
 
-  const handleOptionClick = (type: SubscriptionAddTypeEnum) => {
+  const options = allOptions.filter(option => option.show)
+
+  const handleOptionClick = (type: SupportedCreationMethods) => {
     onSelect(type)
   }
 
@@ -100,5 +103,3 @@ const AddTypeDropdown = ({ onSelect, onClose, position = 'bottom', className }: 
     </div>
   )
 }
-
-export default AddTypeDropdown
