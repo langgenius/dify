@@ -67,7 +67,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
-    @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
+    @service_api_ns.doc(description="Run a atasource node for a rag pipeline")
     @service_api_ns.doc(
         path={
             "dataset_id": "Dataset ID",

@@ -7,6 +7,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
 from uuid import uuid4
+import uuid
 
 from flask_login import current_user
 from sqlalchemy import func, or_, select
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
@@ -55,14 +57,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import (  # type: ignore
-    Dataset,
-    Document,
-    DocumentPipelineExecutionLog,
-    Pipeline,
-    PipelineCustomizedTemplate,
-    PipelineRecommendedPlugin,
-)
+from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin  # type: ignore
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
@@ -1325,11 +1320,8 @@ class RagPipelineService:
         """
         Retry error document
         """
-        document_pipeline_excution_log = (
-            db.session.query(DocumentPipelineExecutionLog)
-            .filter(DocumentPipelineExecutionLog.document_id == document.id)
-            .first()
-        )
+        document_pipeline_excution_log = db.session.query(DocumentPipelineExecutionLog).filter(
+            DocumentPipelineExecutionLog.document_id == document.id).first()
         if not document_pipeline_excution_log:
             raise ValueError("Document pipeline execution log not found")
         pipeline = db.session.query(Pipeline).filter(Pipeline.id == document_pipeline_excution_log.pipeline_id).first()
@@ -1348,11 +1340,11 @@ class RagPipelineService:
                 "start_node_id": document_pipeline_excution_log.datasource_node_id,
                 "datasource_type": document_pipeline_excution_log.datasource_type,
                 "datasource_info_list": [json.loads(document_pipeline_excution_log.datasource_info)],
+                "original_document_id": document.id,
             },
             invoke_from=InvokeFrom.PUBLISHED,
             streaming=False,
             call_depth=0,
             workflow_thread_pool_id=None,
             is_retry=True,
-            documents=[document],
         )
