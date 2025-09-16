@@ -24,6 +24,7 @@ class SystemVariableKey(StrEnum):
     WORKFLOW_EXECUTION_ID = "workflow_run_id"
     # RAG Pipeline
     DOCUMENT_ID = "document_id"
+    ORIGINAL_DOCUMENT_ID = "original_document_id"
     BATCH = "batch"
     DATASET_ID = "dataset_id"
     DATASOURCE_TYPE = "datasource_type"

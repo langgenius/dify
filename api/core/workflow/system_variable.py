@@ -44,6 +44,7 @@ class SystemVariable(BaseModel):
     conversation_id: str | None = None
     dialogue_count: int | None = None
     document_id: str | None = None
+    original_document_id: str | None = None
     dataset_id: str | None = None
     batch: str | None = None
     datasource_type: str | None = None
@@ -94,6 +95,8 @@ class SystemVariable(BaseModel):
             d[SystemVariableKey.DIALOGUE_COUNT] = self.dialogue_count
         if self.document_id is not None:
             d[SystemVariableKey.DOCUMENT_ID] = self.document_id
+        if self.original_document_id is not None:
+            d[SystemVariableKey.ORIGINAL_DOCUMENT_ID] = self.original_document_id
         if self.dataset_id is not None:
             d[SystemVariableKey.DATASET_ID] = self.dataset_id
         if self.batch is not None:

@@ -72,7 +72,6 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
         is_retry: bool = False,
-        document_id: Optional[str] = None,
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None: ...
 
     @overload
@@ -88,7 +87,6 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
         is_retry: bool = False,
-        document_id: Optional[str] = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -104,7 +102,6 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
         is_retry: bool = False,
-        document_id: Optional[str] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
@@ -119,7 +116,6 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
         is_retry: bool = False,
-        documents: list[Document] = [],
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # Add null check for dataset
 
@@ -138,7 +134,8 @@ class PipelineGenerator(BaseAppGenerator):
         pipeline_config = PipelineConfigManager.get_pipeline_config(
             pipeline=pipeline, workflow=workflow, start_node_id=start_node_id
         )
-        if invoke_from == InvokeFrom.PUBLISHED and not is_retry:
+        documents: list[Document] = []
+        if invoke_from == InvokeFrom.PUBLISHED and not is_retry and not args.get("original_document_id"):
             from services.dataset_service import DocumentService
             for datasource_info in datasource_info_list:
                 position = DocumentService.get_documents_position(dataset.id)
@@ -162,10 +159,9 @@ class PipelineGenerator(BaseAppGenerator):
         rag_pipeline_invoke_entities = []
         for i, datasource_info in enumerate(datasource_info_list):
             workflow_run_id = str(uuid.uuid4())
-            document_id = None
-            if documents:
-                document_id = documents[i].id
+            document_id = args.get("original_document_id") or None
             if invoke_from == InvokeFrom.PUBLISHED and not is_retry:
+                document_id = document_id or documents[i].id
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document_id,
                     datasource_type=datasource_type,
@@ -184,6 +180,7 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
+                original_document_id=args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
