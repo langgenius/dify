@@ -320,7 +320,7 @@ class AgentNode(BaseNode):
                         memory = self._fetch_memory(model_instance)
                         if memory:
                             prompt_messages = memory.get_history_prompt_messages(
-                                message_limit=node_data.memory.window.size if node_data.memory.window.size else None
+                                message_limit=node_data.memory.window.size or None
                             )
                             history_prompt_messages = [
                                 prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
