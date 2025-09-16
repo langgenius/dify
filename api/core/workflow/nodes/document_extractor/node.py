@@ -485,6 +485,24 @@ def _extract_text_from_csv(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
 
 
+def _format_cell_value_for_markdown(value) -> str:
+    """格式化单元格值，避免科学计数法"""
+    if pd.isna(value):
+        return ""
+    
+    if isinstance(value, (int, float)):
+        if isinstance(value, float):
+            if value.is_integer():
+                return str(int(value))
+            else:
+                formatted = f"{value:f}"
+                return formatted.rstrip('0').rstrip('.')
+        else:
+            return str(value)
+    
+    return str(value)
+
+
 def _extract_text_from_excel(file_content: bytes) -> str:
     """Extract text from an Excel file using pandas."""
 
@@ -499,7 +517,8 @@ def _extract_text_from_excel(file_content: bytes) -> str:
         # Construct the data rows
         data_rows = []
         for _, row in df.iterrows():
-            data_row = "| " + " | ".join(map(str, row)) + " |"
+            formatted_row = [_format_cell_value_for_markdown(cell) for cell in row]
+            data_row = "| " + " | ".join(formatted_row) + " |"
             data_rows.append(data_row)
 
         # Combine all rows into a single string

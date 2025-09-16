@@ -86,6 +86,10 @@ class Vector:
                 from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
 
                 return PGVectoRSFactory
+            case VectorType.PINECONE:
+                from core.rag.datasource.vdb.pinecone.pinecone_vector import PineconeVectorFactory
+
+                return PineconeVectorFactory
             case VectorType.QDRANT:
                 from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
 

@@ -35,6 +35,7 @@ from .vdb.opensearch_config import OpenSearchConfig
 from .vdb.oracle_config import OracleConfig
 from .vdb.pgvector_config import PGVectorConfig
 from .vdb.pgvectors_config import PGVectoRSConfig
+from .vdb.pinecone_config import PineconeConfig
 from .vdb.qdrant_config import QdrantConfig
 from .vdb.relyt_config import RelytConfig
 from .vdb.tablestore_config import TableStoreConfig
@@ -331,6 +332,7 @@ class MiddlewareConfig(
     PGVectorConfig,
     VastbaseVectorConfig,
     PGVectoRSConfig,
+    PineconeConfig,
     QdrantConfig,
     RelytConfig,
     TencentVectorDBConfig,

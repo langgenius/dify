@@ -10,6 +10,23 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
 
+def _format_cell_value(value) -> str:
+    if pd.isna(value):
+        return ""
+    
+    if isinstance(value, (int, float)):
+        if isinstance(value, float):
+            if value.is_integer():
+                return str(int(value))
+            else:
+                formatted = f"{value:f}"
+                return formatted.rstrip('0').rstrip('.')
+        else:
+            return str(value)
+    
+    return str(value)
+
+
 class ExcelExtractor(BaseExtractor):
     """Load Excel files.
 
@@ -49,10 +66,12 @@ class ExcelExtractor(BaseExtractor):
                                 row=cast(int, index) + 2, column=col_index + 1
                             )  # +2 to account for header and 1-based index
                             if cell.hyperlink:
-                                value = f"[{v}]({cell.hyperlink.target})"
+                                formatted_v = _format_cell_value(v)
+                                value = f"[{formatted_v}]({cell.hyperlink.target})"
                                 page_content.append(f'"{k}":"{value}"')
                             else:
-                                page_content.append(f'"{k}":"{v}"')
+                                formatted_v = _format_cell_value(v)
+                                page_content.append(f'"{k}":"{formatted_v}"')
                     documents.append(
                         Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                     )
@@ -67,7 +86,8 @@ class ExcelExtractor(BaseExtractor):
                     page_content = []
                     for k, v in row.items():
                         if pd.notna(v):
-                            page_content.append(f'"{k}":"{v}"')
+                            formatted_v = _format_cell_value(v)
+                            page_content.append(f'"{k}":"{formatted_v}"')
                     documents.append(
                         Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                     )

@@ -74,9 +74,13 @@ class DifyConfig(
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
 ):
+    # Get the project root directory (parent of api directory)
+    _project_root = Path(__file__).parent.parent.parent
+    _env_file = _project_root / "api" / ".env"
+    
     model_config = SettingsConfigDict(
         # read from dotenv format config file
-        env_file=".env",
+        env_file=str(_env_file),
         env_file_encoding="utf-8",
         # ignore extra attributes
         extra="ignore",
