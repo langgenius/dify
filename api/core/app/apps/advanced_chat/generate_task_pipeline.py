@@ -561,6 +561,11 @@ class AdvancedChatAppGenerateTaskPipeline:
                 task_id=self._application_generate_entity.task_id,
                 workflow_execution=workflow_execution,
             )
+            # Store outputs into metadata for external usage (exclude the answer key)
+            workflow_outputs = workflow_finish_resp.data.outputs
+            if workflow_outputs:
+                filtered_outputs = {k: v for k, v in workflow_outputs.items() if k != "answer"}
+                self._task_state.metadata.outputs = filtered_outputs
 
         yield workflow_finish_resp
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)

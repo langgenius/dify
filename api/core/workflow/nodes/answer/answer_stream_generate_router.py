@@ -23,6 +23,7 @@ class AnswerStreamGeneratorRouter:
         """
         # parse stream output node value selectors of answer nodes
         answer_generate_route: dict[str, list[GenerateRouteChunk]] = {}
+        answer_stream_variable_selectors_mapping: dict[str, list[GenerateRouteChunk]] = {}
         for answer_node_id, node_config in node_id_config_mapping.items():
             if node_config.get("data", {}).get("type") != NodeType.ANSWER.value:
                 continue
@@ -30,6 +31,7 @@ class AnswerStreamGeneratorRouter:
             # get generate route for stream output
             generate_route = cls._extract_generate_route_selectors(node_config)
             answer_generate_route[answer_node_id] = generate_route
+            answer_stream_variable_selectors_mapping[answer_node_id] = generate_route
 
         # fetch answer dependencies
         answer_node_ids = list(answer_generate_route.keys())
@@ -38,9 +40,18 @@ class AnswerStreamGeneratorRouter:
             reverse_edge_mapping=reverse_edge_mapping,
             node_id_config_mapping=node_id_config_mapping,
         )
+        answer_end_ids = list(answer_stream_variable_selectors_mapping.keys())
+        answer_end_dependencies = cls._fetch_answers_dependencies(
+            answer_node_ids=answer_end_ids,
+            reverse_edge_mapping=reverse_edge_mapping,
+            node_id_config_mapping=node_id_config_mapping,
+        )
 
         return AnswerStreamGenerateRoute(
-            answer_generate_route=answer_generate_route, answer_dependencies=answer_dependencies
+            answer_generate_route=answer_generate_route,
+            answer_dependencies=answer_dependencies,
+            answer_stream_variable_selectors_mapping=answer_stream_variable_selectors_mapping,
+            answer_end_dependencies=answer_end_dependencies,
         )
 
     @classmethod
