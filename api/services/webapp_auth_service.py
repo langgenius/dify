@@ -1,7 +1,7 @@
 import enum
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -63,7 +63,7 @@ class WebAppAuthService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: str = "en-US"
+        cls, account: Account | None = None, email: str | None = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:
@@ -82,7 +82,7 @@ class WebAppAuthService:
         return token
 
     @classmethod
-    def get_email_code_login_data(cls, token: str) -> Optional[dict[str, Any]]:
+    def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
 
     @classmethod
@@ -130,7 +130,7 @@ class WebAppAuthService:
 
     @classmethod
     def is_app_require_permission_check(
-        cls, app_code: Optional[str] = None, app_id: Optional[str] = None, access_mode: Optional[str] = None
+        cls, app_code: str | None = None, app_id: str | None = None, access_mode: str | None = None
     ) -> bool:
         """
         Check if the app requires permission check based on its access mode.

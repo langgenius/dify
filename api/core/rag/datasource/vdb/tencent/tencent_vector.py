@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 class TencentConfig(BaseModel):
     url: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     timeout: float = 30
-    username: Optional[str] = None
-    database: Optional[str] = None
+    username: str | None = None
+    database: str | None = None
     index_type: str = "HNSW"
     metric_type: str = "IP"
     shard: int = 1

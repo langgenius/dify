@@ -93,7 +93,7 @@ class ProviderConfiguration(BaseModel):
             ):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
 
-    def get_current_credentials(self, model_type: ModelType, model: str) -> Optional[dict]:
+    def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
         """
         Get current credentials.
 
@@ -166,7 +166,7 @@ class ProviderConfiguration(BaseModel):
 
             return credentials
 
-    def get_system_configuration_status(self) -> Optional[SystemConfigurationStatus]:
+    def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
         """
         Get system configuration status.
         :return:
@@ -798,9 +798,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderModelCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_custom_model_credential(
-        self, model_type: ModelType, model: str, credential_id: str | None
-    ) -> Optional[dict]:
+    def get_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str | None) -> dict | None:
         """
         Get custom model credentials.
 
@@ -1283,7 +1281,7 @@ class ProviderConfiguration(BaseModel):
 
         return model_setting
 
-    def get_provider_model_setting(self, model_type: ModelType, model: str) -> Optional[ProviderModelSetting]:
+    def get_provider_model_setting(self, model_type: ModelType, model: str) -> ProviderModelSetting | None:
         """
         Get provider model setting.
         :param model_type: model type
@@ -1462,7 +1460,7 @@ class ProviderConfiguration(BaseModel):
 
     def get_provider_model(
         self, model_type: ModelType, model: str, only_active: bool = False
-    ) -> Optional[ModelWithProviderEntity]:
+    ) -> ModelWithProviderEntity | None:
         """
         Get provider model.
         :param model_type: model type
@@ -1479,7 +1477,7 @@ class ProviderConfiguration(BaseModel):
         return None
 
     def get_provider_models(
-        self, model_type: Optional[ModelType] = None, only_active: bool = False, model: Optional[str] = None
+        self, model_type: ModelType | None = None, only_active: bool = False, model: str | None = None
     ) -> list[ModelWithProviderEntity]:
         """
         Get provider models.
@@ -1663,7 +1661,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get custom provider models.
@@ -1797,7 +1795,7 @@ class ProviderConfigurations(BaseModel):
         super().__init__(tenant_id=tenant_id)
 
     def get_models(
-        self, provider: Optional[str] = None, model_type: Optional[ModelType] = None, only_active: bool = False
+        self, provider: str | None = None, model_type: ModelType | None = None, only_active: bool = False
     ) -> list[ModelWithProviderEntity]:
         """
         Get available models.

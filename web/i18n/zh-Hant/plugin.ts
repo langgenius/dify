@@ -249,6 +249,7 @@ const translation = {
     unavailable: '無法使用',
     customCredentialUnavailable: '自訂憑證目前無法使用',
     credentialUnavailable: '凭證目前無法使用。請聯繫管理員。',
+    credentialUnavailableInButton: '憑證不可用',
   },
   deprecated: '不推薦使用的',
   autoUpdate: {

@@ -76,9 +76,9 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(sa.Text, server_default=sa.text("''::character varying"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[Optional[str]] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
     icon = mapped_column(String(255))
-    icon_background: Mapped[Optional[str]] = mapped_column(String(255))
+    icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'::character varying"))
@@ -90,7 +90,7 @@ class App(Base):
     is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     tracing = mapped_column(sa.Text, nullable=True)
-    max_active_requests: Mapped[Optional[int]]
+    max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -134,7 +134,7 @@ class App(Base):
         return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
 
     @property
-    def tenant(self) -> Optional[Tenant]:
+    def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
@@ -291,7 +291,7 @@ class App(Base):
         return tags or []
 
     @property
-    def author_name(self) -> Optional[str]:
+    def author_name(self) -> str | None:
         if self.created_by:
             account = db.session.query(Account).where(Account.id == self.created_by).first()
             if account:
@@ -334,7 +334,7 @@ class AppModelConfig(Base):
     file_upload = mapped_column(sa.Text)
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
@@ -546,7 +546,7 @@ class RecommendedApp(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
@@ -570,12 +570,12 @@ class InstalledApp(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
     @property
-    def tenant(self) -> Optional[Tenant]:
+    def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
@@ -711,7 +711,7 @@ class Conversation(Base):
     @property
     def model_config(self):
         model_config = {}
-        app_model_config: Optional[AppModelConfig] = None
+        app_model_config: AppModelConfig | None = None
 
         if self.mode == AppMode.ADVANCED_CHAT:
             if self.override_model_configs:
@@ -845,7 +845,7 @@ class Conversation(Base):
         )
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         return db.session.query(App).where(App.id == self.app_id).first()
 
     @property
@@ -858,7 +858,7 @@ class Conversation(Base):
         return None
 
     @property
-    def from_account_name(self) -> Optional[str]:
+    def from_account_name(self) -> str | None:
         if self.from_account_id:
             account = db.session.query(Account).where(Account.id == self.from_account_id).first()
             if account:
@@ -933,14 +933,14 @@ class Message(Base):
     status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
     error = mapped_column(sa.Text)
     message_metadata = mapped_column(sa.Text)
-    invoke_from: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
 
     @property
     def inputs(self) -> dict[str, Any]:
@@ -1337,9 +1337,9 @@ class MessageFile(Base):
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
-    url: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    belongs_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    upload_file_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    url: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    belongs_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1356,8 +1356,8 @@ class MessageAnnotation(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID)
-    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
-    message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
+    message_id: Mapped[str | None] = mapped_column(StringUUID)
     question = mapped_column(sa.Text, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -1729,18 +1729,18 @@ class MessageAgentThought(Base):
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
     tool_process_data = mapped_column(sa.Text, nullable=True)
     message = mapped_column(sa.Text, nullable=True)
-    message_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     message_unit_price = mapped_column(sa.Numeric, nullable=True)
     message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
     message_files = mapped_column(sa.Text, nullable=True)
     answer = mapped_column(sa.Text, nullable=True)
-    answer_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     answer_unit_price = mapped_column(sa.Numeric, nullable=True)
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     total_price = mapped_column(sa.Numeric, nullable=True)
     currency = mapped_column(String, nullable=True)
-    latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
@@ -1838,11 +1838,11 @@ class DatasetRetrieverResource(Base):
     document_name = mapped_column(sa.Text, nullable=False)
     data_source_type = mapped_column(sa.Text, nullable=True)
     segment_id = mapped_column(StringUUID, nullable=True)
-    score: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    score: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
-    hit_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    segment_position: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    hit_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    segment_position: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     index_node_hash = mapped_column(sa.Text, nullable=True)
     retriever_from = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)

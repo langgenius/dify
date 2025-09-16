@@ -1,6 +1,5 @@
 import urllib.parse
 from dataclasses import dataclass
-from typing import Optional
 
 import requests
 
@@ -41,7 +40,7 @@ class GitHubOAuth(OAuth):
     _USER_INFO_URL = "https://api.github.com/user"
     _EMAIL_INFO_URL = "https://api.github.com/user/emails"
 
-    def get_authorization_url(self, invite_token: Optional[str] = None):
+    def get_authorization_url(self, invite_token: str | None = None):
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
@@ -93,7 +92,7 @@ class GoogleOAuth(OAuth):
     _TOKEN_URL = "https://oauth2.googleapis.com/token"
     _USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-    def get_authorization_url(self, invite_token: Optional[str] = None):
+    def get_authorization_url(self, invite_token: str | None = None):
         params = {
             "client_id": self.client_id,
             "response_type": "code",

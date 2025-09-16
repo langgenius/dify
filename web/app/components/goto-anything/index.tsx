@@ -11,6 +11,7 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { RiSearchLine } from '@remixicon/react'
 import { Actions as AllActions, type SearchResult, matchAction, searchAnything } from './actions'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
+import { slashCommandRegistry } from './actions/commands/registry'
 import { useQuery } from '@tanstack/react-query'
 import { useGetLanguage } from '@/context/i18n'
 import { useTranslation } from 'react-i18next'
@@ -87,14 +88,21 @@ const GotoAnything: FC<Props> = ({
     || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), Actions))
 
   const searchMode = useMemo(() => {
-    if (isCommandsMode) return 'commands'
+    if (isCommandsMode) {
+      // Distinguish between @ (scopes) and / (commands) mode
+      if (searchQuery.trim().startsWith('@'))
+        return 'scopes'
+      else if (searchQuery.trim().startsWith('/'))
+        return 'commands'
+      return 'commands' // default fallback
+    }
 
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
     return action
       ? (action.key === '/' ? '@command' : action.key)
       : 'general'
-  }, [searchQueryDebouncedValue, Actions, isCommandsMode])
+  }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
@@ -124,6 +132,21 @@ const GotoAnything: FC<Props> = ({
   }
 
   const handleCommandSelect = useCallback((commandKey: string) => {
+    // Check if it's a slash command
+    if (commandKey.startsWith('/')) {
+      const commandName = commandKey.substring(1)
+      const handler = slashCommandRegistry.findCommand(commandName)
+
+      // If it's a direct mode command, execute immediately
+      if (handler?.mode === 'direct' && handler.execute) {
+        handler.execute()
+        setShow(false)
+        setSearchQuery('')
+        return
+      }
+    }
+
+    // Otherwise, proceed with the normal flow (submenu mode)
     setSearchQuery(`${commandKey} `)
     clearSelection()
     setTimeout(() => {
@@ -220,7 +243,7 @@ const GotoAnything: FC<Props> = ({
     if (searchQuery.trim())
       return null
 
-    return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+    return (<div className="flex items-center justify-center py-8 text-center text-text-tertiary">
       <div>
         <div className='text-sm font-medium'>{t('app.gotoAnything.searchTitle')}</div>
         <div className='mt-3 space-y-1 text-xs text-text-quaternary'>
@@ -261,6 +284,7 @@ const GotoAnything: FC<Props> = ({
             value={cmdVal}
             onValueChange={setCmdVal}
             disablePointerSelection
+            loop
           >
             <div className='flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3'>
               <RiSearchLine className='h-4 w-4 text-text-quaternary' />
@@ -274,13 +298,38 @@ const GotoAnything: FC<Props> = ({
                     if (!e.target.value.startsWith('@') && !e.target.value.startsWith('/'))
                       clearSelection()
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const query = searchQuery.trim()
+                      // Check if it's a complete slash command
+                      if (query.startsWith('/')) {
+                        const commandName = query.substring(1).split(' ')[0]
+                        const handler = slashCommandRegistry.findCommand(commandName)
+
+                        // If it's a direct mode command, execute immediately
+                        if (handler?.mode === 'direct' && handler.execute) {
+                          e.preventDefault()
+                          handler.execute()
+                          setShow(false)
+                          setSearchQuery('')
+                        }
+                      }
+                    }
+                  }}
                   className='flex-1 !border-0 !bg-transparent !shadow-none'
                   wrapperClassName='flex-1 !border-0 !bg-transparent'
                   autoFocus
                 />
                 {searchMode !== 'general' && (
                   <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'>
-                    <span>{searchMode.replace('@', '').toUpperCase()}</span>
+                    <span>{(() => {
+                      if (searchMode === 'scopes')
+                        return 'SCOPES'
+                      else if (searchMode === 'commands')
+                        return 'COMMANDS'
+                      else
+                        return searchMode.replace('@', '').toUpperCase()
+                    })()}</span>
                   </div>
                 )}
               </div>
@@ -294,7 +343,7 @@ const GotoAnything: FC<Props> = ({
               </div>
             </div>
 
-            <Command.List className='max-h-[275px] min-h-[240px] overflow-y-auto'>
+            <Command.List className='h-[240px] overflow-y-auto'>
               {isLoading && (
                 <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div className="flex items-center gap-2">
@@ -368,32 +417,52 @@ const GotoAnything: FC<Props> = ({
               )}
             </Command.List>
 
-            {(!!searchResults.length || isError) && (
-              <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
-                <div className='flex items-center justify-between'>
-                  <span>
-                    {isError ? (
-                      <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
-                    ) : (
-                      <>
-                        {t('app.gotoAnything.resultCount', { count: searchResults.length })}
-                        {searchMode !== 'general' && (
-                          <span className='ml-2 opacity-60'>
-                            {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </span>
-                  <span className='opacity-60'>
-                    {searchMode !== 'general'
-                      ? t('app.gotoAnything.clearToSearchAll')
-                      : t('app.gotoAnything.useAtForSpecific')
-                    }
-                  </span>
-                </div>
+            {/* Always show footer to prevent height jumping */}
+            <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
+              <div className='flex min-h-[16px] items-center justify-between'>
+                {(!!searchResults.length || isError) ? (
+                  <>
+                    <span>
+                      {isError ? (
+                        <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
+                      ) : (
+                        <>
+                          {t('app.gotoAnything.resultCount', { count: searchResults.length })}
+                          {searchMode !== 'general' && (
+                            <span className='ml-2 opacity-60'>
+                              {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                    <span className='opacity-60'>
+                      {searchMode !== 'general'
+                        ? t('app.gotoAnything.clearToSearchAll')
+                        : t('app.gotoAnything.useAtForSpecific')
+                      }
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className='opacity-60'>
+                      {isCommandsMode
+                        ? t('app.gotoAnything.selectToNavigate')
+                        : searchQuery.trim()
+                          ? t('app.gotoAnything.searching')
+                          : t('app.gotoAnything.startTyping')
+                      }
+                    </span>
+                    <span className='opacity-60'>
+                      {searchQuery.trim() || isCommandsMode
+                        ? t('app.gotoAnything.tips')
+                        : t('app.gotoAnything.pressEscToClose')
+                      }
+                    </span>
+                  </>
+                )}
               </div>
-            )}
+            </div>
           </Command>
         </div>
 

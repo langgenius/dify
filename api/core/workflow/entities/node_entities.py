@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -14,16 +14,16 @@ class NodeRunResult(BaseModel):
 
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING
 
-    inputs: Optional[Mapping[str, Any]] = None  # node inputs
-    process_data: Optional[Mapping[str, Any]] = None  # process data
-    outputs: Optional[Mapping[str, Any]] = None  # node outputs
-    metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None  # node metadata
-    llm_usage: Optional[LLMUsage] = None  # llm usage
+    inputs: Mapping[str, Any] | None = None  # node inputs
+    process_data: Mapping[str, Any] | None = None  # process data
+    outputs: Mapping[str, Any] | None = None  # node outputs
+    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None  # node metadata
+    llm_usage: LLMUsage | None = None  # llm usage
 
-    edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
+    edge_source_handle: str | None = None  # source handle id of node with multiple branches
 
-    error: Optional[str] = None  # error message if status is failed
-    error_type: Optional[str] = None  # error type if status is failed
+    error: str | None = None  # error message if status is failed
+    error_type: str | None = None  # error type if status is failed
 
     # single step node run retry
     retry_index: int = 0

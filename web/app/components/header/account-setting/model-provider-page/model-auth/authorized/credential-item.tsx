@@ -92,10 +92,10 @@ const CredentialItem = ({
         )
       }
       {
-        showAction && (
+        showAction && !credential.from_enterprise && (
           <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
             {
-              !disableEdit && !credential.not_allowed_to_use && !credential.from_enterprise && (
+              !disableEdit && !credential.not_allowed_to_use && (
                 <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
                     disabled={disabled}
@@ -110,7 +110,7 @@ const CredentialItem = ({
               )
             }
             {
-              !disableDelete && !credential.from_enterprise && (
+              !disableDelete && (
                 <Tooltip popupContent={disableDeleteWhenSelected ? disableDeleteTip : t('common.operation.delete')}>
                   <ActionButton
                     className='hover:bg-transparent'

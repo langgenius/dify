@@ -336,6 +336,10 @@ const translation = {
     tryDifferentSearch: '다른 검색어 사용해 보기',
     noMatchingCommands: '일치하는 명령을 찾을 수 없습니다.',
     slashHint: '모든 사용 가능한 명령을 보려면 /를 입력하세요.',
+    tips: '↑↓ 키를 눌러 탐색하세요',
+    pressEscToClose: 'ESC를 눌러 닫기',
+    selectToNavigate: '선택하여 탐색하기',
+    startTyping: '검색하려면 타이핑을 시작하세요',
   },
 }
 

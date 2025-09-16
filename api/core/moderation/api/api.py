@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -87,7 +85,7 @@ class ApiModeration(Moderation):
         return result
 
     @staticmethod
-    def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> Optional[APIBasedExtension]:
+    def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension | None:
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )

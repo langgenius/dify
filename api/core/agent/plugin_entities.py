@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -53,7 +53,7 @@ class AgentStrategyParameter(PluginParameter):
             return cast_parameter_value(self, value)
 
     type: AgentStrategyParameterType = Field(..., description="The type of the parameter")
-    help: Optional[I18nObject] = None
+    help: I18nObject | None = None
 
     def init_frontend_parameter(self, value: Any):
         return init_frontend_parameter(self, self.type, value)
@@ -61,7 +61,7 @@ class AgentStrategyParameter(PluginParameter):
 
 class AgentStrategyProviderEntity(BaseModel):
     identity: AgentStrategyProviderIdentity
-    plugin_id: Optional[str] = Field(None, description="The id of the plugin")
+    plugin_id: str | None = Field(None, description="The id of the plugin")
 
 
 class AgentStrategyIdentity(ToolIdentity):
@@ -84,9 +84,9 @@ class AgentStrategyEntity(BaseModel):
     identity: AgentStrategyIdentity
     parameters: list[AgentStrategyParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The description of the agent strategy")
-    output_schema: Optional[dict] = None
-    features: Optional[list[AgentFeature]] = None
-    meta_version: Optional[str] = None
+    output_schema: dict | None = None
+    features: list[AgentFeature] | None = None
+    meta_version: str | None = None
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

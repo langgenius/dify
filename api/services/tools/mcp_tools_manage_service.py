@@ -259,11 +259,30 @@ class MCPToolManageService:
             if sse_read_timeout is not None:
                 mcp_provider.sse_read_timeout = sse_read_timeout
             if headers is not None:
-                # Encrypt headers
+                # Merge masked headers from frontend with existing real values
                 if headers:
-                    encrypted_headers_dict = MCPToolManageService._encrypt_headers(headers, tenant_id)
+                    # existing decrypted and masked headers
+                    existing_decrypted = mcp_provider.decrypted_headers
+                    existing_masked = mcp_provider.masked_headers
+
+                    # Build final headers: if value equals masked existing, keep original decrypted value
+                    final_headers: dict[str, str] = {}
+                    for key, incoming_value in headers.items():
+                        if (
+                            key in existing_masked
+                            and key in existing_decrypted
+                            and isinstance(incoming_value, str)
+                            and incoming_value == existing_masked.get(key)
+                        ):
+                            # unchanged, use original decrypted value
+                            final_headers[key] = str(existing_decrypted[key])
+                        else:
+                            final_headers[key] = incoming_value
+
+                    encrypted_headers_dict = MCPToolManageService._encrypt_headers(final_headers, tenant_id)
                     mcp_provider.encrypted_headers = json.dumps(encrypted_headers_dict)
                 else:
+                    # Explicitly clear headers if empty dict passed
                     mcp_provider.encrypted_headers = None
             db.session.commit()
         except IntegrityError as e:

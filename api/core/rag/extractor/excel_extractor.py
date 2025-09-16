@@ -1,7 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import os
-from typing import Optional, cast
+from typing import cast
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -18,7 +18,7 @@ class ExcelExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, encoding: Optional[str] = None, autodetect_encoding: bool = False):
+    def __init__(self, file_path: str, encoding: str | None = None, autodetect_encoding: bool = False):
         """Initialize with file path."""
         self._file_path = file_path
         self._encoding = encoding

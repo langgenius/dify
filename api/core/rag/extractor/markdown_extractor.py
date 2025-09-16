@@ -2,7 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -22,7 +21,7 @@ class MarkdownExtractor(BaseExtractor):
         file_path: str,
         remove_hyperlinks: bool = False,
         remove_images: bool = False,
-        encoding: Optional[str] = None,
+        encoding: str | None = None,
         autodetect_encoding: bool = True,
     ):
         """Initialize with file path."""
@@ -45,13 +44,13 @@ class MarkdownExtractor(BaseExtractor):
 
         return documents
 
-    def markdown_to_tups(self, markdown_text: str) -> list[tuple[Optional[str], str]]:
+    def markdown_to_tups(self, markdown_text: str) -> list[tuple[str | None, str]]:
         """Convert a markdown file to a dictionary.
 
         The keys are the headers and the values are the text under each header.
 
         """
-        markdown_tups: list[tuple[Optional[str], str]] = []
+        markdown_tups: list[tuple[str | None, str]] = []
         lines = markdown_text.split("\n")
 
         current_header = None
@@ -94,7 +93,7 @@ class MarkdownExtractor(BaseExtractor):
         content = re.sub(pattern, r"\1", content)
         return content
 
-    def parse_tups(self, filepath: str) -> list[tuple[Optional[str], str]]:
+    def parse_tups(self, filepath: str) -> list[tuple[str | None, str]]:
         """Parse file into tuples."""
         content = ""
         try:

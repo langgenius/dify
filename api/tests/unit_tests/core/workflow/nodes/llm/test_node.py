@@ -1,7 +1,6 @@
 import base64
 import uuid
 from collections.abc import Sequence
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -47,7 +46,7 @@ class MockTokenBufferMemory:
         self.history_messages = history_messages or []
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
+        self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]

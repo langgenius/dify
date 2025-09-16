@@ -298,6 +298,7 @@ const translation = {
     clientInfo: '由于未找到此工具提供者的系统客户端密钥，因此需要手动设置，对于 redirect_uri，请使用',
     oauthClient: 'OAuth 客户端',
     credentialUnavailable: '自定义凭据当前不可用，请联系管理员。',
+    credentialUnavailableInButton: '凭据不可用',
     customCredentialUnavailable: '自定义凭据当前不可用',
     unavailable: '不可用',
   },

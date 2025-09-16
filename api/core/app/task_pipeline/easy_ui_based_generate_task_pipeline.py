@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -109,7 +109,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             task_state=self._task_state,
         )
 
-        self._conversation_name_generate_thread: Optional[Thread] = None
+        self._conversation_name_generate_thread: Thread | None = None
 
     def process(
         self,
@@ -209,7 +209,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         return None
 
     def _wrapper_process_stream_response(
-        self, trace_manager: Optional[TraceQueueManager] = None
+        self, trace_manager: TraceQueueManager | None = None
     ) -> Generator[StreamResponse, None, None]:
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
@@ -252,7 +252,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
     def _process_stream_response(
-        self, publisher: Optional[AppGeneratorTTSPublisher], trace_manager: Optional[TraceQueueManager] = None
+        self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
@@ -362,7 +362,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, *, session: Session, trace_manager: Optional[TraceQueueManager] = None):
+    def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
         """
         Save message.
         :return:
@@ -466,14 +466,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             task_id=self._application_generate_entity.task_id, id=message_id, answer=answer
         )
 
-    def _agent_thought_to_stream_response(self, event: QueueAgentThoughtEvent) -> Optional[AgentThoughtStreamResponse]:
+    def _agent_thought_to_stream_response(self, event: QueueAgentThoughtEvent) -> AgentThoughtStreamResponse | None:
         """
         Agent thought to stream response.
         :param event: agent thought event
         :return:
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            agent_thought: Optional[MessageAgentThought] = (
+            agent_thought: MessageAgentThought | None = (
                 session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
             )
 

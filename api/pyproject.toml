@@ -79,7 +79,7 @@ dependencies = [
     "sqlalchemy~=2.0.29",
     "starlette==0.47.2",
     "tiktoken~=0.9.0",
-    "transformers~=4.53.0",
+    "transformers~=4.56.1",
     "unstructured[docx,epub,md,ppt,pptx]~=0.16.1",
     "weave~=0.51.0",
     "yarl~=1.18.3",

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -487,13 +487,13 @@ class ToolFile(TypeBase):
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
     mimetype: Mapped[str] = mapped_column(String(255), nullable=False)
     # original url
-    original_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True, default=None)
+    original_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
     # name
     name: Mapped[str] = mapped_column(default="")
     # size

@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'Недоступно',
     customCredentialUnavailable: 'Кастомные учетные данные в настоящее время недоступны',
     credentialUnavailable: 'Учетные данные в настоящее время недоступны. Пожалуйста, свяжитесь с администратором.',
+    credentialUnavailableInButton: 'Учетные данные недоступны',
   },
   deprecated: 'Устаревший',
   autoUpdate: {

@@ -174,6 +174,7 @@ const Authorized = ({
     }
   }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
   const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
+  const unavailableCredential = credentials.find(credential => credential.not_allowed_to_use && credential.is_default)
 
   return (
     <>
@@ -197,7 +198,7 @@ const Authorized = ({
                     'w-full',
                     isOpen && 'bg-components-button-secondary-bg-hover',
                   )}>
-                  <Indicator className='mr-2' />
+                  <Indicator className='mr-2' color={unavailableCredential ? 'gray' : 'green'} />
                   {credentials.length}&nbsp;
                   {
                     credentials.length > 1

@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'Không có sẵn',
     customCredentialUnavailable: 'Thông tin đăng nhập tùy chỉnh hiện không khả dụng',
     credentialUnavailable: 'Thông tin đăng nhập hiện không khả dụng. Vui lòng liên hệ với quản trị viên.',
+    credentialUnavailableInButton: 'Thông tin xác thực không khả dụng',
   },
   deprecated: 'Đã bị ngưng sử dụng',
   autoUpdate: {

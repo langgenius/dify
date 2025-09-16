@@ -31,6 +31,7 @@ export const languageCommand: SlashCommandHandler<LanguageDeps> = {
   name: 'language',
   aliases: ['lang'],
   description: 'Switch between different languages',
+  mode: 'submenu', // Explicitly set submenu mode
 
   async search(args: string, _locale: string = 'en') {
     // Return language options directly, regardless of parameters

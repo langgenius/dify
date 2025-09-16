@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -11,14 +11,14 @@ class ParentMode(StrEnum):
 
 class NotionIcon(BaseModel):
     type: str
-    url: Optional[str] = None
-    emoji: Optional[str] = None
+    url: str | None = None
+    emoji: str | None = None
 
 
 class NotionPage(BaseModel):
     page_id: str
     page_name: str
-    page_icon: Optional[NotionIcon] = None
+    page_icon: NotionIcon | None = None
     type: str
 
 
@@ -40,9 +40,9 @@ class FileInfo(BaseModel):
 
 class InfoList(BaseModel):
     data_source_type: Literal["upload_file", "notion_import", "website_crawl"]
-    notion_info_list: Optional[list[NotionInfo]] = None
-    file_info_list: Optional[FileInfo] = None
-    website_info_list: Optional[WebsiteInfo] = None
+    notion_info_list: list[NotionInfo] | None = None
+    file_info_list: FileInfo | None = None
+    website_info_list: WebsiteInfo | None = None
 
 
 class DataSource(BaseModel):
@@ -61,20 +61,20 @@ class Segmentation(BaseModel):
 
 
 class Rule(BaseModel):
-    pre_processing_rules: Optional[list[PreProcessingRule]] = None
-    segmentation: Optional[Segmentation] = None
-    parent_mode: Optional[Literal["full-doc", "paragraph"]] = None
-    subchunk_segmentation: Optional[Segmentation] = None
+    pre_processing_rules: list[PreProcessingRule] | None = None
+    segmentation: Segmentation | None = None
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: Segmentation | None = None
 
 
 class ProcessRule(BaseModel):
     mode: Literal["automatic", "custom", "hierarchical"]
-    rules: Optional[Rule] = None
+    rules: Rule | None = None
 
 
 class RerankingModel(BaseModel):
-    reranking_provider_name: Optional[str] = None
-    reranking_model_name: Optional[str] = None
+    reranking_provider_name: str | None = None
+    reranking_model_name: str | None = None
 
 
 class WeightVectorSetting(BaseModel):
@@ -88,20 +88,20 @@ class WeightKeywordSetting(BaseModel):
 
 
 class WeightModel(BaseModel):
-    weight_type: Optional[Literal["semantic_first", "keyword_first", "customized"]] = None
-    vector_setting: Optional[WeightVectorSetting] = None
-    keyword_setting: Optional[WeightKeywordSetting] = None
+    weight_type: Literal["semantic_first", "keyword_first", "customized"] | None = None
+    vector_setting: WeightVectorSetting | None = None
+    keyword_setting: WeightKeywordSetting | None = None
 
 
 class RetrievalModel(BaseModel):
     search_method: Literal["hybrid_search", "semantic_search", "full_text_search", "keyword_search"]
     reranking_enable: bool
-    reranking_model: Optional[RerankingModel] = None
-    reranking_mode: Optional[str] = None
+    reranking_model: RerankingModel | None = None
+    reranking_mode: str | None = None
     top_k: int
     score_threshold_enabled: bool
-    score_threshold: Optional[float] = None
-    weights: Optional[WeightModel] = None
+    score_threshold: float | None = None
+    weights: WeightModel | None = None
 
 
 class MetaDataConfig(BaseModel):
@@ -110,29 +110,29 @@ class MetaDataConfig(BaseModel):
 
 
 class KnowledgeConfig(BaseModel):
-    original_document_id: Optional[str] = None
+    original_document_id: str | None = None
     duplicate: bool = True
     indexing_technique: Literal["high_quality", "economy"]
-    data_source: Optional[DataSource] = None
-    process_rule: Optional[ProcessRule] = None
-    retrieval_model: Optional[RetrievalModel] = None
+    data_source: DataSource | None = None
+    process_rule: ProcessRule | None = None
+    retrieval_model: RetrievalModel | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
-    embedding_model: Optional[str] = None
-    embedding_model_provider: Optional[str] = None
-    name: Optional[str] = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+    name: str | None = None
 
 
 class SegmentUpdateArgs(BaseModel):
-    content: Optional[str] = None
-    answer: Optional[str] = None
-    keywords: Optional[list[str]] = None
+    content: str | None = None
+    answer: str | None = None
+    keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
-    enabled: Optional[bool] = None
+    enabled: bool | None = None
 
 
 class ChildChunkUpdateArgs(BaseModel):
-    id: Optional[str] = None
+    id: str | None = None
     content: str
 
 
@@ -143,13 +143,13 @@ class MetadataArgs(BaseModel):
 
 class MetadataUpdateArgs(BaseModel):
     name: str
-    value: Optional[str | int | float] = None
+    value: str | int | float | None = None
 
 
 class MetadataDetail(BaseModel):
     id: str
     name: str
-    value: Optional[str | int | float] = None
+    value: str | int | float | None = None
 
 
 class DocumentMetadataOperation(BaseModel):

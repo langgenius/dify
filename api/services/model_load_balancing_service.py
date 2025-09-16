@@ -1,7 +1,7 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy import or_, select
 
@@ -211,7 +211,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_config(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get load balancing configuration.
         :param tenant_id: workspace id
@@ -478,7 +478,7 @@ class ModelLoadBalancingService:
         model: str,
         model_type: str,
         credentials: dict,
-        config_id: Optional[str] = None,
+        config_id: str | None = None,
     ):
         """
         Validate load balancing credentials.
@@ -536,7 +536,7 @@ class ModelLoadBalancingService:
         model_type: ModelType,
         model: str,
         credentials: dict,
-        load_balancing_model_config: Optional[LoadBalancingModelConfig] = None,
+        load_balancing_model_config: LoadBalancingModelConfig | None = None,
         validate: bool = True,
     ):
         """

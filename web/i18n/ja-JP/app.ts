@@ -265,9 +265,14 @@ const translation = {
     inScope: '{{scope}}s 内',
     clearToSearchAll: '@ をクリアしてすべてを検索',
     useAtForSpecific: '特定のタイプには @ を使用',
+    selectToNavigate: '選択してナビゲート',
+    startTyping: '入力を開始して検索',
+    tips: '↑↓ でナビゲート',
+    pressEscToClose: 'ESC で閉じる',
     selectSearchType: '検索対象を選択',
     searchHint: '入力を開始してすべてを瞬時に検索',
     commandHint: '@ を入力してカテゴリ別に参照',
+    slashHint: '/ を入力してすべてのコマンドを表示',
     actions: {
       searchApplications: 'アプリケーションを検索',
       searchApplicationsDesc: 'アプリケーションを検索してナビゲート',
@@ -314,7 +319,6 @@ const translation = {
     },
     noMatchingCommands: '一致するコマンドが見つかりません',
     tryDifferentSearch: '別の検索語句をお試しください',
-    slashHint: '/を入力して、利用可能なすべてのコマンドを表示します。',
   },
 }
 

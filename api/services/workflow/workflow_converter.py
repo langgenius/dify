@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -327,7 +327,7 @@ class WorkflowConverter:
 
     def _convert_to_knowledge_retrieval_node(
         self, new_app_mode: AppMode, dataset_config: DatasetEntity, model_config: ModelConfigEntity
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
@@ -383,7 +383,7 @@ class WorkflowConverter:
         graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: Optional[FileUploadConfig] = None,
+        file_upload: FileUploadConfig | None = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
     ):
         """
@@ -403,7 +403,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Optional[Any] = None
+        prompts: Any | None = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:

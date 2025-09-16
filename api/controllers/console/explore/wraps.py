@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, Optional, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask_login import current_user
 from flask_restx import Resource
@@ -20,7 +20,7 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 
-def installed_app_required(view: Optional[Callable[Concatenate[InstalledApp, P], R]] = None):
+def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
@@ -50,7 +50,7 @@ def installed_app_required(view: Optional[Callable[Concatenate[InstalledApp, P],
     return decorator
 
 
-def user_allowed_to_access_app(view: Optional[Callable[Concatenate[InstalledApp, P], R]] = None):
+def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):

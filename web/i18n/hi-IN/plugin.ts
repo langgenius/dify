@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'अप्राप्त',
     customCredentialUnavailable: 'कस्टम क्रेडेंशियल वर्तमान में उपलब्ध नहीं हैं',
     credentialUnavailable: 'वर्तमान में क्रेडेंशियल्स उपलब्ध नहीं हैं। कृपया प्रशासन से संपर्क करें।',
+    credentialUnavailableInButton: 'प्रमाण पत्र उपलब्ध नहीं है',
   },
   deprecated: 'अनुशंसित नहीं',
   autoUpdate: {
