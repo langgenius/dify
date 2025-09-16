@@ -244,7 +244,7 @@ class LindormVectorStore(BaseVector):
         filters = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filters.append({"terms": {"metadata.document_id.keyword": document_ids_filter}})
+            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
         if self._using_ugc:
             filters.append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
 
@@ -329,6 +329,8 @@ class LindormVectorStore(BaseVector):
     def create_collection(
         self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
     ):
+        if not embeddings:
+            raise ValueError(f"Embeddings list cannot be empty for collection create '{self._collection_name}'")
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -380,7 +382,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
         )
         using_ugc = dify_config.LINDORM_USING_UGC
         if using_ugc is None:
-            raise ValueError("USING_UGC_INDEX is not set")
+            raise ValueError("LINDORM_USING_UGC is not set")
         routing_value = None
         if dataset.index_struct:
             # if an existed record's index_struct_dict doesn't contain using_ugc field,
@@ -411,7 +413,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             if using_ugc:
                 index_type = dify_config.LINDORM_INDEX_TYPE
                 distance_type = dify_config.LINDORM_DISTANCE_TYPE
-                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}"
+                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}".lower()
                 routing_value = class_prefix.lower()
             else:
                 index_name = class_prefix.lower()
