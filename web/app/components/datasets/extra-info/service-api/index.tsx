@@ -34,7 +34,6 @@ const ServiceApi = ({
           mainAxis: 4,
           crossAxis: -4,
         }}
-        customContainer={document.body}
       >
         <PortalToFollowElemTrigger
           className='w-full'
