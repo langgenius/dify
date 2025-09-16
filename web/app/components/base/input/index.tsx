@@ -1,4 +1,4 @@
-import type { CSSProperties, ChangeEventHandler } from 'react'
+import type { CSSProperties, ChangeEventHandler, FocusEventHandler } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
@@ -61,7 +61,7 @@ const Input = ({
     }
     onChange(e)
   }
-  const handleNumberCommit: React.FocusEventHandler<HTMLInputElement> = (e) => {
+  const handleNumberBlur: FocusEventHandler<HTMLInputElement> = (e) => {
     // remove leading zeros
     const formattedValue = e.target.value.replace(/^(-?)0+(?=\d)/, '$1')
     if (e.target.value !== formattedValue) {
@@ -97,7 +97,7 @@ const Input = ({
           : (t('common.placeholder.input') || ''))}
         value={value}
         onChange={props.type === 'number' ? handleNumberChange : onChange}
-        onBlur={props.type === 'number' ? handleNumberCommit : onBlur}
+        onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
         disabled={disabled}
         {...props}
       />
