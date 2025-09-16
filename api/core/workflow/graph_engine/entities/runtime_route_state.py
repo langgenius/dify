@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum, auto
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +23,7 @@ class RouteNodeState(BaseModel):
     node_id: str
     """node id"""
 
-    node_run_result: Optional[NodeRunResult] = None
+    node_run_result: NodeRunResult | None = None
     """node run result"""
 
     status: Status = Status.RUNNING
@@ -33,16 +32,16 @@ class RouteNodeState(BaseModel):
     start_at: datetime
     """start time"""
 
-    paused_at: Optional[datetime] = None
+    paused_at: datetime | None = None
     """paused time"""
 
-    finished_at: Optional[datetime] = None
+    finished_at: datetime | None = None
     """finished time"""
 
-    failed_reason: Optional[str] = None
+    failed_reason: str | None = None
     """failed reason"""
 
-    paused_by: Optional[str] = None
+    paused_by: str | None = None
     """paused by"""
 
     index: int = 1

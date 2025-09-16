@@ -5,10 +5,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import httpx
 import json
-from common import config_helper
-from common import Logger
+
+import httpx
+from common import Logger, config_helper
 
 
 def login_admin() -> None:
@@ -77,16 +77,10 @@ def login_admin() -> None:
 
                 # Save token config
                 if config_helper.write_config("token_config", token_config):
-                    log.info(
-                        f"Token saved to: {config_helper.get_config_path('benchmark_state')}"
-                    )
+                    log.info(f"Token saved to: {config_helper.get_config_path('benchmark_state')}")
 
                 # Show truncated token for verification
-                token_display = (
-                    f"{access_token[:20]}..."
-                    if len(access_token) > 20
-                    else "Token saved"
-                )
+                token_display = f"{access_token[:20]}..." if len(access_token) > 20 else "Token saved"
                 log.key_value("Access token", token_display)
 
             elif response.status_code == 401:
