@@ -36,6 +36,7 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueParallelBranchRunExitedEvent,
     QueueParallelBranchRunFailedEvent,
     QueueParallelBranchRunStartedEvent,
     QueueParallelBranchRunSucceededEvent,
@@ -448,7 +449,13 @@ class AdvancedChatAppGenerateTaskPipeline:
         yield parallel_start_resp
 
     def _handle_parallel_branch_finished_events(
-        self, event: Union[QueueParallelBranchRunSucceededEvent, QueueParallelBranchRunFailedEvent], **kwargs
+        self,
+        event: Union[
+            QueueParallelBranchRunSucceededEvent,
+            QueueParallelBranchRunFailedEvent,
+            QueueParallelBranchRunExitedEvent,
+        ],
+        **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle parallel branch finished events."""
         self._ensure_workflow_initialized()
@@ -815,7 +822,14 @@ class AdvancedChatAppGenerateTaskPipeline:
             return
 
         # Handle parallel branch finished events with isinstance check
-        if isinstance(event, (QueueParallelBranchRunSucceededEvent, QueueParallelBranchRunFailedEvent)):
+        if isinstance(
+            event,
+            (
+                QueueParallelBranchRunSucceededEvent,
+                QueueParallelBranchRunFailedEvent,
+                QueueParallelBranchRunExitedEvent,
+            ),
+        ):
             yield from self._handle_parallel_branch_finished_events(
                 event,
                 graph_runtime_state=graph_runtime_state,

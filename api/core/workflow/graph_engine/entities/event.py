@@ -147,6 +147,10 @@ class ParallelBranchRunFailedEvent(BaseParallelBranchEvent):
     error: str = Field(..., description="failed reason")
 
 
+class ParallelBranchRunExitedEvent(BaseParallelBranchEvent):
+    outputs: dict = Field(default_factory=dict, description="exit outputs")
+
+
 ###########################################
 # Iteration Events
 ###########################################

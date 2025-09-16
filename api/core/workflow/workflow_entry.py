@@ -20,6 +20,7 @@ from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
+from core.workflow.nodes.exit.exceptions import WorkflowExitError
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -109,11 +110,25 @@ class WorkflowEntry:
         except GenerateTaskStoppedError:
             pass
         except Exception as e:
-            logger.exception("Unknown Error when workflow entry running")
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_event(event=GraphRunFailedEvent(error=str(e)))
-            return
+            if isinstance(e, WorkflowExitError):
+                # For EXIT nodes, generate success event
+                from core.workflow.graph_engine.entities.event import (
+                    GraphRunSucceededEvent,
+                )
+
+                exit_event = GraphRunSucceededEvent(outputs=e.outputs)
+
+                if callbacks:
+                    for callback in callbacks:
+                        callback.on_event(event=exit_event)
+                yield exit_event
+                return
+            else:
+                logger.exception("Unknown Error when workflow entry running")
+                if callbacks:
+                    for callback in callbacks:
+                        callback.on_event(event=GraphRunFailedEvent(error=str(e)))
+                return
 
     @classmethod
     def single_step_run(

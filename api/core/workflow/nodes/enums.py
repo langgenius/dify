@@ -4,6 +4,7 @@ from enum import StrEnum
 class NodeType(StrEnum):
     START = "start"
     END = "end"
+    EXIT = "exit"
     ANSWER = "answer"
     LLM = "llm"
     KNOWLEDGE_RETRIEVAL = "knowledge-retrieval"

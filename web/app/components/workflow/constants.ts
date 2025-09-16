@@ -14,6 +14,7 @@ import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
 import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
+import ExitNodeDefault from './nodes/exit/default'
 import IterationDefault from './nodes/iteration/default'
 import LoopDefault from './nodes/loop/default'
 import DocExtractorDefault from './nodes/document-extractor/default'
@@ -51,6 +52,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: EndNodeDefault.getAvailablePrevNodes,
     getAvailableNextNodes: EndNodeDefault.getAvailableNextNodes,
     checkValid: EndNodeDefault.checkValid,
+  },
+  [BlockEnum.Exit]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: ExitNodeDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: ExitNodeDefault.getAvailableNextNodes,
+    checkValid: ExitNodeDefault.checkValid,
   },
   [BlockEnum.Answer]: {
     author: 'Dify',
@@ -256,6 +266,12 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     ...EndNodeDefault.defaultValue,
+  },
+  [BlockEnum.Exit]: {
+    type: BlockEnum.Exit,
+    title: '',
+    desc: '',
+    ...ExitNodeDefault.defaultValue,
   },
   [BlockEnum.Answer]: {
     type: BlockEnum.Answer,

@@ -4,6 +4,8 @@ import StartNode from './start/node'
 import StartPanel from './start/panel'
 import EndNode from './end/node'
 import EndPanel from './end/panel'
+import ExitNode from './exit/node'
+import ExitPanel from './exit/panel'
 import AnswerNode from './answer/node'
 import AnswerPanel from './answer/panel'
 import LLMNode from './llm/node'
@@ -43,6 +45,7 @@ import { TransferMethod } from '@/types/app'
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
   [BlockEnum.End]: EndNode,
+  [BlockEnum.Exit]: ExitNode,
   [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalNode,
@@ -66,6 +69,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartPanel,
   [BlockEnum.End]: EndPanel,
+  [BlockEnum.Exit]: ExitPanel,
   [BlockEnum.Answer]: AnswerPanel,
   [BlockEnum.LLM]: LLMPanel,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalPanel,

@@ -21,6 +21,7 @@ import type { PluginMeta } from '../plugins/types'
 export enum BlockEnum {
   Start = 'start',
   End = 'end',
+  Exit = 'exit',
   Answer = 'answer',
   LLM = 'llm',
   KnowledgeRetrieval = 'knowledge-retrieval',
