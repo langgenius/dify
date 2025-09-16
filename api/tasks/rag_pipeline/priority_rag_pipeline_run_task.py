@@ -103,7 +103,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
 
-            with Session(db.engine) as session:
+            with Session(db.engine, expire_on_commit=False) as session:
                 # Load required entities
                 account = session.query(Account).filter(Account.id == user_id).first()
                 if not account:
@@ -144,30 +144,30 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
                 )
 
-                # Set the user directly in g for preserve_flask_contexts
-                g._login_user = account
+            # Set the user directly in g for preserve_flask_contexts
+            g._login_user = account
 
-                # Copy context for passing to pipeline generator
-                context = contextvars.copy_context()
+            # Copy context for passing to pipeline generator
+            context = contextvars.copy_context()
 
-                # Direct execution without creating another thread
-                # Since we're already in a thread pool, no need for nested threading
-                from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+            # Direct execution without creating another thread
+            # Since we're already in a thread pool, no need for nested threading
+            from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-                pipeline_generator = PipelineGenerator()
-                pipeline_generator._generate(
-                    flask_app=flask_app,
-                    context=context,
-                    pipeline=pipeline,
-                    workflow_id=workflow_id,
-                    user=account,
-                    application_generate_entity=entity,
-                    invoke_from=InvokeFrom.PUBLISHED,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
-                    streaming=streaming,
-                    workflow_thread_pool_id=workflow_thread_pool_id,
-                )
+            pipeline_generator = PipelineGenerator()
+            pipeline_generator._generate(
+                flask_app=flask_app,
+                context=context,
+                pipeline=pipeline,
+                workflow_id=workflow_id,
+                user=account,
+                application_generate_entity=entity,
+                invoke_from=InvokeFrom.PUBLISHED,
+                workflow_execution_repository=workflow_execution_repository,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+                streaming=streaming,
+                workflow_thread_pool_id=workflow_thread_pool_id,
+            )
         except Exception:
             logging.exception("Error in priority pipeline task")
             raise

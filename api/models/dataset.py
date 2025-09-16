@@ -10,7 +10,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, cast
+from typing import Any, cast, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
