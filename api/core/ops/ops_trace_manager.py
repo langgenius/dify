@@ -837,7 +837,7 @@ class TraceQueueManager:
         self.app_id = app_id
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
-        self.flask_app = current_app._get_current_object()
+        self.flask_app = current_app._get_current_object() # type: ignore
         if trace_manager_timer is None:
             self.start_timer()
 

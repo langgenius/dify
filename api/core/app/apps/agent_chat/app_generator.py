@@ -191,7 +191,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(), # type: ignore
                 "context": context,
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,

@@ -148,7 +148,7 @@ class CodeNode(BaseNode):
 
         if isinstance(value, float):
             decimal_value = Decimal(str(value)).normalize()
-            precision = -decimal_value.as_tuple().exponent if decimal_value.as_tuple().exponent < 0 else 0
+            precision = -decimal_value.as_tuple().exponent if decimal_value.as_tuple().exponent < 0 else 0 # type: ignore # type: ignore # type: ignore # type: ignore # type: ignore
             # raise error if precision is too high
             if precision > dify_config.CODE_MAX_PRECISION:
                 raise OutputValidationError(

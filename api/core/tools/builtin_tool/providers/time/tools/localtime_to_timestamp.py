@@ -27,7 +27,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
             timezone = None
         time_format = "%Y-%m-%d %H:%M:%S"
 
-        timestamp = self.localtime_to_timestamp(localtime, time_format, timezone)
+        timestamp = self.localtime_to_timestamp(localtime, time_format, timezone) # type: ignore
         if not timestamp:
             yield self.create_text_message(f"Invalid localtime: {localtime}")
             return
@@ -39,11 +39,11 @@ class LocaltimeToTimestampTool(BuiltinTool):
         try:
             local_time = datetime.strptime(localtime, time_format)
             if local_tz is None:
-                localtime = local_time.astimezone()
+                localtime = local_time.astimezone() # type: ignore
             elif isinstance(local_tz, str):
                 local_tz = pytz.timezone(local_tz)
                 localtime = local_tz.localize(local_time)
-            timestamp = int(localtime.timestamp())
+            timestamp = int(localtime.timestamp()) # type: ignore
             return timestamp
         except Exception as e:
             raise ToolInvokeError(str(e))

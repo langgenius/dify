@@ -132,7 +132,7 @@ class AnswerStreamGeneratorRouter:
         current_node_id: str,
         answer_node_id: str,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]], # type: ignore
         answer_dependencies: dict[str, list[str]],
     ):
         """

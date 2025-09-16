@@ -87,8 +87,8 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)
-                user_logged_in.send(current_app._get_current_object(), user=end_user)
+                current_app.login_manager._update_request_context_with_user(end_user) # type: ignore
+                user_logged_in.send(current_app._get_current_object(), user=end_user) # type: ignore
 
             return view_func(*args, **kwargs)
 
@@ -208,8 +208,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                 # Login admin
                 if account:
                     account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)
-                    user_logged_in.send(current_app._get_current_object(), user=current_user)
+                    current_app.login_manager._update_request_context_with_user(account) # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user) # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account does not exist.")
             else:

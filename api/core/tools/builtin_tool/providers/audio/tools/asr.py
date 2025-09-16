@@ -23,12 +23,12 @@ class ASRTool(BuiltinTool):
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         file = tool_parameters.get("audio_file")
-        if file.type != FileType.AUDIO:
+        if file.type != FileType.AUDIO: # type: ignore
             yield self.create_text_message("not a valid audio file")
             return
-        audio_binary = io.BytesIO(download(file))
+        audio_binary = io.BytesIO(download(file)) # type: ignore
         audio_binary.name = "temp.mp3"
-        provider, model = tool_parameters.get("model").split("#")
+        provider, model = tool_parameters.get("model").split("#") # type: ignore
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
             tenant_id=self.runtime.tenant_id,

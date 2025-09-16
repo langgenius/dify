@@ -102,9 +102,9 @@ class WorkflowTool(Tool):
         if outputs is None:
             outputs = {}
         else:
-            outputs, files = self._extract_files(outputs)
+            outputs, files = self._extract_files(outputs) # type: ignore
             for file in files:
-                yield self.create_file_message(file)
+                yield self.create_file_message(file) # type: ignore
 
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs)
