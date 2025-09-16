@@ -37,6 +37,14 @@ const translation = {
     helpText: 'Aprenda a escribir una buena descripción del conjunto de datos.',
     upgradeHighQualityTip: 'Una vez que se actualiza al modo de alta calidad, no está disponible volver al modo económico',
     searchModel: 'Buscar modelo',
+    chunkStructure: {
+      learnMore: 'Aprende más',
+      description: 'sobre la estructura de fragmentos.',
+      title: 'Estructura de fragmentos',
+    },
+    numberOfKeywords: 'Número de palabras clave',
+    nameAndIcon: 'Nombre e icono',
+    onSearchResults: 'Ningún miembro coincide con su consulta de búsqueda.\nIntente su búsqueda nuevamente.',
   },
 }
 

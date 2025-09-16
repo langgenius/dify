@@ -9,12 +9,17 @@ from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import FileSegment, ObjectSegment
-from core.variables.variables import VariableUnion
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.variables.variables import RAGPipelineVariableInput, VariableUnion
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
 
-VariableValue = Union[str, int, float, dict, list, File]
+VariableValue = Union[str, int, float, dict[str, object], list[object], File]
 
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
@@ -40,10 +45,14 @@ class VariablePool(BaseModel):
     )
     environment_variables: Sequence[VariableUnion] = Field(
         description="Environment variables.",
-        default_factory=list,
+        default_factory=list[VariableUnion],
     )
     conversation_variables: Sequence[VariableUnion] = Field(
         description="Conversation variables.",
+        default_factory=list[VariableUnion],
+    )
+    rag_pipeline_variables: list[RAGPipelineVariableInput] = Field(
+        description="RAG pipeline variables.",
         default_factory=list,
     )
 
@@ -56,6 +65,16 @@ class VariablePool(BaseModel):
         # Add conversation variables to the variable pool
         for var in self.conversation_variables:
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
+        # Add rag pipeline variables to the variable pool
+        if self.rag_pipeline_variables:
+            rag_pipeline_variables_map: defaultdict[Any, dict[Any, Any]] = defaultdict(dict)
+            for rag_var in self.rag_pipeline_variables:
+                node_id = rag_var.variable.belong_to_node_id
+                key = rag_var.variable.variable
+                value = rag_var.value
+                rag_pipeline_variables_map[node_id][key] = value
+            for key, value in rag_pipeline_variables_map.items():
+                self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
 
     def add(self, selector: Sequence[str], value: Any, /):
         """
@@ -191,7 +210,7 @@ class VariablePool(BaseModel):
 
     def convert_template(self, template: str, /):
         parts = VARIABLE_PATTERN.split(template)
-        segments = []
+        segments: list[Segment] = []
         for part in filter(lambda x: x, parts):
             if "." in part and (variable := self.get(part.split("."))):
                 segments.append(variable)

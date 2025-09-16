@@ -491,6 +491,14 @@ const translation = {
       modelCredentials: 'Credențiale model',
       specifyModelCredentialTip: 'Utilizați un acreditiv de model configurat.',
       addNewModelCredential: 'Adăugați acreditive noi pentru model',
+      modelCredential: 'Model de acreditare',
+      removeModel: 'Eliminați modelul',
+      addModel: 'Adăugați model',
+      selectModelCredential: 'Selectați o acreditare model',
+      editModelCredential: 'Editarea acreditării modelului',
+      customModelCredentials: 'Acreditări model personalizate',
+      manageCredentials: 'Gestionați acreditările',
+      customModelCredentialsDeleteTip: 'Acreditarea este în uz și nu poate fi ștearsă',
     },
   },
   dataSource: {
@@ -590,6 +598,7 @@ const translation = {
     viewDoc: 'Vizualizați documentația',
     relatedApp: 'aplicații asociate',
     noRelatedApp: 'Fără aplicații conectate',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Vorbiți acum...',
@@ -748,6 +757,9 @@ const translation = {
     subtitle: 'Te rog să ne spui ce a mers prost cu acest răspuns',
     placeholder: 'Vă rugăm să descrieți ce a mers prost sau cum putem îmbunătăți...',
     title: 'Oferiți feedback',
+  },
+  label: {
+    optional: '(opțional)',
   },
 }
 

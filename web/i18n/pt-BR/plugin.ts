@@ -6,6 +6,7 @@ const translation = {
     models: 'Modelos',
     agents: 'Estratégias do agente',
     tools: 'Ferramentas',
+    datasources: 'Fontes de dados',
   },
   categorySingle: {
     model: 'Modelo',
@@ -13,6 +14,7 @@ const translation = {
     agent: 'Estratégia do agente',
     extension: 'Extensão',
     tool: 'Ferramenta',
+    datasource: 'Fonte de dados',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     unavailable: 'Indisponível',
     credentialUnavailable: 'Credenciais atualmente indisponíveis. Por favor, contate o administrador.',
     credentialUnavailableInButton: 'Credencial indisponível',
+    emptyAuth: 'Configure a autenticação',
+    connectedWorkspace: 'Espaço de trabalho conectado',
   },
   deprecated: 'Obsoleto',
   autoUpdate: {

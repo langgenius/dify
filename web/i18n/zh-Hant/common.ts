@@ -490,6 +490,15 @@ const translation = {
       unAuthorized: '未經授權',
       authorizationError: '授權錯誤',
       providerManagedTip: '當前的配置由提供者主辦。',
+      manageCredentials: '管理憑證',
+      addModel: '新增模型',
+      removeModel: '移除模型',
+      editModelCredential: '編輯模型認證',
+      customModelCredentialsDeleteTip: '認證正在使用中，無法刪除',
+      modelCredential: '模型認證',
+      customModelCredentials: '自訂模型認證',
+      addNewModelCredential: '新增模型認證',
+      selectModelCredential: '選取模型認證',
     },
   },
   dataSource: {
@@ -589,6 +598,7 @@ const translation = {
     viewDoc: '檢視文件',
     relatedApp: '個關聯應用',
     noRelatedApp: '沒有連結的應用程式',
+    pipeline: '管道',
   },
   voiceInput: {
     speaking: '現在講...',
@@ -747,6 +757,9 @@ const translation = {
     content: '反饋內容',
     placeholder: '請描述發生了什麼問題或我們可以如何改進...',
     subtitle: '請告訴我們這個回應出了什麼問題',
+  },
+  label: {
+    optional: '（選用）',
   },
 }
 

@@ -1,3 +1,4 @@
+import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
@@ -53,6 +54,7 @@ from fields.document_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 
@@ -499,6 +501,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         return response, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(DocumentResource):
     @setup_required
     @login_required
@@ -541,6 +544,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
                     notion_info={
+                        "credential_id": data_source_info["credential_id"],
                         "notion_workspace_id": data_source_info["notion_workspace_id"],
                         "notion_obj_id": data_source_info["notion_page_id"],
                         "notion_page_type": data_source_info["type"],
@@ -591,6 +595,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise IndexingEstimateError(str(e))
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 class DocumentBatchIndexingStatusApi(DocumentResource):
     @setup_required
     @login_required
@@ -714,7 +719,7 @@ class DocumentApi(DocumentResource):
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -910,6 +915,7 @@ class DocumentMetadataApi(DocumentResource):
         return {"result": "success", "message": "Document metadata updated."}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(DocumentResource):
     @setup_required
     @login_required
@@ -946,6 +952,7 @@ class DocumentStatusApi(DocumentResource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
 class DocumentPauseApi(DocumentResource):
     @setup_required
     @login_required
@@ -979,6 +986,7 @@ class DocumentPauseApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 class DocumentRecoverApi(DocumentResource):
     @setup_required
     @login_required
@@ -1009,6 +1017,7 @@ class DocumentRecoverApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(DocumentResource):
     @setup_required
     @login_required
@@ -1052,6 +1061,7 @@ class DocumentRetryApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 class DocumentRenameApi(DocumentResource):
     @setup_required
     @login_required
@@ -1075,6 +1085,7 @@ class DocumentRenameApi(DocumentResource):
         return document
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
 class WebsiteDocumentSyncApi(DocumentResource):
     @setup_required
     @login_required
@@ -1100,3 +1111,64 @@ class WebsiteDocumentSyncApi(DocumentResource):
         DocumentService.sync_website_document(dataset_id, document)
 
         return {"result": "success"}, 200
+
+
+class DocumentPipelineExecutionLogApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        log = (
+            db.session.query(DocumentPipelineExecutionLog)
+            .filter_by(document_id=document_id)
+            .order_by(DocumentPipelineExecutionLog.created_at.desc())
+            .first()
+        )
+        if not log:
+            return {
+                "datasource_info": None,
+                "datasource_type": None,
+                "input_data": None,
+                "datasource_node_id": None,
+            }, 200
+        return {
+            "datasource_info": json.loads(log.datasource_info),
+            "datasource_type": log.datasource_type,
+            "input_data": log.input_data,
+            "datasource_node_id": log.datasource_node_id,
+        }, 200
+
+
+api.add_resource(GetProcessRuleApi, "/datasets/process-rule")
+api.add_resource(DatasetDocumentListApi, "/datasets/<uuid:dataset_id>/documents")
+api.add_resource(DatasetInitApi, "/datasets/init")
+api.add_resource(
+    DocumentIndexingEstimateApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate"
+)
+api.add_resource(DocumentBatchIndexingEstimateApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
+api.add_resource(DocumentBatchIndexingStatusApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
+api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
+api.add_resource(DocumentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
+api.add_resource(
+    DocumentProcessingApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>"
+)
+api.add_resource(DocumentMetadataApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
+api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
+api.add_resource(DocumentPauseApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
+api.add_resource(DocumentRecoverApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
+api.add_resource(DocumentRetryApi, "/datasets/<uuid:dataset_id>/retry")
+api.add_resource(DocumentRenameApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
+
+api.add_resource(WebsiteDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
+api.add_resource(
+    DocumentPipelineExecutionLogApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log"
+)

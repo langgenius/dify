@@ -36,7 +36,6 @@ from core.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -51,6 +50,7 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 
@@ -1028,7 +1028,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type == FormType.SECRET_INPUT:
+            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
