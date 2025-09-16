@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from threading import Thread
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

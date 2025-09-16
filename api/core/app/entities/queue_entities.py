@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 

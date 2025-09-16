@@ -1,7 +1,7 @@
 import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy.orm import Session
 

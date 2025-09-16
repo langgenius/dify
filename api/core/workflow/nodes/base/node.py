@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Union
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
