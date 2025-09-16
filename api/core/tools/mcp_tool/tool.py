@@ -119,23 +119,39 @@ class MCPTool(Tool):
         tool_parameters = self._handle_none_parameter(tool_parameters)
 
         # Get provider entity to access tokens
-        from sqlalchemy.orm import Session
+        from typing import TYPE_CHECKING
 
-        from extensions.ext_database import db
-        from services.tools.mcp_oauth_service import MCPOAuthService
+        if TYPE_CHECKING:
+            pass
 
-        try:
+        # Get MCP service from invoke parameters or create new one
+        provider_entity = None
+        mcp_service = None
+
+        # Check if mcp_service is passed in tool_parameters
+        if "_mcp_service" in tool_parameters:
+            mcp_service = tool_parameters.pop("_mcp_service")
+        else:
+            # Fallback to creating service with database session
+            from sqlalchemy.orm import Session
+
+            from extensions.ext_database import db
+            from services.tools.mcp_tools_manage_service import MCPToolManageService
+
             with Session(db.engine) as session:
-                oauth_service = MCPOAuthService(session=session)
-                provider_entity = oauth_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
+                mcp_service = MCPToolManageService(session=session)
+
+        if mcp_service:
+            try:
+                provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
 
                 # Try to get existing token and add to headers
                 tokens = provider_entity.retrieve_tokens()
                 if tokens and tokens.access_token:
                     headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
-        except Exception:
-            # If provider retrieval or token fails, continue without auth
-            pass
+            except Exception:
+                # If provider retrieval or token fails, continue without auth
+                pass
 
         # Use MCPClientWithAuthRetry to handle authentication automatically
         try:
@@ -145,8 +161,9 @@ class MCPTool(Tool):
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
                 provider_entity=provider_entity,
-                auth_callback=auth,
+                auth_callback=auth if mcp_service else None,
                 by_server_id=True,
+                mcp_service=mcp_service,
             ) as mcp_client:
                 return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
         except MCPConnectionError as e:

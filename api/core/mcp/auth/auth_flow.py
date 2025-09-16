@@ -4,12 +4,11 @@ import json
 import os
 import secrets
 import urllib.parse
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urljoin, urlparse
 
 import httpx
 from pydantic import BaseModel, ValidationError
-from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.types import (
@@ -20,9 +19,10 @@ from core.mcp.types import (
     OAuthMetadata,
     OAuthTokens,
 )
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from services.tools.mcp_oauth_service import MCPOAuthService
+
+if TYPE_CHECKING:
+    from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 OAUTH_STATE_EXPIRY_SECONDS = 5 * 60  # 5 minutes expiry
 OAUTH_STATE_REDIS_KEY_PREFIX = "oauth_state:"
@@ -84,7 +84,7 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
         raise ValueError(f"Invalid state parameter: {str(e)}")
 
 
-def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackState:
+def handle_callback(state_key: str, authorization_code: str, mcp_service: "MCPToolManageService") -> OAuthCallbackState:
     """Handle the callback from the OAuth provider."""
     # Retrieve state data from Redis (state is automatically deleted after retrieval)
     full_state_data = _retrieve_redis_state(state_key)
@@ -99,10 +99,7 @@ def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackSta
     )
 
     # Save tokens using the service layer
-    with Session(db.engine) as session:
-        oauth_service = MCPOAuthService(session=session)
-        oauth_service.save_tokens(full_state_data.provider_id, full_state_data.tenant_id, tokens)
-        session.commit()
+    mcp_service.save_oauth_data(full_state_data.provider_id, full_state_data.tenant_id, tokens.model_dump(), "tokens")
 
     return full_state_data
 
@@ -304,6 +301,7 @@ def register_client(
 
 def auth(
     provider: MCPProviderEntity,
+    mcp_service: "MCPToolManageService",
     authorization_code: Optional[str] = None,
     state_param: Optional[str] = None,
 ) -> dict[str, str]:
@@ -325,10 +323,9 @@ def auth(
             raise ValueError(f"Could not register OAuth client: {e}")
 
         # Save client information using service layer
-        with Session(db.engine) as session:
-            oauth_service = MCPOAuthService(session=session)
-            oauth_service.save_client_information(provider_id, tenant_id, full_information)
-            session.commit()
+        mcp_service.save_oauth_data(
+            provider_id, tenant_id, {"client_information": full_information.model_dump()}, "client_info"
+        )
 
         client_information = full_information
 
@@ -360,10 +357,7 @@ def auth(
         )
 
         # Save tokens using service layer
-        with Session(db.engine) as session:
-            oauth_service = MCPOAuthService(session=session)
-            oauth_service.save_tokens(provider_id, tenant_id, tokens)
-            session.commit()
+        mcp_service.save_oauth_data(provider_id, tenant_id, tokens.model_dump(), "tokens")
 
         return {"result": "success"}
 
@@ -377,10 +371,7 @@ def auth(
             )
 
             # Save new tokens using service layer
-            with Session(db.engine) as session:
-                oauth_service = MCPOAuthService(session=session)
-                oauth_service.save_tokens(provider_id, tenant_id, new_tokens)
-                session.commit()
+            mcp_service.save_oauth_data(provider_id, tenant_id, new_tokens.model_dump(), "tokens")
 
             return {"result": "success"}
         except Exception as e:
@@ -397,9 +388,6 @@ def auth(
     )
 
     # Save code verifier using service layer
-    with Session(db.engine) as session:
-        oauth_service = MCPOAuthService(session=session)
-        oauth_service.save_code_verifier(provider_id, tenant_id, code_verifier)
-        session.commit()
+    mcp_service.save_oauth_data(provider_id, tenant_id, {"code_verifier": code_verifier}, "code_verifier")
 
     return {"authorization_url": authorization_url}

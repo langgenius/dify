@@ -8,15 +8,15 @@ authentication failures and retries operations after refreshing tokens.
 import logging
 from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Optional
-
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING, Any, Optional
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.error import MCPAuthError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import CallToolResult, Tool
-from extensions.ext_database import db
+
+if TYPE_CHECKING:
+    from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,11 @@ class MCPClientWithAuthRetry:
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
         provider_entity: MCPProviderEntity | None = None,
-        auth_callback: Callable[[MCPProviderEntity, Optional[str]], dict[str, str]] | None = None,
+        auth_callback: Callable[[MCPProviderEntity, "MCPToolManageService", Optional[str]], dict[str, str]]
+        | None = None,
         authorization_code: Optional[str] = None,
         by_server_id: bool = False,
+        mcp_service: Optional["MCPToolManageService"] = None,
     ):
         """
         Initialize the MCP client with auth retry capability.
@@ -62,6 +64,7 @@ class MCPClientWithAuthRetry:
         self._has_retried = False
         self._client: MCPClient | None = None
         self.by_server_id = by_server_id
+        self.mcp_service = mcp_service
 
     def _create_client(self) -> MCPClient:
         """Create a new MCPClient instance with current headers."""
@@ -82,11 +85,8 @@ class MCPClientWithAuthRetry:
         Raises:
             MCPAuthError: If authentication fails or max retries reached
         """
-        from services.tools.mcp_oauth_service import MCPOAuthService
-
-        if not self.provider_entity or not self.auth_callback:
+        if not self.provider_entity or not self.auth_callback or not self.mcp_service:
             raise error
-
         if self._has_retried:
             raise error
 
@@ -94,14 +94,12 @@ class MCPClientWithAuthRetry:
 
         try:
             # Perform authentication
-            self.auth_callback(self.provider_entity, self.authorization_code)
+            self.auth_callback(self.provider_entity, self.mcp_service, self.authorization_code)
 
             # Retrieve new tokens
-            with Session(db.engine) as session:
-                oauth_service = MCPOAuthService(session=session)
-                self.provider_entity = oauth_service.get_provider_entity(
-                    self.provider_entity.id, self.provider_entity.tenant_id, by_server_id=self.by_server_id
-                )
+            self.provider_entity = self.mcp_service.get_provider_entity(
+                self.provider_entity.id, self.provider_entity.tenant_id, by_server_id=self.by_server_id
+            )
             token = self.provider_entity.retrieve_tokens()
             if not token:
                 raise MCPAuthError("Authentication failed - no token received")

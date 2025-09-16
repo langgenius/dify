@@ -956,7 +956,7 @@ class ToolMCPAuthApi(Resource):
 
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
-            db_provider = service.get_provider_by_id(provider_id, tenant_id)
+            db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
             if not db_provider:
                 raise ValueError("provider not found")
 
@@ -984,6 +984,7 @@ class ToolMCPAuthApi(Resource):
                     else None,  # Only use auth retry if no custom headers
                     auth_callback=auth if not provider_entity.headers else None,
                     authorization_code=args.get("authorization_code"),
+                    mcp_service=service,
                 ):
                     service.update_provider_credentials(
                         provider=db_provider,
@@ -1007,7 +1008,7 @@ class ToolMCPDetailApi(Resource):
         user = current_user
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
-            provider = service.get_provider_by_id(provider_id, user.current_tenant_id)
+            provider = service.get_provider(provider_id=provider_id, tenant_id=user.current_tenant_id)
             return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
 
 
@@ -1049,7 +1050,13 @@ class ToolMCPCallbackApi(Resource):
         args = parser.parse_args()
         state_key = args["state"]
         authorization_code = args["code"]
-        handle_callback(state_key, authorization_code)
+
+        # Create service instance for handle_callback
+        with Session(db.engine) as session:
+            mcp_service = MCPToolManageService(session=session)
+            handle_callback(state_key, authorization_code, mcp_service)
+            session.commit()
+
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 

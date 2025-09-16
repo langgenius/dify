@@ -775,7 +775,7 @@ class ToolManager:
         with Session(db.engine) as session:
             mcp_service = MCPToolManageService(session=session)
             try:
-                provider = mcp_service.get_provider_by_server_identifier(provider_id, tenant_id)
+                provider = mcp_service.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
             except ValueError:
                 raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
@@ -918,7 +918,9 @@ class ToolManager:
             with Session(db.engine) as session:
                 mcp_service = MCPToolManageService(session=session)
                 try:
-                    mcp_provider = mcp_service.get_provider_by_server_identifier(provider_id, tenant_id)
+                    mcp_provider = mcp_service.get_provider_entity(
+                        provider_id=provider_id, tenant_id=tenant_id, by_server_id=True
+                    )
                     return mcp_provider.provider_icon
                 except ValueError:
                     raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
