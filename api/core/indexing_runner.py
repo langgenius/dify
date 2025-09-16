@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from flask import current_app
 from sqlalchemy import select
@@ -230,9 +230,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: dict,
-        doc_form: Optional[str] = None,
+        doc_form: str | None = None,
         doc_language: str = "English",
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
         indexing_technique: str = "economy",
     ) -> IndexingEstimate:
         """
@@ -421,7 +421,7 @@ class IndexingRunner:
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -655,7 +655,7 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
+        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
     ):
         """
         Update the document indexing status.
