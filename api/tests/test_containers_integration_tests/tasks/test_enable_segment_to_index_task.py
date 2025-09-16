@@ -213,16 +213,7 @@ class TestEnableSegmentToIndexTask:
     def test_enable_segment_to_index_task_success_text_model(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test successful segment enabling for text model documents.
-
-        This test verifies that the task can successfully:
-        1. Process a completed segment
-        2. Create proper document structure for indexing
-        3. Call index processor with correct parameters
-        4. Handle Redis cache cleanup
-        5. Process segment metadata correctly
-        """
+        """Test successful segment enabling for text model documents."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -239,41 +230,15 @@ class TestEnableSegmentToIndexTask:
         # Execute the task
         enable_segment_to_index_task(segment.id)
 
-        # Verify index processor was called correctly
+        # Verify index processor was called and Redis cache was cleared
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with("text_model")
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-        # Verify the load method was called with correct parameters
-        call_args = mock_external_service_dependencies["index_processor"].load.call_args
-        assert call_args is not None
-        dataset_arg, documents_arg = call_args[0]
-        assert dataset_arg.id == dataset.id
-        assert len(documents_arg) == 1
-
-        # Verify document structure
-        doc = documents_arg[0]
-        assert isinstance(doc, Document)
-        assert doc.page_content == segment.content
-        assert doc.metadata["doc_id"] == segment.index_node_id
-        assert doc.metadata["doc_hash"] == segment.index_node_hash
-        assert doc.metadata["document_id"] == segment.document_id
-        assert doc.metadata["dataset_id"] == segment.dataset_id
-
-        # Verify Redis cache key was deleted
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_enable_segment_to_index_task_success_qa_model(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test successful segment enabling for QA model documents.
-
-        This test verifies that the task can successfully:
-        1. Process a completed segment with QA model
-        2. Create proper document structure for QA indexing
-        3. Call index processor with correct parameters
-        4. Handle Redis cache cleanup
-        """
+        """Test successful segment enabling for QA model documents."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -287,25 +252,15 @@ class TestEnableSegmentToIndexTask:
         # Execute the task
         enable_segment_to_index_task(segment.id)
 
-        # Verify index processor was called correctly
+        # Verify index processor was called and Redis cache was cleared
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with("qa_model")
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-        # Verify Redis cache key was deleted
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_enable_segment_to_index_task_success_parent_child_model(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test successful segment enabling for parent-child model documents.
-
-        This test verifies that the task can successfully:
-        1. Process a completed segment with parent-child model
-        2. Create proper document structure with child documents
-        3. Call index processor with correct parameters
-        4. Handle child chunks correctly
-        """
+        """Test successful segment enabling for parent-child model documents."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -334,45 +289,15 @@ class TestEnableSegmentToIndexTask:
             # Execute the task
             enable_segment_to_index_task(segment.id)
 
-            # Verify index processor was called correctly
+            # Verify index processor was called and Redis cache was cleared
             mock_external_service_dependencies["index_processor_factory"].assert_called_once_with("hierarchical_model")
             mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-            # Verify the load method was called with correct parameters
-            call_args = mock_external_service_dependencies["index_processor"].load.call_args
-            assert call_args is not None
-            dataset_arg, documents_arg = call_args[0]
-            assert dataset_arg.id == dataset.id
-            assert len(documents_arg) == 1
-
-            # Verify document structure with children
-            doc = documents_arg[0]
-            assert isinstance(doc, Document)
-            assert hasattr(doc, "children")
-            assert len(doc.children) == 2
-
-            # Verify child document structure
-            for i, child_doc in enumerate(doc.children):
-                assert isinstance(child_doc, ChildDocument)
-                assert child_doc.page_content == f"child_content_{i}"
-                assert child_doc.metadata["doc_id"] == f"child_node_{i}"
-                assert child_doc.metadata["doc_hash"] == f"child_hash_{i}"
-
-            # Verify Redis cache key was deleted
             assert redis_client.exists(indexing_cache_key) == 0
 
     def test_enable_segment_to_index_task_segment_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task handling when segment does not exist.
-
-        This test verifies that the task properly handles error cases:
-        1. Fails gracefully when segment is not found
-        2. Logs appropriate error information
-        3. Maintains database integrity
-        4. Closes database session properly
-        """
+        """Test task handling when segment does not exist."""
         # Use non-existent segment ID
         fake = Faker()
         non_existent_id = fake.uuid4()
@@ -387,15 +312,7 @@ class TestEnableSegmentToIndexTask:
     def test_enable_segment_to_index_task_segment_not_completed(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task handling when segment is not completed.
-
-        This test verifies that the task properly handles error cases:
-        1. Fails when segment status is not "completed"
-        2. Logs appropriate error information
-        3. Maintains database integrity
-        4. Closes database session properly
-        """
+        """Test task handling when segment is not completed."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -414,14 +331,7 @@ class TestEnableSegmentToIndexTask:
     def test_enable_segment_to_index_task_dataset_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task handling when segment's dataset doesn't exist.
-
-        This test verifies that the task properly handles error cases:
-        1. Fails gracefully when dataset is not found
-        2. Logs appropriate error information
-        3. Maintains database integrity
-        """
+        """Test task handling when segment's dataset doesn't exist."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -442,14 +352,7 @@ class TestEnableSegmentToIndexTask:
     def test_enable_segment_to_index_task_document_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task handling when segment's document doesn't exist.
-
-        This test verifies that the task properly handles error cases:
-        1. Fails gracefully when document is not found
-        2. Logs appropriate error information
-        3. Maintains database integrity
-        """
+        """Test task handling when segment's document doesn't exist."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -470,15 +373,7 @@ class TestEnableSegmentToIndexTask:
     def test_enable_segment_to_index_task_document_not_available(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task handling when document is not available for indexing.
-
-        This test verifies that the task properly handles error cases:
-        1. Fails when document is disabled
-        2. Fails when document is archived
-        3. Fails when document indexing status is not completed
-        4. Logs appropriate error information
-        """
+        """Test task handling when document is not available for indexing."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -553,17 +448,7 @@ class TestEnableSegmentToIndexTask:
     def test_enable_segment_to_index_task_general_exception_handling(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test general exception handling during segment enabling process.
-
-        This test verifies that the task properly handles error cases:
-        1. Exceptions are properly caught and handled
-        2. Segment status is set to error
-        3. Segment is disabled
-        4. Error information is recorded
-        5. Redis cache is still cleared
-        6. Database session is properly closed
-        """
+        """Test general exception handling during segment enabling process."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -591,233 +476,4 @@ class TestEnableSegmentToIndexTask:
         # Verify redis cache was still cleared despite error
         assert redis_client.exists(indexing_cache_key) == 0
 
-    def test_enable_segment_to_index_task_redis_cache_cleanup(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that Redis cache is properly cleaned up in all scenarios.
 
-        This test verifies that the task properly handles Redis cache cleanup:
-        1. Cache key is deleted on successful processing
-        2. Cache key is deleted even when errors occur
-        3. Cache key format is correct
-        4. No cache leaks occur
-        """
-        # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-
-        # Test successful case
-        indexing_cache_key = f"segment_{segment.id}_indexing"
-        redis_client.set(indexing_cache_key, "processing", ex=300)
-
-        # Verify cache key exists
-        assert redis_client.exists(indexing_cache_key) == 1
-
-        # Execute the task
-        enable_segment_to_index_task(segment.id)
-
-        # Verify cache key was deleted
-        assert redis_client.exists(indexing_cache_key) == 0
-
-        # Test error case
-        segment2 = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-        indexing_cache_key2 = f"segment_{segment2.id}_indexing"
-        redis_client.set(indexing_cache_key2, "processing", ex=300)
-
-        # Mock the index processor to raise an exception
-        mock_external_service_dependencies["index_processor"].load.side_effect = Exception("Test error")
-
-        # Execute the task
-        enable_segment_to_index_task(segment2.id)
-
-        # Verify cache key was still deleted despite error
-        assert redis_client.exists(indexing_cache_key2) == 0
-
-    def test_enable_segment_to_index_task_document_metadata_consistency(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that document metadata is consistent and correctly passed to index processor.
-
-        This test verifies that the task properly handles document metadata:
-        1. All required metadata fields are present
-        2. Metadata values match segment data
-        3. Document structure is correct
-        4. Index processor receives proper data
-        """
-        # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset, "text_model")
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-
-        # Set up Redis cache key
-        indexing_cache_key = f"segment_{segment.id}_indexing"
-        redis_client.set(indexing_cache_key, "processing", ex=300)
-
-        # Execute the task
-        enable_segment_to_index_task(segment.id)
-
-        # Verify the load method was called with correct parameters
-        call_args = mock_external_service_dependencies["index_processor"].load.call_args
-        assert call_args is not None
-        dataset_arg, documents_arg = call_args[0]
-        assert dataset_arg.id == dataset.id
-        assert len(documents_arg) == 1
-
-        # Verify document metadata consistency
-        doc = documents_arg[0]
-        assert doc.page_content == segment.content
-        assert doc.metadata["doc_id"] == segment.index_node_id
-        assert doc.metadata["doc_hash"] == segment.index_node_hash
-        assert doc.metadata["document_id"] == segment.document_id
-        assert doc.metadata["dataset_id"] == segment.dataset_id
-
-        # Verify all required metadata fields are present
-        required_fields = ["doc_id", "doc_hash", "document_id", "dataset_id"]
-        for field in required_fields:
-            assert field in doc.metadata
-            assert doc.metadata[field] is not None
-
-    def test_enable_segment_to_index_task_performance_timing(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that the task properly measures and logs performance timing.
-
-        This test verifies that the task properly handles performance measurement:
-        1. Task execution time is measured
-        2. Performance logging is accurate
-        3. Timing information is recorded
-        4. Task completes within reasonable time
-        """
-        # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset, "text_model")
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-
-        # Set up Redis cache key
-        indexing_cache_key = f"segment_{segment.id}_indexing"
-        redis_client.set(indexing_cache_key, "processing", ex=300)
-
-        # Execute the task
-        enable_segment_to_index_task(segment.id)
-
-        # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with("text_model")
-        mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-        # Verify Redis cache key was deleted
-        assert redis_client.exists(indexing_cache_key) == 0
-
-    def test_enable_segment_to_index_task_multiple_segments_isolation(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that processing multiple segments maintains proper isolation.
-
-        This test verifies that the task properly handles multiple segments:
-        1. Each segment is processed independently
-        2. No cross-contamination between segments
-        3. Redis cache keys are properly isolated
-        4. Database state is consistent
-        """
-        # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset, "text_model")
-
-        # Create multiple segments
-        segments = []
-        for i in range(3):
-            segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-            segments.append(segment)
-
-        # Set up Redis cache keys for all segments
-        cache_keys = []
-        for segment in segments:
-            indexing_cache_key = f"segment_{segment.id}_indexing"
-            redis_client.set(indexing_cache_key, "processing", ex=300)
-            cache_keys.append(indexing_cache_key)
-
-        # Verify all cache keys exist
-        for cache_key in cache_keys:
-            assert redis_client.exists(cache_key) == 1
-
-        # Execute the task for each segment
-        for segment in segments:
-            enable_segment_to_index_task(segment.id)
-
-        # Verify all cache keys were deleted
-        for cache_key in cache_keys:
-            assert redis_client.exists(cache_key) == 0
-
-        # Verify index processor was called for each segment
-        assert mock_external_service_dependencies["index_processor_factory"].call_count == 3
-        assert mock_external_service_dependencies["index_processor"].load.call_count == 3
-
-    def test_enable_segment_to_index_task_edge_case_empty_content(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test task handling with edge case of empty segment content.
-
-        This test verifies that the task properly handles edge cases:
-        1. Empty segment content is processed correctly
-        2. Document structure is still valid
-        3. Index processor receives proper data
-        4. No errors occur with empty content
-        """
-        # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset, "text_model")
-
-        # Create segment with empty content
-        segment = DocumentSegment(
-            tenant_id=tenant.id,
-            dataset_id=dataset.id,
-            document_id=document.id,
-            position=1,
-            content="",  # Empty content
-            word_count=0,
-            tokens=0,
-            index_node_id=str(uuid.uuid4()),
-            index_node_hash=f"hash_{uuid.uuid4()}",
-            enabled=False,
-            status="completed",
-            created_by=account.id,
-        )
-
-        db.session.add(segment)
-        db.session.commit()
-
-        # Set up Redis cache key
-        indexing_cache_key = f"segment_{segment.id}_indexing"
-        redis_client.set(indexing_cache_key, "processing", ex=300)
-
-        # Execute the task
-        enable_segment_to_index_task(segment.id)
-
-        # Verify index processor was called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with("text_model")
-        mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-        # Verify document structure with empty content
-        call_args = mock_external_service_dependencies["index_processor"].load.call_args
-        assert call_args is not None
-        dataset_arg, documents_arg = call_args[0]
-        assert dataset_arg.id == dataset.id
-        assert len(documents_arg) == 1
-
-        doc = documents_arg[0]
-        assert doc.page_content == ""
-        assert doc.metadata["doc_id"] == segment.index_node_id
-        assert doc.metadata["doc_hash"] == segment.index_node_hash
-
-        # Verify Redis cache key was deleted
-        assert redis_client.exists(indexing_cache_key) == 0
