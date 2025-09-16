@@ -38,7 +38,7 @@ class MCPProviderEntity(BaseModel):
     # Authentication related
     authed: bool
     credentials: dict[str, Any]  # encrypted credentials
-    code_verifier: Optional[str] = None  # for OAuth
+    code_verifier: str | None = None  # for OAuth
 
     # Tools and display info
     tools: list[dict[str, Any]]  # parsed tools list
@@ -98,7 +98,7 @@ class MCPProviderEntity(BaseModel):
             # If not JSON, assume it's a file path
             return file_helpers.get_signed_file_url(self.icon)
 
-    def to_api_response(self, user_name: Optional[str] = None) -> dict[str, Any]:
+    def to_api_response(self, user_name: str | None = None) -> dict[str, Any]:
         """Convert to API response format"""
         return {
             "id": self.id,
@@ -117,14 +117,14 @@ class MCPProviderEntity(BaseModel):
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
         }
 
-    def retrieve_client_information(self) -> Optional[OAuthClientInformation]:
+    def retrieve_client_information(self) -> OAuthClientInformation | None:
         """OAuth client information if available"""
         client_info = self.decrypt_credentials().get("client_information", {})
         if not client_info:
             return None
         return OAuthClientInformation.model_validate(client_info)
 
-    def retrieve_tokens(self) -> Optional[OAuthTokens]:
+    def retrieve_tokens(self) -> OAuthTokens | None:
         """OAuth tokens if available"""
         if not self.credentials:
             return None

@@ -33,7 +33,7 @@ class MCPToolManageService:
     # ========== Provider CRUD Operations ==========
 
     def get_provider(
-        self, *, provider_id: Optional[str] = None, server_identifier: Optional[str] = None, tenant_id: str
+        self, *, provider_id: str | None = None, server_identifier: str | None = None, tenant_id: str
     ) -> MCPToolProvider:
         """
         Get MCP provider by ID or server identifier.

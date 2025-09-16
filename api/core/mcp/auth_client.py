@@ -37,7 +37,7 @@ class MCPClientWithAuthRetry(MCPClient):
         provider_entity: MCPProviderEntity | None = None,
         auth_callback: Callable[[MCPProviderEntity, "MCPToolManageService", Optional[str]], dict[str, str]]
         | None = None,
-        authorization_code: Optional[str] = None,
+        authorization_code: str | None = None,
         by_server_id: bool = False,
         mcp_service: Optional["MCPToolManageService"] = None,
     ):
