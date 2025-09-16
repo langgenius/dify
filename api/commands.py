@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import operator
 import secrets
 from typing import Any
 
@@ -953,7 +954,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(sa.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+                conn.execute(sa.text(query), {"ids": tuple(record["id"] for record in orphaned_message_files)})
             click.echo(
                 click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
             )
@@ -1307,7 +1308,7 @@ def cleanup_orphaned_draft_variables(
 
     if dry_run:
         logger.info("DRY RUN: Would delete the following:")
-        for app_id, count in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1], reverse=True)[
+        for app_id, count in sorted(stats["orphaned_by_app"].items(), key=operator.itemgetter(1), reverse=True)[
             :10
         ]:  # Show top 10
             logger.info("  App %s: %s variables", app_id, count)
