@@ -33,6 +33,8 @@ export type InputProps = {
   ref?: React.Ref<HTMLInputElement>
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
+const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
+
 const Input = ({
   size,
   disabled,
@@ -55,7 +57,7 @@ const Input = ({
   const handleNumberChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     if (value === 0) {
       // remove leading zeros
-      const formattedValue = e.target.value.replace(/^(-?)0+(?=\d)/, '$1')
+      const formattedValue = removeLeadingZeros(e.target.value)
       if (e.target.value !== formattedValue)
         e.target.value = formattedValue
     }
@@ -63,12 +65,16 @@ const Input = ({
   }
   const handleNumberBlur: FocusEventHandler<HTMLInputElement> = (e) => {
     // remove leading zeros
-    const formattedValue = e.target.value.replace(/^(-?)0+(?=\d)/, '$1')
+    const formattedValue = removeLeadingZeros(e.target.value)
     if (e.target.value !== formattedValue) {
       e.target.value = formattedValue
       onChange({
         ...e,
         type: 'change',
+        target: {
+          ...e.target,
+          value: formattedValue,
+        },
       })
     }
     onBlur(e)
