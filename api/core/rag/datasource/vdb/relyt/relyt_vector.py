@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert
@@ -35,7 +35,7 @@ class RelytConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config RELYT_HOST is required")
         if not values["port"]:
@@ -64,7 +64,7 @@ class RelytVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.RELYT
 
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs) -> None:
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))
         self.embedding_dimension = len(embeddings[0])
         self.add_texts(texts, embeddings)
@@ -160,7 +160,7 @@ class RelytVector(BaseVector):
         else:
             return None
 
-    def delete_by_uuids(self, ids: Optional[list[str]] = None):
+    def delete_by_uuids(self, ids: list[str] | None = None):
         """Delete by vector IDs.
 
         Args:
@@ -196,7 +196,7 @@ class RelytVector(BaseVector):
         if ids:
             self.delete_by_uuids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         with Session(self.client) as session:
             ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
@@ -207,7 +207,7 @@ class RelytVector(BaseVector):
             ids = [item[0] for item in result]
             self.delete_by_uuids(ids)
 
-    def delete(self) -> None:
+    def delete(self):
         with Session(self.client) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}";"""))
             session.commit()
@@ -241,7 +241,7 @@ class RelytVector(BaseVector):
         self,
         embedding: list[float],
         k: int = 4,
-        filter: Optional[dict] = None,
+        filter: dict | None = None,
     ) -> list[tuple[Document, float]]:
         # Add the filter if provided
 

@@ -6,12 +6,12 @@ from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
 from datetime import datetime
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from flask import Flask, current_app
 
 from configs import dify_config
-from core.variables import ArrayVariable, IntegerVariable, NoneVariable
+from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.workflow.entities.node_entities import (
     NodeRunResult,
@@ -67,10 +67,10 @@ class IterationNode(BaseNode):
 
     _node_data: IterationNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = IterationNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -79,7 +79,7 @@ class IterationNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -89,7 +89,7 @@ class IterationNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: dict | None = None):
         return {
             "type": "iteration",
             "config": {
@@ -112,10 +112,10 @@ class IterationNode(BaseNode):
         if not variable:
             raise IteratorVariableNotFoundError(f"iterator variable {self._node_data.iterator_selector} not found")
 
-        if not isinstance(variable, ArrayVariable) and not isinstance(variable, NoneVariable):
+        if not isinstance(variable, ArraySegment) and not isinstance(variable, NoneSegment):
             raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
 
-        if isinstance(variable, NoneVariable) or len(variable.value) == 0:
+        if isinstance(variable, NoneSegment) or len(variable.value) == 0:
             # Try our best to preserve the type informat.
             if isinstance(variable, ArraySegment):
                 output = variable.model_copy(update={"value": []})
@@ -424,7 +424,7 @@ class IterationNode(BaseNode):
         graph_engine: "GraphEngine",
         iteration_graph: Graph,
         iter_run_map: dict[str, float],
-        parallel_mode_run_id: Optional[str] = None,
+        parallel_mode_run_id: str | None = None,
     ) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """
         run single iteration

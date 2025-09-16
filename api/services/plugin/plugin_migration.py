@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import click
@@ -33,7 +33,7 @@ excluded_providers = ["time", "audio", "code", "webscraper"]
 
 class PluginMigration:
     @classmethod
-    def extract_plugins(cls, filepath: str, workers: int) -> None:
+    def extract_plugins(cls, filepath: str, workers: int):
         """
         Migrate plugin.
         """
@@ -55,7 +55,7 @@ class PluginMigration:
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        def process_tenant(flask_app: Flask, tenant_id: str) -> None:
+        def process_tenant(flask_app: Flask, tenant_id: str):
             with flask_app.app_context():
                 nonlocal handled_tenant_count
                 try:
@@ -99,6 +99,7 @@ class PluginMigration:
                     datetime.timedelta(hours=1),
                 ]
 
+                tenant_count = 0
                 for test_interval in test_intervals:
                     tenant_count = (
                         session.query(Tenant.id)
@@ -255,7 +256,7 @@ class PluginMigration:
                 return []
 
             agent_app_model_config_ids = [
-                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT.value
+                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT
             ]
 
             rs = session.query(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
@@ -280,7 +281,7 @@ class PluginMigration:
             return result
 
     @classmethod
-    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> Optional[str]:
+    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> str | None:
         """
         Fetch plugin unique identifier using plugin id.
         """
@@ -291,7 +292,7 @@ class PluginMigration:
         return plugin_manifest[0].latest_package_identifier
 
     @classmethod
-    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str) -> None:
+    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str):
         """
         Extract unique plugins.
         """
@@ -328,7 +329,7 @@ class PluginMigration:
         return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
 
     @classmethod
-    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
+    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100):
         """
         Install plugins.
         """
@@ -348,7 +349,7 @@ class PluginMigration:
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
-        def install(tenant_id: str, plugin_ids: list[str]) -> None:
+        def install(tenant_id: str, plugin_ids: list[str]):
             logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
             # fetch plugin already installed
             installed_plugins = manager.list_plugins(tenant_id)

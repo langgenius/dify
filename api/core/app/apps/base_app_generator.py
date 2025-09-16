@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union, final
+from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,7 @@ class BaseAppGenerator:
     def _prepare_user_inputs(
         self,
         *,
-        user_inputs: Optional[Mapping[str, Any]],
+        user_inputs: Mapping[str, Any] | None,
         variables: Sequence["VariableEntity"],
         tenant_id: str,
         strict_type_validation: bool = False,
@@ -157,7 +157,7 @@ class BaseAppGenerator:
 
         return value
 
-    def _sanitize_value(self, value: Any) -> Any:
+    def _sanitize_value(self, value: Any):
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value

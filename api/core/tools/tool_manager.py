@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -27,6 +27,7 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.workflow.entities.variable_pool import VariablePool
+from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
@@ -55,9 +56,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.configuration import (
-    ToolParameterConfigurationManager,
-)
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
@@ -158,7 +157,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -236,6 +235,16 @@ class ToolManager:
 
                 if builtin_provider is None:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+
+            # check if the credential is allowed to be used
+            from core.helper.credential_utils import check_credential_policy_compliance
+
+            check_credential_policy_compliance(
+                credential_id=builtin_provider.id,
+                provider=provider_id,
+                credential_type=PluginCredentialType.TOOL,
+                check_existence=False,
+            )
 
             encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
@@ -349,7 +358,7 @@ class ToolManager:
         app_id: str,
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: VariablePool | None = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -391,7 +400,7 @@ class ToolManager:
         node_id: str,
         workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: VariablePool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -434,7 +443,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Tool:
         """
         get tool runtime from plugin
@@ -642,7 +651,7 @@ class ToolManager:
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
                         exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                         data=provider,
-                        name_func=lambda x: x.identity.name,
+                        name_func=lambda x: x.entity.identity.name,
                     ):
                         continue
                     user_provider = ToolTransformService.builtin_provider_to_user_provider(
@@ -658,9 +667,9 @@ class ToolManager:
 
             # get db api providers
             if "api" in filters:
-                db_api_providers: list[ApiToolProvider] = (
-                    db.session.query(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).all()
-                )
+                db_api_providers = db.session.scalars(
+                    select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)
+                ).all()
 
                 api_provider_controllers: list[dict[str, Any]] = [
                     {"provider": provider, "controller": ToolTransformService.api_provider_to_controller(provider)}
@@ -681,9 +690,9 @@ class ToolManager:
 
             if "workflow" in filters:
                 # get workflow providers
-                workflow_providers: list[WorkflowToolProvider] = (
-                    db.session.query(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id).all()
-                )
+                workflow_providers = db.session.scalars(
+                    select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
+                ).all()
 
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
                 for workflow_provider in workflow_providers:
@@ -773,12 +782,12 @@ class ToolManager:
         if provider is None:
             raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
-        controller = MCPToolProviderController._from_db(provider)
+        controller = MCPToolProviderController.from_db(provider)
 
         return controller
 
     @classmethod
-    def user_get_api_provider(cls, provider: str, tenant_id: str) -> dict:
+    def user_get_api_provider(cls, provider: str, tenant_id: str):
         """
         get api provider
         """
@@ -873,7 +882,7 @@ class ToolManager:
         )
 
     @classmethod
-    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -890,7 +899,7 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
@@ -928,7 +937,7 @@ class ToolManager:
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
-    ) -> Union[str, dict]:
+    ) -> Union[str, dict[str, Any]]:
         """
         get the tool icon
 
@@ -968,7 +977,7 @@ class ToolManager:
     def _convert_tool_parameters_type(
         cls,
         parameters: list[ToolParameter],
-        variable_pool: Optional[VariablePool],
+        variable_pool: VariablePool | None,
         tool_configurations: dict[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:

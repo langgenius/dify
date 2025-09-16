@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Optional
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -16,11 +16,15 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from libs.login import _get_user
+from libs.login import current_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, EndUser
+from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
 from services.feature_service import FeatureService
+
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
 
 class WhereisUserArg(StrEnum):
@@ -38,10 +42,10 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optional[FetchUserArg] = None):
-    def decorator(view_func):
+def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
+    def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args, **kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("app")
 
             app_model = db.session.query(App).where(App.id == api_token.app_id).first()
@@ -59,27 +63,6 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
-
-            tenant_account_join = (
-                db.session.query(Tenant, TenantAccountJoin)
-                .where(Tenant.id == api_token.tenant_id)
-                .where(TenantAccountJoin.tenant_id == Tenant.id)
-                .where(TenantAccountJoin.role.in_(["owner"]))
-                .where(Tenant.status == TenantStatus.NORMAL)
-                .one_or_none()
-            )  # TODO: only owner information is required, so only one is returned.
-            if tenant_account_join:
-                tenant, ta = tenant_account_join
-                account = db.session.query(Account).where(Account.id == ta.account_id).first()
-                # Login admin
-                if account:
-                    account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
-                else:
-                    raise Unauthorized("Tenant owner account does not exist.")
-            else:
-                raise Unauthorized("Tenant does not exist.")
 
             kwargs["app_model"] = app_model
 
@@ -118,8 +101,8 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
 
 def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
-    def interceptor(view):
-        def decorated(*args, **kwargs):
+    def interceptor(view: Callable[P, R]):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
 
@@ -148,9 +131,9 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
 
 
 def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
+    def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
@@ -170,9 +153,9 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
 
 
 def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
+    def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":
@@ -206,10 +189,10 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def validate_dataset_token(view=None):
-    def decorator(view):
+def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
@@ -226,7 +209,7 @@ def validate_dataset_token(view=None):
                 if account:
                     account.current_tenant = tenant
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
@@ -284,12 +267,12 @@ def validate_and_get_api_token(scope: str | None = None):
     return api_token
 
 
-def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str] = None) -> EndUser:
+def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
     """
     Create or update session terminal based on user ID.
     """
     if not user_id:
-        user_id = "DEFAULT-USER"
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
 
     with Session(db.engine, expire_on_commit=False) as session:
         end_user = (
@@ -308,7 +291,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type="service_api",
-                is_anonymous=user_id == "DEFAULT-USER",
+                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value,
                 session_id=user_id,
             )
             session.add(end_user)

@@ -14,9 +14,9 @@ class ToolApiEntity(BaseModel):
     name: str  # identifier
     label: I18nObject  # label
     description: I18nObject
-    parameters: Optional[list[ToolParameter]] = None
+    parameters: list[ToolParameter] | None = None
     labels: list[str] = Field(default_factory=list)
-    output_schema: Optional[dict] = None
+    output_schema: dict | None = None
 
 
 ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow", "mcp"]]
@@ -28,28 +28,32 @@ class ToolProviderApiEntity(BaseModel):
     name: str  # identifier
     description: I18nObject
     icon: str | dict
-    icon_dark: Optional[str | dict] = Field(default=None, description="The dark icon of the tool")
+    icon_dark: str | dict | None = Field(default=None, description="The dark icon of the tool")
     label: I18nObject  # label
     type: ToolProviderType
-    masked_credentials: Optional[dict] = None
-    original_credentials: Optional[dict] = None
+    masked_credentials: dict | None = None
+    original_credentials: dict | None = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
-    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
+    plugin_id: str | None = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the tool")
     tools: list[ToolApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
     # MCP
-    server_url: Optional[str] = Field(default="", description="The server url of the tool")
+    server_url: str | None = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
-    server_identifier: Optional[str] = Field(default="", description="The server identifier of the MCP tool")
+    server_identifier: str | None = Field(default="", description="The server identifier of the MCP tool")
+    timeout: float | None = Field(default=30.0, description="The timeout of the MCP tool")
+    sse_read_timeout: float | None = Field(default=300.0, description="The SSE read timeout of the MCP tool")
+    masked_headers: dict[str, str] | None = Field(default=None, description="The masked headers of the MCP tool")
+    original_headers: dict[str, str] | None = Field(default=None, description="The original headers of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
     def convert_none_to_empty_list(cls, v):
         return v if v is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         # -------------
         # overwrite tool parameter types for temp fix
         tools = jsonable_encoder(self.tools)
@@ -65,6 +69,10 @@ class ToolProviderApiEntity(BaseModel):
         if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
+            optional_fields.update(self.optional_field("timeout", self.timeout))
+            optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
+            optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
+            optional_fields.update(self.optional_field("original_headers", self.original_headers))
         return {
             "id": self.id,
             "author": self.author,
@@ -84,7 +92,7 @@ class ToolProviderApiEntity(BaseModel):
             **optional_fields,
         }
 
-    def optional_field(self, key: str, value: Any) -> dict:
+    def optional_field(self, key: str, value: Any):
         """Return dict with key-value if value is truthy, empty dict otherwise."""
         return {key: value} if value else {}
 

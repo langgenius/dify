@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from configs import dify_config
 from core.variables import (
@@ -54,10 +54,10 @@ class LoopNode(BaseNode):
 
     _node_data: LoopNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = LoopNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -66,7 +66,7 @@ class LoopNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -289,6 +289,8 @@ class LoopNode(BaseNode):
         Returns:
             dict:  {'check_break_result': bool}
         """
+        condition_selectors = self._extract_selectors_from_conditions(break_conditions)
+        extended_selectors = {**loop_variable_selectors, **condition_selectors}
         # Run workflow
         rst = graph_engine.run()
         current_index_variable = variable_pool.get([self.node_id, "index"])
@@ -314,30 +316,29 @@ class LoopNode(BaseNode):
                 and event.node_type == NodeType.LOOP_END
                 and not isinstance(event, NodeRunStreamChunkEvent)
             ):
-                # Check if variables in break conditions exist and process conditions
-                # Allow loop internal variables to be used in break conditions
-                available_conditions = []
-                for condition in break_conditions:
-                    variable = self.graph_runtime_state.variable_pool.get(condition.variable_selector)
-                    if variable:
-                        available_conditions.append(condition)
-
-                # Process conditions if at least one variable is available
-                if available_conditions:
-                    _, _, check_break_result = condition_processor.process_conditions(
-                        variable_pool=self.graph_runtime_state.variable_pool,
-                        conditions=available_conditions,
-                        operator=logical_operator,
-                    )
-                    if check_break_result:
-                        break
-                else:
-                    check_break_result = True
+                check_break_result = True
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                 break
 
             if isinstance(event, NodeRunSucceededEvent):
                 yield self._handle_event_metadata(event=event, iter_run_index=current_index)
+
+                # Check if all variables in break conditions exist
+                exists_variable = False
+                for condition in break_conditions:
+                    if not self.graph_runtime_state.variable_pool.get(condition.variable_selector):
+                        exists_variable = False
+                        break
+                    else:
+                        exists_variable = True
+                if exists_variable:
+                    input_conditions, group_result, check_break_result = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=break_conditions,
+                        operator=logical_operator,
+                    )
+                    if check_break_result:
+                        break
 
             elif isinstance(event, BaseGraphEvent):
                 if isinstance(event, GraphRunFailedEvent):
@@ -400,12 +401,8 @@ class LoopNode(BaseNode):
             else:
                 yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
 
-        # Remove all nodes outputs from variable pool
-        for node_id in loop_graph.node_ids:
-            variable_pool.remove([node_id])
-
         _outputs: dict[str, Segment | int | None] = {}
-        for loop_variable_key, loop_variable_selector in loop_variable_selectors.items():
+        for loop_variable_key, loop_variable_selector in extended_selectors.items():
             _loop_variable_segment = variable_pool.get(loop_variable_selector)
             if _loop_variable_segment:
                 _outputs[loop_variable_key] = _loop_variable_segment
@@ -414,6 +411,10 @@ class LoopNode(BaseNode):
 
         _outputs["loop_round"] = current_index + 1
         self._node_data.outputs = _outputs
+
+        # Remove all nodes outputs from variable pool
+        for node_id in loop_graph.node_ids:
+            variable_pool.remove([node_id])
 
         if check_break_result:
             return {"check_break_result": True}
@@ -432,6 +433,13 @@ class LoopNode(BaseNode):
         )
 
         return {"check_break_result": False}
+
+    def _extract_selectors_from_conditions(self, conditions: list) -> dict[str, list[str]]:
+        return {
+            condition.variable_selector[1]: condition.variable_selector
+            for condition in conditions
+            if condition.variable_selector and len(condition.variable_selector) >= 2
+        }
 
     def _handle_event_metadata(
         self,

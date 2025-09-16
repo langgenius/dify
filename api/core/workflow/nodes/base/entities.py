@@ -1,7 +1,7 @@
 import json
 from abc import ABC
 from enum import StrEnum
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, model_validator
 
@@ -23,12 +23,12 @@ NumberType = Union[int, float]
 
 
 class DefaultValue(BaseModel):
-    value: Any
+    value: Any = None
     type: DefaultValueType
     key: str
 
     @staticmethod
-    def _parse_json(value: str) -> Any:
+    def _parse_json(value: str):
         """Unified JSON parsing handler"""
         try:
             return json.loads(value)
@@ -121,10 +121,10 @@ class RetryConfig(BaseModel):
 
 class BaseNodeData(ABC, BaseModel):
     title: str
-    desc: Optional[str] = None
+    desc: str | None = None
     version: str = "1"
-    error_strategy: Optional[ErrorStrategy] = None
-    default_value: Optional[list[DefaultValue]] = None
+    error_strategy: ErrorStrategy | None = None
+    default_value: list[DefaultValue] | None = None
     retry_config: RetryConfig = RetryConfig()
 
     @property
@@ -135,7 +135,7 @@ class BaseNodeData(ABC, BaseModel):
 
 
 class BaseIterationNodeData(BaseNodeData):
-    start_node_id: Optional[str] = None
+    start_node_id: str | None = None
 
 
 class BaseIterationState(BaseModel):
@@ -150,7 +150,7 @@ class BaseIterationState(BaseModel):
 
 
 class BaseLoopNodeData(BaseNodeData):
-    start_node_id: Optional[str] = None
+    start_node_id: str | None = None
 
 
 class BaseLoopState(BaseModel):

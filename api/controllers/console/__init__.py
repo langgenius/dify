@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
@@ -26,7 +27,16 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+
+api = ExternalApi(
+    bp,
+    version="1.0",
+    title="Console API",
+    description="Console management APIs for app configuration, monitoring, and administration",
+)
+
+# Create namespace
+console_ns = Namespace("console", description="Console management API operations", path="/")
 
 # File
 api.add_resource(FileApi, "/files/upload")
@@ -43,7 +53,16 @@ api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm"
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
-from . import admin, apikey, extension, feature, ping, setup, version
+from . import (
+    admin,
+    apikey,
+    extension,
+    feature,
+    init_validate,
+    ping,
+    setup,
+    version,
+)
 
 # Import app controllers
 from .app import (
@@ -70,7 +89,16 @@ from .app import (
 )
 
 # Import auth controllers
-from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_password, login, oauth, oauth_server
+from .auth import (
+    activate,
+    data_source_bearer_auth,
+    data_source_oauth,
+    email_register,
+    forgot_password,
+    login,
+    oauth,
+    oauth_server,
+)
 
 # Import billing controllers
 from .billing import billing, compliance
@@ -93,6 +121,23 @@ from .explore import (
     parameter,
     recommended_app,
     saved_message,
+)
+
+# Import tag controllers
+from .tag import tags
+
+# Import workspace controllers
+from .workspace import (
+    account,
+    agent_providers,
+    endpoint,
+    load_balancing_config,
+    members,
+    model_providers,
+    models,
+    plugin,
+    tool_providers,
+    workspace,
 )
 
 # Explore Audio
@@ -166,19 +211,71 @@ api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
 
-# Import tag controllers
-from .tag import tags
+api.add_namespace(console_ns)
 
-# Import workspace controllers
-from .workspace import (
-    account,
-    agent_providers,
-    endpoint,
-    load_balancing_config,
-    members,
-    model_providers,
-    models,
-    plugin,
-    tool_providers,
-    workspace,
-)
+__all__ = [
+    "account",
+    "activate",
+    "admin",
+    "advanced_prompt_template",
+    "agent",
+    "agent_providers",
+    "annotation",
+    "api",
+    "apikey",
+    "app",
+    "audio",
+    "billing",
+    "bp",
+    "completion",
+    "compliance",
+    "console_ns",
+    "conversation",
+    "conversation_variables",
+    "data_source",
+    "data_source_bearer_auth",
+    "data_source_oauth",
+    "datasets",
+    "datasets_document",
+    "datasets_segments",
+    "email_register",
+    "endpoint",
+    "extension",
+    "external",
+    "feature",
+    "forgot_password",
+    "generator",
+    "hit_testing",
+    "init_validate",
+    "installed_app",
+    "load_balancing_config",
+    "login",
+    "mcp_server",
+    "members",
+    "message",
+    "metadata",
+    "model_config",
+    "model_providers",
+    "models",
+    "oauth",
+    "oauth_server",
+    "ops_trace",
+    "parameter",
+    "ping",
+    "plugin",
+    "recommended_app",
+    "saved_message",
+    "setup",
+    "site",
+    "statistic",
+    "tags",
+    "tool_providers",
+    "version",
+    "website",
+    "workflow",
+    "workflow_app_log",
+    "workflow_draft_variable",
+    "workflow_run",
+    "workflow_statistic",
+    "workspace",
+]

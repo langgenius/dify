@@ -22,15 +22,15 @@ from .types import StringUUID
 
 
 # system level tool oauth client params (client_id, client_secret, etc.)
-class ToolOAuthSystemClient(Base):
+class ToolOAuthSystemClient(TypeBase):
     __tablename__ = "tool_oauth_system_clients"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tool_oauth_system_client_pkey"),
         sa.UniqueConstraint("plugin_id", "provider", name="tool_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    plugin_id = mapped_column(String(512), nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -54,8 +54,8 @@ class ToolOAuthTenantClient(Base):
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     @property
-    def oauth_params(self) -> dict:
-        return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class BuiltinToolProvider(Base):
@@ -96,8 +96,8 @@ class BuiltinToolProvider(Base):
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"))
 
     @property
-    def credentials(self) -> dict:
-        return cast(dict, json.loads(self.encrypted_credentials))
+    def credentials(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
 
 
 class ApiToolProvider(Base):
@@ -146,8 +146,8 @@ class ApiToolProvider(Base):
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
 
     @property
-    def credentials(self) -> dict:
-        return dict(json.loads(self.credentials_str))
+    def credentials(self) -> dict[str, Any]:
+        return dict[str, Any](json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -280,6 +280,8 @@ class MCPToolProvider(Base):
     )
     timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"))
     sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("300"))
+    # encrypted headers for MCP server requests
+    encrypted_headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
@@ -289,9 +291,9 @@ class MCPToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def credentials(self) -> dict:
+    def credentials(self) -> dict[str, Any]:
         try:
-            return cast(dict, json.loads(self.encrypted_credentials)) or {}
+            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
         except Exception:
             return {}
 
@@ -311,6 +313,62 @@ class MCPToolProvider(Base):
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
 
     @property
+    def decrypted_headers(self) -> dict[str, Any]:
+        """Get decrypted headers for MCP server requests."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_headers:
+                return {}
+
+            headers_data = json.loads(self.encrypted_headers)
+
+            # Create dynamic config for all headers as SECRET_INPUT
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            result = encrypter_instance.decrypt(headers_data)
+            return result
+        except Exception:
+            return {}
+
+    @property
+    def masked_headers(self) -> dict[str, Any]:
+        """Get masked headers for frontend display."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_headers:
+                return {}
+
+            headers_data = json.loads(self.encrypted_headers)
+
+            # Create dynamic config for all headers as SECRET_INPUT
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            # First decrypt, then mask
+            decrypted_headers = encrypter_instance.decrypt(headers_data)
+            result = encrypter_instance.mask_tool_credentials(decrypted_headers)
+            return result
+        except Exception:
+            return {}
+
+    @property
     def masked_server_url(self) -> str:
         def mask_url(url: str, mask_char: str = "*") -> str:
             """
@@ -327,12 +385,12 @@ class MCPToolProvider(Base):
         return mask_url(self.decrypted_server_url)
 
     @property
-    def decrypted_credentials(self) -> dict:
+    def decrypted_credentials(self) -> dict[str, Any]:
         from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
         from core.tools.utils.encryption import create_provider_encrypter
 
-        provider_controller = MCPToolProviderController._from_db(self)
+        provider_controller = MCPToolProviderController.from_db(self)
 
         encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
@@ -340,7 +398,7 @@ class MCPToolProvider(Base):
             cache=NoOpProviderCredentialCache(),
         )
 
-        return encrypter.decrypt(self.credentials)  # type: ignore
+        return encrypter.decrypt(self.credentials)
 
 
 class ToolModelInvoke(Base):
@@ -408,11 +466,11 @@ class ToolConversationVariables(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> Any:
+    def variables(self):
         return json.loads(self.variables_str)
 
 
-class ToolFile(Base):
+class ToolFile(TypeBase):
     """This table stores file metadata generated in workflows,
     not only files created by agent.
     """
@@ -423,19 +481,19 @@ class ToolFile(Base):
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
     mimetype: Mapped[str] = mapped_column(String(255), nullable=False)
     # original url
-    original_url: Mapped[str] = mapped_column(String(2048), nullable=True)
+    original_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
     # name
     name: Mapped[str] = mapped_column(default="")
     # size

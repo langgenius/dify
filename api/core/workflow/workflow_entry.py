@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -47,8 +47,8 @@ class WorkflowEntry:
         invoke_from: InvokeFrom,
         call_depth: int,
         variable_pool: VariablePool,
-        thread_pool_id: Optional[str] = None,
-    ) -> None:
+        thread_pool_id: str | None = None,
+    ):
         """
         Init workflow entry
         :param tenant_id: tenant id
@@ -311,7 +311,7 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
-    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         # NOTE(QuantumGhost): Avoid using this function in new code.
         # Keep values structured as long as possible and only convert to dict
         # immediately before serialization (e.g., JSON serialization) to maintain
@@ -320,7 +320,7 @@ class WorkflowEntry:
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
-    def _handle_special_values(value: Any) -> Any:
+    def _handle_special_values(value: Any):
         if value is None:
             return value
         if isinstance(value, dict):
@@ -345,7 +345,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         tenant_id: str,
-    ) -> None:
+    ):
         # NOTE(QuantumGhost): This logic should remain synchronized with
         # the implementation of `load_into_variable_pool`, specifically the logic about
         # variable existence checking.
@@ -367,7 +367,7 @@ class WorkflowEntry:
                 raise ValueError(f"Variable key {node_variable} not found in user inputs.")
 
             # environment variable already exist in variable pool, not from user inputs
-            if variable_pool.get(variable_selector):
+            if variable_pool.get(variable_selector) and variable_selector[0] == ENVIRONMENT_VARIABLE_NODE_ID:
                 continue
 
             # fetch variable node id from variable selector

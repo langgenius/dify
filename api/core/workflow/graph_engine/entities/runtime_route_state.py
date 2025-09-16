@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
 
@@ -11,12 +10,12 @@ from libs.datetime_utils import naive_utc_now
 
 
 class RouteNodeState(BaseModel):
-    class Status(Enum):
-        RUNNING = "running"
-        SUCCESS = "success"
-        FAILED = "failed"
-        PAUSED = "paused"
-        EXCEPTION = "exception"
+    class Status(StrEnum):
+        RUNNING = auto()
+        SUCCESS = auto()
+        FAILED = auto()
+        PAUSED = auto()
+        EXCEPTION = auto()
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """node state id"""
@@ -24,7 +23,7 @@ class RouteNodeState(BaseModel):
     node_id: str
     """node id"""
 
-    node_run_result: Optional[NodeRunResult] = None
+    node_run_result: NodeRunResult | None = None
     """node run result"""
 
     status: Status = Status.RUNNING
@@ -33,21 +32,21 @@ class RouteNodeState(BaseModel):
     start_at: datetime
     """start time"""
 
-    paused_at: Optional[datetime] = None
+    paused_at: datetime | None = None
     """paused time"""
 
-    finished_at: Optional[datetime] = None
+    finished_at: datetime | None = None
     """finished time"""
 
-    failed_reason: Optional[str] = None
+    failed_reason: str | None = None
     """failed reason"""
 
-    paused_by: Optional[str] = None
+    paused_by: str | None = None
     """paused by"""
 
     index: int = 1
 
-    def set_finished(self, run_result: NodeRunResult) -> None:
+    def set_finished(self, run_result: NodeRunResult):
         """
         Node finished
 
@@ -94,7 +93,7 @@ class RuntimeRouteState(BaseModel):
         self.node_state_mapping[state.id] = state
         return state
 
-    def add_route(self, source_node_state_id: str, target_node_state_id: str) -> None:
+    def add_route(self, source_node_state_id: str, target_node_state_id: str):
         """
         Add route to the graph state
 

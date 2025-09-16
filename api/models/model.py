@@ -3,7 +3,7 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.plugin.entities.plugin import GenericProviderID
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -24,7 +24,7 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
-from libs.helper import generate_string
+from libs.helper import generate_string  # type: ignore[import-not-found]
 
 from .account import Account, Tenant
 from .base import Base
@@ -62,9 +62,9 @@ class AppMode(StrEnum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class IconType(Enum):
-    IMAGE = "image"
-    EMOJI = "emoji"
+class IconType(StrEnum):
+    IMAGE = auto()
+    EMOJI = auto()
 
 
 class App(Base):
@@ -76,9 +76,9 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(sa.Text, server_default=sa.text("''::character varying"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[Optional[str]] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
     icon = mapped_column(String(255))
-    icon_background: Mapped[Optional[str]] = mapped_column(String(255))
+    icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'::character varying"))
@@ -90,7 +90,7 @@ class App(Base):
     is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     tracing = mapped_column(sa.Text, nullable=True)
-    max_active_requests: Mapped[Optional[int]]
+    max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -98,7 +98,7 @@ class App(Base):
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     @property
-    def desc_or_prompt(self):
+    def desc_or_prompt(self) -> str:
         if self.description:
             return self.description
         else:
@@ -109,12 +109,12 @@ class App(Base):
                 return ""
 
     @property
-    def site(self):
+    def site(self) -> Optional["Site"]:
         site = db.session.query(Site).where(Site.app_id == self.id).first()
         return site
 
     @property
-    def app_model_config(self):
+    def app_model_config(self) -> Optional["AppModelConfig"]:
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
@@ -130,11 +130,11 @@ class App(Base):
         return None
 
     @property
-    def api_base_url(self):
+    def api_base_url(self) -> str:
         return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
 
     @property
-    def tenant(self):
+    def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
@@ -149,20 +149,20 @@ class App(Base):
         if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
-            self.mode = AppMode.AGENT_CHAT.value
+            self.mode = AppMode.AGENT_CHAT
             db.session.commit()
             return True
         return False
 
     @property
     def mode_compatible_with_agent(self) -> str:
-        if self.mode == AppMode.CHAT.value and self.is_agent:
-            return AppMode.AGENT_CHAT.value
+        if self.mode == AppMode.CHAT and self.is_agent:
+            return AppMode.AGENT_CHAT
 
         return str(self.mode)
 
     @property
-    def deleted_tools(self) -> list:
+    def deleted_tools(self) -> list[dict[str, str]]:
         from core.tools.tool_manager import ToolManager
         from services.plugin.plugin_service import PluginService
 
@@ -242,7 +242,7 @@ class App(Base):
             provider_id.provider_name: existence[i] for i, provider_id in enumerate(builtin_provider_ids)
         }
 
-        deleted_tools = []
+        deleted_tools: list[dict[str, str]] = []
 
         for tool in tools:
             keys = list(tool.keys())
@@ -275,7 +275,7 @@ class App(Base):
         return deleted_tools
 
     @property
-    def tags(self):
+    def tags(self) -> list["Tag"]:
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -291,7 +291,7 @@ class App(Base):
         return tags or []
 
     @property
-    def author_name(self):
+    def author_name(self) -> str | None:
         if self.created_by:
             account = db.session.query(Account).where(Account.id == self.created_by).first()
             if account:
@@ -334,20 +334,20 @@ class AppModelConfig(Base):
     file_upload = mapped_column(sa.Text)
 
     @property
-    def app(self):
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
     @property
-    def model_dict(self) -> dict:
+    def model_dict(self) -> dict[str, Any]:
         return json.loads(self.model) if self.model else {}
 
     @property
-    def suggested_questions_list(self) -> list:
+    def suggested_questions_list(self) -> list[str]:
         return json.loads(self.suggested_questions) if self.suggested_questions else []
 
     @property
-    def suggested_questions_after_answer_dict(self) -> dict:
+    def suggested_questions_after_answer_dict(self) -> dict[str, Any]:
         return (
             json.loads(self.suggested_questions_after_answer)
             if self.suggested_questions_after_answer
@@ -355,19 +355,19 @@ class AppModelConfig(Base):
         )
 
     @property
-    def speech_to_text_dict(self) -> dict:
+    def speech_to_text_dict(self) -> dict[str, Any]:
         return json.loads(self.speech_to_text) if self.speech_to_text else {"enabled": False}
 
     @property
-    def text_to_speech_dict(self) -> dict:
+    def text_to_speech_dict(self) -> dict[str, Any]:
         return json.loads(self.text_to_speech) if self.text_to_speech else {"enabled": False}
 
     @property
-    def retriever_resource_dict(self) -> dict:
+    def retriever_resource_dict(self) -> dict[str, Any]:
         return json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True}
 
     @property
-    def annotation_reply_dict(self) -> dict:
+    def annotation_reply_dict(self) -> dict[str, Any]:
         annotation_setting = (
             db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).first()
         )
@@ -390,11 +390,11 @@ class AppModelConfig(Base):
             return {"enabled": False}
 
     @property
-    def more_like_this_dict(self) -> dict:
+    def more_like_this_dict(self) -> dict[str, Any]:
         return json.loads(self.more_like_this) if self.more_like_this else {"enabled": False}
 
     @property
-    def sensitive_word_avoidance_dict(self) -> dict:
+    def sensitive_word_avoidance_dict(self) -> dict[str, Any]:
         return (
             json.loads(self.sensitive_word_avoidance)
             if self.sensitive_word_avoidance
@@ -402,15 +402,15 @@ class AppModelConfig(Base):
         )
 
     @property
-    def external_data_tools_list(self) -> list[dict]:
+    def external_data_tools_list(self) -> list[dict[str, Any]]:
         return json.loads(self.external_data_tools) if self.external_data_tools else []
 
     @property
-    def user_input_form_list(self):
+    def user_input_form_list(self) -> list[dict[str, Any]]:
         return json.loads(self.user_input_form) if self.user_input_form else []
 
     @property
-    def agent_mode_dict(self) -> dict:
+    def agent_mode_dict(self) -> dict[str, Any]:
         return (
             json.loads(self.agent_mode)
             if self.agent_mode
@@ -418,17 +418,17 @@ class AppModelConfig(Base):
         )
 
     @property
-    def chat_prompt_config_dict(self) -> dict:
+    def chat_prompt_config_dict(self) -> dict[str, Any]:
         return json.loads(self.chat_prompt_config) if self.chat_prompt_config else {}
 
     @property
-    def completion_prompt_config_dict(self) -> dict:
+    def completion_prompt_config_dict(self) -> dict[str, Any]:
         return json.loads(self.completion_prompt_config) if self.completion_prompt_config else {}
 
     @property
-    def dataset_configs_dict(self) -> dict:
+    def dataset_configs_dict(self) -> dict[str, Any]:
         if self.dataset_configs:
-            dataset_configs: dict = json.loads(self.dataset_configs)
+            dataset_configs: dict[str, Any] = json.loads(self.dataset_configs)
             if "retrieval_model" not in dataset_configs:
                 return {"retrieval_model": "single"}
             else:
@@ -438,7 +438,7 @@ class AppModelConfig(Base):
         }
 
     @property
-    def file_upload_dict(self) -> dict:
+    def file_upload_dict(self) -> dict[str, Any]:
         return (
             json.loads(self.file_upload)
             if self.file_upload
@@ -452,7 +452,7 @@ class AppModelConfig(Base):
             }
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
@@ -546,7 +546,7 @@ class RecommendedApp(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self):
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
@@ -570,12 +570,12 @@ class InstalledApp(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self):
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
     @property
-    def tenant(self):
+    def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
@@ -622,7 +622,7 @@ class Conversation(Base):
     mode: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(sa.Text)
-    _inputs: Mapped[dict] = mapped_column("inputs", sa.JSON)
+    _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
     introduction = mapped_column(sa.Text)
     system_instruction = mapped_column(sa.Text)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -652,7 +652,7 @@ class Conversation(Base):
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     @property
-    def inputs(self):
+    def inputs(self) -> dict[str, Any]:
         inputs = self._inputs.copy()
 
         # Convert file mapping to File object
@@ -660,22 +660,39 @@ class Conversation(Base):
             # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
             from factories import file_factory
 
-            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value["upload_file_id"] = value["related_id"]
-                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
-            elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
+            if (
+                isinstance(value, dict)
+                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
-                inputs[key] = []
-                for item in value:
-                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                        item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                        item["upload_file_id"] = item["related_id"]
-                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
+                value_dict = cast(dict[str, Any], value)
+                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value_dict["tool_file_id"] = value_dict["related_id"]
+                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
+                    value_dict["upload_file_id"] = value_dict["related_id"]
+                tenant_id = cast(str, value_dict.get("tenant_id", ""))
+                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+            elif isinstance(value, list):
+                value_list = cast(list[Any], value)
+                if all(
+                    isinstance(item, dict)
+                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                    for item in value_list
+                ):
+                    file_list: list[File] = []
+                    for item in value_list:
+                        if not isinstance(item, dict):
+                            continue
+                        item_dict = cast(dict[str, Any], item)
+                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                            item_dict["tool_file_id"] = item_dict["related_id"]
+                        elif item_dict["transfer_method"] in [
+                            FileTransferMethod.LOCAL_FILE,
+                            FileTransferMethod.REMOTE_URL,
+                        ]:
+                            item_dict["upload_file_id"] = item_dict["related_id"]
+                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
+                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                    inputs[key] = file_list
 
         return inputs
 
@@ -685,16 +702,18 @@ class Conversation(Base):
         for k, v in inputs.items():
             if isinstance(v, File):
                 inputs[k] = v.model_dump()
-            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
-                inputs[k] = [item.model_dump() for item in v]
+            elif isinstance(v, list):
+                v_list = cast(list[Any], v)
+                if all(isinstance(item, File) for item in v_list):
+                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
 
     @property
     def model_config(self):
         model_config = {}
-        app_model_config: Optional[AppModelConfig] = None
+        app_model_config: AppModelConfig | None = None
 
-        if self.mode == AppMode.ADVANCED_CHAT.value:
+        if self.mode == AppMode.ADVANCED_CHAT:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
                 model_config = override_model_configs
@@ -793,7 +812,7 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        messages = db.session.query(Message).where(Message.conversation_id == self.id).all()
+        messages = db.session.scalars(select(Message).where(Message.conversation_id == self.id)).all()
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,
             WorkflowExecutionStatus.SUCCEEDED: 0,
@@ -826,7 +845,7 @@ class Conversation(Base):
         )
 
     @property
-    def app(self):
+    def app(self) -> App | None:
         return db.session.query(App).where(App.id == self.app_id).first()
 
     @property
@@ -839,7 +858,7 @@ class Conversation(Base):
         return None
 
     @property
-    def from_account_name(self):
+    def from_account_name(self) -> str | None:
         if self.from_account_id:
             account = db.session.query(Account).where(Account.id == self.from_account_id).first()
             if account:
@@ -848,10 +867,10 @@ class Conversation(Base):
         return None
 
     @property
-    def in_debug_mode(self):
+    def in_debug_mode(self) -> bool:
         return self.override_model_configs is not None
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "app_id": self.app_id,
@@ -897,7 +916,7 @@ class Message(Base):
     model_id = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(sa.Text)
     conversation_id = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), nullable=False)
-    _inputs: Mapped[dict] = mapped_column("inputs", sa.JSON)
+    _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
     query: Mapped[str] = mapped_column(sa.Text, nullable=False)
     message = mapped_column(sa.JSON, nullable=False)
     message_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -914,38 +933,55 @@ class Message(Base):
     status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
     error = mapped_column(sa.Text)
     message_metadata = mapped_column(sa.Text)
-    invoke_from: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
 
     @property
-    def inputs(self):
+    def inputs(self) -> dict[str, Any]:
         inputs = self._inputs.copy()
         for key, value in inputs.items():
             # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
             from factories import file_factory
 
-            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value["upload_file_id"] = value["related_id"]
-                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
-            elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
+            if (
+                isinstance(value, dict)
+                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
-                inputs[key] = []
-                for item in value:
-                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                        item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                        item["upload_file_id"] = item["related_id"]
-                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
+                value_dict = cast(dict[str, Any], value)
+                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value_dict["tool_file_id"] = value_dict["related_id"]
+                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
+                    value_dict["upload_file_id"] = value_dict["related_id"]
+                tenant_id = cast(str, value_dict.get("tenant_id", ""))
+                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+            elif isinstance(value, list):
+                value_list = cast(list[Any], value)
+                if all(
+                    isinstance(item, dict)
+                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                    for item in value_list
+                ):
+                    file_list: list[File] = []
+                    for item in value_list:
+                        if not isinstance(item, dict):
+                            continue
+                        item_dict = cast(dict[str, Any], item)
+                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                            item_dict["tool_file_id"] = item_dict["related_id"]
+                        elif item_dict["transfer_method"] in [
+                            FileTransferMethod.LOCAL_FILE,
+                            FileTransferMethod.REMOTE_URL,
+                        ]:
+                            item_dict["upload_file_id"] = item_dict["related_id"]
+                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
+                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                    inputs[key] = file_list
         return inputs
 
     @inputs.setter
@@ -954,8 +990,10 @@ class Message(Base):
         for k, v in inputs.items():
             if isinstance(v, File):
                 inputs[k] = v.model_dump()
-            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
-                inputs[k] = [item.model_dump() for item in v]
+            elif isinstance(v, list):
+                v_list = cast(list[Any], v)
+                if all(isinstance(item, File) for item in v_list):
+                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
 
     @property
@@ -1052,7 +1090,7 @@ class Message(Base):
 
     @property
     def feedbacks(self):
-        feedbacks = db.session.query(MessageFeedback).where(MessageFeedback.message_id == self.id).all()
+        feedbacks = db.session.scalars(select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
         return feedbacks
 
     @property
@@ -1083,15 +1121,15 @@ class Message(Base):
         return None
 
     @property
-    def in_debug_mode(self):
+    def in_debug_mode(self) -> bool:
         return self.override_model_configs is not None
 
     @property
-    def message_metadata_dict(self) -> dict:
+    def message_metadata_dict(self) -> dict[str, Any]:
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
-    def agent_thoughts(self):
+    def agent_thoughts(self) -> list["MessageAgentThought"]:
         return (
             db.session.query(MessageAgentThought)
             .where(MessageAgentThought.message_id == self.id)
@@ -1100,19 +1138,19 @@ class Message(Base):
         )
 
     @property
-    def retriever_resources(self):
+    def retriever_resources(self) -> Any | list[Any]:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
-    def message_files(self):
+    def message_files(self) -> list[dict[str, Any]]:
         from factories import file_factory
 
-        message_files = db.session.query(MessageFile).where(MessageFile.message_id == self.id).all()
+        message_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == self.id)).all()
         current_app = db.session.query(App).where(App.id == self.app_id).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
-        files = []
+        files: list[File] = []
         for message_file in message_files:
             if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
                 if message_file.upload_file_id is None:
@@ -1159,7 +1197,7 @@ class Message(Base):
                 )
             files.append(file)
 
-        result = [
+        result: list[dict[str, Any]] = [
             {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
             for (file, message_file) in zip(files, message_files)
         ]
@@ -1176,7 +1214,7 @@ class Message(Base):
 
         return None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "app_id": self.app_id,
@@ -1200,7 +1238,7 @@ class Message(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict[str, Any]) -> "Message":
         return cls(
             id=data["id"],
             app_id=data["app_id"],
@@ -1250,7 +1288,7 @@ class MessageFeedback(Base):
         account = db.session.query(Account).where(Account.id == self.from_account_id).first()
         return account
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": str(self.id),
             "app_id": str(self.app_id),
@@ -1299,9 +1337,9 @@ class MessageFile(Base):
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
-    url: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    belongs_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    upload_file_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    url: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    belongs_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1318,8 +1356,8 @@ class MessageAnnotation(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID)
-    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
-    message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
+    message_id: Mapped[str | None] = mapped_column(StringUUID)
     question = mapped_column(sa.Text, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -1421,6 +1459,14 @@ class OperationLog(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
+class DefaultEndUserSessionID(StrEnum):
+    """
+    End User Session ID enum.
+    """
+
+    DEFAULT_SESSION_ID = "DEFAULT-USER"
+
+
 class EndUser(Base, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (
@@ -1435,7 +1481,18 @@ class EndUser(Base, UserMixin):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
-    is_anonymous: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    _is_anonymous: Mapped[bool] = mapped_column(
+        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
+    )
+
+    @property
+    def is_anonymous(self) -> Literal[False]:
+        return False
+
+    @is_anonymous.setter
+    def is_anonymous(self, value: bool) -> None:
+        self._is_anonymous = value
+
     session_id: Mapped[str] = mapped_column()
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1461,7 +1518,7 @@ class AppMCPServer(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @staticmethod
-    def generate_server_code(n):
+    def generate_server_code(n: int) -> str:
         while True:
             result = generate_string(n)
             while db.session.query(AppMCPServer).where(AppMCPServer.server_code == result).count() > 0:
@@ -1518,7 +1575,7 @@ class Site(Base):
         self._custom_disclaimer = value
 
     @staticmethod
-    def generate_code(n):
+    def generate_code(n: int) -> str:
         while True:
             result = generate_string(n)
             while db.session.query(Site).where(Site.code == result).count() > 0:
@@ -1549,7 +1606,7 @@ class ApiToken(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @staticmethod
-    def generate_api_key(prefix, n):
+    def generate_api_key(prefix: str, n: int) -> str:
         while True:
             result = prefix + generate_string(n)
             if db.session.scalar(select(exists().where(ApiToken.token == result))):
@@ -1672,24 +1729,24 @@ class MessageAgentThought(Base):
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
     tool_process_data = mapped_column(sa.Text, nullable=True)
     message = mapped_column(sa.Text, nullable=True)
-    message_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     message_unit_price = mapped_column(sa.Numeric, nullable=True)
     message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
     message_files = mapped_column(sa.Text, nullable=True)
     answer = mapped_column(sa.Text, nullable=True)
-    answer_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     answer_unit_price = mapped_column(sa.Numeric, nullable=True)
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     total_price = mapped_column(sa.Numeric, nullable=True)
     currency = mapped_column(String, nullable=True)
-    latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
     @property
-    def files(self) -> list:
+    def files(self) -> list[Any]:
         if self.message_files:
             return cast(list[Any], json.loads(self.message_files))
         else:
@@ -1700,32 +1757,32 @@ class MessageAgentThought(Base):
         return self.tool.split(";") if self.tool else []
 
     @property
-    def tool_labels(self) -> dict:
+    def tool_labels(self) -> dict[str, Any]:
         try:
             if self.tool_labels_str:
-                return cast(dict, json.loads(self.tool_labels_str))
+                return cast(dict[str, Any], json.loads(self.tool_labels_str))
             else:
                 return {}
         except Exception:
             return {}
 
     @property
-    def tool_meta(self) -> dict:
+    def tool_meta(self) -> dict[str, Any]:
         try:
             if self.tool_meta_str:
-                return cast(dict, json.loads(self.tool_meta_str))
+                return cast(dict[str, Any], json.loads(self.tool_meta_str))
             else:
                 return {}
         except Exception:
             return {}
 
     @property
-    def tool_inputs_dict(self) -> dict:
+    def tool_inputs_dict(self) -> dict[str, Any]:
         tools = self.tools
         try:
             if self.tool_input:
                 data = json.loads(self.tool_input)
-                result = {}
+                result: dict[str, Any] = {}
                 for tool in tools:
                     if tool in data:
                         result[tool] = data[tool]
@@ -1741,12 +1798,12 @@ class MessageAgentThought(Base):
             return {}
 
     @property
-    def tool_outputs_dict(self):
+    def tool_outputs_dict(self) -> dict[str, Any]:
         tools = self.tools
         try:
             if self.observation:
                 data = json.loads(self.observation)
-                result = {}
+                result: dict[str, Any] = {}
                 for tool in tools:
                     if tool in data:
                         result[tool] = data[tool]
@@ -1781,11 +1838,11 @@ class DatasetRetrieverResource(Base):
     document_name = mapped_column(sa.Text, nullable=False)
     data_source_type = mapped_column(sa.Text, nullable=True)
     segment_id = mapped_column(StringUUID, nullable=True)
-    score: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    score: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
-    hit_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    segment_position: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    hit_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    segment_position: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     index_node_hash = mapped_column(sa.Text, nullable=True)
     retriever_from = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
@@ -1844,14 +1901,14 @@ class TraceAppConfig(Base):
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
 
     @property
-    def tracing_config_dict(self):
+    def tracing_config_dict(self) -> dict[str, Any]:
         return self.tracing_config or {}
 
     @property
-    def tracing_config_str(self):
+    def tracing_config_str(self) -> str:
         return json.dumps(self.tracing_config_dict)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "app_id": self.app_id,

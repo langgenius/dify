@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.agent.entities import AgentInvokeMessage
 from core.plugin.entities.plugin import GenericProviderID
@@ -17,7 +17,7 @@ class PluginAgentClient(BasePluginClient):
         Fetch agent providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]):
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_name = declaration.get("identity", {}).get("name")
@@ -49,7 +49,7 @@ class PluginAgentClient(BasePluginClient):
         """
         agent_provider_id = GenericProviderID(provider)
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]):
             # skip if error occurs
             if json_response.get("data") is None or json_response.get("data", {}).get("declaration") is None:
                 return json_response
@@ -82,10 +82,10 @@ class PluginAgentClient(BasePluginClient):
         agent_provider: str,
         agent_strategy: str,
         agent_params: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
-        context: Optional[PluginInvokeContext] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        context: PluginInvokeContext | None = None,
     ) -> Generator[AgentInvokeMessage, None, None]:
         """
         Invoke the agent with the given tenant, user, plugin, provider, name and parameters.

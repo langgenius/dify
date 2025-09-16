@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy.orm import Session
 
@@ -92,7 +92,7 @@ class WorkflowAppGenerateTaskPipeline:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
-    ) -> None:
+    ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -137,7 +137,7 @@ class WorkflowAppGenerateTaskPipeline:
         self._application_generate_entity = application_generate_entity
         self._workflow_features_dict = workflow.features_dict
         self._workflow_run_id = ""
-        self._invoke_from = queue_manager._invoke_from
+        self._invoke_from = queue_manager.invoke_from
         self._draft_var_saver_factory = draft_var_saver_factory
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -146,7 +146,7 @@ class WorkflowAppGenerateTaskPipeline:
         :return:
         """
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
-        if self._base_task_pipeline._stream:
+        if self._base_task_pipeline.stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
@@ -206,7 +206,7 @@ class WorkflowAppGenerateTaskPipeline:
         return None
 
     def _wrapper_process_stream_response(
-        self, trace_manager: Optional[TraceQueueManager] = None
+        self, trace_manager: TraceQueueManager | None = None
     ) -> Generator[StreamResponse, None, None]:
         tts_publisher = None
         task_id = self._application_generate_entity.task_id
@@ -263,12 +263,12 @@ class WorkflowAppGenerateTaskPipeline:
                 session.rollback()
                 raise
 
-    def _ensure_workflow_initialized(self) -> None:
+    def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
 
-    def _ensure_graph_runtime_initialized(self, graph_runtime_state: Optional[GraphRuntimeState]) -> GraphRuntimeState:
+    def _ensure_graph_runtime_initialized(self, graph_runtime_state: GraphRuntimeState | None) -> GraphRuntimeState:
         """Fluent validation for graph runtime state."""
         if not graph_runtime_state:
             raise ValueError("graph runtime state not initialized.")
@@ -276,12 +276,12 @@ class WorkflowAppGenerateTaskPipeline:
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
-        yield self._base_task_pipeline._ping_stream_response()
+        yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
         """Handle error events."""
-        err = self._base_task_pipeline._handle_error(event=event)
-        yield self._base_task_pipeline._error_to_stream_response(err)
+        err = self._base_task_pipeline.handle_error(event=event)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_workflow_started_event(
         self, event: QueueWorkflowStartedEvent, **kwargs
@@ -474,8 +474,8 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowSucceededEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow succeeded events."""
@@ -508,8 +508,8 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowPartialSuccessEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow partial success events."""
@@ -543,8 +543,8 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow failed and stop events."""
@@ -581,8 +581,8 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: QueueTextChunkEvent,
         *,
-        tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
-        queue_message: Optional[Union[WorkflowQueueMessage, MessageQueueMessage]] = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
@@ -635,10 +635,10 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: Any,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-        queue_message: Optional[Union[WorkflowQueueMessage, MessageQueueMessage]] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
     ) -> Generator[StreamResponse, None, None]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()
@@ -701,8 +701,8 @@ class WorkflowAppGenerateTaskPipeline:
 
     def _process_stream_response(
         self,
-        tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        trace_manager: TraceQueueManager | None = None,
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response using elegant Fluent Python patterns.
@@ -744,7 +744,7 @@ class WorkflowAppGenerateTaskPipeline:
         if tts_publisher:
             tts_publisher.publish(None)
 
-    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution) -> None:
+    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution):
         invoke_from = self._application_generate_entity.invoke_from
         if invoke_from == InvokeFrom.SERVICE_API:
             created_from = WorkflowAppLogCreatedFrom.SERVICE_API
@@ -769,7 +769,7 @@ class WorkflowAppGenerateTaskPipeline:
         session.commit()
 
     def _text_chunk_to_stream_response(
-        self, text: str, from_variable_selector: Optional[list[str]] = None
+        self, text: str, from_variable_selector: list[str] | None = None
     ) -> TextChunkStreamResponse:
         """
         Handle completed event.

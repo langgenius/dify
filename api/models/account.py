@@ -1,12 +1,13 @@
 import enum
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import sqlalchemy as sa
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
+from typing_extensions import deprecated
 
 from models.base import Base
 
@@ -89,24 +90,24 @@ class Account(UserMixin, Base):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255))
-    password: Mapped[Optional[str]] = mapped_column(String(255))
-    password_salt: Mapped[Optional[str]] = mapped_column(String(255))
-    avatar: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    interface_language: Mapped[Optional[str]] = mapped_column(String(255))
-    interface_theme: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    timezone: Mapped[Optional[str]] = mapped_column(String(255))
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    last_login_ip: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    password: Mapped[str | None] = mapped_column(String(255))
+    password_salt: Mapped[str | None] = mapped_column(String(255))
+    avatar: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    interface_language: Mapped[str | None] = mapped_column(String(255))
+    interface_theme: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String(255))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_login_ip: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_active_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), nullable=False)
     status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'active'::character varying"))
-    initialized_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), nullable=False)
 
     @reconstructor
     def init_on_load(self):
-        self.role: Optional[TenantAccountRole] = None
-        self._current_tenant: Optional[Tenant] = None
+        self.role: TenantAccountRole | None = None
+        self._current_tenant: Tenant | None = None
 
     @property
     def is_password_set(self):
@@ -187,7 +188,28 @@ class Account(UserMixin, Base):
         return TenantAccountRole.is_admin_role(self.role)
 
     @property
+    @deprecated("Use has_edit_permission instead.")
     def is_editor(self):
+        """Determines if the account has edit permissions in their current tenant (workspace).
+
+        This property checks if the current role has editing privileges, which includes:
+        - `OWNER`
+        - `ADMIN`
+        - `EDITOR`
+
+        Note: This checks for any role with editing permission, not just the 'EDITOR' role specifically.
+        """
+        return self.has_edit_permission
+
+    @property
+    def has_edit_permission(self):
+        """Determines if the account has editing permissions in their current tenant (workspace).
+
+        This property checks if the current role has editing privileges, which includes:
+        - `OWNER`
+        - `ADMIN`
+        - `EDITOR`
+        """
         return TenantAccountRole.is_editing_role(self.role)
 
     @property
@@ -210,26 +232,28 @@ class Tenant(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     name: Mapped[str] = mapped_column(String(255))
-    encrypt_public_key: Mapped[Optional[str]] = mapped_column(sa.Text)
+    encrypt_public_key: Mapped[str | None] = mapped_column(sa.Text)
     plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'::character varying"))
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'::character varying"))
-    custom_config: Mapped[Optional[str]] = mapped_column(sa.Text)
+    custom_config: Mapped[str | None] = mapped_column(sa.Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
-        return (
-            db.session.query(Account)
-            .where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
-            .all()
+        return list(
+            db.session.scalars(
+                select(Account).where(
+                    Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
+                )
+            ).all()
         )
 
     @property
-    def custom_config_dict(self) -> dict:
+    def custom_config_dict(self) -> dict[str, Any]:
         return json.loads(self.custom_config) if self.custom_config else {}
 
     @custom_config_dict.setter
-    def custom_config_dict(self, value: dict):
+    def custom_config_dict(self, value: dict[str, Any]) -> None:
         self.custom_config = json.dumps(value)
 
 
@@ -247,7 +271,7 @@ class TenantAccountJoin(Base):
     account_id: Mapped[str] = mapped_column(StringUUID)
     current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     role: Mapped[str] = mapped_column(String(16), server_default="normal")
-    invited_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    invited_by: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
@@ -281,10 +305,10 @@ class InvitationCode(Base):
     batch: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(32))
     status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'unused'::character varying"))
-    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    used_by_tenant_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    used_by_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    deprecated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    used_by_tenant_id: Mapped[str | None] = mapped_column(StringUUID)
+    used_by_account_id: Mapped[str | None] = mapped_column(StringUUID)
+    deprecated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
 
 

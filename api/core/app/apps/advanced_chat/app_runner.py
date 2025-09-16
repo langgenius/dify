@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -54,7 +54,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         app: App,
-    ) -> None:
+    ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
@@ -68,7 +68,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self.system_user_id = system_user_id
         self._app = app
 
-    def run(self) -> None:
+    def run(self):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -221,7 +221,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         return False
 
-    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy) -> None:
+    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
         """
         Direct output
         """
@@ -231,7 +231,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
     def query_app_annotations_to_reply(
         self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
-    ) -> Optional[MessageAnnotation]:
+    ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
         :param app_record: app record

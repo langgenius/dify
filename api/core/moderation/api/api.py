@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -25,7 +23,7 @@ class ApiModeration(Moderation):
     name: str = "api"
 
     @classmethod
-    def validate_config(cls, tenant_id: str, config: dict) -> None:
+    def validate_config(cls, tenant_id: str, config: dict):
         """
         Validate the incoming form config data.
 
@@ -75,7 +73,7 @@ class ApiModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
-    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict) -> dict:
+    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict):
         if self.config is None:
             raise ValueError("The config is not set.")
         extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id", ""))
@@ -87,7 +85,7 @@ class ApiModeration(Moderation):
         return result
 
     @staticmethod
-    def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> Optional[APIBasedExtension]:
+    def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension | None:
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )

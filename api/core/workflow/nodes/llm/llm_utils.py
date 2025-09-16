@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -86,8 +86,8 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-) -> Optional[TokenBufferMemory]:
+    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
+) -> TokenBufferMemory | None:
     if not node_data_memory:
         return None
 
@@ -107,7 +107,7 @@ def fetch_memory(
     return memory
 
 
-def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
+def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):
     provider_model_bundle = model_instance.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 

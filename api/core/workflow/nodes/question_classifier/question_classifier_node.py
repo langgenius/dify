@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -59,11 +59,11 @@ class QuestionClassifierNode(BaseNode):
         graph_init_params: "GraphInitParams",
         graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
+        previous_node_id: str | None = None,
+        thread_pool_id: str | None = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,
@@ -83,10 +83,10 @@ class QuestionClassifierNode(BaseNode):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = QuestionClassifierNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -95,7 +95,7 @@ class QuestionClassifierNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -275,7 +275,7 @@ class QuestionClassifierNode(BaseNode):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: dict | None = None):
         """
         Get default config of node.
         :param filters: filter by node config parameters.
@@ -288,7 +288,7 @@ class QuestionClassifierNode(BaseNode):
         node_data: QuestionClassifierNodeData,
         query: str,
         model_config: ModelConfigWithCredentialsEntity,
-        context: Optional[str],
+        context: str | None,
     ) -> int:
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         prompt_template = self._get_prompt_template(node_data, query, None, 2000)
@@ -331,7 +331,7 @@ class QuestionClassifierNode(BaseNode):
         self,
         node_data: QuestionClassifierNodeData,
         query: str,
-        memory: Optional[TokenBufferMemory],
+        memory: TokenBufferMemory | None,
         max_token_limit: int = 2000,
     ):
         model_mode = ModelMode(node_data.model.mode)

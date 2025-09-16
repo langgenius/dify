@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Optional, Union
+from typing import Any, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -302,7 +302,7 @@ class ApiTool(Tool):
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
-    ) -> Any:
+    ):
         if max_recursive <= 0:
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
@@ -337,7 +337,7 @@ class ApiTool(Tool):
         # If no option succeeded, you might want to return the value as is or raise an error
         return value  # or raise ValueError(f"Cannot convert value '{value}' to any specified type in anyOf")
 
-    def _convert_body_property_type(self, property: dict[str, Any], value: Any) -> Any:
+    def _convert_body_property_type(self, property: dict[str, Any], value: Any):
         try:
             if "type" in property:
                 if property["type"] == "integer" or property["type"] == "int":
@@ -376,9 +376,9 @@ class ApiTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke http request

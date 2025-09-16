@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -100,7 +100,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+        external_knowledge_api: ExternalKnowledgeApis | None = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
         )
         if external_knowledge_api is None:
@@ -109,13 +109,14 @@ class ExternalDatasetService:
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+        external_knowledge_api: ExternalKnowledgeApis | None = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
-        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
-            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
+        settings = args.get("settings")
+        if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
+            settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")
@@ -150,7 +151,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: Optional[ExternalKnowledgeBindings] = (
+        external_knowledge_binding: ExternalKnowledgeBindings | None = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
         if not external_knowledge_binding:
@@ -180,7 +181,7 @@ class ExternalDatasetService:
         do http request depending on api bundle
         """
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "url": settings.url,
             "headers": settings.headers,
             "follow_redirects": True,
@@ -202,7 +203,7 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: Optional[dict] = None) -> dict[str, Any]:
+    def assembling_headers(authorization: Authorization, headers: dict | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -276,8 +277,8 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict,
-        metadata_condition: Optional[MetadataCondition] = None,
-    ) -> list:
+        metadata_condition: MetadataCondition | None = None,
+    ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )

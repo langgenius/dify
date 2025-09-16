@@ -316,6 +316,10 @@ const translation = {
     tryDifferentSearch: 'Thử một cụm từ tìm kiếm khác',
     noMatchingCommands: 'Không tìm thấy lệnh phù hợp',
     slashHint: 'Gõ / để xem tất cả các lệnh có sẵn',
+    selectToNavigate: 'Chọn để điều hướng',
+    startTyping: 'Bắt đầu gõ để tìm kiếm',
+    pressEscToClose: 'Nhấn ESC để đóng',
+    tips: 'Nhấn ↑↓ để duyệt',
   },
 }
 

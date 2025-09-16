@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -18,7 +18,7 @@ class ModelConfig(BaseModel):
 
 class ContextConfig(BaseModel):
     enabled: bool
-    variable_selector: Optional[list[str]] = None
+    variable_selector: list[str] | None = None
 
 
 class VisionConfigOptions(BaseModel):
@@ -51,23 +51,40 @@ class PromptConfig(BaseModel):
 
 class LLMNodeChatModelMessage(ChatModelMessage):
     text: str = ""
-    jinja2_text: Optional[str] = None
+    jinja2_text: str | None = None
 
 
 class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
-    jinja2_text: Optional[str] = None
+    jinja2_text: str | None = None
 
 
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)
-    memory: Optional[MemoryConfig] = None
+    memory: MemoryConfig | None = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
     structured_output: Mapping[str, Any] | None = None
     # We used 'structured_output_enabled' in the past, but it's not a good name.
     structured_output_switch_on: bool = Field(False, alias="structured_output_enabled")
+    reasoning_format: Literal["separated", "tagged"] = Field(
+        # Keep tagged as default for backward compatibility
+        default="tagged",
+        description=(
+            """
+            Strategy for handling model reasoning output.
+
+            separated: Return clean text (without <think> tags) + reasoning_content field.
+                      Recommended for new workflows. Enables safe downstream parsing and 
+                      workflow variable access: {{#node_id.reasoning_content#}}
+
+            tagged   : Return original text (with <think> tags) + reasoning_content field.
+                      Maintains full backward compatibility while still providing reasoning_content
+                      for workflow automation. Frontend thinking panels work as before.
+            """
+        ),
+    )
 
     @field_validator("prompt_config", mode="before")
     @classmethod

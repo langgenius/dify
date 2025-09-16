@@ -1,5 +1,5 @@
 from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 from core.variables import SegmentType, Variable
 from core.variables.segments import BooleanSegment
@@ -30,10 +30,10 @@ class VariableAssignerNode(BaseNode):
 
     _node_data: VariableAssignerData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = VariableAssignerData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -42,7 +42,7 @@ class VariableAssignerNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -58,10 +58,10 @@ class VariableAssignerNode(BaseNode):
         graph_init_params: "GraphInitParams",
         graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
+        previous_node_id: str | None = None,
+        thread_pool_id: str | None = None,
         conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,

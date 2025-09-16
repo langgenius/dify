@@ -1,7 +1,7 @@
 import uuid
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -17,18 +17,18 @@ from core.workflow.nodes.end.entities import EndStreamParam
 class GraphEdge(BaseModel):
     source_node_id: str = Field(..., description="source node id")
     target_node_id: str = Field(..., description="target node id")
-    run_condition: Optional[RunCondition] = None
+    run_condition: RunCondition | None = None
     """run condition"""
 
 
 class GraphParallel(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="random uuid parallel id")
     start_from_node_id: str = Field(..., description="start from node id")
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id"""
-    end_to_node_id: Optional[str] = None
+    end_to_node_id: str | None = None
     """end to node id"""
 
 
@@ -54,7 +54,7 @@ class Graph(BaseModel):
     end_stream_param: EndStreamParam = Field(..., description="end stream param")
 
     @classmethod
-    def init(cls, graph_config: Mapping[str, Any], root_node_id: Optional[str] = None) -> "Graph":
+    def init(cls, graph_config: Mapping[str, Any], root_node_id: str | None = None) -> "Graph":
         """
         Init graph
 
@@ -205,9 +205,7 @@ class Graph(BaseModel):
         return graph
 
     @classmethod
-    def _recursively_add_node_ids(
-        cls, node_ids: list[str], edge_mapping: dict[str, list[GraphEdge]], node_id: str
-    ) -> None:
+    def _recursively_add_node_ids(cls, node_ids: list[str], edge_mapping: dict[str, list[GraphEdge]], node_id: str):
         """
         Recursively add node ids
 
@@ -225,7 +223,7 @@ class Graph(BaseModel):
             )
 
     @classmethod
-    def _check_connected_to_previous_node(cls, route: list[str], edge_mapping: dict[str, list[GraphEdge]]) -> None:
+    def _check_connected_to_previous_node(cls, route: list[str], edge_mapping: dict[str, list[GraphEdge]]):
         """
         Check whether it is connected to the previous node
         """
@@ -255,8 +253,8 @@ class Graph(BaseModel):
         start_node_id: str,
         parallel_mapping: dict[str, GraphParallel],
         node_parallel_mapping: dict[str, str],
-        parent_parallel: Optional[GraphParallel] = None,
-    ) -> None:
+        parent_parallel: GraphParallel | None = None,
+    ):
         """
         Recursively add parallel ids
 
@@ -424,9 +422,9 @@ class Graph(BaseModel):
         cls,
         parallel_mapping: dict[str, GraphParallel],
         graph_edge: GraphEdge,
-        parallel: Optional[GraphParallel] = None,
-        parent_parallel: Optional[GraphParallel] = None,
-    ) -> Optional[GraphParallel]:
+        parallel: GraphParallel | None = None,
+        parent_parallel: GraphParallel | None = None,
+    ) -> GraphParallel | None:
         """
         Get current parallel
         """
@@ -461,7 +459,7 @@ class Graph(BaseModel):
         level_limit: int,
         parent_parallel_id: str,
         current_level: int = 1,
-    ) -> None:
+    ):
         """
         Check if it exceeds N layers of parallel
         """
@@ -488,7 +486,7 @@ class Graph(BaseModel):
         edge_mapping: dict[str, list[GraphEdge]],
         merge_node_id: str,
         start_node_id: str,
-    ) -> None:
+    ):
         """
         Recursively add node ids
 
@@ -614,7 +612,7 @@ class Graph(BaseModel):
     @classmethod
     def _recursively_fetch_routes(
         cls, edge_mapping: dict[str, list[GraphEdge]], start_node_id: str, routes_node_ids: list[str]
-    ) -> None:
+    ):
         """
         Recursively fetch route
         """

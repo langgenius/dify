@@ -1,7 +1,7 @@
 import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy.orm import Session
 
@@ -62,7 +62,7 @@ class WorkflowResponseConverter:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._user = user
 
@@ -140,7 +140,7 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeStartStreamResponse]:
+    ) -> NodeStartStreamResponse | None:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -190,7 +190,7 @@ class WorkflowResponseConverter:
         | QueueNodeExceptionEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeFinishStreamResponse]:
+    ) -> NodeFinishStreamResponse | None:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:
@@ -235,7 +235,7 @@ class WorkflowResponseConverter:
         event: QueueNodeRetryEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
+    ) -> Union[NodeRetryStreamResponse, NodeFinishStreamResponse] | None:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_execution_id:

@@ -1,14 +1,9 @@
 import hashlib
 import logging
-import os
 from collections.abc import Sequence
 from threading import Lock
-from typing import Optional
-
-from pydantic import BaseModel
 
 import contexts
-from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -28,48 +23,20 @@ from core.plugin.impl.model import PluginModelClient
 logger = logging.getLogger(__name__)
 
 
-class ModelProviderExtension(BaseModel):
-    plugin_model_provider_entity: PluginModelProviderEntity
-    position: Optional[int] = None
-
-
 class ModelProviderFactory:
-    provider_position_map: dict[str, int]
-
-    def __init__(self, tenant_id: str) -> None:
-        self.provider_position_map = {}
-
+    def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
         self.plugin_model_manager = PluginModelClient()
-
-        if not self.provider_position_map:
-            # get the path of current classes
-            current_path = os.path.abspath(__file__)
-            model_providers_path = os.path.dirname(current_path)
-
-            # get _position.yaml file path
-            self.provider_position_map = get_provider_position_map(model_providers_path)
 
     def get_providers(self) -> Sequence[ProviderEntity]:
         """
         Get all providers
         :return: list of providers
         """
-        # Fetch plugin model providers
+        # FIXME(-LAN-): Removed position map sorting since providers are fetched from plugin server
+        # The plugin server should return providers in the desired order
         plugin_providers = self.get_plugin_model_providers()
-
-        # Convert PluginModelProviderEntity to ModelProviderExtension
-        model_provider_extensions = []
-        for provider in plugin_providers:
-            model_provider_extensions.append(ModelProviderExtension(plugin_model_provider_entity=provider))
-
-        sorted_extensions = sort_to_dict_by_position_map(
-            position_map=self.provider_position_map,
-            data=model_provider_extensions,
-            name_func=lambda x: x.plugin_model_provider_entity.declaration.provider,
-        )
-
-        return [extension.plugin_model_provider_entity.declaration for extension in sorted_extensions.values()]
+        return [provider.declaration for provider in plugin_providers]
 
     def get_plugin_model_providers(self) -> Sequence[PluginModelProviderEntity]:
         """
@@ -132,7 +99,7 @@ class ModelProviderFactory:
 
         return plugin_model_provider_entity
 
-    def provider_credentials_validate(self, *, provider: str, credentials: dict) -> dict:
+    def provider_credentials_validate(self, *, provider: str, credentials: dict):
         """
         Validate provider credentials
 
@@ -163,9 +130,7 @@ class ModelProviderFactory:
 
         return filtered_credentials
 
-    def model_credentials_validate(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
-    ) -> dict:
+    def model_credentials_validate(self, *, provider: str, model_type: ModelType, model: str, credentials: dict):
         """
         Validate model credentials
 
@@ -240,9 +205,9 @@ class ModelProviderFactory:
     def get_models(
         self,
         *,
-        provider: Optional[str] = None,
-        model_type: Optional[ModelType] = None,
-        provider_configs: Optional[list[ProviderConfig]] = None,
+        provider: str | None = None,
+        model_type: ModelType | None = None,
+        provider_configs: list[ProviderConfig] | None = None,
     ) -> list[SimpleProviderEntity]:
         """
         Get all models for given model type

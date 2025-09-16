@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, Field
 
@@ -41,7 +41,7 @@ class AgentScratchpadUnit(BaseModel):
         action_name: str
         action_input: Union[dict, str]
 
-        def to_dict(self) -> dict:
+        def to_dict(self):
             """
             Convert to dictionary.
             """
@@ -50,11 +50,11 @@ class AgentScratchpadUnit(BaseModel):
                 "action_input": self.action_input,
             }
 
-    agent_response: Optional[str] = None
-    thought: Optional[str] = None
-    action_str: Optional[str] = None
-    observation: Optional[str] = None
-    action: Optional[Action] = None
+    agent_response: str | None = None
+    thought: str | None = None
+    action_str: str | None = None
+    observation: str | None = None
+    action: Action | None = None
 
     def is_final(self) -> bool:
         """
@@ -81,8 +81,8 @@ class AgentEntity(BaseModel):
     provider: str
     model: str
     strategy: Strategy
-    prompt: Optional[AgentPromptEntity] = None
-    tools: Optional[list[AgentToolEntity]] = None
+    prompt: AgentPromptEntity | None = None
+    tools: list[AgentToolEntity] | None = None
     max_iteration: int = 10
 
 

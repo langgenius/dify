@@ -10,7 +10,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
@@ -49,14 +49,14 @@ class Dataset(Base):
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(sa.Text, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'::character varying"))
     permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'::character varying"))
     data_source_type = mapped_column(String(255))
-    indexing_technique: Mapped[Optional[str]] = mapped_column(String(255))
+    indexing_technique: Mapped[str | None] = mapped_column(String(255))
     index_struct = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -208,7 +208,9 @@ class Dataset(Base):
 
     @property
     def doc_metadata(self):
-        dataset_metadatas = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id).all()
+        dataset_metadatas = db.session.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)
+        ).all()
 
         doc_metadata = [
             {
@@ -222,35 +224,35 @@ class Dataset(Base):
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.document_name.value,
+                    "name": BuiltInField.document_name,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.uploader.value,
+                    "name": BuiltInField.uploader,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.upload_date.value,
+                    "name": BuiltInField.upload_date,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.last_update_date.value,
+                    "name": BuiltInField.last_update_date,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.source.value,
+                    "name": BuiltInField.source,
                     "type": "string",
                 }
             )
@@ -286,7 +288,7 @@ class DatasetProcessRule(Base):
         "segmentation": {"delimiter": "\n", "max_tokens": 500, "chunk_overlap": 50},
     }
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "dataset_id": self.dataset_id,
@@ -295,7 +297,7 @@ class DatasetProcessRule(Base):
         }
 
     @property
-    def rules_dict(self):
+    def rules_dict(self) -> dict[str, Any] | None:
         try:
             return json.loads(self.rules) if self.rules else None
         except JSONDecodeError:
@@ -328,42 +330,42 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
-    processing_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # parsing
     file_id = mapped_column(sa.Text, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
-    parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
+    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # cleaning
-    cleaning_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # split
-    splitting_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # indexing
-    tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    indexing_latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # pause
-    is_paused: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
     paused_by = mapped_column(StringUUID, nullable=True)
-    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # error
     error = mapped_column(sa.Text, nullable=True)
-    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # basic fields
     indexing_status = mapped_column(String(255), nullable=False, server_default=sa.text("'waiting'::character varying"))
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
-    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
@@ -392,10 +394,10 @@ class Document(Base):
         return status
 
     @property
-    def data_source_info_dict(self):
+    def data_source_info_dict(self) -> dict[str, Any] | None:
         if self.data_source_info:
             try:
-                data_source_info_dict = json.loads(self.data_source_info)
+                data_source_info_dict: dict[str, Any] = json.loads(self.data_source_info)
             except JSONDecodeError:
                 data_source_info_dict = {}
 
@@ -403,10 +405,10 @@ class Document(Base):
         return None
 
     @property
-    def data_source_detail_dict(self):
+    def data_source_detail_dict(self) -> dict[str, Any]:
         if self.data_source_info:
             if self.data_source_type == "upload_file":
-                data_source_info_dict = json.loads(self.data_source_info)
+                data_source_info_dict: dict[str, Any] = json.loads(self.data_source_info)
                 file_detail = (
                     db.session.query(UploadFile)
                     .where(UploadFile.id == data_source_info_dict["upload_file_id"])
@@ -425,7 +427,8 @@ class Document(Base):
                         }
                     }
             elif self.data_source_type in {"notion_import", "website_crawl"}:
-                return json.loads(self.data_source_info)
+                result: dict[str, Any] = json.loads(self.data_source_info)
+                return result
         return {}
 
     @property
@@ -471,7 +474,7 @@ class Document(Base):
         return self.updated_at
 
     @property
-    def doc_metadata_details(self):
+    def doc_metadata_details(self) -> list[dict[str, Any]] | None:
         if self.doc_metadata:
             document_metadatas = (
                 db.session.query(DatasetMetadata)
@@ -481,9 +484,9 @@ class Document(Base):
                 )
                 .all()
             )
-            metadata_list = []
+            metadata_list: list[dict[str, Any]] = []
             for metadata in document_metadatas:
-                metadata_dict = {
+                metadata_dict: dict[str, Any] = {
                     "id": metadata.id,
                     "name": metadata.name,
                     "type": metadata.type,
@@ -497,13 +500,13 @@ class Document(Base):
         return None
 
     @property
-    def process_rule_dict(self):
-        if self.dataset_process_rule_id:
+    def process_rule_dict(self) -> dict[str, Any] | None:
+        if self.dataset_process_rule_id and self.dataset_process_rule:
             return self.dataset_process_rule.to_dict()
         return None
 
-    def get_built_in_fields(self):
-        built_in_fields = []
+    def get_built_in_fields(self) -> list[dict[str, Any]]:
+        built_in_fields: list[dict[str, Any]] = []
         built_in_fields.append(
             {
                 "id": "built-in",
@@ -541,12 +544,12 @@ class Document(Base):
                 "id": "built-in",
                 "name": BuiltInField.source,
                 "type": "string",
-                "value": MetadataDataSource[self.data_source_type].value,
+                "value": MetadataDataSource[self.data_source_type],
             }
         )
         return built_in_fields
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "tenant_id": self.tenant_id,
@@ -592,13 +595,13 @@ class Document(Base):
             "data_source_info_dict": self.data_source_info_dict,
             "average_segment_length": self.average_segment_length,
             "dataset_process_rule": self.dataset_process_rule.to_dict() if self.dataset_process_rule else None,
-            "dataset": self.dataset.to_dict() if self.dataset else None,
+            "dataset": None,  # Dataset class doesn't have a to_dict method
             "segment_count": self.segment_count,
             "hit_count": self.hit_count,
         }
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict[str, Any]):
         return cls(
             id=data.get("id"),
             tenant_id=data.get("tenant_id"),
@@ -674,17 +677,17 @@ class DocumentSegment(Base):
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(sa.Text, nullable=True)
-    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
     def dataset(self):
@@ -711,46 +714,48 @@ class DocumentSegment(Base):
         )
 
     @property
-    def child_chunks(self):
-        process_rule = self.document.dataset_process_rule
-        if process_rule.mode == "hierarchical":
-            rules = Rule(**process_rule.rules_dict)
-            if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
-                child_chunks = (
-                    db.session.query(ChildChunk)
-                    .where(ChildChunk.segment_id == self.id)
-                    .order_by(ChildChunk.position.asc())
-                    .all()
-                )
-                return child_chunks or []
-            else:
-                return []
-        else:
+    def child_chunks(self) -> list[Any]:
+        if not self.document:
             return []
+        process_rule = self.document.dataset_process_rule
+        if process_rule and process_rule.mode == "hierarchical":
+            rules_dict = process_rule.rules_dict
+            if rules_dict:
+                rules = Rule(**rules_dict)
+                if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
+                    child_chunks = (
+                        db.session.query(ChildChunk)
+                        .where(ChildChunk.segment_id == self.id)
+                        .order_by(ChildChunk.position.asc())
+                        .all()
+                    )
+                    return child_chunks or []
+        return []
 
-    def get_child_chunks(self):
-        process_rule = self.document.dataset_process_rule
-        if process_rule.mode == "hierarchical":
-            rules = Rule(**process_rule.rules_dict)
-            if rules.parent_mode:
-                child_chunks = (
-                    db.session.query(ChildChunk)
-                    .where(ChildChunk.segment_id == self.id)
-                    .order_by(ChildChunk.position.asc())
-                    .all()
-                )
-                return child_chunks or []
-            else:
-                return []
-        else:
+    def get_child_chunks(self) -> list[Any]:
+        if not self.document:
             return []
+        process_rule = self.document.dataset_process_rule
+        if process_rule and process_rule.mode == "hierarchical":
+            rules_dict = process_rule.rules_dict
+            if rules_dict:
+                rules = Rule(**rules_dict)
+                if rules.parent_mode:
+                    child_chunks = (
+                        db.session.query(ChildChunk)
+                        .where(ChildChunk.segment_id == self.id)
+                        .order_by(ChildChunk.position.asc())
+                        .all()
+                    )
+                    return child_chunks or []
+        return []
 
     @property
-    def sign_content(self):
+    def sign_content(self) -> str:
         return self.get_sign_content()
 
-    def get_sign_content(self):
-        signed_urls = []
+    def get_sign_content(self) -> str:
+        signed_urls: list[tuple[int, int, str]] = []
         text = self.content
 
         # For data before v0.10.0
@@ -824,8 +829,8 @@ class ChildChunk(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
-    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(sa.Text, nullable=True)
 
     @property
@@ -890,17 +895,22 @@ class DatasetKeywordTable(Base):
     )
 
     @property
-    def keyword_table_dict(self):
+    def keyword_table_dict(self) -> dict[str, set[Any]] | None:
         class SetDecoder(json.JSONDecoder):
-            def __init__(self, *args, **kwargs):
-                super().__init__(object_hook=self.object_hook, *args, **kwargs)
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                def object_hook(dct: Any) -> Any:
+                    if isinstance(dct, dict):
+                        result: dict[str, Any] = {}
+                        items = cast(dict[str, Any], dct).items()
+                        for keyword, node_idxs in items:
+                            if isinstance(node_idxs, list):
+                                result[keyword] = set(cast(list[Any], node_idxs))
+                            else:
+                                result[keyword] = node_idxs
+                        return result
+                    return dct
 
-            def object_hook(self, dct):
-                if isinstance(dct, dict):
-                    for keyword, node_idxs in dct.items():
-                        if isinstance(node_idxs, list):
-                            dct[keyword] = set(node_idxs)
-                return dct
+                super().__init__(object_hook=object_hook, *args, **kwargs)
 
         # get dataset
         dataset = db.session.query(Dataset).filter_by(id=self.dataset_id).first()
@@ -1026,7 +1036,7 @@ class ExternalKnowledgeApis(Base):
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "tenant_id": self.tenant_id,
@@ -1039,22 +1049,20 @@ class ExternalKnowledgeApis(Base):
         }
 
     @property
-    def settings_dict(self):
+    def settings_dict(self) -> dict[str, Any] | None:
         try:
             return json.loads(self.settings) if self.settings else None
         except JSONDecodeError:
             return None
 
     @property
-    def dataset_bindings(self):
-        external_knowledge_bindings = (
-            db.session.query(ExternalKnowledgeBindings)
-            .where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
-            .all()
-        )
+    def dataset_bindings(self) -> list[dict[str, Any]]:
+        external_knowledge_bindings = db.session.scalars(
+            select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+        ).all()
         dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
-        datasets = db.session.query(Dataset).where(Dataset.id.in_(dataset_ids)).all()
-        dataset_bindings = []
+        datasets = db.session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+        dataset_bindings: list[dict[str, Any]] = []
         for dataset in datasets:
             dataset_bindings.append({"id": dataset.id, "name": dataset.name})
 

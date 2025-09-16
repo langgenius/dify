@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 import chardet
 import docx
@@ -47,10 +47,10 @@ class DocumentExtractorNode(BaseNode):
 
     _node_data: DocumentExtractorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = DocumentExtractorNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -59,7 +59,7 @@ class DocumentExtractorNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:

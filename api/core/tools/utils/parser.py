@@ -2,7 +2,6 @@ import re
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from typing import Optional
 
 from flask import request
 from requests import get
@@ -198,9 +197,9 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
-    def _get_tool_parameter_type(parameter: dict) -> Optional[ToolParameter.ToolParameterType]:
+    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: Optional[str] = None
+        typ: str | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 
@@ -242,7 +241,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None) -> dict:
+    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None):
         warning = warning or {}
         """
         parse swagger to openapi

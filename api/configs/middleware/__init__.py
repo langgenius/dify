@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -78,18 +78,18 @@ class StorageConfig(BaseSettings):
 
 
 class VectorStoreConfig(BaseSettings):
-    VECTOR_STORE: Optional[str] = Field(
+    VECTOR_STORE: str | None = Field(
         description="Type of vector store to use for efficient similarity search."
         " Set to None if not using a vector store.",
         default=None,
     )
 
-    VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
+    VECTOR_STORE_WHITELIST_ENABLE: bool | None = Field(
         description="Enable whitelist for vector store.",
         default=False,
     )
 
-    VECTOR_INDEX_NAME_PREFIX: Optional[str] = Field(
+    VECTOR_INDEX_NAME_PREFIX: str | None = Field(
         description="Prefix used to create collection name in vector database",
         default="Vector_index",
     )
@@ -225,26 +225,26 @@ class CeleryConfig(DatabaseConfig):
         default="redis",
     )
 
-    CELERY_BROKER_URL: Optional[str] = Field(
+    CELERY_BROKER_URL: str | None = Field(
         description="URL of the message broker for Celery tasks.",
         default=None,
     )
 
-    CELERY_USE_SENTINEL: Optional[bool] = Field(
+    CELERY_USE_SENTINEL: bool | None = Field(
         description="Whether to use Redis Sentinel for high availability.",
         default=False,
     )
 
-    CELERY_SENTINEL_MASTER_NAME: Optional[str] = Field(
+    CELERY_SENTINEL_MASTER_NAME: str | None = Field(
         description="Name of the Redis Sentinel master.",
         default=None,
     )
 
-    CELERY_SENTINEL_PASSWORD: Optional[str] = Field(
+    CELERY_SENTINEL_PASSWORD: str | None = Field(
         description="Password of the Redis Sentinel master.",
         default=None,
     )
-    CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
+    CELERY_SENTINEL_SOCKET_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
     )
@@ -268,12 +268,12 @@ class InternalTestConfig(BaseSettings):
     Configuration settings for Internal Test
     """
 
-    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+    AWS_SECRET_ACCESS_KEY: str | None = Field(
         description="Internal test AWS secret access key",
         default=None,
     )
 
-    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+    AWS_ACCESS_KEY_ID: str | None = Field(
         description="Internal test AWS access key ID",
         default=None,
     )
@@ -284,15 +284,15 @@ class DatasetQueueMonitorConfig(BaseSettings):
     Configuration settings for Dataset Queue Monitor
     """
 
-    QUEUE_MONITOR_THRESHOLD: Optional[NonNegativeInt] = Field(
+    QUEUE_MONITOR_THRESHOLD: NonNegativeInt | None = Field(
         description="Threshold for dataset queue monitor",
         default=200,
     )
-    QUEUE_MONITOR_ALERT_EMAILS: Optional[str] = Field(
+    QUEUE_MONITOR_ALERT_EMAILS: str | None = Field(
         description="Emails for dataset queue monitor alert, separated by commas",
         default=None,
     )
-    QUEUE_MONITOR_INTERVAL: Optional[NonNegativeFloat] = Field(
+    QUEUE_MONITOR_INTERVAL: NonNegativeFloat | None = Field(
         description="Interval for dataset queue monitor in minutes",
         default=30,
     )
@@ -300,8 +300,7 @@ class DatasetQueueMonitorConfig(BaseSettings):
 
 class MiddlewareConfig(
     # place the configs in alphabet order
-    CeleryConfig,
-    DatabaseConfig,
+    CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
     # configs of storage and storage providers

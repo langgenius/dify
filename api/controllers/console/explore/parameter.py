@@ -20,7 +20,7 @@ class AppParameterApi(InstalledAppResource):
         if app_model is None:
             raise AppUnavailableError()
 
-        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()
@@ -43,6 +43,8 @@ class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
         app_model = installed_app.app
+        if not app_model:
+            raise ValueError("App not found")
         return AppService().get_app_meta(app_model)
 
 

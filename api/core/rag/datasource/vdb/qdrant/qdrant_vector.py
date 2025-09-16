@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import qdrant_client
 from flask import current_app
@@ -40,17 +40,30 @@ if TYPE_CHECKING:
     MetadataFilter = Union[DictFilter, common_types.Filter]
 
 
+class PathQdrantParams(BaseModel):
+    path: str
+
+
+class UrlQdrantParams(BaseModel):
+    url: str
+    api_key: str | None
+    timeout: float
+    verify: bool
+    grpc_port: int
+    prefer_grpc: bool
+
+
 class QdrantConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     timeout: float = 20
-    root_path: Optional[str] = None
+    root_path: str | None = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
     replication_factor: int = 1
     write_consistency_factor: int = 1
 
-    def to_qdrant_params(self):
+    def to_qdrant_params(self) -> PathQdrantParams | UrlQdrantParams:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -58,30 +71,30 @@ class QdrantConfig(BaseModel):
                     raise ValueError("Root path is not set")
                 path = os.path.join(self.root_path, path)
 
-            return {"path": path}
+            return PathQdrantParams(path=path)
         else:
-            return {
-                "url": self.endpoint,
-                "api_key": self.api_key,
-                "timeout": self.timeout,
-                "verify": self.endpoint.startswith("https"),
-                "grpc_port": self.grpc_port,
-                "prefer_grpc": self.prefer_grpc,
-            }
+            return UrlQdrantParams(
+                url=self.endpoint,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                verify=self.endpoint.startswith("https"),
+                grpc_port=self.grpc_port,
+                prefer_grpc=self.prefer_grpc,
+            )
 
 
 class QdrantVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config: QdrantConfig, distance_func: str = "Cosine"):
         super().__init__(collection_name)
         self._client_config = config
-        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
+        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params().model_dump())
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
     def get_type(self) -> str:
         return VectorType.QDRANT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -176,10 +189,10 @@ class QdrantVector(BaseVector):
         self,
         texts: Iterable[str],
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict]] = None,
-        ids: Optional[Sequence[str]] = None,
+        metadatas: list[dict] | None = None,
+        ids: Sequence[str] | None = None,
         batch_size: int = 64,
-        group_id: Optional[str] = None,
+        group_id: str | None = None,
     ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
 
@@ -221,7 +234,7 @@ class QdrantVector(BaseVector):
     def _build_payloads(
         cls,
         texts: Iterable[str],
-        metadatas: Optional[list[dict]],
+        metadatas: list[dict] | None,
         content_payload_key: str,
         metadata_payload_key: str,
         group_id: str,
@@ -292,7 +305,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 

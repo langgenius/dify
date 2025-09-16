@@ -5,7 +5,7 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
@@ -52,8 +52,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -194,9 +194,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         """Check if the exception is a duplicate key constraint violation."""
         return isinstance(exception, IntegrityError) and isinstance(exception.orig, psycopg2.errors.UniqueViolation)
 
-    def _regenerate_id_on_duplicate(
-        self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel
-    ) -> None:
+    def _regenerate_id_on_duplicate(self, execution: WorkflowNodeExecution, db_model: WorkflowNodeExecutionModel):
         """Regenerate UUID v7 for both domain and database models when duplicate key detected."""
         new_id = str(uuidv7())
         logger.warning(
@@ -205,7 +203,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.id = new_id
         execution.id = new_id
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a NodeExecution domain entity to the database.
 
@@ -254,7 +252,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
-    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel) -> None:
+    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
         """
         Persist the database model to the database.
 
@@ -281,7 +279,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_db_models_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -336,7 +334,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.

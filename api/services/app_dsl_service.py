@@ -4,7 +4,6 @@ import logging
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -17,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.helper import ssrf_proxy
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
@@ -60,8 +60,8 @@ class ImportStatus(StrEnum):
 class Import(BaseModel):
     id: str
     status: ImportStatus
-    app_id: Optional[str] = None
-    app_mode: Optional[str] = None
+    app_id: str | None = None
+    app_mode: str | None = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -98,17 +98,17 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
 class PendingData(BaseModel):
     import_mode: str
     yaml_content: str
-    name: str | None
-    description: str | None
-    icon_type: str | None
-    icon: str | None
-    icon_background: str | None
-    app_id: str | None
+    name: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    app_id: str | None = None
 
 
 class CheckDependenciesPendingData(BaseModel):
     dependencies: list[PluginDependency]
-    app_id: str | None
+    app_id: str | None = None
 
 
 class AppDslService:
@@ -120,14 +120,14 @@ class AppDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: Optional[str] = None,
-        yaml_url: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        icon_type: Optional[str] = None,
-        icon: Optional[str] = None,
-        icon_background: Optional[str] = None,
-        app_id: Optional[str] = None,
+        yaml_content: str | None = None,
+        yaml_url: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -406,15 +406,15 @@ class AppDslService:
     def _create_or_update_app(
         self,
         *,
-        app: Optional[App],
+        app: App | None,
         data: dict,
         account: Account,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        icon_type: Optional[str] = None,
-        icon: Optional[str] = None,
-        icon_background: Optional[str] = None,
-        dependencies: Optional[list[PluginDependency]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        dependencies: list[PluginDependency] | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -532,7 +532,7 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: Optional[str] = None) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:
         """
         Export app
         :param app_model: App instance
@@ -565,8 +565,8 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None
-    ) -> None:
+        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: str | None = None
+    ):
         """
         Append workflow export data
         :param export_data: export data
@@ -608,7 +608,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
+    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
         """
         Append model config export data
         :param export_data: export data
@@ -786,7 +786,10 @@ class AppDslService:
 
     @classmethod
     def encrypt_dataset_id(cls, dataset_id: str, tenant_id: str) -> str:
-        """Encrypt dataset_id using AES-CBC mode"""
+        """Encrypt dataset_id using AES-CBC mode or return plain text based on configuration"""
+        if not dify_config.DSL_EXPORT_ENCRYPT_DATASET_ID:
+            return dataset_id
+
         key = cls._generate_aes_key(tenant_id)
         iv = key[:16]
         cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -795,12 +798,34 @@ class AppDslService:
 
     @classmethod
     def decrypt_dataset_id(cls, encrypted_data: str, tenant_id: str) -> str | None:
-        """AES decryption"""
+        """AES decryption with fallback to plain text UUID"""
+        # First, check if it's already a plain UUID (not encrypted)
+        if cls._is_valid_uuid(encrypted_data):
+            return encrypted_data
+
+        # If it's not a UUID, try to decrypt it
         try:
             key = cls._generate_aes_key(tenant_id)
             iv = key[:16]
             cipher = AES.new(key, AES.MODE_CBC, iv)
             pt = unpad(cipher.decrypt(base64.b64decode(encrypted_data)), AES.block_size)
-            return pt.decode()
+            decrypted_text = pt.decode()
+
+            # Validate that the decrypted result is a valid UUID
+            if cls._is_valid_uuid(decrypted_text):
+                return decrypted_text
+            else:
+                # If decrypted result is not a valid UUID, it's probably not our encrypted data
+                return None
         except Exception:
+            # If decryption fails completely, return None
             return None
+
+    @staticmethod
+    def _is_valid_uuid(value: str) -> bool:
+        """Check if string is a valid UUID format"""
+        try:
+            uuid.UUID(value)
+            return True
+        except (ValueError, TypeError):
+            return False

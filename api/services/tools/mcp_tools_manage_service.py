@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +26,36 @@ class MCPToolManageService:
     """
     Service class for managing mcp tools.
     """
+
+    @staticmethod
+    def _encrypt_headers(headers: dict[str, str], tenant_id: str) -> dict[str, str]:
+        """
+        Encrypt headers using ProviderConfigEncrypter with all headers as SECRET_INPUT.
+
+        Args:
+            headers: Dictionary of headers to encrypt
+            tenant_id: Tenant ID for encryption
+
+        Returns:
+            Dictionary with all headers encrypted
+        """
+        if not headers:
+            return {}
+
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        # Create dynamic config for all headers as SECRET_INPUT
+        config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers]
+
+        encrypter_instance, _ = create_provider_encrypter(
+            tenant_id=tenant_id,
+            config=config,
+            cache=NoOpProviderCredentialCache(),
+        )
+
+        return cast(dict[str, str], encrypter_instance.encrypt(headers))
 
     @staticmethod
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
@@ -61,6 +91,7 @@ class MCPToolManageService:
         server_identifier: str,
         timeout: float,
         sse_read_timeout: float,
+        headers: dict[str, str] | None = None,
     ) -> ToolProviderApiEntity:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
@@ -83,6 +114,12 @@ class MCPToolManageService:
             if existing_provider.server_identifier == server_identifier:
                 raise ValueError(f"MCP tool {server_identifier} already exists")
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
+        # Encrypt headers
+        encrypted_headers = None
+        if headers:
+            encrypted_headers_dict = MCPToolManageService._encrypt_headers(headers, tenant_id)
+            encrypted_headers = json.dumps(encrypted_headers_dict)
+
         mcp_tool = MCPToolProvider(
             tenant_id=tenant_id,
             name=name,
@@ -95,6 +132,7 @@ class MCPToolManageService:
             server_identifier=server_identifier,
             timeout=timeout,
             sse_read_timeout=sse_read_timeout,
+            encrypted_headers=encrypted_headers,
         )
         db.session.add(mcp_tool)
         db.session.commit()
@@ -118,9 +156,21 @@ class MCPToolManageService:
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         server_url = mcp_provider.decrypted_server_url
         authed = mcp_provider.authed
+        headers = mcp_provider.decrypted_headers
+        timeout = mcp_provider.timeout
+        sse_read_timeout = mcp_provider.sse_read_timeout
 
         try:
-            with MCPClient(server_url, provider_id, tenant_id, authed=authed, for_list=True) as mcp_client:
+            with MCPClient(
+                server_url,
+                provider_id,
+                tenant_id,
+                authed=authed,
+                for_list=True,
+                headers=headers,
+                timeout=timeout,
+                sse_read_timeout=sse_read_timeout,
+            ) as mcp_client:
                 tools = mcp_client.list_tools()
         except MCPAuthError:
             raise ValueError("Please auth the tool first")
@@ -172,6 +222,7 @@ class MCPToolManageService:
         server_identifier: str,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        headers: dict[str, str] | None = None,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
 
@@ -207,6 +258,32 @@ class MCPToolManageService:
                 mcp_provider.timeout = timeout
             if sse_read_timeout is not None:
                 mcp_provider.sse_read_timeout = sse_read_timeout
+            if headers is not None:
+                # Merge masked headers from frontend with existing real values
+                if headers:
+                    # existing decrypted and masked headers
+                    existing_decrypted = mcp_provider.decrypted_headers
+                    existing_masked = mcp_provider.masked_headers
+
+                    # Build final headers: if value equals masked existing, keep original decrypted value
+                    final_headers: dict[str, str] = {}
+                    for key, incoming_value in headers.items():
+                        if (
+                            key in existing_masked
+                            and key in existing_decrypted
+                            and isinstance(incoming_value, str)
+                            and incoming_value == existing_masked.get(key)
+                        ):
+                            # unchanged, use original decrypted value
+                            final_headers[key] = str(existing_decrypted[key])
+                        else:
+                            final_headers[key] = incoming_value
+
+                    encrypted_headers_dict = MCPToolManageService._encrypt_headers(final_headers, tenant_id)
+                    mcp_provider.encrypted_headers = json.dumps(encrypted_headers_dict)
+                else:
+                    # Explicitly clear headers if empty dict passed
+                    mcp_provider.encrypted_headers = None
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()
@@ -226,7 +303,7 @@ class MCPToolManageService:
     def update_mcp_provider_credentials(
         cls, mcp_provider: MCPToolProvider, credentials: dict[str, Any], authed: bool = False
     ):
-        provider_controller = MCPToolProviderController._from_db(mcp_provider)
+        provider_controller = MCPToolProviderController.from_db(mcp_provider)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=mcp_provider.tenant_id,
             config=list(provider_controller.get_credentials_schema()),  # ty: ignore [invalid-argument-type]
@@ -242,6 +319,12 @@ class MCPToolManageService:
 
     @classmethod
     def _re_connect_mcp_provider(cls, server_url: str, provider_id: str, tenant_id: str):
+        # Get the existing provider to access headers and timeout settings
+        mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
+        headers = mcp_provider.decrypted_headers
+        timeout = mcp_provider.timeout
+        sse_read_timeout = mcp_provider.sse_read_timeout
+
         try:
             with MCPClient(
                 server_url,
@@ -249,6 +332,9 @@ class MCPToolManageService:
                 tenant_id,
                 authed=False,
                 for_list=True,
+                headers=headers,
+                timeout=timeout,
+                sse_read_timeout=sse_read_timeout,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
                 return {

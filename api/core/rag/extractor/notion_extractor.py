@@ -1,7 +1,7 @@
 import json
 import logging
 import operator
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import requests
 from sqlalchemy import select
@@ -36,8 +36,8 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: Optional[DocumentModel] = None,
-        notion_access_token: Optional[str] = None,
+        document_model: DocumentModel | None = None,
+        notion_access_token: str | None = None,
     ):
         self._notion_access_token = None
         self._document_model = document_model
@@ -328,13 +328,14 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: Optional[DocumentModel]):
+    def update_last_edited_time(self, document_model: DocumentModel | None):
         if not document_model:
             return
 
         last_edited_time = self.get_notion_last_edited_time()
         data_source_info = document_model.data_source_info_dict
-        data_source_info["last_edited_time"] = last_edited_time
+        if data_source_info:
+            data_source_info["last_edited_time"] = last_edited_time
 
         db.session.query(DocumentModel).filter_by(id=document_model.id).update(
             {DocumentModel.data_source_info: json.dumps(data_source_info)}

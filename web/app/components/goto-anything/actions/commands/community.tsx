@@ -13,6 +13,14 @@ type CommunityDeps = Record<string, never>
 export const communityCommand: SlashCommandHandler<CommunityDeps> = {
   name: 'community',
   description: 'Open community Discord',
+  mode: 'direct',
+
+  // Direct execution function
+  execute: () => {
+    const url = 'https://discord.gg/5AEfbxcd9k'
+    window.open(url, '_blank', 'noopener,noreferrer')
+  },
+
   async search(args: string, locale: string = 'en') {
     return [{
       id: 'community',

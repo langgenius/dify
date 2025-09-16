@@ -4,7 +4,6 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
@@ -42,6 +41,7 @@ from models.provider import (
     ProviderType,
     TenantPreferredModelProvider,
 )
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class ProviderConfiguration(BaseModel):
             ):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
 
-    def get_current_credentials(self, model_type: ModelType, model: str) -> Optional[dict]:
+    def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
         """
         Get current credentials.
 
@@ -129,18 +129,42 @@ class ProviderConfiguration(BaseModel):
             return copy_credentials
         else:
             credentials = None
+            current_credential_id = None
+
             if self.custom_configuration.models:
                 for model_configuration in self.custom_configuration.models:
                     if model_configuration.model_type == model_type and model_configuration.model == model:
                         credentials = model_configuration.credentials
+                        current_credential_id = model_configuration.current_credential_id
                         break
 
             if not credentials and self.custom_configuration.provider:
                 credentials = self.custom_configuration.provider.credentials
+                current_credential_id = self.custom_configuration.provider.current_credential_id
+
+            if current_credential_id:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                check_credential_policy_compliance(
+                    credential_id=current_credential_id,
+                    provider=self.provider.provider,
+                    credential_type=PluginCredentialType.MODEL,
+                )
+            else:
+                # no current credential id, check all available credentials
+                if self.custom_configuration.provider:
+                    for credential_configuration in self.custom_configuration.provider.available_credentials:
+                        from core.helper.credential_utils import check_credential_policy_compliance
+
+                        check_credential_policy_compliance(
+                            credential_id=credential_configuration.credential_id,
+                            provider=self.provider.provider,
+                            credential_type=PluginCredentialType.MODEL,
+                        )
 
             return credentials
 
-    def get_system_configuration_status(self) -> Optional[SystemConfigurationStatus]:
+    def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
         """
         Get system configuration status.
         :return:
@@ -266,7 +290,6 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: if provided, return the specified credential
         :return:
         """
-
         if credential_id:
             return self._get_specific_provider_credential(credential_id)
 
@@ -280,9 +303,7 @@ class ProviderConfiguration(BaseModel):
             else [],
         )
 
-    def validate_provider_credentials(
-        self, credentials: dict, credential_id: str = "", session: Session | None = None
-    ) -> dict:
+    def validate_provider_credentials(self, credentials: dict, credential_id: str = "", session: Session | None = None):
         """
         Validate custom credentials.
         :param credentials: provider credentials
@@ -291,7 +312,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.provider_credential_schema.credential_form_schemas
@@ -402,7 +423,7 @@ class ProviderConfiguration(BaseModel):
             logger.warning("Error generating next credential name: %s", str(e))
             return "API KEY 1"
 
-    def create_provider_credential(self, credentials: dict, credential_name: str | None) -> None:
+    def create_provider_credential(self, credentials: dict, credential_name: str | None):
         """
         Add custom provider credentials.
         :param credentials: provider credentials
@@ -458,7 +479,7 @@ class ProviderConfiguration(BaseModel):
         credentials: dict,
         credential_id: str,
         credential_name: str | None,
-    ) -> None:
+    ):
         """
         update a saved provider credential (by credential_id).
 
@@ -519,7 +540,7 @@ class ProviderConfiguration(BaseModel):
         credential_record: ProviderCredential | ProviderModelCredential,
         credential_source: str,
         session: Session,
-    ) -> None:
+    ):
         """
         Update load balancing configurations that reference the given credential_id.
 
@@ -559,7 +580,7 @@ class ProviderConfiguration(BaseModel):
 
         session.commit()
 
-    def delete_provider_credential(self, credential_id: str) -> None:
+    def delete_provider_credential(self, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
 
@@ -636,7 +657,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def switch_active_provider_credential(self, credential_id: str) -> None:
+    def switch_active_provider_credential(self, credential_id: str):
         """
         Switch active provider credential (copy the selected one into current active snapshot).
 
@@ -740,6 +761,7 @@ class ProviderConfiguration(BaseModel):
 
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name
+
         credentials = self.obfuscated_credentials(
             credentials=credentials,
             credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
@@ -770,9 +792,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderModelCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_custom_model_credential(
-        self, model_type: ModelType, model: str, credential_id: str | None
-    ) -> Optional[dict]:
+    def get_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str | None) -> dict | None:
         """
         Get custom model credentials.
 
@@ -794,6 +814,7 @@ class ProviderConfiguration(BaseModel):
             ):
                 current_credential_id = model_configuration.current_credential_id
                 current_credential_name = model_configuration.current_credential_name
+
                 credentials = self.obfuscated_credentials(
                     credentials=model_configuration.credentials,
                     credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
@@ -814,7 +835,7 @@ class ProviderConfiguration(BaseModel):
         credentials: dict,
         credential_id: str = "",
         session: Session | None = None,
-    ) -> dict:
+    ):
         """
         Validate custom model credentials.
 
@@ -825,7 +846,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
 
-        def _validate(s: Session) -> dict:
+        def _validate(s: Session):
             # Get provider credential secret variables
             provider_credential_secret_variables = self.extract_secret_variables(
                 self.provider.model_credential_schema.credential_form_schemas
@@ -1009,7 +1030,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
 
@@ -1079,7 +1100,7 @@ class ProviderConfiguration(BaseModel):
                 session.rollback()
                 raise
 
-    def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str):
         """
         if model list exist this custom model, switch the custom model credential.
         if model list not exist this custom model, use the credential to add a new custom model record.
@@ -1122,7 +1143,7 @@ class ProviderConfiguration(BaseModel):
             session.add(provider_model_record)
             session.commit()
 
-    def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str) -> None:
+    def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
         switch the custom model credential.
 
@@ -1152,7 +1173,7 @@ class ProviderConfiguration(BaseModel):
             session.add(provider_model_record)
             session.commit()
 
-    def delete_custom_model(self, model_type: ModelType, model: str) -> None:
+    def delete_custom_model(self, model_type: ModelType, model: str):
         """
         Delete custom model.
         :param model_type: model type
@@ -1248,7 +1269,7 @@ class ProviderConfiguration(BaseModel):
 
         return model_setting
 
-    def get_provider_model_setting(self, model_type: ModelType, model: str) -> Optional[ProviderModelSetting]:
+    def get_provider_model_setting(self, model_type: ModelType, model: str) -> ProviderModelSetting | None:
         """
         Get provider model setting.
         :param model_type: model type
@@ -1347,7 +1368,7 @@ class ProviderConfiguration(BaseModel):
             provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
         )
 
-    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None) -> None:
+    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
         """
         Switch preferred provider type.
         :param provider_type:
@@ -1359,7 +1380,7 @@ class ProviderConfiguration(BaseModel):
         if provider_type == ProviderType.SYSTEM and not self.system_configuration.enabled:
             return
 
-        def _switch(s: Session) -> None:
+        def _switch(s: Session):
             # get preferred provider
             model_provider_id = ModelProviderID(self.provider.provider)
             provider_names = [self.provider.provider]
@@ -1403,7 +1424,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]) -> dict:
+    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]):
         """
         Obfuscated credentials.
 
@@ -1424,7 +1445,7 @@ class ProviderConfiguration(BaseModel):
 
     def get_provider_model(
         self, model_type: ModelType, model: str, only_active: bool = False
-    ) -> Optional[ModelWithProviderEntity]:
+    ) -> ModelWithProviderEntity | None:
         """
         Get provider model.
         :param model_type: model type
@@ -1441,7 +1462,7 @@ class ProviderConfiguration(BaseModel):
         return None
 
     def get_provider_models(
-        self, model_type: Optional[ModelType] = None, only_active: bool = False, model: Optional[str] = None
+        self, model_type: ModelType | None = None, only_active: bool = False, model: str | None = None
     ) -> list[ModelWithProviderEntity]:
         """
         Get provider models.
@@ -1625,7 +1646,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get custom provider models.
@@ -1759,7 +1780,7 @@ class ProviderConfigurations(BaseModel):
         super().__init__(tenant_id=tenant_id)
 
     def get_models(
-        self, provider: Optional[str] = None, model_type: Optional[ModelType] = None, only_active: bool = False
+        self, provider: str | None = None, model_type: ModelType | None = None, only_active: bool = False
     ) -> list[ModelWithProviderEntity]:
         """
         Get available models.
@@ -1816,8 +1837,14 @@ class ProviderConfigurations(BaseModel):
     def __setitem__(self, key, value):
         self.configurations[key] = value
 
+    def __contains__(self, key):
+        if "/" not in key:
+            key = str(ModelProviderID(key))
+        return key in self.configurations
+
     def __iter__(self):
-        return iter(self.configurations)
+        # Return an iterator of (key, value) tuples to match BaseModel's __iter__
+        yield from self.configurations.items()
 
     def values(self) -> Iterator[ProviderConfiguration]:
         return iter(self.configurations.values())

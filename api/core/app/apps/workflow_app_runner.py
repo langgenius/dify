@@ -74,7 +74,7 @@ class WorkflowBasedAppRunner:
         queue_manager: AppQueueManager,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         app_id: str,
-    ) -> None:
+    ):
         self._queue_manager = queue_manager
         self._variable_loader = variable_loader
         self._app_id = app_id
@@ -292,7 +292,7 @@ class WorkflowBasedAppRunner:
 
         return graph, variable_pool
 
-    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent) -> None:
+    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """
         Handle event
         :param workflow_entry: workflow entry
@@ -694,5 +694,5 @@ class WorkflowBasedAppRunner:
                 )
             )
 
-    def _publish_event(self, event: AppQueueEvent) -> None:
+    def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)

@@ -18,20 +18,20 @@ from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
     ToolProviderNotFoundError,
 )
-from core.tools.utils.yaml_utils import load_yaml_file
+from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
 class BuiltinToolProviderController(ToolProviderController):
     tools: list[BuiltinTool]
 
-    def __init__(self, **data: Any) -> None:
+    def __init__(self, **data: Any):
         self.tools = []
 
         # load provider yaml
         provider = self.__class__.__module__.split(".")[-1]
         yaml_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, f"{provider}.yaml")
         try:
-            provider_yaml = load_yaml_file(yaml_path, ignore_error=False)
+            provider_yaml = load_yaml_file_cached(yaml_path)
         except Exception as e:
             raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}")
 
@@ -71,7 +71,7 @@ class BuiltinToolProviderController(ToolProviderController):
         for tool_file in tool_files:
             # get tool name
             tool_name = tool_file.split(".")[0]
-            tool = load_yaml_file(path.join(tool_path, tool_file), ignore_error=False)
+            tool = load_yaml_file_cached(path.join(tool_path, tool_file))
 
             # get tool class, import the module
             assistant_tool_class: type = load_single_subclass_from_source(
@@ -197,7 +197,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.entity.identity.tags or []
 
-    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
 
@@ -211,7 +211,7 @@ class BuiltinToolProviderController(ToolProviderController):
         self._validate_credentials(user_id, credentials)
 
     @abstractmethod
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
 

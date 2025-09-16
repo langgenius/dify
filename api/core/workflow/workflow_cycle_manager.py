@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -48,7 +48,7 @@ class WorkflowCycleManager:
         workflow_info: CycleManagerWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
         self._workflow_info = workflow_info
@@ -83,9 +83,9 @@ class WorkflowCycleManager:
         total_tokens: int,
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
-        conversation_id: Optional[str] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-        external_trace_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        external_trace_id: str | None = None,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
@@ -110,9 +110,9 @@ class WorkflowCycleManager:
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
         exceptions_count: int = 0,
-        conversation_id: Optional[str] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-        external_trace_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        external_trace_id: str | None = None,
     ) -> WorkflowExecution:
         execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
@@ -138,10 +138,10 @@ class WorkflowCycleManager:
         total_steps: int,
         status: WorkflowExecutionStatus,
         error_message: str,
-        conversation_id: Optional[str] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        conversation_id: str | None = None,
+        trace_manager: TraceQueueManager | None = None,
         exceptions_count: int = 0,
-        external_trace_id: Optional[str] = None,
+        external_trace_id: str | None = None,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
         now = naive_utc_now()
@@ -296,10 +296,10 @@ class WorkflowCycleManager:
         total_tokens: int,
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
         exceptions_count: int = 0,
-        finished_at: Optional[datetime] = None,
-    ) -> None:
+        finished_at: datetime | None = None,
+    ):
         """Update workflow execution with completion data."""
         execution.status = status
         execution.outputs = outputs or {}
@@ -312,11 +312,11 @@ class WorkflowCycleManager:
 
     def _add_trace_task_if_needed(
         self,
-        trace_manager: Optional[TraceQueueManager],
+        trace_manager: TraceQueueManager | None,
         workflow_execution: WorkflowExecution,
-        conversation_id: Optional[str],
-        external_trace_id: Optional[str],
-    ) -> None:
+        conversation_id: str | None,
+        external_trace_id: str | None,
+    ):
         """Add trace task if trace manager is provided."""
         if trace_manager:
             trace_manager.add_trace_task(
@@ -334,7 +334,7 @@ class WorkflowCycleManager:
         workflow_execution_id: str,
         error_message: str,
         now: datetime,
-    ) -> None:
+    ):
         """Fail all running node executions for a workflow."""
         running_node_executions = [
             node_exec
@@ -357,8 +357,8 @@ class WorkflowCycleManager:
         workflow_execution: WorkflowExecution,
         event: Union[QueueNodeStartedEvent, QueueNodeRetryEvent],
         status: WorkflowNodeExecutionStatus,
-        error: Optional[str] = None,
-        created_at: Optional[datetime] = None,
+        error: str | None = None,
+        created_at: datetime | None = None,
     ) -> WorkflowNodeExecution:
         """Create a node execution from an event."""
         now = naive_utc_now()
@@ -404,9 +404,9 @@ class WorkflowCycleManager:
             QueueNodeExceptionEvent,
         ],
         status: WorkflowNodeExecutionStatus,
-        error: Optional[str] = None,
+        error: str | None = None,
         handle_special_values: bool = False,
-    ) -> None:
+    ):
         """Update node execution with completion data."""
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - event.start_at).total_seconds()

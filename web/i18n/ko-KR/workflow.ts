@@ -497,6 +497,12 @@ const translation = {
         doc: '구조화된 출력에 대해 더 알아보세요.',
         import: 'JSON 에서 가져오기',
       },
+      reasoningFormat: {
+        title: '추론 태그 분리 활성화',
+        separated: '추론 태그 분리',
+        tooltip: '추론 태그에서 내용을 추출하고 이를 reasoning_content 필드에 저장합니다',
+        tagged: '추론 태그 유지',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '쿼리 변수',
@@ -1048,6 +1054,10 @@ const translation = {
     noMatchingInputsFound: '지난 실행에서 일치하는 입력을 찾을 수 없습니다.',
     copyLastRunError: '마지막 실행 입력을 복사하는 데 실패했습니다.',
     lastOutput: '마지막 출력',
+  },
+  sidebar: {
+    exportWarning: '현재 저장된 버전 내보내기',
+    exportWarningDesc: '이 작업은 현재 저장된 워크플로우 버전을 내보냅니다. 편집기에서 저장되지 않은 변경 사항이 있는 경우, 먼저 워크플로우 캔버스의 내보내기 옵션을 사용하여 저장해 주세요.',
   },
 }
 

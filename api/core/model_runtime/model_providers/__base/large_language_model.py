@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Sequence
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import ConfigDict
 
@@ -94,12 +94,12 @@ class LargeLanguageModel(AIModel):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        model_parameters: dict | None = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
         Invoke large language model
@@ -243,11 +243,11 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke result generator
@@ -328,7 +328,7 @@ class LargeLanguageModel(AIModel):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
+        tools: list[PromptMessageTool] | None = None,
     ) -> int:
         """
         Get number of tokens for given prompt messages
@@ -354,7 +354,7 @@ class LargeLanguageModel(AIModel):
             )
         return 0
 
-    def _calc_response_usage(
+    def calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int
     ) -> LLMUsage:
         """
@@ -403,12 +403,12 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
+    ):
         """
         Trigger before invoke callbacks
 
@@ -451,12 +451,12 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
+    ):
         """
         Trigger new chunk callbacks
 
@@ -498,12 +498,12 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
+    ):
         """
         Trigger after invoke callbacks
 
@@ -548,12 +548,12 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
-    ) -> None:
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
+    ):
         """
         Trigger invoke error callbacks
 

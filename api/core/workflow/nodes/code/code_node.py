@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
@@ -28,10 +28,10 @@ class CodeNode(BaseNode):
 
     _node_data: CodeNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = CodeNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -40,7 +40,7 @@ class CodeNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -50,7 +50,7 @@ class CodeNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: dict | None = None):
         """
         Get default config of node.
         :param filters: filter by node config parameters.
@@ -161,7 +161,7 @@ class CodeNode(BaseNode):
     def _transform_result(
         self,
         result: Mapping[str, Any],
-        output_schema: Optional[dict[str, CodeNodeData.Output]],
+        output_schema: dict[str, CodeNodeData.Output] | None,
         prefix: str = "",
         depth: int = 1,
     ):

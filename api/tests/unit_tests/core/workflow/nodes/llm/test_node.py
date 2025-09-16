@@ -1,7 +1,6 @@
 import base64
 import uuid
 from collections.abc import Sequence
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -47,7 +46,7 @@ class MockTokenBufferMemory:
         self.history_messages = history_messages or []
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
+        self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
@@ -69,6 +68,7 @@ def llm_node_data() -> LLMNodeData:
                 detail=ImagePromptMessageContent.DETAIL.HIGH,
             ),
         ),
+        reasoning_format="tagged",
     )
 
 
@@ -689,3 +689,66 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert list(gen) == []
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
+
+
+class TestReasoningFormat:
+    """Test cases for reasoning_format functionality"""
+
+    def test_split_reasoning_separated_mode(self):
+        """Test separated mode: tags are removed and content is extracted"""
+
+        text_with_think = """
+        <think>I need to explain what Dify is. It's an open source AI platform.
+        </think>Dify is an open source AI platform.
+        """
+
+        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, "separated")
+
+        assert clean_text == "Dify is an open source AI platform."
+        assert reasoning_content == "I need to explain what Dify is. It's an open source AI platform."
+
+    def test_split_reasoning_tagged_mode(self):
+        """Test tagged mode: original text is preserved"""
+
+        text_with_think = """
+        <think>I need to explain what Dify is. It's an open source AI platform.
+        </think>Dify is an open source AI platform.
+        """
+
+        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, "tagged")
+
+        # Original text unchanged
+        assert clean_text == text_with_think
+        # Empty reasoning content in tagged mode
+        assert reasoning_content == ""
+
+    def test_split_reasoning_no_think_blocks(self):
+        """Test behavior when no <think> tags are present"""
+
+        text_without_think = "This is a simple answer without any thinking blocks."
+
+        clean_text, reasoning_content = LLMNode._split_reasoning(text_without_think, "separated")
+
+        assert clean_text == text_without_think
+        assert reasoning_content == ""
+
+    def test_reasoning_format_default_value(self):
+        """Test that reasoning_format defaults to 'tagged' for backward compatibility"""
+
+        node_data = LLMNodeData(
+            title="Test LLM",
+            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+            prompt_template=[],
+            context=ContextConfig(enabled=False),
+        )
+
+        assert node_data.reasoning_format == "tagged"
+
+        text_with_think = """
+        <think>I need to explain what Dify is. It's an open source AI platform.
+        </think>Dify is an open source AI platform.
+        """
+        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, node_data.reasoning_format)
+
+        assert clean_text == text_with_think
+        assert reasoning_content == ""

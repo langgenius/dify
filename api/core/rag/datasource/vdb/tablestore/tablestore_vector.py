@@ -2,7 +2,7 @@ import json
 import logging
 import math
 from collections.abc import Iterable
-from typing import Any, Optional
+from typing import Any
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -22,15 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 class TableStoreConfig(BaseModel):
-    access_key_id: Optional[str] = None
-    access_key_secret: Optional[str] = None
-    instance_name: Optional[str] = None
-    endpoint: Optional[str] = None
-    normalize_full_text_bm25_score: Optional[bool] = False
+    access_key_id: str | None = None
+    access_key_secret: str | None = None
+    instance_name: str | None = None
+    endpoint: str | None = None
+    normalize_full_text_bm25_score: bool | None = False
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ACCESS_KEY_ID is required")
         if not values["access_key_secret"]:
@@ -112,7 +112,7 @@ class TableStoreVector(BaseVector):
 
         return return_row is not None
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
@@ -121,7 +121,7 @@ class TableStoreVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         return self._search_by_metadata(key, value)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -143,7 +143,7 @@ class TableStoreVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._search_by_full_text(query, filtered_list, top_k, score_threshold)
 
-    def delete(self) -> None:
+    def delete(self):
         self._delete_table_if_exist()
 
     def _create_collection(self, dimension: int):
@@ -158,7 +158,7 @@ class TableStoreVector(BaseVector):
             self._create_search_index_if_not_exist(dimension)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _create_table_if_not_exist(self) -> None:
+    def _create_table_if_not_exist(self):
         table_list = self._tablestore_client.list_table()
         if self._table_name in table_list:
             logger.info("Tablestore system table[%s] already exists", self._table_name)
@@ -171,7 +171,7 @@ class TableStoreVector(BaseVector):
         self._tablestore_client.create_table(table_meta, table_options, reserved_throughput)
         logger.info("Tablestore create table[%s] successfully.", self._table_name)
 
-    def _create_search_index_if_not_exist(self, dimension: int) -> None:
+    def _create_search_index_if_not_exist(self, dimension: int):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
         assert isinstance(search_index_list, Iterable)
         if self._index_name in [t[1] for t in search_index_list]:
@@ -225,11 +225,11 @@ class TableStoreVector(BaseVector):
         self._tablestore_client.delete_table(self._table_name)
         logger.info("Tablestore delete system table[%s] successfully.", self._index_name)
 
-    def _delete_search_index(self) -> None:
+    def _delete_search_index(self):
         self._tablestore_client.delete_search_index(self._table_name, self._index_name)
         logger.info("Tablestore delete index[%s] successfully.", self._index_name)
 
-    def _write_row(self, primary_key: str, attributes: dict[str, Any]) -> None:
+    def _write_row(self, primary_key: str, attributes: dict[str, Any]):
         pk = [("id", primary_key)]
 
         tags = []
@@ -248,7 +248,7 @@ class TableStoreVector(BaseVector):
         row = tablestore.Row(pk, attribute_columns)
         self._tablestore_client.put_row(self._table_name, row)
 
-    def _delete_row(self, id: str) -> None:
+    def _delete_row(self, id: str):
         primary_key = [("id", id)]
         row = tablestore.Row(primary_key)
         self._tablestore_client.delete_row(self._table_name, row, None)

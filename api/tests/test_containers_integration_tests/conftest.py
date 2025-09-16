@@ -11,7 +11,6 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from flask import Flask
@@ -42,14 +41,14 @@ class DifyTestContainers:
 
     def __init__(self):
         """Initialize container management with default configurations."""
-        self.postgres: Optional[PostgresContainer] = None
-        self.redis: Optional[RedisContainer] = None
-        self.dify_sandbox: Optional[DockerContainer] = None
-        self.dify_plugin_daemon: Optional[DockerContainer] = None
+        self.postgres: PostgresContainer | None = None
+        self.redis: RedisContainer | None = None
+        self.dify_sandbox: DockerContainer | None = None
+        self.dify_plugin_daemon: DockerContainer | None = None
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 
-    def start_containers_with_env(self) -> None:
+    def start_containers_with_env(self):
         """
         Start all required containers for integration testing.
 
@@ -230,7 +229,7 @@ class DifyTestContainers:
         self._containers_started = True
         logger.info("All test containers started successfully")
 
-    def stop_containers(self) -> None:
+    def stop_containers(self):
         """
         Stop and clean up all test containers.
 

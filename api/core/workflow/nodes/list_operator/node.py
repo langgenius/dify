@@ -1,5 +1,5 @@
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Optional, TypeAlias, TypeVar
+from typing import Any, TypeAlias, TypeVar
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
@@ -41,10 +41,10 @@ class ListOperatorNode(BaseNode):
 
     _node_data: ListOperatorNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = ListOperatorNodeData(**data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -53,7 +53,7 @@ class ListOperatorNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -67,8 +67,8 @@ class ListOperatorNode(BaseNode):
         return "1"
 
     def _run(self):
-        inputs: dict[str, list] = {}
-        process_data: dict[str, list] = {}
+        inputs: dict[str, Sequence[object]] = {}
+        process_data: dict[str, Sequence[object]] = {}
         outputs: dict[str, Any] = {}
 
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)
@@ -178,7 +178,7 @@ class ListOperatorNode(BaseNode):
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             else:
-                raise AssertionError("this statment should be unreachable.")
+                raise AssertionError("this statement should be unreachable.")
         return variable
 
     def _apply_order(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
@@ -191,7 +191,7 @@ class ListOperatorNode(BaseNode):
             )
             variable = variable.model_copy(update={"value": result})
         else:
-            raise AssertionError("this statement should be unreachable")
+            raise AssertionError("this statement should be unreachable.")
 
         return variable
 

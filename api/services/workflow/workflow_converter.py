@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -18,6 +18,7 @@ from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -64,7 +65,7 @@ class WorkflowConverter:
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
-        new_app.mode = AppMode.ADVANCED_CHAT.value if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
         new_app.icon_type = icon_type or app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
@@ -202,7 +203,7 @@ class WorkflowConverter:
         app_mode_enum = AppMode.value_of(app_model.mode)
         app_config: EasyUIBasedAppConfig
         if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
-            app_model.mode = AppMode.AGENT_CHAT.value
+            app_model.mode = AppMode.AGENT_CHAT
             app_config = AgentChatAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config
             )
@@ -217,7 +218,7 @@ class WorkflowConverter:
 
         return app_config
 
-    def _convert_to_start_node(self, variables: list[VariableEntity]) -> dict:
+    def _convert_to_start_node(self, variables: list[VariableEntity]):
         """
         Convert to Start Node
         :param variables: list of variables
@@ -278,7 +279,7 @@ class WorkflowConverter:
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
                     "inputs": inputs,
-                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT.value else "",
+                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT else "",
                 },
             }
 
@@ -326,7 +327,7 @@ class WorkflowConverter:
 
     def _convert_to_knowledge_retrieval_node(
         self, new_app_mode: AppMode, dataset_config: DatasetEntity, model_config: ModelConfigEntity
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
@@ -382,9 +383,9 @@ class WorkflowConverter:
         graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: Optional[FileUploadConfig] = None,
+        file_upload: FileUploadConfig | None = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
-    ) -> dict:
+    ):
         """
         Convert to LLM Node
         :param original_app_mode: original app mode
@@ -402,7 +403,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Optional[Any] = None
+        prompts: Any | None = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:
@@ -420,7 +421,11 @@ class WorkflowConverter:
                     query_in_prompt=False,
                 )
 
-                template = prompt_template_config["prompt_template"].template
+                prompt_template_obj = prompt_template_config["prompt_template"]
+                if not isinstance(prompt_template_obj, PromptTemplateParser):
+                    raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template_obj)}")
+
+                template = prompt_template_obj.template
                 if not template:
                     prompts = []
                 else:
@@ -457,7 +462,11 @@ class WorkflowConverter:
                     query_in_prompt=False,
                 )
 
-                template = prompt_template_config["prompt_template"].template
+                prompt_template_obj = prompt_template_config["prompt_template"]
+                if not isinstance(prompt_template_obj, PromptTemplateParser):
+                    raise TypeError(f"Expected PromptTemplateParser, got {type(prompt_template_obj)}")
+
+                template = prompt_template_obj.template
                 template = self._replace_template_variables(
                     template=template,
                     variables=start_node["data"]["variables"],
@@ -467,6 +476,9 @@ class WorkflowConverter:
                 prompts = {"text": template}
 
                 prompt_rules = prompt_template_config["prompt_rules"]
+                if not isinstance(prompt_rules, dict):
+                    raise TypeError(f"Expected dict for prompt_rules, got {type(prompt_rules)}")
+
                 role_prefix = {
                     "user": prompt_rules.get("human_prefix", "Human"),
                     "assistant": prompt_rules.get("assistant_prefix", "Assistant"),
@@ -550,7 +562,7 @@ class WorkflowConverter:
 
         return template
 
-    def _convert_to_end_node(self) -> dict:
+    def _convert_to_end_node(self):
         """
         Convert to End Node
         :return:
@@ -566,7 +578,7 @@ class WorkflowConverter:
             },
         }
 
-    def _convert_to_answer_node(self) -> dict:
+    def _convert_to_answer_node(self):
         """
         Convert to Answer Node
         :return:
@@ -578,7 +590,7 @@ class WorkflowConverter:
             "data": {"title": "ANSWER", "type": NodeType.ANSWER.value, "answer": "{{#llm.text#}}"},
         }
 
-    def _create_edge(self, source: str, target: str) -> dict:
+    def _create_edge(self, source: str, target: str):
         """
         Create Edge
         :param source: source node id
@@ -587,7 +599,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict, node: dict) -> dict:
+    def _append_node(self, graph: dict, node: dict):
         """
         Append Node to Graph
 
@@ -606,7 +618,7 @@ class WorkflowConverter:
         :param app_model: App instance
         :return: AppMode
         """
-        if app_model.mode == AppMode.COMPLETION.value:
+        if app_model.mode == AppMode.COMPLETION:
             return AppMode.WORKFLOW
         else:
             return AppMode.ADVANCED_CHAT
