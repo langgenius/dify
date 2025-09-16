@@ -1346,4 +1346,5 @@ class RagPipelineService:
             call_depth=0,
             workflow_thread_pool_id=None,
             is_retry=True,
+            documents=[document],
         )
