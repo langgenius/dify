@@ -5,14 +5,16 @@ from collections.abc import Generator
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunExceptionEvent, NodeRunSucceededEvent
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.runtime_route_state import RuntimeRouteState
 
 logger = logging.getLogger(__name__)
 
 
 class StreamProcessor(ABC):
-    def __init__(self, graph: Graph, variable_pool: VariablePool):
+    def __init__(self, graph: Graph, variable_pool: VariablePool, node_run_state: Optional[RuntimeRouteState] = None):
         self.graph = graph
         self.variable_pool = variable_pool
+        self.node_run_state = node_run_state
         self.rest_node_ids = graph.node_ids.copy()
 
     @abstractmethod

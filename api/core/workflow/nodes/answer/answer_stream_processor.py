@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 class AnswerStreamProcessor(StreamProcessor):
-    def __init__(self, graph: Graph, variable_pool: VariablePool):
-        super().__init__(graph, variable_pool)
+    def __init__(self, graph: Graph, variable_pool: VariablePool, node_run_state=None):
+        super().__init__(graph, variable_pool, node_run_state)
         self.generate_routes = graph.answer_stream_generate_routes
         self.route_position = {}
         for answer_node_id in self.generate_routes.answer_generate_route:
@@ -82,13 +82,10 @@ class AnswerStreamProcessor(StreamProcessor):
         :return:
         """
         for answer_node_id in self.route_position:
-            # all depends on answer node id not in rest node ids
+            # Check if Answer node should output
             if event.route_node_state.node_id != answer_node_id and (
                 answer_node_id not in self.rest_node_ids
-                or not all(
-                    dep_id not in self.rest_node_ids
-                    for dep_id in self.generate_routes.answer_dependencies[answer_node_id]
-                )
+                or not self._is_dynamic_dependencies_met(answer_node_id, event.route_node_state.node_id, event)
             ):
                 continue
 
@@ -145,45 +142,52 @@ class AnswerStreamProcessor(StreamProcessor):
         :param event: queue text chunk event
         :return:
         """
+
         if not event.from_variable_selector:
             return []
 
         stream_output_value_selector = event.from_variable_selector
         stream_out_answer_node_ids = []
+
         for answer_node_id, route_position in self.route_position.items():
+            # Answer nodes might be incorrectly removed from rest_node_ids by branch pruning
             if answer_node_id not in self.rest_node_ids:
-                continue
-            # Remove current node id from answer dependencies to support stream output if it is a success branch
-            answer_dependencies = self.generate_routes.answer_dependencies
-            edge_mapping = self.graph.edge_mapping.get(event.node_id)
-            success_edge = (
-                next(
-                    (
-                        edge
-                        for edge in edge_mapping
-                        if edge.run_condition
-                        and edge.run_condition.type == "branch_identify"
-                        and edge.run_condition.branch_identify == "success-branch"
-                    ),
-                    None,
-                )
-                if edge_mapping
-                else None
-            )
-            if (
-                event.node_id in answer_dependencies[answer_node_id]
-                and success_edge
-                and success_edge.target_node_id == answer_node_id
-            ):
-                answer_dependencies[answer_node_id].remove(event.node_id)
-            answer_dependencies_ids = answer_dependencies.get(answer_node_id, [])
-            # all depends on answer node id not in rest node ids
-            if all(dep_id not in self.rest_node_ids for dep_id in answer_dependencies_ids):
+                # Only recover if we can establish a streaming dependency relationship
+                answer_node_config = self.graph.node_id_config_mapping.get(answer_node_id, {})
+
+                if (
+                    answer_node_config.get("data", {}).get("type") == "answer" and self.node_run_state
+                ):  # Only when we have runtime state
+                    # Pre-check: does this answer node reference the current streaming node?
+                    current_node_id = event.route_node_state.node_id
+                    answer_routes = self.generate_routes.answer_generate_route.get(answer_node_id, [])
+                    references_current_node = any(
+                        (
+                            route_chunk.type == GenerateRouteChunk.ChunkType.VAR
+                            and isinstance(route_chunk, VarGenerateRouteChunk)
+                            and route_chunk.value_selector
+                            and len(route_chunk.value_selector) >= 2
+                            and route_chunk.value_selector[0] == current_node_id
+                        )
+                        for route_chunk in answer_routes
+                    )
+
+                    # Only recover if this answer truly references the current streaming node
+                    if references_current_node:
+                        self.rest_node_ids.append(answer_node_id)
+                    else:
+                        continue
+                else:
+                    continue
+
+            # Use hybrid dependency check for streaming - pass event for runtime state access
+            dependencies_met = self._is_dynamic_dependencies_met(answer_node_id, event.route_node_state.node_id, event)
+
+            if dependencies_met:
                 if route_position >= len(self.generate_routes.answer_generate_route[answer_node_id]):
                     continue
 
                 route_chunk = self.generate_routes.answer_generate_route[answer_node_id][route_position]
-
                 if route_chunk.type != GenerateRouteChunk.ChunkType.VAR:
                     continue
 
@@ -197,3 +201,107 @@ class AnswerStreamProcessor(StreamProcessor):
                 stream_out_answer_node_ids.append(answer_node_id)
 
         return stream_out_answer_node_ids
+
+    def _is_dynamic_dependencies_met(self, answer_node_id: str, llm_node_id: str, event=None) -> bool:
+        """
+        Check if Answer node dependencies are met using hybrid static/dynamic analysis
+        """
+
+        # Always start with original static logic to maintain backward compatibility
+        answer_dependencies_ids = self.generate_routes.answer_dependencies.get(answer_node_id, [])
+        static_result = all(dep_id not in self.rest_node_ids for dep_id in answer_dependencies_ids)
+
+        # If static check passes, return True (original behavior)
+        if static_result:
+            return True
+
+        # If no runtime state available, return static result (original behavior)
+        if not self.node_run_state:
+            return False
+
+        runtime_state = self.node_run_state
+
+        # Only use dynamic check when static fails AND we have runtime state AND it's a branch merge scenario
+        def has_merge_in_path(node_id, visited=None):
+            if visited is None:
+                visited = set()
+            if node_id in visited or node_id == self.graph.root_node_id:
+                return False
+            visited.add(node_id)
+
+            reverse_edges = self.graph.reverse_edge_mapping.get(node_id, [])
+            if len(reverse_edges) > 1:
+                return True
+
+            return any(has_merge_in_path(edge.source_node_id, visited.copy()) for edge in reverse_edges)
+
+        has_merge = has_merge_in_path(answer_node_id)
+
+        # If no branch merge, return original static result (False since static_result was False)
+        if not has_merge:
+            return False
+
+        # Dynamic check: trace back from LLM to Start node
+        visited = set()
+
+        def _trace_path_to_start(node_id: str) -> bool:
+            if node_id in visited:
+                return False
+            visited.add(node_id)
+
+            if node_id == self.graph.root_node_id:
+                return True
+
+            reverse_edges = self.graph.reverse_edge_mapping.get(node_id, [])
+            if not reverse_edges:
+                return False
+
+            # Check node execution state
+            node_execution_state = None
+            for route_state in runtime_state.node_state_mapping.values():
+                if route_state.node_id == node_id:
+                    node_execution_state = route_state
+                    break
+
+            is_current_llm_node = node_id == llm_node_id
+
+            if not node_execution_state:
+                return False
+
+            # Allow running state for current LLM node
+            if is_current_llm_node:
+                if node_execution_state.status.value not in ["running", "success"]:
+                    return False
+            else:
+                if node_execution_state.status.value != "success":
+                    return False
+
+            # Check if any upstream path is valid
+            for edge in reverse_edges:
+                source_node_id = edge.source_node_id
+
+                if edge.run_condition and edge.run_condition.branch_identify:
+                    # Verify branch was actually executed
+                    source_execution_state = None
+                    for route_state in runtime_state.node_state_mapping.values():
+                        if route_state.node_id == source_node_id:
+                            source_execution_state = route_state
+                            break
+
+                    if (
+                        source_execution_state
+                        and source_execution_state.node_run_result
+                        and source_execution_state.node_run_result.edge_source_handle
+                        == edge.run_condition.branch_identify
+                    ):
+                        if _trace_path_to_start(source_node_id):
+                            return True
+                else:
+                    # Unconditional edge
+                    if _trace_path_to_start(source_node_id):
+                        return True
+
+            return False
+
+        dynamic_result = _trace_path_to_start(llm_node_id)
+        return dynamic_result

@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class EndStreamProcessor(StreamProcessor):
-    def __init__(self, graph: Graph, variable_pool: VariablePool):
-        super().__init__(graph, variable_pool)
+    def __init__(self, graph: Graph, variable_pool: VariablePool, node_run_state=None):
+        super().__init__(graph, variable_pool, node_run_state)
         self.end_stream_param = graph.end_stream_param
         self.route_position = {}
         for end_node_id, _ in self.end_stream_param.end_stream_variable_selector_mapping.items():
