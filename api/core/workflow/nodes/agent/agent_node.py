@@ -205,7 +205,7 @@ class AgentNode(BaseNode):
                 continue
             agent_input = node_data.agent_parameters[parameter_name]
             if agent_input.type == "variable":
-                variable = variable_pool.get(agent_input.value)  
+                variable = variable_pool.get(agent_input.value)
                 if variable is None:
                     raise AgentVariableNotFoundError(str(agent_input.value))
                 parameter_value = variable.value

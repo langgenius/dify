@@ -611,7 +611,7 @@ class ProviderManager:
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM.value,
                                 quota_type=ProviderQuotaType.TRIAL.value,
-                                quota_limit=quota.quota_limit, 
+                                quota_limit=quota.quota_limit,
                                 quota_used=0,
                                 is_valid=True,
                             )

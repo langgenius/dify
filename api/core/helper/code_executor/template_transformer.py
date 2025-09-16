@@ -81,7 +81,7 @@ class TemplateTransformer(ABC):
                 return [convert_scientific_notation(v) for v in value]
             return value
 
-        return convert_scientific_notation(result)  
+        return convert_scientific_notation(result)  # type: ignore
 
     @classmethod
     @abstractmethod

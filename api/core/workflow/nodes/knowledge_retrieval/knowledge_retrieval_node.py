@@ -150,7 +150,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def version(cls):
         return "1"
 
-    def _run(self) -> NodeRunResult:  
+    def _run(self) -> NodeRunResult:
         # extract variables
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
@@ -198,7 +198,7 @@ class KnowledgeRetrievalNode(BaseNode):
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
                 process_data=None,
-                outputs=outputs, 
+                outputs=outputs,
             )
 
         except KnowledgeRetrievalNodeError as e:
@@ -366,7 +366,7 @@ class KnowledgeRetrievalNode(BaseNode):
             if records:
                 for record in records:
                     segment = record.segment
-                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  
+                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
                     stmt = select(Document).where(
                         Document.id == segment.document_id,
                         Document.enabled == True,
@@ -426,7 +426,7 @@ class KnowledgeRetrievalNode(BaseNode):
             Document.enabled == True,
             Document.archived == False,
         )
-        filters = []  
+        filters = []
         metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
             return None, None
@@ -440,25 +440,25 @@ class KnowledgeRetrievalNode(BaseNode):
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
                         filter.get("value"),
-                        filters, 
+                        filters,
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"), 
-                            comparison_operator=filter.get("condition"), 
+                            name=filter.get("metadata_name"),
+                            comparison_operator=filter.get("condition"),
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator
                     if node_data.metadata_filtering_conditions
-                    else "or", 
+                    else "or",
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
                 conditions = []
-                for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  
+                for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
@@ -466,10 +466,10 @@ class KnowledgeRetrievalNode(BaseNode):
                             expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                 expected_value
                             ).value[0]
-                            if expected_value.value_type in {"number", "integer", "float"}:  
-                                expected_value = expected_value.value  
-                            elif expected_value.value_type == "string":  
-                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  
+                            if expected_value.value_type in {"number", "integer", "float"}:
+                                expected_value = expected_value.value
+                            elif expected_value.value_type == "string":
+                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
                             else:
                                 raise ValueError("Invalid expected metadata value type")
                     conditions.append(
@@ -496,15 +496,15 @@ class KnowledgeRetrievalNode(BaseNode):
             if (
                 node_data.metadata_filtering_conditions
                 and node_data.metadata_filtering_conditions.logical_operator == "and"
-            ):  
+            ):
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None 
+        metadata_filter_document_ids = defaultdict(list) if documents else None
         for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  
+            metadata_filter_document_ids[document.dataset_id].append(document.id)
         return metadata_filter_document_ids, metadata_condition
 
     def _automatic_metadata_filter_func(
@@ -730,7 +730,7 @@ class KnowledgeRetrievalNode(BaseNode):
         )
 
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
-        model_mode = ModelMode(node_data.metadata_model_config.mode)  
+        model_mode = ModelMode(node_data.metadata_model_config.mode)
         input_text = query
 
         prompt_messages: list[LLMNodeChatModelMessage] = []

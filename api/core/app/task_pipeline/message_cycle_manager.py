@@ -71,7 +71,7 @@ class MessageCycleManager:
             thread = Thread(
                 target=self._generate_conversation_name_worker,
                 kwargs={
-                    "flask_app": current_app._get_current_object(), 
+                    "flask_app": current_app._get_current_object(),
                     "conversation_id": conversation_id,
                     "query": query,
                 },

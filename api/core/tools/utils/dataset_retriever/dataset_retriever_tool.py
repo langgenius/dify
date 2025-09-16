@@ -193,18 +193,18 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
                             )
-                            document = db.session.scalar(dataset_document_stmt)  
+                            document = db.session.scalar(dataset_document_stmt)
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
                                     dataset_name=dataset.name,
-                                    document_id=document.id, 
-                                    document_name=document.name, 
-                                    data_source_type=document.data_source_type, 
+                                    document_id=document.id,
+                                    document_name=document.name,
+                                    data_source_type=document.data_source_type,
                                     segment_id=segment.id,
                                     retriever_from=self.retriever_from,
                                     score=record.score or 0.0,
-                                    doc_metadata=document.doc_metadata, 
+                                    doc_metadata=document.doc_metadata,
                                 )
 
                                 if self.retriever_from == "dev":
@@ -224,8 +224,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     key=lambda x: x.score or 0.0,
                     reverse=True,
                 )
-                for position, item in enumerate(retrieval_resource_list, start=1):  
-                    item.position = position  
+                for position, item in enumerate(retrieval_resource_list, start=1):
+                    item.position = position
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(retrieval_resource_list)
             if document_context_list:

@@ -104,7 +104,7 @@ class BasePluginClient:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            yield type(**json.loads(line))  
+            yield type(**json.loads(line))
 
     def _request_with_model(
         self,
@@ -120,7 +120,7 @@ class BasePluginClient:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type(**response.json())  
+        return type(**response.json())
 
     def _request_with_plugin_daemon_response(
         self,
@@ -152,7 +152,7 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type](**json_response)  
+            rep = PluginDaemonBasicResponse[type](**json_response)
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
@@ -189,7 +189,7 @@ class BasePluginClient:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type].model_validate_json(line)  
+                rep = PluginDaemonBasicResponse[type].model_validate_json(line)
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:

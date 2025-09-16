@@ -124,7 +124,7 @@ class FirecrawlApp:
 
     def _handle_error(self, response, action):
         error_message = response.json().get("error", "Unknown error occurred")
-        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  
+        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")
 
     def search(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/search

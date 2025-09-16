@@ -23,12 +23,12 @@ else:
         # gevent
         monkey.patch_all()
 
-        from grpc.experimental import gevent as grpc_gevent
+        from grpc.experimental import gevent as grpc_gevent  # type: ignore
 
         # grpc gevent
         grpc_gevent.init_gevent()
 
-        import psycogreen.gevent
+        import psycogreen.gevent  # type: ignore
 
         psycogreen.gevent.patch_psycopg()
 

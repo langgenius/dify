@@ -99,7 +99,7 @@ class ExtractProcessor:
                     upload_file: UploadFile = extract_setting.upload_file
                     suffix = Path(upload_file.key).suffix
                     # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
-                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  
+                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()

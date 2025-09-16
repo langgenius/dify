@@ -137,7 +137,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        return provider_configuration.get_provider_credential(credential_id=credential_id)  
+        return provider_configuration.get_provider_credential(credential_id=credential_id)
 
     def validate_provider_credentials(self, tenant_id: str, provider: str, credentials: dict):
         """

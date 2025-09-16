@@ -164,7 +164,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         @copy_current_request_context
         def worker_with_context():
             return self._generate_worker(
-                flask_app=current_app._get_current_object(), 
+                flask_app=current_app._get_current_object(),
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
                 message_id=message.id,
@@ -327,7 +327,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         @copy_current_request_context
         def worker_with_context():
             return self._generate_worker(
-                flask_app=current_app._get_current_object(), 
+                flask_app=current_app._get_current_object(),
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
                 message_id=message.id,

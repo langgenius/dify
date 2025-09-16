@@ -64,7 +64,7 @@ class ClearFreePlanTenantExpiredLogs:
             records = (
                 session.query(model)
                 .where(
-                    model.message_id.in_(batch_message_ids), 
+                    model.message_id.in_(batch_message_ids),
                 )
                 .all()
             )
@@ -103,7 +103,7 @@ class ClearFreePlanTenantExpiredLogs:
                 logger.exception("Failed to save %s records", table_name)
 
             session.query(model).where(
-                model.id.in_(record_ids), 
+                model.id.in_(record_ids),
             ).delete(synchronize_session=False)
 
             click.echo(
@@ -385,7 +385,7 @@ class ClearFreePlanTenantExpiredLogs:
                 futures.append(
                     thread_pool.submit(
                         process_tenant,
-                        current_app._get_current_object(), 
+                        current_app._get_current_object(),
                         tenant_id,
                     )
                 )
@@ -453,7 +453,7 @@ class ClearFreePlanTenantExpiredLogs:
                         futures.append(
                             thread_pool.submit(
                                 process_tenant,
-                                current_app._get_current_object(), 
+                                current_app._get_current_object(),
                                 tenant_id,
                             )
                         )

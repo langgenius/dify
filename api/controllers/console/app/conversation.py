@@ -107,7 +107,7 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(
+            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -290,7 +290,7 @@ class ChatConversationApi(Resource):
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(
+            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -302,7 +302,7 @@ class ChatConversationApi(Resource):
 
         if args["message_count_gte"] and args["message_count_gte"] >= 1:
             query = (
-                query.options(joinedload(Conversation.messages))  
+                query.options(joinedload(Conversation.messages))  # type: ignore
                 .join(Message, Message.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
                 .having(func.count(Message.id) >= args["message_count_gte"])

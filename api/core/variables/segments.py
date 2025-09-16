@@ -19,7 +19,7 @@ class Segment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     value_type: SegmentType
-    value: Any = None
+    value: Any
 
     @field_validator("value_type")
     @classmethod
@@ -74,12 +74,12 @@ class NoneSegment(Segment):
 
 class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
-    value: str = None 
+    value: str
 
 
 class FloatSegment(Segment):
     value_type: SegmentType = SegmentType.FLOAT
-    value: float = None 
+    value: float
     # NOTE(QuantumGhost): seems that the equality for FloatSegment with `NaN` value has some problems.
     # The following tests cannot pass.
     #
@@ -98,12 +98,12 @@ class FloatSegment(Segment):
 
 class IntegerSegment(Segment):
     value_type: SegmentType = SegmentType.INTEGER
-    value: int = None 
+    value: int
 
 
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
-    value: Mapping[str, Any] = None 
+    value: Mapping[str, Any]
 
     @property
     def text(self) -> str:
@@ -136,7 +136,7 @@ class ArraySegment(Segment):
 
 class FileSegment(Segment):
     value_type: SegmentType = SegmentType.FILE
-    value: File = None 
+    value: File
 
     @property
     def markdown(self) -> str:
@@ -153,17 +153,17 @@ class FileSegment(Segment):
 
 class BooleanSegment(Segment):
     value_type: SegmentType = SegmentType.BOOLEAN
-    value: bool = None 
+    value: bool
 
 
 class ArrayAnySegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_ANY
-    value: Sequence[Any] = None 
+    value: Sequence[Any]
 
 
 class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
-    value: Sequence[str] = None 
+    value: Sequence[str]
 
     @property
     def text(self) -> str:
@@ -175,17 +175,17 @@ class ArrayStringSegment(ArraySegment):
 
 class ArrayNumberSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_NUMBER
-    value: Sequence[float | int] = None 
+    value: Sequence[float | int]
 
 
 class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
-    value: Sequence[Mapping[str, Any]] = None 
+    value: Sequence[Mapping[str, Any]]
 
 
 class ArrayFileSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_FILE
-    value: Sequence[File] = None 
+    value: Sequence[File]
 
     @property
     def markdown(self) -> str:
@@ -205,7 +205,7 @@ class ArrayFileSegment(ArraySegment):
 
 class ArrayBooleanSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_BOOLEAN
-    value: Sequence[bool] = None 
+    value: Sequence[bool]
 
 
 def get_segment_discriminator(v: Any) -> SegmentType | None:

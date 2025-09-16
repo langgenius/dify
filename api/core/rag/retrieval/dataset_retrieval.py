@@ -156,8 +156,8 @@ class DatasetRetrieval:
             query,
             tenant_id,
             user_id,
-            retrieve_config.metadata_filtering_mode, 
-            retrieve_config.metadata_model_config, 
+            retrieve_config.metadata_filtering_mode,
+            retrieve_config.metadata_model_config,
             retrieve_config.metadata_filtering_conditions,
             inputs,
         )
@@ -468,7 +468,7 @@ class DatasetRetrieval:
             retrieval_thread = threading.Thread(
                 target=self._retriever,
                 kwargs={
-                    "flask_app": current_app._get_current_object(), 
+                    "flask_app": current_app._get_current_object(),
                     "dataset_id": dataset.id,
                     "query": query,
                     "top_k": top_k,
@@ -860,7 +860,7 @@ class DatasetRetrieval:
             DatasetDocument.enabled == True,
             DatasetDocument.archived == False,
         )
-        filters = []  
+        filters = []
         metadata_condition = None
         if metadata_filtering_mode == "disabled":
             return None, None
@@ -873,28 +873,28 @@ class DatasetRetrieval:
                 for sequence, filter in enumerate(automatic_metadata_filters):
                     self._process_metadata_filter_func(
                         sequence,
-                        filter.get("condition"), 
-                        filter.get("metadata_name"), 
+                        filter.get("condition"),
+                        filter.get("metadata_name"),
                         filter.get("value"),
-                        filters, 
+                        filters,
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"), 
-                            comparison_operator=filter.get("condition"), 
+                            name=filter.get("metadata_name"),
+                            comparison_operator=filter.get("condition"),
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator
                     if metadata_filtering_conditions
-                    else "or", 
+                    else "or",
                     conditions=conditions,
                 )
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 conditions = []
-                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  
+                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
@@ -921,15 +921,15 @@ class DatasetRetrieval:
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
-            if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  
+            if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None 
+        metadata_filter_document_ids = defaultdict(list) if documents else None
         for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  
+            metadata_filter_document_ids[document.dataset_id].append(document.id)
         return metadata_filter_document_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:

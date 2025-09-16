@@ -191,12 +191,12 @@ class PKCS1OAepCipher:
         # Step 3g
         one_pos = hLen + db[hLen:].find(b"\x01")
         lHash1 = db[:hLen]
-        invalid = bord(y) | int(one_pos < hLen)  
+        invalid = bord(y) | int(one_pos < hLen)
         hash_compare = strxor(lHash1, lHash)
         for x in hash_compare:
-            invalid |= bord(x)  
+            invalid |= bord(x)
         for x in db[hLen:one_pos]:
-            invalid |= bord(x)  
+            invalid |= bord(x)
         if invalid != 0:
             raise ValueError("Incorrect decryption.")
         # Step 4
