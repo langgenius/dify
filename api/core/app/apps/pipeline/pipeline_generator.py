@@ -119,7 +119,7 @@ class PipelineGenerator(BaseAppGenerator):
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # Add null check for dataset
 
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")
