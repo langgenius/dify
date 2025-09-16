@@ -1,4 +1,5 @@
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.graph_engine.entities.graph import GraphEdge
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
     AnswerStreamGenerateRoute,
@@ -15,7 +16,7 @@ class AnswerStreamGeneratorRouter:
     def init(
         cls,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],
+        reverse_edge_mapping: dict[str, list[GraphEdge]],
     ) -> AnswerStreamGenerateRoute:
         """
         Get stream generate routes.
