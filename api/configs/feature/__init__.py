@@ -697,7 +697,9 @@ class MailConfig(BaseSettings):
     )
 
     MAIL_TEMPLATING_TIMEOUT: int = Field(
-        description="Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. Only available in sandbox mode.",
+        description="""
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. 
+        Only available in sandbox mode.""",
         default=3,
     )
 
