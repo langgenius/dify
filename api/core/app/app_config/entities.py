@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 

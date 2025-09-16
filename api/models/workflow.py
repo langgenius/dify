@@ -3,7 +3,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast, Optional
 from uuid import uuid4
 
 import sqlalchemy as sa

@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from configs import dify_config
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -64,7 +64,7 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: ModelInstance | None,
+        embedding_model_instance: Optional["ModelInstance"],
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.

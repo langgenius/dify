@@ -7,7 +7,7 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import exists, func, select
