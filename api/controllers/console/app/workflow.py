@@ -809,7 +809,7 @@ class WorkflowConfigApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/published")
+@console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
