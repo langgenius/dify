@@ -739,6 +739,8 @@ class DatasetApiDeleteApi(Resource):
         db.session.commit()
 
         return {"result": "success"}, 204
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<str:status>")
 class DatasetEnableApiApi(Resource):
     @setup_required

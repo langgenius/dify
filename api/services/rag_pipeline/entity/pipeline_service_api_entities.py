@@ -1,4 +1,6 @@
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
+
 from pydantic import BaseModel
 
 
@@ -9,6 +11,7 @@ class DatasourceNodeRunApiEntity(BaseModel):
     datasource_type: str
     credential_id: Optional[str] = None
     is_published: bool
+
 
 class PipelineRunApiEntity(BaseModel):
     inputs: Mapping[str, Any]

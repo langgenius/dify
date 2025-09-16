@@ -41,7 +41,7 @@ class DatasourcePluginsApi(DatasetApiResource):
     @service_api_ns.doc(
         params={
             "is_published": "Whether to get published or draft datasource plugins "
-                           "(true for published, false for draft, default: true)"
+            "(true for published, false for draft, default: true)"
         }
     )
     @service_api_ns.doc(
@@ -54,14 +54,13 @@ class DatasourcePluginsApi(DatasetApiResource):
         """Resource for getting datasource plugins."""
         # Get query parameter to determine published or draft
         is_published: bool = request.args.get("is_published", default=True, type=bool)
-        
+
         rag_pipeline_service: RagPipelineService = RagPipelineService()
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id, 
-            is_published=is_published
+            tenant_id=tenant_id, dataset_id=dataset_id, is_published=is_published
         )
         return datasource_plugins, 200
+
 
 @service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource/nodes/{string:node_id}/run")
 class DatasourceNodeRunApi(DatasetApiResource):
@@ -80,7 +79,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
             "datasource_type": "Datasource type, e.g. online_document",
             "credential_id": "Credential ID",
             "is_published": "Whether to get published or draft datasource plugins "
-                           "(true for published, false for draft, default: true)"
+            "(true for published, false for draft, default: true)",
         }
     )
     @service_api_ns.doc(
@@ -136,8 +135,8 @@ class PipelineRunApi(DatasetApiResource):
             "datasource_info_list": "Datasource info list",
             "start_node_id": "Start node ID",
             "is_published": "Whether to get published or draft datasource plugins "
-                           "(true for published, false for draft, default: true)",
-            "streaming": "Whether to stream the response(streaming or blocking), default: streaming"
+            "(true for published, false for draft, default: true)",
+            "streaming": "Whether to stream the response(streaming or blocking), default: streaming",
         }
     )
     @service_api_ns.doc(
@@ -154,9 +153,16 @@ class PipelineRunApi(DatasetApiResource):
         parser.add_argument("datasource_info_list", type=list, required=True, location="json")
         parser.add_argument("start_node_id", type=str, required=True, location="json")
         parser.add_argument("is_published", type=bool, required=True, default=True, location="json")
-        parser.add_argument("response_mode", type=str, required=True, choices=["streaming", "blocking"], default="blocking", location="json")
+        parser.add_argument(
+            "response_mode",
+            type=str,
+            required=True,
+            choices=["streaming", "blocking"],
+            default="blocking",
+            location="json",
+        )
         args: ParseResult = parser.parse_args()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -173,7 +179,7 @@ class PipelineRunApi(DatasetApiResource):
 
             return helper.compact_generate_response(response)
         except Exception as ex:
-            raise PipelineRunError(description=str(ex)) 
+            raise PipelineRunError(description=str(ex))
 
 
 @service_api_ns.route("/datasets/pipeline/file-upload")
@@ -189,7 +195,6 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             413: "File too large",
             415: "Unsupported file type",
-
         }
     )
     def post(self, tenant_id: str):

@@ -10,7 +10,6 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 import sqlalchemy as sa
-import yaml
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -60,7 +59,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     RagPipelineDatasetCreateEntity,
-    RetrievalSetting,
 )
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -1019,7 +1017,6 @@ class DatasetService:
         dataset.updated_by = current_user.id
         dataset.updated_at = naive_utc_now()
         db.session.commit()
-
 
     @staticmethod
     def get_dataset_auto_disable_logs(dataset_id: str):

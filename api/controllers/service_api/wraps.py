@@ -204,7 +204,7 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
             if not dataset_id and args:
                 # For class methods: args[0] is self, args[1] is dataset_id (if exists)
                 # Check if first arg is likely a class instance (has __dict__ or __class__)
-                if len(args) > 1 and hasattr(args[0], '__dict__'):
+                if len(args) > 1 and hasattr(args[0], "__dict__"):
                     # This is a class method, dataset_id should be in args[1]
                     potential_id = args[1]
                     # Validate it's a string-like UUID, not another object
@@ -212,7 +212,7 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         # Try to convert to string and check if it's a valid UUID format
                         str_id = str(potential_id)
                         # Basic check: UUIDs are 36 chars with hyphens
-                        if len(str_id) == 36 and str_id.count('-') == 4:
+                        if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
                     except:
                         pass
@@ -221,7 +221,7 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     potential_id = args[0]
                     try:
                         str_id = str(potential_id)
-                        if len(str_id) == 36 and str_id.count('-') == 4:
+                        if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
                     except:
                         pass

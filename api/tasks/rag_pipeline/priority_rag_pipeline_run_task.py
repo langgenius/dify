@@ -52,19 +52,21 @@ def priority_rag_pipeline_run_task(
 
     try:
         start_at = time.perf_counter()
-        rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(rag_pipeline_invoke_entities_file_id)
+        rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
+            rag_pipeline_invoke_entities_file_id
+        )
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
-        
+
         # Get Flask app object for thread context
         flask_app = current_app._get_current_object()  # type: ignore
-        
+
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
             for rag_pipeline_invoke_entity in rag_pipeline_invoke_entities:
                 # Submit task to thread pool with Flask app
                 future = executor.submit(run_single_rag_pipeline_task, rag_pipeline_invoke_entity, flask_app)
                 futures.append(future)
-            
+
             # Wait for all tasks to complete
             for future in futures:
                 try:
@@ -73,7 +75,9 @@ def priority_rag_pipeline_run_task(
                     logging.exception("Error in pipeline task")
         end_at = time.perf_counter()
         logging.info(
-            click.style(f"tenant_id: {tenant_id} , Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green")
+            click.style(
+                f"tenant_id: {tenant_id} , Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green"
+            )
         )
     except Exception:
         logging.exception(click.style(f"Error running rag pipeline, tenant_id: {tenant_id}", fg="red"))
@@ -82,6 +86,7 @@ def priority_rag_pipeline_run_task(
         file_service = FileService(db.engine)
         file_service.delete_file(rag_pipeline_invoke_entities_file_id)
         db.session.close()
+
 
 def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], flask_app):
     """Run a single RAG pipeline task within Flask app context."""
@@ -97,13 +102,13 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_execution_id = rag_pipeline_invoke_entity_model.workflow_execution_id
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
-            
+
             with Session(db.engine) as session:
                 # Load required entities
                 account = session.query(Account).filter(Account.id == user_id).first()
                 if not account:
                     raise ValueError(f"Account {user_id} not found")
-                    
+
                 tenant = session.query(Tenant).filter(Tenant.id == tenant_id).first()
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")

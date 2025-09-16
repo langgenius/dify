@@ -345,7 +345,7 @@ class DatasourceProviderService:
     def is_tenant_oauth_params_enabled(self, tenant_id: str, datasource_provider_id: DatasourceProviderID) -> bool:
         """
         check if tenant oauth params is enabled
-        """        
+        """
         return (
             db.session.query(DatasourceOauthTenantParamConfig)
             .filter_by(

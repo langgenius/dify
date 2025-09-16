@@ -137,6 +137,7 @@ class PipelineGenerator(BaseAppGenerator):
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED and not is_retry and not args.get("original_document_id"):
             from services.dataset_service import DocumentService
+
             for datasource_info in datasource_info_list:
                 position = DocumentService.get_documents_position(dataset.id)
                 document = self._build_document(
@@ -234,16 +235,18 @@ class PipelineGenerator(BaseAppGenerator):
                     workflow_thread_pool_id=workflow_thread_pool_id,
                 )
             else:
-                rag_pipeline_invoke_entities.append(RagPipelineInvokeEntity(
-                    pipeline_id=pipeline.id,
-                    user_id=user.id,
-                    tenant_id=pipeline.tenant_id,
-                    workflow_id=workflow.id,
-                    streaming=streaming,
-                    workflow_execution_id=workflow_run_id,
-                    workflow_thread_pool_id=workflow_thread_pool_id,
-                    application_generate_entity=application_generate_entity.model_dump(),
-                ))
+                rag_pipeline_invoke_entities.append(
+                    RagPipelineInvokeEntity(
+                        pipeline_id=pipeline.id,
+                        user_id=user.id,
+                        tenant_id=pipeline.tenant_id,
+                        workflow_id=workflow.id,
+                        streaming=streaming,
+                        workflow_execution_id=workflow_run_id,
+                        workflow_thread_pool_id=workflow_thread_pool_id,
+                        application_generate_entity=application_generate_entity.model_dump(),
+                    )
+                )
 
         if rag_pipeline_invoke_entities:
             # store the rag_pipeline_invoke_entities to object storage

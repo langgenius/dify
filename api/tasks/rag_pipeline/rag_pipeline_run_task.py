@@ -54,7 +54,8 @@ def rag_pipeline_run_task(
     try:
         start_at = time.perf_counter()
         rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
-            rag_pipeline_invoke_entities_file_id)
+            rag_pipeline_invoke_entities_file_id
+        )
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
 
         # Get Flask app object for thread context
@@ -75,8 +76,9 @@ def rag_pipeline_run_task(
                     logging.exception("Error in pipeline task")
         end_at = time.perf_counter()
         logging.info(
-            click.style(f"tenant_id: {tenant_id} , Rag pipeline run completed. Latency: {end_at - start_at}s",
-                        fg="green")
+            click.style(
+                f"tenant_id: {tenant_id} , Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green"
+            )
         )
     except Exception:
         logging.exception(click.style(f"Error running rag pipeline, tenant_id: {tenant_id}", fg="red"))
@@ -94,8 +96,9 @@ def rag_pipeline_run_task(
             # Keep the flag set to indicate a task is running
             redis_client.setex(tenant_pipeline_task_key, 60 * 60, 1)
             rag_pipeline_run_task.delay(  # type: ignore
-                rag_pipeline_invoke_entities_file_id=next_file_id.decode('utf-8') if isinstance(next_file_id,
-                                                                                                bytes) else next_file_id,
+                rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
+                if isinstance(next_file_id, bytes)
+                else next_file_id,
                 tenant_id=tenant_id,
             )
         else:
@@ -120,13 +123,13 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_execution_id = rag_pipeline_invoke_entity_model.workflow_execution_id
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
-            
+
             with Session(db.engine) as session:
                 # Load required entities
                 account = session.query(Account).filter(Account.id == user_id).first()
                 if not account:
                     raise ValueError(f"Account {user_id} not found")
-                    
+
                 tenant = session.query(Tenant).filter(Tenant.id == tenant_id).first()
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")

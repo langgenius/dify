@@ -29,9 +29,7 @@ class Jieba(BaseKeyword):
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
             keyword_table = self._get_dataset_keyword_table()
-            keyword_number = (
-                self.dataset.keyword_number or self._config.max_keywords_per_chunk
-            )
+            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
 
             for text in texts:
                 keywords = keyword_table_handler.extract_keywords(text.page_content, keyword_number)
@@ -52,9 +50,7 @@ class Jieba(BaseKeyword):
 
             keyword_table = self._get_dataset_keyword_table()
             keywords_list = kwargs.get("keywords_list")
-            keyword_number = (
-                self.dataset.keyword_number or self._config.max_keywords_per_chunk
-            )
+            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
             for i in range(len(texts)):
                 text = texts[i]
                 if keywords_list:
@@ -239,9 +235,7 @@ class Jieba(BaseKeyword):
                     keyword_table or {}, segment.index_node_id, pre_segment_data["keywords"]
                 )
             else:
-                keyword_number = (
-                    self.dataset.keyword_number or self._config.max_keywords_per_chunk
-                )
+                keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
 
                 keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)
                 segment.keywords = list(keywords)
