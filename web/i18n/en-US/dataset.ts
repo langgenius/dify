@@ -226,6 +226,17 @@ const translation = {
       technicalParameters: 'Technical Parameters',
     },
   },
+  serviceApi: {
+    title: 'Service API',
+    enabled: 'In Service',
+    disabled: 'Disabled',
+    card: {
+      title: 'Backend service api',
+      endpoint: 'Service API Endpoint',
+      apiKey: 'API Key',
+      apiReference: 'API Reference',
+    },
+  },
 }
 
 export default translation

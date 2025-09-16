@@ -1,33 +1,30 @@
 import React from 'react'
-import type { RelatedAppResponse } from '@/models/datasets'
 import { useTranslation } from 'react-i18next'
-import Divider from '../base/divider'
-import Tooltip from '../base/tooltip'
-import LinkedAppsPanel from '../base/linked-apps-panel'
-import NoLinkedAppsPanel from './no-linked-apps-panel'
+import Divider from '@/app/components/base/divider'
+import Tooltip from '@/app/components/base/tooltip'
+import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import NoLinkedAppsPanel from '../no-linked-apps-panel'
 import { RiInformation2Line } from '@remixicon/react'
+import type { RelatedAppResponse } from '@/models/datasets'
 
-type IExtraInfoProps = {
-  relatedApps?: RelatedAppResponse
-  documentCount?: number
+type StatisticsProps = {
   expand: boolean
+  documentCount?: number
+  relatedApps?: RelatedAppResponse
 }
 
-const ExtraInfo = ({
-  relatedApps,
-  documentCount,
+const Statistics = ({
   expand,
-}: IExtraInfoProps) => {
+  documentCount,
+  relatedApps,
+}: StatisticsProps) => {
   const { t } = useTranslation()
 
-  const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
-  const relatedAppsTotal = relatedApps?.data?.length || 0
-
-  if (!expand)
-    return null
+  const relatedAppsTotal = relatedApps?.total
+  const hasRelatedApps = relatedApps?.data && relatedApps.data.length > 0
 
   return (
-    <div className='flex items-center gap-x-0.5 p-2 pb-3'>
+    <div className='flex items-center gap-x-0.5 p-2 pb-0'>
       <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
         <div className='system-md-semibold-uppercase text-text-secondary'>
           {documentCount ?? '--'}
@@ -66,4 +63,4 @@ const ExtraInfo = ({
   )
 }
 
-export default React.memo(ExtraInfo)
+export default React.memo(Statistics)

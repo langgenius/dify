@@ -226,6 +226,17 @@ const translation = {
       technicalParameters: '技术参数',
     },
   },
+  serviceApi: {
+    title: '服务 API',
+    enabled: '运行中',
+    disabled: '已停用',
+    card: {
+      title: '后端服务 API',
+      endpoint: 'API 端点',
+      apiKey: 'API 密钥',
+      apiReference: 'API 文档',
+    },
+  },
 }
 
 export default translation

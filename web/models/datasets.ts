@@ -84,6 +84,7 @@ export type DataSet = {
   pipeline_id?: string
   is_published?: boolean // Indicates if the pipeline is published
   runtime_mode: 'rag_pipeline' | 'general'
+  enable_api: boolean
 }
 
 export type ExternalAPIItem = {
