@@ -99,8 +99,8 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         const dataType = output.type
         const schemaType = getMatchedSchemaType(output, schemaTypeDefinitions)
         let type = dataType === 'array'
-          ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-          : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`
+          ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleLowerCase() + output.items.type.slice(1) : 'Unknown'}]`
+          : `${output.type ? output.type.slice(0, 1).toLocaleLowerCase() + output.type.slice(1) : 'Unknown'}`
 
         if (type === VarType.object && schemaType === 'file')
           type = VarType.file

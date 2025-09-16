@@ -48,7 +48,7 @@ const Statistics = ({
             hasRelatedApps ? (
               <LinkedAppsPanel
                 relatedApps={relatedApps.data}
-                isMobile={expand}
+                isMobile={!expand}
               />
             ) : <NoLinkedAppsPanel />
           }

@@ -126,6 +126,7 @@ const PipelineSettings = ({
       start_node_id: lastRunData.datasource_node_id,
       datasource_type: lastRunData.datasource_type,
       datasource_info_list: datasourceInfoList,
+      original_document_id: documentId,
       is_preview: false,
     }, {
       onSuccess: () => {

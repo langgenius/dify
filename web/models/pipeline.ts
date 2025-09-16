@@ -203,6 +203,7 @@ export type PublishedPipelineRunRequest = {
   start_node_id: string
   datasource_type: DatasourceType
   datasource_info_list: Array<Record<string, any>>
+  original_document_id?: string
   is_preview: boolean
 }
 

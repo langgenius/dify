@@ -4,7 +4,6 @@ import {
   FloatingPortal,
   autoUpdate,
   flip,
-  hide,
   offset,
   shift,
   size,
@@ -31,7 +30,6 @@ export type PortalToFollowElemOptions = {
   offset?: number | OffsetOptions
   onOpenChange?: (open: boolean) => void
   triggerPopupSameWidth?: boolean
-  customContainer?: HTMLElement | null
 }
 
 export function usePortalToFollowElem({
@@ -40,9 +38,7 @@ export function usePortalToFollowElem({
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
   triggerPopupSameWidth,
-  customContainer = null,
 }: PortalToFollowElemOptions = {}) {
-  const container = customContainer || document.getElementById('workflow-container') || document.body
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
   const handleOpenChange = useCallback((newOpen: boolean) => {
@@ -60,17 +56,9 @@ export function usePortalToFollowElem({
       flip({
         crossAxis: placement.includes('-'),
         fallbackAxisSideDirection: 'start',
-        padding: 8,
+        padding: 5,
       }),
-      shift({
-        padding: 8,
-        boundary: container,
-        altBoundary: true,
-      }),
-      hide({
-        // hide when the reference element is not visible
-        boundary: container,
-      }),
+      shift({ padding: 5 }),
       size({
         apply({ rects, elements }) {
           if (triggerPopupSameWidth)
