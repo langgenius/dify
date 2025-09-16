@@ -39,7 +39,7 @@ from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.account import Account
-from models.dataset import Document, Pipeline
+from models.dataset import Pipeline
 from models.model import EndUser
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
