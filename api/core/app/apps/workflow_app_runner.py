@@ -18,10 +18,10 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueParallelBranchRunExitedEvent,
     QueueParallelBranchRunFailedEvent,
     QueueParallelBranchRunStartedEvent,
     QueueParallelBranchRunSucceededEvent,
-    QueueParallelBranchRunExitedEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -55,10 +55,10 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    ParallelBranchRunExitedEvent,
     ParallelBranchRunFailedEvent,
     ParallelBranchRunStartedEvent,
     ParallelBranchRunSucceededEvent,
-    ParallelBranchRunExitedEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 class WorkflowExitError(Exception):
@@ -9,8 +9,8 @@ class WorkflowExitError(Exception):
 
     def __init__(
         self,
-        outputs: Dict[str, Any],
-        message: Optional[str] = None,
+        outputs: dict[str, Any],
+        message: str | None = None,
     ):
         self.outputs = outputs
         default_msg = "Workflow exited"

@@ -48,7 +48,7 @@ class WorkflowEntry:
         invoke_from: InvokeFrom,
         call_depth: int,
         variable_pool: VariablePool,
-        thread_pool_id: Optional[str] = None,
+        thread_pool_id: str | None = None,
     ):
         """
         Init workflow entry
@@ -115,6 +115,7 @@ class WorkflowEntry:
                 from core.workflow.graph_engine.entities.event import (
                     GraphRunSucceededEvent,
                 )
+
                 exit_event = GraphRunSucceededEvent(outputs=e.outputs)
 
                 if callbacks:
@@ -325,7 +326,7 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
-    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         # NOTE(QuantumGhost): Avoid using this function in new code.
         # Keep values structured as long as possible and only convert to dict
         # immediately before serialization (e.g., JSON serialization) to maintain

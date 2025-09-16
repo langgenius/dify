@@ -748,12 +748,12 @@ class QueueParallelBranchRunExitedEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
     outputs: dict
