@@ -1,9 +1,9 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import Optional, Union
+from typing import Union
 
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
@@ -211,7 +211,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_config(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get load balancing configuration.
         :param tenant_id: workspace id
@@ -322,16 +322,14 @@ class ModelLoadBalancingService:
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = (
-            db.session.query(LoadBalancingModelConfig)
-            .where(
+        current_load_balancing_configs = db.session.scalars(
+            select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                 LoadBalancingModelConfig.model_name == model,
             )
-            .all()
-        )
+        ).all()
 
         # id as key, config as value
         current_load_balancing_configs_dict = {config.id: config for config in current_load_balancing_configs}
@@ -480,7 +478,7 @@ class ModelLoadBalancingService:
         model: str,
         model_type: str,
         credentials: dict,
-        config_id: Optional[str] = None,
+        config_id: str | None = None,
     ):
         """
         Validate load balancing credentials.
@@ -538,7 +536,7 @@ class ModelLoadBalancingService:
         model_type: ModelType,
         model: str,
         credentials: dict,
-        load_balancing_model_config: Optional[LoadBalancingModelConfig] = None,
+        load_balancing_model_config: LoadBalancingModelConfig | None = None,
         validate: bool = True,
     ):
         """

@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
@@ -26,7 +27,16 @@ from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
+
+api = ExternalApi(
+    bp,
+    version="1.0",
+    title="Console API",
+    description="Console management APIs for app configuration, monitoring, and administration",
+)
+
+# Create namespace
+console_ns = Namespace("console", description="Console management API operations", path="/")
 
 # File
 api.add_resource(FileApi, "/files/upload")
@@ -43,64 +53,91 @@ api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm"
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
-from . import admin, apikey, extension, feature, ping, setup, version  # pyright: ignore[reportUnusedImport]
+from . import (
+    admin,
+    apikey,
+    extension,
+    feature,
+    init_validate,
+    ping,
+    setup,
+    version,
+)
 
 # Import app controllers
 from .app import (
-    advanced_prompt_template,  # pyright: ignore[reportUnusedImport]
-    agent,  # pyright: ignore[reportUnusedImport]
-    annotation,  # pyright: ignore[reportUnusedImport]
-    app,  # pyright: ignore[reportUnusedImport]
-    audio,  # pyright: ignore[reportUnusedImport]
-    completion,  # pyright: ignore[reportUnusedImport]
-    conversation,  # pyright: ignore[reportUnusedImport]
-    conversation_variables,  # pyright: ignore[reportUnusedImport]
-    generator,  # pyright: ignore[reportUnusedImport]
-    mcp_server,  # pyright: ignore[reportUnusedImport]
-    message,  # pyright: ignore[reportUnusedImport]
-    model_config,  # pyright: ignore[reportUnusedImport]
-    ops_trace,  # pyright: ignore[reportUnusedImport]
-    site,  # pyright: ignore[reportUnusedImport]
-    statistic,  # pyright: ignore[reportUnusedImport]
-    workflow,  # pyright: ignore[reportUnusedImport]
-    workflow_app_log,  # pyright: ignore[reportUnusedImport]
-    workflow_draft_variable,  # pyright: ignore[reportUnusedImport]
-    workflow_run,  # pyright: ignore[reportUnusedImport]
-    workflow_statistic,  # pyright: ignore[reportUnusedImport]
+    advanced_prompt_template,
+    agent,
+    annotation,
+    app,
+    audio,
+    completion,
+    conversation,
+    conversation_variables,
+    generator,
+    mcp_server,
+    message,
+    model_config,
+    ops_trace,
+    site,
+    statistic,
+    workflow,
+    workflow_app_log,
+    workflow_draft_variable,
+    workflow_run,
+    workflow_statistic,
 )
 
 # Import auth controllers
 from .auth import (
-    activate,  # pyright: ignore[reportUnusedImport]
-    data_source_bearer_auth,  # pyright: ignore[reportUnusedImport]
-    data_source_oauth,  # pyright: ignore[reportUnusedImport]
-    forgot_password,  # pyright: ignore[reportUnusedImport]
-    login,  # pyright: ignore[reportUnusedImport]
-    oauth,  # pyright: ignore[reportUnusedImport]
-    oauth_server,  # pyright: ignore[reportUnusedImport]
+    activate,
+    data_source_bearer_auth,
+    data_source_oauth,
+    email_register,
+    forgot_password,
+    login,
+    oauth,
+    oauth_server,
 )
 
 # Import billing controllers
-from .billing import billing, compliance  # pyright: ignore[reportUnusedImport]
+from .billing import billing, compliance
 
 # Import datasets controllers
 from .datasets import (
-    data_source,  # pyright: ignore[reportUnusedImport]
-    datasets,  # pyright: ignore[reportUnusedImport]
-    datasets_document,  # pyright: ignore[reportUnusedImport]
-    datasets_segments,  # pyright: ignore[reportUnusedImport]
-    external,  # pyright: ignore[reportUnusedImport]
-    hit_testing,  # pyright: ignore[reportUnusedImport]
-    metadata,  # pyright: ignore[reportUnusedImport]
-    website,  # pyright: ignore[reportUnusedImport]
+    data_source,
+    datasets,
+    datasets_document,
+    datasets_segments,
+    external,
+    hit_testing,
+    metadata,
+    website,
 )
 
 # Import explore controllers
 from .explore import (
-    installed_app,  # pyright: ignore[reportUnusedImport]
-    parameter,  # pyright: ignore[reportUnusedImport]
-    recommended_app,  # pyright: ignore[reportUnusedImport]
-    saved_message,  # pyright: ignore[reportUnusedImport]
+    installed_app,
+    parameter,
+    recommended_app,
+    saved_message,
+)
+
+# Import tag controllers
+from .tag import tags
+
+# Import workspace controllers
+from .workspace import (
+    account,
+    agent_providers,
+    endpoint,
+    load_balancing_config,
+    members,
+    model_providers,
+    models,
+    plugin,
+    tool_providers,
+    workspace,
 )
 
 # Explore Audio
@@ -174,19 +211,71 @@ api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
 
-# Import tag controllers
-from .tag import tags  # pyright: ignore[reportUnusedImport]
+api.add_namespace(console_ns)
 
-# Import workspace controllers
-from .workspace import (
-    account,  # pyright: ignore[reportUnusedImport]
-    agent_providers,  # pyright: ignore[reportUnusedImport]
-    endpoint,  # pyright: ignore[reportUnusedImport]
-    load_balancing_config,  # pyright: ignore[reportUnusedImport]
-    members,  # pyright: ignore[reportUnusedImport]
-    model_providers,  # pyright: ignore[reportUnusedImport]
-    models,  # pyright: ignore[reportUnusedImport]
-    plugin,  # pyright: ignore[reportUnusedImport]
-    tool_providers,  # pyright: ignore[reportUnusedImport]
-    workspace,  # pyright: ignore[reportUnusedImport]
-)
+__all__ = [
+    "account",
+    "activate",
+    "admin",
+    "advanced_prompt_template",
+    "agent",
+    "agent_providers",
+    "annotation",
+    "api",
+    "apikey",
+    "app",
+    "audio",
+    "billing",
+    "bp",
+    "completion",
+    "compliance",
+    "console_ns",
+    "conversation",
+    "conversation_variables",
+    "data_source",
+    "data_source_bearer_auth",
+    "data_source_oauth",
+    "datasets",
+    "datasets_document",
+    "datasets_segments",
+    "email_register",
+    "endpoint",
+    "extension",
+    "external",
+    "feature",
+    "forgot_password",
+    "generator",
+    "hit_testing",
+    "init_validate",
+    "installed_app",
+    "load_balancing_config",
+    "login",
+    "mcp_server",
+    "members",
+    "message",
+    "metadata",
+    "model_config",
+    "model_providers",
+    "models",
+    "oauth",
+    "oauth_server",
+    "ops_trace",
+    "parameter",
+    "ping",
+    "plugin",
+    "recommended_app",
+    "saved_message",
+    "setup",
+    "site",
+    "statistic",
+    "tags",
+    "tool_providers",
+    "version",
+    "website",
+    "workflow",
+    "workflow_app_log",
+    "workflow_draft_variable",
+    "workflow_run",
+    "workflow_statistic",
+    "workspace",
+]

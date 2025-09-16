@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
@@ -29,10 +29,10 @@ UGC_INDEX_PREFIX = "ugc_index"
 
 class LindormVectorStoreConfig(BaseModel):
     hosts: str
-    username: Optional[str] = None
-    password: Optional[str] = None
-    using_ugc: Optional[bool] = False
-    request_timeout: Optional[float] = 1.0  # timeout units: s
+    username: str | None = None
+    password: str | None = None
+    using_ugc: bool | None = False
+    request_timeout: float | None = 1.0  # timeout units: s
 
     @model_validator(mode="before")
     @classmethod
@@ -448,13 +448,13 @@ def default_text_search_query(
     query_text: str,
     k: int = 4,
     text_field: str = Field.CONTENT_KEY.value,
-    must: Optional[list[dict]] = None,
-    must_not: Optional[list[dict]] = None,
-    should: Optional[list[dict]] = None,
+    must: list[dict] | None = None,
+    must_not: list[dict] | None = None,
+    should: list[dict] | None = None,
     minimum_should_match: int = 0,
-    filters: Optional[list[dict]] = None,
-    routing: Optional[str] = None,
-    routing_field: Optional[str] = None,
+    filters: list[dict] | None = None,
+    routing: str | None = None,
+    routing_field: str | None = None,
     **kwargs,
 ):
     query_clause: dict[str, Any] = {}
@@ -505,13 +505,13 @@ def default_vector_search_query(
     query_vector: list[float],
     k: int = 4,
     min_score: str = "0.0",
-    ef_search: Optional[str] = None,  # only for hnsw
-    nprobe: Optional[str] = None,  # "2000"
-    reorder_factor: Optional[str] = None,  # "20"
-    client_refactor: Optional[str] = None,  # "true"
+    ef_search: str | None = None,  # only for hnsw
+    nprobe: str | None = None,  # "2000"
+    reorder_factor: str | None = None,  # "20"
+    client_refactor: str | None = None,  # "true"
     vector_field: str = Field.VECTOR.value,
-    filters: Optional[list[dict]] = None,
-    filter_type: Optional[str] = None,
+    filters: list[dict] | None = None,
+    filter_type: str | None = None,
     **kwargs,
 ):
     if filters is not None:

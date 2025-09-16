@@ -1,6 +1,6 @@
 from collections.abc import Sequence
-from enum import Enum, StrEnum
-from typing import Any, Literal, Optional
+from enum import StrEnum, auto
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -17,7 +17,7 @@ class ModelConfigEntity(BaseModel):
 
     provider: str
     model: str
-    mode: Optional[str] = None
+    mode: str | None = None
     parameters: dict[str, Any] = Field(default_factory=dict)
     stop: list[str] = Field(default_factory=list)
 
@@ -53,7 +53,7 @@ class AdvancedCompletionPromptTemplateEntity(BaseModel):
         assistant: str
 
     prompt: str
-    role_prefix: Optional[RolePrefixEntity] = None
+    role_prefix: RolePrefixEntity | None = None
 
 
 class PromptTemplateEntity(BaseModel):
@@ -61,14 +61,14 @@ class PromptTemplateEntity(BaseModel):
     Prompt Template Entity.
     """
 
-    class PromptType(Enum):
+    class PromptType(StrEnum):
         """
         Prompt Type.
         'simple', 'advanced'
         """
 
-        SIMPLE = "simple"
-        ADVANCED = "advanced"
+        SIMPLE = auto()
+        ADVANCED = auto()
 
         @classmethod
         def value_of(cls, value: str):
@@ -84,9 +84,9 @@ class PromptTemplateEntity(BaseModel):
             raise ValueError(f"invalid prompt type value {value}")
 
     prompt_type: PromptType
-    simple_prompt_template: Optional[str] = None
-    advanced_chat_prompt_template: Optional[AdvancedChatPromptTemplateEntity] = None
-    advanced_completion_prompt_template: Optional[AdvancedCompletionPromptTemplateEntity] = None
+    simple_prompt_template: str | None = None
+    advanced_chat_prompt_template: AdvancedChatPromptTemplateEntity | None = None
+    advanced_completion_prompt_template: AdvancedCompletionPromptTemplateEntity | None = None
 
 
 class VariableEntityType(StrEnum):
@@ -112,7 +112,7 @@ class VariableEntity(BaseModel):
     type: VariableEntityType
     required: bool = False
     hide: bool = False
-    max_length: Optional[int] = None
+    max_length: int | None = None
     options: Sequence[str] = Field(default_factory=list)
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
     allowed_file_extensions: Sequence[str] = Field(default_factory=list)
@@ -173,7 +173,7 @@ class ModelConfig(BaseModel):
 
 class Condition(BaseModel):
     """
-    Conditon detail
+    Condition detail
     """
 
     name: str
@@ -186,8 +186,8 @@ class MetadataFilteringCondition(BaseModel):
     Metadata Filtering Condition.
     """
 
-    logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
+    logical_operator: Literal["and", "or"] | None = "and"
+    conditions: list[Condition] | None = Field(default=None, deprecated=True)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):
@@ -195,14 +195,14 @@ class DatasetRetrieveConfigEntity(BaseModel):
     Dataset Retrieve Config Entity.
     """
 
-    class RetrieveStrategy(Enum):
+    class RetrieveStrategy(StrEnum):
         """
         Dataset Retrieve Strategy.
         'single' or 'multiple'
         """
 
-        SINGLE = "single"
-        MULTIPLE = "multiple"
+        SINGLE = auto()
+        MULTIPLE = auto()
 
         @classmethod
         def value_of(cls, value: str):
@@ -217,18 +217,18 @@ class DatasetRetrieveConfigEntity(BaseModel):
                     return mode
             raise ValueError(f"invalid retrieve strategy value {value}")
 
-    query_variable: Optional[str] = None  # Only when app mode is completion
+    query_variable: str | None = None  # Only when app mode is completion
 
     retrieve_strategy: RetrieveStrategy
-    top_k: Optional[int] = None
-    score_threshold: Optional[float] = 0.0
-    rerank_mode: Optional[str] = "reranking_model"
-    reranking_model: Optional[dict] = None
-    weights: Optional[dict] = None
-    reranking_enabled: Optional[bool] = True
-    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
-    metadata_model_config: Optional[ModelConfig] = None
-    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
+    top_k: int | None = None
+    score_threshold: float | None = 0.0
+    rerank_mode: str | None = "reranking_model"
+    reranking_model: dict | None = None
+    weights: dict | None = None
+    reranking_enabled: bool | None = True
+    metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
+    metadata_model_config: ModelConfig | None = None
+    metadata_filtering_conditions: MetadataFilteringCondition | None = None
 
 
 class DatasetEntity(BaseModel):
@@ -255,8 +255,8 @@ class TextToSpeechEntity(BaseModel):
     """
 
     enabled: bool
-    voice: Optional[str] = None
-    language: Optional[str] = None
+    voice: str | None = None
+    language: str | None = None
 
 
 class TracingConfigEntity(BaseModel):
@@ -269,15 +269,15 @@ class TracingConfigEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: Optional[FileUploadConfig] = None
-    opening_statement: Optional[str] = None
+    file_upload: FileUploadConfig | None = None
+    opening_statement: str | None = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False
     show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
-    text_to_speech: Optional[TextToSpeechEntity] = None
-    trace_config: Optional[TracingConfigEntity] = None
+    text_to_speech: TextToSpeechEntity | None = None
+    trace_config: TracingConfigEntity | None = None
 
 
 class AppConfig(BaseModel):
@@ -290,15 +290,15 @@ class AppConfig(BaseModel):
     app_mode: AppMode
     additional_features: AppAdditionalFeatures
     variables: list[VariableEntity] = []
-    sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
+    sensitive_word_avoidance: SensitiveWordAvoidanceEntity | None = None
 
 
-class EasyUIBasedAppModelConfigFrom(Enum):
+class EasyUIBasedAppModelConfigFrom(StrEnum):
     """
     App Model Config From.
     """
 
-    ARGS = "args"
+    ARGS = auto()
     APP_LATEST_CONFIG = "app-latest-config"
     CONVERSATION_SPECIFIC_CONFIG = "conversation-specific-config"
 
@@ -313,7 +313,7 @@ class EasyUIBasedAppConfig(AppConfig):
     app_model_config_dict: dict
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity
-    dataset: Optional[DatasetEntity] = None
+    dataset: DatasetEntity | None = None
     external_data_variables: list[ExternalDataVariableEntity] = []
 
 
