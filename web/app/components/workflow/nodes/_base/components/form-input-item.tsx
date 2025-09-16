@@ -227,6 +227,7 @@ const FormInputItem: FC<Props> = ({
       {isShowJSONEditor && isConstant && (
         <div className='mt-1 w-full'>
           <CodeEditor
+            nodeId={nodeId}
             title='JSON'
             value={varInput?.value as any}
             isExpand
