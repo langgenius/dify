@@ -248,7 +248,7 @@ class LindormVectorStore(BaseVector):
         if self._using_ugc:
             filters.append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
 
-        top_k = kwargs.get("top_k", 5)    
+        top_k = kwargs.get("top_k", 5)
         search_query: dict[str, Any] = {
             "size": top_k,
             "_source": True,
@@ -327,7 +327,7 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):
         if not embeddings:
             raise ValueError(f"Embeddings list cannot be empty for collection create '{self._collection_name}'")
@@ -355,13 +355,14 @@ class LindormVectorStore(BaseVector):
                                     else dify_config.LINDORM_DISTANCE_TYPE,
                                     "engine": "lvector",
                                 },
-                            }
+                            },
                         }
                     },
                 }
                 logger.info("Creating Lindorm Search index %s", self._collection_name)
                 self._client.indices.create(index=self._collection_name, body=index_body)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
 
 class LindormVectorStoreFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
