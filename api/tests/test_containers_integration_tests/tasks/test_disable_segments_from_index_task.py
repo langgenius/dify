@@ -290,9 +290,9 @@ class TestDisableSegmentsFromIndexTask:
                 # Verify the call arguments (checking by attributes rather than object identity)
                 call_args = mock_processor.clean.call_args
                 assert call_args[0][0].id == dataset.id  # First argument should be the dataset
-                assert call_args[0][1] == [
-                    segment.index_node_id for segment in segments
-                ]  # Second argument should be node IDs
+                assert sorted(call_args[0][1]) == sorted(
+                    [segment.index_node_id for segment in segments]
+                )  # Compare sorted lists to handle any order while preserving duplicates
                 assert call_args[1]["with_keywords"] is True
                 assert call_args[1]["delete_child_chunks"] is False
 
@@ -719,7 +719,9 @@ class TestDisableSegmentsFromIndexTask:
                 # Verify the call arguments
                 call_args = mock_processor.clean.call_args
                 assert call_args[0][0].id == dataset.id  # First argument should be the dataset
-                assert call_args[0][1] == expected_node_ids  # Second argument should be node IDs
+                assert sorted(call_args[0][1]) == sorted(
+                    expected_node_ids
+                )  # Compare sorted lists to handle any order while preserving duplicates
                 assert call_args[1]["with_keywords"] is True
                 assert call_args[1]["delete_child_chunks"] is False
 

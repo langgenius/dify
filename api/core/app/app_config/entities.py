@@ -173,7 +173,7 @@ class ModelConfig(BaseModel):
 
 class Condition(BaseModel):
     """
-    Conditon detail
+    Condition detail
     """
 
     name: str
