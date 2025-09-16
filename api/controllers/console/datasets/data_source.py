@@ -34,14 +34,12 @@ class DataSourceApi(Resource):
     @marshal_with(integrate_list_fields)
     def get(self):
         # get workspace data source integrates
-        data_source_integrates = (
-            db.session.query(DataSourceOauthBinding)
-            .where(
+        data_source_integrates = db.session.scalars(
+            select(DataSourceOauthBinding).where(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
             )
-            .all()
-        )
+        ).all()
 
         base_url = request.url_root.rstrip("/")
         data_source_oauth_base_path = "/console/api/oauth/data-source"

@@ -321,7 +321,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <div className='flex w-full grow flex-col items-start justify-center'>
+            <div className='flex flex-1 flex-col items-start justify-center overflow-hidden'>
               <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
               <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>

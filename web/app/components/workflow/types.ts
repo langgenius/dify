@@ -273,6 +273,7 @@ export type Memory = {
 export enum VarType {
   string = 'string',
   number = 'number',
+  integer = 'integer',
   secret = 'secret',
   boolean = 'boolean',
   object = 'object',

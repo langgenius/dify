@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'Недоступний',
     customCredentialUnavailable: 'Індивідуальні облікові дані наразі недоступні',
     credentialUnavailable: 'Облікові дані наразі недоступні. Будь ласка, зверніться до адміністратора.',
+    credentialUnavailableInButton: 'Облікові дані недоступні',
     connectedWorkspace: 'Підключене робоче середовище',
     emptyAuth: 'Будь ласка, налаштуйте аутентифікацію',
   },

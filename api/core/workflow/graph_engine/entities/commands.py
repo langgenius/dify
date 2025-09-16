@@ -5,13 +5,13 @@ This module defines command types that can be sent to a running GraphEngine
 instance to control its execution flow.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class CommandType(str, Enum):
+class CommandType(StrEnum):
     """Types of commands that can be sent to GraphEngine."""
 
     ABORT = "abort"

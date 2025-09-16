@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'ไม่มีให้บริการ',
     customCredentialUnavailable: 'ข้อมูลรับรองที่กำหนดเองขณะนี้ไม่สามารถใช้ได้',
     credentialUnavailable: 'ข้อมูลรับรองไม่สามารถใช้งานได้ในขณะนี้ กรุณาติดต่อผู้ดูแลระบบ.',
+    credentialUnavailableInButton: 'ข้อมูลรับรองไม่พร้อมใช้งาน',
     connectedWorkspace: 'พื้นที่ทํางานที่เชื่อมต่อ',
     emptyAuth: 'โปรดกําหนดค่าการรับรองความถูกต้อง',
   },

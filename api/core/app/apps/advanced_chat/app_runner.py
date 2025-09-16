@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -249,7 +249,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
     def query_app_annotations_to_reply(
         self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
-    ) -> Optional[MessageAnnotation]:
+    ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
         :param app_record: app record

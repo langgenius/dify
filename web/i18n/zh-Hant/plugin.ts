@@ -251,6 +251,7 @@ const translation = {
     unavailable: '無法使用',
     customCredentialUnavailable: '自訂憑證目前無法使用',
     credentialUnavailable: '凭證目前無法使用。請聯繫管理員。',
+    credentialUnavailableInButton: '憑證不可用',
     emptyAuth: '請設定驗證',
     connectedWorkspace: '連線工作區',
   },

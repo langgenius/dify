@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 import orjson
 from pydantic import BaseModel
@@ -30,7 +30,7 @@ class Jieba(BaseKeyword):
             keyword_table_handler = JiebaKeywordTableHandler()
             keyword_table = self._get_dataset_keyword_table()
             keyword_number = (
-                self.dataset.keyword_number if self.dataset.keyword_number else self._config.max_keywords_per_chunk
+                self.dataset.keyword_number or self._config.max_keywords_per_chunk
             )
 
             for text in texts:
@@ -53,7 +53,7 @@ class Jieba(BaseKeyword):
             keyword_table = self._get_dataset_keyword_table()
             keywords_list = kwargs.get("keywords_list")
             keyword_number = (
-                self.dataset.keyword_number if self.dataset.keyword_number else self._config.max_keywords_per_chunk
+                self.dataset.keyword_number or self._config.max_keywords_per_chunk
             )
             for i in range(len(texts)):
                 text = texts[i]
@@ -144,7 +144,7 @@ class Jieba(BaseKeyword):
                 storage.delete(file_key)
             storage.save(file_key, dumps_with_sets(keyword_table_dict).encode("utf-8"))
 
-    def _get_dataset_keyword_table(self) -> Optional[dict]:
+    def _get_dataset_keyword_table(self) -> dict | None:
         dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             keyword_table_dict = dataset_keyword_table.keyword_table_dict
@@ -240,7 +240,7 @@ class Jieba(BaseKeyword):
                 )
             else:
                 keyword_number = (
-                    self.dataset.keyword_number if self.dataset.keyword_number else self._config.max_keywords_per_chunk
+                    self.dataset.keyword_number or self._config.max_keywords_per_chunk
                 )
 
                 keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)

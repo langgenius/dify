@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -48,7 +48,7 @@ class ParameterConfig(BaseModel):
 
     name: str
     type: Annotated[SegmentType, BeforeValidator(_validate_type)]
-    options: Optional[list[str]] = None
+    options: list[str] | None = None
     description: str
     required: bool
 
@@ -86,8 +86,8 @@ class ParameterExtractorNodeData(BaseNodeData):
     model: ModelConfig
     query: list[str]
     parameters: list[ParameterConfig]
-    instruction: Optional[str] = None
-    memory: Optional[MemoryConfig] = None
+    instruction: str | None = None
+    memory: MemoryConfig | None = None
     reasoning_mode: Literal["function_call", "prompt"]
     vision: VisionConfig = Field(default_factory=VisionConfig)
 

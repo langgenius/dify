@@ -474,32 +474,32 @@ export const ssePost = async (
         }
         onData?.(str, isFirstMessage, moreInfo)
       },
-        onCompleted,
-        onThought,
-        onMessageEnd,
-        onMessageReplace,
-        onFile,
-        onWorkflowStarted,
-        onWorkflowFinished,
-        onNodeStarted,
-        onNodeFinished,
-        onIterationStart,
-        onIterationNext,
-        onIterationFinish,
-        onLoopStart,
-        onLoopNext,
-        onLoopFinish,
-        onNodeRetry,
-        onParallelBranchStarted,
-        onParallelBranchFinished,
-        onTextChunk,
-        onTTSChunk,
-        onTTSEnd,
-        onTextReplace,
-        onAgentLog,
-        onDataSourceNodeProcessing,
-        onDataSourceNodeCompleted,
-        onDataSourceNodeError,
+      onCompleted,
+      onThought,
+      onMessageEnd,
+      onMessageReplace,
+      onFile,
+      onWorkflowStarted,
+      onWorkflowFinished,
+      onNodeStarted,
+      onNodeFinished,
+      onIterationStart,
+      onIterationNext,
+      onIterationFinish,
+      onLoopStart,
+      onLoopNext,
+      onLoopFinish,
+      onNodeRetry,
+      onParallelBranchStarted,
+      onParallelBranchFinished,
+      onTextChunk,
+      onTTSChunk,
+      onTTSEnd,
+      onTextReplace,
+      onAgentLog,
+      onDataSourceNodeProcessing,
+      onDataSourceNodeCompleted,
+      onDataSourceNodeError,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
@@ -517,6 +517,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
+      if(/\/login/.test(url)) {
+        const clonedResponse = errResp.clone()
+        const bodyJson = await clonedResponse.json() as Promise<ResponseError>
+        return bodyJson
+      }
+
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {

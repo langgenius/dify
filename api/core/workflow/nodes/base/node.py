@@ -285,7 +285,7 @@ class Node:
         ...
 
     @abstractmethod
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         """Get the node description."""
         ...
 
@@ -316,7 +316,7 @@ class Node:
         return self._get_title()
 
     @property
-    def description(self) -> Optional[str]:
+    def description(self) -> str | None:
         """Get the node description."""
         return self._get_description()
 
