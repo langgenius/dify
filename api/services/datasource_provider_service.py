@@ -346,18 +346,17 @@ class DatasourceProviderService:
         """
         check if tenant oauth params is enabled
         """
-        with Session(db.engine).no_autoflush as session:
-            return (
-                session.query(DatasourceOauthTenantParamConfig)
-                .filter_by(
-                    tenant_id=tenant_id,
-                    provider=datasource_provider_id.provider_name,
-                    plugin_id=datasource_provider_id.plugin_id,
-                    enabled=True,
-                )
-                .count()
-                > 0
+        return (
+            db.session.query(DatasourceOauthTenantParamConfig)
+            .filter_by(
+                tenant_id=tenant_id,
+                provider=datasource_provider_id.provider_name,
+                plugin_id=datasource_provider_id.plugin_id,
+                enabled=True,
             )
+            .count()
+            > 0
+        )
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
@@ -365,23 +364,22 @@ class DatasourceProviderService:
         """
         get tenant oauth client
         """
-        with Session(db.engine).no_autoflush as session:
-            tenant_oauth_client_params = (
-                session.query(DatasourceOauthTenantParamConfig)
-                .filter_by(
-                    tenant_id=tenant_id,
-                    provider=datasource_provider_id.provider_name,
-                    plugin_id=datasource_provider_id.plugin_id,
-                )
-                .first()
+        tenant_oauth_client_params = (
+            db.session.query(DatasourceOauthTenantParamConfig)
+            .filter_by(
+                tenant_id=tenant_id,
+                provider=datasource_provider_id.provider_name,
+                plugin_id=datasource_provider_id.plugin_id,
             )
-            if tenant_oauth_client_params:
-                encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                if mask:
-                    return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
-                else:
-                    return encrypter.decrypt(tenant_oauth_client_params.client_params)
-            return None
+            .first()
+        )
+        if tenant_oauth_client_params:
+            encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
+            if mask:
+                return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
+            else:
+                return encrypter.decrypt(tenant_oauth_client_params.client_params)
+        return None
 
     def get_oauth_encrypter(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID

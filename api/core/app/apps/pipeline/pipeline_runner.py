@@ -122,6 +122,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow_id=app_config.workflow_id,
                 workflow_execution_id=self.application_generate_entity.workflow_execution_id,
                 document_id=self.application_generate_entity.document_id,
+                original_document_id=self.application_generate_entity.original_document_id,
                 batch=self.application_generate_entity.batch,
                 dataset_id=self.application_generate_entity.dataset_id,
                 datasource_type=self.application_generate_entity.datasource_type,

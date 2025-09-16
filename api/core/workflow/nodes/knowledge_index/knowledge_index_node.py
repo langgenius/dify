@@ -4,7 +4,7 @@ import time
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -128,6 +128,8 @@ class KnowledgeIndexNode(Node):
         document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
         if not document_id:
             raise KnowledgeIndexNodeError("Document ID is required.")
+        original_document_id = variable_pool.get(["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID])
+
         batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
         if not batch:
             raise KnowledgeIndexNodeError("Batch is required.")
@@ -137,6 +139,19 @@ class KnowledgeIndexNode(Node):
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
+        if original_document_id:
+            segments = db.session.scalars(
+                select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            ).all()
+            if segments:
+                index_node_ids = [segment.index_node_id for segment in segments]
+
+                # delete from vector index
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+
+                for segment in segments:
+                    db.session.delete(segment)
+                db.session.commit()
         index_processor.index(dataset, document, chunks)
         indexing_end_at = time.perf_counter()
         document.indexing_latency = indexing_end_at - indexing_start_at

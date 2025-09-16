@@ -193,6 +193,47 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
     def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
+            # get url path dataset_id from positional args or kwargs
+            # Flask passes URL path parameters as positional arguments
+            dataset_id = None
+
+            # First try to get from kwargs (explicit parameter)
+            dataset_id = kwargs.get("dataset_id")
+
+            # If not in kwargs, try to extract from positional args
+            if not dataset_id and args:
+                # For class methods: args[0] is self, args[1] is dataset_id (if exists)
+                # Check if first arg is likely a class instance (has __dict__ or __class__)
+                if len(args) > 1 and hasattr(args[0], "__dict__"):
+                    # This is a class method, dataset_id should be in args[1]
+                    potential_id = args[1]
+                    # Validate it's a string-like UUID, not another object
+                    try:
+                        # Try to convert to string and check if it's a valid UUID format
+                        str_id = str(potential_id)
+                        # Basic check: UUIDs are 36 chars with hyphens
+                        if len(str_id) == 36 and str_id.count("-") == 4:
+                            dataset_id = str_id
+                    except:
+                        pass
+                elif len(args) > 0:
+                    # Not a class method, check if args[0] looks like a UUID
+                    potential_id = args[0]
+                    try:
+                        str_id = str(potential_id)
+                        if len(str_id) == 36 and str_id.count("-") == 4:
+                            dataset_id = str_id
+                    except:
+                        pass
+
+            # Validate dataset if dataset_id is provided
+            if dataset_id:
+                dataset_id = str(dataset_id)
+                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise NotFound("Dataset not found.")
+                if not dataset.enable_api:
+                    raise Forbidden("Dataset api access is not enabled.")
             api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
