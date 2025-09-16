@@ -51,6 +51,8 @@ const ChatWrapper = () => {
     setIsResponding,
     allInputsHidden,
     initUserVariables,
+    loadMoreMessages,
+    hasMoreMessages,
   } = useChatWithHistoryContext()
 
   // Semantic variable for better code readability
@@ -92,35 +94,27 @@ const ChatWrapper = () => {
     if (allInputsHidden)
       return false
 
-    let hasEmptyInput = ''
+    let hasEmptyInput = false
     let fileIsUploading = false
     const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
-      requiredVars.forEach(({ variable, label, type }) => {
-        if (hasEmptyInput)
-          return
-
-        if (fileIsUploading)
+      requiredVars.forEach(({ variable, type }) => {
+        if (hasEmptyInput || fileIsUploading)
           return
 
         if (!inputsFormValue?.[variable])
-          hasEmptyInput = label as string
+          hasEmptyInput = true
 
         if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && inputsFormValue?.[variable]) {
           const files = inputsFormValue[variable]
           if (Array.isArray(files))
-            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+            fileIsUploading = !!files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
           else
             fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
         }
       })
     }
-    if (hasEmptyInput)
-      return true
-
-    if (fileIsUploading)
-      return true
-    return false
+    return hasEmptyInput || fileIsUploading
   }, [inputsFormValue, inputsForms, allInputsHidden])
 
   useEffect(() => {
@@ -271,6 +265,8 @@ const ChatWrapper = () => {
         inputDisabled={inputDisabled}
         isMobile={isMobile}
         sidebarCollapseState={sidebarCollapseState}
+        hasMoreMessages={hasMoreMessages}
+        onLoadMoreMessages={loadMoreMessages}
         questionIcon={
           initUserVariables?.avatar_url
             ? <Avatar
