@@ -17,11 +17,10 @@ import {
   useCreateTriggerSubscriptionBuilder,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import type { PluginDetail } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { usePluginStore } from '../../store'
 
 type Props = {
-  pluginDetail: PluginDetail
   onClose: () => void
   onSuccess: () => void
 }
@@ -31,9 +30,9 @@ enum ApiKeyStep {
   Configuration = 'configuration',
 }
 
-const ApiKeyAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
+export const ApiKeyCreateModal = ({ onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
-
+  const detail = usePluginStore(state => state.detail)
   // State
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(ApiKeyStep.Verify)
   const [subscriptionName, setSubscriptionName] = useState('')
@@ -50,9 +49,9 @@ const ApiKeyAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
 
   // Get provider name and schemas
-  const providerName = `${pluginDetail.plugin_id}/${pluginDetail.declaration.name}`
-  const credentialsSchema = pluginDetail.declaration.trigger?.credentials_schema || []
-  const parametersSchema = pluginDetail.declaration.trigger?.subscription_schema?.parameters_schema || []
+  const providerName = `${detail?.plugin_id}/${detail?.declaration.name}`
+  const credentialsSchema = detail?.declaration.trigger?.credentials_schema || []
+  const parametersSchema = detail?.declaration.trigger?.subscription_schema?.parameters_schema || []
 
   const handleVerify = () => {
     const credentialsFormValues = credentialsFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
@@ -310,5 +309,3 @@ const ApiKeyAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     </Modal>
   )
 }
-
-export default ApiKeyAddModal

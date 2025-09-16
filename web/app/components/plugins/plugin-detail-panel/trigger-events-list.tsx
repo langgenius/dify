@@ -1,17 +1,12 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolItem from '@/app/components/tools/provider/tool-item'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import { usePluginStore } from './store'
 
-type Props = {
-  detail: PluginDetail
-}
-
-export const TriggerEventsList = ({
-  detail,
-}: Props) => {
+export const TriggerEventsList = () => {
   const { t } = useTranslation()
-  const triggers = detail.declaration.trigger?.triggers || []
+  const detail = usePluginStore(state => state.detail)
+  const triggers = detail?.declaration.trigger?.triggers || []
 
   if (!triggers.length)
     return null
@@ -27,7 +22,7 @@ export const TriggerEventsList = ({
       <div className='flex flex-col gap-2'>
         {triggers.map(triggerEvent => (
           <ToolItem
-            key={`${detail.plugin_id}${triggerEvent.identity.name}`}
+            key={`${detail?.plugin_id}${triggerEvent.identity.name}`}
             disabled={false}
             // collection={provider}
             // @ts-expect-error triggerEvent.identity.label is Record<Locale, string>

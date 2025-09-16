@@ -16,6 +16,7 @@ const translation = {
     agent: 'Agent Strategy',
     extension: 'Extension',
     bundle: 'Bundle',
+    trigger: 'Trigger',
   },
   search: 'Search',
   allCategories: 'All Categories',

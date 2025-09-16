@@ -7,6 +7,11 @@ const translation = {
       description: '创建您的第一个订阅以开始接收事件',
       button: '新建订阅',
     },
+    createButton: {
+      oauth: '通过 OAuth 新建订阅',
+      apiKey: '通过 API Key 新建订阅',
+      manual: '粘贴 URL 以创建新订阅',
+    },
     list: {
       title: '订阅列表',
       addButton: '添加',

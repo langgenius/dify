@@ -1,30 +1,30 @@
 'use client'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
+import ActionButton from '@/app/components/base/action-button'
+import Confirm from '@/app/components/base/confirm'
+import Toast from '@/app/components/base/toast'
+import Indicator from '@/app/components/header/indicator'
+import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
+import { useDeleteTriggerSubscription } from '@/service/use-triggers'
+import cn from '@/utils/classnames'
 import {
   RiDeleteBinLine,
   RiWebhookLine,
 } from '@remixicon/react'
-import ActionButton from '@/app/components/base/action-button'
-import Indicator from '@/app/components/header/indicator'
-import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
-import { useDeleteTriggerSubscription } from '@/service/use-triggers'
-import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import cn from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
+import { useTranslation } from 'react-i18next'
+import { usePluginSubscriptionStore } from '../store'
 
 type Props = {
   data: TriggerSubscription
-  onRefresh: () => void
 }
 
-const SubscriptionCard = ({ data, onRefresh }: Props) => {
+const SubscriptionCard = ({ data }: Props) => {
   const { t } = useTranslation()
   const [isShowDeleteModal, {
     setTrue: showDeleteModal,
     setFalse: hideDeleteModal,
   }] = useBoolean(false)
+  const { refresh } = usePluginSubscriptionStore()
 
   const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
 
@@ -35,7 +35,7 @@ const SubscriptionCard = ({ data, onRefresh }: Props) => {
           type: 'success',
           message: t('pluginTrigger.subscription.list.item.actions.deleteConfirm.title'),
         })
-        onRefresh()
+        refresh?.()
         hideDeleteModal()
       },
       onError: (error: any) => {

@@ -28,6 +28,7 @@ export type Item = {
   name: string
   isGroup?: boolean
   disabled?: boolean
+  extra?: React.ReactNode
 } & Record<string, any>
 
 export type ISelectProps = {
@@ -402,6 +403,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
               {!hideChecked && item.value === value && (
                 <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
               )}
+              {item.extra}
             </div>
           ))}
         </div>

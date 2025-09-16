@@ -7,6 +7,11 @@ const translation = {
       description: 'Create your first subscription to start receiving events',
       button: 'New subscription',
     },
+    createButton: {
+      oauth: 'New subscription with OAuth',
+      apiKey: 'New subscription with API Key',
+      manual: 'Paste URL to create a new subscription',
+    },
     list: {
       title: 'Subscriptions',
       addButton: 'Add',

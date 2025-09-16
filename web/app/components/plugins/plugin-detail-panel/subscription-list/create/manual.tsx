@@ -14,23 +14,23 @@ import {
   useCreateTriggerSubscriptionBuilder,
   useTriggerSubscriptionBuilderLogs,
 } from '@/service/use-triggers'
-import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import type { FormRefObject } from '@/app/components/base/form/types'
-import LogViewer from './log-viewer'
+import LogViewer from '../log-viewer'
+import { usePluginStore } from '../../store'
 
 type Props = {
-  pluginDetail: PluginDetail
   onClose: () => void
   onSuccess: () => void
 }
 
-const ManualAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
+export const ManualCreateModal = ({ onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
+  const detail = usePluginStore(state => state.detail)
 
   const [subscriptionName, setSubscriptionName] = useState('')
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
@@ -38,8 +38,8 @@ const ManualAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const { mutate: createBuilder /* isPending: isCreatingBuilder */ } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
 
-  const providerName = `${pluginDetail.plugin_id}/${pluginDetail.declaration.name}`
-  const propertiesSchema = pluginDetail.declaration.trigger.subscription_schema.properties_schema || []
+  const providerName = `${detail?.plugin_id}/${detail?.declaration.name}`
+  const propertiesSchema = detail?.declaration.trigger.subscription_schema.properties_schema || []
   const propertiesFormRef = React.useRef<FormRefObject>(null)
 
   const { data: logData } = useTriggerSubscriptionBuilderLogs(
@@ -193,7 +193,7 @@ const ManualAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
               <RiLoader2Line className='h-full w-full animate-spin' />
             </div>
             <div className='system-xs-regular text-text-tertiary'>
-              Awaiting request from {pluginDetail.declaration.name}...
+              Awaiting request from {detail?.declaration.name}...
             </div>
           </div>
 
@@ -217,5 +217,3 @@ const ManualAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     </Modal>
   )
 }
-
-export default ManualAddModal

@@ -95,6 +95,15 @@ export const useInvalidateAllTriggerPlugins = () => {
 }
 
 // ===== Trigger Subscriptions Management =====
+
+export const useTriggerProviderInfo = (provider: string, enabled = true) => {
+  return useQuery<TriggerProviderApiEntity>({
+    queryKey: [NAME_SPACE, 'provider-info', provider],
+    queryFn: () => get<TriggerProviderApiEntity>(`/workspaces/current/trigger-provider/${provider}/info`),
+    enabled: enabled && !!provider,
+  })
+}
+
 export const useTriggerSubscriptions = (provider: string, enabled = true) => {
   return useQuery<TriggerSubscription[]>({
     queryKey: [NAME_SPACE, 'list-subscriptions', provider],

@@ -202,6 +202,12 @@ export type PluginManifestInMarket = {
   from: Dependency['type']
 }
 
+export enum SupportedCreationMethods {
+  OAUTH = 'OAUTH',
+  APIKEY = 'APIKEY',
+  MANUAL = 'MANUAL',
+}
+
 export type PluginDetail = {
   id: string
   created_at: string

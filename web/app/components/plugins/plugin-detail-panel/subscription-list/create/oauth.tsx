@@ -15,15 +15,14 @@ import type { FormRefObject } from '@/app/components/base/form/types'
 import {
   useBuildTriggerSubscription,
   useInitiateTriggerOAuth,
-  useTriggerOAuthConfig,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import type { PluginDetail } from '@/app/components/plugins/types'
 import ActionButton from '@/app/components/base/action-button'
-import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { usePluginStore } from '../../store'
 
 type Props = {
-  pluginDetail: PluginDetail
+  oauthConfig?: TriggerOAuthConfig
   onClose: () => void
   onSuccess: () => void
 }
@@ -39,9 +38,9 @@ enum AuthorizationStatusEnum {
   Failed = 'failed',
 }
 
-const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
+export const OAuthCreateModal = ({ oauthConfig, onClose, onSuccess }: Props) => {
   const { t } = useTranslation()
-
+  const detail = usePluginStore(state => state.detail)
   const [currentStep, setCurrentStep] = useState<OAuthStepEnum>(OAuthStepEnum.Setup)
   const [subscriptionName, setSubscriptionName] = useState('')
   const [authorizationUrl, setAuthorizationUrl] = useState('')
@@ -51,15 +50,13 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
   const clientFormRef = React.useRef<FormRefObject>(null)
   const parametersFormRef = React.useRef<FormRefObject>(null)
 
-  const providerName = `${pluginDetail.plugin_id}/${pluginDetail.declaration.name}`
-  const clientSchema = pluginDetail.declaration.trigger?.oauth_schema?.client_schema || []
-  const parametersSchema = pluginDetail.declaration.trigger?.subscription_schema?.parameters_schema || []
+  const providerName = `${detail?.plugin_id}/${detail?.declaration.name}`
+  const clientSchema = detail?.declaration.trigger?.oauth_schema?.client_schema || []
+  const parametersSchema = detail?.declaration.trigger?.subscription_schema?.parameters_schema || []
 
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
   const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
-
-  const { data: oauthConfig } = useTriggerOAuthConfig(providerName)
 
   useEffect(() => {
     initiateOAuth(providerName, {
@@ -290,5 +287,3 @@ const OAuthAddModal = ({ pluginDetail, onClose, onSuccess }: Props) => {
     </Modal>
   )
 }
-
-export default OAuthAddModal
