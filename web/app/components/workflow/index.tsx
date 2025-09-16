@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { setAutoFreeze } from 'immer'
 import {
@@ -115,6 +116,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -238,6 +240,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
           elementY: e.clientY - containerClientRect.top,
         },
       })
+      const target = e.target as HTMLElement
+      const onPane = !!target?.closest('.react-flow__pane')
+      setIsMouseOverCanvas(onPane)
     }
   })
   const { handleFetchAllTools } = useFetchToolsData()
@@ -308,7 +313,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
         relative h-full w-full min-w-[960px]
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
-        ${controlMode === ControlMode.Comment ? 'cursor-crosshair' : ''}
       `}
       ref={workflowContainerRef}
     >
@@ -337,7 +341,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
         )
       }
       <LimitTips />
-      <CommentCursor mousePosition={mousePosition} />
+      {controlMode === ControlMode.Comment && isMouseOverCanvas && (
+        <CommentCursor mousePosition={mousePosition} />
+      )}
       {pendingComment && (
         <CommentInput
           position={pendingComment}

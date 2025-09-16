@@ -13,9 +13,13 @@ const CommentManager = () => {
       const target = e.target as HTMLElement
       const isInDropdown = target.closest('[data-mention-dropdown]')
       const isInCommentInput = target.closest('[data-comment-input]')
+      const isOnCanvasPane = target.closest('.react-flow__pane')
 
-      if (!isInDropdown && !isInCommentInput) {
+      // Only when clicking on the React Flow canvas pane (background),
+      // and not inside comment input or its dropdown
+      if (!isInDropdown && !isInCommentInput && isOnCanvasPane) {
         e.preventDefault()
+        e.stopPropagation()
         handleCreateComment(mousePosition)
       }
     }
