@@ -39,7 +39,7 @@ const DebugAndPreview = () => {
   const selectedNode = nodes.find(node => node.data.selected)
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = variables
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
