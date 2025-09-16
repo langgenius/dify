@@ -7,7 +7,6 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import delete, desc, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -49,7 +48,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         app_id: str,
         workflow_id: str,
         node_id: str,
-    ) -> Optional[WorkflowNodeExecutionModel]:
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get the most recent execution for a specific node.
 
@@ -116,8 +115,8 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
     def get_execution_by_id(
         self,
         execution_id: str,
-        tenant_id: Optional[str] = None,
-    ) -> Optional[WorkflowNodeExecutionModel]:
+        tenant_id: str | None = None,
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.
 

@@ -173,12 +173,15 @@ class MCPToolManageService:
             if sse_read_timeout is not None:
                 mcp_provider.sse_read_timeout = sse_read_timeout
             if headers is not None:
-                mcp_provider.encrypted_headers = (
-                    self._prepare_encrypted_headers(headers, tenant_id) if headers else None
-                )
-
+                if headers:
+                    # Build headers preserving unchanged masked values
+                    final_headers = self._merge_headers_with_masked(incoming_headers=headers, mcp_provider=mcp_provider)
+                    encrypted_headers_dict = self._prepare_encrypted_headers(final_headers, tenant_id)
+                    mcp_provider.encrypted_headers = encrypted_headers_dict
+                else:
+                    # Clear headers if empty dict passed
+                    mcp_provider.encrypted_headers = None
             self._session.commit()
-
         except IntegrityError as e:
             self._session.rollback()
             self._handle_integrity_error(e, name, server_url, server_identifier)
@@ -357,7 +360,7 @@ class MCPToolManageService:
 
     def _prepare_auth_headers(self, provider_entity: MCPProviderEntity) -> dict[str, str]:
         """Prepare headers with OAuth token if available."""
-        headers = provider_entity.headers.copy() if provider_entity.headers else {}
+        headers = provider_entity.decrypt_headers()
         tokens = provider_entity.retrieve_tokens()
         if tokens:
             headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
@@ -436,3 +439,25 @@ class MCPToolManageService:
         if "unique_mcp_provider_server_identifier" in error_msg:
             raise ValueError(f"MCP tool {server_identifier} already exists")
         raise
+
+    def _merge_headers_with_masked(
+        self, incoming_headers: dict[str, str], mcp_provider: MCPToolProvider
+    ) -> dict[str, str]:
+        """Merge incoming headers with existing ones, preserving unchanged masked values.
+
+        Args:
+            incoming_headers: Headers from frontend (may contain masked values)
+            mcp_provider: The MCP provider instance
+
+        Returns:
+            Final headers dict with proper values (original for unchanged masked, new for changed)
+        """
+        mcp_provider_entity = mcp_provider.to_entity()
+        existing_decrypted = mcp_provider_entity.decrypt_headers()
+        existing_masked = mcp_provider_entity.masked_headers()
+
+        return {
+            key: (str(existing_decrypted[key]) if key in existing_masked and value == existing_masked[key] else value)
+            for key, value in incoming_headers.items()
+            if key in existing_decrypted or value != existing_masked.get(key)
+        }

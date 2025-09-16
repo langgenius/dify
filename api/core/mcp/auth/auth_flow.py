@@ -4,7 +4,7 @@ import json
 import os
 import secrets
 import urllib.parse
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -127,7 +127,7 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
         return False, ""
 
 
-def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = None) -> Optional[OAuthMetadata]:
+def discover_oauth_metadata(server_url: str, protocol_version: str | None = None) -> OAuthMetadata | None:
     """Looks up RFC 8414 OAuth 2.0 Authorization Server Metadata."""
     # First check if the server supports OAuth 2.0 Resource Discovery
     support_resource_discovery, oauth_discovery_url = check_support_resource_discovery(server_url)
@@ -157,7 +157,7 @@ def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = N
 
 def start_authorization(
     server_url: str,
-    metadata: Optional[OAuthMetadata],
+    metadata: OAuthMetadata | None,
     client_information: OAuthClientInformation,
     redirect_url: str,
     provider_id: str,
@@ -212,7 +212,7 @@ def start_authorization(
 
 def exchange_authorization(
     server_url: str,
-    metadata: Optional[OAuthMetadata],
+    metadata: OAuthMetadata | None,
     client_information: OAuthClientInformation,
     authorization_code: str,
     code_verifier: str,
@@ -247,7 +247,7 @@ def exchange_authorization(
 
 def refresh_authorization(
     server_url: str,
-    metadata: Optional[OAuthMetadata],
+    metadata: OAuthMetadata | None,
     client_information: OAuthClientInformation,
     refresh_token: str,
 ) -> OAuthTokens:
@@ -278,7 +278,7 @@ def refresh_authorization(
 
 def register_client(
     server_url: str,
-    metadata: Optional[OAuthMetadata],
+    metadata: OAuthMetadata | None,
     client_metadata: OAuthClientMetadata,
 ) -> OAuthClientInformationFull:
     """Performs OAuth 2.0 Dynamic Client Registration."""
@@ -302,8 +302,8 @@ def register_client(
 def auth(
     provider: MCPProviderEntity,
     mcp_service: "MCPToolManageService",
-    authorization_code: Optional[str] = None,
-    state_param: Optional[str] = None,
+    authorization_code: str | None = None,
+    state_param: str | None = None,
 ) -> dict[str, str]:
     """Orchestrates the full auth flow with a server using secure Redis state storage."""
     server_url = provider.decrypt_server_url()

@@ -1,7 +1,7 @@
 import base64
 import json
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -22,9 +22,9 @@ class MCPTool(Tool):
         icon: str,
         server_url: str,
         provider_id: str,
-        headers: Optional[dict[str, str]] = None,
-        timeout: Optional[float] = None,
-        sse_read_timeout: Optional[float] = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
@@ -42,9 +42,9 @@ class MCPTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         result = self.invoke_remote_mcp_tool(tool_parameters)
         # handle dify tool output
@@ -144,11 +144,12 @@ class MCPTool(Tool):
         if mcp_service:
             try:
                 provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
-
+                headers = provider_entity.decrypt_headers()
                 # Try to get existing token and add to headers
-                tokens = provider_entity.retrieve_tokens()
-                if tokens and tokens.access_token:
-                    headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
+                if not headers:
+                    tokens = provider_entity.retrieve_tokens()
+                    if tokens and tokens.access_token:
+                        headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
             except Exception:
                 # If provider retrieval or token fails, continue without auth
                 pass
