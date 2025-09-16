@@ -39,7 +39,7 @@ from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
-from .ready_queue import ReadyQueueState, create_ready_queue_from_state
+from .ready_queue import ReadyQueue, ReadyQueueState, create_ready_queue_from_state
 from .response_coordinator import ResponseStreamCoordinator
 from .worker_management import WorkerPool
 
@@ -106,6 +106,7 @@ class GraphEngine:
 
         # === Execution Queues ===
         # Create ready queue from saved state or initialize new one
+        self._ready_queue: ReadyQueue
         if self._graph_runtime_state.ready_queue_json == "":
             self._ready_queue = InMemoryReadyQueue()
         else:

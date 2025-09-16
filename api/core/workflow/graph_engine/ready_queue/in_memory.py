@@ -8,11 +8,11 @@ serialization capabilities for state storage.
 import queue
 from typing import final
 
-from .protocol import ReadyQueueState
+from .protocol import ReadyQueue, ReadyQueueState
 
 
 @final
-class InMemoryReadyQueue:
+class InMemoryReadyQueue(ReadyQueue):
     """
     In-memory ready queue implementation with serialization support.
 
