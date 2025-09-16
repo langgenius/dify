@@ -6,6 +6,8 @@ from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
 from models import db
+from sqlalchemy.orm import sessionmaker
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,18 @@ def _setup_gevent_compatibility():
     _GEVENT_COMPATIBILITY_SETUP = True
 
 
+_SESSION_MAKER: Optional[sessionmaker] = None
+
+
+def get_session_maker() -> sessionmaker:
+    global _SESSION_MAKER
+    if _SESSION_MAKER is None:
+        _SESSION_MAKER = sessionmaker(bind=db.engine, expire_on_commit=False)
+    return _SESSION_MAKER
+
+
 def init_app(app: DifyApp):
     db.init_app(app)
+    global _SESSION_MAKER
+    _SESSION_MAKER = sessionmaker(bind=db.engine, expire_on_commit=False)
     _setup_gevent_compatibility()

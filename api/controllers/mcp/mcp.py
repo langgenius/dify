@@ -4,6 +4,7 @@ from flask import Response
 from flask_restx import Resource, reqparse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 
 from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import mcp_ns
@@ -76,7 +77,8 @@ class MCPAppApi(Resource):
         request_id: Union[int, str] | None = args.get("id")
         mcp_request = self._parse_mcp_request(args)
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             # Get MCP server and app
             mcp_server, app = self._get_mcp_server_and_app(server_code, session)
             self._validate_server_status(mcp_server)
@@ -238,7 +240,8 @@ class MCPAppApi(Resource):
             client_name = f"{client_info.name}@{client_info.version}"
             # Commit the session before creating end user to avoid transaction conflicts
             session.commit()
-            with Session(db.engine, expire_on_commit=False) as create_session, create_session.begin():
+            session_maker = get_session_maker()
+            with session_maker() as create_session, create_session.begin():
                 end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, create_session)
 
         return handle_mcp_request(app, mcp_request, user_input_form, mcp_server, end_user, request_id)

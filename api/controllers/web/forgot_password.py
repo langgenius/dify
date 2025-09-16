@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -54,7 +55,8 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
         if account is None:
@@ -154,7 +156,8 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
 
             if account:

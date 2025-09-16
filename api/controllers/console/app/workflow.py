@@ -6,6 +6,7 @@ from typing import cast
 from flask import abort, request
 from flask_restx import Resource, fields, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
+from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -660,7 +661,8 @@ class PublishedWorkflowApi(Resource):
             raise ValueError("Marked comment cannot exceed 100 characters")
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
@@ -921,7 +923,8 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -955,7 +958,8 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
