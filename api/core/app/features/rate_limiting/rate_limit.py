@@ -98,7 +98,7 @@ class RateLimit:
         else:
             return RateLimitGenerator(
                 rate_limit=self,
-                generator=generator,  # ty: ignore [invalid-argument-type]
+                generator=generator,
                 request_id=request_id,
             )
 

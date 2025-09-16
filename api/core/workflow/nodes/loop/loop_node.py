@@ -301,8 +301,8 @@ class LoopNode(BaseNode):
         check_break_result = False
 
         for event in rst:
-            if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_loop_id:  # ty: ignore [unresolved-attribute]
-                event.in_loop_id = self.node_id  # ty: ignore [unresolved-attribute]
+            if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_loop_id:
+                event.in_loop_id = self.node_id
 
             if (
                 isinstance(event, BaseNodeEvent)
