@@ -708,7 +708,7 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs/<string:block_type>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
     @api.doc(description="Get default block configuration by type")
