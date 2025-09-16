@@ -49,7 +49,7 @@ const LinkedAppsPanel: FC<Props> = ({
   isMobile,
 }) => {
   return (
-    <div className='w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg  backdrop-blur-[5px]'>
+    <div className='w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'>
       {relatedApps.map((item, index) => (
         <LikedItem key={index} detail={item} isMobile={isMobile} />
       ))}
