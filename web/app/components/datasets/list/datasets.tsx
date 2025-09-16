@@ -51,7 +51,7 @@ const Datasets = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef])
+  }, [anchorRef, hasNextPage, isFetching, fetchNextPage])
 
   return (
     <>

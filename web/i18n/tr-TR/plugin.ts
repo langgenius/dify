@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'Kullanılamıyor',
     customCredentialUnavailable: 'Özel kimlik bilgileri şu anda mevcut değil.',
     credentialUnavailable: 'Kimlik bilgileri şu anda mevcut değil. Lütfen yönetici ile iletişime geçin.',
+    credentialUnavailableInButton: 'Kimlik bilgileri mevcut değil',
     connectedWorkspace: 'Bağlı Çalışma Alanı',
     emptyAuth: 'Lütfen kimlik doğrulamasını yapılandırın',
   },

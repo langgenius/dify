@@ -1,15 +1,15 @@
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 
 
 class BuiltInField(StrEnum):
-    document_name = "document_name"
-    uploader = "uploader"
-    upload_date = "upload_date"
-    last_update_date = "last_update_date"
-    source = "source"
+    document_name = auto()
+    uploader = auto()
+    upload_date = auto()
+    last_update_date = auto()
+    source = auto()
 
 
-class MetadataDataSource(Enum):
+class MetadataDataSource(StrEnum):
     upload_file = "file_upload"
     website_crawl = "website"
     notion_import = "notion"

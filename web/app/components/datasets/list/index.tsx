@@ -1,20 +1,15 @@
 'use client'
 
 // Libraries
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { useQuery } from '@tanstack/react-query'
 
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import Datasets from './datasets'
 import DatasetFooter from './dataset-footer'
-import ApiServer from '../../develop/ApiServer'
-import Doc from './doc'
-import SegmentedControl from '@/app/components/base/segmented-control'
-import { RiBook2Line, RiTerminalBoxLine } from '@remixicon/react'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
@@ -22,11 +17,7 @@ import Input from '@/app/components/base/input'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 
-// Services
-import { fetchDatasetApiBaseUrl } from '@/service/datasets'
-
 // Hooks
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
@@ -42,26 +33,6 @@ const List = () => {
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   useDocumentTitle(t('dataset.knowledge'))
-
-  const options = useMemo(() => {
-    return [
-      { value: 'dataset', text: t('dataset.datasets'), Icon: RiBook2Line },
-      ...(currentWorkspace.role === 'dataset_operator' ? [] : [{
-        value: 'api', text: t('dataset.datasetsApi'), Icon: RiTerminalBoxLine,
-      }]),
-    ]
-  }, [currentWorkspace.role, t])
-
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'dataset',
-  })
-  const { data } = useQuery(
-    {
-      queryKey: ['datasetApiBaseInfo'],
-      queryFn: () => fetchDatasetApiBaseUrl('/datasets/api-base-info'),
-      enabled: activeTab !== 'dataset',
-    },
-  )
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -89,55 +60,42 @@ const List = () => {
 
   return (
     <div className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-10 flex items-center justify-between gap-x-1 bg-background-body px-12 pb-2 pt-4'>
-        <SegmentedControl
-          value={activeTab}
-          onChange={newActiveTab => setActiveTab(newActiveTab as string)}
-          options={options}
-          size='large'
-          activeClassName='text-text-primary'
-        />
-        {activeTab === 'dataset' && (
-          <div className='flex items-center justify-center gap-2'>
-            {isCurrentWorkspaceOwner && <CheckboxWithLabel
+      <div className='sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4'>
+        <div className='flex items-center justify-center gap-2'>
+          {isCurrentWorkspaceOwner && (
+            <CheckboxWithLabel
               isChecked={includeAll}
               onChange={toggleIncludeAll}
               label={t('dataset.allKnowledge')}
               labelClassName='system-md-regular text-text-secondary'
               className='mr-2'
               tooltip={t('dataset.allKnowledgeDescription') as string}
-            />}
-            <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName='w-[200px]'
-              value={keywords}
-              onChange={e => handleKeywordsChange(e.target.value)}
-              onClear={() => handleKeywordsChange('')}
             />
-            <div className='h-4 w-[1px] bg-divider-regular' />
-            <Button
-              className='shadows-shadow-xs gap-0.5'
-              onClick={() => setShowExternalApiPanel(true)}
-            >
-              <ApiConnectionMod className='h-4 w-4 text-components-button-secondary-text' />
-              <div className='system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text'>{t('dataset.externalAPIPanelTitle')}</div>
-            </Button>
-          </div>
-        )}
-        {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
-      </div>
-      {activeTab === 'dataset' && (
-        <>
-          <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
-          {!systemFeatures.branding.enabled && <DatasetFooter />}
-          {showTagManagementModal && (
-            <TagManagementModal type='knowledge' show={showTagManagementModal} />
           )}
-        </>
+          <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
+          <Input
+            showLeftIcon
+            showClearIcon
+            wrapperClassName='w-[200px]'
+            value={keywords}
+            onChange={e => handleKeywordsChange(e.target.value)}
+            onClear={() => handleKeywordsChange('')}
+          />
+          <div className='h-4 w-[1px] bg-divider-regular' />
+          <Button
+            className='shadows-shadow-xs gap-0.5'
+            onClick={() => setShowExternalApiPanel(true)}
+          >
+            <ApiConnectionMod className='h-4 w-4 text-components-button-secondary-text' />
+            <div className='system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text'>{t('dataset.externalAPIPanelTitle')}</div>
+          </Button>
+        </div>
+      </div>
+      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
+      {!systemFeatures.branding.enabled && <DatasetFooter />}
+      {showTagManagementModal && (
+        <TagManagementModal type='knowledge' show={showTagManagementModal} />
       )}
-      {activeTab === 'api' && data && <Doc apiBaseUrl={data.api_base_url || ''} />}
 
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>

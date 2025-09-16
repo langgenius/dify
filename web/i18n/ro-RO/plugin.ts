@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'Necesar',
     customCredentialUnavailable: 'Credentialele personalizate sunt în prezent indisponibile',
     credentialUnavailable: 'Credențialele nu sunt disponibile în acest moment. Vă rugăm să contactați administratorul.',
+    credentialUnavailableInButton: 'Credential indisponibil',
     connectedWorkspace: 'Spațiu de lucru conectat',
     emptyAuth: 'Vă rugăm să configurați autentificarea',
   },

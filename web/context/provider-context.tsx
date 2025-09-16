@@ -27,6 +27,8 @@ import {
   useEducationStatus,
 } from '@/service/use-education'
 import { noop } from 'lodash-es'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { ZENDESK_FIELD_IDS } from '@/config'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -61,7 +63,7 @@ type ProviderContextState = {
   },
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
-  isAllowPublishAsKnowledgePipeline: boolean
+  isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -108,7 +110,7 @@ const ProviderContext = createContext<ProviderContextState>({
   },
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
-  isAllowPublishAsKnowledgePipeline: false,
+  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -147,7 +149,7 @@ export const ProviderContextProvider = ({
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
   const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
-  const [isAllowPublishAsKnowledgePipeline, setIsAllowPublishAsKnowledgePipeline] = useState(false)
+  const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
 
   const fetchPlan = async () => {
     try {
@@ -179,7 +181,7 @@ export const ProviderContextProvider = ({
       if (data.is_allow_transfer_workspace)
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
       if (data.knowledge_pipeline?.publish_enabled)
-        setIsAllowPublishAsKnowledgePipeline(data.knowledge_pipeline?.publish_enabled)
+        setIsAllowPublishAsCustomKnowledgePipelineTemplate(data.knowledge_pipeline?.publish_enabled)
     }
     catch (error) {
       console.error('Failed to fetch plan info:', error)
@@ -193,6 +195,17 @@ export const ProviderContextProvider = ({
   useEffect(() => {
     fetchPlan()
   }, [])
+
+  // #region Zendesk conversation fields
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.PLAN,
+        value: `${plan.type}-plan`,
+      }])
+    }
+  }, [plan.type])
+  // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
   useEffect(() => {
@@ -245,7 +258,7 @@ export const ProviderContextProvider = ({
       licenseLimit,
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
-      isAllowPublishAsKnowledgePipeline,
+      isAllowPublishAsCustomKnowledgePipelineTemplate,
     }}>
       {children}
     </ProviderContext.Provider>

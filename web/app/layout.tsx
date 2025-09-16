@@ -3,6 +3,7 @@ import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitializer from './components/browser-initializer'
 import SentryInitializer from './components/sentry-initializer'
+import Zendesk from './components/base/zendesk'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
@@ -57,6 +58,12 @@ const LocaleLayout = async ({
     [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER,
     [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL,
     [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
+    [DatasetAttr.NEXT_PUBLIC_ZENDESK_WIDGET_KEY]: process.env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY,
+    [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT,
+    [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION,
+    [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL,
+    [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID,
+    [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN,
   }
 
   return (
@@ -98,6 +105,7 @@ const LocaleLayout = async ({
           </BrowserInitializer>
         </ThemeProvider>
         <RoutePrefixHandle />
+        <Zendesk />
       </body>
     </html>
   )

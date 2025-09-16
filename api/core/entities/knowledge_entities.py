@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class PreviewDetail(BaseModel):
     content: str
-    child_chunks: Optional[list[str]] = None
+    child_chunks: list[str] | None = None
 
 
 class QAPreviewDetail(BaseModel):

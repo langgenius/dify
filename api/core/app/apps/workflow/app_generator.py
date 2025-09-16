@@ -425,6 +425,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         context: contextvars.Context,
         variable_loader: VariableLoader,
     ) -> None:
+        """
+        Generate worker in a new thread.
+        :param flask_app: Flask app
+        :param application_generate_entity: application generate entity
+        :param queue_manager: queue manager
+        :param workflow_thread_pool_id: workflow thread pool id
+        :return:
+        """
         with preserve_flask_contexts(flask_app, context_vars=context):
             with Session(db.engine, expire_on_commit=False) as session:
                 workflow = session.scalar(

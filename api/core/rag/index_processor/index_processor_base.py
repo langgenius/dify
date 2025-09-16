@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -35,7 +35,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -64,7 +64,7 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional["ModelInstance"],
+        embedding_model_instance: ModelInstance | None,
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.

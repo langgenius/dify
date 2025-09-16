@@ -262,6 +262,7 @@ const translation = {
     authorizationName: 'Nama Otorisasi',
     workspaceDefault: 'Ruang Kerja Default',
     authorization: 'Otorisasi',
+    credentialUnavailableInButton: 'Kredensial tidak tersedia',
     emptyAuth: 'Silakan konfigurasikan otentikasi',
     connectedWorkspace: 'Ruang Kerja yang Terhubung',
   },

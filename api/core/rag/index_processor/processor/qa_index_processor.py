@@ -5,7 +5,7 @@ import re
 import threading
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from flask import Flask, current_app
@@ -132,7 +132,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             vector = Vector(dataset)
             vector.create(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)

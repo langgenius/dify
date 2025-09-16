@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Optional, Protocol
+from typing import Literal, Protocol
 
 from core.workflow.entities import WorkflowNodeExecution
 
@@ -10,7 +10,7 @@ class OrderConfig:
     """Configuration for ordering NodeExecution instances."""
 
     order_by: list[str]
-    order_direction: Optional[Literal["asc", "desc"]] = None
+    order_direction: Literal["asc", "desc"] | None = None
 
 
 class WorkflowNodeExecutionRepository(Protocol):
@@ -56,7 +56,7 @@ class WorkflowNodeExecutionRepository(Protocol):
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.

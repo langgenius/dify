@@ -148,7 +148,11 @@ const DatasetSidebarDropdown = ({
                   )
                 })}
               </nav>
-              <ExtraInfo relatedApps={relatedApps} expand documentCount={dataset.document_count} />
+              <ExtraInfo
+                relatedApps={relatedApps}
+                expand
+                documentCount={dataset.document_count}
+              />
             </div>
           </PortalToFollowElemContent>
         </PortalToFollowElem>

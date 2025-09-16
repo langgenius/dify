@@ -44,7 +44,7 @@ const List = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, isLoading])
+  }, [anchorRef, isLoading, dataSourceStore])
 
   const isAllLoading = isLoading && fileList.length === 0 && keywords.length === 0
   const isPartialLoading = isLoading && fileList.length > 0

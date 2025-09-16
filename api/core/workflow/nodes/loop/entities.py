@@ -34,7 +34,7 @@ class LoopVariableData(BaseModel):
     label: str
     var_type: Annotated[SegmentType, AfterValidator(_is_valid_var_type)]
     value_type: Literal["variable", "constant"]
-    value: Any = None
+    value: Any | list[str] | None = None
 
 
 class LoopNodeData(BaseLoopNodeData):
@@ -74,7 +74,7 @@ class LoopState(BaseLoopState):
     """
 
     outputs: list[Any] = Field(default_factory=list)
-    current_output: Optional[Any] = None
+    current_output: Any | None = None
 
     class MetaData(BaseLoopState.MetaData):
         """
@@ -83,7 +83,7 @@ class LoopState(BaseLoopState):
 
         loop_length: int
 
-    def get_last_output(self) -> Optional[Any]:
+    def get_last_output(self) -> Any | None:
         """
         Get last output.
         """
@@ -91,7 +91,7 @@ class LoopState(BaseLoopState):
             return self.outputs[-1]
         return None
 
-    def get_current_output(self) -> Optional[Any]:
+    def get_current_output(self) -> Any | None:
         """
         Get current output.
         """

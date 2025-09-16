@@ -251,6 +251,7 @@ const translation = {
     unavailable: 'Non disponibile',
     customCredentialUnavailable: 'Le credenziali personalizzate attualmente non sono disponibili',
     credentialUnavailable: 'Credenziali attualmente non disponibili. Si prega di contattare l\'amministratore.',
+    credentialUnavailableInButton: 'Credenziali non disponibili',
     emptyAuth: 'Configurare l\'autenticazione',
     connectedWorkspace: 'Area di lavoro connessa',
   },

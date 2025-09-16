@@ -10,7 +10,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
@@ -56,7 +56,7 @@ class Dataset(Base):
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'::character varying"))
     permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'::character varying"))
     data_source_type = mapped_column(String(255))
-    indexing_technique: Mapped[Optional[str]] = mapped_column(String(255))
+    indexing_technique: Mapped[str | None] = mapped_column(String(255))
     index_struct = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -241,7 +241,9 @@ class Dataset(Base):
 
     @property
     def doc_metadata(self):
-        dataset_metadatas = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id).all()
+        dataset_metadatas = db.session.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)
+        ).all()
 
         doc_metadata = [
             {
@@ -255,35 +257,35 @@ class Dataset(Base):
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.document_name.value,
+                    "name": BuiltInField.document_name,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.uploader.value,
+                    "name": BuiltInField.uploader,
                     "type": "string",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.upload_date.value,
+                    "name": BuiltInField.upload_date,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.last_update_date.value,
+                    "name": BuiltInField.last_update_date,
                     "type": "time",
                 }
             )
             doc_metadata.append(
                 {
                     "id": "built-in",
-                    "name": BuiltInField.source.value,
+                    "name": BuiltInField.source,
                     "type": "string",
                 }
             )
@@ -361,42 +363,42 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
-    processing_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # parsing
     file_id = mapped_column(sa.Text, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
-    parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
+    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # cleaning
-    cleaning_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # split
-    splitting_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # indexing
-    tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    indexing_latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # pause
-    is_paused: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
     paused_by = mapped_column(StringUUID, nullable=True)
-    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # error
     error = mapped_column(sa.Text, nullable=True)
-    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # basic fields
     indexing_status = mapped_column(String(255), nullable=False, server_default=sa.text("'waiting'::character varying"))
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
-    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
@@ -575,7 +577,7 @@ class Document(Base):
                 "id": "built-in",
                 "name": BuiltInField.source,
                 "type": "string",
-                "value": MetadataDataSource[self.data_source_type].value,
+                "value": MetadataDataSource[self.data_source_type],
             }
         )
         return built_in_fields
@@ -708,17 +710,17 @@ class DocumentSegment(Base):
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(sa.Text, nullable=True)
-    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
     def dataset(self):
@@ -881,8 +883,8 @@ class ChildChunk(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
-    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(sa.Text, nullable=True)
 
     @property
@@ -1109,13 +1111,11 @@ class ExternalKnowledgeApis(Base):
 
     @property
     def dataset_bindings(self) -> list[dict[str, Any]]:
-        external_knowledge_bindings = (
-            db.session.query(ExternalKnowledgeBindings)
-            .where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
-            .all()
-        )
+        external_knowledge_bindings = db.session.scalars(
+            select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+        ).all()
         dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
-        datasets = db.session.query(Dataset).where(Dataset.id.in_(dataset_ids)).all()
+        datasets = db.session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
         dataset_bindings: list[dict[str, Any]] = []
         for dataset in datasets:
             dataset_bindings.append({"id": dataset.id, "name": dataset.name})
@@ -1226,7 +1226,7 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     __tablename__ = "pipeline_built_in_templates"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
     chunk_structure = db.Column(db.String(255), nullable=False)
@@ -1257,7 +1257,7 @@ class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
         db.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -1284,7 +1284,7 @@ class Pipeline(Base):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
@@ -1307,7 +1307,7 @@ class DocumentPipelineExecutionLog(Base):
         db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     pipeline_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
     datasource_type = db.Column(db.String(255), nullable=False)
@@ -1322,7 +1322,7 @@ class PipelineRecommendedPlugin(Base):
     __tablename__ = "pipeline_recommended_plugins"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
     plugin_id = db.Column(db.Text, nullable=False)
     provider_name = db.Column(db.Text, nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)

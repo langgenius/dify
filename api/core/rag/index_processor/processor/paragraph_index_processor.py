@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -89,7 +89,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.add_texts(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:

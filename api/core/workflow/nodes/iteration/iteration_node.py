@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
@@ -58,7 +58,7 @@ class IterationNode(Node):
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = IterationNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -67,7 +67,7 @@ class IterationNode(Node):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -77,7 +77,7 @@ class IterationNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None):
+    def get_default_config(cls, filters: dict | None = None):
         return {
             "type": "iteration",
             "config": {

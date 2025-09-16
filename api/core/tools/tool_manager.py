@@ -161,7 +161,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -450,7 +450,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Tool:
         """
         get tool runtime from plugin
@@ -675,9 +675,9 @@ class ToolManager:
 
             # get db api providers
             if "api" in filters:
-                db_api_providers: list[ApiToolProvider] = (
-                    db.session.query(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).all()
-                )
+                db_api_providers = db.session.scalars(
+                    select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)
+                ).all()
 
                 api_provider_controllers: list[dict[str, Any]] = [
                     {"provider": provider, "controller": ToolTransformService.api_provider_to_controller(provider)}
@@ -698,9 +698,9 @@ class ToolManager:
 
             if "workflow" in filters:
                 # get workflow providers
-                workflow_providers: list[WorkflowToolProvider] = (
-                    db.session.query(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id).all()
-                )
+                workflow_providers = db.session.scalars(
+                    select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
+                ).all()
 
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
                 for workflow_provider in workflow_providers:
