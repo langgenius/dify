@@ -3,6 +3,7 @@ import { AgentStrategy } from '@/types/app'
 import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { DatasetAttr } from '@/types/feature'
+import pkg from '../package.json'
 
 const getBooleanConfig = (envVar: string | undefined, dataAttrKey: DatasetAttr, defaultValue: boolean = true) => {
   if (envVar !== undefined && envVar !== '')
@@ -295,5 +296,7 @@ export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(process.env.NEXT_PUBLI
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
 export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/
+
+export const APP_VERSION = pkg.version
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
