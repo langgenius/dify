@@ -282,7 +282,7 @@ workflow:
           conditions:
           - comparison_operator: is
             id: 9da88d93-3ff6-463f-abfd-6bcafbf2554d
-            value: xlsx
+            value: .xlsx
             varType: file
             variable_selector:
             - '1752479895761'
@@ -290,7 +290,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: d0e88f5e-dfe3-4bae-af0c-dbec267500de
-            value: xls
+            value: .xls
             varType: file
             variable_selector:
             - '1752479895761'
@@ -298,7 +298,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: a957e91e-1ed7-4c6b-9c80-2f0948858f1d
-            value: md
+            value: .md
             varType: file
             variable_selector:
             - '1752479895761'
@@ -306,7 +306,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: 870c3c39-8d3f-474a-ab8b-9c0ccf53db73
-            value: markdown
+            value: .markdown
             varType: file
             variable_selector:
             - '1752479895761'
@@ -314,7 +314,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: f9541513-1e71-4dc1-9db5-35dc84a39e3c
-            value: mdx
+            value: .mdx
             varType: file
             variable_selector:
             - '1752479895761'
@@ -322,7 +322,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: 4c7f455b-ac20-40ca-9495-6cc44ffcb35d
-            value: html
+            value: .html
             varType: file
             variable_selector:
             - '1752479895761'
@@ -330,7 +330,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: 2e12d9c7-8057-4a09-8851-f9fd1d0718d1
-            value: htm
+            value: .htm
             varType: file
             variable_selector:
             - '1752479895761'
@@ -338,7 +338,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: 73a995a9-d8b9-4aef-89f7-306e2ddcbce2
-            value: docx
+            value: .docx
             varType: file
             variable_selector:
             - '1752479895761'
@@ -346,7 +346,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: 8a2e8772-0426-458b-a1f9-9eaaec0f27c8
-            value: csv
+            value: .csv
             varType: file
             variable_selector:
             - '1752479895761'
@@ -354,7 +354,7 @@ workflow:
             - extension
           - comparison_operator: is
             id: aa2cb6b6-a2fc-462a-a9f5-c9c3f33a1602
-            value: txt
+            value: .txt
             varType: file
             variable_selector:
             - '1752479895761'

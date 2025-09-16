@@ -1348,11 +1348,11 @@ class RagPipelineService:
                 "start_node_id": document_pipeline_excution_log.datasource_node_id,
                 "datasource_type": document_pipeline_excution_log.datasource_type,
                 "datasource_info_list": [json.loads(document_pipeline_excution_log.datasource_info)],
+                "original_document_id": document.id,
             },
             invoke_from=InvokeFrom.PUBLISHED,
             streaming=False,
             call_depth=0,
             workflow_thread_pool_id=None,
             is_retry=True,
-            documents=[document],
         )

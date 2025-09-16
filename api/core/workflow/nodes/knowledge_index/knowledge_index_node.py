@@ -141,7 +141,7 @@ class KnowledgeIndexNode(Node):
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
         if original_document_id:
             segments = db.session.scalars(
-                select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                select(DocumentSegment).where(DocumentSegment.document_id == original_document_id.value)
             ).all()
             if segments:
                 index_node_ids = [segment.index_node_id for segment in segments]

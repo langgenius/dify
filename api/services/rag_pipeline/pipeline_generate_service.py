@@ -4,7 +4,8 @@ from typing import Any, Union
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.dataset import Pipeline
+from extensions.ext_database import db
+from models.dataset import Document, Pipeline
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -31,6 +32,9 @@ class PipelineGenerateService:
         """
         try:
             workflow = cls._get_workflow(pipeline, invoke_from)
+            if original_document_id := args.get("original_document_id"):
+                # update document status to waiting
+                cls.update_document_status(original_document_id)
             return PipelineGenerator.convert_to_event_stream(
                 PipelineGenerator().generate(
                     pipeline=pipeline,
@@ -97,3 +101,15 @@ class PipelineGenerateService:
                 raise ValueError("Workflow not published")
 
         return workflow
+
+    @classmethod
+    def update_document_status(cls, document_id: str):
+        """
+        Update document status to waiting
+        :param document_id: document id
+        """
+        document = db.session.query(Document).filter(Document.id == document_id).first()
+        if document:
+            document.indexing_status = "waiting"
+            db.session.add(document)
+            db.session.commit()
