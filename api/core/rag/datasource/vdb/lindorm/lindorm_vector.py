@@ -27,7 +27,7 @@ UGC_INDEX_PREFIX = "ugc_index"
 
 
 class LindormVectorStoreConfig(BaseModel):
-    hosts: str
+    hosts: str | None
     username: str | None = None
     password: str | None = None
     using_ugc: bool | None = False
@@ -58,7 +58,7 @@ class LindormVectorStoreConfig(BaseModel):
 
 class LindormVectorStore(BaseVector):
     def __init__(self, collection_name: str, config: LindormVectorStoreConfig, using_ugc: bool, **kwargs):
-        self._routing = None
+        self._routing: str | None = None
         if using_ugc:
             routing_value: str | None = kwargs.get("routing_value")
             if routing_value is None:
@@ -226,7 +226,7 @@ class LindormVectorStore(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         try:
-            params = {}
+            params: dict[str, Any] = {}
             if self._using_ugc:
                 params["routing"] = self._routing
             self._client.get(index=self._collection_name, id=id, params=params)
@@ -308,7 +308,7 @@ class LindormVectorStore(BaseVector):
             full_text_query["query"]["bool"]["filter"] = filters
 
         try:
-            params = {"timeout": self._client_config.request_timeout}
+            params: dict[str, Any] = {"timeout": self._client_config.request_timeout}
             if self._using_ugc:
                 params["routing"] = self._routing
             response = self._client.search(index=self._collection_name, body=full_text_query, params=params)
