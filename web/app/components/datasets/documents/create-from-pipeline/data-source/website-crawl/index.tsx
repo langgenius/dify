@@ -25,6 +25,7 @@ import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
+import { useDocLink } from '@/context/i18n'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -42,6 +43,7 @@ const WebsiteCrawl = ({
   onCredentialChange,
 }: WebsiteCrawlProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [totalNum, setTotalNum] = useState(0)
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
@@ -151,8 +153,8 @@ const WebsiteCrawl = ({
   return (
     <div className='flex flex-col'>
       <Header
-        docTitle='How to use?'
-        docLink='https://docs.dify.ai'
+        docTitle='Docs'
+        docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}

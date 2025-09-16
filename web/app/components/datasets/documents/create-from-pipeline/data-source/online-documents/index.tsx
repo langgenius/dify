@@ -15,6 +15,7 @@ import { useModalContextSelector } from '@/context/modal-context'
 import Title from './title'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
 import Loading from '@/app/components/base/loading'
+import { useDocLink } from '@/context/i18n'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
@@ -29,6 +30,7 @@ const OnlineDocuments = ({
   isInPipeline = false,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
+  const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
@@ -125,8 +127,8 @@ const OnlineDocuments = ({
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
-        docTitle='How to use?'
-        docLink='https://docs.dify.ai'
+        docTitle='Docs'
+        docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}
