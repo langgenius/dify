@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
