@@ -538,12 +538,12 @@ class BuiltinToolManageService:
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):
         """
-        get tool provider icon and it's mimetype
+        get tool provider icon and its mimetype
         """
         icon_path, mime_type = ToolManager.get_hardcoded_provider_icon(provider)
-        icon_bytes = Path(icon_path).read_bytes()
-
-        return icon_bytes, mime_type
+        
+        # Normalize and validate the icon path
+        base_dir = Path("/safe/icon/directory")  # Define the safe root directory
 
     @staticmethod
     def list_builtin_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:

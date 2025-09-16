@@ -479,14 +479,23 @@ class ToolManager:
         # get provider
         provider_controller = cls.get_hardcoded_provider(provider)
 
-        absolute_path = path.join(
+        base_path = path.join(
             path.dirname(path.realpath(__file__)),
             "builtin_tool",
             "providers",
-            provider,
-            "_assets",
-            provider_controller.entity.identity.icon,
         )
+        absolute_path = path.normpath(
+            path.join(
+                base_path,
+                provider,
+                "_assets",
+                provider_controller.entity.identity.icon,
+            )
+        )
+        # Ensure the resolved path is within the base_path
+        if not absolute_path.startswith(base_path):
+            raise ToolProviderNotFoundError(f"Access to provider {provider} icon is not allowed")
+
         # check if the icon exists
         if not path.exists(absolute_path):
             raise ToolProviderNotFoundError(f"builtin provider {provider} icon not found")
