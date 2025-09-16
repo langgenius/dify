@@ -18,8 +18,8 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.mcp.auth.auth_flow import auth, handle_callback
-from core.mcp.auth_client import MCPClientWithAuthRetry
-from core.mcp.error import MCPError
+from core.mcp.error import MCPAuthError, MCPError
+from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.oauth import OAuthHandler
@@ -974,17 +974,11 @@ class ToolMCPAuthApi(Resource):
                     headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"
             try:
                 # Use MCPClientWithAuthRetry to handle authentication automatically
-                with MCPClientWithAuthRetry(
+                with MCPClient(
                     server_url=server_url,
                     headers=headers,
                     timeout=provider_entity.timeout,
                     sse_read_timeout=provider_entity.sse_read_timeout,
-                    provider_entity=provider_entity
-                    if not provider_entity.headers
-                    else None,  # Only use auth retry if no custom headers
-                    auth_callback=auth if not provider_entity.headers else None,
-                    authorization_code=args.get("authorization_code"),
-                    mcp_service=service,
                 ):
                     service.update_provider_credentials(
                         provider=db_provider,
@@ -993,7 +987,8 @@ class ToolMCPAuthApi(Resource):
                     )
                     session.commit()
                     return {"result": "success"}
-
+            except MCPAuthError as e:
+                return auth(provider_entity, service, args.get("authorization_code"))
             except MCPError as e:
                 service.clear_provider_credentials(provider=db_provider)
                 session.commit()

@@ -46,7 +46,7 @@ class SSETransport:
         url: str,
         headers: dict[str, Any] | None = None,
         timeout: float = 5.0,
-        sse_read_timeout: float = 5 * 60,
+        sse_read_timeout: float = 1 * 60,
     ):
         """Initialize the SSE transport.
 
@@ -255,7 +255,7 @@ def sse_client(
     url: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
-    sse_read_timeout: float = 5 * 60,
+    sse_read_timeout: float = 1 * 60,
 ) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
     """
     Client transport for SSE.

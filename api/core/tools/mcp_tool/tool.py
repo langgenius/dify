@@ -162,7 +162,6 @@ class MCPTool(Tool):
                 sse_read_timeout=self.sse_read_timeout,
                 provider_entity=provider_entity,
                 auth_callback=auth if mcp_service else None,
-                by_server_id=True,
                 mcp_service=mcp_service,
             ) as mcp_client:
                 return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
