@@ -3,14 +3,12 @@
 import time
 from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand
 from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunStartedEvent
-from models.enums import UserFrom
 
 
 def test_abort_command():
@@ -42,15 +40,8 @@ def test_abort_command():
 
     # Create GraphEngine with same shared runtime state
     engine = GraphEngine(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test_workflow",
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
-        call_depth=0,
         graph=mock_graph,
-        graph_config={},
         graph_runtime_state=shared_runtime_state,  # Use shared instance
         command_channel=command_channel,
     )

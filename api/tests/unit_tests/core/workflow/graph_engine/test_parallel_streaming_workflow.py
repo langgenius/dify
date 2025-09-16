@@ -118,15 +118,8 @@ def test_parallel_streaming_workflow():
 
     # Create the graph engine
     engine = GraphEngine(
-        tenant_id="test_tenant",
-        app_id="test_app",
         workflow_id="test_workflow",
-        user_id="test_user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
-        call_depth=0,
         graph=graph,
-        graph_config=graph_config,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
     )

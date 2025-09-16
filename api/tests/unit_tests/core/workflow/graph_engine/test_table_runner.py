@@ -19,7 +19,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
 from core.variables import (
     ArrayNumberVariable,
@@ -42,7 +41,6 @@ from core.workflow.graph_events import (
 )
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
@@ -373,20 +371,10 @@ class TableTestRunner:
                 mock_config=test_case.mock_config,
             )
 
-            workflow_config = fixture_data.get("workflow", {})
-            graph_config = workflow_config.get("graph", {})
-
             # Create and run the engine with configured worker settings
             engine = GraphEngine(
-                tenant_id="test_tenant",
-                app_id="test_app",
                 workflow_id="test_workflow",
-                user_id="test_user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,  # Use DEBUGGER to avoid conversation_id requirement
-                call_depth=0,
                 graph=graph,
-                graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=InMemoryChannel(),
                 min_workers=self.graph_engine_min_workers,

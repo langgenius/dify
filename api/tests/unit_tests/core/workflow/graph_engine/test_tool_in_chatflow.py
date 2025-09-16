@@ -1,11 +1,9 @@
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStreamChunkEvent,
 )
-from models.enums import UserFrom
 
 from .test_table_runner import TableTestRunner
 
@@ -23,20 +21,10 @@ def test_tool_in_chatflow():
         use_mock_factory=True,
     )
 
-    workflow_config = fixture_data.get("workflow", {})
-    graph_config = workflow_config.get("graph", {})
-
     # Create and run the engine
     engine = GraphEngine(
-        tenant_id="test_tenant",
-        app_id="test_app",
         workflow_id="test_workflow",
-        user_id="test_user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0,
         graph=graph,
-        graph_config=graph_config,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
     )

@@ -73,15 +73,8 @@ class WorkflowEntry:
 
         self.command_channel = command_channel
         self.graph_engine = GraphEngine(
-            tenant_id=tenant_id,
-            app_id=app_id,
             workflow_id=workflow_id,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
             graph=graph,
-            graph_config=graph_config,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
         )

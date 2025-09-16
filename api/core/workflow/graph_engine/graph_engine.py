@@ -8,12 +8,11 @@ Domain-Driven Design principles for improved maintainability and testability.
 import contextvars
 import logging
 import queue
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import final
 
 from flask import Flask, current_app
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
@@ -27,10 +26,9 @@ from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from models.enums import UserFrom
 
 from .command_processing import AbortCommandHandler, CommandProcessor
-from .domain import ExecutionContext, GraphExecution
+from .domain import GraphExecution
 from .entities.commands import AbortCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
@@ -57,15 +55,8 @@ class GraphEngine:
 
     def __init__(
         self,
-        tenant_id: str,
-        app_id: str,
         workflow_id: str,
-        user_id: str,
-        user_from: UserFrom,
-        invoke_from: InvokeFrom,
-        call_depth: int,
         graph: Graph,
-        graph_config: Mapping[str, object],
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
         min_workers: int | None = None,
@@ -75,25 +66,12 @@ class GraphEngine:
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
 
-        # === Domain Models ===
-        # Execution context encapsulates workflow execution metadata
-        self._execution_context = ExecutionContext(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            workflow_id=workflow_id,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
-        )
-
         # Graph execution tracks the overall execution state
         self._graph_execution = GraphExecution(workflow_id=workflow_id)
 
         # === Core Dependencies ===
         # Graph structure and configuration
         self._graph = graph
-        self._graph_config = graph_config
         self._graph_runtime_state = graph_runtime_state
         self._command_channel = command_channel
 

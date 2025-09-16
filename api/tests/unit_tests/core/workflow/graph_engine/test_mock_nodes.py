@@ -615,15 +615,8 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
-            call_depth=self.workflow_call_depth,
             graph=iteration_graph,
-            graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
@@ -683,15 +676,8 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
-            call_depth=self.workflow_call_depth,
             graph=loop_graph,
-            graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
