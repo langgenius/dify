@@ -32,6 +32,7 @@ const Drawer = ({
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   useKeyPress('esc', (e) => {
+    if (!open) return
     e.preventDefault()
     onClose()
   }, { exactMatch: true, useCapture: true })
