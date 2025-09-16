@@ -87,13 +87,13 @@ export const useDatasetApiBaseUrl = () => {
 export const useEnableDatasetServiceApi = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'enable-api'],
-    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/enable`),
+    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/api-keys/enable`),
   })
 }
 
 export const useDisableDatasetServiceApi = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'disable-api'],
-    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/disable`),
+    mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`),
   })
 }
