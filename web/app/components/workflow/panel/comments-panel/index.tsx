@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useReactFlow } from 'reactflow'
-import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine } from '@remixicon/react'
+import { RiCheckLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
 import { useStore } from '@/app/components/workflow/store'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
@@ -10,6 +10,7 @@ import { ControlMode } from '@/app/components/workflow/types'
 import { resolveWorkflowComment } from '@/service/workflow-comment'
 import { useParams } from 'next/navigation'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
+import { useAppContext } from '@/context/app-context'
 
 const CommentsPanel = () => {
   const activeCommentId = useStore(s => s.activeCommentId)
@@ -21,7 +22,8 @@ const CommentsPanel = () => {
   const appId = params.appId as string
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  const [filter, setFilter] = useState<'all' | 'unresolved'>('all')
+  const [filter, setFilter] = useState<'all' | 'unresolved' | 'mine'>('all')
+  const [showFilter, setShowFilter] = useState(false)
 
   const handleSelect = useCallback((comment: WorkflowCommentList) => {
     // center viewport on the comment position and activate it
@@ -29,12 +31,16 @@ const CommentsPanel = () => {
     setActiveCommentId(comment.id)
   }, [reactFlow, setActiveCommentId])
 
+  const { userProfile } = useAppContext()
+
   const filteredSorted = useMemo(() => {
     let data = comments
     if (filter === 'unresolved')
       data = data.filter(c => !c.resolved)
+    else if (filter === 'mine')
+      data = data.filter(c => c.created_by === userProfile?.id)
     return data
-  }, [comments, filter])
+  }, [comments, filter, userProfile?.id])
 
   const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
     if (comment.resolved) return
@@ -49,24 +55,48 @@ const CommentsPanel = () => {
     }
   }, [appId, loadComments, setActiveCommentId])
 
+  const handleFilterChange = useCallback((value: 'all' | 'unresolved' | 'mine') => {
+    setFilter(value)
+    setShowFilter(false)
+  }, [])
+
   return (
-    <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt')}>
+    <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className='flex items-center justify-between p-4 pb-2'>
         <div className='system-xl-semibold text-text-primary'>Comments</div>
-        <div className='flex items-center gap-2'>
-          <div
-            className={cn('inline-flex rounded-md bg-components-panel-on-panel-item-bg px-1 py-1')}
-            role='group'
+        <div className='relative flex items-center gap-2'>
+          <button
+            className='flex h-8 w-8 items-center justify-center rounded-md bg-white hover:bg-state-base-hover'
+            aria-label='Filter comments'
+            onClick={() => setShowFilter(v => !v)}
           >
-            <button
-              className={cn('system-xs-medium rounded px-2 py-1', filter === 'all' ? 'bg-white text-text-primary' : 'text-text-tertiary hover:text-text-secondary')}
-              onClick={() => setFilter('all')}
-            >All</button>
-            <button
-              className={cn('system-xs-medium rounded px-2 py-1', filter === 'unresolved' ? 'bg-white text-text-primary' : 'text-text-tertiary hover:text-text-secondary')}
-              onClick={() => setFilter('unresolved')}
-            >Unresolved</button>
-          </div>
+            <RiFilter3Line className='h-4 w-4 text-text-secondary' />
+          </button>
+          {showFilter && (
+            <div className='absolute right-10 top-9 z-50 w-40 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
+              <button
+                className={cn('flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'all' && 'bg-components-panel-on-panel-item-bg')}
+                onClick={() => handleFilterChange('all')}
+              >
+                <span>All</span>
+                {filter === 'all' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
+              </button>
+              <button
+                className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'unresolved' && 'bg-components-panel-on-panel-item-bg')}
+                onClick={() => handleFilterChange('unresolved')}
+              >
+                <span>Unresolved</span>
+                {filter === 'unresolved' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
+              </button>
+              <button
+                className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'mine' && 'bg-components-panel-on-panel-item-bg')}
+                onClick={() => handleFilterChange('mine')}
+              >
+                <span>Only your threads</span>
+                {filter === 'mine' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
+              </button>
+            </div>
+          )}
           <div
             className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={() => {
@@ -78,13 +108,13 @@ const CommentsPanel = () => {
           </div>
         </div>
       </div>
-      <div className='grow overflow-y-auto px-3 pb-4'>
+      <div className='grow overflow-y-auto px-1'>
         {filteredSorted.map((c) => {
           const isActive = activeCommentId === c.id
           return (
             <div
               key={c.id}
-              className={cn('group mb-2 cursor-pointer rounded-xl border border-components-panel-border bg-components-panel-bg p-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover', isActive && 'ring-1 ring-primary-500')}
+              className={cn('group mb-2 cursor-pointer rounded-xl bg-components-panel-bg p-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover', isActive && 'bg-components-panel-on-panel-item-bg-hover')}
               onClick={() => handleSelect(c)}
             >
               <div className='min-w-0'>
@@ -103,49 +133,51 @@ const CommentsPanel = () => {
                   const visibleUsers = all.slice(0, maxVisible)
                   const remainingCount = all.length - maxVisible
                   return (
-                    <div className='mb-1 flex items-center -space-x-1'>
-                      {visibleUsers.map((p, index) => (
-                        <div
-                          key={`${p.id}-${index}`}
-                          className='relative'
-                          style={{ zIndex: visibleUsers.length - index }}
-                        >
-                          <Avatar
-                            name={p.name}
-                            avatar={p.avatar_url || null}
-                            size={18}
-                            className='ring-2 ring-white'
+                    <div className='mb-1 flex items-center justify-between'>
+                      <div className='flex items-center -space-x-1'>
+                        {visibleUsers.map((p, index) => (
+                          <div
+                            key={`${p.id}-${index}`}
+                            className='relative'
+                            style={{ zIndex: visibleUsers.length - index }}
+                          >
+                            <Avatar
+                              name={p.name}
+                              avatar={p.avatar_url || null}
+                              size={24}
+                              className='ring-2 ring-white'
+                            />
+                          </div>
+                        ))}
+                        {remainingCount > 0 && (
+                          <div
+                            className='flex h-[24px] w-[24px] items-center justify-center rounded-full bg-components-panel-on-panel-item-bg text-[10px] leading-none text-text-secondary ring-2 ring-white'
+                            style={{ zIndex: 0 }}
+                          >
+                            +{remainingCount}
+                          </div>
+                        )}
+                      </div>
+                      <div className='ml-2 flex items-center'>
+                        {c.resolved ? (
+                          <RiCheckboxCircleFill className='h-4 w-4 text-text-secondary'/>
+                        ) : (
+                          <RiCheckboxCircleLine
+                            className='h-4 w-4 cursor-pointer text-text-tertiary hover:text-text-secondary'
+                            onClick={() => handleResolve(c)}
                           />
-                        </div>
-                      ))}
-                      {remainingCount > 0 && (
-                        <div
-                          className='flex h-[18px] w-[18px] items-center justify-center rounded-full bg-components-panel-on-panel-item-bg text-[10px] leading-none text-text-secondary ring-2 ring-white'
-                          style={{ zIndex: 0 }}
-                        >
-                          +{remainingCount}
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )
                 })()}
-                {/* Header row: creator + time + right-top status/action icons */}
-                <div className='flex items-start justify-between'>
+                {/* Header row: creator + time */}
+                <div className='flex items-start'>
                   <div className='flex min-w-0 items-center gap-2'>
                     <div className='system-sm-medium truncate text-text-primary'>{c.created_by_account.name}</div>
                     <div className='system-2xs-regular shrink-0 text-text-tertiary'>
                       {formatTimeFromNow(c.updated_at * 1000)}
                     </div>
-                  </div>
-                  <div className='flex items-center gap-1'>
-                    {c.resolved ? (
-                      <RiCheckboxCircleFill className='h-4 w-4'/>
-                    ) : (
-                      <RiCheckboxCircleLine
-                        className='h-4 w-4 cursor-pointer text-text-tertiary hover:text-text-secondary'
-                        onClick={() => { handleResolve(c) }}
-                      />
-                    )}
                   </div>
                 </div>
                 {/* Content */}

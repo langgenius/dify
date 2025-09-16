@@ -2,13 +2,18 @@ from flask_restful import fields
 
 from libs.helper import AvatarUrlField, TimestampField
 
-# Basic account fields for comment creators/resolvers
-comment_account_fields = {"id": fields.String, "name": fields.String, "email": fields.String}
+# basic account fields for comments
+account_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "email": fields.String,
+    "avatar_url": AvatarUrlField,
+}
 
 # Comment mention fields
 workflow_comment_mention_fields = {
     "mentioned_user_id": fields.String,
-    "mentioned_user_account": fields.Nested(comment_account_fields, allow_null=True),
+    "mentioned_user_account": fields.Nested(account_fields, allow_null=True),
     "reply_id": fields.String,
 }
 
@@ -17,16 +22,8 @@ workflow_comment_reply_fields = {
     "id": fields.String,
     "content": fields.String,
     "created_by": fields.String,
-    "created_by_account": fields.Nested(comment_account_fields, allow_null=True),
+    "created_by_account": fields.Nested(account_fields, allow_null=True),
     "created_at": TimestampField,
-}
-
-# Participant info for showing avatars
-workflow_comment_participant_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "email": fields.String,
-    "avatar_url": AvatarUrlField,
 }
 
 # Basic comment fields (for list views)
@@ -36,16 +33,16 @@ workflow_comment_basic_fields = {
     "position_y": fields.Float,
     "content": fields.String,
     "created_by": fields.String,
-    "created_by_account": fields.Nested(comment_account_fields, allow_null=True),
+    "created_by_account": fields.Nested(account_fields, allow_null=True),
     "created_at": TimestampField,
     "updated_at": TimestampField,
     "resolved": fields.Boolean,
     "resolved_at": TimestampField,
     "resolved_by": fields.String,
-    "resolved_by_account": fields.Nested(comment_account_fields, allow_null=True),
+    "resolved_by_account": fields.Nested(account_fields, allow_null=True),
     "reply_count": fields.Integer,
     "mention_count": fields.Integer,
-    "participants": fields.List(fields.Nested(workflow_comment_participant_fields)),
+    "participants": fields.List(fields.Nested(account_fields)),
 }
 
 # Detailed comment fields (for single comment view)
@@ -55,13 +52,13 @@ workflow_comment_detail_fields = {
     "position_y": fields.Float,
     "content": fields.String,
     "created_by": fields.String,
-    "created_by_account": fields.Nested(comment_account_fields, allow_null=True),
+    "created_by_account": fields.Nested(account_fields, allow_null=True),
     "created_at": TimestampField,
     "updated_at": TimestampField,
     "resolved": fields.Boolean,
     "resolved_at": TimestampField,
     "resolved_by": fields.String,
-    "resolved_by_account": fields.Nested(comment_account_fields, allow_null=True),
+    "resolved_by_account": fields.Nested(account_fields, allow_null=True),
     "replies": fields.List(fields.Nested(workflow_comment_reply_fields)),
     "mentions": fields.List(fields.Nested(workflow_comment_mention_fields)),
 }
