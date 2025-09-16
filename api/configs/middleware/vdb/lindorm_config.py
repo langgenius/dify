@@ -26,7 +26,7 @@ class LindormConfig(BaseSettings):
     LINDORM_DISTANCE_TYPE: str | None = Field(
         description="Vector Distance Type, support l2, cosinesimil, innerproduct", default="l2"
     )
-    LINDORM_USING_UGC: str | None = Field(
+    LINDORM_USING_UGC: bool | None = Field(
         description="Using UGC index will store indexes with the same IndexType/Dimension in a single big index.",
         default=True,
     )

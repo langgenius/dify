@@ -244,7 +244,7 @@ class LindormVectorStore(BaseVector):
         filters = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
+            filters.append({"terms": {"metadata.document_id.keyword": document_ids_filter}})
         if self._using_ugc:
             filters.append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
 
@@ -301,7 +301,7 @@ class LindormVectorStore(BaseVector):
         filters = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            filters.append({"terms": {"metadata.document_id": document_ids_filter}})
+            filters.append({"terms": {"metadata.document_id.keyword": document_ids_filter}})
         if self._using_ugc:
             filters.append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
         if filters:
@@ -355,14 +355,7 @@ class LindormVectorStore(BaseVector):
                                     else dify_config.LINDORM_DISTANCE_TYPE,
                                     "engine": "lvector",
                                 },
-                            },
-                            Field.METADATA_KEY.value: {
-                                "type": "object",
-                                "properties": {
-                                    "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
-                                    "document_id": {"type": "keyword"},
-                                },
-                            },
+                            }
                         }
                     },
                 }
