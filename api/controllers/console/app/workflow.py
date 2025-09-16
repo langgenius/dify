@@ -4,13 +4,13 @@ from collections.abc import Sequence
 from typing import cast
 
 from flask import abort, request
-from flask_restx import Resource, fields, inputs, marshal_with, reqparse
+from flask_restx import Resource, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import api
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -57,13 +57,7 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
     return file_objs
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
-    @api.doc("get_draft_workflow")
-    @api.doc(description="Get draft workflow for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Draft workflow retrieved successfully", workflow_fields)
-    @api.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -92,23 +86,6 @@ class DraftWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @api.doc("sync_draft_workflow")
-    @api.doc(description="Sync draft workflow configuration")
-    @api.expect(
-        api.model(
-            "SyncDraftWorkflowRequest",
-            {
-                "graph": fields.Raw(required=True, description="Workflow graph configuration"),
-                "features": fields.Raw(required=True, description="Workflow features configuration"),
-                "hash": fields.String(description="Workflow hash for validation"),
-                "environment_variables": fields.List(fields.Raw, required=True, description="Environment variables"),
-                "conversation_variables": fields.List(fields.Raw, description="Conversation variables"),
-            },
-        )
-    )
-    @api.response(200, "Draft workflow synced successfully", workflow_fields)
-    @api.response(400, "Invalid workflow configuration")
-    @api.response(403, "Permission denied")
     def post(self, app_model: App):
         """
         Sync draft workflow
@@ -182,25 +159,7 @@ class DraftWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 class AdvancedChatDraftWorkflowRunApi(Resource):
-    @api.doc("run_advanced_chat_draft_workflow")
-    @api.doc(description="Run draft workflow for advanced chat application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
-            "AdvancedChatWorkflowRunRequest",
-            {
-                "query": fields.String(required=True, description="User query"),
-                "inputs": fields.Raw(description="Input variables"),
-                "files": fields.List(fields.Raw, description="File uploads"),
-                "conversation_id": fields.String(description="Conversation ID"),
-            },
-        )
-    )
-    @api.response(200, "Workflow run started successfully")
-    @api.response(400, "Invalid request parameters")
-    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -249,23 +208,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
 class AdvancedChatDraftRunIterationNodeApi(Resource):
-    @api.doc("run_advanced_chat_draft_iteration_node")
-    @api.doc(description="Run draft workflow iteration node for advanced chat")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.expect(
-        api.model(
-            "IterationNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
-    @api.response(200, "Iteration node run started successfully")
-    @api.response(403, "Permission denied")
-    @api.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -301,23 +244,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class WorkflowDraftRunIterationNodeApi(Resource):
-    @api.doc("run_workflow_draft_iteration_node")
-    @api.doc(description="Run draft workflow iteration node")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.expect(
-        api.model(
-            "WorkflowIterationNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
-    @api.response(200, "Workflow iteration node run started successfully")
-    @api.response(403, "Permission denied")
-    @api.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -353,23 +280,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
 class AdvancedChatDraftRunLoopNodeApi(Resource):
-    @api.doc("run_advanced_chat_draft_loop_node")
-    @api.doc(description="Run draft workflow loop node for advanced chat")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.expect(
-        api.model(
-            "LoopNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
-    @api.response(200, "Loop node run started successfully")
-    @api.response(403, "Permission denied")
-    @api.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -406,23 +317,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class WorkflowDraftRunLoopNodeApi(Resource):
-    @api.doc("run_workflow_draft_loop_node")
-    @api.doc(description="Run draft workflow loop node")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.expect(
-        api.model(
-            "WorkflowLoopNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
-    @api.response(200, "Workflow loop node run started successfully")
-    @api.response(403, "Permission denied")
-    @api.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -459,22 +354,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
 class DraftWorkflowRunApi(Resource):
-    @api.doc("run_draft_workflow")
-    @api.doc(description="Run draft workflow")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
-            "DraftWorkflowRunRequest",
-            {
-                "inputs": fields.Raw(required=True, description="Input variables"),
-                "files": fields.List(fields.Raw, description="File uploads"),
-            },
-        )
-    )
-    @api.response(200, "Draft workflow run started successfully")
-    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -513,14 +393,7 @@ class DraftWorkflowRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
-    @api.doc("stop_workflow_task")
-    @api.doc(description="Stop running workflow task")
-    @api.doc(params={"app_id": "Application ID", "task_id": "Task ID"})
-    @api.response(200, "Task stopped successfully")
-    @api.response(404, "Task not found")
-    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -541,22 +414,7 @@ class WorkflowTaskStopApi(Resource):
         return {"result": "success"}
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run")
 class DraftWorkflowNodeRunApi(Resource):
-    @api.doc("run_draft_workflow_node")
-    @api.doc(description="Run draft workflow node")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.expect(
-        api.model(
-            "DraftWorkflowNodeRunRequest",
-            {
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
-    @api.response(200, "Node run started successfully", workflow_run_node_execution_fields)
-    @api.response(403, "Permission denied")
-    @api.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -604,13 +462,7 @@ class DraftWorkflowNodeRunApi(Resource):
         return workflow_node_execution
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
-    @api.doc("get_published_workflow")
-    @api.doc(description="Get published workflow for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Published workflow retrieved successfully", workflow_fields)
-    @api.response(404, "Published workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -682,12 +534,7 @@ class PublishedWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs")
 class DefaultBlockConfigsApi(Resource):
-    @api.doc("get_default_block_configs")
-    @api.doc(description="Get default block configurations for workflow")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Default block configurations retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -708,13 +555,7 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
-    @api.doc("get_default_block_config")
-    @api.doc(description="Get default block configuration by type")
-    @api.doc(params={"app_id": "Application ID", "block_type": "Block type"})
-    @api.response(200, "Default block configuration retrieved successfully")
-    @api.response(404, "Block type not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -747,14 +588,7 @@ class DefaultBlockConfigApi(Resource):
         return workflow_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
-@console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
 class ConvertToWorkflowApi(Resource):
-    @api.doc("convert_to_workflow")
-    @api.doc(description="Convert application to workflow mode")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Application converted to workflow successfully")
-    @api.response(400, "Application cannot be converted")
-    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -791,14 +625,9 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/config")
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
 
-    @api.doc("get_workflow_config")
-    @api.doc(description="Get workflow configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Workflow configuration retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -809,12 +638,7 @@ class WorkflowConfigApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/published")
 class PublishedAllWorkflowApi(Resource):
-    @api.doc("get_all_published_workflows")
-    @api.doc(description="Get all published workflows for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Published workflows retrieved successfully", workflow_pagination_fields)
     @setup_required
     @login_required
     @account_initialization_required
@@ -865,23 +689,7 @@ class PublishedAllWorkflowApi(Resource):
             }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>")
 class WorkflowByIdApi(Resource):
-    @api.doc("update_workflow_by_id")
-    @api.doc(description="Update workflow by ID")
-    @api.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
-    @api.expect(
-        api.model(
-            "UpdateWorkflowRequest",
-            {
-                "environment_variables": fields.List(fields.Raw, description="Environment variables"),
-                "conversation_variables": fields.List(fields.Raw, description="Conversation variables"),
-            },
-        )
-    )
-    @api.response(200, "Workflow updated successfully", workflow_fields)
-    @api.response(404, "Workflow not found")
-    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -972,14 +780,7 @@ class WorkflowByIdApi(Resource):
         return None, 204
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run")
 class DraftWorkflowNodeLastRunApi(Resource):
-    @api.doc("get_draft_workflow_node_last_run")
-    @api.doc(description="Get last run result for draft workflow node")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.response(200, "Node last run retrieved successfully", workflow_run_node_execution_fields)
-    @api.response(404, "Node last run not found")
-    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -998,3 +799,73 @@ class DraftWorkflowNodeLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("last run not found")
         return node_exec
+
+
+api.add_resource(
+    DraftWorkflowApi,
+    "/apps/<uuid:app_id>/workflows/draft",
+)
+api.add_resource(
+    WorkflowConfigApi,
+    "/apps/<uuid:app_id>/workflows/draft/config",
+)
+api.add_resource(
+    AdvancedChatDraftWorkflowRunApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run",
+)
+api.add_resource(
+    DraftWorkflowRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/run",
+)
+api.add_resource(
+    WorkflowTaskStopApi,
+    "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop",
+)
+api.add_resource(
+    DraftWorkflowNodeRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    AdvancedChatDraftRunIterationNodeApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    WorkflowDraftRunIterationNodeApi,
+    "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    AdvancedChatDraftRunLoopNodeApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    WorkflowDraftRunLoopNodeApi,
+    "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    PublishedWorkflowApi,
+    "/apps/<uuid:app_id>/workflows/publish",
+)
+api.add_resource(
+    PublishedAllWorkflowApi,
+    "/apps/<uuid:app_id>/workflows",
+)
+api.add_resource(
+    DefaultBlockConfigsApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs",
+)
+api.add_resource(
+    DefaultBlockConfigApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>",
+)
+api.add_resource(
+    ConvertToWorkflowApi,
+    "/apps/<uuid:app_id>/convert-to-workflow",
+)
+api.add_resource(
+    WorkflowByIdApi,
+    "/apps/<uuid:app_id>/workflows/<string:workflow_id>",
+)
+api.add_resource(
+    DraftWorkflowNodeLastRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
+)
