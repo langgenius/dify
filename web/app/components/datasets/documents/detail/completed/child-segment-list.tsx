@@ -95,12 +95,13 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     )}>
       {isFullDocMode ? <Divider type='horizontal' className='my-1 h-px bg-divider-subtle' /> : null}
       <div className={cn('flex items-center justify-between', isFullDocMode ? 'sticky -top-2 left-0 bg-background-default pb-3 pt-2' : '')}>
-        <div className={cn(
-          'flex h-7 items-center rounded-lg pl-1 pr-3',
-          isParagraphMode && 'cursor-pointer',
-          (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg',
-          isFullDocMode && 'pl-0',
-        )}
+        <div
+          className={cn(
+            'flex h-7 items-center rounded-lg pl-1 pr-3',
+            isParagraphMode && 'cursor-pointer',
+            (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg',
+            isFullDocMode && 'pl-0',
+          )}
           onClick={(event) => {
             event.stopPropagation()
             toggleCollapse()
@@ -162,6 +163,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
                   text={childChunk.content}
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+                  className='child-chunk'
                   labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
                   labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
                   contentClassName={cn('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}

@@ -62,7 +62,7 @@ const Popup = () => {
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   const { notify } = useToastContext()
   const workflowStore = useWorkflowStore()
-  const { isAllowPublishAsKnowledgePipeline } = useProviderContext()
+  const { isAllowPublishAsCustomKnowledgePipelineTemplate } = useProviderContext()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
 
   const [confirmVisible, {
@@ -206,16 +206,16 @@ const Popup = () => {
   ])
 
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
-    if (!isAllowPublishAsKnowledgePipeline)
+    if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
       setShowPricingModal()
     else
       setShowPublishAsKnowledgePipelineModal()
-  }, [isAllowPublishAsKnowledgePipeline, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
+  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
 
   return (
     <div className={classNames(
       'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-      isAllowPublishAsKnowledgePipeline ? 'w-[320px] ' : 'w-[360px]',
+      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]',
     )}>
       <div className='p-4 pt-3'>
         <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>
@@ -293,12 +293,12 @@ const Popup = () => {
           onClick={handleClickPublishAsKnowledgePipeline}
           disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
-          <div className='flex grow items-center gap-x-2'>
+          <div className='flex grow items-center gap-x-2 overflow-hidden'>
             <RiHammerLine className='h-4 w-4 shrink-0' />
             <span className='grow truncate text-left' title={t('pipeline.common.publishAs')}>
               {t('pipeline.common.publishAs')}
             </span>
-            {!isAllowPublishAsKnowledgePipeline && (
+            {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className='shrink-0 cursor-pointer select-none' size='s' color='indigo'>
                 <SparklesSoft className='flex size-3 items-center text-components-premium-badge-indigo-text-stop-0' />
                 <span className='system-2xs-medium p-0.5'>

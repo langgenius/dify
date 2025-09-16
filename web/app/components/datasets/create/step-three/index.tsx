@@ -8,6 +8,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
+import { useDocLink } from '@/context/i18n'
 
 type StepThreeProps = {
   datasetId?: string
@@ -19,6 +20,7 @@ type StepThreeProps = {
 
 const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrievalMethod }: StepThreeProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -83,6 +85,14 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
             </div>
             <div className='text-base font-semibold text-text-secondary'>{t('datasetCreation.stepThree.sideTipTitle')}</div>
             <div className='text-text-tertiary'>{t('datasetCreation.stepThree.sideTipContent')}</div>
+            <a
+              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+              target='_blank'
+              rel='noreferrer noopener'
+              className='system-sm-regular text-text-accent'
+            >
+              {t('datasetPipeline.addDocuments.stepThree.learnMore')}
+            </a>
           </div>
         </div>
       )}

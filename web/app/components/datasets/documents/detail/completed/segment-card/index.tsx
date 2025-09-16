@@ -118,7 +118,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   return (
     <div
       className={cn(
-        'group/card w-full rounded-xl px-3',
+        'chunk-card group/card w-full rounded-xl px-3',
         isFullDocMode ? '' : 'pb-2 pt-2.5 hover:bg-dataset-chunk-detail-card-hover-bg',
         focused.segmentContent ? 'bg-dataset-chunk-detail-card-hover-bg' : '',
         className,

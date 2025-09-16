@@ -19,8 +19,8 @@ const RerankingModelSelector = ({
   readonly = false,
 }: RerankingModelSelectorProps) => {
   const {
-      modelList: rerankModelList,
-    } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
+    modelList: rerankModelList,
+  } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
   const rerankModel = useMemo(() => {
     if (!rerankingModel)
       return undefined

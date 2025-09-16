@@ -14,6 +14,7 @@ import produce from 'immer'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
+import { useDocLink } from '@/context/i18n'
 
 type OnlineDriveProps = {
   nodeId: string
@@ -28,6 +29,7 @@ const OnlineDrive = ({
   isInPipeline = false,
   onCredentialChange,
 }: OnlineDriveProps) => {
+  const docLink = useDocLink()
   const [isInitialMount, setIsInitialMount] = useState(true)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -185,8 +187,8 @@ const OnlineDrive = ({
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
-        docTitle='Online Drive Docs'
-        docLink='https://docs.dify.ai/'
+        docTitle='Docs'
+        docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}
