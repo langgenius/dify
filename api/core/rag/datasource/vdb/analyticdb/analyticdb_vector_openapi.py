@@ -55,8 +55,8 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
 class AnalyticdbVectorOpenAPI:
     def __init__(self, collection_name: str, config: AnalyticdbVectorOpenAPIConfig):
         try:
-            from alibabacloud_gpdb20160503.client import Client
-            from alibabacloud_tea_openapi import models as open_api_models
+            from alibabacloud_gpdb20160503.client import Client  # type: ignore
+            from alibabacloud_tea_openapi import models as open_api_models  # type: ignore
         except:
             raise ImportError(_import_err_msg)
         self._collection_name = collection_name.lower()
@@ -77,7 +77,7 @@ class AnalyticdbVectorOpenAPI:
             redis_client.set(database_exist_cache_key, 1, ex=3600)
 
     def _initialize_vector_database(self):
-        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
+        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models  # type: ignore
 
         request = gpdb_20160503_models.InitVectorDatabaseRequest(
             dbinstance_id=self.config.instance_id,
@@ -89,7 +89,7 @@ class AnalyticdbVectorOpenAPI:
 
     def _create_namespace_if_not_exists(self):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
-        from Tea.exceptions import TeaException
+        from Tea.exceptions import TeaException  # type: ignore
 
         try:
             request = gpdb_20160503_models.DescribeNamespaceRequest(
@@ -192,8 +192,8 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             metrics=self.config.metrics,
             include_values=True,
-            vector=None,
-            content=None,
+            vector=None,  # ty: ignore [invalid-argument-type]
+            content=None,  # ty: ignore [invalid-argument-type]
             top_k=1,
             filter=f"ref_doc_id='{id}'",
         )
@@ -211,7 +211,7 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
+            collection_data=None,  # ty: ignore [invalid-argument-type]
             collection_data_filter=f"ref_doc_id IN {ids_str}",
         )
         self._client.delete_collection_data(request)
@@ -225,7 +225,7 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
+            collection_data=None,  # ty: ignore [invalid-argument-type]
             collection_data_filter=f"metadata_ ->> '{key}' = '{value}'",
         )
         self._client.delete_collection_data(request)
@@ -249,7 +249,7 @@ class AnalyticdbVectorOpenAPI:
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
             vector=query_vector,
-            content=None,
+            content=None,  # ty: ignore [invalid-argument-type]
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
         )
@@ -285,7 +285,7 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
-            vector=None,
+            vector=None,  # ty: ignore [invalid-argument-type]
             content=query,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,

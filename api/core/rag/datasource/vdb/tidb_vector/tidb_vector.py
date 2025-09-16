@@ -50,7 +50,7 @@ class TiDBVector(BaseVector):
         return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
-        from tidb_vector.sqlalchemy import VectorType
+        from tidb_vector.sqlalchemy import VectorType  # type: ignore
 
         return Table(
             self._collection_name,

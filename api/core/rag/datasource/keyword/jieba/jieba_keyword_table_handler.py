@@ -4,15 +4,15 @@ from typing import cast
 
 class JiebaKeywordTableHandler:
     def __init__(self):
-        import jieba.analyse
+        import jieba.analyse  # type: ignore
 
         from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
-        jieba.analyse.default_tfidf.stop_words = STOPWORDS
+        jieba.analyse.default_tfidf.stop_words = STOPWORDS  # type: ignore
 
     def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
-        import jieba.analyse
+        import jieba.analyse  # type: ignore
 
         keywords = jieba.analyse.extract_tags(
             sentence=text,

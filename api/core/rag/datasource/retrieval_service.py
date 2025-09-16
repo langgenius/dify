@@ -54,13 +54,13 @@ class RetrievalService:
         exceptions: list[str] = []
 
         # Optimize multithreading with thread pools
-        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:
+        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
             futures = []
             if retrieval_method == "keyword_search":
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -73,7 +73,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.embedding_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -89,7 +89,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.full_text_index_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -391,14 +391,14 @@ class RetrievalService:
                     include_segment_ids.add(segment.id)
                     record = {
                         "segment": segment,
-                        "score": document.metadata.get("score"),
+                        "score": document.metadata.get("score"),  # type: ignore
                     }
                     records.append(record)
 
             # Add child chunks information to records
             for record in records:
                 if record["segment"].id in segment_child_map:
-                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")
+                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
 
             result = []

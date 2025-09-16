@@ -4,7 +4,7 @@ import math
 from collections.abc import Iterable
 from typing import Any
 
-import tablestore
+import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
 from tablestore import BatchGetRowRequest, TableInBatchGetRowItem
 

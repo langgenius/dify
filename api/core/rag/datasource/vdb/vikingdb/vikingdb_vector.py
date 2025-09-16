@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from pydantic import BaseModel
-from volcengine.viking_db import (
+from volcengine.viking_db import (  # type: ignore
     Data,
     DistanceType,
     Field,
@@ -126,7 +126,7 @@ class VikingDBVector(BaseVector):
             # FIXME: fix the type of metadata later
             doc = Data(
                 {
-                    vdb_Field.PRIMARY_KEY.value: metadatas[i]["doc_id"],
+                    vdb_Field.PRIMARY_KEY.value: metadatas[i]["doc_id"],  # type: ignore
                     vdb_Field.VECTOR.value: embeddings[i] if embeddings else None,
                     vdb_Field.CONTENT_KEY.value: page_content,
                     vdb_Field.METADATA_KEY.value: json.dumps(metadata),

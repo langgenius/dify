@@ -5,14 +5,14 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from couchbase import search
-from couchbase.auth import PasswordAuthenticator
-from couchbase.cluster import Cluster
-from couchbase.management.search import SearchIndex
+from couchbase import search  # type: ignore
+from couchbase.auth import PasswordAuthenticator  # type: ignore
+from couchbase.cluster import Cluster  # type: ignore
+from couchbase.management.search import SearchIndex  # type: ignore
 
 # needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
-from couchbase.options import ClusterOptions, SearchOptions
-from couchbase.vector_search import VectorQuery, VectorSearch
+from couchbase.options import ClusterOptions, SearchOptions  # type: ignore
+from couchbase.vector_search import VectorQuery, VectorSearch  # type: ignore
 from flask import current_app
 from pydantic import BaseModel, model_validator
 
@@ -306,7 +306,7 @@ class CouchbaseVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         try:
-            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))
+            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # ty: ignore [too-many-positional-arguments]
             search_iter = self._scope.search(
                 self._collection_name + "_search", CBrequest, SearchOptions(limit=top_k, fields=["*"])
             )

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate, ParamSpec, TypeVar
 
-from mo_vector.client import MoVectorClient
+from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config

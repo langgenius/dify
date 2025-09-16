@@ -4,8 +4,8 @@ from typing import Any
 
 from packaging import version
 from pydantic import BaseModel, model_validator
-from pymilvus import MilvusClient, MilvusException
-from pymilvus.milvus_client import IndexParams
+from pymilvus import MilvusClient, MilvusException  # type: ignore
+from pymilvus.milvus_client import IndexParams  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -304,8 +304,8 @@ class MilvusVector(BaseVector):
                 return
             # Grab the existing collection if it exists
             if not self._client.has_collection(self._collection_name):
-                from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType
-                from pymilvus.orm.types import infer_dtype_bydata
+                from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType  # type: ignore
+                from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
                 # Determine embedding dim
                 dim = len(embeddings[0])

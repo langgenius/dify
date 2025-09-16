@@ -3,7 +3,7 @@ import json
 from typing import Any
 
 import requests
-import weaviate
+import weaviate  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -39,7 +39,7 @@ class WeaviateVector(BaseVector):
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
         auth_config = weaviate.AuthApiKey(api_key=config.api_key or "")
 
-        weaviate.connect.connection.has_grpc = False
+        weaviate.connect.connection.has_grpc = False  # ty: ignore [unresolved-attribute]
 
         try:
             client = weaviate.Client(

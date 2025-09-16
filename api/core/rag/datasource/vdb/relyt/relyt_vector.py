@@ -105,7 +105,7 @@ class RelytVector(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        from pgvecto_rs.sqlalchemy import VECTOR
+        from pgvecto_rs.sqlalchemy import VECTOR  # type: ignore
 
         ids = [str(uuid.uuid1()) for _ in documents]
         metadatas = [d.metadata for d in documents if d.metadata is not None]

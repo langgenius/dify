@@ -53,7 +53,7 @@ class OpenSearchConfig(BaseModel):
         return Urllib3AWSV4SignerAuth(
             credentials=boto3.Session().get_credentials(),
             region=self.aws_region,
-            service=self.aws_service,
+            service=self.aws_service,  # type: ignore[arg-type]
         )
 
     def to_opensearch_params(self) -> dict[str, Any]:
