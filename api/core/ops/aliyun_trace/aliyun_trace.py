@@ -1,7 +1,6 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Optional
 from urllib.parse import urljoin
 
 from opentelemetry.trace import Link, Status, StatusCode
@@ -123,7 +122,7 @@ class AliyunDataTrace(BaseTraceInstance):
 
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -356,8 +355,8 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_FRAMEWORK: "dify",
                 TOOL_NAME: node_execution.title,
                 TOOL_DESCRIPTION: json.dumps(tool_des, ensure_ascii=False),
-                TOOL_PARAMETERS: json.dumps(node_execution.inputs if node_execution.inputs else {}, ensure_ascii=False),
-                INPUT_VALUE: json.dumps(node_execution.inputs if node_execution.inputs else {}, ensure_ascii=False),
+                TOOL_PARAMETERS: json.dumps(node_execution.inputs or {}, ensure_ascii=False),
+                INPUT_VALUE: json.dumps(node_execution.inputs or {}, ensure_ascii=False),
                 OUTPUT_VALUE: json.dumps(node_execution.outputs, ensure_ascii=False),
             },
             status=self.get_workflow_node_status(node_execution),

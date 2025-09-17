@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, TypedDict, cast
+from typing import TypedDict, cast
 
 from flask_sqlalchemy.pagination import Pagination
 
@@ -370,7 +370,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
+            app_model_config: AppModelConfig | None = app_model.app_model_config
 
             if not app_model_config:
                 return meta
@@ -393,7 +393,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: Optional[ApiToolProvider] = (
+                        provider: ApiToolProvider | None = (
                             db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
                         )
                         if provider is None:

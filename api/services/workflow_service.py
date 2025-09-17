@@ -2,7 +2,7 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy import exists, select
@@ -88,7 +88,7 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: Optional[str] = None) -> Optional[Workflow]:
+    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
         """
         Get draft workflow
         """
@@ -108,7 +108,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
+    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Workflow | None:
         """
         fetch published workflow by workflow_id
         """
@@ -130,7 +130,7 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
+    def get_published_workflow(self, app_model: App) -> Workflow | None:
         """
         Get published workflow
         """
@@ -195,7 +195,7 @@ class WorkflowService:
         app_model: App,
         graph: dict,
         features: dict,
-        unique_hash: Optional[str],
+        unique_hash: str | None,
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
@@ -375,13 +375,14 @@ class WorkflowService:
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
-        Validate that an LLM model configuration can fetch valid credentials.
+        Validate that an LLM model configuration can fetch valid credentials and has active status.
 
         This method attempts to get the model instance and validates that:
         1. The provider exists and is configured
         2. The model exists in the provider
         3. Credentials can be fetched for the model
         4. The credentials pass policy compliance checks
+        5. The model status is ACTIVE (not NO_CONFIGURE, DISABLED, etc.)
 
         :param tenant_id: The tenant ID
         :param provider: The provider name
@@ -391,6 +392,7 @@ class WorkflowService:
         try:
             from core.model_manager import ModelManager
             from core.model_runtime.entities.model_entities import ModelType
+            from core.provider_manager import ProviderManager
 
             # Get model instance to validate provider+model combination
             model_manager = ModelManager()
@@ -401,6 +403,22 @@ class WorkflowService:
             # The ModelInstance constructor will automatically check credential policy compliance
             # via ProviderConfiguration.get_current_credentials() -> _check_credential_policy_compliance()
             # If it fails, an exception will be raised
+
+            # Additionally, check the model status to ensure it's ACTIVE
+            provider_manager = ProviderManager()
+            provider_configurations = provider_manager.get_configurations(tenant_id)
+            models = provider_configurations.get_models(provider=provider, model_type=ModelType.LLM)
+
+            target_model = None
+            for model in models:
+                if model.model == model_name and model.provider.provider == provider:
+                    target_model = model
+                    break
+
+            if target_model:
+                target_model.raise_for_status()
+            else:
+                raise ValueError(f"Model {model_name} not found for provider {provider}")
 
         except Exception as e:
             raise ValueError(
@@ -561,7 +579,7 @@ class WorkflowService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
+    def get_default_block_config(self, node_type: str, filters: dict | None = None) -> dict | None:
         """
         Get default config of node.
         :param node_type: node type
@@ -857,7 +875,7 @@ class WorkflowService:
 
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
-    ) -> Optional[Workflow]:
+    ) -> Workflow | None:
         """
         Update workflow attributes
 

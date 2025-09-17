@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'Necesar',
     customCredentialUnavailable: 'Credentialele personalizate sunt în prezent indisponibile',
     credentialUnavailable: 'Credențialele nu sunt disponibile în acest moment. Vă rugăm să contactați administratorul.',
+    credentialUnavailableInButton: 'Credential indisponibil',
   },
   deprecated: 'Încetat de a mai fi utilizat',
   autoUpdate: {
