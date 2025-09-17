@@ -1657,7 +1657,7 @@ class DocumentService:
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content,  # type: ignore
+                            "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
                         if len(url) > 255:
@@ -2131,7 +2131,7 @@ class DocumentService:
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content,  # type: ignore
+                            "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
             document.data_source_type = document_data.data_source.info_list.data_source_type
