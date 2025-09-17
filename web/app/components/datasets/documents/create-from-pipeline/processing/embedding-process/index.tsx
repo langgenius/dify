@@ -26,6 +26,8 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { DatasourceType, type InitialDocumentDetail } from '@/models/pipeline'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import Divider from '@/app/components/base/divider'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import Link from 'next/link'
 
 type EmbeddingProcessProps = {
   datasetId: string
@@ -84,9 +86,7 @@ const EmbeddingProcess = ({
     invalidDocumentList()
     router.push(`/datasets/${datasetId}/documents`)
   }
-  const navToApiDocs = () => {
-    router.push('/datasets?category=api')
-  }
+  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbeddingWaiting = useMemo(() => {
     if (!indexingStatusBatchDetail.length) return false
@@ -223,13 +223,18 @@ const EmbeddingProcess = ({
         />
       </div>
       <div className='mt-6 flex items-center gap-x-2 py-2'>
-        <Button
-          className='w-fit gap-x-0.5 px-3'
-          onClick={navToApiDocs}
+        <Link
+          href={apiReferenceUrl}
+          target='_blank'
+          rel='noopener noreferrer'
         >
-          <RiTerminalBoxLine className='size-4' />
-          <span className='px-0.5'>Access the API</span>
-        </Button>
+          <Button
+            className='w-fit gap-x-0.5 px-3'
+          >
+            <RiTerminalBoxLine className='size-4' />
+            <span className='px-0.5'>Access the API</span>
+          </Button>
+        </Link>
         <Button
           className='w-fit gap-x-0.5 px-3'
           variant='primary'

@@ -45,6 +45,7 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContextSelector } from '@/context/modal-context'
 import Link from 'next/link'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
@@ -64,6 +65,7 @@ const Popup = () => {
   const workflowStore = useWorkflowStore()
   const { isAllowPublishAsCustomKnowledgePipelineTemplate } = useProviderContext()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const [confirmVisible, {
     setFalse: hideConfirm,
@@ -273,7 +275,11 @@ const Popup = () => {
           </div>
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
-        <a href='/datasets?category=api' target='_blank'>
+        <Link
+          href={apiReferenceUrl}
+          target='_blank'
+          rel='noopener noreferrer'
+        >
           <Button
             className='w-full hover:bg-state-accent-hover hover:text-text-accent'
             variant='tertiary'
@@ -285,7 +291,7 @@ const Popup = () => {
             </div>
             <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
           </Button>
-        </a>
+        </Link>
         <Divider className='my-2' />
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
