@@ -20,7 +20,7 @@ class _JiebaKeywordTableHandler:
         # Pre-compile regex for better performance
         self._word_pattern = re.compile(r"\w+")
 
-    def extract_keywords(self, text: str, max_keywords_per_chunk: Optional[int] = 10) -> set[str]:
+    def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
         import jieba.analyse  # type: ignore
 
@@ -49,7 +49,7 @@ class _JiebaKeywordTableHandler:
 
         return frozenset(results)
 
-    def extract_keywords_batch(self, texts: list[str], max_keywords_per_chunk: Optional[int] = 10) -> list[set[str]]:
+    def extract_keywords_batch(self, texts: list[str], max_keywords_per_chunk: int | None = 10) -> list[set[str]]:
         """Extract keywords for multiple texts in batch for better performance."""
         import jieba.analyse  # type: ignore
 
@@ -70,7 +70,7 @@ class _JiebaKeywordTableHandler:
 
         return results
 
-    def extract_keywords_combined(self, texts: list[str], max_keywords_per_chunk: Optional[int] = 10) -> set[str]:
+    def extract_keywords_combined(self, texts: list[str], max_keywords_per_chunk: int | None = 10) -> set[str]:
         """Extract keywords from combined texts for global keyword extraction."""
         import jieba.analyse  # type: ignore
 

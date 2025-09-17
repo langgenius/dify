@@ -29,8 +29,9 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        document_ids = [d.metadata.get("doc_id") for d in texts if
-                        getattr(d, "metadata", None) and "doc_id" in d.metadata]
+        document_ids = [
+            d.metadata.get("doc_id") for d in texts if getattr(d, "metadata", None) and "doc_id" in d.metadata
+        ]
         start_time = time.perf_counter()
         keyword_table_handler = JiebaKeywordTableHandler
         jieba_total_time = 0
@@ -38,9 +39,7 @@ class Jieba(BaseKeyword):
         new_keyword_table = {}
         for text in texts:
             start_time_jieba = time.perf_counter()
-            keywords = keyword_table_handler.extract_keywords(
-                text.page_content, self._config.max_keywords_per_chunk
-            )
+            keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
             if text.metadata is not None:
                 jieba_total_time += time.perf_counter() - start_time_jieba
                 start_time_db = time.perf_counter()
@@ -62,14 +61,17 @@ class Jieba(BaseKeyword):
                 for doc_id in doc_ids:
                     self._add_text_to_keyword_table(keyword_table, doc_id, list(keyword))
             self._save_dataset_keyword_table(keyword_table)
-            save_jieba_log = (f"Save Jieba create keyword index {time.perf_counter() - save_start_time} "
-                              f"{self.dataset.id} "
-                        f"{len(document_ids)} {document_ids}")
+            save_jieba_log = (
+                f"Save Jieba create keyword index {time.perf_counter() - save_start_time} "
+                f"{self.dataset.id} "
+                f"{len(document_ids)} {document_ids}"
+            )
             logger.info(save_jieba_log)
         end_jieba_log = (
             f"End Jieba create keyword index {time.perf_counter() - start_time} "
             f"{time.perf_counter() - start_time_wait} "
-            f"{jieba_total_time} {db_total_time} {self.dataset.id} {len(document_ids)} {document_ids}")
+            f"{jieba_total_time} {db_total_time} {self.dataset.id} {len(document_ids)} {document_ids}"
+        )
         logger.info(end_jieba_log)
 
     def add_texts(self, texts: list[Document], **kwargs):
