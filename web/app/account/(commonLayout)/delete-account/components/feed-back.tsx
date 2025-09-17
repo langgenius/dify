@@ -22,16 +22,13 @@ export default function FeedBack(props: DeleteAccountProps) {
   const { handleLogout } = useLogout()
 
   const handleSuccess = useCallback(async () => {
-    try {
-      handleLogout({
-        source: 'delete-account',
-        skipConfirm: true,
-        onSuccess: () => {
-          Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
-        },
-      })
-    }
-    catch (error) { console.error(error) }
+    await handleLogout({
+      source: 'delete-account',
+      skipConfirm: true,
+      onSuccess: () => {
+        Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
+      },
+    })
   }, [handleLogout, t])
 
   const handleSubmit = useCallback(async () => {

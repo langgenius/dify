@@ -53,7 +53,7 @@ const useLogout = () => {
 
   const handleLogout = useCallback((options: LogoutOptions = {}) => {
     if (options.skipConfirm) {
-      performLogout(options)
+      return performLogout(options)
     }
     else {
       setShowLogoutModal({
