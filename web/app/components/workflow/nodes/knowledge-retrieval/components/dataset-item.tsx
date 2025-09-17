@@ -63,9 +63,9 @@ const DatasetItem: FC<Props> = ({
     <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg
       border-[0.5px] border-components-panel-border-subtle px-2
       ${isDeleteHovered
-        ? 'border-state-destructive-border bg-state-destructive-hover'
-        : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
-      }`}>
+      ? 'border-state-destructive-border bg-state-destructive-hover'
+      : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
+    }`}>
       <div className='flex w-0 grow items-center space-x-1.5'>
         <AppIcon
           size='tiny'

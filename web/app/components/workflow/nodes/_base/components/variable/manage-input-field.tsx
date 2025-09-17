@@ -10,7 +10,7 @@ const ManageInputField = ({
 }: ManageInputFieldProps) => {
   const { t } = useTranslation()
 
- return (
+  return (
     <div className='flex items-center border-t border-divider-subtle pt-1'>
       <div
         className='flex h-8 grow cursor-pointer items-center px-3'

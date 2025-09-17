@@ -120,41 +120,41 @@ describe('match the schema type', () => {
       title: 'File',
       description: 'Schema for file objects (v1)',
       properties: {
-          name: {
-              type: 'string',
-              description: 'file name',
-          },
-          size: {
-              type: 'number',
-              description: 'file size',
-          },
-          extension: {
-              type: 'string',
-              description: 'file extension',
-          },
-          type: {
-              type: 'string',
-              description: 'file type',
-          },
-          mime_type: {
-              type: 'string',
-              description: 'file mime type',
-          },
-          transfer_method: {
-              type: 'string',
-              description: 'file transfer method',
-          },
-          url: {
-              type: 'string',
-              description: 'file url',
-          },
-          related_id: {
-              type: 'string',
-              description: 'file related id',
-          },
+        name: {
+          type: 'string',
+          description: 'file name',
+        },
+        size: {
+          type: 'number',
+          description: 'file size',
+        },
+        extension: {
+          type: 'string',
+          description: 'file extension',
+        },
+        type: {
+          type: 'string',
+          description: 'file type',
+        },
+        mime_type: {
+          type: 'string',
+          description: 'file mime type',
+        },
+        transfer_method: {
+          type: 'string',
+          description: 'file transfer method',
+        },
+        url: {
+          type: 'string',
+          description: 'file url',
+        },
+        related_id: {
+          type: 'string',
+          description: 'file related id',
+        },
       },
       required: [
-          'name',
+        'name',
       ],
     }
     expect(matchTheSchemaType(fileSchema, file)).toBe(true)
