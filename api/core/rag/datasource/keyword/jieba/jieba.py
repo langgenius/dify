@@ -34,8 +34,8 @@ class Jieba(BaseKeyword):
         ]
         start_time = time.perf_counter()
         keyword_table_handler = JiebaKeywordTableHandler
-        jieba_total_time = 0
-        db_total_time = 0
+        jieba_total_time = 0.0
+        db_total_time = 0.0
         new_keyword_table = {}
         for text in texts:
             start_time_jieba = time.perf_counter()
@@ -73,6 +73,7 @@ class Jieba(BaseKeyword):
             f"{jieba_total_time} {db_total_time} {self.dataset.id} {len(document_ids)} {document_ids}"
         )
         logger.info(end_jieba_log)
+        return self
 
     def add_texts(self, texts: list[Document], **kwargs):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
