@@ -14,7 +14,7 @@ import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
@@ -72,6 +72,7 @@ const TextGeneration: FC<IMainProps> = ({
   isWorkflow = false,
 }) => {
   const { notify } = Toast
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -101,16 +102,16 @@ const TextGeneration: FC<IMainProps> = ({
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = useCallback(async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
+    const res: any = await doFetchSavedMessage(appSourceType, appId)
     setSavedMessages(res.data)
-  }, [isInstalledApp, appId])
+  }, [appSourceType, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, appId)
+    await saveMessage(messageId, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, appId)
+    await removeMessage(messageId, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }

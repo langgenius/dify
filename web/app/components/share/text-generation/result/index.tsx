@@ -7,7 +7,7 @@ import produce from 'immer'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
-import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
+import { AppSourceType, sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
@@ -358,7 +358,7 @@ const Result: FC<IResultProps> = ({
             }))
           },
         },
-        isInstalledApp,
+        isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp,
         installedAppInfo?.id,
       )
     }
@@ -392,7 +392,7 @@ const Result: FC<IResultProps> = ({
           onCompleted(getCompletionRes(), taskId, false)
           isEnd = true
         },
-      }, isInstalledApp, installedAppInfo?.id)
+      }, isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp, installedAppInfo?.id)
     }
   }
 

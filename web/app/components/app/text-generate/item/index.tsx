@@ -21,7 +21,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
+import { AppSourceType, fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
@@ -111,8 +111,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
+
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
+    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, appSourceType, installedAppId)
     setChildFeedback(childFeedback)
   }
 
@@ -144,7 +146,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
+    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,

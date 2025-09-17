@@ -13,6 +13,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import {
+  AppSourceType,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
@@ -52,6 +53,8 @@ const ChatWrapper = () => {
     allInputsHidden,
     initUserVariables,
   } = useChatWithHistoryContext()
+
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   // Semantic variable for better code readability
   const isHistoryConversation = !!currentConversationId
@@ -142,10 +145,10 @@ const ChatWrapper = () => {
     }
 
     handleSend(
-      getUrl('chat-messages', isInstalledApp, appId || ''),
+      getUrl('chat-messages', appSourceType, appId || ''),
       data,
       {
-        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
         isPublicAPI: !isInstalledApp,
       },
