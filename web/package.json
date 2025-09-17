@@ -190,8 +190,8 @@
     "@types/negotiator": "^0.6.3",
     "@types/node": "18.15.0",
     "@types/qs": "^6.9.16",
-    "@types/react": "19.1.12",
-    "@types/react-dom": "19.1.8",
+    "@types/react": "19.1.11",
+    "@types/react-dom": "19.1.7",
     "@types/react-slider": "^1.3.6",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/react-window": "^1.8.8",
@@ -206,7 +206,7 @@
     "code-inspector-plugin": "1.2.9",
     "cross-env": "^7.0.3",
     "eslint": "^9.32.0",
-    "eslint-config-next": "15.5.2",
+    "eslint-config-next": "15.5.0",
     "eslint-plugin-oxlint": "^1.6.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
@@ -229,8 +229,8 @@
     "uglify-js": "^3.19.3"
   },
   "resolutions": {
-    "@types/react": "19.1.12",
-    "@types/react-dom": "19.1.8",
+    "@types/react": "19.1.11",
+    "@types/react-dom": "19.1.7",
     "string-width": "4.2.3"
   },
   "lint-staged": {
