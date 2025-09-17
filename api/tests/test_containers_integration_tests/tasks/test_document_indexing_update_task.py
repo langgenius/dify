@@ -1,7 +1,6 @@
 """Integration tests for document_indexing_update_task using testcontainers."""
 
 import json
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -598,4 +597,3 @@ class TestDocumentIndexingUpdateTask:
         # Assert: Verify no external service calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
         mock_external_service_dependencies["indexing_runner"].assert_not_called()
-
