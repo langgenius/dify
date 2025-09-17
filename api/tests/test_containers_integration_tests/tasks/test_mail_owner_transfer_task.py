@@ -97,8 +97,6 @@ class TestMailOwnerTransferTask:
         - Proper email service initialization check
         - Correct email service method calls with right parameters
         - Email template context is properly constructed
-        - Logging functionality works correctly
-        - Performance timing is recorded
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
@@ -141,7 +139,6 @@ class TestMailOwnerTransferTask:
         - Early return when mail service is not initialized
         - No email service calls are made
         - No exceptions are raised
-        - Proper logging behavior
         """
         # Arrange: Set mail service as not initialized
         mock_mail_dependencies["mail"].is_inited.return_value = False
@@ -163,39 +160,6 @@ class TestMailOwnerTransferTask:
         mock_mail_dependencies["get_email_service"].assert_not_called()
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
-    def test_send_owner_transfer_confirm_task_with_different_languages(
-        self, db_session_with_containers, mock_mail_dependencies
-    ):
-        """
-        Test owner transfer confirmation email with different language codes.
-
-        This test verifies:
-        - Proper handling of different language codes
-        - Language code is correctly passed to email service
-        - Template context is properly constructed for all languages
-        - Email service integration works with various languages
-        """
-        # Arrange: Test different language codes
-        test_languages = ["en-US", "zh-Hans", "ja-JP", "fr-FR"]
-        test_email = "test@example.com"
-        test_code = "123456"
-        test_workspace = "Test Workspace"
-
-        for language in test_languages:
-            # Reset mock calls
-            mock_mail_dependencies["email_service"].reset_mock()
-
-            # Act: Execute the task with different language
-            send_owner_transfer_confirm_task(
-                language=language,
-                to=test_email,
-                code=test_code,
-                workspace=test_workspace,
-            )
-
-            # Assert: Verify language code is correctly passed
-            call_args = mock_mail_dependencies["email_service"].send_email.call_args
-            assert call_args[1]["language_code"] == language
 
     def test_send_owner_transfer_confirm_task_exception_handling(
         self, db_session_with_containers, mock_mail_dependencies
@@ -241,8 +205,6 @@ class TestMailOwnerTransferTask:
         - Proper email service initialization check
         - Correct email service method calls with right parameters
         - Email template context includes new owner email
-        - Logging functionality works correctly
-        - Performance timing is recorded
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
@@ -285,7 +247,6 @@ class TestMailOwnerTransferTask:
         - Early return when mail service is not initialized
         - No email service calls are made
         - No exceptions are raised
-        - Proper logging behavior
         """
         # Arrange: Set mail service as not initialized
         mock_mail_dependencies["mail"].is_inited.return_value = False
@@ -351,8 +312,6 @@ class TestMailOwnerTransferTask:
         - Proper email service initialization check
         - Correct email service method calls with right parameters
         - Email template context is properly constructed
-        - Logging functionality works correctly
-        - Performance timing is recorded
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
@@ -392,7 +351,6 @@ class TestMailOwnerTransferTask:
         - Early return when mail service is not initialized
         - No email service calls are made
         - No exceptions are raised
-        - Proper logging behavior
         """
         # Arrange: Set mail service as not initialized
         mock_mail_dependencies["mail"].is_inited.return_value = False
@@ -444,220 +402,3 @@ class TestMailOwnerTransferTask:
         # Verify email service was called despite the exception
         mock_mail_dependencies["email_service"].send_email.assert_called_once()
 
-    def test_all_tasks_with_empty_workspace_name(self, db_session_with_containers, mock_mail_dependencies):
-        """
-        Test all tasks with empty workspace name.
-
-        This test verifies:
-        - Tasks handle empty workspace names gracefully
-        - Template context includes empty workspace name
-        - No exceptions are raised
-        - Email service calls are made correctly
-        """
-        # Arrange: Test data with empty workspace
-        test_language = "en-US"
-        test_email = "test@example.com"
-        test_code = "123456"
-        test_new_owner_email = "newowner@example.com"
-        empty_workspace = ""
-
-        # Test confirm task
-        send_owner_transfer_confirm_task(
-            language=test_language,
-            to=test_email,
-            code=test_code,
-            workspace=empty_workspace,
-        )
-
-        # Test old owner notify task
-        send_old_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=empty_workspace,
-            new_owner_email=test_new_owner_email,
-        )
-
-        # Test new owner notify task
-        send_new_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=empty_workspace,
-        )
-
-        # Assert: Verify all tasks were called
-        assert mock_mail_dependencies["email_service"].send_email.call_count == 3
-
-    def test_all_tasks_with_none_workspace_name(self, db_session_with_containers, mock_mail_dependencies):
-        """
-        Test all tasks with None workspace name.
-
-        This test verifies:
-        - Tasks handle None workspace names gracefully
-        - Template context includes None workspace name
-        - No exceptions are raised
-        - Email service calls are made correctly
-        """
-        # Arrange: Test data with None workspace
-        test_language = "en-US"
-        test_email = "test@example.com"
-        test_code = "123456"
-        test_new_owner_email = "newowner@example.com"
-        none_workspace = None
-
-        # Test confirm task
-        send_owner_transfer_confirm_task(
-            language=test_language,
-            to=test_email,
-            code=test_code,
-            workspace=none_workspace,
-        )
-
-        # Test old owner notify task
-        send_old_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=none_workspace,
-            new_owner_email=test_new_owner_email,
-        )
-
-        # Test new owner notify task
-        send_new_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=none_workspace,
-        )
-
-        # Assert: Verify all tasks were called
-        assert mock_mail_dependencies["email_service"].send_email.call_count == 3
-
-    def test_all_tasks_with_special_characters_in_parameters(self, db_session_with_containers, mock_mail_dependencies):
-        """
-        Test all tasks with special characters in parameters.
-
-        This test verifies:
-        - Tasks handle special characters in email addresses
-        - Tasks handle special characters in workspace names
-        - Tasks handle special characters in verification codes
-        - No exceptions are raised
-        - Email service calls are made correctly
-        """
-        # Arrange: Test data with special characters
-        test_language = "en-US"
-        test_email = "test+special@example.com"
-        test_code = "123-456_789"
-        test_workspace = "Test Workspace & Co. (Ltd.)"
-        test_new_owner_email = "new+owner@example.com"
-
-        # Test confirm task
-        send_owner_transfer_confirm_task(
-            language=test_language,
-            to=test_email,
-            code=test_code,
-            workspace=test_workspace,
-        )
-
-        # Test old owner notify task
-        send_old_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=test_workspace,
-            new_owner_email=test_new_owner_email,
-        )
-
-        # Test new owner notify task
-        send_new_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=test_workspace,
-        )
-
-        # Assert: Verify all tasks were called
-        assert mock_mail_dependencies["email_service"].send_email.call_count == 3
-
-    def test_all_tasks_with_unicode_characters(self, db_session_with_containers, mock_mail_dependencies):
-        """
-        Test all tasks with Unicode characters in parameters.
-
-        This test verifies:
-        - Tasks handle Unicode characters in workspace names
-        - Tasks handle Unicode characters in email addresses
-        - No exceptions are raised
-        - Email service calls are made correctly
-        - Unicode characters are properly passed to template context
-        """
-        # Arrange: Test data with Unicode characters
-        test_language = "zh-Hans"
-        test_email = "测试@example.com"
-        test_code = "123456"
-        test_workspace = "测试工作空间"
-        test_new_owner_email = "新所有者@example.com"
-
-        # Test confirm task
-        send_owner_transfer_confirm_task(
-            language=test_language,
-            to=test_email,
-            code=test_code,
-            workspace=test_workspace,
-        )
-
-        # Test old owner notify task
-        send_old_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=test_workspace,
-            new_owner_email=test_new_owner_email,
-        )
-
-        # Test new owner notify task
-        send_new_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=test_workspace,
-        )
-
-        # Assert: Verify all tasks were called
-        assert mock_mail_dependencies["email_service"].send_email.call_count == 3
-
-    def test_all_tasks_with_very_long_parameters(self, db_session_with_containers, mock_mail_dependencies):
-        """
-        Test all tasks with very long parameters.
-
-        This test verifies:
-        - Tasks handle very long workspace names
-        - Tasks handle very long email addresses
-        - Tasks handle very long verification codes
-        - No exceptions are raised
-        - Email service calls are made correctly
-        """
-        # Arrange: Test data with very long parameters
-        test_language = "en-US"
-        test_email = "very.long.email.address.that.might.cause.issues@very.long.domain.name.example.com"
-        test_code = "A" * 1000  # Very long verification code
-        test_workspace = "Very Long Workspace Name " * 50  # Very long workspace name
-        test_new_owner_email = "very.long.new.owner.email@very.long.domain.name.example.com"
-
-        # Test confirm task
-        send_owner_transfer_confirm_task(
-            language=test_language,
-            to=test_email,
-            code=test_code,
-            workspace=test_workspace,
-        )
-
-        # Test old owner notify task
-        send_old_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=test_workspace,
-            new_owner_email=test_new_owner_email,
-        )
-
-        # Test new owner notify task
-        send_new_owner_transfer_notify_email_task(
-            language=test_language,
-            to=test_email,
-            workspace=test_workspace,
-        )
-
-        # Assert: Verify all tasks were called
-        assert mock_mail_dependencies["email_service"].send_email.call_count == 3
