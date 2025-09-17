@@ -291,7 +291,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             return None
 
         value_json = _deterministic_json_dump(json_encodable_value)
-        assert value_json is not None, "value_json should be None here."
+        assert value_json is not None, "value_json should be not None here."
 
         suffix = type_.value
         upload_file = self._file_service.upload_file(

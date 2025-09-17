@@ -25,9 +25,7 @@ def get_signed_file_url(upload_file_id: str, as_attachment=False) -> str:
     return f"{url}?{query_string}"
 
 
-def get_signed_file_url_for_plugin(
-    filename: str, mimetype: str, tenant_id: str, user_id: str, session_id: str | None
-) -> str:
+def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str, user_id: str) -> str:
     # Plugin access should use internal URL for Docker network communication
     base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
     url = f"{base_url}/files/upload/for-plugin"
@@ -37,9 +35,7 @@ def get_signed_file_url_for_plugin(
     msg = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
     sign = hmac.new(key, msg.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-    url_user_id = session_id or user_id
-    return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}&user_id={url_user_id}&tenant_id={tenant_id}"
+    return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}&user_id={user_id}&tenant_id={tenant_id}"
 
 
 def verify_plugin_file_signature(
