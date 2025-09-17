@@ -332,7 +332,7 @@ class IndexingRunner:
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError(f"no dataset found {dataset_id}")
-        dataset_document = db.session.query(Document).where(Document.id == dataset.document_id).first()
+        dataset_document = db.session.query(Document).where(Document.id == document_id).first()
         if not dataset_document:
             raise ValueError(f"no dataset_document found {document_id}")
 
