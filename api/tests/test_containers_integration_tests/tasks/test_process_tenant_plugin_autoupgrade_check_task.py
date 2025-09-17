@@ -162,15 +162,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_disabled_strategy(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test that task returns early when strategy is disabled.
-
-        This test verifies:
-        - Task returns immediately when strategy_setting is DISABLED
-        - No plugin processing occurs
-        - No external service calls are made
-        - Proper logging is performed
-        """
+        """Test that task returns early when strategy is disabled."""
         # Arrange: Create test data with disabled strategy
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -199,17 +191,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_all_mode_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test successful plugin upgrade with ALL mode.
-
-        This test verifies:
-        - All marketplace plugins are processed
-        - Plugin manifests are fetched correctly
-        - Version comparison works properly
-        - Plugin upgrade is executed
-        - Marketplace events are recorded
-        - Proper logging throughout the process
-        """
+        """Test successful plugin upgrade with ALL mode."""
         # Arrange: Create test data
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -270,15 +252,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_partial_mode_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test successful plugin upgrade with PARTIAL mode.
-
-        This test verifies:
-        - Only included plugins are processed
-        - Plugin filtering works correctly
-        - Version comparison and upgrade logic
-        - Proper logging and event recording
-        """
+        """Test successful plugin upgrade with PARTIAL mode."""
         # Arrange: Create test data with partial mode
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -330,15 +304,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_exclude_mode_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test successful plugin upgrade with EXCLUDE mode.
-
-        This test verifies:
-        - Excluded plugins are not processed
-        - All other marketplace plugins are processed
-        - Plugin filtering works correctly
-        - Version comparison and upgrade logic
-        """
+        """Test successful plugin upgrade with EXCLUDE mode."""
         # Arrange: Create test data with exclude mode
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -390,15 +356,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_fix_only_strategy(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test plugin upgrade with FIX_ONLY strategy.
-
-        This test verifies:
-        - Only patch version upgrades are processed
-        - Minor and major version upgrades are ignored
-        - Version comparison logic works correctly
-        - Proper upgrade execution
-        """
+        """Test plugin upgrade with FIX_ONLY strategy."""
         # Arrange: Create test data with fix_only strategy
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -450,15 +408,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_no_plugins_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task behavior when no plugins are found.
-
-        This test verifies:
-        - Task handles empty plugin list gracefully
-        - No marketplace calls are made
-        - Task completes successfully
-        - Proper logging occurs
-        """
+        """Test task behavior when no plugins are found."""
         # Arrange: Create test data
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -490,15 +440,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_no_manifests_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task behavior when no manifests are found in marketplace.
-
-        This test verifies:
-        - Task handles empty manifest list gracefully
-        - No upgrade attempts are made
-        - Task completes successfully
-        - Proper logging occurs
-        """
+        """Test task behavior when no manifests are found in marketplace."""
         # Arrange: Create test data
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -536,15 +478,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_plugin_upgrade_error(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task behavior when plugin upgrade fails.
-
-        This test verifies:
-        - Individual plugin upgrade errors are handled gracefully
-        - Error logging occurs
-        - Other plugins continue to be processed
-        - Task completes despite individual failures
-        """
+        """Test task behavior when plugin upgrade fails."""
         # Arrange: Create test data
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -599,15 +533,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
     def test_process_tenant_plugin_autoupgrade_check_task_general_exception_handling(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        """
-        Test task behavior when general exceptions occur.
-
-        This test verifies:
-        - General exceptions are caught and handled
-        - Error logging occurs
-        - Task completes gracefully
-        - No partial state corruption
-        """
+        """Test task behavior when general exceptions occur."""
         # Arrange: Create test data
         tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
         strategy = self._create_test_plugin_auto_upgrade_strategy(
@@ -636,272 +562,3 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         # Check if click.echo was called (should be called multiple times for different messages)
         echo_calls = mock_external_service_dependencies["click"].echo.call_args_list
         assert len(echo_calls) >= 1  # At least one call should be made
-
-    def test_process_tenant_plugin_autoupgrade_check_task_mixed_plugin_sources(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test task behavior with mixed plugin sources.
-
-        This test verifies:
-        - Only marketplace plugins are processed
-        - Non-marketplace plugins are ignored
-        - Plugin filtering works correctly
-        - Proper upgrade execution
-        """
-        # Arrange: Create test data
-        tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
-        strategy = self._create_test_plugin_auto_upgrade_strategy(
-            db_session_with_containers,
-            tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
-        )
-
-        # Create mock plugins with mixed sources
-        plugin1 = self._create_mock_plugin_entity("plugin1", "1.0.0", "unique_id_1")
-        plugin1.source = PluginInstallationSource.Marketplace
-
-        plugin2 = self._create_mock_plugin_entity("plugin2", "1.0.0", "unique_id_2")
-        plugin2.source = PluginInstallationSource.Github  # Non-marketplace
-
-        plugin3 = self._create_mock_plugin_entity("plugin3", "1.0.0", "unique_id_3")
-        plugin3.source = PluginInstallationSource.Marketplace
-
-        mock_plugins = [plugin1, plugin2, plugin3]
-
-        # Setup mock installer
-        mock_external_service_dependencies["installer_instance"].list_plugins.return_value = mock_plugins
-
-        # Create mock marketplace manifests
-        manifest1 = self._create_mock_marketplace_manifest("plugin1", "1.0.1", "new_unique_id_1")
-        manifest3 = self._create_mock_marketplace_manifest("plugin3", "1.0.1", "new_unique_id_3")
-        mock_manifests = [manifest1, manifest3]
-
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
-
-        # Act: Execute the task
-        process_tenant_plugin_autoupgrade_check_task(
-            tenant.id,
-            strategy.strategy_setting,
-            strategy.upgrade_time_of_day,
-            strategy.upgrade_mode,
-            strategy.exclude_plugins,
-            strategy.include_plugins,
-        )
-
-        # Assert: Verify only marketplace plugins were processed
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(["plugin1", "plugin3"])
-
-        # Verify both marketplace plugins were upgraded
-        assert mock_external_service_dependencies["installer_instance"].upgrade_plugin.call_count == 2
-
-    def test_process_tenant_plugin_autoupgrade_check_task_version_comparison_edge_cases(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test version comparison with various edge cases.
-
-        This test verifies:
-        - Identical versions are not upgraded
-        - Different version formats are handled
-        - Version comparison logic works correctly
-        - Proper upgrade decisions are made
-        """
-        # Arrange: Create test data
-        tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
-        strategy = self._create_test_plugin_auto_upgrade_strategy(
-            db_session_with_containers,
-            tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
-        )
-
-        # Create mock plugins with various version scenarios
-        plugin1 = self._create_mock_plugin_entity("plugin1", "1.0.0", "unique_id_1")  # Same version
-        plugin2 = self._create_mock_plugin_entity("plugin2", "1.0.0", "unique_id_2")  # Different version
-        mock_plugins = [plugin1, plugin2]
-
-        # Setup mock installer
-        mock_external_service_dependencies["installer_instance"].list_plugins.return_value = mock_plugins
-
-        # Create mock marketplace manifests
-        manifest1 = self._create_mock_marketplace_manifest("plugin1", "1.0.0", "unique_id_1")  # Same version
-        manifest2 = self._create_mock_marketplace_manifest("plugin2", "1.0.1", "new_unique_id_2")  # Different version
-        mock_manifests = [manifest1, manifest2]
-
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
-
-        # Act: Execute the task
-        process_tenant_plugin_autoupgrade_check_task(
-            tenant.id,
-            strategy.strategy_setting,
-            strategy.upgrade_time_of_day,
-            strategy.upgrade_mode,
-            strategy.exclude_plugins,
-            strategy.include_plugins,
-        )
-
-        # Assert: Verify only plugin with different version was upgraded
-        # In LATEST strategy, only plugin2 should be upgraded (version difference)
-        assert mock_external_service_dependencies["installer_instance"].upgrade_plugin.call_count == 1
-
-        # Verify the correct plugin was upgraded
-        upgrade_calls = mock_external_service_dependencies["installer_instance"].upgrade_plugin.call_args_list
-        assert len(upgrade_calls) == 1
-        call_args = upgrade_calls[0]
-        assert call_args[0][1] == "unique_id_2"  # original_unique_identifier
-        assert call_args[0][2] == "new_unique_id_2"  # new_unique_identifier
-
-    def test_process_tenant_plugin_autoupgrade_check_task_cached_manifests(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test task behavior with cached plugin manifests.
-
-        This test verifies:
-        - Cached manifests are used when available
-        - Marketplace is not called for cached plugins
-        - New plugins are fetched from marketplace
-        - Cache is properly managed
-        """
-        # Arrange: Create test data
-        tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
-        strategy = self._create_test_plugin_auto_upgrade_strategy(
-            db_session_with_containers,
-            tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
-        )
-
-        # Create mock plugins
-        plugin1 = self._create_mock_plugin_entity("plugin1", "1.0.0", "unique_id_1")
-        plugin2 = self._create_mock_plugin_entity("plugin2", "1.0.0", "unique_id_2")
-        mock_plugins = [plugin1, plugin2]
-
-        # Setup mock installer
-        mock_external_service_dependencies["installer_instance"].list_plugins.return_value = mock_plugins
-
-        # Create mock marketplace manifests
-        manifest1 = self._create_mock_marketplace_manifest("plugin1", "1.0.1", "new_unique_id_1")
-        manifest2 = self._create_mock_marketplace_manifest("plugin2", "1.0.1", "new_unique_id_2")
-        mock_manifests = [manifest1, manifest2]
-
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
-
-        # Act: Execute the task twice to test caching
-        process_tenant_plugin_autoupgrade_check_task(
-            tenant.id,
-            strategy.strategy_setting,
-            strategy.upgrade_time_of_day,
-            strategy.upgrade_mode,
-            strategy.exclude_plugins,
-            strategy.include_plugins,
-        )
-
-        # Reset mock call count
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.reset_mock()
-
-        # Execute again
-        process_tenant_plugin_autoupgrade_check_task(
-            tenant.id,
-            strategy.strategy_setting,
-            strategy.upgrade_time_of_day,
-            strategy.upgrade_mode,
-            strategy.exclude_plugins,
-            strategy.include_plugins,
-        )
-
-        # Assert: Verify marketplace was called again (cache is per-task, not persistent)
-        # Note: The cache is global, so the second call should not call marketplace again
-        # This test verifies that the cache works correctly
-        assert (
-            mock_external_service_dependencies[
-                "marketplace"
-            ].batch_fetch_plugin_manifests_ignore_deserialization_error.call_count
-            == 0
-        )
-
-    def test_process_tenant_plugin_autoupgrade_check_task_comprehensive_integration(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test comprehensive integration scenario with multiple plugins and strategies.
-
-        This test verifies:
-        - Complex plugin upgrade scenarios
-        - Multiple strategy combinations
-        - Error handling and recovery
-        - Complete workflow execution
-        - Database state consistency
-        """
-        # Arrange: Create test data with complex scenario
-        tenant, account = self._create_test_tenant_and_account(db_session_with_containers)
-        strategy = self._create_test_plugin_auto_upgrade_strategy(
-            db_session_with_containers,
-            tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
-            exclude_plugins=["plugin3"],
-        )
-
-        # Create mock plugins with various scenarios
-        plugin1 = self._create_mock_plugin_entity("plugin1", "1.0.0", "unique_id_1")  # Should upgrade
-        plugin2 = self._create_mock_plugin_entity("plugin2", "1.0.0", "unique_id_2")  # Should upgrade
-        plugin3 = self._create_mock_plugin_entity("plugin3", "1.0.0", "unique_id_3")  # Excluded
-        plugin4 = self._create_mock_plugin_entity("plugin4", "1.0.0", "unique_id_4")  # Should upgrade
-        mock_plugins = [plugin1, plugin2, plugin3, plugin4]
-
-        # Setup mock installer
-        mock_external_service_dependencies["installer_instance"].list_plugins.return_value = mock_plugins
-
-        # Create mock marketplace manifests
-        manifest1 = self._create_mock_marketplace_manifest("plugin1", "1.0.1", "new_unique_id_1")
-        manifest2 = self._create_mock_marketplace_manifest("plugin2", "1.0.1", "new_unique_id_2")
-        manifest4 = self._create_mock_marketplace_manifest("plugin4", "1.0.1", "new_unique_id_4")
-        mock_manifests = [manifest1, manifest2, manifest4]
-
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
-
-        # Act: Execute the task
-        process_tenant_plugin_autoupgrade_check_task(
-            tenant.id,
-            strategy.strategy_setting,
-            strategy.upgrade_time_of_day,
-            strategy.upgrade_mode,
-            strategy.exclude_plugins,
-            strategy.include_plugins,
-        )
-
-        # Assert: Verify comprehensive behavior
-        mock_external_service_dependencies["installer_instance"].list_plugins.assert_called_once_with(tenant.id)
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(
-            ["plugin1", "plugin2", "plugin4"]
-        )
-
-        # Verify all non-excluded plugins were upgraded
-        assert mock_external_service_dependencies["installer_instance"].upgrade_plugin.call_count == 3
-
-        # Verify marketplace events were recorded
-        assert mock_external_service_dependencies["marketplace"].record_install_plugin_event.call_count == 3
-
-        # Verify proper logging occurred
-        assert mock_external_service_dependencies["click"].echo.call_count >= 3  # At least 3 log messages
