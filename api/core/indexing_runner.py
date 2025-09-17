@@ -40,7 +40,6 @@ from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -556,6 +555,7 @@ class IndexingRunner:
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             from tasks.segment_keyword_create_task import segment_keyword_create_task
+
             segment_keyword_create_task.delay(
                 dataset.id, dataset_document.id, [doc.metadata["doc_id"] for doc in documents]
             )
