@@ -784,15 +784,15 @@ class TestTenantService:
 
         # Mock the database session.scalars method directly to handle complex filter_by queries
         call_count = [0]  # Use list to allow modification in nested function
-        
+
         def scalars_side_effect(select_stmt):
             mock_result = MagicMock()
-            
+
             # Check what kind of query this is by examining the filter parameters
             # We need to simulate the .first() call on the returned scalars result
             def first_side_effect():
                 call_count[0] += 1
-                
+
                 # First call is permission check (operator lookup)
                 if call_count[0] == 1:
                     return mock_operator_join
@@ -801,7 +801,7 @@ class TestTenantService:
                     return mock_target_join
                 else:
                     return None
-            
+
             mock_result.first = first_side_effect
             return mock_result
 
