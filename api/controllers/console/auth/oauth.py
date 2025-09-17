@@ -102,7 +102,7 @@ class OAuthCallback(Resource):
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
         except httpx.HTTPStatusError as e:
-            error_text = e.response.text if e.response else str(e)
+            error_text = e.response.text
             logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
 
