@@ -5,7 +5,6 @@ Tencent APM Span Builder - handles all span construction logic
 import json
 import logging
 from datetime import datetime
-from typing import Optional
 
 from opentelemetry.trace import Status, StatusCode
 
