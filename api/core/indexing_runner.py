@@ -329,20 +329,21 @@ class IndexingRunner:
 
     def run_segment_keyword(self, dataset_id: str, document_id: str, segments: list[DocumentSegment]):
         # get dataset
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError(f"no dataset found {dataset_id}")
-        dataset_document = db.session.query(Document).filter(Document.id == dataset.document_id).first()
+        dataset_document = db.session.query(Document).where(Document.id == dataset.document_id).first()
         if not dataset_document:
             raise ValueError(f"no dataset_document found {document_id}")
 
         documents = []
         for i in range(len(segments)):
             segment = segments[i]
-            metadata = {"row": i + 1,
-                        "doc_id": segment.index_node_id,
-                        "doc_hash": segment.index_node_hash,
-                        }
+            metadata = {
+                "row": i + 1,
+                "doc_id": segment.index_node_id,
+                "doc_hash": segment.index_node_hash,
+            }
             doc = Document(page_content=segment.content, metadata=metadata)
             documents.append(doc)
 

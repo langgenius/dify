@@ -23,22 +23,34 @@ def segment_keyword_create_task(dataset_id: str, document_id: str, index_node_id
     """
     start_at = time.perf_counter()
 
-    segments = (db.session.query(DocumentSegment)
-               .filter(DocumentSegment.dataset_id == dataset_id,
-                       DocumentSegment.document_id == document_id,
-                       DocumentSegment.index_node_id.in_(index_node_ids)).all())
+    segments = (
+        db.session.query(DocumentSegment)
+        .filter(
+            DocumentSegment.dataset_id == dataset_id,
+            DocumentSegment.document_id == document_id,
+            DocumentSegment.index_node_id.in_(index_node_ids),
+        )
+        .all()
+    )
     if not segments:
         logger.info(click.style("Segment is not found: {} {}".format(dataset_id, index_node_ids), fg="yellow"))
         return
 
     try:
-        logger.info(click.style("Start Index Segment {} {} {}".
-                                format(dataset_id, document_id, time.perf_counter() - start_at), fg="green"))
+        logger.info(
+            click.style(
+                "Start Index Segment {} {} {}".format(dataset_id, document_id, time.perf_counter() - start_at),
+                fg="green",
+            )
+        )
         indexing_runner = IndexingRunner()
         indexing_runner.run_segment_keyword(dataset_id, document_id, segments)
         end_at = time.perf_counter()
-        logger.info(click.style("Processed Segment: {} {} latency: {}".
-                                format(dataset_id, document_id, end_at - start_at), fg="green"))
+        logger.info(
+            click.style(
+                "Processed Segment: {} {} latency: {}".format(dataset_id, document_id, end_at - start_at), fg="green"
+            )
+        )
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
     except Exception:
