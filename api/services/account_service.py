@@ -137,10 +137,7 @@ class AccountService:
             account.set_tenant_id(current_tenant.tenant_id)
         else:
             available_ta = db.session.scalars(
-                select(TenantAccountJoin)
-                .filter_by(account_id=account.id)
-                .order_by(TenantAccountJoin.id.asc())
-                .limit(1)
+                select(TenantAccountJoin).filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).limit(1)
             ).first()
             if not available_ta:
                 return None
