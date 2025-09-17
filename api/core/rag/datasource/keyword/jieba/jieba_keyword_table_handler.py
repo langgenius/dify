@@ -1,5 +1,5 @@
 import re
-from typing import Optional, cast
+from typing import cast
 
 
 class _JiebaKeywordTableHandler:
