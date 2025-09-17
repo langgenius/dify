@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum, auto
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -34,7 +33,7 @@ class Moderation(Extensible, ABC):
 
     module: ExtensionModule = ExtensionModule.MODERATION
 
-    def __init__(self, app_id: str, tenant_id: str, config: Optional[dict] = None):
+    def __init__(self, app_id: str, tenant_id: str, config: dict | None = None):
         super().__init__(tenant_id, config)
         self.app_id = app_id
 

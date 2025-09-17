@@ -298,6 +298,7 @@ const translation = {
     clientInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
     oauthClient: 'OAuth Client',
     credentialUnavailable: 'Credentials currently unavailable. Please contact admin.',
+    credentialUnavailableInButton: 'Credential unavailable',
     customCredentialUnavailable: 'Custom credentials currently unavailable',
     unavailable: 'Unavailable',
   },

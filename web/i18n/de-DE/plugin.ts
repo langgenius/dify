@@ -249,6 +249,7 @@ const translation = {
     unavailable: 'Nicht verfügbar',
     credentialUnavailable: 'Anmeldeinformationen derzeit nicht verfügbar. Bitte kontaktieren Sie den Administrator.',
     customCredentialUnavailable: 'Benutzerdefinierte Anmeldeinformationen derzeit nicht verfügbar',
+    credentialUnavailableInButton: 'Zugangsdaten nicht verfügbar',
   },
   deprecated: 'Abgelehnt',
   autoUpdate: {
