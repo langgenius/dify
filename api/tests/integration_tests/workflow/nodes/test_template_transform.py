@@ -20,6 +20,7 @@ def test_execute_code(setup_code_executor_mock):
     config = {
         "id": "1",
         "data": {
+            "type": "template-transform",
             "title": "123",
             "variables": [
                 {

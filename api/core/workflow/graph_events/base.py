@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from core.workflow.enums import NodeType
@@ -19,9 +17,9 @@ class GraphNodeEventBase(GraphEngineEvent):
     node_id: str
     node_type: NodeType
 
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
 
     # The version of the node, or "1" if not specified.

@@ -9,7 +9,6 @@ import contextvars
 import queue
 import threading
 import time
-from typing import Optional
 from unittest.mock import MagicMock
 
 from flask import Flask, g
@@ -59,7 +58,7 @@ class TestContextPreservation:
         context = contextvars.copy_context()
 
         # Variable to store value from worker
-        worker_value: Optional[str] = None
+        worker_value: str | None = None
 
         def worker_task() -> None:
             nonlocal worker_value
@@ -120,7 +119,7 @@ class TestContextPreservation:
         test_node = MagicMock(spec=Node)
 
         # Variable to capture context inside node execution
-        captured_value: Optional[str] = None
+        captured_value: str | None = None
         context_available_in_node = False
 
         def mock_run() -> list[GraphNodeEventBase]:

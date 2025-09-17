@@ -408,11 +408,11 @@ class TraceTask:
     def __init__(
         self,
         trace_type: Any,
-        message_id: Optional[str] = None,
+        message_id: str | None = None,
         workflow_execution: Optional["WorkflowExecution"] = None,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        timer: Optional[Any] = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        timer: Any | None = None,
         **kwargs,
     ):
         self.trace_type = trace_type

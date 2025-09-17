@@ -136,7 +136,7 @@ class MessageEndStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
-    metadata: dict = Field(default_factory=dict)
+    metadata: Mapping[str, object] = Field(default_factory=dict)
     files: Sequence[Mapping[str, Any]] | None = None
 
 
@@ -173,7 +173,7 @@ class AgentThoughtStreamResponse(StreamResponse):
     thought: str | None = None
     observation: str | None = None
     tool: str | None = None
-    tool_labels: dict | None = None
+    tool_labels: Mapping[str, object] = Field(default_factory=dict)
     tool_input: str | None = None
     message_files: list[str] | None = None
 
@@ -226,7 +226,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         elapsed_time: float
         total_tokens: int
         total_steps: int
-        created_by: dict | None = None
+        created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         finished_at: int
         exceptions_count: int | None = 0
@@ -256,7 +256,7 @@ class NodeStartStreamResponse(StreamResponse):
         inputs: Optional[Mapping[str, Any]] = None
         inputs_truncated: bool = False
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, object] = Field(default_factory=dict)
         parallel_id: str | None = None
         parallel_start_node_id: str | None = None
         parent_parallel_id: str | None = None
@@ -513,7 +513,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         error: str | None = None
         elapsed_time: float
         total_tokens: int
-        execution_metadata: Mapping | None = None
+        execution_metadata: Mapping[str, object] = Field(default_factory=dict)
         finished_at: int
         steps: int
 
@@ -565,11 +565,11 @@ class LoopNodeNextStreamResponse(StreamResponse):
         title: str
         index: int
         created_at: int
-        pre_loop_output: Any | None = None
-        extras: dict = Field(default_factory=dict)
-        parallel_id: Optional[str] = None
-        parallel_start_node_id: Optional[str] = None
-        parallel_mode_run_id: Optional[str] = None
+        pre_loop_output: Any = None
+        extras: Mapping[str, object] = Field(default_factory=dict)
+        parallel_id: str | None = None
+        parallel_start_node_id: str | None = None
+        parallel_mode_run_id: str | None = None
 
     event: StreamEvent = StreamEvent.LOOP_NEXT
     workflow_run_id: str
@@ -600,7 +600,7 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         error: str | None = None
         elapsed_time: float
         total_tokens: int
-        execution_metadata: Mapping | None = None
+        execution_metadata: Mapping[str, object] = Field(default_factory=dict)
         finished_at: int
         steps: int
         parallel_id: str | None = None
@@ -710,7 +710,7 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
         conversation_id: str
         message_id: str
         answer: str
-        metadata: dict = Field(default_factory=dict)
+        metadata: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
 
     data: Data
@@ -730,7 +730,7 @@ class CompletionAppBlockingResponse(AppBlockingResponse):
         mode: str
         message_id: str
         answer: str
-        metadata: dict = Field(default_factory=dict)
+        metadata: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
 
     data: Data
@@ -778,7 +778,7 @@ class AgentLogStreamResponse(StreamResponse):
         error: str | None = None
         status: str
         data: Mapping[str, Any]
-        metadata: Mapping[str, Any] | None = None
+        metadata: Mapping[str, object] = Field(default_factory=dict)
         node_id: str
 
     event: StreamEvent = StreamEvent.AGENT_LOG

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, final
 from ..command_processing import CommandProcessor
 from ..domain import GraphExecution
 from ..event_management import EventManager
-from ..state_management import UnifiedStateManager
+from ..graph_state_manager import GraphStateManager
 from ..worker_management import WorkerPool
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class ExecutionCoordinator:
     def __init__(
         self,
         graph_execution: GraphExecution,
-        state_manager: UnifiedStateManager,
+        state_manager: GraphStateManager,
         event_handler: "EventHandler",
         event_collector: EventManager,
         command_processor: CommandProcessor,

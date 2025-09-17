@@ -14,6 +14,7 @@ from configs import dify_config
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase
 
+from ..ready_queue import ReadyQueue
 from ..worker import Worker
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ class WorkerPool:
 
     def __init__(
         self,
-        ready_queue: queue.Queue[str],
+        ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         flask_app: "Flask | None" = None,
@@ -49,7 +50,7 @@ class WorkerPool:
         Initialize the simple worker pool.
 
         Args:
-            ready_queue: Queue of nodes ready for execution
+            ready_queue: Ready queue for nodes ready for execution
             event_queue: Queue for worker events
             graph: The workflow graph
             flask_app: Optional Flask app for context preservation

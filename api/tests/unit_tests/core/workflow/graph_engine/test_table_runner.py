@@ -17,10 +17,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.utils.yaml_utils import load_yaml_file
+from core.tools.utils.yaml_utils import _load_yaml_file
 from core.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -42,7 +41,6 @@ from core.workflow.graph_events import (
 )
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
@@ -60,14 +58,14 @@ class WorkflowTestCase:
     query: str = ""
     description: str = ""
     timeout: float = 30.0
-    mock_config: Optional[MockConfig] = None
+    mock_config: MockConfig | None = None
     use_auto_mock: bool = False
-    expected_event_sequence: Optional[Sequence[type[GraphEngineEvent]]] = None
+    expected_event_sequence: Sequence[type[GraphEngineEvent]] | None = None
     tags: list[str] = field(default_factory=list)
     skip: bool = False
     skip_reason: str = ""
     retry_count: int = 0
-    custom_validator: Optional[Callable[[dict[str, Any]], bool]] = None
+    custom_validator: Callable[[dict[str, Any]], bool] | None = None
 
 
 @dataclass
@@ -76,14 +74,14 @@ class WorkflowTestResult:
 
     test_case: WorkflowTestCase
     success: bool
-    error: Optional[Exception] = None
-    actual_outputs: Optional[dict[str, Any]] = None
+    error: Exception | None = None
+    actual_outputs: dict[str, Any] | None = None
     execution_time: float = 0.0
-    event_sequence_match: Optional[bool] = None
-    event_mismatch_details: Optional[str] = None
+    event_sequence_match: bool | None = None
+    event_mismatch_details: str | None = None
     events: list[GraphEngineEvent] = field(default_factory=list)
     retry_attempts: int = 0
-    validation_details: Optional[str] = None
+    validation_details: str | None = None
 
 
 @dataclass
@@ -116,7 +114,7 @@ class TestSuiteResult:
 class WorkflowRunner:
     """Core workflow execution engine for tests."""
 
-    def __init__(self, fixtures_dir: Optional[Path] = None):
+    def __init__(self, fixtures_dir: Path | None = None):
         """Initialize the workflow runner."""
         if fixtures_dir is None:
             # Use the new central fixtures location
@@ -147,9 +145,9 @@ class WorkflowRunner:
         self,
         fixture_data: dict[str, Any],
         query: str = "",
-        inputs: Optional[dict[str, Any]] = None,
+        inputs: dict[str, Any] | None = None,
         use_mock_factory: bool = False,
-        mock_config: Optional[MockConfig] = None,
+        mock_config: MockConfig | None = None,
     ) -> tuple[Graph, GraphRuntimeState]:
         """Create a Graph instance from fixture data."""
         workflow_config = fixture_data.get("workflow", {})
@@ -240,7 +238,7 @@ class TableTestRunner:
 
     def __init__(
         self,
-        fixtures_dir: Optional[Path] = None,
+        fixtures_dir: Path | None = None,
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",
@@ -373,23 +371,11 @@ class TableTestRunner:
                 mock_config=test_case.mock_config,
             )
 
-            workflow_config = fixture_data.get("workflow", {})
-            graph_config = workflow_config.get("graph", {})
-
             # Create and run the engine with configured worker settings
             engine = GraphEngine(
-                tenant_id="test_tenant",
-                app_id="test_app",
                 workflow_id="test_workflow",
-                user_id="test_user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,  # Use DEBUGGER to avoid conversation_id requirement
-                call_depth=0,
                 graph=graph,
-                graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
-                max_execution_steps=500,
-                max_execution_time=int(test_case.timeout),
                 command_channel=InMemoryChannel(),
                 min_workers=self.graph_engine_min_workers,
                 max_workers=self.graph_engine_max_workers,
@@ -469,8 +455,8 @@ class TableTestRunner:
         self,
         expected_outputs: dict[str, Any],
         actual_outputs: dict[str, Any],
-        custom_validator: Optional[Callable[[dict[str, Any]], bool]] = None,
-    ) -> tuple[bool, Optional[str]]:
+        custom_validator: Callable[[dict[str, Any]], bool] | None = None,
+    ) -> tuple[bool, str | None]:
         """
         Validate actual outputs against expected outputs.
 
@@ -519,7 +505,7 @@ class TableTestRunner:
 
     def _validate_event_sequence(
         self, expected_sequence: list[type[GraphEngineEvent]], actual_events: list[GraphEngineEvent]
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Validate that actual events match the expected event sequence.
 
@@ -551,7 +537,7 @@ class TableTestRunner:
         self,
         test_cases: list[WorkflowTestCase],
         parallel: bool = False,
-        tags_filter: Optional[list[str]] = None,
+        tags_filter: list[str] | None = None,
         fail_fast: bool = False,
     ) -> TestSuiteResult:
         """
@@ -715,4 +701,4 @@ def _load_fixture(fixture_path: Path, fixture_name: str) -> dict[str, Any]:
     if not fixture_path.exists():
         raise FileNotFoundError(f"Fixture file not found: {fixture_path}")
 
-    return load_yaml_file(str(fixture_path), ignore_error=False)
+    return _load_yaml_file(file_path=str(fixture_path))

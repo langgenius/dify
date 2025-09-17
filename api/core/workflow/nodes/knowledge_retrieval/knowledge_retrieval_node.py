@@ -4,7 +4,7 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import Float, and_, func, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
@@ -568,7 +568,7 @@ class KnowledgeRetrievalNode(Node):
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list[Any]
+        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
     ) -> list[Any]:
         if value is None and condition not in ("empty", "not empty"):
             return filters

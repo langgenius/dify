@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
@@ -49,7 +49,7 @@ class CodeNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
         Get default config of node.
         :param filters: filter by node config parameters.
@@ -57,7 +57,7 @@ class CodeNode(Node):
         """
         code_language = CodeLanguage.PYTHON3
         if filters:
-            code_language = filters.get("code_language", CodeLanguage.PYTHON3)
+            code_language = cast(CodeLanguage, filters.get("code_language", CodeLanguage.PYTHON3))
 
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
         code_provider: type[CodeNodeProvider] = next(p for p in providers if p.is_accept_language(code_language))

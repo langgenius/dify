@@ -118,7 +118,7 @@ class ParameterExtractorNode(Node):
     _model_config: ModelConfigWithCredentialsEntity | None = None
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "model": {
                 "prompt_templates": {
