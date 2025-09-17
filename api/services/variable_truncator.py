@@ -1,7 +1,6 @@
 import dataclasses
 from collections.abc import Mapping
-from enum import StrEnum
-from typing import Any, Generic, TypeAlias, TypedDict, TypeVar, overload
+from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
 from core.file.models import File
@@ -37,30 +36,6 @@ class _PCKeys:
     PARENT_CHILD_CHUNKS = "parent_child_chunks"
     PARENT_CONTENT = "parent_content"
     CHILD_CONTENTS = "child_contents"
-
-
-class _QAStructureItem(TypedDict):
-    question: str
-    answer: str
-
-
-class _QAStructure(TypedDict):
-    qa_chunks: list[_QAStructureItem]
-
-
-class _ParentChildChunkItem(TypedDict):
-    parent_content: str
-    child_contents: list[str]
-
-
-class _ParentChildStructure(TypedDict):
-    parent_mode: str
-    parent_child_chunks: list[_ParentChildChunkItem]
-
-
-class _SpecialChunkType(StrEnum):
-    parent_child = "parent_child"
-    qa = "qa"
 
 
 _T = TypeVar("_T")
@@ -392,7 +367,7 @@ class VariableTruncator:
     def _truncate_json_primitives(self, val: dict, target_size: int) -> _PartResult[dict]: ...
 
     @overload
-    def _truncate_json_primitives(self, val: bool, target_size: int) -> _PartResult[bool]: ...
+    def _truncate_json_primitives(self, val: bool, target_size: int) -> _PartResult[bool]: ...  # type: ignore
 
     @overload
     def _truncate_json_primitives(self, val: int, target_size: int) -> _PartResult[int]: ...

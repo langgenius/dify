@@ -828,10 +828,10 @@ class RagPipelineService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node_instance = e._node
+            node_instance = e._node  # type: ignore
             run_succeeded = False
             node_run_result = None
-            error = e._error
+            error = e._error  # type: ignore
 
         workflow_node_execution = WorkflowNodeExecution(
             id=str(uuid4()),
@@ -1253,7 +1253,7 @@ class RagPipelineService:
         repository.save(workflow_node_execution)
 
         # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)
+        workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(

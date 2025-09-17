@@ -136,7 +136,6 @@ class DatasourceFileManager:
             original_url=file_url,
             name=filename,
             size=len(blob),
-            key=filepath,
         )
 
         db.session.add(tool_file)

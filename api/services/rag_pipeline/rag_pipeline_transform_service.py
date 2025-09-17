@@ -47,6 +47,8 @@ class RagPipelineTransformService:
         self._deal_dependencies(pipeline_yaml, dataset.tenant_id)
         # Extract app data
         workflow_data = pipeline_yaml.get("workflow")
+        if not workflow_data:
+            raise ValueError("Missing workflow data for rag pipeline")
         graph = workflow_data.get("graph", {})
         nodes = graph.get("nodes", [])
         new_nodes = []
@@ -252,7 +254,7 @@ class RagPipelineTransformService:
                 plugin_unique_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
                 plugin_id = plugin_unique_identifier.split(":")[0]
                 if plugin_id not in installed_plugins_ids:
-                    plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)
+                    plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)  # type: ignore
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:

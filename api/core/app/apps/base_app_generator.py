@@ -45,9 +45,9 @@ class BaseAppGenerator:
                 mapping=v,
                 tenant_id=tenant_id,
                 config=FileUploadConfig(
-                    allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_types=entity_dictionary[k].allowed_file_types,  # pyright: ignore[reportArgumentType]
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,  # pyright: ignore[reportArgumentType]
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,  # pyright: ignore[reportArgumentType]
                 ),
                 strict_type_validation=strict_type_validation,
             )
@@ -60,9 +60,9 @@ class BaseAppGenerator:
                 mappings=v,
                 tenant_id=tenant_id,
                 config=FileUploadConfig(
-                    allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_types=entity_dictionary[k].allowed_file_types,  # pyright: ignore[reportArgumentType]
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,  # pyright: ignore[reportArgumentType]
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,  # pyright: ignore[reportArgumentType]
                 ),
             )
             for k, v in user_inputs.items()

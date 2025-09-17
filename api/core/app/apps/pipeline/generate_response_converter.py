@@ -58,7 +58,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
+                response_chunk.update(cast(dict, data))
             else:
                 response_chunk.update(sub_stream_response.to_dict())
             yield response_chunk
@@ -87,9 +87,9 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
+                response_chunk.update(cast(dict, data))
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
-                response_chunk.update(sub_stream_response.to_ignore_detail_dict())
+                response_chunk.update(cast(dict, sub_stream_response.to_ignore_detail_dict()))
             else:
                 response_chunk.update(sub_stream_response.to_dict())
             yield response_chunk

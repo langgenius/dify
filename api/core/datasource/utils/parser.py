@@ -100,7 +100,7 @@ class ApiBasedToolSchemaParser:
                             interface["operation"]["requestBody"]["content"][content_type]["schema"] = root
 
                     # parse body parameters
-                    if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
+                    if "schema" in interface["operation"]["requestBody"]["content"][content_type]:  # pyright: ignore[reportIndexIssue, reportPossiblyUnboundVariable]
                         body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]
                         required = body_schema.get("required", [])
                         properties = body_schema.get("properties", {})
@@ -247,7 +247,7 @@ class ApiBasedToolSchemaParser:
 
         # convert paths
         for path, path_item in swagger["paths"].items():
-            openapi["paths"][path] = {}
+            openapi["paths"][path] = {}  # pyright: ignore[reportIndexIssue]
             for method, operation in path_item.items():
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
@@ -258,7 +258,7 @@ class ApiBasedToolSchemaParser:
                     if warning is not None:
                         warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
-                openapi["paths"][path][method] = {
+                openapi["paths"][path][method] = {  # pyright: ignore[reportIndexIssue]
                     "operationId": operation["operationId"],
                     "summary": operation.get("summary", ""),
                     "description": operation.get("description", ""),
@@ -267,11 +267,11 @@ class ApiBasedToolSchemaParser:
                 }
 
                 if "requestBody" in operation:
-                    openapi["paths"][path][method]["requestBody"] = operation["requestBody"]
+                    openapi["paths"][path][method]["requestBody"] = operation["requestBody"]  # pyright: ignore[reportIndexIssue]
 
         # convert definitions
         for name, definition in swagger["definitions"].items():
-            openapi["components"]["schemas"][name] = definition
+            openapi["components"]["schemas"][name] = definition  # pyright: ignore[reportIndexIssue, reportArgumentType]
 
         return openapi
 

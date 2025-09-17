@@ -811,7 +811,7 @@ class WorkflowService:
             return node, node_run_result, run_succeeded, error
 
         except WorkflowNodeRunFailedError as e:
-            return e._node, None, False, e._error
+            return e._node, None, False, e._error  # type: ignore
 
     def _apply_error_strategy(self, node: Node, node_run_result: NodeRunResult) -> NodeRunResult:
         """Apply error strategy when node execution fails."""

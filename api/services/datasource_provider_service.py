@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from flask_login import current_user
@@ -68,11 +69,13 @@ class DatasourceProviderService:
         tenant_id: str,
         provider: str,
         plugin_id: str,
-        raw_credentials: dict[str, Any],
+        raw_credentials: Mapping[str, Any],
         datasource_provider: DatasourceProvider,
     ) -> dict[str, Any]:
         provider_credential_secret_variables = self.extract_secret_variables(
-            tenant_id=tenant_id, provider_id=f"{plugin_id}/{provider}", credential_type=datasource_provider.auth_type
+            tenant_id=tenant_id,
+            provider_id=f"{plugin_id}/{provider}",
+            credential_type=CredentialType.of(datasource_provider.auth_type),
         )
         encrypted_credentials = raw_credentials.copy()
         for key, value in encrypted_credentials.items():

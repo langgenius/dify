@@ -62,7 +62,7 @@ class DatasourceFileMessageTransformer:
 
                 mimetype = meta.get("mime_type")
                 if not mimetype:
-                    mimetype = guess_type(filename)[0] or "application/octet-stream"
+                    mimetype = guess_type(filename)[0] or "application/octet-stream"  # pyright: ignore[reportArgumentType]
 
                 # if message is str, encode it to bytes
 
