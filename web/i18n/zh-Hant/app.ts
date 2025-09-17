@@ -315,6 +315,10 @@ const translation = {
     noMatchingCommands: '未找到匹配的命令',
     tryDifferentSearch: '嘗試其他搜尋字詞',
     slashHint: '輸入 / 以查看所有可用的指令',
+    tips: '按 ↑ ↓ 鍵進行導航',
+    startTyping: '開始輸入以進行搜尋',
+    pressEscToClose: '按 ESC 鍵關閉',
+    selectToNavigate: '選擇以進行導航',
   },
 }
 

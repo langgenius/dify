@@ -14,6 +14,13 @@ api = ExternalApi(
 
 mcp_ns = Namespace("mcp", description="MCP operations", path="/")
 
-from . import mcp  # pyright: ignore[reportUnusedImport]
+from . import mcp
 
 api.add_namespace(mcp_ns)
+
+__all__ = [
+    "api",
+    "bp",
+    "mcp",
+    "mcp_ns",
+]

@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import httpx
-from common import config_helper, Logger
+from common import Logger, config_helper
 
 
 def setup_admin_account() -> None:
@@ -24,9 +24,7 @@ def setup_admin_account() -> None:
 
     # Save credentials to config file
     if config_helper.write_config("admin_config", admin_config):
-        log.info(
-            f"Admin credentials saved to: {config_helper.get_config_path('benchmark_state')}"
-        )
+        log.info(f"Admin credentials saved to: {config_helper.get_config_path('benchmark_state')}")
 
     # API setup endpoint
     base_url = "http://localhost:5001"
@@ -56,9 +54,7 @@ def setup_admin_account() -> None:
                 log.key_value("Username", admin_config["username"])
 
             elif response.status_code == 400:
-                log.warning(
-                    "Setup may have already been completed or invalid data provided"
-                )
+                log.warning("Setup may have already been completed or invalid data provided")
                 log.debug(f"Response: {response.text}")
             else:
                 log.error(f"Setup failed with status code: {response.status_code}")

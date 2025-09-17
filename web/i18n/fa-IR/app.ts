@@ -316,6 +316,10 @@ const translation = {
     noMatchingCommands: 'هیچ دستوری منطبق یافت نشد',
     tryDifferentSearch: 'عبارت جستجوی دیگری را امتحان کنید',
     slashHint: 'برای مشاهده تمام دستورات موجود / را تایپ کنید',
+    startTyping: 'برای جستجو شروع به تایپ کنید',
+    selectToNavigate: 'انتخاب کنید تا برای حرکت',
+    pressEscToClose: 'برای بستن ESC را فشار دهید',
+    tips: 'برای حرکت به بالا و پایین کلیدهای ↑ و ↓ را فشار دهید',
   },
 }
 
