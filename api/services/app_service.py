@@ -394,7 +394,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: Optional[ApiToolProvider] = db.session.scalars(
+                        provider: ApiToolProvider | None = db.session.scalars(
                             select(ApiToolProvider).where(ApiToolProvider.id == provider_id).limit(1)
                         ).first()
                         if provider is None:

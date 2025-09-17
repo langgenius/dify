@@ -138,7 +138,7 @@ class App(Base):
         return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
 
     @property
-    def tenant(self) -> Optional[Tenant]:
+    def tenant(self) -> Tenant | None:
         tenant = db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
         return tenant
 
@@ -338,7 +338,7 @@ class AppModelConfig(Base):
     file_upload = mapped_column(sa.Text)
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
@@ -550,7 +550,7 @@ class RecommendedApp(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
@@ -574,12 +574,12 @@ class InstalledApp(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
     @property
-    def tenant(self) -> Optional[Tenant]:
+    def tenant(self) -> Tenant | None:
         tenant = db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
         return tenant
 
@@ -851,7 +851,7 @@ class Conversation(Base):
         )
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         return db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
 
     @property

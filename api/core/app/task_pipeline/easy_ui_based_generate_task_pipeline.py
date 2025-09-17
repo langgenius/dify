@@ -473,7 +473,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :return:
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            agent_thought: Optional[MessageAgentThought] = session.scalars(
+            agent_thought: MessageAgentThought | None = session.scalars(
                 select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).limit(1)
             ).first()
 

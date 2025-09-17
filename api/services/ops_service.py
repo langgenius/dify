@@ -17,7 +17,7 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = db.session.scalars(
+        trace_config_data: TraceAppConfig | None = db.session.scalars(
             select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .limit(1)
@@ -155,7 +155,7 @@ class OpsService:
             project_url = None
 
         # check if trace config already exists
-        trace_config_data: Optional[TraceAppConfig] = db.session.scalars(
+        trace_config_data: TraceAppConfig | None = db.session.scalars(
             select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .limit(1)

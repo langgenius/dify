@@ -257,8 +257,8 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def get_dataset(dataset_id) -> Optional[Dataset]:
-        dataset: Optional[Dataset] = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
+    def get_dataset(dataset_id) -> Dataset | None:
+        dataset: Dataset | None = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
         return dataset
 
     @staticmethod
@@ -878,7 +878,7 @@ class DocumentService:
             return None
 
     @staticmethod
-    def get_document_by_id(document_id: str) -> Optional[Document]:
+    def get_document_by_id(document_id: str) -> Document | None:
         document = db.session.scalars(select(Document).where(Document.id == document_id).limit(1)).first()
 
         return document
