@@ -1,13 +1,10 @@
 'use client'
 
-import { useParams } from 'next/navigation'
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
-import Textarea from 'react-textarea-autosize'
 import Avatar from '@/app/components/base/avatar'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
@@ -75,7 +72,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   onReplyEdit,
   onReplyDelete,
 }) => {
-  const params = useParams()
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
@@ -115,11 +111,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     setEditingReply({ id: '', content: '' })
   }, [])
 
-  const handleSaveEdit = useCallback(async () => {
+  const handleEditSubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
     if (!onReplyEdit || !editingReply) return
-    const trimmed = editingReply.content.trim()
+    const trimmed = content.trim()
     if (!trimmed) return
-    await onReplyEdit(editingReply.id, trimmed, [])
+    await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
     setEditingReply({ id: '', content: '' })
   }, [editingReply, onReplyEdit])
 
@@ -235,17 +231,18 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     </div>
                     {isReplyEditing ? (
                       <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
-                        <Textarea
-                          minRows={1}
-                          maxRows={4}
+                        <MentionInput
                           value={editingReply?.content ?? ''}
-                          onChange={e => setEditingReply(prev => prev ? { ...prev, content: e.target.value } : prev)}
-                          className='system-sm-regular w-full resize-none bg-transparent text-text-primary caret-primary-500 outline-none'
+                          onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
+                          onSubmit={handleEditSubmit}
+                          onCancel={handleCancelEdit}
+                          placeholder="Edit reply"
+                          disabled={loading}
+                          loading={loading}
+                          isEditing={true}
+                          className="system-sm-regular"
+                          autoFocus
                         />
-                        <div className='mt-2 flex items-center justify-end gap-2'>
-                          <Button variant='secondary' size='small' onClick={handleCancelEdit} disabled={loading}>Cancel</Button>
-                          <Button variant='primary' size='small' disabled={loading || !(editingReply?.content?.trim())} onClick={handleSaveEdit}>Save</Button>
-                        </div>
                       </div>
                     ) : (
                       <ThreadMessage

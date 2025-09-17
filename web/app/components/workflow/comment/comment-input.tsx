@@ -80,8 +80,6 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
               onSubmit={handleMentionSubmit}
               placeholder="Add a comment"
               autoFocus
-              minRows={1}
-              maxRows={4}
               className="relative"
             />
           </div>

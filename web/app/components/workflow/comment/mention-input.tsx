@@ -15,16 +15,12 @@ type MentionInputProps = {
   value: string
   onChange: (value: string) => void
   onSubmit: (content: string, mentionedUserIds: string[]) => void
-  onKeyDown?: (e: React.KeyboardEvent) => void
+  onCancel?: () => void
   placeholder?: string
   disabled?: boolean
   loading?: boolean
   className?: string
-  minRows?: number
-  maxRows?: number
-  showSubmitButton?: boolean
-  showMentionButton?: boolean
-  submitButtonIcon?: React.ReactNode
+  isEditing?: boolean
   autoFocus?: boolean
 }
 
@@ -32,13 +28,12 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   value,
   onChange,
   onSubmit,
-  onKeyDown,
+  onCancel,
   placeholder = 'Add a comment',
   disabled = false,
   loading = false,
   className,
-  showSubmitButton = true,
-  showMentionButton = true,
+  isEditing = false,
   autoFocus = false,
 }) => {
   const params = useParams()
@@ -140,14 +135,16 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
     onChange(newContent)
     setShowMentionDropdown(false)
-    setMentionedUserIds(prev => [...prev, user.id])
+
+    const newMentionedUserIds = [...mentionedUserIds, user.id]
+    setMentionedUserIds(newMentionedUserIds)
 
     setTimeout(() => {
       const newCursorPos = mentionPosition + user.name.length + 2 // @ + name + space
       textarea.setSelectionRange(newCursorPos, newCursorPos)
       textarea.focus()
     }, 0)
-  }, [value, mentionPosition, onChange])
+  }, [value, mentionPosition, onChange, mentionedUserIds])
 
   const handleSubmit = useCallback((e?: React.MouseEvent) => {
     if (e) {
@@ -194,9 +191,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
       e.preventDefault()
       handleSubmit()
     }
-
-    onKeyDown?.(e)
-  }, [showMentionDropdown, filteredMentionUsers, selectedMentionIndex, insertMention, handleSubmit, onKeyDown])
+  }, [showMentionDropdown, filteredMentionUsers, selectedMentionIndex, insertMention, handleSubmit])
 
   const resetMentionState = useCallback(() => {
     setMentionedUserIds([])
@@ -221,7 +216,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
           )}
           placeholder={placeholder}
           autoFocus={autoFocus}
-          minRows={1}
+          minRows={isEditing ? 4 : 1}
           maxRows={4}
           value={value}
           disabled={disabled || loading}
@@ -229,17 +224,14 @@ export const MentionInput: FC<MentionInputProps> = memo(({
           onKeyDown={handleKeyDown}
         />
 
-        {(showMentionButton || showSubmitButton) && (
+        {!isEditing && (
           <div className="absolute bottom-0 right-1 z-20 flex items-end gap-1">
-            {showMentionButton && (
               <div
                 className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
                 onClick={handleMentionButtonClick}
               >
                 <RiAtLine className="h-4 w-4" />
               </div>
-            )}
-            {showSubmitButton && (
               <Button
                 className='z-20 ml-2 w-8 px-0'
                 variant='primary'
@@ -248,7 +240,30 @@ export const MentionInput: FC<MentionInputProps> = memo(({
               >
                 <RiArrowUpLine className='h-4 w-4' />
               </Button>
-            )}
+          </div>
+        )}
+
+        {isEditing && (
+          <div className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between">
+            <div
+              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
+              onClick={handleMentionButtonClick}
+            >
+              <RiAtLine className="h-4 w-4" />
+            </div>
+            <div className='flex items-center gap-2'>
+              <Button variant='secondary' size='small' onClick={onCancel} disabled={loading}>
+                Cancel
+              </Button>
+              <Button
+                variant='primary'
+                size='small'
+                disabled={loading || !value.trim()}
+                onClick={() => handleSubmit()}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         )}
       </div>
