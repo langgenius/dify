@@ -253,7 +253,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         transform: 'translate(-50%, -100%) translateY(-24px)',
       }}
     >
-      <div className='relative rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
+      <div className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
         <div className='flex items-center justify-between rounded-t-2xl px-4 py-3'>
           <div className='system-2xs-semibold uppercase tracking-[0.08em] text-text-tertiary'>Comment</div>
           <div className='flex items-center gap-1'>
@@ -304,7 +304,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             </button>
           </div>
         </div>
-        <div className='relative px-4 pb-4'>
+        <div className='relative flex-1 overflow-y-auto px-4 pb-4'>
           <ThreadMessage
             authorName={comment.created_by_account?.name || 'User'}
             avatarUrl={comment.created_by_account?.avatar_url || null}
@@ -318,7 +318,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           )}
         </div>
         {loading && (
-          <div className='bg-components-panel-bg/70 absolute inset-0 flex items-center justify-center rounded-2xl text-sm text-text-tertiary'>
+          <div className='bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary'>
             Loading…
           </div>
         )}
