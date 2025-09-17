@@ -51,7 +51,7 @@ MOCK_SWITCH = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_http_mock(request, monkeypatch: pytest.MonkeyPatch):
     if MOCK_SWITCH:
-        monkeypatch.setattr(httpx, "httpx", MockedHttp.requests_request)
+        monkeypatch.setattr(httpx, "request", MockedHttp.requests_request)
 
         def unpatch():
             monkeypatch.undo()
