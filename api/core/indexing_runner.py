@@ -349,12 +349,8 @@ class IndexingRunner:
 
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
             # create keyword index
-            create_keyword_thread = threading.Thread(
-                target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
-            )
-            create_keyword_thread.start()
-            create_keyword_thread.join()
+            self._process_keyword_index(current_app._get_current_object(), dataset.id, dataset_document.id, documents)  # type: ignore
+
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
