@@ -326,6 +326,34 @@ class IndexingRunner:
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
+    def run_segment_keyword(self, dataset_id: str, document_id: str, segments: list[DocumentSegment]):
+        # get dataset
+        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError(f"no dataset found {dataset_id}")
+        dataset_document = db.session.query(Document).filter(Document.id == dataset.document_id).first()
+        if not dataset_document:
+            raise ValueError(f"no dataset_document found {document_id}")
+
+        documents = []
+        for i in range(len(segments)):
+            segment = segments[i]
+            metadata = {"row": i + 1,
+                        "doc_id": segment.index_node_id,
+                        "doc_hash": segment.index_node_hash,
+                        }
+            doc = Document(page_content=segment.content, metadata=metadata)
+            documents.append(doc)
+
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
+            # create keyword index
+            create_keyword_thread = threading.Thread(
+                target=self._process_keyword_index,
+                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
+            )
+            create_keyword_thread.start()
+            create_keyword_thread.join()
+
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
