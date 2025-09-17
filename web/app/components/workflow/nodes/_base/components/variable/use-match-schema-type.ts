@@ -4,9 +4,9 @@ import type { AnyObj } from './match-schema-type'
 import matchTheSchemaType from './match-schema-type'
 
 export const getMatchedSchemaType = (obj: AnyObj, schemaTypeDefinitions?: SchemaTypeDefinition[]): string => {
-    if(!schemaTypeDefinitions) return ''
-    const matched = schemaTypeDefinitions.find(def => matchTheSchemaType(obj, def.schema))
-    return matched ? matched.name : ''
+  if(!schemaTypeDefinitions) return ''
+  const matched = schemaTypeDefinitions.find(def => matchTheSchemaType(obj, def.schema))
+  return matched ? matched.name : ''
 }
 
 const useMatchSchemaType = () => {

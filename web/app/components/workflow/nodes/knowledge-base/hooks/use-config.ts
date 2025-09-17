@@ -42,7 +42,7 @@ export const useConfig = (id: string) => {
       retrieval_model,
       chunk_structure,
       index_chunk_variable_selector,
-    } = nodeData?.data
+    } = nodeData?.data || {}
     const { search_method } = retrieval_model || {}
     handleNodeDataUpdate({
       chunk_structure: chunkStructure,
