@@ -22,7 +22,7 @@ jobs:
           # Fix lint errors
           uv run ruff check --fix .
           # Format code
-          uv run ruff format .
+          uv run ruff format ..
 
       - name: ast-grep
         run: |
