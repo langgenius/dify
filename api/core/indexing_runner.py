@@ -40,6 +40,7 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
+from tasks import segment_keyword_create_task
 
 logger = logging.getLogger(__name__)
 
@@ -560,11 +561,8 @@ class IndexingRunner:
         create_keyword_thread = None
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
-            create_keyword_thread = threading.Thread(
-                target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
-            )
-            create_keyword_thread.start()
+            segment_keyword_create_task.delay(dataset.id, dataset_document.id,
+                                              [doc.metadata["doc_id"] for doc in documents])
 
         max_workers = 10
         if dataset.indexing_technique == "high_quality":
@@ -596,12 +594,7 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-        if (
-            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"
-            and create_keyword_thread is not None
-        ):
-            create_keyword_thread.join()
+
         indexing_end_at = time.perf_counter()
 
         # update document status to completed
