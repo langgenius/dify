@@ -1653,7 +1653,7 @@ class DocumentService:
                         raise ValueError("No website info list found.")
                     urls = website_info.urls
                     for url in urls:
-                        data_source_info = {
+                        data_source_info: dict[str, str | bool] = {
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
@@ -2127,7 +2127,7 @@ class DocumentService:
                 if website_info:
                     urls = website_info.urls
                     for url in urls:
-                        data_source_info = {
+                        data_source_info: dict[str, str | bool] = {
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,

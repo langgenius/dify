@@ -109,7 +109,7 @@ class DefaultValue(BaseModel):
             if self.type == DefaultValueType.ARRAY_FILES:
                 # Handle files type
                 return self
-            raise DefaultValueTypeError(f"Unsupported type: {self.type_}")
+            raise DefaultValueTypeError(f"Unsupported type: {self.type}")
 
         # Handle string input cases
         if isinstance(self.value, str) and self.type != DefaultValueType.STRING:
