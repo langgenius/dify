@@ -121,12 +121,6 @@ const nextConfig = {
                 'public'
               );
 
-              const ensureDir = (dirPath) => {
-                if (!fs.existsSync(dirPath)) {
-                  fs.mkdirSync(dirPath, { recursive: true });
-                }
-              };
-
               // Synchronously copy directory (natively supported in Node.js 16.7+)
               const copyDirSync = (src, dest) => {
                 if (!fs.existsSync(src)) {
@@ -134,7 +128,7 @@ const nextConfig = {
                   return;
                 }
                 try {
-                  ensureDir(path.dirname(dest));
+                  fs.mkdirSync(path.dirname(dest), { recursive: true });
                   fs.cpSync(src, dest, { recursive: true });
                 } catch (err) {
                   console.error(`❌ Copy failed: ${src} → ${dest}`, err.message);
