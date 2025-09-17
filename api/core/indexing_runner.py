@@ -39,7 +39,7 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
-from tasks import segment_keyword_create_task
+from tasks.segment_keyword_create_task import segment_keyword_create_task
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +331,7 @@ class IndexingRunner:
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError(f"no dataset found {dataset_id}")
-        dataset_document = db.session.query(Document).where(Document.id == document_id).first()
+        dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
         if not dataset_document:
             raise ValueError(f"no dataset_document found {document_id}")
 
