@@ -100,7 +100,7 @@ class DatasourceFileMessageTransformer:
                         )
             elif message.type == DatasourceMessage.MessageType.FILE:
                 meta = message.meta or {}
-                file: Optional[File] = meta.get("file")
+                file: File | None = meta.get("file")
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
                         assert file.related_id is not None
