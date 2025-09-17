@@ -206,6 +206,17 @@ export const MentionInput: FC<MentionInputProps> = memo(({
       resetMentionState()
   }, [value, resetMentionState])
 
+  useEffect(() => {
+    if (autoFocus && textareaRef.current) {
+      const textarea = textareaRef.current
+      setTimeout(() => {
+        textarea.focus()
+        const length = textarea.value.length
+        textarea.setSelectionRange(length, length)
+      }, 0)
+    }
+  }, [autoFocus])
+
   return (
     <>
       <div className={cn('relative flex items-center', className)}>
