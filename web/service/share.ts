@@ -2,22 +2,17 @@ import type {
   IOnCompleted,
   IOnData,
   IOnError,
-  IOnFile,
   IOnIterationFinished,
   IOnIterationNext,
   IOnIterationStarted,
   IOnLoopFinished,
   IOnLoopNext,
   IOnLoopStarted,
-  IOnMessageEnd,
   IOnMessageReplace,
   IOnNodeFinished,
   IOnNodeStarted,
-  IOnTTSChunk,
-  IOnTTSEnd,
   IOnTextChunk,
   IOnTextReplace,
-  IOnThought,
   IOnWorkflowFinished,
   IOnWorkflowStarted,
 } from './base'
@@ -68,26 +63,6 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', appSourceType: AppS
 export function getUrl(url: string, appSourceType: AppSourceType, appId: string) {
   const hasPrefix = appSourceType !== AppSourceType.webApp
   return hasPrefix ? `${apiPrefix[appSourceType]}/${appId}/${url.startsWith('/') ? url.slice(1) : url}` : url
-}
-
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onFile: IOnFile
-  onThought: IOnThought
-  onError: IOnError
-  onMessageEnd?: IOnMessageEnd
-  onMessageReplace?: IOnMessageReplace
-  getAbortController?: (abortController: AbortController) => void
-  onTTSChunk?: IOnTTSChunk
-  onTTSEnd?: IOnTTSEnd
-}, appSourceType: AppSourceType, installedAppId = '') => {
-  return ssePost(getUrl('chat-messages', appSourceType, installedAppId), {
-    body: {
-      ...body,
-      response_mode: 'streaming',
-    },
-  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !getIsPublicAPI(appSourceType), onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string, appSourceType: AppSourceType, installedAppId = '') => {
@@ -294,10 +269,6 @@ export const fetchSuggestedQuestions = (messageId: string, appSourceType: AppSou
 
 export const audioToText = (url: string, appSourceType: AppSourceType, body: FormData) => {
   return (getAction('post', appSourceType))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
-}
-
-export const textToAudio = (url: string, appSourceType: AppSourceType, body: FormData) => {
-  return (getAction('post', appSourceType))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
 }
 
 export const textToAudioStream = (url: string, appSourceType: AppSourceType, header: { content_type: string }, body: { streaming: boolean; voice?: string; message_id?: string; text?: string | null | undefined }) => {

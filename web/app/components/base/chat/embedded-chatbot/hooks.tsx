@@ -392,14 +392,14 @@ export const useEmbeddedChatbot = () => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.success') })
-  }, [isInstalledApp, appId, t, notify])
+  }, [appSourceType, appId, t, notify])
 
   return {
     appInfoError,
     appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && isCheckingPermission),
-    userCanAccess: systemFeatures.webapp_auth.enabled ? userCanAccessResult?.result : true,
+    userCanAccess: systemFeatures.webapp_auth.enabled ? (userCanAccessResult as { result: boolean })?.result : true,
     isInstalledApp,
     allowResetChat,
     appId,
