@@ -127,7 +127,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],  # type: ignore[valid-type]
+        type: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -179,7 +179,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],  # type: ignore[valid-type]
+        type: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
