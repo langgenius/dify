@@ -400,7 +400,7 @@ class TriggerProviderService:
 
             # Update client params if provided
             if client_params is not None:
-                encrypter, _ = create_provider_encrypter(
+                encrypter, cache = create_provider_encrypter(
                     tenant_id=tenant_id,
                     config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                     cache=NoOpProviderCredentialCache(),
@@ -413,6 +413,7 @@ class TriggerProviderService:
                     for key, value in client_params.items()
                 }
                 custom_client.encrypted_oauth_params = json.dumps(encrypter.encrypt(new_params))
+                cache.delete()
 
             # Update enabled status if provided
             if enabled is not None:
