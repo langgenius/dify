@@ -413,7 +413,7 @@ def main():
             port=int(namespace.port),  # pyright: ignore[reportAny]
             no_container=bool(namespace.no_container),  # pyright: ignore[reportAny]
             save_results=bool(namespace.save_results),  # pyright: ignore[reportAny]
-            test_file=namespace.test_file if namespace.test_file else None,  # pyright: ignore[reportAny]
+            test_file=namespace.test_file or None,  # pyright: ignore[reportAny]
             list_tests=bool(namespace.list_tests),  # pyright: ignore[reportAny]
             dev_mode=bool(namespace.dev_mode),  # pyright: ignore[reportAny]
         )
