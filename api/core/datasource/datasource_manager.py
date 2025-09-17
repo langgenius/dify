@@ -46,7 +46,7 @@ class DatasourceManager:
             provider_entity = manager.fetch_datasource_provider(tenant_id, provider_id)
             if not provider_entity:
                 raise DatasourceProviderNotFoundError(f"plugin provider {provider_id} not found")
-            controller = None
+            controller: DatasourcePluginProviderController | None = None
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     controller = OnlineDocumentDatasourcePluginProviderController(
@@ -79,8 +79,12 @@ class DatasourceManager:
                 case _:
                     raise ValueError(f"Unsupported datasource type: {datasource_type}")
 
-            datasource_plugin_providers[provider_id] = controller
+            if controller:
+                datasource_plugin_providers[provider_id] = controller
 
+        if controller is None:
+            raise DatasourceProviderNotFoundError(f"Datasource provider {provider_id} not found.")
+        
         return controller
 
     @classmethod

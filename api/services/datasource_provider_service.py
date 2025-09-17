@@ -77,7 +77,7 @@ class DatasourceProviderService:
             provider_id=f"{plugin_id}/{provider}",
             credential_type=CredentialType.of(datasource_provider.auth_type),
         )
-        encrypted_credentials = raw_credentials.copy()
+        encrypted_credentials = dict(raw_credentials)
         for key, value in encrypted_credentials.items():
             if key in provider_credential_secret_variables:
                 encrypted_credentials[key] = encrypter.encrypt_token(tenant_id, value)

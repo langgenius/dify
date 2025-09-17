@@ -378,12 +378,12 @@ class RagPipelineService:
         Get default block configs
         """
         # return default block config
-        default_block_configs = []
+        default_block_configs: list[dict[str, Any]] = []
         for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
             node_class = node_class_mapping[LATEST_VERSION]
             default_config = node_class.get_default_config()
             if default_config:
-                default_block_configs.append(default_config)
+                default_block_configs.append(dict(default_config))
 
         return default_block_configs
 
@@ -629,6 +629,7 @@ class RagPipelineService:
                     try:
                         for website_crawl_message in website_crawl_result:
                             end_time = time.time()
+                            crawl_event: DatasourceCompletedEvent | DatasourceProcessingEvent
                             if website_crawl_message.result.status == "completed":
                                 crawl_event = DatasourceCompletedEvent(
                                     data=website_crawl_message.result.web_info_list or [],

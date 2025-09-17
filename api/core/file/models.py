@@ -119,6 +119,7 @@ class File(BaseModel):
             assert self.related_id is not None
             assert self.extension is not None
             return sign_tool_file(tool_file_id=self.related_id, extension=self.extension)
+        return None
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return {
