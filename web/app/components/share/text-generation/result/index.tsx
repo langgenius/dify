@@ -72,6 +72,7 @@ const Result: FC<IResultProps> = ({
   siteInfo,
   onRunStart,
 }) => {
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   useEffect(() => {
     if (controlStopResponding)
@@ -79,14 +80,14 @@ const Result: FC<IResultProps> = ({
   }, [controlStopResponding])
 
   const [completionRes, doSetCompletionRes] = useState<any>('')
-  const completionResRef = useRef<any>()
+  const completionResRef = useRef<any>(null)
   const setCompletionRes = (res: any) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess>(null)
   const setWorkflowProcessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
@@ -102,7 +103,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
@@ -358,7 +359,7 @@ const Result: FC<IResultProps> = ({
             }))
           },
         },
-        isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp,
+        appSourceType,
         installedAppInfo?.id,
       )
     }
@@ -392,7 +393,7 @@ const Result: FC<IResultProps> = ({
           onCompleted(getCompletionRes(), taskId, false)
           isEnd = true
         },
-      }, isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp, installedAppInfo?.id)
+      }, appSourceType, installedAppInfo?.id)
     }
   }
 
