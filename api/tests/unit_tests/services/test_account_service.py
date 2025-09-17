@@ -391,7 +391,7 @@ class TestAccountService:
 
         # Verify password validation was called
         mock_password_dependencies["compare_password"].assert_called_once_with(
-            "old_password", "hashed_password", "salt"
+            "old_password", "aGFzaGVkX3Bhc3N3b3Jk", "c2FsdA=="
         )
         mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
 
@@ -415,7 +415,7 @@ class TestAccountService:
 
         # Verify password comparison was called
         mock_password_dependencies["compare_password"].assert_called_once_with(
-            "wrong_password", "hashed_password", "salt"
+            "wrong_password", "aGFzaGVkX3Bhc3N3b3Jk", "c2FsdA=="
         )
 
     def test_update_account_password_invalid_new_password(self, mock_password_dependencies):
@@ -609,24 +609,26 @@ class TestTenantService:
         with patch("services.account_service.TenantService.has_roles") as mock_has_roles:
             mock_has_roles.return_value = False
 
-            # Mock Tenant and TenantAccountJoin classes
-            with (
-                patch("services.account_service.Tenant") as mock_tenant_class,
-                patch("services.account_service.TenantAccountJoin") as mock_join_class,
-            ):
+            # Mock Tenant class but not TenantAccountJoin (since SQLAlchemy needs the real class)
+            with patch("services.account_service.Tenant") as mock_tenant_class:
                 mock_tenant_instance = MagicMock()
                 mock_tenant_instance.id = "tenant-456"
                 mock_tenant_instance.name = "Test User's Workspace"
                 mock_tenant_class.return_value = mock_tenant_instance
 
-                mock_join_instance = MagicMock()
-                mock_join_instance.tenant_id = "tenant-456"
-                mock_join_instance.account_id = "user-123"
-                mock_join_instance.role = "owner"
-                mock_join_class.return_value = mock_join_instance
+                # Mock TenantService.create_tenant and create_tenant_member methods
+                with (
+                    patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                ):
+                    mock_create_tenant.return_value = mock_tenant_instance
 
-                # Execute test
-                TenantService.create_owner_tenant_if_not_exist(mock_account)
+                    # Execute test
+                    TenantService.create_owner_tenant_if_not_exist(mock_account)
+
+                    # Verify the methods were called
+                    mock_create_tenant.assert_called_once()
+                    mock_create_member.assert_called_once_with(mock_tenant_instance, mock_account, role="owner")
 
         # Verify tenant was created with correct parameters
         mock_db_dependencies["db"].session.add.assert_called()
