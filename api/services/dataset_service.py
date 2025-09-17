@@ -2074,7 +2074,7 @@ class DocumentService:
         # update document data source
         if document_data.data_source:
             file_name = ""
-            data_source_info = {}
+            data_source_info: dict[str, str | bool] = {}
             if document_data.data_source.info_list.data_source_type == "upload_file":
                 if not document_data.data_source.info_list.file_info_list:
                     raise ValueError("No file info list found.")
