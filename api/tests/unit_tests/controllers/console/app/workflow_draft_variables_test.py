@@ -178,7 +178,7 @@ class TestWorkflowDraftVariableFields:
         )
 
         node_var.id = str(uuid.uuid4())
-        node_var.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        node_var.last_edited_at = naive_utc_now()
         variable_file = WorkflowDraftVariableFile(
             id=str(uuidv7()),
             upload_file_id=str(uuid.uuid4()),

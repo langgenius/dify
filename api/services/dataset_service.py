@@ -397,14 +397,11 @@ class DatasetService:
         if not dataset:
             raise ValueError("Dataset not found")
             #  check if dataset name is exists
-        if (
-            db.session.query(Dataset)
-            .filter(
-                Dataset.id != dataset_id,
-                Dataset.name == data.get("name", dataset.name),
-                Dataset.tenant_id == dataset.tenant_id,
-            )
-            .first()
+
+        if DatasetService._has_dataset_same_name(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset_id,
+            name=data.get("name", dataset.name),
         ):
             raise ValueError("Dataset name already exists")
 
@@ -416,6 +413,19 @@ class DatasetService:
             return DatasetService._update_external_dataset(dataset, data, user)
         else:
             return DatasetService._update_internal_dataset(dataset, data, user)
+
+    @staticmethod
+    def _has_dataset_same_name(tenant_id: str, dataset_id: str, name: str):
+        dataset = (
+            db.session.query(Dataset)
+            .filter(
+                Dataset.id != dataset_id,
+                Dataset.name == name,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
+        return dataset is not None
 
     @staticmethod
     def _update_external_dataset(dataset, data, user):
