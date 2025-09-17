@@ -2,7 +2,6 @@ import concurrent.futures
 import json
 import logging
 import re
-import threading
 import time
 import uuid
 from typing import Any
@@ -347,10 +346,9 @@ class IndexingRunner:
             doc = Document(page_content=segment.content, metadata=metadata)
             documents.append(doc)
 
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             self._process_keyword_index(current_app._get_current_object(), dataset.id, dataset_document.id, documents)  # type: ignore
-
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
