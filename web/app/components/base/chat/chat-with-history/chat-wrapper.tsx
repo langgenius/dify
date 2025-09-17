@@ -86,7 +86,7 @@ const ChatWrapper = () => {
       inputsForm: inputsForms,
     },
     appPrevChatTree,
-    taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
+    taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
   )
