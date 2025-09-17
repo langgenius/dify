@@ -1,21 +1,16 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-
 import type { FC } from 'react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
-import { RiArrowDownSLine, RiArrowUpLine, RiArrowUpSLine, RiAtLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine } from '@remixicon/react'
-import Textarea from 'react-textarea-autosize'
+import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine } from '@remixicon/react'
 import Avatar from '@/app/components/base/avatar'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
-import { fetchMentionableUsers } from '@/service/workflow-comment'
+import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
 import { useAppContext } from '@/context/app-context'
+import { MentionInput } from './mention-input'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -83,170 +78,26 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   canGoNext,
   onReply,
 }) => {
-  const params = useParams()
-  const appId = params?.appId as string | undefined
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
   const [replyContent, setReplyContent] = useState('')
-  const [mentionUsers, setMentionUsers] = useState<UserProfile[]>([])
-  const [mentionLoading, setMentionLoading] = useState(false)
-  const [mentionLoaded, setMentionLoaded] = useState(false)
-  const [showMentionDropdown, setShowMentionDropdown] = useState(false)
-  const [mentionQuery, setMentionQuery] = useState('')
-  const [mentionPosition, setMentionPosition] = useState(0)
-  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
-  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  const loadMentionUsers = useCallback(async () => {
-    if (!onReply || !appId) {
-      setMentionUsers([])
-      setMentionLoaded(false)
-      return
-    }
-    setMentionLoading(true)
-    try {
-      const users = await fetchMentionableUsers(appId)
-      setMentionUsers(users)
-      setMentionLoaded(true)
-    }
-    catch (error) {
-      console.error('Failed to load mention users', error)
-    }
-    finally {
-      setMentionLoading(false)
-    }
-  }, [appId, onReply])
-
-  useEffect(() => {
-    loadMentionUsers()
-  }, [loadMentionUsers])
 
   useEffect(() => {
     setReplyContent('')
-    setMentionedUserIds([])
-    setShowMentionDropdown(false)
   }, [comment.id])
 
-  const handleReplySubmit = useCallback(async () => {
-    const trimmed = replyContent.trim()
-    if (!onReply || !trimmed || loading)
-      return
+  const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
+    if (!onReply || loading) return
+
     try {
-      await onReply(trimmed, mentionedUserIds)
+      await onReply(content, mentionedUserIds)
       setReplyContent('')
-      setMentionedUserIds([])
-      setShowMentionDropdown(false)
     }
-    catch (error) {
+ catch (error) {
       console.error('Failed to send reply', error)
     }
-  }, [replyContent, onReply, loading, mentionedUserIds])
-
-  const filteredMentionUsers = useMemo(() => {
-    if (!mentionQuery) return mentionUsers
-    return mentionUsers.filter(user =>
-      user.name.toLowerCase().includes(mentionQuery.toLowerCase())
-      || user.email?.toLowerCase().includes(mentionQuery.toLowerCase()),
-    )
-  }, [mentionUsers, mentionQuery])
-
-  const dropdownPosition = useMemo(() => {
-    if (!showMentionDropdown || !textareaRef.current)
-      return { x: 0, y: 0 }
-    const rect = textareaRef.current.getBoundingClientRect()
-    return { x: rect.left, y: rect.bottom + 4 }
-  }, [showMentionDropdown])
-
-  const handleContentChange = useCallback((value: string) => {
-    setReplyContent(value)
-    setTimeout(() => {
-      const cursorPosition = textareaRef.current?.selectionStart || 0
-      const textBeforeCursor = value.slice(0, cursorPosition)
-      const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
-      if (mentionMatch) {
-        setMentionQuery(mentionMatch[1])
-        setMentionPosition(cursorPosition - mentionMatch[0].length)
-        setShowMentionDropdown(true)
-        setSelectedMentionIndex(0)
-      }
-      else {
-        setShowMentionDropdown(false)
-      }
-    }, 0)
-  }, [])
-
-  const handleMentionButtonClick = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!onReply || loading) return
-    if (!mentionLoaded && !mentionLoading)
-      await loadMentionUsers()
-    if (!textareaRef.current) return
-    const cursorPosition = textareaRef.current.selectionStart || 0
-    const newContent = `${replyContent.slice(0, cursorPosition)}@${replyContent.slice(cursorPosition)}`
-    setReplyContent(newContent)
-    setTimeout(() => {
-      const textarea = textareaRef.current
-      if (!textarea) return
-      const newCursorPos = cursorPosition + 1
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-      textarea.focus()
-      setMentionQuery('')
-      setMentionPosition(cursorPosition)
-      setShowMentionDropdown(true)
-      setSelectedMentionIndex(0)
-    }, 0)
-  }, [loadMentionUsers, mentionLoaded, mentionLoading, replyContent])
-
-  const insertMention = useCallback((user: UserProfile) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-    const beforeMention = replyContent.slice(0, mentionPosition)
-    const afterMention = replyContent.slice(textarea.selectionStart || 0)
-    const newContent = `${beforeMention}@${user.name} ${afterMention}`
-    setReplyContent(newContent)
-    setShowMentionDropdown(false)
-    setMentionedUserIds(prev => prev.includes(user.id) ? prev : [...prev, user.id])
-    setTimeout(() => {
-      const newCursorPos = mentionPosition + user.name.length + 2
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-      textarea.focus()
-    }, 0)
-  }, [mentionPosition, replyContent])
-
-  const handleReplyKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (showMentionDropdown) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setSelectedMentionIndex(prev => prev < filteredMentionUsers.length - 1 ? prev + 1 : 0)
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSelectedMentionIndex(prev => prev > 0 ? prev - 1 : filteredMentionUsers.length - 1)
-        return
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        const targetUser = filteredMentionUsers[selectedMentionIndex]
-        if (targetUser)
-          insertMention(targetUser)
-        return
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setShowMentionDropdown(false)
-        return
-      }
-    }
-    if (!onReply) return
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleReplySubmit()
-    }
-  }, [filteredMentionUsers, handleReplySubmit, insertMention, selectedMentionIndex, showMentionDropdown])
+  }, [onReply, loading])
 
   const screenPosition = useMemo(() => {
     return flowToScreenPosition({
@@ -343,70 +194,20 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 className='h-8 w-8'
               />
               <div className='flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm'>
-                <div className='flex items-center gap-2'>
-                  <Textarea
-                    ref={textareaRef}
-                    minRows={1}
-                    maxRows={1}
-                    value={replyContent}
-                    placeholder='Add a reply'
-                    onChange={e => handleContentChange(e.target.value)}
-                    onKeyDown={handleReplyKeyDown}
-                    className='system-sm-regular h-8 w-full resize-none bg-transparent pl-2 leading-8 text-text-primary caret-primary-500 outline-none'
-                  />
-                  <button
-                    type='button'
-                    disabled={loading || mentionLoading}
-                    className={cn('z-20 flex h-8 w-8 items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover')}
-                    onClick={handleMentionButtonClick}
-                    aria-label='Mention user'
-                  >
-                    <RiAtLine className='h-4 w-4' />
-                  </button>
-                  <Button
-                    variant='primary'
-                    disabled={loading || !onReply || !replyContent.trim()}
-                    onClick={handleReplySubmit}
-                    className='z-20 h-8 w-8'
-                  >
-                    <RiArrowUpLine className='h-4 w-4' />
-                  </Button>
-                </div>
+                <MentionInput
+                  value={replyContent}
+                  onChange={setReplyContent}
+                  onSubmit={handleReplySubmit}
+                  placeholder='Reply'
+                  disabled={loading}
+                  loading={loading}
+                  className='px-2'
+                />
               </div>
             </div>
           </div>
         )}
       </div>
-      {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
-        <div
-          className='fixed z-[9999] max-h-40 w-56 overflow-y-auto rounded-lg border border-components-panel-border bg-white shadow-lg'
-          style={{ left: dropdownPosition.x, top: dropdownPosition.y }}
-          data-mention-dropdown
-        >
-          {filteredMentionUsers.map((user, index) => (
-            <div
-              key={user.id}
-              className={cn(
-                'flex cursor-pointer items-center gap-2 p-2 hover:bg-state-base-hover',
-                index === selectedMentionIndex && 'bg-state-base-hover',
-              )}
-              onClick={() => insertMention(user)}
-            >
-              <Avatar
-                avatar={user.avatar_url || null}
-                name={user.name}
-                size={24}
-                className='shrink-0'
-              />
-              <div className='min-w-0 flex-1'>
-                <div className='truncate text-sm font-medium text-text-primary'>{user.name}</div>
-                <div className='truncate text-xs text-text-tertiary'>{user.email}</div>
-              </div>
-            </div>
-          ))}
-        </div>,
-        document.body,
-      )}
     </div>
   )
 })
