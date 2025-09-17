@@ -744,7 +744,7 @@ class PipelineGenerator(BaseAppGenerator):
         Format datasource info list.
         """
         if datasource_type == "online_drive":
-            all_files = []
+            all_files: list[Mapping[str, Any]] = []
             datasource_node_data = None
             datasource_nodes = workflow.graph_dict.get("nodes", [])
             for datasource_node in datasource_nodes:
