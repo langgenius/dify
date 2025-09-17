@@ -19,15 +19,15 @@ class LindormConfig(BaseSettings):
         description="Lindorm password",
         default=None,
     )
-    DEFAULT_INDEX_TYPE: str | None = Field(
+    LINDORM_INDEX_TYPE: str | None = Field(
         description="Lindorm Vector Index Type, hnsw or flat is available in dify",
         default="hnsw",
     )
-    DEFAULT_DISTANCE_TYPE: str | None = Field(
+    LINDORM_DISTANCE_TYPE: str | None = Field(
         description="Vector Distance Type, support l2, cosinesimil, innerproduct", default="l2"
     )
-    USING_UGC_INDEX: bool | None = Field(
-        description="Using UGC index will store the same type of Index in a single index but can retrieve separately.",
-        default=False,
+    LINDORM_USING_UGC: bool | None = Field(
+        description="Using UGC index will store indexes with the same IndexType/Dimension in a single big index.",
+        default=True,
     )
     LINDORM_QUERY_TIMEOUT: float | None = Field(description="The lindorm search request timeout (s)", default=2.0)

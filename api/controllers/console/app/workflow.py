@@ -514,7 +514,7 @@ class DraftWorkflowRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
     @api.doc("stop_workflow_task")
     @api.doc(description="Stop running workflow task")
@@ -688,7 +688,7 @@ class PublishedWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 class DefaultBlockConfigsApi(Resource):
     @api.doc("get_default_block_configs")
     @api.doc(description="Get default block configurations for workflow")
@@ -714,7 +714,7 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs/<string:block_type>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
     @api.doc(description="Get default block configuration by type")
@@ -797,7 +797,7 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/config")
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/config")
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
 
@@ -815,7 +815,7 @@ class WorkflowConfigApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/published")
+@console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
@@ -871,7 +871,7 @@ class PublishedAllWorkflowApi(Resource):
             }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
 class WorkflowByIdApi(Resource):
     @api.doc("update_workflow_by_id")
     @api.doc(description="Update workflow by ID")
