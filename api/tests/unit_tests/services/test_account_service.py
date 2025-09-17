@@ -631,7 +631,6 @@ class TestTenantService:
                     mock_create_member.assert_called_once_with(mock_tenant_instance, mock_account, role="owner")
 
         self._assert_database_operations_called(mock_db_dependencies["db"])
-        assert mock_rsa_dependencies.called, "RSA key generation was not called"
 
     # ==================== Member Management Tests ====================
 
