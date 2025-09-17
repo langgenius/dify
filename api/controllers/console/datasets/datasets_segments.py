@@ -281,11 +281,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -327,11 +327,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -369,7 +369,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         args = parser.parse_args()
         upload_file_id = args["upload_file_id"]
 
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+        upload_file = db.session.scalars(select(UploadFile).where(UploadFile.id == upload_file_id).limit(1)).first()
         if not upload_file:
             raise NotFound("UploadFile not found.")
 
@@ -423,11 +423,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         if not current_user.is_dataset_editor:
@@ -480,11 +480,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         parser = reqparse.RequestParser()
@@ -527,11 +527,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -573,25 +573,25 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = (
-            db.session.query(ChildChunk)
+        child_chunk = db.session.scalars(
+            select(ChildChunk)
             .where(
                 ChildChunk.id == str(child_chunk_id),
                 ChildChunk.tenant_id == current_user.current_tenant_id,
                 ChildChunk.segment_id == segment.id,
                 ChildChunk.document_id == document_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -627,25 +627,25 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = (
-            db.session.query(ChildChunk)
+        child_chunk = db.session.scalars(
+            select(ChildChunk)
             .where(
                 ChildChunk.id == str(child_chunk_id),
                 ChildChunk.tenant_id == current_user.current_tenant_id,
                 ChildChunk.segment_id == segment.id,
                 ChildChunk.document_id == document_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor

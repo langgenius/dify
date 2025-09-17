@@ -1,5 +1,6 @@
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.variables.segments import StringSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -514,10 +515,10 @@ class TestWorkflowDraftVariableService:
         )
         from extensions.ext_database import db
 
-        assert db.session.query(WorkflowDraftVariable).filter_by(id=variable.id).first() is not None
+        assert db.session.scalars(select(WorkflowDraftVariable).filter_by(id=variable.id).limit(1)).first() is not None
         service = WorkflowDraftVariableService(db_session_with_containers)
         service.delete_variable(variable)
-        assert db.session.query(WorkflowDraftVariable).filter_by(id=variable.id).first() is None
+        assert db.session.scalars(select(WorkflowDraftVariable).filter_by(id=variable.id).limit(1)).first() is None
 
     def test_delete_workflow_variables_success(self, db_session_with_containers, mock_external_service_dependencies):
         """

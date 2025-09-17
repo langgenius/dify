@@ -196,20 +196,20 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
-                )
+                app_annotation_setting = db.session.scalars(
+                    select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).limit(1)
+                ).first()
 
                 if not app_annotation_setting:
                     skipped_count = skipped_count + 1
                     click.echo(f"App annotation setting disabled: {app.id}")
                     continue
                 # get dataset_collection_binding info
-                dataset_collection_binding = (
-                    db.session.query(DatasetCollectionBinding)
+                dataset_collection_binding = db.session.scalars(
+                    select(DatasetCollectionBinding)
                     .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
-                    .first()
-                )
+                    .limit(1)
+                ).first()
                 if not dataset_collection_binding:
                     click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
@@ -467,7 +467,7 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    app = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
                     if app is not None:
                         apps.append(app)
 
@@ -589,11 +589,12 @@ def old_metadata_migration():
                         if field.value == key:
                             break
                     else:
-                        dataset_metadata = (
-                            db.session.query(DatasetMetadata)
+                        dataset_metadata_binding: DatasetMetadataBinding | None
+                        dataset_metadata = db.session.scalars(
+                            select(DatasetMetadata)
                             .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
-                            .first()
-                        )
+                            .limit(1)
+                        ).first()
                         if not dataset_metadata:
                             dataset_metadata = DatasetMetadata(
                                 tenant_id=document.tenant_id,
@@ -613,15 +614,15 @@ def old_metadata_migration():
                             )
                             db.session.add(dataset_metadata_binding)
                         else:
-                            dataset_metadata_binding = (
-                                db.session.query(DatasetMetadataBinding)  # type: ignore
+                            dataset_metadata_binding = db.session.scalars(
+                                select(DatasetMetadataBinding)
                                 .where(
                                     DatasetMetadataBinding.dataset_id == document.dataset_id,
                                     DatasetMetadataBinding.document_id == document.id,
                                     DatasetMetadataBinding.metadata_id == dataset_metadata.id,
                                 )
-                                .first()
-                            )
+                                .limit(1)
+                            ).first()
                             if not dataset_metadata_binding:
                                 dataset_metadata_binding = DatasetMetadataBinding(
                                     tenant_id=document.tenant_id,
@@ -730,7 +731,7 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    app = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
                     if not app:
                         print(f"App {app_id} not found")
                         continue

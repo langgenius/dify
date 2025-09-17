@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.workspace_service import WorkspaceService
@@ -193,7 +194,9 @@ class TestWorkspaceService:
         # Update the join to have normal role
         from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = db.session.scalars(
+            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).limit(1)
+        ).first()
         join.role = TenantAccountRole.NORMAL.value
         db.session.commit()
 
@@ -244,7 +247,9 @@ class TestWorkspaceService:
         # Update the join to have admin role
         from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = db.session.scalars(
+            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).limit(1)
+        ).first()
         join.role = TenantAccountRole.ADMIN.value
         db.session.commit()
 
@@ -377,7 +382,9 @@ class TestWorkspaceService:
         # Update the join to have editor role
         from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = db.session.scalars(
+            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).limit(1)
+        ).first()
         join.role = TenantAccountRole.EDITOR.value
         db.session.commit()
 
@@ -424,7 +431,9 @@ class TestWorkspaceService:
         # Update the join to have dataset operator role
         from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = db.session.scalars(
+            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).limit(1)
+        ).first()
         join.role = TenantAccountRole.DATASET_OPERATOR.value
         db.session.commit()
 

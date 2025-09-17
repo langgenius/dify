@@ -68,21 +68,21 @@ class ChatMessageListApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
-        conversation = (
-            db.session.query(Conversation)
+        conversation = db.session.scalars(
+            select(Conversation)
             .where(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not conversation:
             raise NotFound("Conversation Not Exists.")
 
         if args["first_id"]:
-            first_message = (
-                db.session.query(Message)
+            first_message = db.session.scalars(
+                select(Message)
                 .where(Message.conversation_id == conversation.id, Message.id == args["first_id"])
-                .first()
-            )
+                .limit(1)
+            ).first()
 
             if not first_message:
                 raise NotFound("First message not found")
@@ -161,7 +161,9 @@ class MessageFeedbackApi(Resource):
 
         message_id = str(args["message_id"])
 
-        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.scalars(
+            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+        ).first()
 
         if not message:
             raise NotFound("Message Not Exists.")
@@ -309,7 +311,9 @@ class MessageApi(Resource):
     def get(self, app_model, message_id):
         message_id = str(message_id)
 
-        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.scalars(
+            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+        ).first()
 
         if not message:
             raise NotFound("Message Not Exists.")
