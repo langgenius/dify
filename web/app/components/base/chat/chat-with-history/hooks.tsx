@@ -124,15 +124,27 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const localState = localStorage.getItem('webappSidebarCollapse')
-      return localState === 'collapsed'
+      try {
+        const localState = localStorage.getItem('webappSidebarCollapse')
+        return localState === 'collapsed'
+      }
+      catch (e) {
+        // localStorage may be disabled in private browsing mode or by security settings
+        // fallback to default value
+        return false
+      }
     }
     return false
   })
   const handleSidebarCollapse = useCallback((state: boolean) => {
     if (appId) {
       setSidebarCollapseState(state)
-      localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
+      try {
+        localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
+      }
+      catch (e) {
+        // localStorage may be disabled, continue without persisting state
+      }
     }
   }, [appId, setSidebarCollapseState])
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
