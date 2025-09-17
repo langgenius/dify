@@ -40,7 +40,7 @@ import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/ty
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { MAX_TREE_DEPTH } from '@/config'
-import useNodesAvailableVarList from './use-nodes-available-var-list'
+import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
@@ -179,6 +179,7 @@ export const useChecklistBeforePublish = () => {
   const updateTime = useRef(0)
   const { getStartNodes } = useWorkflow()
   const workflowStore = useWorkflowStore()
+  const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -247,10 +248,11 @@ export const useChecklistBeforePublish = () => {
         updateDatasetsDetail(datasetsDetail)
       }
     }
-
+    const map = getNodesAvailableVarList(nodes)
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
       let moreDataForCheckValid
+      let usedVars: ValueSelector[] = []
       if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
 
@@ -269,13 +271,35 @@ export const useChecklistBeforePublish = () => {
           isReadyForCheckValid,
         }
       }
-
+      else {
+        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+      }
       const checkData = getCheckData(node.data, datasets)
       const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
         notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
         return false
+      }
+
+      const availableVars = map[node.id].availableVars
+
+      for (const variable of usedVars) {
+        const isSpecialVars = isSpecialVar(variable[0])
+        if (!isSpecialVars) {
+          const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
+          if (usedNode) {
+            const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
+            if (!usedVar) {
+              notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.errorMsg.invalidVariable')}` })
+              return false
+            }
+          }
+          else {
+            notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.errorMsg.invalidVariable')}` })
+            return false
+          }
+        }
       }
 
       if (!validNodes.find(n => n.id === node.id)) {
