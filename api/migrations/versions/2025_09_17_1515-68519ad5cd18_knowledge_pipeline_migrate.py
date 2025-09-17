@@ -144,7 +144,7 @@ def upgrade():
     sa.Column('upload_file_id', models.types.StringUUID(), nullable=False, comment='Reference to UploadFile containing the large variable data'),
     sa.Column('size', sa.BigInteger(), nullable=False, comment='Size of the original variable content in bytes'),
     sa.Column('length', sa.Integer(), nullable=True, comment='Length of the original variable content. For array and array-like types, this represents the number of elements. For object types, it indicates the number of keys. For other types, the value is NULL.'),
-    sa.Column('value_type', models.types.EnumText(), nullable=False),
+    sa.Column('value_type', sa.String(20), nullable=False),
     sa.PrimaryKeyConstraint('id', name=op.f('workflow_draft_variable_files_pkey'))
     )
     op.create_table('workflow_node_execution_offload',
@@ -153,7 +153,7 @@ def upgrade():
     sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
     sa.Column('app_id', models.types.StringUUID(), nullable=False),
     sa.Column('node_execution_id', models.types.StringUUID(), nullable=True),
-    sa.Column('type', models.types.EnumText(), nullable=False),
+    sa.Column('type', sa.String(20), nullable=False),
     sa.Column('file_id', models.types.StringUUID(), nullable=False),
     sa.PrimaryKeyConstraint('id', name=op.f('workflow_node_execution_offload_pkey')),
     sa.UniqueConstraint('node_execution_id', 'type', name=op.f('workflow_node_execution_offload_node_execution_id_key'), postgresql_nulls_not_distinct=False)
@@ -168,7 +168,12 @@ def upgrade():
 
     with op.batch_alter_table('workflow_draft_variables', schema=None) as batch_op:
         batch_op.add_column(sa.Column('file_id', models.types.StringUUID(), nullable=True, comment='Reference to WorkflowDraftVariableFile if variable is offloaded to external storage'))
-        batch_op.add_column(sa.Column('is_default_value', sa.Boolean(), nullable=False, comment='Indicates whether the current value is the default for a conversation variable. Always `FALSE` for other types of variables.'))
+        batch_op.add_column(
+            sa.Column(
+                'is_default_value', sa.Boolean(), nullable=False,
+                    server_default=sa.text(text="FALSE"),
+                    comment='Indicates whether the current value is the default for a conversation variable. Always `FALSE` for other types of variables.',)
+            )
         batch_op.create_index('workflow_draft_variable_file_id_idx', ['file_id'], unique=False)
 
     with op.batch_alter_table('workflows', schema=None) as batch_op:
