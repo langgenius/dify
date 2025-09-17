@@ -326,7 +326,7 @@ def _build_from_datasource_file(
 ) -> File:
     datasource_file = (
         db.session.query(UploadFile)
-        .filter(
+        .where(
             UploadFile.id == mapping.get("datasource_file_id"),
             UploadFile.tenant_id == tenant_id,
         )

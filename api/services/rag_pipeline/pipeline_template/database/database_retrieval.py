@@ -1,4 +1,3 @@
-
 import yaml
 
 from extensions.ext_database import db

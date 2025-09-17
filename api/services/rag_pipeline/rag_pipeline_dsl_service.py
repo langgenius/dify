@@ -318,7 +318,7 @@ class RagPipelineDslService:
                     if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
                             self._session.query(DatasetCollectionBinding)
-                            .filter(
+                            .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
@@ -452,7 +452,7 @@ class RagPipelineDslService:
                     if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
                             self._session.query(DatasetCollectionBinding)
-                            .filter(
+                            .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
@@ -599,7 +599,7 @@ class RagPipelineDslService:
             )
         workflow = (
             self._session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
@@ -673,7 +673,7 @@ class RagPipelineDslService:
 
         workflow = (
             self._session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
