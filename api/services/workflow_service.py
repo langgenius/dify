@@ -811,10 +811,10 @@ class WorkflowService:
             error = node_run_result.error if not run_succeeded else None
             return node, node_run_result, run_succeeded, error
         except WorkflowNodeRunFailedError as e:
-            node = e.node
+            node = e._node
             run_succeeded = False
             node_run_result = None
-            error = e.error
+            error = e._error
             return node, node_run_result, run_succeeded, error
 
     def _apply_error_strategy(self, node: Node, node_run_result: NodeRunResult) -> NodeRunResult:
