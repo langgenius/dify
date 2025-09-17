@@ -215,7 +215,7 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
 
         if not file.filename:
             raise FilenameNotExistsError
-        
+
         if not current_user:
             raise ValueError("Invalid user account")
 
