@@ -214,7 +214,10 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             raise UnsupportedFileTypeError()
 
         if not file.filename:
-            raise FilenameNotExistsError
+            raise FilenameNotExistsError+
+        
+        if not current_user:
+            raise ValueError("Invalid user account")
 
         try:
             upload_file = FileService(db.engine).upload_file(

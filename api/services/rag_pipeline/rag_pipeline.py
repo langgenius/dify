@@ -580,10 +580,10 @@ class RagPipelineService:
                     )
                     yield start_event.model_dump()
                     try:
-                        for message in online_document_result:
+                        for online_document_message in online_document_result:
                             end_time = time.time()
                             online_document_event = DatasourceCompletedEvent(
-                                data=message.result, time_consuming=round(end_time - start_time, 2)
+                                data=online_document_message.result, time_consuming=round(end_time - start_time, 2)
                             )
                             yield online_document_event.model_dump()
                     except Exception as e:
@@ -609,10 +609,10 @@ class RagPipelineService:
                         completed=0,
                     )
                     yield start_event.model_dump()
-                    for message in online_drive_result:
+                    for online_drive_message in online_drive_result:
                         end_time = time.time()
                         online_drive_event = DatasourceCompletedEvent(
-                            data=message.result,
+                            data=online_drive_message.result,
                             time_consuming=round(end_time - start_time, 2),
                             total=None,
                             completed=None,
@@ -629,19 +629,19 @@ class RagPipelineService:
                     )
                     start_time = time.time()
                     try:
-                        for message in website_crawl_result:
+                        for website_crawl_message in website_crawl_result:
                             end_time = time.time()
-                            if message.result.status == "completed":
+                            if website_crawl_message.result.status == "completed":
                                 crawl_event = DatasourceCompletedEvent(
-                                    data=message.result.web_info_list or [],
-                                    total=message.result.total,
-                                    completed=message.result.completed,
+                                    data=website_crawl_message.result.web_info_list or [],
+                                    total=website_crawl_message.result.total,
+                                    completed=website_crawl_message.result.completed,
                                     time_consuming=round(end_time - start_time, 2),
                                 )
                             else:
                                 crawl_event = DatasourceProcessingEvent(
-                                    total=message.result.total,
-                                    completed=message.result.completed,
+                                    total=website_crawl_message.result.total,
+                                    completed=website_crawl_message.result.completed,
                                 )
                             yield crawl_event.model_dump()
                     except Exception as e:
@@ -723,12 +723,12 @@ class RagPipelineService:
                     )
                     try:
                         variables: dict[str, Any] = {}
-                        for message in online_document_result:
-                            if message.type == DatasourceMessage.MessageType.VARIABLE:
-                                assert isinstance(message.message, DatasourceMessage.VariableMessage)
-                                variable_name = message.message.variable_name
-                                variable_value = message.message.variable_value
-                                if message.message.stream:
+                        for online_document_message in online_document_result:
+                            if online_document_message.type == DatasourceMessage.MessageType.VARIABLE:
+                                assert isinstance(online_document_message.message, DatasourceMessage.VariableMessage)
+                                variable_name = online_document_message.message.variable_name
+                                variable_value = online_document_message.message.variable_value
+                                if online_document_message.message.stream:
                                     if not isinstance(variable_value, str):
                                         raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
                                     if variable_name not in variables:
@@ -793,8 +793,9 @@ class RagPipelineService:
             for event in generator:
                 if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent)):
                     node_run_result = event.node_run_result
-                    # sign output files
-                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) or {}
+                    if node_run_result:
+                        # sign output files
+                        node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) or {}
                     break
 
             if not node_run_result:
@@ -1358,3 +1359,99 @@ class RagPipelineService:
             workflow_thread_pool_id=None,
             is_retry=True,
         )
+
+    def get_datasource_plugins(self, tenant_id: str, dataset_id: str, is_published: bool) -> list[dict]:
+        """
+        Get datasource plugins
+        """
+        dataset: Dataset | None = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == dataset.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+
+        workflow: Workflow | None = None
+        if is_published:
+            workflow = self.get_published_workflow(pipeline=pipeline)
+        else:
+            workflow = self.get_draft_workflow(pipeline=pipeline)
+        if not pipeline or not workflow:
+            raise ValueError("Pipeline or workflow not found")
+
+        datasource_nodes = workflow.graph_dict.get("nodes", [])
+        datasource_plugins = []
+        for datasource_node in datasource_nodes:
+            if datasource_node.get("type") == "datasource":
+                datasource_node_data = datasource_node.get("data", {})
+                if not datasource_node_data:
+                    continue
+
+                variables = workflow.rag_pipeline_variables
+                if variables:
+                    variables_map = {item["variable"]: item for item in variables}
+                else:
+                    variables_map = {}
+
+                datasource_parameters = datasource_node_data.get("datasource_parameters", {})
+                user_input_variables_keys = []
+                user_input_variables = []
+
+                for _, value in datasource_parameters.items():
+                    if value.get("value") and isinstance(value.get("value"), str):
+                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        match = re.match(pattern, value["value"])
+                        if match:
+                            full_path = match.group(1)
+                            last_part = full_path.split(".")[-1]
+                            user_input_variables_keys.append(last_part)
+                    elif value.get("value") and isinstance(value.get("value"), list):
+                        last_part = value.get("value")[-1]
+                        user_input_variables_keys.append(last_part)
+                for key, value in variables_map.items():
+                    if key in user_input_variables_keys:
+                        user_input_variables.append(value)
+
+                # get credentials
+                datasource_provider_service: DatasourceProviderService = DatasourceProviderService()
+                credentials: list[dict[Any, Any]] = datasource_provider_service.list_datasource_credentials(
+                    tenant_id=tenant_id,
+                    provider=datasource_node_data.get("provider_name"),
+                    plugin_id=datasource_node_data.get("plugin_id"),
+                )
+                credential_info_list: list[Any] = []
+                for credential in credentials:
+                    credential_info_list.append(
+                        {
+                            "id": credential.get("id"),
+                            "name": credential.get("name"),
+                            "type": credential.get("type"),
+                            "is_default": credential.get("is_default"),
+                        }
+                    )
+
+                datasource_plugins.append(
+                    {
+                        "node_id": datasource_node.get("id"),
+                        "plugin_id": datasource_node_data.get("plugin_id"),
+                        "provider_name": datasource_node_data.get("provider_name"),
+                        "datasource_type": datasource_node_data.get("provider_type"),
+                        "title": datasource_node_data.get("title"),
+                        "user_input_variables": user_input_variables,
+                        "credentials": credential_info_list,
+                    }
+                )
+
+        return datasource_plugins
+
+    def get_pipeline(self, tenant_id: str, dataset_id: str) -> Pipeline:
+        """
+        Get pipeline
+        """
+        dataset: Dataset | None = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == dataset.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+        return pipeline

@@ -62,7 +62,7 @@ class DatasourceProviderApiEntity(BaseModel):
             "description": self.description.to_dict(),
             "icon": self.icon,
             "label": self.label.to_dict(),
-            "type": self.type.value,
+            "type": self.type,
             "team_credentials": self.masked_credentials,
             "is_team_authorization": self.is_team_authorization,
             "allow_delete": self.allow_delete,
