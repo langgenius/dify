@@ -1,10 +1,13 @@
 'use client'
 
+import { useParams } from 'next/navigation'
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
-import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
+import Textarea from 'react-textarea-autosize'
 import Avatar from '@/app/components/base/avatar'
+import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
@@ -23,6 +26,8 @@ type CommentThreadProps = {
   canGoPrev?: boolean
   canGoNext?: boolean
   onReply?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
+  onReplyEdit?: (replyId: string, content: string, mentionedUserIds?: string[]) => Promise<void> | void
+  onReplyDelete?: (replyId: string) => void
 }
 
 const ThreadMessage: FC<{
@@ -56,16 +61,6 @@ const ThreadMessage: FC<{
   )
 }
 
-const renderReply = (reply: WorkflowCommentDetailReply) => (
-  <ThreadMessage
-    key={reply.id}
-    authorName={reply.created_by_account?.name || 'User'}
-    avatarUrl={reply.created_by_account?.avatar_url || null}
-    createdAt={reply.created_at}
-    content={reply.content}
-  />
-)
-
 export const CommentThread: FC<CommentThreadProps> = memo(({
   comment,
   loading = false,
@@ -77,11 +72,16 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   canGoPrev,
   canGoNext,
   onReply,
+  onReplyEdit,
+  onReplyDelete,
 }) => {
+  const params = useParams()
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
   const [replyContent, setReplyContent] = useState('')
+  const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
+  const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
 
   useEffect(() => {
     setReplyContent('')
@@ -105,6 +105,25 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
       y: comment.position_y,
     })
   }, [comment.position_x, comment.position_y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
+
+  const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
+    setEditingReply({ id: reply.id, content: reply.content })
+    setActiveReplyMenuId(null)
+  }, [])
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingReply({ id: '', content: '' })
+  }, [])
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!onReplyEdit || !editingReply) return
+    const trimmed = editingReply.content.trim()
+    if (!trimmed) return
+    await onReplyEdit(editingReply.id, trimmed, [])
+    setEditingReply({ id: '', content: '' })
+  }, [editingReply, onReplyEdit])
+
+  const replies = comment.replies || []
 
   return (
     <div
@@ -173,9 +192,72 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             createdAt={comment.created_at}
             content={comment.content}
           />
-          {comment.replies?.length > 0 && (
-            <div className='mt-3 space-y-3 pt-3'>
-              {comment.replies.map(renderReply)}
+          {replies.length > 0 && (
+            <div className='mt-2 space-y-3 pt-3'>
+              {replies.map((reply) => {
+                const isReplyEditing = editingReply?.id === reply.id
+                return (
+                  <div
+                    key={reply.id}
+                    className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
+                  >
+                    <div className='absolute right-1 top-1 hidden gap-1 group-hover:flex'>
+                      <button
+                        type='button'
+                        className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
+                        }}
+                        aria-label='Reply actions'
+                      >
+                        <RiMoreFill className='h-4 w-4' />
+                      </button>
+                      {activeReplyMenuId === reply.id && (
+                        <div className='absolute right-0 top-7 z-40 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
+                          <button
+                            className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                            onClick={() => handleStartEdit(reply)}
+                          >
+                            Edit reply
+                          </button>
+                          <button
+                            className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm hover:bg-state-base-hover'
+                            onClick={() => {
+                              setActiveReplyMenuId(null)
+                              onReplyDelete?.(reply.id)
+                            }}
+                          >
+                            Delete reply
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {isReplyEditing ? (
+                      <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
+                        <Textarea
+                          minRows={1}
+                          maxRows={4}
+                          value={editingReply?.content ?? ''}
+                          onChange={e => setEditingReply(prev => prev ? { ...prev, content: e.target.value } : prev)}
+                          className='system-sm-regular w-full resize-none bg-transparent text-text-primary caret-primary-500 outline-none'
+                        />
+                        <div className='mt-2 flex items-center justify-end gap-2'>
+                          <Button variant='secondary' size='small' onClick={handleCancelEdit} disabled={loading}>Cancel</Button>
+                          <Button variant='primary' size='small' disabled={loading || !(editingReply?.content?.trim())} onClick={handleSaveEdit}>Save</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <ThreadMessage
+                        authorName={reply.created_by_account?.name || 'User'}
+                        avatarUrl={reply.created_by_account?.avatar_url || null}
+                        createdAt={reply.created_at}
+                        content={reply.content}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

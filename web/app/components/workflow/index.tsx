@@ -118,6 +118,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const reactflow = useReactFlow()
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
   const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null)
+  const [pendingDeleteReply, setPendingDeleteReply] = useState<{ commentId: string; replyId: string } | null>(null)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -175,6 +176,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleCommentDelete,
     handleCommentNavigate,
     handleCommentReply,
+    handleCommentReplyUpdate,
+    handleCommentReplyDelete,
   } = useWorkflowComment()
   const mousePosition = useStore(s => s.mousePosition)
 
@@ -358,6 +361,18 @@ export const Workflow: FC<WorkflowProps> = memo(({
           }}
         />
       )}
+      {pendingDeleteReply && (
+        <Confirm
+          isShow
+          title='Delete this reply?'
+          content='This reply will be removed permanently.'
+          onCancel={() => setPendingDeleteReply(null)}
+          onConfirm={async () => {
+            await handleCommentReplyDelete(pendingDeleteReply.commentId, pendingDeleteReply.replyId)
+            setPendingDeleteReply(null)
+          }}
+        />
+      )}
       <LimitTips />
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
         <CommentCursor mousePosition={mousePosition} />
@@ -386,6 +401,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
               onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
               onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
               onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
+              onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
+              onReplyDelete={replyId => setPendingDeleteReply({ commentId: comment.id, replyId })}
               canGoPrev={canGoPrev}
               canGoNext={canGoNext}
             />

@@ -4,7 +4,7 @@ import { useReactFlow } from 'reactflow'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
-import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment } from '@/service/workflow-comment'
+import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -217,6 +217,42 @@ export const useWorkflowComment = () => {
     }
   }, [appId, loadComments, refreshActiveComment, setActiveCommentLoading])
 
+  const handleCommentReplyUpdate = useCallback(async (commentId: string, replyId: string, content: string, mentionedUserIds: string[] = []) => {
+    if (!appId) return
+    const trimmed = content.trim()
+    if (!trimmed) return
+
+    setActiveCommentLoading(true)
+    try {
+      await updateWorkflowCommentReply(appId, commentId, replyId, { content: trimmed, mentioned_user_ids: mentionedUserIds })
+      await refreshActiveComment(commentId)
+      await loadComments()
+    }
+    catch (error) {
+      console.error('Failed to update reply:', error)
+    }
+    finally {
+      setActiveCommentLoading(false)
+    }
+  }, [appId, loadComments, refreshActiveComment, setActiveCommentLoading])
+
+  const handleCommentReplyDelete = useCallback(async (commentId: string, replyId: string) => {
+    if (!appId) return
+
+    setActiveCommentLoading(true)
+    try {
+      await deleteWorkflowCommentReply(appId, commentId, replyId)
+      await refreshActiveComment(commentId)
+      await loadComments()
+    }
+    catch (error) {
+      console.error('Failed to delete reply:', error)
+    }
+    finally {
+      setActiveCommentLoading(false)
+    }
+  }, [appId, loadComments, refreshActiveComment, setActiveCommentLoading])
+
   const handleCommentNavigate = useCallback((direction: 'prev' | 'next') => {
     const currentId = activeCommentIdRef.current
     if (!currentId) return
@@ -261,6 +297,9 @@ export const useWorkflowComment = () => {
     handleCommentDelete,
     handleCommentNavigate,
     handleCommentReply,
+    handleCommentReplyUpdate,
+    handleCommentReplyDelete,
+    refreshActiveComment,
     handleCreateComment,
     loadComments,
   }
