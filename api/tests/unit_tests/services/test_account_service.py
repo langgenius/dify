@@ -768,7 +768,7 @@ class TestTenantService:
 
     # ==================== Role Management Tests ====================
 
-    def test_update_member_role_success(self):
+    def test_update_member_role_success(self, mock_db_dependencies):
         """Test successful member role update."""
         # Setup test data
         mock_tenant = MagicMock()
@@ -782,29 +782,38 @@ class TestTenantService:
             tenant_id="tenant-456", account_id="operator-123", role="owner"
         )
 
-        # Mock the database queries in update_member_role method
-        with patch("services.account_service.db") as mock_db:
-            # Mock the first query for operator permission check
-            mock_query1 = MagicMock()
-            mock_filter1 = MagicMock()
-            mock_filter1.first.return_value = mock_operator_join
-            mock_query1.filter_by.return_value = mock_filter1
+        # Mock the database session.scalars method directly to handle complex filter_by queries
+        call_count = [0]  # Use list to allow modification in nested function
+        
+        def scalars_side_effect(select_stmt):
+            mock_result = MagicMock()
+            
+            # Check what kind of query this is by examining the filter parameters
+            # We need to simulate the .first() call on the returned scalars result
+            def first_side_effect():
+                call_count[0] += 1
+                
+                # First call is permission check (operator lookup)
+                if call_count[0] == 1:
+                    return mock_operator_join
+                # Second call is target member lookup
+                elif call_count[0] == 2:
+                    return mock_target_join
+                else:
+                    return None
+            
+            mock_result.first = first_side_effect
+            return mock_result
 
-            # Mock the second query for target member
-            mock_query2 = MagicMock()
-            mock_filter2 = MagicMock()
-            mock_filter2.first.return_value = mock_target_join
-            mock_query2.filter_by.return_value = mock_filter2
+        mock_db_dependencies["db"].session.scalars.side_effect = scalars_side_effect
 
-            # Make the query method return different mocks for different calls
-            mock_db.session.query.side_effect = [mock_query1, mock_query2]
+        # Execute test
+        TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator)
 
-            # Execute test
-            TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator)
-
-            # Verify role was updated
-            assert mock_target_join.role == "admin"
-            self._assert_database_operations_called(mock_db)
+        # Verify role was updated
+        assert mock_target_join.role == "admin"
+        # Verify db.session.commit was called
+        mock_db_dependencies["db"].session.commit.assert_called()
 
     # ==================== Permission Check Tests ====================
 
