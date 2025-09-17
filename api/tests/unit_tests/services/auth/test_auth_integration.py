@@ -6,8 +6,8 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock, patch
 
-import pytest
 import httpx
+import pytest
 
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 from services.auth.api_key_auth_service import ApiKeyAuthService

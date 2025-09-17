@@ -1,8 +1,8 @@
 import urllib.parse
 from unittest.mock import MagicMock, patch
 
-import pytest
 import httpx
+import pytest
 
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 
