@@ -47,7 +47,7 @@ function getIsPublicAPI(appSourceType: AppSourceType) {
 }
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', appSourceType: AppSourceType) {
-  const isNeedLogin = getIsPublicAPI(appSourceType)
+  const isNeedLogin = !getIsPublicAPI(appSourceType)
   switch (action) {
     case 'get':
       return isNeedLogin ? consoleGet : get
