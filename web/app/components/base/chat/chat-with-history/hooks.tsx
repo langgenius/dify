@@ -510,9 +510,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.success') })
-  }, [isInstalledApp, appId, t, notify])
+  }, [appSourceType, appId, t, notify])
 
   return {
     isInstalledApp,
