@@ -69,7 +69,7 @@ import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import LimitTips from './limit-tips'
-import { CommentCursor, CommentIcon, CommentInput } from './comment'
+import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import {
   useStore,
@@ -164,9 +164,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const {
     comments,
     pendingComment,
+    activeComment,
+    activeCommentLoading,
     handleCommentSubmit,
     handleCommentCancel,
     handleCommentIconClick,
+    handleActiveCommentClose,
   } = useWorkflowComment()
   const mousePosition = useStore(s => s.mousePosition)
 
@@ -351,13 +354,28 @@ export const Workflow: FC<WorkflowProps> = memo(({
           onCancel={handleCommentCancel}
         />
       )}
-      {comments.map(comment => (
-        <CommentIcon
-          key={comment.id}
-          comment={comment}
-          onClick={() => handleCommentIconClick(comment)}
-        />
-      ))}
+      {comments.map((comment) => {
+        const isActive = activeComment?.id === comment.id
+
+        if (isActive && activeComment) {
+          return (
+            <CommentThread
+              key={comment.id}
+              comment={activeComment}
+              loading={activeCommentLoading}
+              onClose={handleActiveCommentClose}
+            />
+          )
+        }
+
+        return (
+          <CommentIcon
+            key={comment.id}
+            comment={comment}
+            onClick={() => handleCommentIconClick(comment)}
+          />
+        )
+      })}
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}

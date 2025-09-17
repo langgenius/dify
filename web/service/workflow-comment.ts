@@ -26,6 +26,20 @@ export type WorkflowCommentList = {
   participants: UserProfile[]
 }
 
+export type WorkflowCommentDetailMention = {
+  mentioned_user_id: string
+  mentioned_user_account?: UserProfile | null
+  reply_id: string | null
+}
+
+export type WorkflowCommentDetailReply = {
+  id: string
+  content: string
+  created_by: string
+  created_by_account?: UserProfile | null
+  created_at: number
+}
+
 export type WorkflowCommentDetail = {
   id: string
   position_x: number
@@ -33,14 +47,14 @@ export type WorkflowCommentDetail = {
   content: string
   created_by: string
   created_by_account: UserProfile
-  created_at: string
-  updated_at: string
+  created_at: number
+  updated_at: number
   resolved: boolean
   resolved_by?: string
   resolved_by_account?: UserProfile
-  resolved_at?: string
-  replies: []
-  mentions: []
+  resolved_at?: number
+  replies: WorkflowCommentDetailReply[]
+  mentions: WorkflowCommentDetailMention[]
 }
 
 export type WorkflowCommentCreateRes = {

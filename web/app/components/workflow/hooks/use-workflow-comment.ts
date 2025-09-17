@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useReactFlow } from 'reactflow'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
-import type { WorkflowCommentList } from '@/service/workflow-comment'
-import { createWorkflowComment, fetchWorkflowComments } from '@/service/workflow-comment'
+import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
+import { createWorkflowComment, fetchWorkflowComment, fetchWorkflowComments } from '@/service/workflow-comment'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -14,8 +14,17 @@ export const useWorkflowComment = () => {
   const setControlMode = useStore(s => s.setControlMode)
   const pendingComment = useStore(s => s.pendingComment)
   const setPendingComment = useStore(s => s.setPendingComment)
+  const setActiveCommentId = useStore(s => s.setActiveCommentId)
+  const activeCommentId = useStore(s => s.activeCommentId)
   const [comments, setComments] = useState<WorkflowCommentList[]>([])
   const [loading, setLoading] = useState(false)
+  const [activeComment, setActiveComment] = useState<WorkflowCommentDetail | null>(null)
+  const [activeCommentLoading, setActiveCommentLoading] = useState(false)
+  const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>({})
+  const activeCommentIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    activeCommentIdRef.current = activeCommentId ?? null
+  }, [activeCommentId])
 
   const loadComments = useCallback(async () => {
     if (!appId) return
@@ -72,17 +81,50 @@ export const useWorkflowComment = () => {
     setControlMode(ControlMode.Pointer)
   }, [setControlMode, setPendingComment])
 
-  const handleCommentIconClick = useCallback((comment: WorkflowCommentList) => {
+  const handleCommentIconClick = useCallback(async (comment: WorkflowCommentList) => {
+    setPendingComment(null)
+
+    activeCommentIdRef.current = comment.id
+    setControlMode(ControlMode.Comment)
+    setActiveCommentId(comment.id)
+
+    const cachedDetail = commentDetailCacheRef.current[comment.id]
+    setActiveComment(cachedDetail || comment)
+
+    reactflow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
+
+    if (!appId) return
+
+    if (!cachedDetail)
+      setActiveCommentLoading(true)
+
     try {
-      const store = useStore.getState()
-      store.setControlMode(ControlMode.Comment)
-      store.setActiveCommentId(comment.id)
-      reactflow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
+      const detailResponse = await fetchWorkflowComment(appId, comment.id)
+      const detail = (detailResponse as any)?.data ?? detailResponse
+
+      commentDetailCacheRef.current = {
+        ...commentDetailCacheRef.current,
+        [comment.id]: detail,
+      }
+
+      if (activeCommentIdRef.current === comment.id)
+        setActiveComment(detail)
     }
     catch (e) {
-      console.error('Failed to open comments panel:', e)
+      console.warn('Failed to load workflow comment detail', e)
     }
-  }, [reactflow])
+    finally {
+      setActiveCommentLoading(false)
+    }
+  }, [appId, reactflow, setPendingComment])
+
+  const handleActiveCommentClose = useCallback(() => {
+    setActiveComment(null)
+    setActiveCommentLoading(false)
+    setActiveCommentId(null)
+    setControlMode(ControlMode.Pointer)
+    activeCommentIdRef.current = null
+  }, [setActiveCommentId, setControlMode])
 
   const handleCreateComment = useCallback((mousePosition: { pageX: number; pageY: number }) => {
     if (controlMode === ControlMode.Comment) {
@@ -101,9 +143,12 @@ export const useWorkflowComment = () => {
     comments,
     loading,
     pendingComment,
+    activeComment,
+    activeCommentLoading,
     handleCommentSubmit,
     handleCommentCancel,
     handleCommentIconClick,
+    handleActiveCommentClose,
     handleCreateComment,
     loadComments,
   }
