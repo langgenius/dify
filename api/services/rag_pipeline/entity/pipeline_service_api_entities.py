@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class DatasourceNodeRunApiEntity(BaseModel):
     pipeline_id: str
     node_id: str
-    inputs: Mapping[str, Any]
+    inputs: dict[str, Any]
     datasource_type: str
     credential_id: str | None = None
     is_published: bool

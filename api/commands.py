@@ -1440,12 +1440,12 @@ def transform_datasource_credentials():
         notion_credentials = db.session.query(DataSourceOauthBinding).filter_by(provider="notion").all()
         if notion_credentials:
             notion_credentials_tenant_mapping: dict[str, list[DataSourceOauthBinding]] = {}
-            for credential in notion_credentials:
-                tenant_id = credential.tenant_id
+            for notion_credential in notion_credentials:
+                tenant_id = notion_credential.tenant_id
                 if tenant_id not in notion_credentials_tenant_mapping:
                     notion_credentials_tenant_mapping[tenant_id] = []
-                notion_credentials_tenant_mapping[tenant_id].append(credential)
-            for tenant_id, credentials in notion_credentials_tenant_mapping.items():
+                notion_credentials_tenant_mapping[tenant_id].append(notion_credential)
+            for tenant_id, notion_tenant_credentials in notion_credentials_tenant_mapping.items():
                 # check notion plugin is installed
                 installed_plugins = installer_manager.list_plugins(tenant_id)
                 installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
@@ -1454,12 +1454,12 @@ def transform_datasource_credentials():
                         # install notion plugin
                         PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
                 auth_count = 0
-                for credential in credentials:
+                for notion_tenant_credential in notion_tenant_credentials:
                     auth_count += 1
                     # get credential oauth params
-                    access_token = credential.access_token
+                    access_token = notion_tenant_credential.access_token
                     # notion info
-                    notion_info = credential.source_info
+                    notion_info = notion_tenant_credential.source_info
                     workspace_id = notion_info.get("workspace_id")
                     workspace_name = notion_info.get("workspace_name")
                     workspace_icon = notion_info.get("workspace_icon")
@@ -1487,12 +1487,12 @@ def transform_datasource_credentials():
         firecrawl_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="firecrawl").all()
         if firecrawl_credentials:
             firecrawl_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
-            for credential in firecrawl_credentials:
-                tenant_id = credential.tenant_id
+            for firecrawl_credential in firecrawl_credentials:
+                tenant_id = firecrawl_credential.tenant_id
                 if tenant_id not in firecrawl_credentials_tenant_mapping:
                     firecrawl_credentials_tenant_mapping[tenant_id] = []
-                firecrawl_credentials_tenant_mapping[tenant_id].append(credential)
-            for tenant_id, credentials in firecrawl_credentials_tenant_mapping.items():
+                firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
+            for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
                 # check firecrawl plugin is installed
                 installed_plugins = installer_manager.list_plugins(tenant_id)
                 installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
@@ -1502,10 +1502,10 @@ def transform_datasource_credentials():
                         PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
 
                 auth_count = 0
-                for credential in credentials:
+                for firecrawl_tenant_credential in firecrawl_tenant_credentials:
                     auth_count += 1
                     # get credential api key
-                    credentials_json = json.loads(credential.credentials)
+                    credentials_json = json.loads(firecrawl_tenant_credential.credentials)
                     api_key = credentials_json.get("config", {}).get("api_key")
                     base_url = credentials_json.get("config", {}).get("base_url")
                     new_credentials = {
@@ -1530,12 +1530,12 @@ def transform_datasource_credentials():
         jina_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="jinareader").all()
         if jina_credentials:
             jina_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
-            for credential in jina_credentials:
-                tenant_id = credential.tenant_id
+            for jina_credential in jina_credentials:
+                tenant_id = jina_credential.tenant_id
                 if tenant_id not in jina_credentials_tenant_mapping:
                     jina_credentials_tenant_mapping[tenant_id] = []
-                jina_credentials_tenant_mapping[tenant_id].append(credential)
-            for tenant_id, credentials in jina_credentials_tenant_mapping.items():
+                jina_credentials_tenant_mapping[tenant_id].append(jina_credential)
+            for tenant_id, jina_tenant_credentials in jina_credentials_tenant_mapping.items():
                 # check jina plugin is installed
                 installed_plugins = installer_manager.list_plugins(tenant_id)
                 installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
@@ -1546,10 +1546,10 @@ def transform_datasource_credentials():
                         PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
 
                 auth_count = 0
-                for credential in credentials:
+                for jina_tenant_credential in jina_tenant_credentials:
                     auth_count += 1
                     # get credential api key
-                    credentials_json = json.loads(credential.credentials)
+                    credentials_json = json.loads(jina_tenant_credential.credentials)
                     api_key = credentials_json.get("config", {}).get("api_key")
                     new_credentials = {
                         "integration_secret": api_key,

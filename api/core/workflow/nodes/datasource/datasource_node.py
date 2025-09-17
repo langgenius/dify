@@ -19,7 +19,7 @@ from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.variable_pool import VariablePool, VariableValue
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -87,29 +87,18 @@ class DatasourceNode(Node):
             raise DatasourceNodeError("Invalid datasource info format")
         datasource_info: dict[str, Any] = datasource_info_value
         # get datasource runtime
-        try:
-            from core.datasource.datasource_manager import DatasourceManager
+        from core.datasource.datasource_manager import DatasourceManager
 
-            if datasource_type is None:
-                raise DatasourceNodeError("Datasource type is not set")
+        if datasource_type is None:
+            raise DatasourceNodeError("Datasource type is not set")
 
-            datasource_runtime = DatasourceManager.get_datasource_runtime(
-                provider_id=f"{node_data.plugin_id}/{node_data.provider_name}",
-                datasource_name=node_data.datasource_name or "",
-                tenant_id=self.tenant_id,
-                datasource_type=DatasourceProviderType.value_of(datasource_type),
-            )
-            datasource_info["icon"] = datasource_runtime.get_icon_url(self.tenant_id)
-        except DatasourceNodeError as e:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    inputs={},
-                    metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
-                    error=f"Failed to get datasource runtime: {str(e)}",
-                    error_type=type(e).__name__,
-                )
-            )
+        datasource_runtime = DatasourceManager.get_datasource_runtime(
+            provider_id=f"{node_data.plugin_id}/{node_data.provider_name}",
+            datasource_name=node_data.datasource_name or "",
+            tenant_id=self.tenant_id,
+            datasource_type=DatasourceProviderType.value_of(datasource_type),
+        )
+        datasource_info["icon"] = datasource_runtime.get_icon_url(self.tenant_id)
 
         parameters_for_log = datasource_info
 
@@ -282,27 +271,6 @@ class DatasourceNode(Node):
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
-    def _append_variables_recursively(
-        self, variable_pool: VariablePool, node_id: str, variable_key_list: list[str], variable_value: VariableValue
-    ):
-        """
-        Append variables recursively
-        :param node_id: node id
-        :param variable_key_list: variable key list
-        :param variable_value: variable value
-        :return:
-        """
-        variable_pool.add([node_id] + [".".join(variable_key_list)], variable_value)
-
-        # if variable_value is a dict, then recursively append variables
-        if isinstance(variable_value, dict):
-            for key, value in variable_value.items():
-                # construct new key list
-                new_key_list = variable_key_list + [key]
-                self._append_variables_recursively(
-                    variable_pool=variable_pool, node_id=node_id, variable_key_list=new_key_list, variable_value=value
-                )
-
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,
@@ -423,13 +391,6 @@ class DatasourceNode(Node):
                 )
             elif message.type == DatasourceMessage.MessageType.JSON:
                 assert isinstance(message.message, DatasourceMessage.JsonMessage)
-                if self.node_type == NodeType.AGENT:
-                    msg_metadata = message.message.json_object.pop("execution_metadata", {})
-                    agent_execution_metadata = {
-                        key: value
-                        for key, value in msg_metadata.items()
-                        if key in WorkflowNodeExecutionMetadataKey.__members__.values()
-                    }
                 json.append(message.message.json_object)
             elif message.type == DatasourceMessage.MessageType.LINK:
                 assert isinstance(message.message, DatasourceMessage.TextMessage)

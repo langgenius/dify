@@ -67,7 +67,7 @@ class VariablePool(BaseModel):
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
         # Add rag pipeline variables to the variable pool
         if self.rag_pipeline_variables:
-            rag_pipeline_variables_map = defaultdict(dict)
+            rag_pipeline_variables_map: defaultdict[Any, dict[Any, Any]] = defaultdict(dict)
             for rag_var in self.rag_pipeline_variables:
                 node_id = rag_var.variable.belong_to_node_id
                 key = rag_var.variable.variable
