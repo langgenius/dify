@@ -261,6 +261,7 @@ class InstructionGenerateApi(Resource):
                     instruction=args["instruction"],
                     model_config=args["model_config"],
                     ideal_output=args["ideal_output"],
+                    workflow_service=WorkflowService(),
                 )
             return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:
