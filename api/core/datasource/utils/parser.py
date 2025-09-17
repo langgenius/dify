@@ -101,7 +101,7 @@ class ApiBasedToolSchemaParser:
 
                     # parse body parameters
                     if "schema" in interface["operation"]["requestBody"]["content"][content_type]:  # pyright: ignore[reportIndexIssue, reportPossiblyUnboundVariable]
-                        body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]
+                        body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]  # pyright: ignore[reportIndexIssue, reportPossiblyUnboundVariable]
                         required = body_schema.get("required", [])
                         properties = body_schema.get("properties", {})
                         for name, property in properties.items():

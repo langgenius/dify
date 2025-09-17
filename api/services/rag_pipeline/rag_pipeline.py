@@ -387,7 +387,9 @@ class RagPipelineService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
+    def get_default_block_config(
+        self, node_type: str, filters: Optional[dict] = None
+    ) -> Optional[Mapping[str, object]]:
         """
         Get default config of node.
         :param node_type: node type
