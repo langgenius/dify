@@ -200,7 +200,7 @@ class TestDatasetServiceUpdateDataset:
         # Verify dataset and binding updates
         self._assert_external_dataset_update(dataset, binding, update_data)
 
-        # Verify permission check was called
+        # Verify database operations
         mock_db = mock_dataset_service_dependencies["db_session"]
         mock_db.add.assert_any_call(dataset)
         mock_db.add.assert_any_call(binding)
