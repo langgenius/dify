@@ -36,6 +36,7 @@ def segment_keyword_create_task(dataset_id: str, document_id: str, index_node_id
         return
 
     from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+
     try:
         logger.info(
             click.style(
