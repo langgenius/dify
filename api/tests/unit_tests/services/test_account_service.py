@@ -35,6 +35,7 @@ class TestAccountAssociatedDataFactory:
     ) -> MagicMock:
         """Create a mock account with specified attributes."""
         import base64
+
         account = MagicMock(spec=Account)
         account.id = account_id
         account.email = email
@@ -65,6 +66,7 @@ class TestAccountAssociatedDataFactory:
     ) -> MagicMock:
         """Create a mock tenant account join record."""
         from models.account import TenantAccountRole
+
         tenant_join = MagicMock()
         tenant_join.tenant_id = tenant_id
         tenant_join.account_id = account_id
@@ -610,7 +612,7 @@ class TestTenantService:
             # Mock Tenant and TenantAccountJoin classes
             with (
                 patch("services.account_service.Tenant") as mock_tenant_class,
-                patch("services.account_service.TenantAccountJoin") as mock_join_class
+                patch("services.account_service.TenantAccountJoin") as mock_join_class,
             ):
                 mock_tenant_instance = MagicMock()
                 mock_tenant_instance.id = "tenant-456"
@@ -752,6 +754,7 @@ class TestTenantService:
     def test_check_member_permission_success(self, mock_db_dependencies):
         """Test successful member permission check."""
         from models.account import TenantAccountRole
+
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
@@ -1478,10 +1481,10 @@ class TestRegisterService:
         # We test this indirectly through generate_invite_token which uses the helper
         with patch("services.account_service.uuid.uuid4") as mock_uuid:
             mock_uuid.return_value = "test-token"
-            
+
             # The method generates keys in the format "member_invite:token:{token}"
             expected_key_pattern = "member_invite:token:test-token"
-            
+
             # Verify the pattern is correct by checking the format
             assert "member_invite:token:" in expected_key_pattern
             assert "test-token" in expected_key_pattern
