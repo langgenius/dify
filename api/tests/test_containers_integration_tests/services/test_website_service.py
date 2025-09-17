@@ -5,6 +5,7 @@ import pytest
 from faker import Faker
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from services.datasource_provider_service import DatasourceProviderService
 from services.website_service import (
     CrawlOptions,
     ScrapeRequest,
@@ -21,19 +22,27 @@ class TestWebsiteService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.website_service.ApiKeyAuthService") as mock_api_key_auth_service,
+            # patch("services.website_service.ApiKeyAuthService") as mock_api_key_auth_service,
             patch("services.website_service.FirecrawlApp") as mock_firecrawl_app,
             patch("services.website_service.WaterCrawlProvider") as mock_watercrawl_provider,
             patch("services.website_service.requests") as mock_requests,
             patch("services.website_service.redis_client") as mock_redis_client,
             patch("services.website_service.storage") as mock_storage,
             patch("services.website_service.encrypter") as mock_encrypter,
+            patch(
+                "services.website_service.DatasourceProviderService",
+            ) as mock_datasource_provider_service,
         ):
             # Setup default mock returns
-            mock_api_key_auth_service.get_auth_credentials.return_value = {
-                "config": {"api_key": "encrypted_api_key", "base_url": "https://api.example.com"}
+            # mock_api_key_auth_service.get_auth_credentials.return_value = {
+            #     "config": {"api_key": "encrypted_api_key", "base_url": "https://api.example.com"}
+            # }
+            mock_datasource_provider_service_instance = MagicMock(spec=DatasourceProviderService)
+            mock_datasource_provider_service_instance.get_datasource_credentials.return_value = {
+                "firecrawl_api_key": "firecrawl_api_key",
+                "api_key": "api_key",
             }
-            mock_encrypter.decrypt_token.return_value = "decrypted_api_key"
+            mock_datasource_provider_service.return_value = mock_datasource_provider_service_instance
 
             # Mock FirecrawlApp
             mock_firecrawl_instance = MagicMock()
@@ -85,7 +94,8 @@ class TestWebsiteService:
             mock_storage.load_once.return_value = None
 
             yield {
-                "api_key_auth_service": mock_api_key_auth_service,
+                "mock_datasource_provider_service": mock_datasource_provider_service,
+                "mock_datasource_provider_service_instance": mock_datasource_provider_service_instance,
                 "firecrawl_app": mock_firecrawl_app,
                 "watercrawl_provider": mock_watercrawl_provider,
                 "requests": mock_requests,
@@ -250,6 +260,12 @@ class TestWebsiteService:
                 },
             )
 
+            mock_provider_instance = mock_external_service_dependencies["mock_datasource_provider_service_instance"]
+            credential = {
+                "firecrawl_api_key": "decrypted_api_key",
+                "base_url": "https://api.example.com",
+            }
+            mock_provider_instance.get_datasource_credentials.return_value = credential
             # Act: Execute crawl operation
             result = WebsiteService.crawl_url(api_request)
 
@@ -258,13 +274,12 @@ class TestWebsiteService:
             assert result["status"] == "active"
             assert result["job_id"] == "test_job_id_123"
 
+            mock_provider_instance.get_datasource_credentials.assert_called_once_with(
+                tenant_id=current_tenant.id,
+                provider="firecrawl",
+                plugin_id="langgenius/firecrawl_datasource",
+            )
             # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "firecrawl"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
-            )
             mock_external_service_dependencies["firecrawl_app"].assert_called_once_with(
                 api_key="decrypted_api_key", base_url="https://api.example.com"
             )
@@ -304,7 +319,12 @@ class TestWebsiteService:
                     "use_sitemap": False,
                 },
             )
-
+            mock_provider_instance = mock_external_service_dependencies["mock_datasource_provider_service_instance"]
+            credential = {
+                "api_key": "decrypted_api_key",
+                "base_url": "https://api.example.com",
+            }
+            mock_provider_instance.get_datasource_credentials.return_value = credential
             # Act: Execute crawl operation
             result = WebsiteService.crawl_url(api_request)
 
@@ -314,11 +334,10 @@ class TestWebsiteService:
             assert result["job_id"] == "watercrawl_job_123"
 
             # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "watercrawl"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
+            mock_provider_instance.get_datasource_credentials.assert_called_once_with(
+                tenant_id=current_tenant.id,
+                provider="watercrawl",
+                plugin_id="langgenius/watercrawl_datasource",
             )
             mock_external_service_dependencies["watercrawl_provider"].assert_called_once_with(
                 api_key="decrypted_api_key", base_url="https://api.example.com"
@@ -364,14 +383,6 @@ class TestWebsiteService:
             assert result is not None
             assert result["status"] == "active"
             assert result["data"] is not None
-
-            # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "jinareader"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
-            )
 
             # Verify HTTP request was made
             mock_external_service_dependencies["requests"].get.assert_called_once_with(
@@ -442,14 +453,6 @@ class TestWebsiteService:
             assert "data" in result
             assert "time_consuming" in result
 
-            # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "firecrawl"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
-            )
-
             # Verify Redis cache was accessed and cleaned up
             mock_external_service_dependencies["redis_client"].get.assert_called_once()
             mock_external_service_dependencies["redis_client"].delete.assert_called_once()
@@ -486,14 +489,6 @@ class TestWebsiteService:
             assert result["current"] == 3
             assert "data" in result
 
-            # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "watercrawl"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
-            )
-
     def test_get_crawl_status_jinareader_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test successful crawl status retrieval with JinaReader provider.
@@ -526,14 +521,6 @@ class TestWebsiteService:
             assert "current" in result
             assert "data" in result
             assert "time_consuming" in result
-
-            # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "jinareader"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
-            )
 
             # Verify HTTP request was made
             mock_external_service_dependencies["requests"].post.assert_called_once()
@@ -582,7 +569,9 @@ class TestWebsiteService:
 
         with patch("services.website_service.current_user", mock_current_user):
             # Mock missing credentials
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.return_value = None
+            mock_external_service_dependencies[
+                "mock_datasource_provider_service"
+            ].get_datasource_credentials.return_value = None
 
             # Create API request
             api_request = WebsiteCrawlStatusApiRequest(provider="firecrawl", job_id="test_job_id_123")
@@ -661,14 +650,6 @@ class TestWebsiteService:
         assert result["description"] == "Test Description"
         assert result["markdown"] == "# Test Content"
 
-        # Verify external service interactions
-        mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-            account.current_tenant.id, "website", "firecrawl"
-        )
-        mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-            tenant_id=account.current_tenant.id, token="encrypted_api_key"
-        )
-
         # Verify storage was accessed
         mock_external_service_dependencies["storage"].exists.assert_called_once()
         mock_external_service_dependencies["storage"].load_once.assert_called_once()
@@ -702,14 +683,6 @@ class TestWebsiteService:
         assert result["source_url"] == "https://example.com"
         assert result["description"] == "Test description"
         assert result["markdown"] == "# Test Content"
-
-        # Verify external service interactions
-        mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-            account.current_tenant.id, "website", "watercrawl"
-        )
-        mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-            tenant_id=account.current_tenant.id, token="encrypted_api_key"
-        )
 
     def test_get_crawl_url_data_jinareader_success(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -750,14 +723,6 @@ class TestWebsiteService:
         assert result["url"] == "https://example.com"
         assert result["description"] == "Test description"
         assert result["content"] == "# Test Content"
-
-        # Verify external service interactions
-        mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-            account.current_tenant.id, "website", "jinareader"
-        )
-        mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-            tenant_id=account.current_tenant.id, token="encrypted_api_key"
-        )
 
         # Verify HTTP request was made
         mock_external_service_dependencies["requests"].get.assert_called_once_with(
@@ -802,14 +767,6 @@ class TestWebsiteService:
         assert result["url"] == "https://example.com"
         assert result["description"] == "Page description"
 
-        # Verify external service interactions
-        mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-            account.current_tenant.id, "website", "firecrawl"
-        )
-        mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-            tenant_id=account.current_tenant.id, token="encrypted_api_key"
-        )
-
         # Verify FirecrawlApp was called with correct parameters
         mock_external_service_dependencies["firecrawl_app"].assert_called_once_with(
             api_key="decrypted_api_key", base_url="https://api.example.com"
@@ -846,14 +803,6 @@ class TestWebsiteService:
         assert result["title"] == "Scraped Page"
         assert result["content"] == "Test content"
         assert result["url"] == "https://example.com"
-
-        # Verify external service interactions
-        mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-            account.current_tenant.id, "website", "watercrawl"
-        )
-        mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-            tenant_id=account.current_tenant.id, token="encrypted_api_key"
-        )
 
         # Verify WaterCrawlProvider was called with correct parameters
         mock_external_service_dependencies["watercrawl_provider"].assert_called_once_with(
@@ -1031,14 +980,6 @@ class TestWebsiteService:
             assert result is not None
             assert result["status"] == "active"
             assert result["job_id"] == "jina_job_123"
-
-            # Verify external service interactions
-            mock_external_service_dependencies["api_key_auth_service"].get_auth_credentials.assert_called_once_with(
-                account.current_tenant.id, "website", "jinareader"
-            )
-            mock_external_service_dependencies["encrypter"].decrypt_token.assert_called_once_with(
-                tenant_id=account.current_tenant.id, token="encrypted_api_key"
-            )
 
             # Verify HTTP POST request was made for sub-page crawling
             mock_external_service_dependencies["requests"].post.assert_called_once_with(
