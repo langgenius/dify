@@ -23,7 +23,6 @@ from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
     create_trigger_provider_encrypter_for_properties,
     create_trigger_provider_encrypter_for_subscription,
-    create_trigger_provider_oauth_encrypter,
     delete_cache_for_subscription,
 )
 from extensions.ext_database import db
@@ -266,10 +265,10 @@ class TriggerProviderService:
             provider_id = TriggerProviderID(db_provider.provider_id)
             provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
             # Create encrypter
-            encrypter, cache = create_trigger_provider_encrypter_for_subscription(
+            encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=db_provider,
+                config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
+                cache=NoOpProviderCredentialCache(),
             )
 
             # Decrypt current credentials
@@ -331,7 +330,11 @@ class TriggerProviderService:
 
             oauth_params: Mapping[str, Any] | None = None
             if tenant_client:
-                encrypter, _ = create_trigger_provider_oauth_encrypter(tenant_id, provider_controller)
+                encrypter, _ = create_provider_encrypter(
+                    tenant_id=tenant_id,
+                    config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
+                    cache=NoOpProviderCredentialCache(),
+                )
                 oauth_params = encrypter.decrypt(tenant_client.oauth_params)
                 return oauth_params
 
