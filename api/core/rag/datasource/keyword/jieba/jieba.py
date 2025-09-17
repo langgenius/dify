@@ -36,7 +36,7 @@ class Jieba(BaseKeyword):
         keyword_table_handler = JiebaKeywordTableHandler
         jieba_total_time = 0.0
         db_total_time = 0.0
-        new_keyword_table:dict = {}
+        new_keyword_table: dict = {}
         for text in texts:
             start_time_jieba = time.perf_counter()
             keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
