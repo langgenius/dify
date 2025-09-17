@@ -1365,7 +1365,8 @@ def cleanup_orphaned_draft_variables(
     "--path",
     "paths",
     multiple=True,
-    help=("Storage path prefixes to migrate (repeatable). Defaults: upload_files, image_files, tools, website_files"),
+    help="Storage path prefixes to migrate (repeatable). Defaults: privkeys, upload_files, image_files,"
+    " tools, website_files, keyword_files, ops_trace",
 )
 @click.option(
     "--source",
@@ -1382,7 +1383,7 @@ def cleanup_orphaned_draft_variables(
     default=True,
     help="Update upload_files.storage_type from source type to current storage after migration",
 )
-def migrate_oss_from_local(
+def migrate_oss(
     paths: tuple[str, ...],
     source: str,
     overwrite: bool,
@@ -1412,10 +1413,11 @@ def migrate_oss_from_local(
     # Default paths if none specified
     default_paths = ("privkeys", "upload_files", "image_files", "tools", "website_files", "keyword_files", "ops_trace")
     path_list = list(paths) if paths else list(default_paths)
+    is_source_local = source.lower() == "local"
 
     click.echo(click.style("Preparing migration to target storage.", fg="yellow"))
     click.echo(click.style(f"Target storage type: {dify_config.STORAGE_TYPE}", fg="white"))
-    if source.lower() == "local":
+    if is_source_local:
         src_root = dify_config.STORAGE_LOCAL_PATH
         click.echo(click.style(f"Source: local fs, root: {src_root}", fg="white"))
     else:
@@ -1428,7 +1430,7 @@ def migrate_oss_from_local(
 
     # Instantiate source storage
     try:
-        if source.lower() == "local":
+        if is_source_local:
             src_root = dify_config.STORAGE_LOCAL_PATH
             source_storage = OpenDALStorage(scheme="fs", root=src_root)
         else:
@@ -1441,6 +1443,7 @@ def migrate_oss_from_local(
     copied_files = 0
     skipped_files = 0
     errored_files = 0
+    copied_upload_file_keys: list[str] = []
 
     for prefix in path_list:
         click.echo(click.style(f"Scanning source path: {prefix}", fg="white"))
@@ -1467,9 +1470,15 @@ def migrate_oss_from_local(
                     if storage.exists(key):
                         skipped_files += 1
                         continue
-                except Exception:
+                except Exception as e:
                     # existence check failures should not block migration attempt
-                    pass
+                    # but should be surfaced to user as a warning for visibility
+                    click.echo(
+                        click.style(
+                            f"  -> Warning: failed target existence check for {key}: {str(e)}",
+                            fg="yellow",
+                        )
+                    )
 
             if dry_run:
                 copied_files += 1
@@ -1490,6 +1499,8 @@ def migrate_oss_from_local(
             try:
                 storage.save(key, data)
                 copied_files += 1
+                if prefix == "upload_files":
+                    copied_upload_file_keys.append(key)
             except Exception as e:
                 errored_files += 1
                 click.echo(click.style(f"  -> Error writing {key} to target: {str(e)}", fg="red"))
@@ -1518,17 +1529,23 @@ def migrate_oss_from_local(
             if not click.confirm("Proceed to update DB storage_type despite errors?", default=False):
                 update_db = False
 
-    # Optionally update DB records for upload_files.storage_type
+    # Optionally update DB records for upload_files.storage_type (only for successfully copied upload_files)
     if update_db:
-        try:
-            source_storage_type = StorageType.LOCAL if source.lower() == "local" else StorageType.OPENDAL
-            updated = (
-                db.session.query(UploadFile)
-                .where(UploadFile.storage_type == source_storage_type)
-                .update({UploadFile.storage_type: dify_config.STORAGE_TYPE}, synchronize_session=False)
-            )
-            db.session.commit()
-            click.echo(click.style(f"Updated storage_type for {updated} upload_files records.", fg="green"))
-        except Exception as e:
-            db.session.rollback()
-            click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
+        if not copied_upload_file_keys:
+            click.echo(click.style("No upload_files copied. Skipping DB storage_type update.", fg="yellow"))
+        else:
+            try:
+                source_storage_type = StorageType.LOCAL if is_source_local else StorageType.OPENDAL
+                updated = (
+                    db.session.query(UploadFile)
+                    .where(
+                        UploadFile.storage_type == source_storage_type,
+                        UploadFile.key.in_(copied_upload_file_keys),
+                    )
+                    .update({UploadFile.storage_type: dify_config.STORAGE_TYPE}, synchronize_session=False)
+                )
+                db.session.commit()
+                click.echo(click.style(f"Updated storage_type for {updated} upload_files records.", fg="green"))
+            except Exception as e:
+                db.session.rollback()
+                click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))

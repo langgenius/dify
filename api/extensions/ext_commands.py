@@ -14,7 +14,7 @@ def init_app(app: DifyApp):
         fix_app_site_missing,
         install_plugins,
         migrate_data_for_plugin,
-        migrate_oss_from_local,
+        migrate_oss,
         old_metadata_migration,
         remove_orphaned_files_on_storage,
         reset_email,
@@ -45,7 +45,7 @@ def init_app(app: DifyApp):
         remove_orphaned_files_on_storage,
         setup_system_tool_oauth_client,
         cleanup_orphaned_draft_variables,
-        migrate_oss_from_local,
+        migrate_oss,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
