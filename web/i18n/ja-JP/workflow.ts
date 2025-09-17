@@ -140,6 +140,10 @@ const translation = {
       export: 'シークレット値付きでエクスポート',
     },
   },
+  sidebar: {
+    exportWarning: '現在保存されているバージョンをエクスポート',
+    exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',
+  },
   chatVariable: {
     panelTitle: '会話変数',
     panelDescription: '対話情報を保存・管理（会話履歴/ファイル/ユーザー設定など）。書き換えができます。',
@@ -476,6 +480,12 @@ const translation = {
         warningTips: {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
+      },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
       },
     },
     knowledgeRetrieval: {
@@ -882,6 +892,7 @@ const translation = {
         },
         text: 'エージェント生成コンテンツ',
         json: 'エージェント生成の JSON',
+        usage: 'モデル使用量',
       },
       checkList: {
         strategyNotSelected: '戦略が選択されていません',
@@ -995,6 +1006,8 @@ const translation = {
     noLastRunFound: '以前の実行が見つかりませんでした。',
     copyLastRunError: '最後の実行の入力をコピーできませんでした',
     noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
+    lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
 }
 

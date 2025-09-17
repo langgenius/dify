@@ -276,6 +276,11 @@ const translation = {
       themeSystemDesc: 'Suivez l\'apparence de votre système d\'exploitation',
       languageCategoryDesc: 'Changer la langue de l\'interface',
       runDesc: 'Exécuter des commandes rapides (thème, langue, ...)',
+      slashDesc: 'Exécutez des commandes telles que /theme, /lang',
+      communityDesc: 'Ouvrir la communauté Discord',
+      docDesc: 'Ouvrir la documentation d\'aide',
+      accountDesc: 'Accédez à la page de compte',
+      feedbackDesc: 'Discussions de rétroaction de la communauté ouverte',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Aucune base de connaissances trouvée',
@@ -290,6 +295,7 @@ const translation = {
       workflowNodes: 'Nœuds de flux de travail',
       knowledgeBases: 'Bases de connaissances',
       plugins: 'Plug-ins',
+      commands: 'Commandes',
     },
     someServicesUnavailable: 'Certains services de recherche indisponibles',
     servicesUnavailableMessage: 'Certains services de recherche peuvent rencontrer des problèmes. Réessayez dans un instant.',
@@ -309,6 +315,11 @@ const translation = {
     inScope: 'dans {{scope}}s',
     noMatchingCommands: 'Aucune commande correspondante n’a été trouvée',
     tryDifferentSearch: 'Essayez un autre terme de recherche',
+    slashHint: 'Tapez / pour voir toutes les commandes disponibles',
+    pressEscToClose: 'Appuyez sur Échap pour fermer',
+    tips: 'Appuyez sur ↑↓ pour naviguer',
+    startTyping: 'Commencez à taper pour rechercher',
+    selectToNavigate: 'Sélectionnez pour naviguer',
   },
 }
 

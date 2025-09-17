@@ -1,9 +1,9 @@
 import logging
 
-from flask_restful import reqparse
+from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError
 
-from controllers.web import api
+from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
     NotWorkflowAppError,
@@ -29,7 +29,26 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
+@web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
+    @web_ns.doc("Run Workflow")
+    @web_ns.doc(description="Execute a workflow with provided inputs and files.")
+    @web_ns.doc(
+        params={
+            "inputs": {"description": "Input variables for the workflow", "type": "object", "required": True},
+            "files": {"description": "Files to be processed by the workflow", "type": "array", "required": False},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow
@@ -62,11 +81,29 @@ class WorkflowRunApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
+    @web_ns.doc("Stop Workflow Task")
+    @web_ns.doc(description="Stop a running workflow task.")
+    @web_ns.doc(
+        params={
+            "task_id": {"description": "Task ID to stop", "type": "string", "required": True},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Task Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
@@ -78,7 +115,3 @@ class WorkflowTaskStopApi(WebApiResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
         return {"result": "success"}
-
-
-api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")

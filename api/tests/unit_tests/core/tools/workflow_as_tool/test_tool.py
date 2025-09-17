@@ -8,7 +8,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool.tool import WorkflowTool
 
 
-def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(monkeypatch):
+def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(monkeypatch: pytest.MonkeyPatch):
     """Ensure that WorkflowTool will throw a `ToolInvokeError` exception when
     `WorkflowAppGenerator.generate` returns a result with `error` key inside
     the `data` element.
@@ -40,7 +40,7 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
         "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"error": "oops"}},
     )
-    monkeypatch.setattr("flask_login.current_user", lambda *args, **kwargs: None)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     with pytest.raises(ToolInvokeError) as exc_info:
         # WorkflowTool always returns a generator, so we need to iterate to

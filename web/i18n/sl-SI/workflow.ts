@@ -477,6 +477,12 @@ const translation = {
       context: 'kontekst',
       addMessage: 'Dodaj sporočilo',
       vision: 'vizija',
+      reasoningFormat: {
+        tagged: 'Ohranite oznake za razmišljanje',
+        title: 'Omogoči ločevanje oznak za razsojanje',
+        tooltip: 'Izvleći vsebino iz miselnih oznak in jo shraniti v polje reasoning_content.',
+        separated: 'Ločite oznake za razmišljanje',
+      },
     },
     knowledgeRetrieval: {
       outputVars: {
@@ -882,6 +888,7 @@ const translation = {
         },
         json: 'agent generiran json',
         text: 'vsebina, ki jo je ustvaril agent',
+        usage: 'informacije o uporabi modela',
       },
       checkList: {
         strategyNotSelected: 'Strategija ni izbrana',
@@ -995,6 +1002,11 @@ const translation = {
     copyLastRunError: 'Kopiranje vhodov zadnjega zagona ni uspelo',
     noLastRunFound: 'Nobenega prejšnjega zagona ni bilo najdenega.',
     noMatchingInputsFound: 'Ni podatkov, ki bi ustrezali prejšnjemu zagonu',
+    lastOutput: 'Nazadnje izhod',
+  },
+  sidebar: {
+    exportWarning: 'Izvozi trenutna shranjena različica',
+    exportWarningDesc: 'To bo izvozilo trenutno shranjeno različico vašega delovnega toka. Če imate neshranjene spremembe v urejevalniku, jih najprej shranite z uporabo možnosti izvoza na platnu delovnega toka.',
   },
 }
 

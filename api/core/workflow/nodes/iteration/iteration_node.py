@@ -4,14 +4,14 @@ import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
-from datetime import UTC, datetime
+from datetime import datetime
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from flask import Flask, current_app
 
 from configs import dify_config
-from core.variables import ArrayVariable, IntegerVariable, NoneVariable
+from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.workflow.entities.node_entities import (
     NodeRunResult,
@@ -41,6 +41,7 @@ from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from factories.variable_factory import build_segment
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 
 from .exc import (
@@ -66,10 +67,10 @@ class IterationNode(BaseNode):
 
     _node_data: IterationNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = IterationNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -78,7 +79,7 @@ class IterationNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -88,7 +89,7 @@ class IterationNode(BaseNode):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: dict | None = None):
         return {
             "type": "iteration",
             "config": {
@@ -111,10 +112,10 @@ class IterationNode(BaseNode):
         if not variable:
             raise IteratorVariableNotFoundError(f"iterator variable {self._node_data.iterator_selector} not found")
 
-        if not isinstance(variable, ArrayVariable) and not isinstance(variable, NoneVariable):
+        if not isinstance(variable, ArraySegment) and not isinstance(variable, NoneSegment):
             raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
 
-        if isinstance(variable, NoneVariable) or len(variable.value) == 0:
+        if isinstance(variable, NoneSegment) or len(variable.value) == 0:
             # Try our best to preserve the type informat.
             if isinstance(variable, ArraySegment):
                 output = variable.model_copy(update={"value": []})
@@ -179,7 +180,7 @@ class IterationNode(BaseNode):
             thread_pool_id=self.thread_pool_id,
         )
 
-        start_at = datetime.now(UTC).replace(tzinfo=None)
+        start_at = naive_utc_now()
 
         yield IterationRunStartedEvent(
             iteration_id=self.id,
@@ -423,12 +424,12 @@ class IterationNode(BaseNode):
         graph_engine: "GraphEngine",
         iteration_graph: Graph,
         iter_run_map: dict[str, float],
-        parallel_mode_run_id: Optional[str] = None,
+        parallel_mode_run_id: str | None = None,
     ) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """
         run single iteration
         """
-        iter_start_at = datetime.now(UTC).replace(tzinfo=None)
+        iter_start_at = naive_utc_now()
 
         try:
             rst = graph_engine.run()
@@ -440,8 +441,8 @@ class IterationNode(BaseNode):
             iteration_run_id = parallel_mode_run_id if parallel_mode_run_id is not None else f"{current_index}"
             next_index = int(current_index) + 1
             for event in rst:
-                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
-                    event.in_iteration_id = self.node_id
+                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:  # ty: ignore [unresolved-attribute]
+                    event.in_iteration_id = self.node_id  # ty: ignore [unresolved-attribute]
 
                 if (
                     isinstance(event, BaseNodeEvent)
@@ -505,7 +506,7 @@ class IterationNode(BaseNode):
                             variable_pool.add([self.node_id, "index"], next_index)
                             if next_index < len(iterator_list_value):
                                 variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
-                            duration = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+                            duration = (naive_utc_now() - iter_start_at).total_seconds()
                             iter_run_map[iteration_run_id] = duration
                             yield IterationRunNextEvent(
                                 iteration_id=self.id,
@@ -526,7 +527,7 @@ class IterationNode(BaseNode):
 
                             if next_index < len(iterator_list_value):
                                 variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
-                            duration = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+                            duration = (naive_utc_now() - iter_start_at).total_seconds()
                             iter_run_map[iteration_run_id] = duration
                             yield IterationRunNextEvent(
                                 iteration_id=self.id,
@@ -602,7 +603,7 @@ class IterationNode(BaseNode):
 
             if next_index < len(iterator_list_value):
                 variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
-            duration = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+            duration = (naive_utc_now() - iter_start_at).total_seconds()
             iter_run_map[iteration_run_id] = duration
             yield IterationRunNextEvent(
                 iteration_id=self.id,

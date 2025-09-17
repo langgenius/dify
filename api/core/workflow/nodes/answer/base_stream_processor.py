@@ -1,7 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Optional
 
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunExceptionEvent, NodeRunSucceededEvent
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class StreamProcessor(ABC):
-    def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
+    def __init__(self, graph: Graph, variable_pool: VariablePool):
         self.graph = graph
         self.variable_pool = variable_pool
         self.rest_node_ids = graph.node_ids.copy()
@@ -20,7 +19,7 @@ class StreamProcessor(ABC):
     def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         raise NotImplementedError
 
-    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent | NodeRunExceptionEvent) -> None:
+    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent | NodeRunExceptionEvent):
         finished_node_id = event.route_node_state.node_id
         if finished_node_id not in self.rest_node_ids:
             return
@@ -72,7 +71,7 @@ class StreamProcessor(ABC):
             for node_id in unreachable_first_node_ids:
                 self._remove_node_ids_in_unreachable_branch(node_id, reachable_node_ids)
 
-    def _fetch_node_ids_in_reachable_branch(self, node_id: str, branch_identify: Optional[str] = None) -> list[str]:
+    def _fetch_node_ids_in_reachable_branch(self, node_id: str, branch_identify: str | None = None) -> list[str]:
         if node_id not in self.rest_node_ids:
             self.rest_node_ids.append(node_id)
         node_ids = []
@@ -89,7 +88,7 @@ class StreamProcessor(ABC):
             node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id, branch_identify))
         return node_ids
 
-    def _remove_node_ids_in_unreachable_branch(self, node_id: str, reachable_node_ids: list[str]) -> None:
+    def _remove_node_ids_in_unreachable_branch(self, node_id: str, reachable_node_ids: list[str]):
         """
         remove target node ids until merge
         """

@@ -1,5 +1,6 @@
+import contextlib
 from copy import deepcopy
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
@@ -12,15 +13,15 @@ class ProviderConfigCache(Protocol):
     Interface for provider configuration cache operations
     """
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> dict | None:
         """Get cached provider configuration"""
         ...
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider configuration"""
         ...
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider configuration"""
         ...
 
@@ -111,14 +112,12 @@ class ProviderConfigEncrypter:
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
-                    try:
+                    with contextlib.suppress(Exception):
                         # if the value is None or empty string, skip decrypt
                         if not data[field_name]:
                             continue
 
                         data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
-                    except Exception:
-                        pass
 
         self.provider_config_cache.set(data)
         return data

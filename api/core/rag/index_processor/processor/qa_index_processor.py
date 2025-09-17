@@ -4,7 +4,6 @@ import logging
 import re
 import threading
 import uuid
-from typing import Optional
 
 import pandas as pd
 from flask import Flask, current_app
@@ -22,6 +21,8 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset
 from services.entities.knowledge_entities.knowledge_entities import Rule
+
+logger = logging.getLogger(__name__)
 
 
 class QAIndexProcessor(BaseIndexProcessor):
@@ -111,7 +112,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             # Skip the first row
             df = pd.read_csv(file)
             text_docs = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
                 text_docs.append(data)
             if len(text_docs) == 0:
@@ -126,7 +127,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             vector = Vector(dataset)
             vector.create(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)
@@ -156,7 +157,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         for result in results:
             metadata = result.metadata
             metadata["score"] = result.score
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
@@ -181,8 +182,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                         qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
-            except Exception as e:
-                logging.exception("Failed to format qa document")
+            except Exception:
+                logger.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 

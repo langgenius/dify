@@ -1,6 +1,5 @@
 from collections.abc import Sequence
-from datetime import UTC, datetime
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -20,6 +19,7 @@ from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegme
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
+from libs.datetime_utils import naive_utc_now
 from models import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
@@ -86,8 +86,8 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-) -> Optional[TokenBufferMemory]:
+    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
+) -> TokenBufferMemory | None:
     if not node_data_memory:
         return None
 
@@ -107,7 +107,7 @@ def fetch_memory(
     return memory
 
 
-def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
+def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):
     provider_model_bundle = model_instance.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 
@@ -149,7 +149,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                 )
                 .values(
                     quota_used=Provider.quota_used + used_quota,
-                    last_used=datetime.now(tz=UTC).replace(tzinfo=None),
+                    last_used=naive_utc_now(),
                 )
             )
             session.execute(stmt)

@@ -2,7 +2,7 @@ import io
 
 from flask import send_file
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -10,7 +10,9 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import StrLen, uuid_value
 from libs.login import login_required
+from models.account import Account
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
 
@@ -20,6 +22,10 @@ class ModelProviderListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
         tenant_id = current_user.current_tenant_id
 
         parser = reqparse.RequestParser()
@@ -44,12 +50,129 @@ class ModelProviderCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
         tenant_id = current_user.current_tenant_id
+        # if credential_id is not provided, return current used credential
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
+        args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
-        credentials = model_provider_service.get_provider_credentials(tenant_id=tenant_id, provider=provider)
+        credentials = model_provider_service.get_provider_credential(
+            tenant_id=tenant_id, provider=provider, credential_id=args.get("credential_id")
+        )
 
         return {"credentials": credentials}
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        args = parser.parse_args()
+
+        model_provider_service = ModelProviderService()
+
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
+        try:
+            model_provider_service.create_provider_credential(
+                tenant_id=current_user.current_tenant_id,
+                provider=provider,
+                credentials=args["credentials"],
+                credential_name=args["name"],
+            )
+        except CredentialsValidateFailedError as ex:
+            raise ValueError(str(ex))
+
+        return {"result": "success"}, 201
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def put(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
+        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        args = parser.parse_args()
+
+        model_provider_service = ModelProviderService()
+
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
+        try:
+            model_provider_service.update_provider_credential(
+                tenant_id=current_user.current_tenant_id,
+                provider=provider,
+                credentials=args["credentials"],
+                credential_id=args["credential_id"],
+                credential_name=args["name"],
+            )
+        except CredentialsValidateFailedError as ex:
+            raise ValueError(str(ex))
+
+        return {"result": "success"}
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
+        model_provider_service = ModelProviderService()
+        model_provider_service.remove_provider_credential(
+            tenant_id=current_user.current_tenant_id, provider=provider, credential_id=args["credential_id"]
+        )
+
+        return {"result": "success"}, 204
+
+
+class ModelProviderCredentialSwitchApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
+        service = ModelProviderService()
+        service.switch_active_provider_credential(
+            tenant_id=current_user.current_tenant_id,
+            provider=provider,
+            credential_id=args["credential_id"],
+        )
+        return {"result": "success"}
 
 
 class ModelProviderValidateApi(Resource):
@@ -57,10 +180,14 @@ class ModelProviderValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
         tenant_id = current_user.current_tenant_id
 
         model_provider_service = ModelProviderService()
@@ -69,7 +196,7 @@ class ModelProviderValidateApi(Resource):
         error = ""
 
         try:
-            model_provider_service.provider_credentials_validate(
+            model_provider_service.validate_provider_credentials(
                 tenant_id=tenant_id, provider=provider, credentials=args["credentials"]
             )
         except CredentialsValidateFailedError as ex:
@@ -82,42 +209,6 @@ class ModelProviderValidateApi(Resource):
             response["error"] = error or "Unknown error"
 
         return response
-
-
-class ModelProviderApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, provider: str):
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-
-        model_provider_service = ModelProviderService()
-
-        try:
-            model_provider_service.save_provider_credentials(
-                tenant_id=current_user.current_tenant_id, provider=provider, credentials=args["credentials"]
-            )
-        except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
-
-        return {"result": "success"}, 201
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def delete(self, provider: str):
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        model_provider_service = ModelProviderService()
-        model_provider_service.remove_provider_credentials(tenant_id=current_user.current_tenant_id, provider=provider)
-
-        return {"result": "success"}, 204
 
 
 class ModelProviderIconApi(Resource):
@@ -143,9 +234,13 @@ class PreferredProviderTypeUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
         tenant_id = current_user.current_tenant_id
 
         parser = reqparse.RequestParser()
@@ -174,7 +269,11 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         BillingService.is_tenant_owner_or_admin(current_user)
+        if not current_user.current_tenant_id:
+            raise ValueError("No current tenant")
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_user.current_tenant_id,
@@ -187,8 +286,10 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
 api.add_resource(ModelProviderListApi, "/workspaces/current/model-providers")
 
 api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-providers/<path:provider>/credentials")
+api.add_resource(
+    ModelProviderCredentialSwitchApi, "/workspaces/current/model-providers/<path:provider>/credentials/switch"
+)
 api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/<path:provider>/credentials/validate")
-api.add_resource(ModelProviderApi, "/workspaces/current/model-providers/<path:provider>")
 
 api.add_resource(
     PreferredProviderTypeUpdateApi, "/workspaces/current/model-providers/<path:provider>/preferred-provider-type"

@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
-from typing import Any, Optional
+from typing import Any
 
 from extensions.ext_redis import redis_client
 
@@ -17,7 +17,7 @@ class ProviderCredentialsCache(ABC):
         """Generate cache key based on subclass implementation"""
         pass
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> dict | None:
         """Get cached provider credentials"""
         cached_credentials = redis_client.get(self.cache_key)
         if cached_credentials:
@@ -28,11 +28,11 @@ class ProviderCredentialsCache(ABC):
                 return None
         return None
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider credentials"""
         redis_client.setex(self.cache_key, 86400, json.dumps(config))
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider credentials"""
         redis_client.delete(self.cache_key)
 
@@ -71,14 +71,14 @@ class ToolProviderCredentialsCache(ProviderCredentialsCache):
 class NoOpProviderCredentialCache:
     """No-op provider credential cache"""
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> dict | None:
         """Get cached provider credentials"""
         return None
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider credentials"""
         pass
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider credentials"""
         pass

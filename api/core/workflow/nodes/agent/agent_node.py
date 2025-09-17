@@ -1,6 +1,6 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from packaging.version import Version
 from pydantic import ValidationError
@@ -13,8 +13,9 @@ from core.agent.strategy.plugin import PluginAgentStrategy
 from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
@@ -65,10 +66,10 @@ class AgentNode(BaseNode):
     _node_type = NodeType.AGENT
     _node_data: AgentNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = AgentNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -77,7 +78,7 @@ class AgentNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -152,7 +153,7 @@ class AgentNode(BaseNode):
                 messages=message_stream,
                 tool_info={
                     "icon": self.agent_strategy_icon,
-                    "agent_strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
+                    "agent_strategy": self._node_data.agent_strategy_name,
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
@@ -319,7 +320,7 @@ class AgentNode(BaseNode):
                         memory = self._fetch_memory(model_instance)
                         if memory:
                             prompt_messages = memory.get_history_prompt_messages(
-                                message_limit=node_data.memory.window.size if node_data.memory.window.size else None
+                                message_limit=node_data.memory.window.size or None
                             )
                             history_prompt_messages = [
                                 prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
@@ -393,15 +394,14 @@ class AgentNode(BaseNode):
             current_plugin = next(
                 plugin
                 for plugin in plugins
-                if f"{plugin.plugin_id}/{plugin.name}"
-                == cast(AgentNodeData, self._node_data).agent_strategy_provider_name
+                if f"{plugin.plugin_id}/{plugin.name}" == self._node_data.agent_strategy_provider_name
             )
             icon = current_plugin.declaration.icon
         except StopIteration:
             icon = None
         return icon
 
-    def _fetch_memory(self, model_instance: ModelInstance) -> Optional[TokenBufferMemory]:
+    def _fetch_memory(self, model_instance: ModelInstance) -> TokenBufferMemory | None:
         # get conversation id
         conversation_id_variable = self.graph_runtime_state.variable_pool.get(
             ["sys", SystemVariableKey.CONVERSATION_ID.value]
@@ -558,7 +558,7 @@ class AgentNode(BaseNode):
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == NodeType.AGENT:
                     msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                    llm_usage = LLMUsage.from_metadata(msg_metadata)
+                    llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
                     agent_execution_metadata = {
                         WorkflowNodeExecutionMetadataKey(key): value
                         for key, value in msg_metadata.items()
@@ -692,7 +692,13 @@ class AgentNode(BaseNode):
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
+                outputs={
+                    "text": text,
+                    "usage": jsonable_encoder(llm_usage),
+                    "files": ArrayFileSegment(value=files),
+                    "json": json_output,
+                    **variables,
+                },
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,

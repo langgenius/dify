@@ -34,11 +34,11 @@ PR açıklamasında mevcut bir sorunu bağlamayı veya yeni bir sorun açmayı u
 
 Nasıl önceliklendiriyoruz:
 
-  | Sorun Türü                                                    | Öncelik         |
-  | ------------------------------------------------------------ | --------------- |
-  | Temel işlevlerdeki hatalar (bulut hizmeti, giriş yapamama, çalışmayan uygulamalar, güvenlik açıkları) | Kritik          |
-  | Kritik olmayan hatalar, performans artışları                 | Orta Öncelik    |
-  | Küçük düzeltmeler (yazım hataları, kafa karıştırıcı ama çalışan UI) | Düşük Öncelik   |
+| Sorun Türü | Öncelik |
+| ------------------------------------------------------------ | --------------- |
+| Temel işlevlerdeki hatalar (bulut hizmeti, giriş yapamama, çalışmayan uygulamalar, güvenlik açıkları) | Kritik |
+| Kritik olmayan hatalar, performans artışları | Orta Öncelik |
+| Küçük düzeltmeler (yazım hataları, kafa karıştırıcı ama çalışan UI) | Düşük Öncelik |
 
 ### Özellik İstekleri
 
@@ -52,23 +52,25 @@ Nasıl önceliklendiriyoruz:
 
 Nasıl önceliklendiriyoruz:
 
-  | Özellik Türü                                                 | Öncelik         |
-  | ------------------------------------------------------------ | --------------- |
-  | Bir ekip üyesi tarafından etiketlenen Yüksek Öncelikli Özellikler | Yüksek Öncelik  |
-  | [Topluluk geri bildirim panosundan](https://github.com/langgenius/dify/discussions/categories/feedbacks) popüler özellik istekleri | Orta Öncelik    |
-  | Temel olmayan özellikler ve küçük geliştirmeler              | Düşük Öncelik   |
-  | Değerli ama acil olmayan                                     | Gelecek-Özellik |
+| Özellik Türü | Öncelik |
+| ------------------------------------------------------------ | --------------- |
+| Bir ekip üyesi tarafından etiketlenen Yüksek Öncelikli Özellikler | Yüksek Öncelik |
+| [Topluluk geri bildirim panosundan](https://github.com/langgenius/dify/discussions/categories/feedbacks) popüler özellik istekleri | Orta Öncelik |
+| Temel olmayan özellikler ve küçük geliştirmeler | Düşük Öncelik |
+| Değerli ama acil olmayan | Gelecek-Özellik |
+
 ## PR'nizi Göndermek
 
 ### Pull Request Süreci
 
 1. Depoyu fork edin
-2. Bir PR taslağı oluşturmadan önce, yapmak istediğiniz değişiklikleri tartışmak için lütfen bir sorun oluşturun
-3. Değişiklikleriniz için yeni bir dal oluşturun
-4. Lütfen değişiklikleriniz için uygun testler ekleyin
-5. Kodunuzun mevcut testleri geçtiğinden emin olun
-6. Lütfen PR açıklamasında sorunu bağlayın, `fixes #<sorun_numarası>`
-7. Kodunuzu birleştirin!
+1. Bir PR taslağı oluşturmadan önce, yapmak istediğiniz değişiklikleri tartışmak için lütfen bir sorun oluşturun
+1. Değişiklikleriniz için yeni bir dal oluşturun
+1. Lütfen değişiklikleriniz için uygun testler ekleyin
+1. Kodunuzun mevcut testleri geçtiğinden emin olun
+1. Lütfen PR açıklamasında sorunu bağlayın, `fixes #<sorun_numarası>`
+1. Kodunuzu birleştirin!
+
 ### Projeyi Kurma
 
 #### Frontend
@@ -82,12 +84,14 @@ Backend hizmetini kurmak için, lütfen `api/README.md` dosyasındaki detaylı [
 #### Dikkat Edilecek Diğer Şeyler
 
 Kuruluma geçmeden önce bu belgeyi dikkatlice incelemenizi öneririz, çünkü şunlar hakkında temel bilgiler içerir:
+
 - Ön koşullar ve bağımlılıklar
 - Kurulum adımları
 - Yapılandırma detayları
 - Yaygın sorun giderme ipuçları
 
 Kurulum süreci sırasında herhangi bir sorunla karşılaşırsanız bizimle iletişime geçmekten çekinmeyin.
+
 ## Yardım Almak
 
-Katkıda bulunurken takılırsanız veya yanıcı bir sorunuz olursa, sorularınızı ilgili GitHub sorunu aracılığıyla bize gönderin veya hızlı bir sohbet için [Discord'umuza](https://discord.gg/8Tpq4AcN9c) katılın. 
+Katkıda bulunurken takılırsanız veya yanıcı bir sorunuz olursa, sorularınızı ilgili GitHub sorunu aracılığıyla bize gönderin veya hızlı bir sohbet için [Discord'umuza](https://discord.gg/8Tpq4AcN9c) katılın.

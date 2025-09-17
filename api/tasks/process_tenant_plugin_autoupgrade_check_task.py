@@ -1,8 +1,9 @@
+import operator
 import traceback
 import typing
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.helper import marketplace
 from core.helper.marketplace import MarketplacePluginDeclaration
@@ -118,7 +119,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                     current_version = version
                     latest_version = manifest.latest_version
 
-                    def fix_only_checker(latest_version, current_version):
+                    def fix_only_checker(latest_version: str, current_version: str):
                         latest_version_tuple = tuple(int(val) for val in latest_version.split("."))
                         current_version_tuple = tuple(int(val) for val in current_version.split("."))
 
@@ -130,8 +131,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                         return False
 
                     version_checker = {
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: lambda latest_version,
-                        current_version: latest_version != current_version,
+                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: operator.ne,
                         TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY: fix_only_checker,
                     }
 
@@ -146,7 +146,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                                 fg="green",
                             )
                         )
-                        task_start_resp = manager.upgrade_plugin(
+                        _ = manager.upgrade_plugin(
                             tenant_id,
                             original_unique_identifier,
                             new_unique_identifier,

@@ -93,4 +93,5 @@ export type Callback = {
 
 export type Feedback = {
   rating: 'like' | 'dislike' | null
+  content?: string | null
 }

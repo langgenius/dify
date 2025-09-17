@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from uuid import uuid4
 
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
@@ -26,14 +26,14 @@ class OpenSearchConfig(BaseModel):
     secure: bool = False  # use_ssl
     verify_certs: bool = True
     auth_method: Literal["basic", "aws_managed_iam"] = "basic"
-    user: Optional[str] = None
-    password: Optional[str] = None
-    aws_region: Optional[str] = None
-    aws_service: Optional[str] = None
+    user: str | None = None
+    password: str | None = None
+    aws_region: str | None = None
+    aws_service: str | None = None
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values.get("host"):
             raise ValueError("config OPENSEARCH_HOST is required")
         if not values.get("port"):
@@ -48,7 +48,7 @@ class OpenSearchConfig(BaseModel):
         return values
 
     def create_aws_managed_iam_auth(self) -> Urllib3AWSV4SignerAuth:
-        import boto3  # type: ignore
+        import boto3
 
         return Urllib3AWSV4SignerAuth(
             credentials=boto3.Session().get_credentials(),
@@ -104,7 +104,7 @@ class OpenSearchVector(BaseVector):
                 },
             }
             # See https://github.com/langchain-ai/langchainjs/issues/4346#issuecomment-1935123377
-            if self._client_config.aws_service not in ["aoss"]:
+            if self._client_config.aws_service != "aoss":
                 action["_id"] = uuid4().hex
             actions.append(action)
 
@@ -128,7 +128,7 @@ class OpenSearchVector(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         index_name = self._collection_name.lower()
         if not self._client.indices.exists(index=index_name):
             logger.warning("Index %s does not exist", index_name)
@@ -159,7 +159,7 @@ class OpenSearchVector(BaseVector):
                     else:
                         logger.exception("Error deleting document: %s", error)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name.lower())
 
     def text_exists(self, id: str) -> bool:
@@ -197,7 +197,7 @@ class OpenSearchVector(BaseVector):
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
-        except Exception as e:
+        except Exception:
             logger.exception("Error executing vector search, query: %s", query)
             raise
 
@@ -211,7 +211,7 @@ class OpenSearchVector(BaseVector):
 
             metadata["score"] = hit["_score"]
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if hit["_score"] > score_threshold:
+            if hit["_score"] >= score_threshold:
                 doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)
 
@@ -236,7 +236,7 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name.lower()}"
         with redis_client.lock(lock_name, timeout=20):

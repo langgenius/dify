@@ -276,6 +276,11 @@ const translation = {
       themeSystemDesc: 'Theo giao diện của hệ điều hành của bạn',
       runDesc: 'Chạy các lệnh nhanh (chủ đề, ngôn ngữ, ... )',
       themeCategoryDesc: 'Chuyển đổi giao diện ứng dụng',
+      slashDesc: 'Thực hiện các lệnh như /theme, /lang',
+      feedbackDesc: 'Thảo luận phản hồi cộng đồng mở',
+      accountDesc: 'Đi đến trang tài khoản',
+      docDesc: 'Mở tài liệu trợ giúp',
+      communityDesc: 'Mở cộng đồng Discord',
     },
     emptyState: {
       noWorkflowNodesFound: 'Không tìm thấy nút quy trình làm việc',
@@ -290,6 +295,7 @@ const translation = {
       workflowNodes: 'Nút quy trình làm việc',
       knowledgeBases: 'Cơ sở kiến thức',
       apps: 'Ứng dụng',
+      commands: 'Lệnh',
     },
     searchTemporarilyUnavailable: 'Tìm kiếm tạm thời không khả dụng',
     clearToSearchAll: 'Xóa @ để tìm kiếm tất cả',
@@ -309,6 +315,11 @@ const translation = {
     inScope: 'trong {{scope}}s',
     tryDifferentSearch: 'Thử một cụm từ tìm kiếm khác',
     noMatchingCommands: 'Không tìm thấy lệnh phù hợp',
+    slashHint: 'Gõ / để xem tất cả các lệnh có sẵn',
+    selectToNavigate: 'Chọn để điều hướng',
+    startTyping: 'Bắt đầu gõ để tìm kiếm',
+    pressEscToClose: 'Nhấn ESC để đóng',
+    tips: 'Nhấn ↑↓ để duyệt',
   },
 }
 

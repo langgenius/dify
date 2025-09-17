@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,7 +45,7 @@ class ToolNode(BaseNode):
 
     _node_data: ToolNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = ToolNodeData.model_validate(data)
 
     @classmethod
@@ -57,7 +57,7 @@ class ToolNode(BaseNode):
         Run the tool node
         """
 
-        node_data = cast(ToolNodeData, self._node_data)
+        node_data = self._node_data
 
         # fetch tool icon
         tool_info = {
@@ -318,33 +318,6 @@ class ToolNode(BaseNode):
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-
-                if message.meta:
-                    transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
-                else:
-                    transfer_method = FileTransferMethod.TOOL_FILE
-
-                tool_file_id = message.message.text.split("/")[-1].split(".")[0]
-
-                with Session(db.engine) as session:
-                    stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
-                    tool_file = session.scalar(stmt)
-                    if tool_file is None:
-                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
-
-                mapping = {
-                    "tool_file_id": tool_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
-                    "transfer_method": transfer_method,
-                    "url": message.message.text,
-                }
-
-                file = file_factory.build_from_mapping(
-                    mapping=mapping,
-                    tenant_id=self.tenant_id,
-                )
-                files.append(file)
-
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
                 yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[node_id, "text"])
@@ -466,7 +439,7 @@ class ToolNode(BaseNode):
 
         return result
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -475,7 +448,7 @@ class ToolNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:

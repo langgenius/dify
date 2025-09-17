@@ -1,8 +1,9 @@
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 import orjson
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
@@ -75,7 +76,7 @@ class Jieba(BaseKeyword):
             return False
         return id in set.union(*keyword_table.values())
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table = self._get_dataset_keyword_table()
@@ -115,7 +116,7 @@ class Jieba(BaseKeyword):
 
         return documents
 
-    def delete(self) -> None:
+    def delete(self):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             dataset_keyword_table = self.dataset.dataset_keyword_table
@@ -142,7 +143,7 @@ class Jieba(BaseKeyword):
                 storage.delete(file_key)
             storage.save(file_key, dumps_with_sets(keyword_table_dict).encode("utf-8"))
 
-    def _get_dataset_keyword_table(self) -> Optional[dict]:
+    def _get_dataset_keyword_table(self) -> dict | None:
         dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             keyword_table_dict = dataset_keyword_table.keyword_table_dict
@@ -167,14 +168,14 @@ class Jieba(BaseKeyword):
 
         return {}
 
-    def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]) -> dict:
+    def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]):
         for keyword in keywords:
             if keyword not in keyword_table:
                 keyword_table[keyword] = set()
             keyword_table[keyword].add(id)
         return keyword_table
 
-    def _delete_ids_from_keyword_table(self, keyword_table: dict, ids: list[str]) -> dict:
+    def _delete_ids_from_keyword_table(self, keyword_table: dict, ids: list[str]):
         # get set of ids that correspond to node
         node_idxs_to_delete = set(ids)
 
@@ -211,11 +212,10 @@ class Jieba(BaseKeyword):
         return sorted_chunk_indices[:k]
 
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
-        document_segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
-            .first()
+        stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id
         )
+        document_segment = db.session.scalar(stmt)
         if document_segment:
             document_segment.keywords = keywords
             db.session.add(document_segment)
@@ -251,7 +251,7 @@ class Jieba(BaseKeyword):
         self._save_dataset_keyword_table(keyword_table)
 
 
-def set_orjson_default(obj: Any) -> Any:
+def set_orjson_default(obj: Any):
     """Default function for orjson serialization of set types"""
     if isinstance(obj, set):
         return list(obj)

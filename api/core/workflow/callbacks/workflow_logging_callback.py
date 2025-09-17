@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -36,10 +34,10 @@ _TEXT_COLOR_MAPPING = {
 
 
 class WorkflowLoggingCallback(WorkflowCallback):
-    def __init__(self) -> None:
-        self.current_node_id: Optional[str] = None
+    def __init__(self):
+        self.current_node_id: str | None = None
 
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: GraphEngineEvent):
         if isinstance(event, GraphRunStartedEvent):
             self.print_text("\n[GraphRunStartedEvent]", color="pink")
         elif isinstance(event, GraphRunSucceededEvent):
@@ -75,7 +73,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         else:
             self.print_text(f"\n[{event.__class__.__name__}]", color="blue")
 
-    def on_workflow_node_execute_started(self, event: NodeRunStartedEvent) -> None:
+    def on_workflow_node_execute_started(self, event: NodeRunStartedEvent):
         """
         Workflow node execute started
         """
@@ -84,7 +82,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         self.print_text(f"Node Title: {event.node_data.title}", color="yellow")
         self.print_text(f"Type: {event.node_type.value}", color="yellow")
 
-    def on_workflow_node_execute_succeeded(self, event: NodeRunSucceededEvent) -> None:
+    def on_workflow_node_execute_succeeded(self, event: NodeRunSucceededEvent):
         """
         Workflow node execute succeeded
         """
@@ -115,7 +113,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
                 color="green",
             )
 
-    def on_workflow_node_execute_failed(self, event: NodeRunFailedEvent) -> None:
+    def on_workflow_node_execute_failed(self, event: NodeRunFailedEvent):
         """
         Workflow node execute failed
         """
@@ -143,7 +141,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
                 color="red",
             )
 
-    def on_node_text_chunk(self, event: NodeRunStreamChunkEvent) -> None:
+    def on_node_text_chunk(self, event: NodeRunStreamChunkEvent):
         """
         Publish text chunk
         """
@@ -161,7 +159,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
 
         self.print_text(event.chunk_content, color="pink", end="")
 
-    def on_workflow_parallel_started(self, event: ParallelBranchRunStartedEvent) -> None:
+    def on_workflow_parallel_started(self, event: ParallelBranchRunStartedEvent):
         """
         Publish parallel started
         """
@@ -173,9 +171,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         if event.in_loop_id:
             self.print_text(f"Loop ID: {event.in_loop_id}", color="blue")
 
-    def on_workflow_parallel_completed(
-        self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent
-    ) -> None:
+    def on_workflow_parallel_completed(self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent):
         """
         Publish parallel completed
         """
@@ -200,14 +196,14 @@ class WorkflowLoggingCallback(WorkflowCallback):
         if isinstance(event, ParallelBranchRunFailedEvent):
             self.print_text(f"Error: {event.error}", color=color)
 
-    def on_workflow_iteration_started(self, event: IterationRunStartedEvent) -> None:
+    def on_workflow_iteration_started(self, event: IterationRunStartedEvent):
         """
         Publish iteration started
         """
         self.print_text("\n[IterationRunStartedEvent]", color="blue")
         self.print_text(f"Iteration Node ID: {event.iteration_id}", color="blue")
 
-    def on_workflow_iteration_next(self, event: IterationRunNextEvent) -> None:
+    def on_workflow_iteration_next(self, event: IterationRunNextEvent):
         """
         Publish iteration next
         """
@@ -215,7 +211,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         self.print_text(f"Iteration Node ID: {event.iteration_id}", color="blue")
         self.print_text(f"Iteration Index: {event.index}", color="blue")
 
-    def on_workflow_iteration_completed(self, event: IterationRunSucceededEvent | IterationRunFailedEvent) -> None:
+    def on_workflow_iteration_completed(self, event: IterationRunSucceededEvent | IterationRunFailedEvent):
         """
         Publish iteration completed
         """
@@ -227,14 +223,14 @@ class WorkflowLoggingCallback(WorkflowCallback):
         )
         self.print_text(f"Node ID: {event.iteration_id}", color="blue")
 
-    def on_workflow_loop_started(self, event: LoopRunStartedEvent) -> None:
+    def on_workflow_loop_started(self, event: LoopRunStartedEvent):
         """
         Publish loop started
         """
         self.print_text("\n[LoopRunStartedEvent]", color="blue")
         self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
 
-    def on_workflow_loop_next(self, event: LoopRunNextEvent) -> None:
+    def on_workflow_loop_next(self, event: LoopRunNextEvent):
         """
         Publish loop next
         """
@@ -242,7 +238,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
         self.print_text(f"Loop Index: {event.index}", color="blue")
 
-    def on_workflow_loop_completed(self, event: LoopRunSucceededEvent | LoopRunFailedEvent) -> None:
+    def on_workflow_loop_completed(self, event: LoopRunSucceededEvent | LoopRunFailedEvent):
         """
         Publish loop completed
         """
@@ -252,7 +248,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         )
         self.print_text(f"Loop Node ID: {event.loop_node_id}", color="blue")
 
-    def print_text(self, text: str, color: Optional[str] = None, end: str = "\n") -> None:
+    def print_text(self, text: str, color: str | None = None, end: str = "\n"):
         """Print text with highlighting and no end characters."""
         text_to_print = self._get_colored_text(text, color) if color else text
         print(f"{text_to_print}", end=end)

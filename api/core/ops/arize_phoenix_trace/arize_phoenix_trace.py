@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
@@ -15,6 +15,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.trace import SpanContext, TraceFlags, TraceState
+from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import ArizeConfig, PhoenixConfig
@@ -91,14 +92,14 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
         raise
 
 
-def datetime_to_nanos(dt: Optional[datetime]) -> int:
+def datetime_to_nanos(dt: datetime | None) -> int:
     """Convert datetime to nanoseconds since epoch. If None, use current time."""
     if dt is None:
         dt = datetime.now()
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def string_to_trace_id128(string: Optional[str]) -> int:
+def string_to_trace_id128(string: str | None) -> int:
     """
     Convert any input string into a stable 128-bit integer trace ID.
 
@@ -283,7 +284,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             return
 
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
 
         if message_file_data is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -307,7 +308,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -699,8 +700,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def _get_workflow_nodes(self, workflow_run_id: str):
         """Helper method to get workflow nodes"""
-        workflow_nodes = (
-            db.session.query(
+        workflow_nodes = db.session.scalars(
+            select(
                 WorkflowNodeExecutionModel.id,
                 WorkflowNodeExecutionModel.tenant_id,
                 WorkflowNodeExecutionModel.app_id,
@@ -713,10 +714,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 WorkflowNodeExecutionModel.elapsed_time,
                 WorkflowNodeExecutionModel.process_data,
                 WorkflowNodeExecutionModel.execution_metadata,
-            )
-            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
-            .all()
-        )
+            ).where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+        ).all()
         return workflow_nodes
 
     def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:

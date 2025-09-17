@@ -246,7 +246,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [inputs, setInputs])
 
   const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.prompt_template = newPrompt
     })
     setInputs(newInputs)
@@ -308,12 +308,20 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [])
 
   const filterJinja2InputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
+    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.arrayBoolean, VarType.arrayObject, VarType.object, VarType.array, VarType.boolean].includes(varPayload.type)
   }, [])
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
     return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
+
+  // reasoning format
+  const handleReasoningFormatChange = useCallback((reasoningFormat: 'tagged' | 'separated') => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.reasoning_format = reasoningFormat
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
 
   const {
     availableVars,
@@ -355,6 +363,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
+    handleReasoningFormatChange,
   }
 }
 

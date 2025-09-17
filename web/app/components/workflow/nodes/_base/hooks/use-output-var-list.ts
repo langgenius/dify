@@ -118,8 +118,8 @@ function useOutputVarList<T>({
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const removeVarInNode = useCallback(() => {
     const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
-        return varItem.name === removedVar[1]
-      })?.id
+      return varItem.name === removedVar[1]
+    })?.id
     if(varId)
       deleteInspectVar(id, varId)
     removeUsedVarInNodes(removedVar)
@@ -143,8 +143,8 @@ function useOutputVarList<T>({
     setInputs(newInputs)
     onOutputKeyOrdersChange(outputKeyOrders.filter((_, i) => i !== index))
     const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
-        return varItem.name === key
-      })?.id
+      return varItem.name === key
+    })?.id
     if(varId)
       deleteInspectVar(id, varId)
   }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, nodesWithInspectVars, deleteInspectVar, showRemoveVarConfirm, varKey])

@@ -276,6 +276,11 @@ const translation = {
       themeCategoryDesc: 'ऐप की थीम बदलें',
       themeSystemDesc: 'अपने ऑपरेटिंग सिस्टम की उपस्थिति का पालन करें',
       runDesc: 'त्वरित कमांड चलाएँ (थीम, भाषा, ...)',
+      slashDesc: 'कमांड्स चलाएं जैसे /theme, /lang',
+      accountDesc: 'खाता पृष्ठ पर जाएं',
+      docDesc: 'सहायता दस्तावेज़ खोलें',
+      communityDesc: 'ओपन डिस्कॉर्ड समुदाय',
+      feedbackDesc: 'खुले समुदाय की फीडबैक चर्चाएँ',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',
@@ -290,6 +295,7 @@ const translation = {
       knowledgeBases: 'ज्ञान आधार',
       plugins: 'प्लगइन्स',
       workflowNodes: 'कार्यप्रवाह नोड्स',
+      commands: 'आदेश',
     },
     noResults: 'कोई परिणाम नहीं मिले',
     clearToSearchAll: 'साफ़ @ सभी खोजने के लिए',
@@ -309,6 +315,11 @@ const translation = {
     inScope: '{{scope}}s में',
     tryDifferentSearch: 'एक अलग खोज शब्द आजमाएँ',
     noMatchingCommands: 'कोई मिलती-जुलती कमांड्स नहीं मिलीं',
+    slashHint: 'सभी उपलब्ध कमांड देखने के लिए टाइप करें /',
+    pressEscToClose: 'बंद करने के लिए ESC दबाएं',
+    startTyping: 'खोजने के लिए टाइप करना शुरू करें',
+    selectToNavigate: 'नेविगेट करने के लिए चुनें',
+    tips: 'नेविगेट करने के लिए ↑↓ दबाएँ',
   },
 }
 

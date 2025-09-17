@@ -9,6 +9,7 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from '@/app/education-apply/constants'
+import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 
 type SwrInitializerProps = {
   children: ReactNode
@@ -63,7 +64,11 @@ const SwrInitializer = ({
         if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
           consoleToken && localStorage.setItem('console_token', consoleToken)
           refreshToken && localStorage.setItem('refresh_token', refreshToken)
-          router.replace(pathname)
+          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          if (redirectUrl)
+            location.replace(redirectUrl)
+          else
+            router.replace(pathname)
         }
 
         setInit(true)

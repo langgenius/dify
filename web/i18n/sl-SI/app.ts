@@ -276,6 +276,11 @@ const translation = {
       themeSystemDesc: 'Sledite videzu svojega operacijskega sistema',
       runDesc: 'Zaženi hitre ukaze (teme, jezik, ...)',
       languageChangeDesc: 'Spremeni jezik vmesnika',
+      slashDesc: 'Izvedi ukaze kot so /tema, /jezik',
+      accountDesc: 'Pojdite na stran računa',
+      docDesc: 'Odprite pomoč dokumentacijo',
+      feedbackDesc: 'Razprave o povratnih informacijah odprte skupnosti',
+      communityDesc: 'Odpri Discord skupnost',
     },
     emptyState: {
       noPluginsFound: 'Vtičnikov ni mogoče najti',
@@ -290,6 +295,7 @@ const translation = {
       apps: 'Aplikacije',
       knowledgeBases: 'Baze znanja',
       plugins: 'Vtičniki',
+      commands: 'Ukazi',
     },
     searching: 'Iskanje...',
     searchTitle: 'Poiščite karkoli',
@@ -309,6 +315,11 @@ const translation = {
     inScope: 'v {{scope}}s',
     tryDifferentSearch: 'Poskusite uporabiti drug iskalni izraz',
     noMatchingCommands: 'Ujemajoči se ukazi niso našli',
+    slashHint: 'Vnesite / za ogled vseh razpoložljivih ukazov',
+    startTyping: 'Začnite vnašati za iskanje',
+    pressEscToClose: 'Pritisnite ESC za zapiranje',
+    selectToNavigate: 'Izberite za navigacijo',
+    tips: 'Pritisnite ↑↓ za navigacijo',
   },
 }
 
