@@ -709,9 +709,10 @@ class TestTenantService:
         mock_tenant.id = "tenant-456"
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Setup smart database query mock - no existing member
-        query_results = {("TenantAccountJoin", "tenant_id", "tenant-456"): None}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        # Mock SQLAlchemy 2.0 select API - no existing member found
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.first.return_value = None  # No existing member
+        mock_db_dependencies["db"].session.scalars.return_value = mock_scalars_result
 
         # Mock database operations
         mock_db_dependencies["db"].session.add = MagicMock()
