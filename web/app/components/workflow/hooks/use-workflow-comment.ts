@@ -4,7 +4,7 @@ import { useReactFlow } from 'reactflow'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
-import { createWorkflowComment, deleteWorkflowComment, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment } from '@/service/workflow-comment'
+import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment } from '@/service/workflow-comment'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -129,21 +129,27 @@ export const useWorkflowComment = () => {
     }
   }, [appId, reactflow, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache, setControlMode, setPendingComment])
 
+  const refreshActiveComment = useCallback(async (commentId: string) => {
+    if (!appId) return
+
+    const detailResponse = await fetchWorkflowComment(appId, commentId)
+    const detail = (detailResponse as any)?.data ?? detailResponse
+
+    commentDetailCacheRef.current = {
+      ...commentDetailCacheRef.current,
+      [commentId]: detail,
+    }
+    setCommentDetailCache(commentDetailCacheRef.current)
+    setActiveComment(detail)
+  }, [appId, setActiveComment, setCommentDetailCache])
+
   const handleCommentResolve = useCallback(async (commentId: string) => {
     if (!appId) return
 
     setActiveCommentLoading(true)
     try {
       await resolveWorkflowComment(appId, commentId)
-      const detailResponse = await fetchWorkflowComment(appId, commentId)
-      const detail = (detailResponse as any)?.data ?? detailResponse
-
-      commentDetailCacheRef.current = {
-        ...commentDetailCacheRef.current,
-        [commentId]: detail,
-      }
-      setCommentDetailCache(commentDetailCacheRef.current)
-      setActiveComment(detail)
+      await refreshActiveComment(commentId)
       await loadComments()
     }
     catch (error) {
@@ -152,7 +158,7 @@ export const useWorkflowComment = () => {
     finally {
       setActiveCommentLoading(false)
     }
-  }, [appId, loadComments, setActiveComment, setActiveCommentLoading, setCommentDetailCache])
+  }, [appId, loadComments, refreshActiveComment, setActiveCommentLoading])
 
   const handleCommentDelete = useCallback(async (commentId: string) => {
     if (!appId) return
@@ -191,6 +197,25 @@ export const useWorkflowComment = () => {
       setActiveCommentLoading(false)
     }
   }, [appId, comments, handleCommentIconClick, loadComments, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache])
+
+  const handleCommentReply = useCallback(async (commentId: string, content: string, mentionedUserIds: string[] = []) => {
+    if (!appId) return
+    const trimmed = content.trim()
+    if (!trimmed) return
+
+    setActiveCommentLoading(true)
+    try {
+      await createWorkflowCommentReply(appId, commentId, { content: trimmed, mentioned_user_ids: mentionedUserIds })
+      await refreshActiveComment(commentId)
+      await loadComments()
+    }
+    catch (error) {
+      console.error('Failed to create reply:', error)
+    }
+    finally {
+      setActiveCommentLoading(false)
+    }
+  }, [appId, loadComments, refreshActiveComment, setActiveCommentLoading])
 
   const handleCommentNavigate = useCallback((direction: 'prev' | 'next') => {
     const currentId = activeCommentIdRef.current
@@ -235,6 +260,7 @@ export const useWorkflowComment = () => {
     handleCommentResolve,
     handleCommentDelete,
     handleCommentNavigate,
+    handleCommentReply,
     handleCreateComment,
     loadComments,
   }

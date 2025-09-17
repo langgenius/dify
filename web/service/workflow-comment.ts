@@ -67,6 +67,13 @@ export type WorkflowCommentUpdateRes = {
   updated_at: string
 }
 
+export type WorkflowCommentResolveRes = {
+  id: string
+  resolved: boolean
+  resolved_by: string
+  resolved_at: number
+}
+
 export type WorkflowCommentReply = {
   id: string
   comment_id: string
@@ -123,8 +130,8 @@ export const deleteWorkflowComment = async (appId: string, commentId: string): P
   return del<CommonResponse>(`apps/${appId}/workflow/comments/${commentId}`)
 }
 
-export const resolveWorkflowComment = async (appId: string, commentId: string): Promise<WorkflowComment> => {
-  return post<WorkflowComment>(`apps/${appId}/workflow/comments/${commentId}/resolve`)
+export const resolveWorkflowComment = async (appId: string, commentId: string): Promise<WorkflowCommentResolveRes> => {
+  return post<WorkflowCommentResolveRes>(`apps/${appId}/workflow/comments/${commentId}/resolve`)
 }
 
 export const createWorkflowCommentReply = async (appId: string, commentId: string, params: CreateReplyParams): Promise<WorkflowCommentReply> => {

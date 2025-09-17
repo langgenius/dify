@@ -174,6 +174,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleCommentResolve,
     handleCommentDelete,
     handleCommentNavigate,
+    handleCommentReply,
   } = useWorkflowComment()
   const mousePosition = useStore(s => s.mousePosition)
 
@@ -384,6 +385,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
               onDelete={() => setPendingDeleteCommentId(comment.id)}
               onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
               onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
+              onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
               canGoPrev={canGoPrev}
               canGoNext={canGoNext}
             />
