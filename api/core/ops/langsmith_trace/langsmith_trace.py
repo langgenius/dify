@@ -260,7 +260,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         metadata["user_id"] = user_id
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = db.session.scalars(
+            end_user_data: EndUser | None = db.session.scalars(
                 select(EndUser).where(EndUser.id == message_data.from_end_user_id).limit(1)
             ).first()
             if end_user_data is not None:

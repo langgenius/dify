@@ -266,57 +266,8 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def create_empty_rag_pipeline_dataset(
-        tenant_id: str,
-        rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
-    ):
-        if rag_pipeline_dataset_create_entity.name:
-            # check if dataset name already exists
-            if (
-                db.session.query(Dataset)
-                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-                .first()
-            ):
-                raise DatasetNameDuplicateError(
-                    f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
-                )
-        else:
-            # generate a random name as Untitled 1 2 3 ...
-            datasets = db.session.query(Dataset).filter_by(tenant_id=tenant_id).all()
-            names = [dataset.name for dataset in datasets]
-            rag_pipeline_dataset_create_entity.name = generate_incremental_name(
-                names,
-                "Untitled",
-            )
-        if not current_user or not current_user.id:
-            raise ValueError("Current user or current user id not found")
-        pipeline = Pipeline(
-            tenant_id=tenant_id,
-            name=rag_pipeline_dataset_create_entity.name,
-            description=rag_pipeline_dataset_create_entity.description,
-            created_by=current_user.id,
-        )
-        db.session.add(pipeline)
-        db.session.flush()
-
-        dataset = Dataset(
-            tenant_id=tenant_id,
-            name=rag_pipeline_dataset_create_entity.name,
-            description=rag_pipeline_dataset_create_entity.description,
-            permission=rag_pipeline_dataset_create_entity.permission,
-            provider="vendor",
-            runtime_mode="rag_pipeline",
-            icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
-            created_by=current_user.id,
-            pipeline_id=pipeline.id,
-        )
-        db.session.add(dataset)
-        db.session.commit()
-        return dataset
-
-    @staticmethod
     def get_dataset(dataset_id) -> Dataset | None:
-        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        dataset: Dataset | None = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
         return dataset
 
     @staticmethod
@@ -1186,7 +1137,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Document | None:
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.scalars(select(Document).where(Document.id == document_id).limit(1)).first()
 
         return document
 

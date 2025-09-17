@@ -332,9 +332,9 @@ class AccountService:
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
-            account_integrate: AccountIntegrate | None = (
-                db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
-            )
+            account_integrate: AccountIntegrate | None = db.session.scalars(
+                select(AccountIntegrate).filter_by(account_id=account.id, provider=provider).limit(1)
+            ).first()
 
             if account_integrate:
                 # If it exists, update the record

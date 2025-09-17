@@ -100,18 +100,18 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: ExternalKnowledgeApis | None = (
-            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
-        )
+        external_knowledge_api: ExternalKnowledgeApis | None = db.session.scalars(
+            select(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).limit(1)
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         return external_knowledge_api
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: ExternalKnowledgeApis | None = (
-            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
-        )
+        external_knowledge_api: ExternalKnowledgeApis | None = db.session.scalars(
+            select(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).limit(1)
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         settings = args.get("settings")
@@ -151,9 +151,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: ExternalKnowledgeBindings | None = (
-            db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
-        )
+        external_knowledge_binding: ExternalKnowledgeBindings | None = db.session.scalars(
+            select(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).limit(1)
+        ).first()
         if not external_knowledge_binding:
             raise ValueError("external knowledge binding not found")
         return external_knowledge_binding

@@ -31,14 +31,9 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Message | None = (
-            db.session.query(Message)
-            .where(
-                Message.id == message_id,
-                Message.conversation_id == conversation_id,
-            )
-            .first()
-        )
+        message: Message | None = db.session.scalars(
+            select(Message).where(Message.id == message_id, Message.conversation_id == conversation_id).limit(1)
+        ).first()
 
         if not message:
             raise ValueError(f"Message not found: {message_id}")

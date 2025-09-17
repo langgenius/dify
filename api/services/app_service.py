@@ -401,9 +401,9 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider | None = (
-                            db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
-                        )
+                        provider: ApiToolProvider | None = db.session.scalars(
+                            select(ApiToolProvider).where(ApiToolProvider.id == provider_id).limit(1)
+                        ).first()
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
