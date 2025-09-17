@@ -51,16 +51,16 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
       }}
       data-comment-input
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div className="relative shrink-0">
-          <div className="relative h-14 w-14 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-primary-500">
+          <div className="relative h-10 w-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-primary-500">
             <div className="absolute inset-1 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
               <div className="flex h-full w-full items-center justify-center">
-                <div className="h-10 w-10 overflow-hidden rounded-full">
+                <div className="h-6 w-6 overflow-hidden rounded-full">
                   <Avatar
                     avatar={userProfile.avatar_url}
                     name={userProfile.name}
-                    size={40}
+                    size={24}
                     className="h-full w-full"
                   />
                 </div>

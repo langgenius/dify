@@ -30,14 +30,14 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => 
       }}
       onClick={onClick}
     >
-      <div className="relative h-14 w-14 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full">
+      <div className="relative h-10 w-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full">
         <div className="absolute inset-1 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
           <div className="flex h-full w-full items-center justify-center">
-            <div className="h-10 w-10 overflow-hidden rounded-full">
+            <div className="h-6 w-6 overflow-hidden rounded-full">
               <Avatar
                 avatar={comment.created_by_account.avatar_url || null}
                 name={comment.created_by_account.name}
-                size={40}
+                size={24}
                 className="h-full w-full"
               />
             </div>
