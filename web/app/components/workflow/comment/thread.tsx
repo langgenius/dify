@@ -90,6 +90,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const { userProfile } = useAppContext()
   const [replyContent, setReplyContent] = useState('')
   const [mentionUsers, setMentionUsers] = useState<UserProfile[]>([])
+  const [mentionLoading, setMentionLoading] = useState(false)
+  const [mentionLoaded, setMentionLoaded] = useState(false)
   const [showMentionDropdown, setShowMentionDropdown] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionPosition, setMentionPosition] = useState(0)
@@ -97,21 +99,29 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
+  const loadMentionUsers = useCallback(async () => {
     if (!onReply || !appId) {
       setMentionUsers([])
+      setMentionLoaded(false)
       return
     }
-    const loadMentionUsers = async () => {
-      try {
-        setMentionUsers(await fetchMentionableUsers(appId))
-      }
-      catch (error) {
-        console.error('Failed to load mention users', error)
-      }
+    setMentionLoading(true)
+    try {
+      const users = await fetchMentionableUsers(appId)
+      setMentionUsers(users)
+      setMentionLoaded(true)
     }
-    loadMentionUsers()
+    catch (error) {
+      console.error('Failed to load mention users', error)
+    }
+    finally {
+      setMentionLoading(false)
+    }
   }, [appId, onReply])
+
+  useEffect(() => {
+    loadMentionUsers()
+  }, [loadMentionUsers])
 
   useEffect(() => {
     setReplyContent('')
@@ -167,10 +177,12 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     }, 0)
   }, [])
 
-  const handleMentionButtonClick = useCallback((e: React.MouseEvent) => {
+  const handleMentionButtonClick = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (!onReply || loading) return
+    if (!mentionLoaded && !mentionLoading)
+      await loadMentionUsers()
     if (!textareaRef.current) return
     const cursorPosition = textareaRef.current.selectionStart || 0
     const newContent = `${replyContent.slice(0, cursorPosition)}@${replyContent.slice(cursorPosition)}`
@@ -186,7 +198,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
       setShowMentionDropdown(true)
       setSelectedMentionIndex(0)
     }, 0)
-  }, [replyContent])
+  }, [loadMentionUsers, mentionLoaded, mentionLoading, replyContent])
 
   const insertMention = useCallback((user: UserProfile) => {
     const textarea = textareaRef.current
@@ -335,7 +347,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <Textarea
                     ref={textareaRef}
                     minRows={1}
-                    maxRows={4}
+                    maxRows={1}
                     value={replyContent}
                     placeholder='Add a reply'
                     onChange={e => handleContentChange(e.target.value)}
@@ -344,8 +356,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   />
                   <button
                     type='button'
-                    disabled={!onReply || loading}
-                    className={cn('disabled:bg-components-button-secondary-bg/60 z-20 flex h-8 w-10 items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover disabled:cursor-not-allowed disabled:text-text-disabled')}
+                    disabled={loading || mentionLoading}
+                    className={cn('z-20 flex h-8 w-8 items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover')}
                     onClick={handleMentionButtonClick}
                     aria-label='Mention user'
                   >
