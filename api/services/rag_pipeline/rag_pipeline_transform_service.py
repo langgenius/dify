@@ -89,6 +89,7 @@ class RagPipelineTransformService:
         }
 
     def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: Optional[str]):
+        pipeline_yaml = {}
         if doc_form == "text_model":
             match datasource_type:
                 case "upload_file":

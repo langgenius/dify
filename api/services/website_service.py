@@ -123,6 +123,8 @@ class WebsiteService:
             plugin_id = "langgenius/watercrawl_datasource"
         elif provider == "jinareader":
             plugin_id = "langgenius/jina_datasource"
+        else:
+            raise ValueError("Invalid provider")
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=tenant_id,
