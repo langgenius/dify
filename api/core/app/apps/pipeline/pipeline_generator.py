@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Optional, Union, cast, overload
+from typing import Any, Literal, Union, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -69,7 +69,7 @@ class PipelineGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        workflow_thread_pool_id: Optional[str],
+        workflow_thread_pool_id: str | None,
         is_retry: bool = False,
     ) -> Generator[Mapping | str, None, None]: ...
 
@@ -84,7 +84,7 @@ class PipelineGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        workflow_thread_pool_id: Optional[str],
+        workflow_thread_pool_id: str | None,
         is_retry: bool = False,
     ) -> Mapping[str, Any]: ...
 
@@ -99,7 +99,7 @@ class PipelineGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        workflow_thread_pool_id: Optional[str],
+        workflow_thread_pool_id: str | None,
         is_retry: bool = False,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
@@ -113,7 +113,7 @@ class PipelineGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        workflow_thread_pool_id: Optional[str] = None,
+        workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # Add null check for dataset
@@ -314,7 +314,7 @@ class PipelineGenerator(BaseAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        workflow_thread_pool_id: Optional[str] = None,
+        workflow_thread_pool_id: str | None = None,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -331,7 +331,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.query(Workflow).filter(Workflow.id == workflow_id).first()
+            workflow = db.session.query(Workflow).where(Workflow.id == workflow_id).first()
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -568,7 +568,7 @@ class PipelineGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
-        workflow_thread_pool_id: Optional[str] = None,
+        workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -801,11 +801,11 @@ class PipelineGenerator(BaseAppGenerator):
         self,
         datasource_runtime: OnlineDriveDatasourcePlugin,
         prefix: str,
-        bucket: Optional[str],
+        bucket: str | None,
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: Optional[dict] = None,
+        next_page_parameters: dict | None = None,
     ):
         """
         Get files in a folder.

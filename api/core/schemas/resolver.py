@@ -3,7 +3,7 @@ import re
 import threading
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.schemas.registry import SchemaRegistry
 
@@ -53,8 +53,8 @@ class QueueItem:
     """Represents an item in the BFS queue"""
 
     current: Any
-    parent: Optional[Any]
-    key: Optional[Union[str, int]]
+    parent: Any | None
+    key: Union[str, int] | None
     depth: int
     ref_path: set[str]
 
@@ -65,7 +65,7 @@ class SchemaResolver:
     _cache: dict[str, SchemaDict] = {}
     _cache_lock = threading.Lock()
 
-    def __init__(self, registry: Optional[SchemaRegistry] = None, max_depth: int = 10):
+    def __init__(self, registry: SchemaRegistry | None = None, max_depth: int = 10):
         """
         Initialize the schema resolver
 
@@ -202,7 +202,7 @@ class SchemaResolver:
                 )
             )
 
-    def _get_resolved_schema(self, ref_uri: str) -> Optional[SchemaDict]:
+    def _get_resolved_schema(self, ref_uri: str) -> SchemaDict | None:
         """Get resolved schema from cache or registry"""
         # Check cache first
         with self._cache_lock:
@@ -223,7 +223,7 @@ class SchemaResolver:
 
 
 def resolve_dify_schema_refs(
-    schema: SchemaType, registry: Optional[SchemaRegistry] = None, max_depth: int = 30
+    schema: SchemaType, registry: SchemaRegistry | None = None, max_depth: int = 30
 ) -> SchemaType:
     """
     Resolve $ref references in Dify schema to actual schema content

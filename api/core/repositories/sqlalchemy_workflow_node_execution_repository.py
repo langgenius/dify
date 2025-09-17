@@ -7,7 +7,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar, Union
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
@@ -530,7 +530,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecution]:
         """

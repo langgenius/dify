@@ -1,13 +1,13 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
 
 class IconInfo(BaseModel):
     icon: str
-    icon_background: Optional[str] = None
-    icon_type: Optional[str] = None
-    icon_url: Optional[str] = None
+    icon_background: str | None = None
+    icon_type: str | None = None
+    icon_url: str | None = None
 
 
 class PipelineTemplateInfoEntity(BaseModel):
@@ -21,8 +21,8 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     description: str
     icon_info: IconInfo
     permission: str
-    partial_member_list: Optional[list[str]] = None
-    yaml_content: Optional[str] = None
+    partial_member_list: list[str] | None = None
+    yaml_content: str | None = None
 
 
 class RerankingModelConfig(BaseModel):
@@ -30,8 +30,8 @@ class RerankingModelConfig(BaseModel):
     Reranking Model Config.
     """
 
-    reranking_provider_name: Optional[str] = ""
-    reranking_model_name: Optional[str] = ""
+    reranking_provider_name: str | None = ""
+    reranking_model_name: str | None = ""
 
 
 class VectorSetting(BaseModel):
@@ -57,8 +57,8 @@ class WeightedScoreConfig(BaseModel):
     Weighted score Config.
     """
 
-    vector_setting: Optional[VectorSetting]
-    keyword_setting: Optional[KeywordSetting]
+    vector_setting: VectorSetting | None
+    keyword_setting: KeywordSetting | None
 
 
 class EmbeddingSetting(BaseModel):
@@ -85,12 +85,12 @@ class RetrievalSetting(BaseModel):
 
     search_method: Literal["semantic_search", "fulltext_search", "keyword_search", "hybrid_search"]
     top_k: int
-    score_threshold: Optional[float] = 0.5
+    score_threshold: float | None = 0.5
     score_threshold_enabled: bool = False
-    reranking_mode: Optional[str] = "reranking_model"
-    reranking_enable: Optional[bool] = True
-    reranking_model: Optional[RerankingModelConfig] = None
-    weights: Optional[WeightedScoreConfig] = None
+    reranking_mode: str | None = "reranking_model"
+    reranking_enable: bool | None = True
+    reranking_model: RerankingModelConfig | None = None
+    weights: WeightedScoreConfig | None = None
 
 
 class IndexMethod(BaseModel):
@@ -112,7 +112,7 @@ class KnowledgeConfiguration(BaseModel):
     indexing_technique: Literal["high_quality", "economy"]
     embedding_model_provider: str = ""
     embedding_model: str = ""
-    keyword_number: Optional[int] = 10
+    keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
 
     @field_validator("embedding_model_provider", mode="before")

@@ -38,7 +38,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
         if not user:
             logger.info(click.style(f"User not found: {user_id}", fg="red"))
             return
-        tenant = db.session.query(Tenant).filter(Tenant.id == dataset.tenant_id).first()
+        tenant = db.session.query(Tenant).where(Tenant.id == dataset.tenant_id).first()
         if not tenant:
             raise ValueError("Tenant not found")
         user.current_tenant = tenant

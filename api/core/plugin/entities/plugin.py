@@ -1,7 +1,7 @@
 import datetime
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -67,10 +67,10 @@ class PluginCategory(StrEnum):
 
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
-        tools: Optional[list[str]] = Field(default_factory=list[str])
-        models: Optional[list[str]] = Field(default_factory=list[str])
-        endpoints: Optional[list[str]] = Field(default_factory=list[str])
-        datasources: Optional[list[str]] = Field(default_factory=list[str])
+        tools: list[str] | None = Field(default_factory=list[str])
+        models: list[str] | None = Field(default_factory=list[str])
+        endpoints: list[str] | None = Field(default_factory=list[str])
+        datasources: list[str] | None = Field(default_factory=list[str])
 
     class Meta(BaseModel):
         minimum_dify_version: str | None = Field(default=None)
@@ -101,11 +101,11 @@ class PluginDeclaration(BaseModel):
     tags: list[str] = Field(default_factory=list)
     repo: str | None = Field(default=None)
     verified: bool = Field(default=False)
-    tool: Optional[ToolProviderEntity] = None
-    model: Optional[ProviderEntity] = None
-    endpoint: Optional[EndpointProviderDeclaration] = None
-    agent_strategy: Optional[AgentStrategyProviderEntity] = None
-    datasource: Optional[DatasourceProviderEntity] = None
+    tool: ToolProviderEntity | None = None
+    model: ProviderEntity | None = None
+    endpoint: EndpointProviderDeclaration | None = None
+    agent_strategy: AgentStrategyProviderEntity | None = None
+    datasource: DatasourceProviderEntity | None = None
     meta: Meta
 
     @field_validator("version")

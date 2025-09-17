@@ -10,7 +10,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
@@ -76,7 +76,7 @@ class Dataset(Base):
 
     @property
     def total_documents(self):
-        return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.id).scalar()
+        return db.session.query(func.count(Document.id)).where(Document.dataset_id == self.id).scalar()
 
     @property
     def total_available_documents(self):
@@ -173,10 +173,10 @@ class Dataset(Base):
         )
 
     @property
-    def doc_form(self) -> Optional[str]:
+    def doc_form(self) -> str | None:
         if self.chunk_structure:
             return self.chunk_structure
-        document = db.session.query(Document).filter(Document.dataset_id == self.id).first()
+        document = db.session.query(Document).where(Document.dataset_id == self.id).first()
         if document:
             return document.doc_form
         return None
@@ -234,7 +234,7 @@ class Dataset(Base):
     @property
     def is_published(self):
         if self.pipeline_id:
-            pipeline = db.session.query(Pipeline).filter(Pipeline.id == self.pipeline_id).first()
+            pipeline = db.session.query(Pipeline).where(Pipeline.id == self.pipeline_id).first()
             if pipeline:
                 return pipeline.is_published
         return False
@@ -1244,7 +1244,7 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
 
     @property
     def created_user_name(self):
-        account = db.session.query(Account).filter(Account.id == self.created_by).first()
+        account = db.session.query(Account).where(Account.id == self.created_by).first()
         if account:
             return account.name
         return ""
@@ -1274,7 +1274,7 @@ class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
 
     @property
     def created_user_name(self):
-        account = db.session.query(Account).filter(Account.id == self.created_by).first()
+        account = db.session.query(Account).where(Account.id == self.created_by).first()
         if account:
             return account.name
         return ""
@@ -1297,7 +1297,7 @@ class Pipeline(Base):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     def retrieve_dataset(self, session: Session):
-        return session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()
+        return session.query(Dataset).where(Dataset.pipeline_id == self.id).first()
 
 
 class DocumentPipelineExecutionLog(Base):

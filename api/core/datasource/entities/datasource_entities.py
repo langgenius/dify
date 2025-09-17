@@ -1,6 +1,6 @@
 import enum
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
@@ -80,7 +80,7 @@ class DatasourceParameter(PluginParameter):
         name: str,
         typ: DatasourceParameterType,
         required: bool,
-        options: Optional[list[str]] = None,
+        options: list[str] | None = None,
     ) -> "DatasourceParameter":
         """
         get a simple datasource parameter
@@ -120,14 +120,14 @@ class DatasourceIdentity(BaseModel):
     name: str = Field(..., description="The name of the datasource")
     label: I18nObject = Field(..., description="The label of the datasource")
     provider: str = Field(..., description="The provider of the datasource")
-    icon: Optional[str] = None
+    icon: str | None = None
 
 
 class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
-    output_schema: Optional[dict] = None
+    output_schema: dict | None = None
 
     @field_validator("parameters", mode="before")
     @classmethod
@@ -141,7 +141,7 @@ class DatasourceProviderIdentity(BaseModel):
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
-    tags: Optional[list[ToolLabelEnum]] = Field(
+    tags: list[ToolLabelEnum] | None = Field(
         default=[],
         description="The tags of the tool",
     )
@@ -169,7 +169,7 @@ class DatasourceProviderEntity(BaseModel):
 
     identity: DatasourceProviderIdentity
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
-    oauth_schema: Optional[OAuthSchema] = None
+    oauth_schema: OAuthSchema | None = None
     provider_type: DatasourceProviderType
 
 
@@ -183,8 +183,8 @@ class DatasourceInvokeMeta(BaseModel):
     """
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
-    error: Optional[str] = None
-    tool_config: Optional[dict] = None
+    error: str | None = None
+    tool_config: dict | None = None
 
     @classmethod
     def empty(cls) -> "DatasourceInvokeMeta":
@@ -233,10 +233,10 @@ class OnlineDocumentPage(BaseModel):
 
     page_id: str = Field(..., description="The page id")
     page_name: str = Field(..., description="The page title")
-    page_icon: Optional[dict] = Field(None, description="The page icon")
+    page_icon: dict | None = Field(None, description="The page icon")
     type: str = Field(..., description="The type of the page")
     last_edited_time: str = Field(..., description="The last edited time")
-    parent_id: Optional[str] = Field(None, description="The parent page id")
+    parent_id: str | None = Field(None, description="The parent page id")
 
 
 class OnlineDocumentInfo(BaseModel):
@@ -244,9 +244,9 @@ class OnlineDocumentInfo(BaseModel):
     Online document info
     """
 
-    workspace_id: Optional[str] = Field(None, description="The workspace id")
-    workspace_name: Optional[str] = Field(None, description="The workspace name")
-    workspace_icon: Optional[str] = Field(None, description="The workspace icon")
+    workspace_id: str | None = Field(None, description="The workspace id")
+    workspace_name: str | None = Field(None, description="The workspace name")
+    workspace_icon: str | None = Field(None, description="The workspace icon")
     total: int = Field(..., description="The total number of documents")
     pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")
 
@@ -307,10 +307,10 @@ class WebSiteInfo(BaseModel):
     Website info
     """
 
-    status: Optional[str] = Field(..., description="crawl job status")
-    web_info_list: Optional[list[WebSiteInfoDetail]] = []
-    total: Optional[int] = Field(default=0, description="The total number of websites")
-    completed: Optional[int] = Field(default=0, description="The number of completed websites")
+    status: str | None = Field(..., description="crawl job status")
+    web_info_list: list[WebSiteInfoDetail] | None = []
+    total: int | None = Field(default=0, description="The total number of websites")
+    completed: int | None = Field(default=0, description="The number of completed websites")
 
 
 class WebsiteCrawlMessage(BaseModel):
@@ -346,10 +346,10 @@ class OnlineDriveFileBucket(BaseModel):
     Online drive file bucket
     """
 
-    bucket: Optional[str] = Field(None, description="The file bucket")
+    bucket: str | None = Field(None, description="The file bucket")
     files: list[OnlineDriveFile] = Field(..., description="The file list")
     is_truncated: bool = Field(False, description="Whether the result is truncated")
-    next_page_parameters: Optional[dict] = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesRequest(BaseModel):
@@ -357,10 +357,10 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     Get online drive file list request
     """
 
-    bucket: Optional[str] = Field(None, description="The file bucket")
+    bucket: str | None = Field(None, description="The file bucket")
     prefix: str = Field(..., description="The parent folder ID")
     max_keys: int = Field(20, description="Page size for pagination")
-    next_page_parameters: Optional[dict] = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesResponse(BaseModel):
@@ -377,4 +377,4 @@ class OnlineDriveDownloadFileRequest(BaseModel):
     """
 
     id: str = Field(..., description="The id of the file")
-    bucket: Optional[str] = Field(None, description="The name of the bucket")
+    bucket: str | None = Field(None, description="The name of the bucket")

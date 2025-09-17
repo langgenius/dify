@@ -8,7 +8,7 @@ and don't contain implementation details like tenant_id, app_id, etc.
 
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -53,9 +53,9 @@ class WorkflowNodeExecution(BaseModel):
 
     # Execution data
     # The `inputs` and `outputs` fields hold the full content
-    inputs: Optional[Mapping[str, Any]] = None  # Input variables used by this node
-    process_data: Optional[Mapping[str, Any]] = None  # Intermediate processing data
-    outputs: Optional[Mapping[str, Any]] = None  # Output variables produced by this node
+    inputs: Mapping[str, Any] | None = None  # Input variables used by this node
+    process_data: Mapping[str, Any] | None = None  # Intermediate processing data
+    outputs: Mapping[str, Any] | None = None  # Output variables produced by this node
 
     # Execution state
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING  # Current execution status

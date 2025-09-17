@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
@@ -10,7 +9,7 @@ from models.dataset import Pipeline
 
 
 def get_rag_pipeline(
-    view: Optional[Callable] = None,
+    view: Callable | None = None,
 ):
     def decorator(view_func):
         @wraps(view_func)
