@@ -1,5 +1,4 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { useReactFlow } from 'reactflow'
 import { RiCheckLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
 import { useStore } from '@/app/components/workflow/store'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
@@ -16,8 +15,7 @@ const CommentsPanel = () => {
   const activeCommentId = useStore(s => s.activeCommentId)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
   const setControlMode = useStore(s => s.setControlMode)
-  const { comments, loading, loadComments } = useWorkflowComment()
-  const reactFlow = useReactFlow()
+  const { comments, loading, loadComments, handleCommentIconClick } = useWorkflowComment()
   const params = useParams()
   const appId = params.appId as string
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -26,10 +24,8 @@ const CommentsPanel = () => {
   const [showFilter, setShowFilter] = useState(false)
 
   const handleSelect = useCallback((comment: WorkflowCommentList) => {
-    // center viewport on the comment position and activate it
-    reactFlow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
-    setActiveCommentId(comment.id)
-  }, [reactFlow, setActiveCommentId])
+    handleCommentIconClick(comment)
+  }, [handleCommentIconClick])
 
   const { userProfile } = useAppContext()
 

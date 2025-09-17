@@ -20,6 +20,8 @@ import type { NodeSliceShape } from './node-slice'
 import { createNodeSlice } from './node-slice'
 import type { PanelSliceShape } from './panel-slice'
 import { createPanelSlice } from './panel-slice'
+import type { CommentSliceShape } from './comment-slice'
+import { createCommentSlice } from './comment-slice'
 import type { ToolSliceShape } from './tool-slice'
 import { createToolSlice } from './tool-slice'
 import type { VersionSliceShape } from './version-slice'
@@ -44,6 +46,7 @@ export type Shape =
   HistorySliceShape &
   NodeSliceShape &
   PanelSliceShape &
+  CommentSliceShape &
   ToolSliceShape &
   VersionSliceShape &
   WorkflowDraftSliceShape &
@@ -67,6 +70,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createHistorySlice(...args),
     ...createNodeSlice(...args),
     ...createPanelSlice(...args),
+    ...createCommentSlice(...args),
     ...createToolSlice(...args),
     ...createVersionSlice(...args),
     ...createWorkflowDraftSlice(...args),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useReactFlow } from 'reactflow'
 import { useStore } from '../store'
@@ -16,31 +16,42 @@ export const useWorkflowComment = () => {
   const setPendingComment = useStore(s => s.setPendingComment)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
   const activeCommentId = useStore(s => s.activeCommentId)
-  const [comments, setComments] = useState<WorkflowCommentList[]>([])
-  const [loading, setLoading] = useState(false)
-  const [activeComment, setActiveComment] = useState<WorkflowCommentDetail | null>(null)
-  const [activeCommentLoading, setActiveCommentLoading] = useState(false)
-  const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>({})
+  const comments = useStore(s => s.comments)
+  const setComments = useStore(s => s.setComments)
+  const loading = useStore(s => s.commentsLoading)
+  const setCommentsLoading = useStore(s => s.setCommentsLoading)
+  const activeComment = useStore(s => s.activeCommentDetail)
+  const setActiveComment = useStore(s => s.setActiveCommentDetail)
+  const activeCommentLoading = useStore(s => s.activeCommentDetailLoading)
+  const setActiveCommentLoading = useStore(s => s.setActiveCommentDetailLoading)
+  const commentDetailCache = useStore(s => s.commentDetailCache)
+  const setCommentDetailCache = useStore(s => s.setCommentDetailCache)
+  const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
+
   useEffect(() => {
     activeCommentIdRef.current = activeCommentId ?? null
   }, [activeCommentId])
 
+  useEffect(() => {
+    commentDetailCacheRef.current = commentDetailCache
+  }, [commentDetailCache])
+
   const loadComments = useCallback(async () => {
     if (!appId) return
 
-    setLoading(true)
+    setCommentsLoading(true)
     try {
       const commentsData = await fetchWorkflowComments(appId)
       setComments(commentsData)
     }
- catch (error) {
+    catch (error) {
       console.error('Failed to fetch comments:', error)
     }
- finally {
-      setLoading(false)
+    finally {
+      setCommentsLoading(false)
     }
-  }, [appId])
+  }, [appId, setComments, setCommentsLoading])
 
   useEffect(() => {
     loadComments()
@@ -89,14 +100,14 @@ export const useWorkflowComment = () => {
     setActiveCommentId(comment.id)
 
     const cachedDetail = commentDetailCacheRef.current[comment.id]
-    setActiveComment(cachedDetail || comment)
+    const fallbackDetail = cachedDetail ?? comment
+    setActiveComment(fallbackDetail)
 
     reactflow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
 
     if (!appId) return
 
-    if (!cachedDetail)
-      setActiveCommentLoading(true)
+    setActiveCommentLoading(!cachedDetail)
 
     try {
       const detailResponse = await fetchWorkflowComment(appId, comment.id)
@@ -106,6 +117,7 @@ export const useWorkflowComment = () => {
         ...commentDetailCacheRef.current,
         [comment.id]: detail,
       }
+      setCommentDetailCache(commentDetailCacheRef.current)
 
       if (activeCommentIdRef.current === comment.id)
         setActiveComment(detail)
@@ -116,7 +128,7 @@ export const useWorkflowComment = () => {
     finally {
       setActiveCommentLoading(false)
     }
-  }, [appId, reactflow, setPendingComment])
+  }, [appId, reactflow, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache, setControlMode, setPendingComment])
 
   const handleActiveCommentClose = useCallback(() => {
     setActiveComment(null)
@@ -124,7 +136,7 @@ export const useWorkflowComment = () => {
     setActiveCommentId(null)
     setControlMode(ControlMode.Pointer)
     activeCommentIdRef.current = null
-  }, [setActiveCommentId, setControlMode])
+  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading, setControlMode])
 
   const handleCreateComment = useCallback((mousePosition: { pageX: number; pageY: number }) => {
     if (controlMode === ControlMode.Comment) {
