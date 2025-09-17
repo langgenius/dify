@@ -31,9 +31,7 @@ class MockedHttp:
         """
         Mocked httpx.request
         """
-        request = httpx.Client()
-        request.method = method
-        request.url = url
+        request = httpx.Request(method, url)
         if url.endswith("/tools"):
             content = PluginDaemonBasicResponse[list[ToolProviderEntity]](
                 code=0, message="success", data=cls.list_tools()
