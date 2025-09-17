@@ -2,7 +2,6 @@ import concurrent.futures
 import json
 import logging
 import re
-import threading
 import time
 import uuid
 from typing import Any
@@ -40,6 +39,7 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
+from tasks.segment_keyword_create_task import segment_keyword_create_task
 
 logger = logging.getLogger(__name__)
 
@@ -326,6 +326,30 @@ class IndexingRunner:
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
+    def run_segment_keyword(self, dataset_id: str, document_id: str, segments: list[DocumentSegment]):
+        # get dataset
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError(f"no dataset found {dataset_id}")
+        dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
+        if not dataset_document:
+            raise ValueError(f"no dataset_document found {document_id}")
+
+        documents = []
+        for i in range(len(segments)):
+            segment = segments[i]
+            metadata = {
+                "row": i + 1,
+                "doc_id": segment.index_node_id,
+                "doc_hash": segment.index_node_hash,
+            }
+            doc = Document(page_content=segment.content, metadata=metadata)
+            documents.append(doc)
+
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+            # create keyword index
+            self._process_keyword_index(current_app._get_current_object(), dataset.id, dataset_document.id, documents)  # type: ignore
+
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
@@ -529,14 +553,11 @@ class IndexingRunner:
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
-        create_keyword_thread = None
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
-            create_keyword_thread = threading.Thread(
-                target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
+            segment_keyword_create_task.delay(
+                dataset.id, dataset_document.id, [doc.metadata["doc_id"] for doc in documents]
             )
-            create_keyword_thread.start()
 
         max_workers = 10
         if dataset.indexing_technique == "high_quality":
@@ -568,12 +589,7 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-        if (
-            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"
-            and create_keyword_thread is not None
-        ):
-            create_keyword_thread.join()
+
         indexing_end_at = time.perf_counter()
 
         # update document status to completed

@@ -1,3 +1,5 @@
+import logging
+import time
 from collections import defaultdict
 from typing import Any
 
@@ -14,6 +16,8 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 
+logger = logging.getLogger(__name__)
+
 
 class KeywordTableConfig(BaseModel):
     max_keywords_per_chunk: int = 10
@@ -25,28 +29,56 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
-        with redis_client.lock(lock_name, timeout=600):
-            keyword_table_handler = JiebaKeywordTableHandler()
-            keyword_table = self._get_dataset_keyword_table()
-            for text in texts:
-                keywords = keyword_table_handler.extract_keywords(
-                    text.page_content, self._config.max_keywords_per_chunk
+        document_ids = [
+            d.metadata.get("doc_id") for d in texts if getattr(d, "metadata", None) and "doc_id" in d.metadata
+        ]
+        start_time = time.perf_counter()
+        keyword_table_handler = JiebaKeywordTableHandler
+        jieba_total_time = 0.0
+        db_total_time = 0.0
+        new_keyword_table: dict = {}
+        for text in texts:
+            start_time_jieba = time.perf_counter()
+            keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
+            if text.metadata is not None:
+                jieba_total_time += time.perf_counter() - start_time_jieba
+                start_time_db = time.perf_counter()
+                self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords))
+                new_keyword_table = self._add_text_to_keyword_table(
+                    new_keyword_table or {}, text.metadata["doc_id"], list(keywords)
                 )
-                if text.metadata is not None:
-                    self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords))
-                    keyword_table = self._add_text_to_keyword_table(
-                        keyword_table or {}, text.metadata["doc_id"], list(keywords)
-                    )
+                db_total_time += time.perf_counter() - start_time_db
 
+        start_time_wait = time.perf_counter()
+        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        with redis_client.lock(lock_name, timeout=600):
+            save_start_time = time.perf_counter()
+            old_keyword_table = self._get_dataset_keyword_table()
+            # Start with the old keyword table
+            keyword_table = old_keyword_table or {}
+            # Iterate through the new keywords and their associated document IDs
+            for keyword, doc_ids in new_keyword_table.items():
+                for doc_id in doc_ids:
+                    self._add_text_to_keyword_table(keyword_table, doc_id, list(keyword))
             self._save_dataset_keyword_table(keyword_table)
-
-            return self
+            save_jieba_log = (
+                f"Save Jieba create keyword index {time.perf_counter() - save_start_time} "
+                f"{self.dataset.id} "
+                f"{len(document_ids)} {document_ids}"
+            )
+            logger.info(save_jieba_log)
+        end_jieba_log = (
+            f"End Jieba create keyword index {time.perf_counter() - start_time} "
+            f"{time.perf_counter() - start_time_wait} "
+            f"{jieba_total_time} {db_total_time} {self.dataset.id} {len(document_ids)} {document_ids}"
+        )
+        logger.info(end_jieba_log)
+        return self
 
     def add_texts(self, texts: list[Document], **kwargs):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
-            keyword_table_handler = JiebaKeywordTableHandler()
+            keyword_table_handler = JiebaKeywordTableHandler
 
             keyword_table = self._get_dataset_keyword_table()
             keywords_list = kwargs.get("keywords_list")
@@ -193,7 +225,7 @@ class Jieba(BaseKeyword):
         return keyword_table
 
     def _retrieve_ids_by_query(self, keyword_table: dict, query: str, k: int = 4):
-        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table_handler = JiebaKeywordTableHandler
         keywords = keyword_table_handler.extract_keywords(query)
 
         # go through text chunks in order of most matching keywords
@@ -228,7 +260,7 @@ class Jieba(BaseKeyword):
         self._save_dataset_keyword_table(keyword_table)
 
     def multi_create_segment_keywords(self, pre_segment_data_list: list):
-        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table_handler = JiebaKeywordTableHandler
         keyword_table = self._get_dataset_keyword_table()
         for pre_segment_data in pre_segment_data_list:
             segment = pre_segment_data["segment"]

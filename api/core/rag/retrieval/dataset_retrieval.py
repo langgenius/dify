@@ -757,7 +757,7 @@ class DatasetRetrieval:
 
         :return:
         """
-        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table_handler = JiebaKeywordTableHandler
         query_keywords = keyword_table_handler.extract_keywords(query, None)
         documents_keywords = []
         for document in documents:
