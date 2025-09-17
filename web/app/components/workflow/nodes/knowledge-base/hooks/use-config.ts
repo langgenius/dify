@@ -109,7 +109,7 @@ export const useConfig = (id: string) => {
     handleNodeDataUpdate({
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
-        hybridSearchMode,
+        reranking_mode: hybridSearchMode,
       },
     })
   }, [getNodeData, handleNodeDataUpdate])

@@ -12,6 +12,7 @@ import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/servi
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Link from 'next/link'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 
 type CardProps = {
   apiEnabled: boolean
@@ -30,6 +31,8 @@ const Card = ({
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+
+  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const onToggle = useCallback(async (state: boolean) => {
     let result: 'success' | 'fail'
@@ -113,7 +116,7 @@ const Card = ({
           </span>
         </Button>
         <Link
-          href={'https://docs.dify.ai/api-reference/datasets'}
+          href={apiReferenceUrl}
           target='_blank'
           rel='noopener noreferrer'
         >

@@ -32,6 +32,8 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import Divider from '@/app/components/base/divider'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import Link from 'next/link'
 
 type Props = {
   datasetId: string
@@ -212,9 +214,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     invalidDocumentList()
     router.push(`/datasets/${datasetId}/documents`)
   }
-  const navToApiDocs = () => {
-    router.push('/datasets?category=api')
-  }
+  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbedding = useMemo(() => {
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
@@ -344,13 +344,18 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
         />
       </div>
       <div className='mt-6 flex items-center gap-x-2 py-2'>
-        <Button
-          className='w-fit gap-x-0.5 px-3'
-          onClick={navToApiDocs}
+        <Link
+          href={apiReferenceUrl}
+          target='_blank'
+          rel='noopener noreferrer'
         >
-          <RiTerminalBoxLine className='size-4' />
-          <span className='px-0.5'>Access the API</span>
-        </Button>
+          <Button
+            className='w-fit gap-x-0.5 px-3'
+          >
+            <RiTerminalBoxLine className='size-4' />
+            <span className='px-0.5'>Access the API</span>
+          </Button>
+        </Link>
         <Button
           className='w-fit gap-x-0.5 px-3'
           variant='primary'
