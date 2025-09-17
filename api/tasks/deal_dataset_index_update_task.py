@@ -33,7 +33,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
         if action == "upgrade":
             dataset_documents = (
                 db.session.query(DatasetDocument)
-                .filter(
+                .where(
                     DatasetDocument.dataset_id == dataset_id,
                     DatasetDocument.indexing_status == "completed",
                     DatasetDocument.enabled == True,
@@ -54,7 +54,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                         # add from vector index
                         segments = (
                             db.session.query(DocumentSegment)
-                            .filter(DocumentSegment.document_id == dataset_document.id, DocumentSegment.enabled == True)
+                            .where(DocumentSegment.document_id == dataset_document.id, DocumentSegment.enabled == True)
                             .order_by(DocumentSegment.position.asc())
                             .all()
                         )
@@ -88,7 +88,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
         elif action == "update":
             dataset_documents = (
                 db.session.query(DatasetDocument)
-                .filter(
+                .where(
                     DatasetDocument.dataset_id == dataset_id,
                     DatasetDocument.indexing_status == "completed",
                     DatasetDocument.enabled == True,
@@ -113,7 +113,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                     try:
                         segments = (
                             db.session.query(DocumentSegment)
-                            .filter(DocumentSegment.document_id == dataset_document.id, DocumentSegment.enabled == True)
+                            .where(DocumentSegment.document_id == dataset_document.id, DocumentSegment.enabled == True)
                             .order_by(DocumentSegment.position.asc())
                             .all()
                         )

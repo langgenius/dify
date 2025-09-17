@@ -160,7 +160,7 @@ class KnowledgeIndexNode(Node):
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         document.word_count = (
             db.session.query(func.sum(DocumentSegment.word_count))
-            .filter(
+            .where(
                 DocumentSegment.document_id == document.id,
                 DocumentSegment.dataset_id == dataset.id,
             )
@@ -168,7 +168,7 @@ class KnowledgeIndexNode(Node):
         )
         db.session.add(document)
         # update document segment status
-        db.session.query(DocumentSegment).filter(
+        db.session.query(DocumentSegment).where(
             DocumentSegment.document_id == document.id,
             DocumentSegment.dataset_id == dataset.id,
         ).update(

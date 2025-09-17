@@ -1,4 +1,3 @@
-
 import yaml
 from flask_login import current_user
 
@@ -36,7 +35,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         """
         pipeline_customized_templates = (
             db.session.query(PipelineCustomizedTemplate)
-            .filter(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
+            .where(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
             .order_by(PipelineCustomizedTemplate.position.asc(), PipelineCustomizedTemplate.created_at.desc())
             .all()
         )

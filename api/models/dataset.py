@@ -82,7 +82,7 @@ class Dataset(Base):
     def total_available_documents(self):
         return (
             db.session.query(func.count(Document.id))
-            .filter(
+            .where(
                 Document.dataset_id == self.id,
                 Document.indexing_status == "completed",
                 Document.enabled == True,

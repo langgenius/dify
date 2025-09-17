@@ -27,7 +27,7 @@ def get_rag_pipeline(
 
             pipeline = (
                 db.session.query(Pipeline)
-                .filter(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.current_tenant_id)
+                .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.current_tenant_id)
                 .first()
             )
 

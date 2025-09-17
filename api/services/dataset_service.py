@@ -419,7 +419,7 @@ class DatasetService:
     def _has_dataset_same_name(tenant_id: str, dataset_id: str, name: str):
         dataset = (
             db.session.query(Dataset)
-            .filter(
+            .where(
                 Dataset.id != dataset_id,
                 Dataset.name == name,
                 Dataset.tenant_id == tenant_id,

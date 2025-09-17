@@ -195,9 +195,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # fetch workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id
-            )
+            .where(Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id)
             .first()
         )
 
@@ -272,7 +270,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             if document_id and dataset_id:
                 document = (
                     db.session.query(Document)
-                    .filter(Document.id == document_id, Document.dataset_id == dataset_id)
+                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
                     .first()
                 )
                 if document:

@@ -152,10 +152,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = (
-            db.session.query(UploadFile).where(UploadFile.id == id)
-            .first()
-        )
+        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == id).first()
 
         if not upload_file:
             return None
@@ -173,10 +170,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile | None = (
-            db.session.query(MessageFile).where(MessageFile.id == id)
-            .first()
-        )
+        message_file: MessageFile | None = db.session.query(MessageFile).where(MessageFile.id == id).first()
 
         # Check if message_file is not None
         if message_file is not None:
@@ -190,10 +184,7 @@ class DatasourceFileManager:
         else:
             tool_file_id = None
 
-        tool_file: ToolFile | None = (
-            db.session.query(ToolFile).where(ToolFile.id == tool_file_id)
-            .first()
-        )
+        tool_file: ToolFile | None = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
 
         if not tool_file:
             return None
@@ -211,10 +202,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = (
-            db.session.query(UploadFile).where(UploadFile.id == upload_file_id)
-            .first()
-        )
+        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
 
         if not upload_file:
             return None, None

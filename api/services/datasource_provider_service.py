@@ -690,7 +690,7 @@ class DatasourceProviderService:
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = (
             db.session.query(DatasourceProvider)
-            .filter(
+            .where(
                 DatasourceProvider.tenant_id == tenant_id,
                 DatasourceProvider.provider == provider,
                 DatasourceProvider.plugin_id == plugin_id,
@@ -862,7 +862,7 @@ class DatasourceProviderService:
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = (
             db.session.query(DatasourceProvider)
-            .filter(
+            .where(
                 DatasourceProvider.tenant_id == tenant_id,
                 DatasourceProvider.provider == provider,
                 DatasourceProvider.plugin_id == plugin_id,

@@ -138,7 +138,7 @@ class RagPipelineService:
         """
         customized_template: PipelineCustomizedTemplate | None = (
             db.session.query(PipelineCustomizedTemplate)
-            .filter(
+            .where(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
             )
@@ -151,7 +151,7 @@ class RagPipelineService:
         if template_name:
             template = (
                 db.session.query(PipelineCustomizedTemplate)
-                .filter(
+                .where(
                     PipelineCustomizedTemplate.name == template_name,
                     PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
                     PipelineCustomizedTemplate.id != template_id,
@@ -174,7 +174,7 @@ class RagPipelineService:
         """
         customized_template: PipelineCustomizedTemplate | None = (
             db.session.query(PipelineCustomizedTemplate)
-            .filter(
+            .where(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
             )
@@ -192,7 +192,7 @@ class RagPipelineService:
         # fetch draft workflow by rag pipeline
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
@@ -214,7 +214,7 @@ class RagPipelineService:
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.id == pipeline.workflow_id,
@@ -1015,7 +1015,7 @@ class RagPipelineService:
         """
         limit = int(args.get("limit", 20))
 
-        base_query = db.session.query(WorkflowRun).filter(
+        base_query = db.session.query(WorkflowRun).where(
             WorkflowRun.tenant_id == pipeline.tenant_id,
             WorkflowRun.app_id == pipeline.id,
             or_(
@@ -1025,7 +1025,7 @@ class RagPipelineService:
         )
 
         if args.get("last_id"):
-            last_workflow_run = base_query.filter(
+            last_workflow_run = base_query.where(
                 WorkflowRun.id == args.get("last_id"),
             ).first()
 
@@ -1033,7 +1033,7 @@ class RagPipelineService:
                 raise ValueError("Last workflow run not exists")
 
             workflow_runs = (
-                base_query.filter(
+                base_query.where(
                     WorkflowRun.created_at < last_workflow_run.created_at, WorkflowRun.id != last_workflow_run.id
                 )
                 .order_by(WorkflowRun.created_at.desc())
@@ -1046,7 +1046,7 @@ class RagPipelineService:
         has_more = False
         if len(workflow_runs) == limit:
             current_page_first_workflow_run = workflow_runs[-1]
-            rest_count = base_query.filter(
+            rest_count = base_query.where(
                 WorkflowRun.created_at < current_page_first_workflow_run.created_at,
                 WorkflowRun.id != current_page_first_workflow_run.id,
             ).count()
@@ -1065,7 +1065,7 @@ class RagPipelineService:
         """
         workflow_run = (
             db.session.query(WorkflowRun)
-            .filter(
+            .where(
                 WorkflowRun.tenant_id == pipeline.tenant_id,
                 WorkflowRun.app_id == pipeline.id,
                 WorkflowRun.id == run_id,
@@ -1130,7 +1130,7 @@ class RagPipelineService:
         if template_name:
             template = (
                 db.session.query(PipelineCustomizedTemplate)
-                .filter(
+                .where(
                     PipelineCustomizedTemplate.name == template_name,
                     PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
                 )
@@ -1168,7 +1168,7 @@ class RagPipelineService:
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
         return (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
@@ -1362,10 +1362,10 @@ class RagPipelineService:
         """
         Get datasource plugins
         """
-        dataset: Dataset | None = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -1446,10 +1446,10 @@ class RagPipelineService:
         """
         Get pipeline
         """
-        dataset: Dataset | None = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).filter(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
         if not pipeline:
             raise ValueError("Pipeline not found")
         return pipeline
