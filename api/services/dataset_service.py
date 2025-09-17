@@ -2863,7 +2863,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore # type: ignore
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
