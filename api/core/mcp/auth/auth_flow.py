@@ -4,13 +4,15 @@ import json
 import os
 import secrets
 import urllib.parse
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from core.mcp.auth.auth_provider import OAuthClientProvider
+from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.types import (
+    LATEST_PROTOCOL_VERSION,
     OAuthClientInformation,
     OAuthClientInformationFull,
     OAuthClientMetadata,
@@ -19,7 +21,9 @@ from core.mcp.types import (
 )
 from extensions.ext_redis import redis_client
 
-LATEST_PROTOCOL_VERSION = "1.0"
+if TYPE_CHECKING:
+    from services.tools.mcp_tools_manage_service import MCPToolManageService
+
 OAUTH_STATE_EXPIRY_SECONDS = 5 * 60  # 5 minutes expiry
 OAUTH_STATE_REDIS_KEY_PREFIX = "oauth_state:"
 
@@ -80,7 +84,7 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
         raise ValueError(f"Invalid state parameter: {str(e)}")
 
 
-def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackState:
+def handle_callback(state_key: str, authorization_code: str, mcp_service: "MCPToolManageService") -> OAuthCallbackState:
     """Handle the callback from the OAuth provider."""
     # Retrieve state data from Redis (state is automatically deleted after retrieval)
     full_state_data = _retrieve_redis_state(state_key)
@@ -93,8 +97,10 @@ def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackSta
         full_state_data.code_verifier,
         full_state_data.redirect_uri,
     )
-    provider = OAuthClientProvider(full_state_data.provider_id, full_state_data.tenant_id, for_list=True)
-    provider.save_tokens(tokens)
+
+    # Save tokens using the service layer
+    mcp_service.save_oauth_data(full_state_data.provider_id, full_state_data.tenant_id, tokens.model_dump(), "tokens")
+
     return full_state_data
 
 
@@ -294,25 +300,33 @@ def register_client(
 
 
 def auth(
-    provider: OAuthClientProvider,
-    server_url: str,
+    provider: MCPProviderEntity,
+    mcp_service: "MCPToolManageService",
     authorization_code: str | None = None,
     state_param: str | None = None,
-    for_list: bool = False,
 ) -> dict[str, str]:
     """Orchestrates the full auth flow with a server using secure Redis state storage."""
-    metadata = discover_oauth_metadata(server_url)
+    server_url = provider.decrypt_server_url()
+    server_metadata = discover_oauth_metadata(server_url)
+    client_metadata = provider.client_metadata
+    provider_id = provider.id
+    tenant_id = provider.tenant_id
+    client_information = provider.retrieve_client_information()
+    redirect_url = provider.redirect_url
 
-    # Handle client registration if needed
-    client_information = provider.client_information()
     if not client_information:
         if authorization_code is not None:
             raise ValueError("Existing OAuth client information is required when exchanging an authorization code")
         try:
-            full_information = register_client(server_url, metadata, provider.client_metadata)
+            full_information = register_client(server_url, server_metadata, client_metadata)
         except httpx.RequestError as e:
             raise ValueError(f"Could not register OAuth client: {e}")
-        provider.save_client_information(full_information)
+
+        # Save client information using service layer
+        mcp_service.save_oauth_data(
+            provider_id, tenant_id, {"client_information": full_information.model_dump()}, "client_info"
+        )
+
         client_information = full_information
 
     # Exchange authorization code for tokens
@@ -335,22 +349,30 @@ def auth(
 
         tokens = exchange_authorization(
             server_url,
-            metadata,
+            server_metadata,
             client_information,
             authorization_code,
             code_verifier,
             redirect_uri,
         )
-        provider.save_tokens(tokens)
+
+        # Save tokens using service layer
+        mcp_service.save_oauth_data(provider_id, tenant_id, tokens.model_dump(), "tokens")
+
         return {"result": "success"}
 
-    provider_tokens = provider.tokens()
+    provider_tokens = provider.retrieve_tokens()
 
     # Handle token refresh or new authorization
     if provider_tokens and provider_tokens.refresh_token:
         try:
-            new_tokens = refresh_authorization(server_url, metadata, client_information, provider_tokens.refresh_token)
-            provider.save_tokens(new_tokens)
+            new_tokens = refresh_authorization(
+                server_url, server_metadata, client_information, provider_tokens.refresh_token
+            )
+
+            # Save new tokens using service layer
+            mcp_service.save_oauth_data(provider_id, tenant_id, new_tokens.model_dump(), "tokens")
+
             return {"result": "success"}
         except Exception as e:
             raise ValueError(f"Could not refresh OAuth tokens: {e}")
@@ -358,12 +380,14 @@ def auth(
     # Start new authorization flow
     authorization_url, code_verifier = start_authorization(
         server_url,
-        metadata,
+        server_metadata,
         client_information,
-        provider.redirect_url,
-        provider.mcp_provider.id,
-        provider.mcp_provider.tenant_id,
+        redirect_url,
+        provider_id,
+        tenant_id,
     )
 
-    provider.save_code_verifier(code_verifier)
+    # Save code verifier using service layer
+    mcp_service.save_oauth_data(provider_id, tenant_id, {"code_verifier": code_verifier}, "code_verifier")
+
     return {"authorization_url": authorization_url}

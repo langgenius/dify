@@ -72,7 +72,6 @@ class ToolProviderApiEntity(BaseModel):
             optional_fields.update(self.optional_field("timeout", self.timeout))
             optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
             optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
-            optional_fields.update(self.optional_field("original_headers", self.original_headers))
         return {
             "id": self.id,
             "author": self.author,
