@@ -118,13 +118,13 @@ workflow:
           form: llm
           human_description:
             en_US: The text you want to chunk.
-            ja_JP: The text you want to chunk.
-            pt_BR: The text you want to chunk.
+            ja_JP: チャンク化したいテキスト。
+            pt_BR: O texto que você deseja dividir.
             zh_Hans: 你想要分块的文本。
           label:
             en_US: Input text
-            ja_JP: Input text
-            pt_BR: Input text
+            ja_JP: 入力テキスト
+            pt_BR: Texto de entrada
             zh_Hans: 输入文本
           llm_description: The text you want to chunk.
           max: null
@@ -142,12 +142,12 @@ workflow:
           form: llm
           human_description:
             en_US: Maximum length for chunking
-            ja_JP: Maximum length for chunking
+            ja_JP: チャンク分割の最大長
             pt_BR: Comprimento máximo para divisão
             zh_Hans: 用于分块的最大长度
           label:
             en_US: Maximum Length
-            ja_JP: Maximum Length
+            ja_JP: 最大長
             pt_BR: Comprimento Máximo
             zh_Hans: 最大长度
           llm_description: Maximum length allowed per chunk
@@ -169,12 +169,12 @@ workflow:
           form: llm
           human_description:
             en_US: Separator used for chunking
-            ja_JP: Separator used for chunking
+            ja_JP: チャンク分割に使用する区切り文字
             pt_BR: Separador usado para divisão
             zh_Hans: 用于分块的分隔符
           label:
             en_US: Chunk Separator
-            ja_JP: Chunk Separator
+            ja_JP: チャンク区切り文字
             pt_BR: Separador de Divisão
             zh_Hans: 分块分隔符
           llm_description: The separator used to split chunks
@@ -193,12 +193,12 @@ workflow:
           form: llm
           human_description:
             en_US: Maximum length for subchunking
-            ja_JP: Maximum length for subchunking
+            ja_JP: サブチャンク分割の最大長
             pt_BR: Comprimento máximo para subdivisão
             zh_Hans: 用于子分块的最大长度
           label:
             en_US: Subchunk Maximum Length
-            ja_JP: Subchunk Maximum Length
+            ja_JP: サブチャンク最大長
             pt_BR: Comprimento Máximo de Subdivisão
             zh_Hans: 子分块最大长度
           llm_description: Maximum length allowed per subchunk
@@ -217,12 +217,12 @@ workflow:
           form: llm
           human_description:
             en_US: Separator used for subchunking
-            ja_JP: Separator used for subchunking
+            ja_JP: サブチャンク分割に使用する区切り文字
             pt_BR: Separador usado para subdivisão
             zh_Hans: 用于子分块的分隔符
           label:
             en_US: Subchunk Separator
-            ja_JP: Subchunk Separator
+            ja_JP: サブチャンキング用セパレーター
             pt_BR: Separador de Subdivisão
             zh_Hans: 子分块分隔符
           llm_description: The separator used to split subchunks
@@ -243,16 +243,15 @@ workflow:
             en_US: Split text into paragraphs based on separator and maximum chunk
               length, using split text as parent block or entire document as parent
               block and directly retrieve.
-            ja_JP: Split text into paragraphs based on separator and maximum chunk
-              length, using split text as parent block or entire document as parent
-              block and directly retrieve.
+            ja_JP: セパレーターと最大チャンク長に基づいてテキストを段落に分割し、分割されたテキスト
+              を親ブロックとして使用するか、文書全体を親ブロックとして使用して直接取得します。
             pt_BR: Dividir texto em parágrafos com base no separador e no comprimento
               máximo do bloco, usando o texto dividido como bloco pai ou documento
               completo como bloco pai e diretamente recuperá-lo.
             zh_Hans: 根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的父块或整个文档用作父块并直接检索。
           label:
             en_US: Parent Mode
-            ja_JP: Parent Mode
+            ja_JP: 親子モード
             pt_BR: Modo Pai
             zh_Hans: 父块模式
           llm_description: Split text into paragraphs based on separator and maximum
@@ -265,14 +264,14 @@ workflow:
           - icon: ''
             label:
               en_US: Paragraph
-              ja_JP: Paragraph
+              ja_JP: 段落
               pt_BR: Parágrafo
               zh_Hans: 段落
             value: paragraph
           - icon: ''
             label:
               en_US: Full Document
-              ja_JP: Full Document
+              ja_JP: 全文
               pt_BR: Documento Completo
               zh_Hans: 全文
             value: full_doc
@@ -287,12 +286,12 @@ workflow:
           form: llm
           human_description:
             en_US: Whether to remove extra spaces in the text
-            ja_JP: Whether to remove extra spaces in the text
+            ja_JP: テキスト内の余分なスペースを削除するかどうか
             pt_BR: Se deve remover espaços extras no texto
             zh_Hans: 是否移除文本中的多余空格
           label:
             en_US: Remove Extra Spaces
-            ja_JP: Remove Extra Spaces
+            ja_JP: 余分なスペースを削除
             pt_BR: Remover Espaços Extras
             zh_Hans: 移除多余空格
           llm_description: Whether to remove extra spaces in the text
@@ -311,12 +310,12 @@ workflow:
           form: llm
           human_description:
             en_US: Whether to remove URLs and emails in the text
-            ja_JP: Whether to remove URLs and emails in the text
+            ja_JP: テキスト内のURLやメールアドレスを削除するかどうか
             pt_BR: Se deve remover URLs e e-mails no texto
             zh_Hans: 是否移除文本中的URL和电子邮件地址
           label:
             en_US: Remove URLs and Emails
-            ja_JP: Remove URLs and Emails
+            ja_JP: URLとメールアドレスを削除
             pt_BR: Remover URLs e E-mails
             zh_Hans: 移除URL和电子邮件地址
           llm_description: Whether to remove URLs and emails in the text
