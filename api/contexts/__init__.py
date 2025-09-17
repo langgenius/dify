@@ -3,9 +3,9 @@ from threading import Lock
 from typing import TYPE_CHECKING
 
 from contexts.wrapper import RecyclableContextVar
-from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 
 if TYPE_CHECKING:
+    from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
     from core.model_runtime.entities.model_entities import AIModelEntity
     from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
     from core.tools.plugin_tool.provider import PluginToolProviderController
