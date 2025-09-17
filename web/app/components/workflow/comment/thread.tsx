@@ -6,10 +6,11 @@ import type { FC } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useReactFlow, useViewport } from 'reactflow'
-import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiSendPlane2Fill } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowUpLine, RiArrowUpSLine, RiAtLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
 import Avatar from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
 import type { UserProfile, WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
@@ -34,18 +35,17 @@ const ThreadMessage: FC<{
   avatarUrl?: string | null
   createdAt: number
   content: string
-  isReply?: boolean
-}> = ({ authorName, avatarUrl, createdAt, content, isReply }) => {
+}> = ({ authorName, avatarUrl, createdAt, content }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   return (
-    <div className={cn('flex gap-3', isReply && 'pt-1')}>
+    <div className={cn('flex gap-3 pt-1')}>
       <div className='shrink-0'>
         <Avatar
           name={authorName}
           avatar={avatarUrl || null}
-          size={isReply ? 28 : 32}
-          className={cn('rounded-full', isReply ? 'h-7 w-7' : 'h-8 w-8')}
+          size={24}
+          className={cn('h-8 w-8 rounded-full')}
         />
       </div>
       <div className='min-w-0 flex-1 pb-4 text-text-primary last:pb-0'>
@@ -68,7 +68,6 @@ const renderReply = (reply: WorkflowCommentDetailReply) => (
     avatarUrl={reply.created_by_account?.avatar_url || null}
     createdAt={reply.created_at}
     content={reply.content}
-    isReply
   />
 )
 
@@ -254,13 +253,13 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
       }}
     >
       <div className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
-        <div className='flex items-center justify-between rounded-t-2xl px-4 py-3'>
-          <div className='system-2xs-semibold uppercase tracking-[0.08em] text-text-tertiary'>Comment</div>
+        <div className='flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3'>
+          <div className=' font-semibold uppercase text-text-primary'>Comment</div>
           <div className='flex items-center gap-1'>
             <button
               type='button'
               disabled={loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onDelete}
               aria-label='Delete comment'
             >
@@ -269,17 +268,17 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <button
               type='button'
               disabled={comment.resolved || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onResolve}
               aria-label='Resolve comment'
             >
               {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
             </button>
-            <div className='bg-components-panel-border/80 mx-1 h-4 w-px' />
+            <Divider type='vertical' className='h-3.5' />
             <button
               type='button'
               disabled={!canGoPrev || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onPrev}
               aria-label='Previous comment'
             >
@@ -288,7 +287,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <button
               type='button'
               disabled={!canGoNext || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onNext}
               aria-label='Next comment'
             >
@@ -296,7 +295,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             </button>
             <button
               type='button'
-              className='flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+              className='flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
               onClick={onClose}
               aria-label='Close comment'
             >
@@ -304,7 +303,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             </button>
           </div>
         </div>
-        <div className='relative flex-1 overflow-y-auto px-4 pb-4'>
+        <div className='relative mt-2 flex-1 overflow-y-auto px-4'>
           <ThreadMessage
             authorName={comment.created_by_account?.name || 'User'}
             avatarUrl={comment.created_by_account?.avatar_url || null}
@@ -312,7 +311,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             content={comment.content}
           />
           {comment.replies?.length > 0 && (
-            <div className='mt-3 space-y-3 border-t border-components-panel-border pt-3'>
+            <div className='mt-3 space-y-3 pt-3'>
               {comment.replies.map(renderReply)}
             </div>
           )}
@@ -324,43 +323,41 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         )}
         {onReply && (
           <div className='border-t border-components-panel-border px-4 py-3'>
-            <div className='flex items-start gap-3'>
+            <div className='flex items-center gap-3'>
               <Avatar
                 avatar={userProfile?.avatar_url || null}
                 name={userProfile?.name || 'You'}
-                size={32}
+                size={24}
                 className='h-8 w-8'
               />
-              <div className='flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
+              <div className='flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm'>
                 <div className='flex items-center gap-2'>
                   <Textarea
                     ref={textareaRef}
                     minRows={1}
-                    maxRows={1}
+                    maxRows={4}
                     value={replyContent}
                     placeholder='Add a reply'
                     onChange={e => handleContentChange(e.target.value)}
                     onKeyDown={handleReplyKeyDown}
-                    className='system-sm-regular h-6 w-full resize-none bg-transparent text-text-primary caret-primary-500 outline-none'
+                    className='system-sm-regular h-8 w-full resize-none bg-transparent pl-2 leading-8 text-text-primary caret-primary-500 outline-none'
                   />
                   <button
                     type='button'
                     disabled={!onReply || loading}
-                    className={cn('disabled:bg-components-button-secondary-bg/60 z-20 flex h-8 w-8 items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover disabled:cursor-not-allowed disabled:text-text-disabled')}
+                    className={cn('disabled:bg-components-button-secondary-bg/60 z-20 flex h-8 w-10 items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover disabled:cursor-not-allowed disabled:text-text-disabled')}
                     onClick={handleMentionButtonClick}
                     aria-label='Mention user'
                   >
-                    <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'>
-                      <path d='M13.3334 8.00004C13.3334 5.05452 10.9456 2.66671 8.00004 2.66671C5.05452 2.66671 2.66671 5.05452 2.66671 8.00004C2.66671 10.9456 5.05452 13.3334 8.00004 13.3334C9.09457 13.3334 10.1121 13.0036 10.9588 12.4381L11.6984 13.5476C10.6402 14.2546 9.36824 14.6667 8.00004 14.6667C4.31814 14.6667 1.33337 11.6819 1.33337 8.00004C1.33337 4.31814 4.31814 1.33337 8.00004 1.33337C11.6819 1.33337 14.6667 4.31814 14.6667 8.00004V9.00004C14.6667 10.2887 13.622 11.3334 12.3334 11.3334C11.5306 11.3334 10.8224 10.9279 10.4026 10.3106C9.79617 10.941 8.94391 11.3334 8.00004 11.3334C6.15909 11.3334 4.66671 9.84097 4.66671 8.00004C4.66671 6.15909 6.15909 4.66671 8.00004 4.66671C8.75057 4.66671 9.44317 4.91477 10.0004 5.33337H11.3334V9.00004C11.3334 9.55231 11.7811 10 12.3334 10C12.8856 10 13.3334 9.55231 13.3334 9.00004V8.00004ZM8.00004 6.00004C6.89544 6.00004 6.00004 6.89544 6.00004 8.00004C6.00004 9.10464 6.89544 10 8.00004 10C9.10464 10 10 9.10464 10 8.00004C10 6.89544 9.10464 6.00004 8.00004 6.00004Z' fill='#676F83' />
-                    </svg>
+                    <RiAtLine className='h-4 w-4' />
                   </button>
                   <Button
                     variant='primary'
                     disabled={loading || !onReply || !replyContent.trim()}
                     onClick={handleReplySubmit}
-                    className='z-20 ml-2 h-8 w-8 px-0'
+                    className='z-20 h-8 w-8'
                   >
-                    <RiSendPlane2Fill className='h-4 w-4' />
+                    <RiArrowUpLine className='h-4 w-4' />
                   </Button>
                 </div>
               </div>
