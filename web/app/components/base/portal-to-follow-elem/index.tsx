@@ -41,6 +41,7 @@ export function usePortalToFollowElem({
 }: PortalToFollowElemOptions = {}) {
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
+  const isControlled = controlledOpen !== undefined
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setLocalOpen(newOpen)
     setControlledOpen?.(newOpen)
@@ -72,10 +73,10 @@ export function usePortalToFollowElem({
 
   const hover = useHover(context, {
     move: false,
-    enabled: open == null,
+    enabled: !isControlled,
   })
   const focus = useFocus(context, {
-    enabled: open == null,
+    enabled: !isControlled,
   })
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
@@ -85,10 +86,10 @@ export function usePortalToFollowElem({
   const interactionsArray = useMemo(() => {
     const result = [hover, focus, dismiss, role]
 
-    if (!setControlledOpen)
+    if (!isControlled)
       result.push(click)
     return result
-  }, [setControlledOpen, hover, focus, dismiss, role, click])
+  }, [isControlled, hover, focus, dismiss, role, click])
   const interactions = useInteractions(interactionsArray)
 
   return React.useMemo(
@@ -148,7 +149,7 @@ export const PortalToFollowElemTrigger = (
       context.getReferenceProps({
         ref,
         ...props,
-        ...children.props,
+        ...(children.props || {}),
         'data-state': context.open ? 'open' : 'closed',
       } as React.HTMLProps<HTMLElement>),
     )
