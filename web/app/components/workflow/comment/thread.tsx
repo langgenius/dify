@@ -197,18 +197,19 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     key={reply.id}
                     className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
                   >
-                    <div className='absolute right-1 top-1 hidden gap-1 group-hover:flex'>
-                      <button
-                        type='button'
-                        className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
-                        }}
-                        aria-label='Reply actions'
-                      >
-                        <RiMoreFill className='h-4 w-4' />
-                      </button>
+                    {!isReplyEditing && (
+                      <div className='absolute right-1 top-1 hidden gap-1 group-hover:flex'>
+                        <button
+                          type='button'
+                          className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
+                          }}
+                          aria-label='Reply actions'
+                        >
+                          <RiMoreFill className='h-4 w-4' />
+                        </button>
                       {activeReplyMenuId === reply.id && (
                         <div className='absolute right-0 top-7 z-40 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
                           <button
@@ -228,7 +229,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           </button>
                         </div>
                       )}
-                    </div>
+                      </div>
+                    )}
                     {isReplyEditing ? (
                       <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
                         <MentionInput
