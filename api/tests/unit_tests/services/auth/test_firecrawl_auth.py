@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 import httpx
+import pytest
 
 from services.auth.firecrawl.firecrawl import FirecrawlAuth
 
