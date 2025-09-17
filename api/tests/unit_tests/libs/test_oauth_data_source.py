@@ -176,11 +176,13 @@ def test_notion_workspace_name_returns_workspace(monkeypatch):
     notion_oauth = oauth_data_source.NotionOAuth("cid", "secret", "https://callback")
 
     def fake_get(*_, **__):
-        return _DummyResponse({
-            "object": "user",
-            "type": "bot",
-            "bot": {"workspace_name": "My Workspace"},
-        })
+        return _DummyResponse(
+            {
+                "object": "user",
+                "type": "bot",
+                "bot": {"workspace_name": "My Workspace"},
+            }
+        )
 
     monkeypatch.setattr(oauth_data_source.requests, "get", fake_get)
 

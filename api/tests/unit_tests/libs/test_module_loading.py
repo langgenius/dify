@@ -65,6 +65,4 @@ class TestImportString:
         with pytest.raises(ImportError) as exc_info:
             module_loading.import_string("math.nonexistent_attribute")
 
-        assert 'Module "math" does not define a "nonexistent_attribute" attribute/class' in str(
-            exc_info.value
-        )
+        assert 'Module "math" does not define a "nonexistent_attribute" attribute/class' in str(exc_info.value)
