@@ -1,9 +1,9 @@
 import json
 from abc import ABC
 from collections.abc import Sequence
+from builtins import type as type_
 from enum import StrEnum
 from typing import Any, Union
-from builtins import type as type_
 
 from pydantic import BaseModel, model_validator
 
