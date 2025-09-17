@@ -1,7 +1,7 @@
 """knowledge_pipeline_migrate
 
 Revision ID: 68519ad5cd18
-Revises: 0b2ca375fabe
+Revises: cf7c38a32b2d
 Create Date: 2025-09-17 15:15:50.697885
 
 """
@@ -34,8 +34,8 @@ def upgrade():
     sa.Column('plugin_id', sa.String(length=255), nullable=False),
     sa.Column('client_params', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('enabled', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='datasource_oauth_tenant_config_pkey'),
     sa.UniqueConstraint('tenant_id', 'plugin_id', 'provider', name='datasource_oauth_tenant_config_unique')
     )
@@ -50,8 +50,8 @@ def upgrade():
     sa.Column('avatar_url', sa.String(length=255), nullable=True),
     sa.Column('is_default', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.Column('expires_at', sa.Integer(), server_default='-1', nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='datasource_provider_pkey'),
     sa.UniqueConstraint('tenant_id', 'plugin_id', 'provider', 'name', name='datasource_provider_unique_name')
     )
