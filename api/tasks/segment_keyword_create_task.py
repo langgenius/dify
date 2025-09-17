@@ -4,7 +4,6 @@ import time
 import click
 from celery import shared_task  # type: ignore
 
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from extensions.ext_database import db
 from models import DocumentSegment
 
@@ -36,6 +35,7 @@ def segment_keyword_create_task(dataset_id: str, document_id: str, index_node_id
         logger.info(click.style("Segment is not found: {} {}".format(dataset_id, index_node_ids), fg="yellow"))
         return
 
+    from core.indexing_runner import DocumentIsPausedError, IndexingRunner
     try:
         logger.info(
             click.style(
