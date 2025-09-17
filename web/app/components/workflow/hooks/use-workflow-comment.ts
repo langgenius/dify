@@ -4,7 +4,7 @@ import { useReactFlow } from 'reactflow'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
-import { createWorkflowComment, fetchWorkflowComment, fetchWorkflowComments } from '@/service/workflow-comment'
+import { createWorkflowComment, deleteWorkflowComment, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment } from '@/service/workflow-comment'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -100,8 +100,7 @@ export const useWorkflowComment = () => {
     setActiveCommentId(comment.id)
 
     const cachedDetail = commentDetailCacheRef.current[comment.id]
-    const fallbackDetail = cachedDetail ?? comment
-    setActiveComment(fallbackDetail)
+    setActiveComment(cachedDetail || comment)
 
     reactflow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
 
@@ -130,13 +129,85 @@ export const useWorkflowComment = () => {
     }
   }, [appId, reactflow, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache, setControlMode, setPendingComment])
 
+  const handleCommentResolve = useCallback(async (commentId: string) => {
+    if (!appId) return
+
+    setActiveCommentLoading(true)
+    try {
+      await resolveWorkflowComment(appId, commentId)
+      const detailResponse = await fetchWorkflowComment(appId, commentId)
+      const detail = (detailResponse as any)?.data ?? detailResponse
+
+      commentDetailCacheRef.current = {
+        ...commentDetailCacheRef.current,
+        [commentId]: detail,
+      }
+      setCommentDetailCache(commentDetailCacheRef.current)
+      setActiveComment(detail)
+      await loadComments()
+    }
+    catch (error) {
+      console.error('Failed to resolve comment:', error)
+    }
+    finally {
+      setActiveCommentLoading(false)
+    }
+  }, [appId, loadComments, setActiveComment, setActiveCommentLoading, setCommentDetailCache])
+
+  const handleCommentDelete = useCallback(async (commentId: string) => {
+    if (!appId) return
+
+    setActiveCommentLoading(true)
+    try {
+      await deleteWorkflowComment(appId, commentId)
+      const updatedCache = { ...commentDetailCacheRef.current }
+      delete updatedCache[commentId]
+      commentDetailCacheRef.current = updatedCache
+      setCommentDetailCache(updatedCache)
+
+      const currentComments = comments.filter(c => c.id !== commentId)
+      const commentIndex = comments.findIndex(c => c.id === commentId)
+      const fallbackTarget = commentIndex >= 0 ? comments[commentIndex + 1] ?? comments[commentIndex - 1] : undefined
+
+      await loadComments()
+
+      if (fallbackTarget) {
+        handleCommentIconClick(fallbackTarget)
+      }
+      else if (currentComments.length > 0) {
+        const nextComment = currentComments[0]
+        handleCommentIconClick(nextComment)
+      }
+      else {
+        setActiveComment(null)
+        setActiveCommentId(null)
+        activeCommentIdRef.current = null
+      }
+    }
+    catch (error) {
+      console.error('Failed to delete comment:', error)
+    }
+    finally {
+      setActiveCommentLoading(false)
+    }
+  }, [appId, comments, handleCommentIconClick, loadComments, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache])
+
+  const handleCommentNavigate = useCallback((direction: 'prev' | 'next') => {
+    const currentId = activeCommentIdRef.current
+    if (!currentId) return
+    const idx = comments.findIndex(c => c.id === currentId)
+    if (idx === -1) return
+    const target = direction === 'prev' ? comments[idx - 1] : comments[idx + 1]
+    if (target)
+      handleCommentIconClick(target)
+  }, [comments, handleCommentIconClick])
+
   const handleActiveCommentClose = useCallback(() => {
     setActiveComment(null)
     setActiveCommentLoading(false)
     setActiveCommentId(null)
-    setControlMode(ControlMode.Pointer)
     activeCommentIdRef.current = null
-  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading, setControlMode])
+  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
 
   const handleCreateComment = useCallback((mousePosition: { pageX: number; pageY: number }) => {
     if (controlMode === ControlMode.Comment) {
@@ -161,6 +232,9 @@ export const useWorkflowComment = () => {
     handleCommentCancel,
     handleCommentIconClick,
     handleActiveCommentClose,
+    handleCommentResolve,
+    handleCommentDelete,
+    handleCommentNavigate,
     handleCreateComment,
     loadComments,
   }

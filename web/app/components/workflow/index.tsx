@@ -117,6 +117,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
+  const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -170,6 +171,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleCommentCancel,
     handleCommentIconClick,
     handleActiveCommentClose,
+    handleCommentResolve,
+    handleCommentDelete,
+    handleCommentNavigate,
   } = useWorkflowComment()
   const mousePosition = useStore(s => s.mousePosition)
 
@@ -332,17 +336,27 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <PanelContextmenu />
       <NodeContextmenu />
       <HelpLine />
-      {
-        !!showConfirm && (
-          <Confirm
-            isShow
-            onCancel={() => setShowConfirm(undefined)}
-            onConfirm={showConfirm.onConfirm}
-            title={showConfirm.title}
-            content={showConfirm.desc}
-          />
-        )
-      }
+      {!!showConfirm && (
+        <Confirm
+          isShow
+          onCancel={() => setShowConfirm(undefined)}
+          onConfirm={showConfirm.onConfirm}
+          title={showConfirm.title}
+          content={showConfirm.desc}
+        />
+      )}
+      {pendingDeleteCommentId && (
+        <Confirm
+          isShow
+          title='Delete this thread?'
+          content='This action will permanently delete the thread and all its replies. This cannot be undone.'
+          onCancel={() => setPendingDeleteCommentId(null)}
+          onConfirm={async () => {
+            await handleCommentDelete(pendingDeleteCommentId)
+            setPendingDeleteCommentId(null)
+          }}
+        />
+      )}
       <LimitTips />
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
         <CommentCursor mousePosition={mousePosition} />
@@ -354,16 +368,24 @@ export const Workflow: FC<WorkflowProps> = memo(({
           onCancel={handleCommentCancel}
         />
       )}
-      {comments.map((comment) => {
+      {comments.map((comment, index) => {
         const isActive = activeComment?.id === comment.id
 
         if (isActive && activeComment) {
+          const canGoPrev = index > 0
+          const canGoNext = index < comments.length - 1
           return (
             <CommentThread
               key={comment.id}
               comment={activeComment}
               loading={activeCommentLoading}
               onClose={handleActiveCommentClose}
+              onResolve={() => handleCommentResolve(comment.id)}
+              onDelete={() => setPendingDeleteCommentId(comment.id)}
+              onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
+              onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
+              canGoPrev={canGoPrev}
+              canGoNext={canGoNext}
             />
           )
         }

@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import { memo, useMemo } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
-import { RiCloseLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine } from '@remixicon/react'
 import Avatar from '@/app/components/base/avatar'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
@@ -13,6 +13,12 @@ type CommentThreadProps = {
   comment: WorkflowCommentDetail
   loading?: boolean
   onClose: () => void
+  onDelete?: () => void
+  onResolve?: () => void
+  onPrev?: () => void
+  onNext?: () => void
+  canGoPrev?: boolean
+  canGoNext?: boolean
 }
 
 const ThreadMessage: FC<{
@@ -58,7 +64,17 @@ const renderReply = (reply: WorkflowCommentDetailReply) => (
   />
 )
 
-export const CommentThread: FC<CommentThreadProps> = memo(({ comment, loading = false, onClose }) => {
+export const CommentThread: FC<CommentThreadProps> = memo(({
+  comment,
+  loading = false,
+  onClose,
+  onDelete,
+  onResolve,
+  onPrev,
+  onNext,
+  canGoPrev,
+  canGoNext,
+}) => {
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
 
@@ -81,14 +97,53 @@ export const CommentThread: FC<CommentThreadProps> = memo(({ comment, loading = 
       <div className='relative rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
         <div className='flex items-center justify-between rounded-t-2xl px-4 py-3'>
           <div className='system-2xs-semibold uppercase tracking-[0.08em] text-text-tertiary'>Comment</div>
-          <button
-            type='button'
-            className='flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-            onClick={onClose}
-            aria-label='Close comment'
-          >
-            <RiCloseLine className='h-4 w-4' />
-          </button>
+          <div className='flex items-center gap-1'>
+            <button
+              type='button'
+              disabled={loading}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              onClick={onDelete}
+              aria-label='Delete comment'
+            >
+              <RiDeleteBinLine className='h-4 w-4' />
+            </button>
+            <button
+              type='button'
+              disabled={comment.resolved || loading}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              onClick={onResolve}
+              aria-label='Resolve comment'
+            >
+              {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
+            </button>
+            <div className='bg-components-panel-border/80 mx-1 h-4 w-px' />
+            <button
+              type='button'
+              disabled={!canGoPrev || loading}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              onClick={onPrev}
+              aria-label='Previous comment'
+            >
+              <RiArrowUpSLine className='h-4 w-4' />
+            </button>
+            <button
+              type='button'
+              disabled={!canGoNext || loading}
+              className={cn('flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+              onClick={onNext}
+              aria-label='Next comment'
+            >
+              <RiArrowDownSLine className='h-4 w-4' />
+            </button>
+            <button
+              type='button'
+              className='flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+              onClick={onClose}
+              aria-label='Close comment'
+            >
+              <RiCloseLine className='h-4 w-4' />
+            </button>
+          </div>
         </div>
         <div className='relative px-4 pb-4'>
           <ThreadMessage
