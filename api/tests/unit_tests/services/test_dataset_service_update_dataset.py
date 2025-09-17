@@ -191,11 +191,6 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_id": "new_knowledge_id",
             "external_knowledge_api_id": "new_api_id",
         }
-        # stmt = MagicMock()
-
-        # mock_db.query.return_value = stmt
-        # stmt.filter.return_value = stmt
-        # stmt.first.return_value = None
 
         mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
         result = DatasetService.update_dataset("dataset-123", update_data, user)
