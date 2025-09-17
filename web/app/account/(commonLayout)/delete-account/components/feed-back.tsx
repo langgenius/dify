@@ -1,14 +1,13 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useDeleteAccountFeedback } from '../state'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
 import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
-import { logout } from '@/service/common'
+import useLogout from '@/hooks/use-logout'
 
 type DeleteAccountProps = {
   onCancel: () => void
@@ -18,23 +17,22 @@ type DeleteAccountProps = {
 export default function FeedBack(props: DeleteAccountProps) {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
-  const router = useRouter()
   const [userFeedback, setUserFeedback] = useState('')
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
+  const { handleLogout } = useLogout()
 
   const handleSuccess = useCallback(async () => {
     try {
-      await logout({
-        url: '/logout',
-        params: {},
+      handleLogout({
+        source: 'delete-account',
+        skipConfirm: true,
+        onSuccess: () => {
+          Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
+        },
       })
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('console_token')
-      router.push('/signin')
-      Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
     }
     catch (error) { console.error(error) }
-  }, [router, t])
+  }, [handleLogout, t])
 
   const handleSubmit = useCallback(async () => {
     try {

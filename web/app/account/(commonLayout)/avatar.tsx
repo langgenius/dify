@@ -1,13 +1,12 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import Avatar from '@/app/components/base/avatar'
-import { logout } from '@/service/common'
+import useLogout from '@/hooks/use-logout'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
@@ -18,23 +17,10 @@ export type IAppSelector = {
 }
 
 export default function AppSelector() {
-  const router = useRouter()
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
-
-  const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
-
-    localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
-
-    router.push('/signin')
-  }
+  const { handleLogout } = useLogout()
 
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -90,7 +76,7 @@ export default function AppSelector() {
                   </div>
                 </MenuItem>
                 <MenuItem>
-                  <div className='p-1' onClick={() => handleLogout()}>
+                  <div className='p-1' onClick={() => handleLogout({ source: 'account' })}>
                     <div
                       className='group flex h-9 cursor-pointer items-center justify-start rounded-lg px-3 hover:bg-state-base-hover'
                     >

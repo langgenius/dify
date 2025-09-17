@@ -6,7 +6,7 @@ import type { Placement } from '@floating-ui/react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Divider from '../../base/divider'
 import InfoModal from './info-modal'
 import ActionButton from '@/app/components/base/action-button'
@@ -20,6 +20,7 @@ import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
 import { AccessMode } from '@/models/access-control'
 import { useWebAppStore } from '@/context/web-app-context'
+import useLogout from '@/hooks/use-logout'
 
 type Props = {
   data?: SiteInfo
@@ -33,9 +34,9 @@ const MenuDropdown: FC<Props> = ({
   hideLogout,
 }) => {
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
-  const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
+  const { handleLogout } = useLogout()
   const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
   const setOpen = useCallback((v: boolean) => {
@@ -47,11 +48,13 @@ const MenuDropdown: FC<Props> = ({
     setOpen(!openRef.current)
   }, [setOpen])
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('webapp_access_token')
-    router.replace(`/webapp-signin?redirect_url=${pathname}`)
-  }, [router, pathname])
+  const handleWebAppLogout = useCallback(() => {
+    handleLogout({
+      source: 'share-app',
+      isWebApp: true,
+      redirectUrl: `/webapp-signin?redirect_url=${pathname}`,
+    })
+  }, [handleLogout, pathname])
 
   const [show, setShow] = useState(false)
 
@@ -99,7 +102,7 @@ const MenuDropdown: FC<Props> = ({
             {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
               <div className='p-1'>
                 <div
-                  onClick={handleLogout}
+                  onClick={handleWebAppLogout}
                   className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
                 >
                   {t('common.userProfile.logout')}

@@ -176,6 +176,11 @@ const translation = {
     logout: 'ログアウト',
     github: 'GitHub',
   },
+  logout: {
+    confirmTitle: 'ログアウトの確認',
+    confirmMessage: 'ログアウトしてもよろしいですか？再度アカウントにアクセスするにはログインが必要です。',
+    confirmButton: 'ログアウト',
+  },
   compliance: {
     soc2Type1: 'SOC 2 Type I 報告書',
     soc2Type2: 'SOC 2 Type II 報告書',

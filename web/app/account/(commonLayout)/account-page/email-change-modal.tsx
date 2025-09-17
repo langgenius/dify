@@ -1,15 +1,14 @@
 import React, { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { ToastContext } from '@/app/components/base/toast'
 import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import useLogout from '@/hooks/use-logout'
 import {
   checkEmailExisted,
-  logout,
   resetEmail,
   sendVerifyCode,
   verifyEmail,
@@ -34,7 +33,7 @@ enum STEP {
 const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const router = useRouter()
+  const { handleLogout } = useLogout()
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('')
@@ -167,26 +166,16 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
     setStep(STEP.verifyNew)
   }
 
-  const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
-
-    localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
-
-    router.push('/signin')
-  }
-
   const updateEmail = async (lastToken: string) => {
     try {
       await resetEmail({
         new_email: mail,
         token: lastToken,
       })
-      handleLogout()
+      handleLogout({
+        source: 'email-change',
+        skipConfirm: true,
+      })
     }
     catch (error) {
       notify({

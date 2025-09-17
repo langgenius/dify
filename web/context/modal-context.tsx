@@ -29,6 +29,7 @@ import { noop } from 'lodash-es'
 import dynamic from 'next/dynamic'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { LogoutOptions } from '@/hooks/use-logout'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
@@ -68,6 +69,10 @@ const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-not
   ssr: false,
 })
 
+const LogoutModal = dynamic(() => import('@/app/components/base/logout-modal'), {
+  ssr: false,
+})
+
 export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
@@ -89,6 +94,12 @@ export type ModelModalType = {
   mode?: ModelModalModeEnum
 }
 
+export type LogoutModalPayload = {
+  source?: LogoutOptions['source']
+  isWebApp?: boolean
+  onConfirm: () => void
+}
+
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
@@ -106,6 +117,7 @@ export type ModalContextState = {
   }> | null>>
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
   setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
+  setShowLogoutModal: Dispatch<SetStateAction<LogoutModalPayload | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
@@ -120,6 +132,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
   setShowEducationExpireNoticeModal: noop,
+  setShowLogoutModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -149,6 +162,7 @@ export const ModalContextProvider = ({
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
+  const [showLogoutModal, setShowLogoutModal] = useState<LogoutModalPayload | null>(null)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -264,6 +278,7 @@ export const ModalContextProvider = ({
       setShowOpeningModal,
       setShowUpdatePluginModal,
       setShowEducationExpireNoticeModal,
+      setShowLogoutModal,
     }}>
       <>
         {children}
@@ -387,6 +402,18 @@ export const ModalContextProvider = ({
             <ExpireNoticeModal
               {...showEducationExpireNoticeModal.payload}
               onClose={() => setShowEducationExpireNoticeModal(null)}
+            />
+          )}
+        {
+          !!showLogoutModal && (
+            <LogoutModal
+              isShow={true}
+              source={showLogoutModal.source}
+              onConfirm={() => {
+                showLogoutModal.onConfirm()
+                setShowLogoutModal(null)
+              }}
+              onCancel={() => setShowLogoutModal(null)}
             />
           )}
       </>

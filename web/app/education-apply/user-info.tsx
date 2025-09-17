@@ -1,28 +1,14 @@
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
 import Button from '@/app/components/base/button'
 import { useAppContext } from '@/context/app-context'
-import { logout } from '@/service/common'
+import useLogout from '@/hooks/use-logout'
 import Avatar from '@/app/components/base/avatar'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
 
 const UserInfo = () => {
-  const router = useRouter()
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
-
-  const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
-
-    localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
-
-    router.push('/signin')
-  }
+  const { handleLogout } = useLogout()
 
   return (
     <div className='relative flex items-center justify-between rounded-xl border-[4px] border-components-panel-on-panel-item-bg bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pb-6 pl-6 pr-8 pt-9 shadow-shadow-shadow-5'>
@@ -50,7 +36,7 @@ const UserInfo = () => {
       </div>
       <Button
         variant='secondary'
-        onClick={handleLogout}
+        onClick={() => handleLogout({ source: 'education' })}
       >
         {t('common.userProfile.logout')}
       </Button>

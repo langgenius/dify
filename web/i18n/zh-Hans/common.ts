@@ -176,6 +176,11 @@ const translation = {
     about: '关于',
     logout: '登出',
   },
+  logout: {
+    confirmTitle: '确认登出',
+    confirmMessage: '您确定要登出吗？登出后需要重新登录才能访问您的账户。',
+    confirmButton: '登出',
+  },
   compliance: {
     soc2Type1: 'SOC 2 Type I Report',
     soc2Type2: 'SOC 2 Type II Report',

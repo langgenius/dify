@@ -176,6 +176,11 @@ const translation = {
     about: 'About',
     logout: 'Log out',
   },
+  logout: {
+    confirmTitle: 'Confirm Logout',
+    confirmMessage: 'Are you sure you want to log out? You will need to sign in again to access your account.',
+    confirmButton: 'Log out',
+  },
   compliance: {
     soc2Type1: 'SOC 2 Type I Report',
     soc2Type2: 'SOC 2 Type II Report',
