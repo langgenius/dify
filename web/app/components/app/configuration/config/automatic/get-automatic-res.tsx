@@ -50,6 +50,7 @@ export type IGetAutomaticResProps = {
   onFinished: (res: GenRes) => void
   flowId?: string
   nodeId?: string
+  editorId?: string
   currentPrompt?: string
   isBasicMode?: boolean
 }
@@ -76,6 +77,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onClose,
   flowId,
   nodeId,
+  editorId,
   currentPrompt,
   isBasicMode,
   onFinished,
@@ -132,7 +134,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}`}`)
+  // eslint-disable-next-line sonarjs/no-nested-template-literals, sonarjs/no-nested-conditional
+  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`)
   const instruction = instructionFromSessionStorage || ''
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
@@ -166,7 +169,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return true
   }
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const storageKey = `${flowId}${isBasicMode ? '' : `-${nodeId}`}`
+  const storageKey = `${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
     storageKey,
   })

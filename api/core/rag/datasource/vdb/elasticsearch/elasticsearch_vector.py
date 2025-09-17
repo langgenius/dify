@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 import requests
@@ -24,18 +24,18 @@ logger = logging.getLogger(__name__)
 
 class ElasticSearchConfig(BaseModel):
     # Regular Elasticsearch config
-    host: Optional[str] = None
-    port: Optional[int] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
+    host: str | None = None
+    port: int | None = None
+    username: str | None = None
+    password: str | None = None
 
     # Elastic Cloud specific config
-    cloud_url: Optional[str] = None  # Cloud URL for Elasticsearch Cloud
-    api_key: Optional[str] = None
+    cloud_url: str | None = None  # Cloud URL for Elasticsearch Cloud
+    api_key: str | None = None
 
     # Common config
     use_cloud: bool = False
-    ca_certs: Optional[str] = None
+    ca_certs: str | None = None
     verify_certs: bool = False
     request_timeout: int = 100000
     retry_on_timeout: bool = True
@@ -256,8 +256,8 @@ class ElasticSearchVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict[Any, Any]]] = None,
-        index_params: Optional[dict] = None,
+        metadatas: list[dict[Any, Any]] | None = None,
+        index_params: dict | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

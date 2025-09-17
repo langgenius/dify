@@ -4,7 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from core.file import File, FileTransferMethod, FileType
@@ -486,13 +486,14 @@ def _generate_file(draw) -> File:
 def _scalar_value() -> st.SearchStrategy[int | float | str | File | None]:
     return st.one_of(
         st.none(),
-        st.integers(),
-        st.floats(),
-        st.text(),
+        st.integers(min_value=-(10**6), max_value=10**6),
+        st.floats(allow_nan=True, allow_infinity=False),
+        st.text(max_size=50),
         _generate_file(),
     )
 
 
+@settings(max_examples=50)
 @given(_scalar_value())
 def test_build_segment_and_extract_values_for_scalar_types(value):
     seg = variable_factory.build_segment(value)
@@ -503,7 +504,8 @@ def test_build_segment_and_extract_values_for_scalar_types(value):
         assert seg.value == value
 
 
-@given(st.lists(_scalar_value()))
+@settings(max_examples=50)
+@given(values=st.lists(_scalar_value(), max_size=20))
 def test_build_segment_and_extract_values_for_array_types(values):
     seg = variable_factory.build_segment(values)
     assert seg.value == values

@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 import orjson
 from pydantic import BaseModel
@@ -143,7 +143,7 @@ class Jieba(BaseKeyword):
                 storage.delete(file_key)
             storage.save(file_key, dumps_with_sets(keyword_table_dict).encode("utf-8"))
 
-    def _get_dataset_keyword_table(self) -> Optional[dict]:
+    def _get_dataset_keyword_table(self) -> dict | None:
         dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             keyword_table_dict = dataset_keyword_table.keyword_table_dict

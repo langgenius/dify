@@ -1,7 +1,7 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 from urllib.parse import unquote
 
 from configs import dify_config
@@ -90,7 +90,7 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: Optional[str] = None
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -104,7 +104,7 @@ class ExtractProcessor:
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
                 etl_type = dify_config.ETL_TYPE
-                extractor: Optional[BaseExtractor] = None
+                extractor: BaseExtractor | None = None
                 if etl_type == "Unstructured":
                     unstructured_api_url = dify_config.UNSTRUCTURED_API_URL or ""
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""

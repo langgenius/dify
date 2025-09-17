@@ -8,7 +8,7 @@ eliminates the need for repetitive language switching logic.
 
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from flask import render_template
 from pydantic import BaseModel, Field
@@ -171,7 +171,7 @@ class EmailI18nService:
         email_type: EmailType,
         language_code: str,
         to: str,
-        template_context: Optional[dict[str, Any]] = None,
+        template_context: dict[str, Any] | None = None,
     ):
         """
         Send internationalized email with branding support.
@@ -515,7 +515,7 @@ def get_default_email_i18n_service() -> EmailI18nService:
 
 
 # Global instance
-_email_i18n_service: Optional[EmailI18nService] = None
+_email_i18n_service: EmailI18nService | None = None
 
 
 def get_email_i18n_service() -> EmailI18nService:

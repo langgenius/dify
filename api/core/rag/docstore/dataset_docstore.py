@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import func, select
 
@@ -15,7 +15,7 @@ class DatasetDocumentStore:
         self,
         dataset: Dataset,
         user_id: str,
-        document_id: Optional[str] = None,
+        document_id: str | None = None,
     ):
         self._dataset = dataset
         self._user_id = user_id
@@ -176,7 +176,7 @@ class DatasetDocumentStore:
         result = self.get_document_segment(doc_id)
         return result is not None
 
-    def get_document(self, doc_id: str, raise_error: bool = True) -> Optional[Document]:
+    def get_document(self, doc_id: str, raise_error: bool = True) -> Document | None:
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -217,16 +217,16 @@ class DatasetDocumentStore:
         document_segment.index_node_hash = doc_hash
         db.session.commit()
 
-    def get_document_hash(self, doc_id: str) -> Optional[str]:
+    def get_document_hash(self, doc_id: str) -> str | None:
         """Get the stored hash for a document, if it exists."""
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
             return None
-        data: Optional[str] = document_segment.index_node_hash
+        data: str | None = document_segment.index_node_hash
         return data
 
-    def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
+    def get_document_segment(self, doc_id: str) -> DocumentSegment | None:
         stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
         )

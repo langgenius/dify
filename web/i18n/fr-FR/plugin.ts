@@ -249,6 +249,7 @@ const translation = {
     customCredentialUnavailable: 'Les identifiants personnalisés ne sont actuellement pas disponibles.',
     credentialUnavailable: 'Les informations d\'identification ne sont actuellement pas disponibles. Veuillez contacter l\'administrateur.',
     unavailable: 'Non disponible',
+    credentialUnavailableInButton: 'Identifiant indisponible',
   },
   deprecated: 'Obsolète',
   autoUpdate: {

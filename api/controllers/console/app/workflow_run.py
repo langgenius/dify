@@ -4,7 +4,7 @@ from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.workflow_run_fields import (
@@ -19,7 +19,13 @@ from models import Account, App, AppMode, EndUser
 from services.workflow_run_service import WorkflowRunService
 
 
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
 class AdvancedChatAppWorkflowRunListApi(Resource):
+    @api.doc("get_advanced_chat_workflow_runs")
+    @api.doc(description="Get advanced chat workflow run list")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.doc(params={"last_id": "Last run ID for pagination", "limit": "Number of items per page (1-100)"})
+    @api.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_fields)
     @setup_required
     @login_required
     @account_initialization_required
@@ -40,7 +46,13 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         return result
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs")
 class WorkflowRunListApi(Resource):
+    @api.doc("get_workflow_runs")
+    @api.doc(description="Get workflow run list")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.doc(params={"last_id": "Last run ID for pagination", "limit": "Number of items per page (1-100)"})
+    @api.response(200, "Workflow runs retrieved successfully", workflow_run_pagination_fields)
     @setup_required
     @login_required
     @account_initialization_required
@@ -61,7 +73,13 @@ class WorkflowRunListApi(Resource):
         return result
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
 class WorkflowRunDetailApi(Resource):
+    @api.doc("get_workflow_run_detail")
+    @api.doc(description="Get workflow run detail")
+    @api.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @api.response(200, "Workflow run detail retrieved successfully", workflow_run_detail_fields)
+    @api.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -79,7 +97,13 @@ class WorkflowRunDetailApi(Resource):
         return workflow_run
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
 class WorkflowRunNodeExecutionListApi(Resource):
+    @api.doc("get_workflow_run_node_executions")
+    @api.doc(description="Get workflow run node execution list")
+    @api.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @api.response(200, "Node executions retrieved successfully", workflow_run_node_execution_list_fields)
+    @api.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -100,9 +124,3 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return {"data": node_executions}
-
-
-api.add_resource(AdvancedChatAppWorkflowRunListApi, "/apps/<uuid:app_id>/advanced-chat/workflow-runs")
-api.add_resource(WorkflowRunListApi, "/apps/<uuid:app_id>/workflow-runs")
-api.add_resource(WorkflowRunDetailApi, "/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
-api.add_resource(WorkflowRunNodeExecutionListApi, "/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")

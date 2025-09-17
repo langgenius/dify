@@ -260,6 +260,7 @@ const translation = {
     authorizationName: 'Nama Otorisasi',
     workspaceDefault: 'Ruang Kerja Default',
     authorization: 'Otorisasi',
+    credentialUnavailableInButton: 'Kredensial tidak tersedia',
   },
   searchInMarketplace: 'Cari di Marketplace',
   findMoreInMarketplace: 'Temukan selengkapnya di Marketplace',

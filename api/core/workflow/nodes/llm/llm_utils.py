@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -86,8 +86,8 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-) -> Optional[TokenBufferMemory]:
+    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
+) -> TokenBufferMemory | None:
     if not node_data_memory:
         return None
 

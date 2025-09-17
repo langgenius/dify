@@ -5,10 +5,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import httpx
 import time
-from common import config_helper
-from common import Logger
+
+import httpx
+from common import Logger, config_helper
 
 
 def install_openai_plugin() -> None:
@@ -28,9 +28,7 @@ def install_openai_plugin() -> None:
 
     # API endpoint for plugin installation
     base_url = "http://localhost:5001"
-    install_endpoint = (
-        f"{base_url}/console/api/workspaces/current/plugin/install/marketplace"
-    )
+    install_endpoint = f"{base_url}/console/api/workspaces/current/plugin/install/marketplace"
 
     # Plugin identifier
     plugin_payload = {
@@ -83,9 +81,7 @@ def install_openai_plugin() -> None:
                 log.info("Polling for task completion...")
 
                 # Poll for task completion
-                task_endpoint = (
-                    f"{base_url}/console/api/workspaces/current/plugin/tasks/{task_id}"
-                )
+                task_endpoint = f"{base_url}/console/api/workspaces/current/plugin/tasks/{task_id}"
 
                 max_attempts = 30  # 30 attempts with 2 second delay = 60 seconds max
                 attempt = 0
@@ -131,9 +127,7 @@ def install_openai_plugin() -> None:
                         plugins = task_info.get("plugins", [])
                         if plugins:
                             for plugin in plugins:
-                                log.list_item(
-                                    f"{plugin.get('plugin_id')}: {plugin.get('message')}"
-                                )
+                                log.list_item(f"{plugin.get('plugin_id')}: {plugin.get('message')}")
                         break
 
                     # Continue polling if status is "pending" or other
@@ -149,9 +143,7 @@ def install_openai_plugin() -> None:
                 log.warning("Plugin may already be installed")
                 log.debug(f"Response: {response.text}")
             else:
-                log.error(
-                    f"Installation failed with status code: {response.status_code}"
-                )
+                log.error(f"Installation failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

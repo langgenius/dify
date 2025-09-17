@@ -411,8 +411,8 @@ const formatItem = (
           outputSchema.push({
             variable: outputKey,
             type: dataType === 'array'
-              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
+              ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleLowerCase() + output.items.type.slice(1) : 'Unknown'}]`
+              : `${output.type ? output.type.slice(0, 1).toLocaleLowerCase() + output.type.slice(1) : 'Unknown'}`,
             description: output.description,
             children: output.type === 'object' ? {
               schema: {
@@ -507,8 +507,8 @@ const formatItem = (
         outputs.push({
           variable: outputKey,
           type: output.type === 'array'
-            ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]` as VarType
-            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}` as VarType,
+            ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType
+            : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType,
         })
       })
       res.vars = [

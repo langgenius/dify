@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -53,8 +53,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         app_id: str,
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str],
-        query: Optional[str],
+        conversation_id: str | None,
+        query: str | None,
         stream: bool,
         inputs: Mapping,
         files: list[dict],

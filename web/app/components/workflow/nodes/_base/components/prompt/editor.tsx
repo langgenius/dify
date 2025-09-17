@@ -42,6 +42,7 @@ type Props = {
   headerClassName?: string
   instanceId?: string
   nodeId?: string
+  editorId?: string
   title: string | React.JSX.Element
   value: string
   onChange: (value: string) => void
@@ -85,6 +86,7 @@ const Editor: FC<Props> = ({
   headerClassName,
   instanceId,
   nodeId,
+  editorId,
   title,
   value,
   onChange,
@@ -163,6 +165,7 @@ const Editor: FC<Props> = ({
               {isSupportPromptGenerator && (
                 <PromptGeneratorBtn
                   nodeId={nodeId!}
+                  editorId={editorId}
                   className='ml-[5px]'
                   onGenerated={onGenerated}
                   modelConfig={modelConfig}

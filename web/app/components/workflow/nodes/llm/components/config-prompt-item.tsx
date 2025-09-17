@@ -136,7 +136,8 @@ const ConfigPromptItem: FC<Props> = ({
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
       nodeId={nodeId}
-      isSupportPromptGenerator={payload.role === PromptRole.system}
+      editorId={id}
+      isSupportPromptGenerator
       onGenerated={handleGenerated}
       modelConfig={modelConfig}
       isSupportJinja

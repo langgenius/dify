@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import pypandoc  # type: ignore
 
@@ -20,7 +19,7 @@ class UnstructuredEpubExtractor(BaseExtractor):
     def __init__(
         self,
         file_path: str,
-        api_url: Optional[str] = None,
+        api_url: str | None = None,
         api_key: str = "",
     ):
         """Initialize with file path."""

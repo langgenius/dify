@@ -317,6 +317,10 @@ const translation = {
     noMatchingCommands: 'Nie znaleziono pasujących poleceń',
     tryDifferentSearch: 'Spróbuj użyć innego hasła',
     slashHint: 'Wpisz / aby zobaczyć wszystkie dostępne polecenia',
+    selectToNavigate: 'Wybierz, aby nawigować',
+    tips: 'Naciśnij ↑↓, aby nawigować',
+    startTyping: 'Zacznij pisać, aby wyszukać',
+    pressEscToClose: 'Naciśnij ESC, aby zamknąć',
   },
 }
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import socket
 import subprocess
 import sys
 import time
-import socket
 from pathlib import Path
 
 from common import Logger, ProgressLogger
@@ -93,9 +93,7 @@ def main() -> None:
         if retry.lower() in ["yes", "y"]:
             return main()  # Recursively call main to check again
         else:
-            print(
-                "❌ Setup cancelled. Please start the required services and try again."
-            )
+            print("❌ Setup cancelled. Please start the required services and try again.")
             sys.exit(1)
 
     log.success("All required services are running!")

@@ -3,8 +3,10 @@
 import json
 import time
 import uuid
-from typing import Any, Iterator
-from flask import Flask, request, jsonify, Response
+from collections.abc import Iterator
+from typing import Any
+
+from flask import Flask, Response, jsonify, request
 
 app = Flask(__name__)
 

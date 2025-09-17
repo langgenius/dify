@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 import sqlalchemy as sa
 from celery import states
@@ -32,7 +31,7 @@ class CeleryTask(Base):
     args = mapped_column(sa.LargeBinary, nullable=True)
     kwargs = mapped_column(sa.LargeBinary, nullable=True)
     worker = mapped_column(String(155), nullable=True)
-    retries: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    retries: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     queue = mapped_column(String(155), nullable=True)
 
 
@@ -46,4 +45,4 @@ class CeleryTaskSet(Base):
     )
     taskset_id = mapped_column(String(155), unique=True)
     result = mapped_column(db.PickleType, nullable=True)
-    date_done: Mapped[Optional[datetime]] = mapped_column(DateTime, default=lambda: naive_utc_now(), nullable=True)
+    date_done: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: naive_utc_now(), nullable=True)

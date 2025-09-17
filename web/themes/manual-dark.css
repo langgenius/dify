@@ -3,8 +3,8 @@ html[data-theme="dark"] {
             rgba(34, 34, 37, 0.9) 0%,
             rgba(29, 29, 32, 0.9) 90.48%);
     --color-chat-bubble-bg: linear-gradient(180deg,
-            rgba(200, 206, 218, 0.08) 0%,
-            rgba(200, 206, 218, 0.02) 100%);
+            rgb(42, 43, 48) 0%,
+            rgb(37, 38, 42) 100%);
     --color-chat-input-mask: linear-gradient(180deg,
             rgba(24, 24, 27, 0.04) 0%,
             rgba(24, 24, 27, 0.60) 100%);

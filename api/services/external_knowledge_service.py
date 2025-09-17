@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -203,7 +203,7 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: Optional[dict] = None) -> dict[str, Any]:
+    def assembling_headers(authorization: Authorization, headers: dict | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -277,7 +277,7 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict,
-        metadata_condition: Optional[MetadataCondition] = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalars(
             select(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).limit(1)

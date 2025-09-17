@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, TypedDict, cast
+from typing import TypedDict, cast
 
 from flask_sqlalchemy.pagination import Pagination
 from sqlalchemy import select
@@ -371,7 +371,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
+            app_model_config: AppModelConfig | None = app_model.app_model_config
 
             if not app_model_config:
                 return meta

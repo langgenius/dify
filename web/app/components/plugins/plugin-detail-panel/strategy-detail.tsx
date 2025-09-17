@@ -50,8 +50,8 @@ const StrategyDetail: FC<Props> = ({
       res.push({
         name: outputKey,
         type: output.type === 'array'
-          ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-          : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+          ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]`
+          : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}`,
         description: output.description,
       })
     })

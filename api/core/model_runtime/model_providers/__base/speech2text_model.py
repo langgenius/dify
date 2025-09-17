@@ -1,4 +1,4 @@
-from typing import IO, Optional
+from typing import IO
 
 from pydantic import ConfigDict
 
@@ -17,7 +17,7 @@ class Speech2TextModel(AIModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
+    def invoke(self, model: str, credentials: dict, file: IO[bytes], user: str | None = None) -> str:
         """
         Invoke speech to text model
 
