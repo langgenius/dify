@@ -84,7 +84,7 @@ class DatasourceManager:
 
         if controller is None:
             raise DatasourceProviderNotFoundError(f"Datasource provider {provider_id} not found.")
-        
+
         return controller
 
     @classmethod
