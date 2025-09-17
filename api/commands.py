@@ -24,13 +24,15 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
+from extensions.storage.storage_type import StorageType
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
+from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.provider import Provider, ProviderModel
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
@@ -1353,3 +1355,180 @@ def cleanup_orphaned_draft_variables(
                 continue
 
     logger.info("Cleanup completed. Total deleted: %s variables across %s apps", total_deleted, processed_apps)
+
+
+@click.command(
+    "migrate-oss",
+    help="Migrate files from Local or OpenDAL source to a cloud OSS storage (destination must NOT be local/opendal).",
+)
+@click.option(
+    "--path",
+    "paths",
+    multiple=True,
+    help=("Storage path prefixes to migrate (repeatable). Defaults: upload_files, image_files, tools, website_files"),
+)
+@click.option(
+    "--source",
+    type=click.Choice(["local", "opendal"], case_sensitive=False),
+    default="opendal",
+    show_default=True,
+    help="Source storage type to read from",
+)
+@click.option("--overwrite", is_flag=True, default=False, help="Overwrite destination if file already exists")
+@click.option("--dry-run", is_flag=True, default=False, help="Show what would be migrated without uploading")
+@click.option("-f", "--force", is_flag=True, help="Skip confirmation and run without prompts")
+@click.option(
+    "--update-db/--no-update-db",
+    default=True,
+    help="Update upload_files.storage_type from source type to current storage after migration",
+)
+def migrate_oss_from_local(
+    paths: tuple[str, ...],
+    source: str,
+    overwrite: bool,
+    dry_run: bool,
+    force: bool,
+    update_db: bool,
+):
+    """
+    Copy all files under selected prefixes from a source storage
+    (Local filesystem or OpenDAL-backed) into the currently configured
+    destination storage backend, then optionally update DB records.
+
+    Expected usage: set STORAGE_TYPE (and its credentials) to your target backend.
+    """
+    # Ensure target storage is not local/opendal
+    if dify_config.STORAGE_TYPE in (StorageType.LOCAL, StorageType.OPENDAL):
+        click.echo(
+            click.style(
+                "Target STORAGE_TYPE must be a cloud OSS (not 'local' or 'opendal').\n"
+                "Please set STORAGE_TYPE to one of: s3, aliyun-oss, azure-blob, google-storage, tencent-cos, \n"
+                "volcengine-tos, supabase, oci-storage, huawei-obs, baidu-obs, clickzetta-volume.",
+                fg="red",
+            )
+        )
+        return
+
+    # Default paths if none specified
+    default_paths = ("privkeys", "upload_files", "image_files", "tools", "website_files", "keyword_files", "ops_trace")
+    path_list = list(paths) if paths else list(default_paths)
+
+    click.echo(click.style("Preparing migration to target storage.", fg="yellow"))
+    click.echo(click.style(f"Target storage type: {dify_config.STORAGE_TYPE}", fg="white"))
+    if source.lower() == "local":
+        src_root = dify_config.STORAGE_LOCAL_PATH
+        click.echo(click.style(f"Source: local fs, root: {src_root}", fg="white"))
+    else:
+        click.echo(click.style(f"Source: opendal scheme={dify_config.OPENDAL_SCHEME}", fg="white"))
+    click.echo(click.style(f"Paths to migrate: {', '.join(path_list)}", fg="white"))
+    click.echo("")
+
+    if not force:
+        click.confirm("Proceed with migration?", abort=True)
+
+    # Instantiate source storage
+    try:
+        if source.lower() == "local":
+            src_root = dify_config.STORAGE_LOCAL_PATH
+            source_storage = OpenDALStorage(scheme="fs", root=src_root)
+        else:
+            source_storage = OpenDALStorage(scheme=dify_config.OPENDAL_SCHEME)
+    except Exception as e:
+        click.echo(click.style(f"Failed to initialize source storage: {str(e)}", fg="red"))
+        return
+
+    total_files = 0
+    copied_files = 0
+    skipped_files = 0
+    errored_files = 0
+
+    for prefix in path_list:
+        click.echo(click.style(f"Scanning source path: {prefix}", fg="white"))
+        try:
+            keys = source_storage.scan(path=prefix, files=True, directories=False)
+        except FileNotFoundError:
+            click.echo(click.style(f"  -> Skipping missing path: {prefix}", fg="yellow"))
+            continue
+        except NotImplementedError:
+            click.echo(click.style("  -> Source storage does not support scanning.", fg="red"))
+            return
+        except Exception as e:
+            click.echo(click.style(f"  -> Error scanning '{prefix}': {str(e)}", fg="red"))
+            continue
+
+        click.echo(click.style(f"Found {len(keys)} files under {prefix}", fg="white"))
+
+        for key in keys:
+            total_files += 1
+
+            # check destination existence
+            if not overwrite:
+                try:
+                    if storage.exists(key):
+                        skipped_files += 1
+                        continue
+                except Exception:
+                    # existence check failures should not block migration attempt
+                    pass
+
+            if dry_run:
+                copied_files += 1
+                continue
+
+            # read from source and write to destination
+            try:
+                data = source_storage.load_once(key)
+            except FileNotFoundError:
+                errored_files += 1
+                click.echo(click.style(f"  -> Missing on source: {key}", fg="yellow"))
+                continue
+            except Exception as e:
+                errored_files += 1
+                click.echo(click.style(f"  -> Error reading {key}: {str(e)}", fg="red"))
+                continue
+
+            try:
+                storage.save(key, data)
+                copied_files += 1
+            except Exception as e:
+                errored_files += 1
+                click.echo(click.style(f"  -> Error writing {key} to target: {str(e)}", fg="red"))
+                continue
+
+    click.echo("")
+    click.echo(click.style("Migration summary:", fg="yellow"))
+    click.echo(click.style(f"  Total:   {total_files}", fg="white"))
+    click.echo(click.style(f"  Copied:  {copied_files}", fg="green"))
+    click.echo(click.style(f"  Skipped: {skipped_files}", fg="white"))
+    if errored_files:
+        click.echo(click.style(f"  Errors:  {errored_files}", fg="red"))
+
+    if dry_run:
+        click.echo(click.style("Dry-run complete. No changes were made.", fg="green"))
+        return
+
+    if errored_files:
+        click.echo(
+            click.style(
+                "Some files failed to migrate. Review errors above before updating DB records.",
+                fg="yellow",
+            )
+        )
+        if update_db and not force:
+            if not click.confirm("Proceed to update DB storage_type despite errors?", default=False):
+                update_db = False
+
+    # Optionally update DB records for upload_files.storage_type
+    if update_db:
+        try:
+            source_storage_type = StorageType.LOCAL if source.lower() == "local" else StorageType.OPENDAL
+            updated = (
+                db.session.query(UploadFile)
+                .where(UploadFile.storage_type == source_storage_type)
+                .update({UploadFile.storage_type: dify_config.STORAGE_TYPE}, synchronize_session=False)
+            )
+            db.session.commit()
+            click.echo(click.style(f"Updated storage_type for {updated} upload_files records.", fg="green"))
+        except Exception as e:
+            db.session.rollback()
+            click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
