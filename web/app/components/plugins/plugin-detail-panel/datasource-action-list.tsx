@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+// import { useAppContext } from '@/context/app-context'
 // import Button from '@/app/components/base/button'
 // import Toast from '@/app/components/base/toast'
 // import Indicator from '@/app/components/header/indicator'
@@ -18,7 +18,7 @@ const ActionList = ({
   detail,
 }: Props) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  // const { isCurrentWorkspaceManager } = useAppContext()
   // const providerBriefInfo = detail.declaration.datasource?.identity
   // const providerKey = `${detail.plugin_id}/${providerBriefInfo?.name}`
   const { data: dataSourceList } = useDataSourceList(true)

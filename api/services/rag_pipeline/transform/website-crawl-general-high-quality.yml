@@ -238,13 +238,13 @@ workflow:
           form: llm
           human_description:
             en_US: The text you want to chunk.
-            ja_JP: The text you want to chunk.
-            pt_BR: The text you want to chunk.
+            ja_JP: チャンク化したいテキスト。
+            pt_BR: O texto que você deseja dividir.
             zh_Hans: 你想要分块的文本。
           label:
             en_US: Input Variable
-            ja_JP: Input Variable
-            pt_BR: Input Variable
+            ja_JP: 入力変数
+            pt_BR: Variável de entrada
             zh_Hans: 输入变量
           llm_description: The text you want to chunk.
           max: null
@@ -262,13 +262,13 @@ workflow:
           form: llm
           human_description:
             en_US: The delimiter of the chunks.
-            ja_JP: The delimiter of the chunks.
-            pt_BR: The delimiter of the chunks.
+            ja_JP: チャンクの区切り記号。
+            pt_BR: O delimitador dos pedaços.
             zh_Hans: 块的分隔符。
           label:
             en_US: Delimiter
-            ja_JP: Delimiter
-            pt_BR: Delimiter
+            ja_JP: 区切り記号
+            pt_BR: Delimitador
             zh_Hans: 分隔符
           llm_description: The delimiter of the chunks, the format of the delimiter
             must be a string.
@@ -287,13 +287,13 @@ workflow:
           form: llm
           human_description:
             en_US: The maximum chunk length.
-            ja_JP: The maximum chunk length.
-            pt_BR: The maximum chunk length.
+            ja_JP: 最大長のチャンク。
+            pt_BR: O comprimento máximo do bloco
             zh_Hans: 最大块的长度。
           label:
             en_US: Maximum Chunk Length
-            ja_JP: Maximum Chunk Length
-            pt_BR: Maximum Chunk Length
+            ja_JP: チャンク最大長
+            pt_BR: O comprimento máximo do bloco
             zh_Hans: 最大块的长度
           llm_description: The maximum chunk length, the format of the chunk size
             must be an integer.
@@ -312,12 +312,12 @@ workflow:
           form: llm
           human_description:
             en_US: The chunk overlap length.
-            ja_JP: The chunk overlap length.
+            ja_JP: チャンクの重複長。
             pt_BR: The chunk overlap length.
             zh_Hans: 块的重叠长度。
           label:
             en_US: Chunk Overlap Length
-            ja_JP: Chunk Overlap Length
+            ja_JP: チャンク重複長
             pt_BR: Chunk Overlap Length
             zh_Hans: 块的重叠长度
           llm_description: The chunk overlap length, the format of the chunk overlap
@@ -337,12 +337,12 @@ workflow:
           form: llm
           human_description:
             en_US: Replace consecutive spaces, newlines and tabs
-            ja_JP: Replace consecutive spaces, newlines and tabs
+            ja_JP: 連続のスペース、改行、まだはタブを置換する
             pt_BR: Replace consecutive spaces, newlines and tabs
             zh_Hans: 替换连续的空格、换行符和制表符
           label:
             en_US: Replace Consecutive Spaces, Newlines and Tabs
-            ja_JP: Replace Consecutive Spaces, Newlines and Tabs
+            ja_JP: 連続のスペース、改行、まだはタブを置換する
             pt_BR: Replace Consecutive Spaces, Newlines and Tabs
             zh_Hans: 替换连续的空格、换行符和制表符
           llm_description: Replace consecutive spaces, newlines and tabs, the format
@@ -362,12 +362,12 @@ workflow:
           form: llm
           human_description:
             en_US: Delete all URLs and email addresses
-            ja_JP: Delete all URLs and email addresses
+            ja_JP: すべてのURLとメールアドレスを削除する
             pt_BR: Delete all URLs and email addresses
             zh_Hans: 删除所有URL和电子邮件地址
           label:
             en_US: Delete All URLs and Email Addresses
-            ja_JP: Delete All URLs and Email Addresses
+            ja_JP: すべてのURLとメールアドレスを削除する
             pt_BR: Delete All URLs and Email Addresses
             zh_Hans: 删除所有URL和电子邮件地址
           llm_description: Delete all URLs and email addresses, the format of the

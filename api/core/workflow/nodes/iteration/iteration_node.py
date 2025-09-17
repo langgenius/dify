@@ -1,7 +1,10 @@
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, NewType, cast
+
+from typing_extensions import TypeIs
 
 from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
@@ -23,6 +26,7 @@ from core.workflow.node_events import (
     IterationNextEvent,
     IterationStartedEvent,
     IterationSucceededEvent,
+    NodeEventBase,
     NodeRunResult,
     StreamCompletedEvent,
 )
@@ -44,6 +48,8 @@ if TYPE_CHECKING:
     from core.workflow.graph_engine import GraphEngine
 
 logger = logging.getLogger(__name__)
+
+EmptyArraySegment = NewType("EmptyArraySegment", ArraySegment)
 
 
 class IterationNode(Node):
@@ -77,7 +83,7 @@ class IterationNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "iteration",
             "config": {
@@ -91,44 +97,21 @@ class IterationNode(Node):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator:
-        variable = self.graph_runtime_state.variable_pool.get(self._node_data.iterator_selector)
+    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:  # type: ignore
+        variable = self._get_iterator_variable()
 
-        if not variable:
-            raise IteratorVariableNotFoundError(f"iterator variable {self._node_data.iterator_selector} not found")
-
-        if not isinstance(variable, ArraySegment) and not isinstance(variable, NoneSegment):
-            raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
-
-        if isinstance(variable, NoneSegment) or len(variable.value) == 0:
-            # Try our best to preserve the type informat.
-            if isinstance(variable, ArraySegment):
-                output = variable.model_copy(update={"value": []})
-            else:
-                output = ArrayAnySegment(value=[])
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    # TODO(QuantumGhost): is it possible to compute the type of `output`
-                    # from graph definition?
-                    outputs={"output": output},
-                )
-            )
+        if self._is_empty_iteration(variable):
+            yield from self._handle_empty_iteration(variable)
             return
 
-        iterator_list_value = variable.to_object()
-
-        if not isinstance(iterator_list_value, list):
-            raise InvalidIteratorValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
-
+        iterator_list_value = self._validate_and_get_iterator_list(variable)
         inputs = {"iterator_selector": iterator_list_value}
 
-        if not self._node_data.start_node_id:
-            raise StartNodeIdNotFoundError(f"field start_node_id in iteration {self._node_id} not found")
+        self._validate_start_node()
 
         started_at = naive_utc_now()
         iter_run_map: dict[str, float] = {}
-        outputs: list[Any] = []
+        outputs: list[object] = []
 
         yield IterationStartedEvent(
             start_at=started_at,
@@ -137,6 +120,86 @@ class IterationNode(Node):
         )
 
         try:
+            yield from self._execute_iterations(
+                iterator_list_value=iterator_list_value,
+                outputs=outputs,
+                iter_run_map=iter_run_map,
+            )
+
+            yield from self._handle_iteration_success(
+                started_at=started_at,
+                inputs=inputs,
+                outputs=outputs,
+                iterator_list_value=iterator_list_value,
+                iter_run_map=iter_run_map,
+            )
+        except IterationNodeError as e:
+            yield from self._handle_iteration_failure(
+                started_at=started_at,
+                inputs=inputs,
+                outputs=outputs,
+                iterator_list_value=iterator_list_value,
+                iter_run_map=iter_run_map,
+                error=e,
+            )
+
+    def _get_iterator_variable(self) -> ArraySegment | NoneSegment:
+        variable = self.graph_runtime_state.variable_pool.get(self._node_data.iterator_selector)
+
+        if not variable:
+            raise IteratorVariableNotFoundError(f"iterator variable {self._node_data.iterator_selector} not found")
+
+        if not isinstance(variable, ArraySegment) and not isinstance(variable, NoneSegment):
+            raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
+
+        return variable
+
+    def _is_empty_iteration(self, variable: ArraySegment | NoneSegment) -> TypeIs[NoneSegment | EmptyArraySegment]:
+        return isinstance(variable, NoneSegment) or len(variable.value) == 0
+
+    def _handle_empty_iteration(self, variable: ArraySegment | NoneSegment) -> Generator[NodeEventBase, None, None]:
+        # Try our best to preserve the type information.
+        if isinstance(variable, ArraySegment):
+            output = variable.model_copy(update={"value": []})
+        else:
+            output = ArrayAnySegment(value=[])
+
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                # TODO(QuantumGhost): is it possible to compute the type of `output`
+                # from graph definition?
+                outputs={"output": output},
+            )
+        )
+
+    def _validate_and_get_iterator_list(self, variable: ArraySegment) -> Sequence[object]:
+        iterator_list_value = variable.to_object()
+
+        if not isinstance(iterator_list_value, list):
+            raise InvalidIteratorValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
+
+        return cast(list[object], iterator_list_value)
+
+    def _validate_start_node(self) -> None:
+        if not self._node_data.start_node_id:
+            raise StartNodeIdNotFoundError(f"field start_node_id in iteration {self._node_id} not found")
+
+    def _execute_iterations(
+        self,
+        iterator_list_value: Sequence[object],
+        outputs: list[object],
+        iter_run_map: dict[str, float],
+    ) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:
+        if self._node_data.is_parallel:
+            # Parallel mode execution
+            yield from self._execute_parallel_iterations(
+                iterator_list_value=iterator_list_value,
+                outputs=outputs,
+                iter_run_map=iter_run_map,
+            )
+        else:
+            # Sequential mode execution
             for index, item in enumerate(iterator_list_value):
                 iter_start_at = datetime.now(UTC).replace(tzinfo=None)
                 yield IterationNextEvent(index=index)
@@ -154,45 +217,146 @@ class IterationNode(Node):
                 self.graph_runtime_state.total_tokens += graph_engine.graph_runtime_state.total_tokens
                 iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
 
-            yield IterationSucceededEvent(
-                start_at=started_at,
-                inputs=inputs,
-                outputs={"output": outputs},
-                steps=len(iterator_list_value),
-                metadata={
-                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
-                    WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
-                },
-            )
+    def _execute_parallel_iterations(
+        self,
+        iterator_list_value: Sequence[object],
+        outputs: list[object],
+        iter_run_map: dict[str, float],
+    ) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:
+        # Initialize outputs list with None values to maintain order
+        outputs.extend([None] * len(iterator_list_value))
 
-            # Yield final success event
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    outputs={"output": outputs},
-                    metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
-                    },
+        # Determine the number of parallel workers
+        max_workers = min(self._node_data.parallel_nums, len(iterator_list_value))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all iteration tasks
+            future_to_index: dict[Future[tuple[datetime, list[GraphNodeEventBase], object | None, int]], int] = {}
+            for index, item in enumerate(iterator_list_value):
+                yield IterationNextEvent(index=index)
+                future = executor.submit(
+                    self._execute_single_iteration_parallel,
+                    index=index,
+                    item=item,
                 )
-            )
-        except IterationNodeError as e:
-            yield IterationFailedEvent(
-                start_at=started_at,
-                inputs=inputs,
+                future_to_index[future] = index
+
+            # Process completed iterations as they finish
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                try:
+                    result = future.result()
+                    iter_start_at, events, output_value, tokens_used = result
+
+                    # Update outputs at the correct index
+                    outputs[index] = output_value
+
+                    # Yield all events from this iteration
+                    yield from events
+
+                    # Update tokens and timing
+                    self.graph_runtime_state.total_tokens += tokens_used
+                    iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+
+                except Exception as e:
+                    # Handle errors based on error_handle_mode
+                    match self._node_data.error_handle_mode:
+                        case ErrorHandleMode.TERMINATED:
+                            # Cancel remaining futures and re-raise
+                            for f in future_to_index:
+                                if f != future:
+                                    f.cancel()
+                            raise IterationNodeError(str(e))
+                        case ErrorHandleMode.CONTINUE_ON_ERROR:
+                            outputs[index] = None
+                        case ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
+                            outputs[index] = None  # Will be filtered later
+
+        # Remove None values if in REMOVE_ABNORMAL_OUTPUT mode
+        if self._node_data.error_handle_mode == ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
+            outputs[:] = [output for output in outputs if output is not None]
+
+    def _execute_single_iteration_parallel(
+        self,
+        index: int,
+        item: object,
+    ) -> tuple[datetime, list[GraphNodeEventBase], object | None, int]:
+        """Execute a single iteration in parallel mode and return results."""
+        iter_start_at = datetime.now(UTC).replace(tzinfo=None)
+        events: list[GraphNodeEventBase] = []
+        outputs_temp: list[object] = []
+
+        graph_engine = self._create_graph_engine(index, item)
+
+        # Collect events instead of yielding them directly
+        for event in self._run_single_iter(
+            variable_pool=graph_engine.graph_runtime_state.variable_pool,
+            outputs=outputs_temp,
+            graph_engine=graph_engine,
+        ):
+            events.append(event)
+
+        # Get the output value from the temporary outputs list
+        output_value = outputs_temp[0] if outputs_temp else None
+
+        return iter_start_at, events, output_value, graph_engine.graph_runtime_state.total_tokens
+
+    def _handle_iteration_success(
+        self,
+        started_at: datetime,
+        inputs: dict[str, Sequence[object]],
+        outputs: list[object],
+        iterator_list_value: Sequence[object],
+        iter_run_map: dict[str, float],
+    ) -> Generator[NodeEventBase, None, None]:
+        yield IterationSucceededEvent(
+            start_at=started_at,
+            inputs=inputs,
+            outputs={"output": outputs},
+            steps=len(iterator_list_value),
+            metadata={
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+            },
+        )
+
+        # Yield final success event
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"output": outputs},
-                steps=len(iterator_list_value),
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
-                    WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
                 },
-                error=str(e),
             )
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=str(e),
-                )
+        )
+
+    def _handle_iteration_failure(
+        self,
+        started_at: datetime,
+        inputs: dict[str, Sequence[object]],
+        outputs: list[object],
+        iterator_list_value: Sequence[object],
+        iter_run_map: dict[str, float],
+        error: IterationNodeError,
+    ) -> Generator[NodeEventBase, None, None]:
+        yield IterationFailedEvent(
+            start_at=started_at,
+            inputs=inputs,
+            outputs={"output": outputs},
+            steps=len(iterator_list_value),
+            metadata={
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+            },
+            error=str(error),
+        )
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(error),
             )
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -305,9 +469,9 @@ class IterationNode(Node):
         self,
         *,
         variable_pool: VariablePool,
-        outputs: list,
+        outputs: list[object],
         graph_engine: "GraphEngine",
-    ) -> Generator[Union[GraphNodeEventBase, StreamCompletedEvent], None, None]:
+    ) -> Generator[GraphNodeEventBase, None, None]:
         rst = graph_engine.run()
         # get current iteration index
         index_variable = variable_pool.get([self._node_id, "index"])
@@ -338,7 +502,7 @@ class IterationNode(Node):
                     case ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
                         return
 
-    def _create_graph_engine(self, index: int, item: Any):
+    def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
         from core.workflow.entities import GraphInitParams, GraphRuntimeState
         from core.workflow.graph import Graph
@@ -387,18 +551,9 @@ class IterationNode(Node):
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
-            call_depth=self.workflow_call_depth,
             graph=iteration_graph,
-            graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=10000,  # Use default or config value
-            max_execution_time=600,  # Use default or config value
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 

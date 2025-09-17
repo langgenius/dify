@@ -54,10 +54,10 @@ const FileInAttachmentItem = ({
         progress === -1 && 'border-state-destructive-border bg-state-destructive-hover',
         canPreview && previewMode === PreviewMode.NewPage && 'cursor-pointer',
       )}
-        onClick={() => {
-          if (canPreview && previewMode === PreviewMode.NewPage)
-            window.open(url || base64Url || '', '_blank')
-        }}
+      onClick={() => {
+        if (canPreview && previewMode === PreviewMode.NewPage)
+          window.open(url || base64Url || '', '_blank')
+      }}
       >
         <div className='flex h-12 w-12 items-center justify-center'>
           {

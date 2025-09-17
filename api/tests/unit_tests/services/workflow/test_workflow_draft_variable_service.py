@@ -310,7 +310,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.outputs_dict = {"test_var": "output_value"}
+        mock_execution.load_full_outputs.return_value = {"test_var": "output_value"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
@@ -383,7 +383,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.outputs_dict = {"sys.files": "[]"}
+        mock_execution.load_full_outputs.return_value = {"sys.files": "[]"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
@@ -415,7 +415,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.outputs_dict = {"sys.query": "reset query"}
+        mock_execution.load_full_outputs.return_value = {"sys.query": "reset query"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()

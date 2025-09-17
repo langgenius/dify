@@ -7,7 +7,7 @@ the behavior of mock nodes during testing.
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from core.workflow.enums import NodeType
 
@@ -18,9 +18,9 @@ class NodeMockConfig:
 
     node_id: str
     outputs: dict[str, Any] = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
     delay: float = 0.0  # Simulated execution delay in seconds
-    custom_handler: Optional[Callable[..., dict[str, Any]]] = None
+    custom_handler: Callable[..., dict[str, Any]] | None = None
 
 
 @dataclass
@@ -51,7 +51,7 @@ class MockConfig:
     default_template_transform_response: str = "This is mocked template transform output"
     default_code_response: dict[str, Any] = field(default_factory=lambda: {"result": "mocked code execution result"})
 
-    def get_node_config(self, node_id: str) -> Optional[NodeMockConfig]:
+    def get_node_config(self, node_id: str) -> NodeMockConfig | None:
         """Get configuration for a specific node."""
         return self.node_configs.get(node_id)
 

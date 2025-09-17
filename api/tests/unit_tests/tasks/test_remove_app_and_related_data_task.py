@@ -313,7 +313,7 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 1  # Only one storage deletion succeeded
 
         # Verify warning was logged
-        mock_logging.warning.assert_called_once_with("Failed to delete storage object storage/key/1: Storage error")
+        mock_logging.exception.assert_called_once_with("Failed to delete storage object %s", "storage/key/1")
 
         # Verify both database cleanup calls still happened
         assert mock_conn.execute.call_count == 3
@@ -334,4 +334,4 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 0
 
         # Verify error was logged
-        mock_logging.error.assert_called_once_with("Error deleting draft variable offload data: Database error")
+        mock_logging.exception.assert_called_once_with("Error deleting draft variable offload data:")

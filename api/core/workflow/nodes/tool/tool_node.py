@@ -19,7 +19,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
@@ -55,7 +55,7 @@ class ToolNode(Node):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator:
+    def _run(self) -> Generator[NodeEventBase, None, None]:
         """
         Run the tool node
         """

@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
 from pydantic import Field
 
@@ -12,9 +11,8 @@ from .base import GraphNodeEventBase
 
 class NodeRunStartedEvent(GraphNodeEventBase):
     node_title: str
-    predecessor_node_id: Optional[str] = None
-    parallel_mode_run_id: Optional[str] = None
-    agent_strategy: Optional[AgentNodeStrategyInit] = None
+    predecessor_node_id: str | None = None
+    agent_strategy: AgentNodeStrategyInit | None = None
     start_at: datetime = Field(..., description="node start time")
 
     # FIXME(-LAN-): only for ToolNode

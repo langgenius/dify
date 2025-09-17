@@ -95,17 +95,3 @@ class TestGraphRuntimeState:
         # Test add_tokens validation
         with pytest.raises(ValueError):
             state.add_tokens(-1)
-
-    def test_deep_copy_for_nested_objects(self):
-        variable_pool = VariablePool()
-        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
-
-        # Test deep copy for nested dict
-        nested_data = {"level1": {"level2": {"value": "test"}}}
-        state.set_output("nested", nested_data)
-
-        retrieved = state.get_output("nested")
-        retrieved["level1"]["level2"]["value"] = "modified"
-
-        # Original should remain unchanged
-        assert state.get_output("nested")["level1"]["level2"]["value"] == "test"

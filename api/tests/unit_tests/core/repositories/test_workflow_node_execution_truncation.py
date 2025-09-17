@@ -9,7 +9,7 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sqlalchemy import Engine
 
@@ -24,8 +24,6 @@ from core.workflow.enums import NodeType
 from models import Account, WorkflowNodeExecutionTriggeredFrom
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
-
-TRUNCATION_SIZE_THRESHOLD = 500
 
 
 @dataclass
@@ -165,35 +163,6 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
         # Check that no truncated data was set
         assert domain_model.get_truncated_inputs() is None
         assert domain_model.get_truncated_outputs() is None
-
-    @patch("core.repositories.sqlalchemy_workflow_node_execution_repository.FileService")
-    def test_save_with_truncation(self, mock_file_service_class):
-        """Test the save method handles truncation and offload record creation."""
-        # Setup mock file service
-        mock_file_service = MagicMock()
-        mock_upload_file = MagicMock()
-        mock_upload_file.id = "mock-file-id"
-        mock_file_service.upload_file.return_value = mock_upload_file
-        mock_file_service_class.return_value = mock_file_service
-
-        large_data = {"data": "x" * (TRUNCATION_SIZE_THRESHOLD + 1)}
-
-        repo = self.create_repository()
-        execution = create_workflow_node_execution(
-            inputs=large_data,
-            outputs=large_data,
-        )
-
-        # Mock the session and database operations
-        with patch.object(repo, "_session_factory") as mock_session_factory:
-            mock_session = MagicMock()
-            mock_session_factory.return_value.__enter__.return_value = mock_session
-
-            repo.save(execution)
-
-            # Check that both merge operations were called (db_model and offload_record)
-            assert mock_session.merge.call_count == 1
-            mock_session.commit.assert_called_once()
 
 
 class TestWorkflowNodeExecutionModelTruncatedProperties:

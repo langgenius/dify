@@ -14,31 +14,17 @@ from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
-from core.helper.provider_cache import ToolProviderCredentialsCache
-from core.plugin.impl.tool import PluginToolManager
-from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.mcp_tool.provider import MCPToolProviderController
-from core.tools.mcp_tool.tool import MCPTool
-from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.plugin_tool.tool import PluginTool
-from core.tools.utils.uuid_utils import is_valid_uuid
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from core.workflow.entities.variable_pool import VariablePool
-from models.provider_ids import ToolProviderID
-from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-
-if TYPE_CHECKING:
-    from core.workflow.nodes.tool.entities import ToolEntity
-
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool import Tool
+from core.tools.__base.tool_provider import ToolProviderController
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -54,12 +40,21 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
+from core.tools.mcp_tool.provider import MCPToolProviderController
+from core.tools.mcp_tool.tool import MCPTool
+from core.tools.plugin_tool.provider import PluginToolProviderController
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
+from core.tools.utils.uuid_utils import is_valid_uuid
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from services.enterprise.plugin_manager_service import PluginCredentialType
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
@@ -890,7 +885,7 @@ class ToolManager:
         )
 
     @classmethod
-    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str]:
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -901,13 +896,13 @@ class ToolManager:
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            icon: dict = json.loads(workflow_provider.icon)
+            icon = json.loads(workflow_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str]:
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
@@ -918,13 +913,13 @@ class ToolManager:
             if api_provider is None:
                 raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            icon: dict = json.loads(api_provider.icon)
+            icon = json.loads(api_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict[str, str] | str:
+    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str] | str:
         try:
             mcp_provider: MCPToolProvider | None = (
                 db.session.query(MCPToolProvider)
@@ -945,7 +940,7 @@ class ToolManager:
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
-    ) -> Union[str, dict[str, Any]]:
+    ) -> str | Mapping[str, str]:
         """
         get the tool icon
 
@@ -970,11 +965,10 @@ class ToolManager:
             return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.PLUGIN:
             provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
-            if isinstance(provider, PluginToolProviderController):
-                try:
-                    return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
-                except Exception:
-                    return {"background": "#252525", "content": "\ud83d\ude01"}
+            try:
+                return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
+            except Exception:
+                return {"background": "#252525", "content": "\ud83d\ude01"}
             raise ValueError(f"plugin provider {provider_id} not found")
         elif provider_type == ToolProviderType.MCP:
             return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)

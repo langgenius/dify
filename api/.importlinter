@@ -22,14 +22,15 @@ containers =
 ignore_imports =
     core.workflow.nodes.base.node -> core.workflow.graph_events
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_events
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
+
+    core.workflow.nodes.node_factory -> core.workflow.graph
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
     core.workflow.nodes.loop.loop_node -> core.workflow.graph
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
-    core.workflow.nodes.node_factory -> core.workflow.graph
 
 [importlinter:contract:rsc]
 name = RSC
@@ -57,9 +58,9 @@ layers =
     orchestration
     command_processing
     event_management
-    error_handling
+    error_handler
     graph_traversal
-    state_management
+    graph_state_manager
     worker_management
     domain
 containers =
@@ -86,14 +87,6 @@ forbidden_modules =
     core.workflow.graph_engine.command_processing
     core.workflow.graph_engine.event_management
 
-[importlinter:contract:error-handling-strategies]
-name = Error Handling Strategies
-type = independence
-modules =
-    core.workflow.graph_engine.error_handling.abort_strategy
-    core.workflow.graph_engine.error_handling.retry_strategy
-    core.workflow.graph_engine.error_handling.fail_branch_strategy
-    core.workflow.graph_engine.error_handling.default_value_strategy
 
 [importlinter:contract:graph-traversal-components]
 name = Graph Traversal Components

@@ -959,7 +959,7 @@ class LLMNode(Node):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "llm",
             "config": {

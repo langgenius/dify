@@ -464,42 +464,44 @@ export const ssePost = async (
         }
         return
       }
-      return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-        if (moreInfo.errorMessage) {
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
-          return
-        }
-        onData?.(str, isFirstMessage, moreInfo)
-      },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
-      onDataSourceNodeProcessing,
-      onDataSourceNodeCompleted,
-      onDataSourceNodeError,
+      return handleStream(
+        res,
+        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+          if (moreInfo.errorMessage) {
+            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
+            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+            return
+          }
+          onData?.(str, isFirstMessage, moreInfo)
+        },
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
+        onDataSourceNodeProcessing,
+        onDataSourceNodeCompleted,
+        onDataSourceNodeError,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
@@ -517,18 +519,14 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
-      if(/\/login/.test(url)) {
-        const clonedResponse = errResp.clone()
-        const bodyJson = await clonedResponse.json() as Promise<ResponseError>
-        return bodyJson
-      }
-
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
       }
+      if (/\/login/.test(url))
+        return Promise.reject(errRespData)
       // special code
       const { code, message } = errRespData
       // webapp sso

@@ -9,8 +9,10 @@ import logging
 from collections import deque
 from collections.abc import Sequence
 from threading import RLock
-from typing import TypeAlias, final
+from typing import Literal, TypeAlias, final
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeExecutionType, NodeState
@@ -26,6 +28,43 @@ logger = logging.getLogger(__name__)
 # Type definitions
 NodeID: TypeAlias = str
 EdgeID: TypeAlias = str
+
+
+class ResponseSessionState(BaseModel):
+    """Serializable representation of a response session."""
+
+    node_id: str
+    index: int = Field(default=0, ge=0)
+
+
+class StreamBufferState(BaseModel):
+    """Serializable representation of buffered stream chunks."""
+
+    selector: tuple[str, ...]
+    events: list[NodeRunStreamChunkEvent] = Field(default_factory=list)
+
+
+class StreamPositionState(BaseModel):
+    """Serializable representation for stream read positions."""
+
+    selector: tuple[str, ...]
+    position: int = Field(default=0, ge=0)
+
+
+class ResponseStreamCoordinatorState(BaseModel):
+    """Serialized snapshot of ResponseStreamCoordinator."""
+
+    type: Literal["ResponseStreamCoordinator"] = Field(default="ResponseStreamCoordinator")
+    version: str = Field(default="1.0")
+    response_nodes: Sequence[str] = Field(default_factory=list)
+    active_session: ResponseSessionState | None = None
+    waiting_sessions: Sequence[ResponseSessionState] = Field(default_factory=list)
+    pending_sessions: Sequence[ResponseSessionState] = Field(default_factory=list)
+    node_execution_ids: dict[str, str] = Field(default_factory=dict)
+    paths_map: dict[str, list[list[str]]] = Field(default_factory=dict)
+    stream_buffers: Sequence[StreamBufferState] = Field(default_factory=list)
+    stream_positions: Sequence[StreamPositionState] = Field(default_factory=list)
+    closed_streams: Sequence[tuple[str, ...]] = Field(default_factory=list)
 
 
 @final
@@ -69,6 +108,8 @@ class ResponseStreamCoordinator:
 
     def register(self, response_node_id: NodeID) -> None:
         with self._lock:
+            if response_node_id in self._response_nodes:
+                return
             self._response_nodes.add(response_node_id)
 
             # Build and save paths map for this response node
@@ -558,3 +599,98 @@ class ResponseStreamCoordinator:
         """
         key = tuple(selector)
         return key in self._closed_streams
+
+    def _serialize_session(self, session: ResponseSession | None) -> ResponseSessionState | None:
+        """Convert an in-memory session into its serializable form."""
+
+        if session is None:
+            return None
+        return ResponseSessionState(node_id=session.node_id, index=session.index)
+
+    def _session_from_state(self, session_state: ResponseSessionState) -> ResponseSession:
+        """Rebuild a response session from serialized data."""
+
+        node = self._graph.nodes.get(session_state.node_id)
+        if node is None:
+            raise ValueError(f"Unknown response node '{session_state.node_id}' in serialized state")
+
+        session = ResponseSession.from_node(node)
+        session.index = session_state.index
+        return session
+
+    def dumps(self) -> str:
+        """Serialize coordinator state to JSON."""
+
+        with self._lock:
+            state = ResponseStreamCoordinatorState(
+                response_nodes=sorted(self._response_nodes),
+                active_session=self._serialize_session(self._active_session),
+                waiting_sessions=[
+                    session_state
+                    for session in list(self._waiting_sessions)
+                    if (session_state := self._serialize_session(session)) is not None
+                ],
+                pending_sessions=[
+                    session_state
+                    for _, session in sorted(self._response_sessions.items())
+                    if (session_state := self._serialize_session(session)) is not None
+                ],
+                node_execution_ids=dict(sorted(self._node_execution_ids.items())),
+                paths_map={
+                    node_id: [path.edges.copy() for path in paths]
+                    for node_id, paths in sorted(self._paths_maps.items())
+                },
+                stream_buffers=[
+                    StreamBufferState(
+                        selector=selector,
+                        events=[event.model_copy(deep=True) for event in events],
+                    )
+                    for selector, events in sorted(self._stream_buffers.items())
+                ],
+                stream_positions=[
+                    StreamPositionState(selector=selector, position=position)
+                    for selector, position in sorted(self._stream_positions.items())
+                ],
+                closed_streams=sorted(self._closed_streams),
+            )
+            return state.model_dump_json()
+
+    def loads(self, data: str) -> None:
+        """Restore coordinator state from JSON."""
+
+        state = ResponseStreamCoordinatorState.model_validate_json(data)
+
+        if state.type != "ResponseStreamCoordinator":
+            raise ValueError(f"Invalid serialized data type: {state.type}")
+
+        if state.version != "1.0":
+            raise ValueError(f"Unsupported serialized version: {state.version}")
+
+        with self._lock:
+            self._response_nodes = set(state.response_nodes)
+            self._paths_maps = {
+                node_id: [Path(edges=list(path_edges)) for path_edges in paths]
+                for node_id, paths in state.paths_map.items()
+            }
+            self._node_execution_ids = dict(state.node_execution_ids)
+
+            self._stream_buffers = {
+                tuple(buffer.selector): [event.model_copy(deep=True) for event in buffer.events]
+                for buffer in state.stream_buffers
+            }
+            self._stream_positions = {
+                tuple(position.selector): position.position for position in state.stream_positions
+            }
+            for selector in self._stream_buffers:
+                self._stream_positions.setdefault(selector, 0)
+
+            self._closed_streams = {tuple(selector) for selector in state.closed_streams}
+
+            self._waiting_sessions = deque(
+                self._session_from_state(session_state) for session_state in state.waiting_sessions
+            )
+            self._response_sessions = {
+                session_state.node_id: self._session_from_state(session_state)
+                for session_state in state.pending_sessions
+            }
+            self._active_session = self._session_from_state(state.active_session) if state.active_session else None

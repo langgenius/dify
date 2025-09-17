@@ -420,7 +420,13 @@ class PluginUploadFileRequestApi(Resource):
     )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
-        url = get_signed_file_url_for_plugin(payload.filename, payload.mimetype, tenant_model.id, user_model.id)
+        url = get_signed_file_url_for_plugin(
+            payload.filename,
+            payload.mimetype,
+            tenant_model.id,
+            user_model.id,
+            user_model.session_id if isinstance(user_model, EndUser) else None,
+        )
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 

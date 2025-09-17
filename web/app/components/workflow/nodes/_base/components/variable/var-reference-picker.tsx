@@ -132,10 +132,10 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const node = nodes.find(n => n.id === nodeId)
-  const isInIteration = !!(node?.data as any).isInIteration
+  const isInIteration = !!(node?.data as any)?.isInIteration
   const iterationNode = isInIteration ? nodes.find(n => n.id === node?.parentId) : null
 
-  const isInLoop = !!(node?.data as any).isInLoop
+  const isInLoop = !!(node?.data as any)?.isInLoop
   const loopNode = isInLoop ? nodes.find(n => n.id === node?.parentId) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)

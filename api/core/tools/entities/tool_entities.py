@@ -187,7 +187,7 @@ class ToolInvokeMessage(BaseModel):
         error: str | None = Field(default=None, description="The error message")
         status: LogStatus = Field(..., description="The status of the log")
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
-        metadata: Mapping[str, Any] | None = Field(default=None, description="The metadata of the log")
+        metadata: Mapping[str, Any] = Field(default_factory=dict, description="The metadata of the log")
 
     class RetrieverResourceMessage(BaseModel):
         retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
@@ -363,9 +363,9 @@ class ToolDescription(BaseModel):
 
 class ToolEntity(BaseModel):
     identity: ToolIdentity
-    parameters: list[ToolParameter] = Field(default_factory=list)
+    parameters: list[ToolParameter] = Field(default_factory=list[ToolParameter])
     description: ToolDescription | None = None
-    output_schema: dict | None = None
+    output_schema: Mapping[str, object] = Field(default_factory=dict)
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
     # pydantic configs
@@ -378,21 +378,23 @@ class ToolEntity(BaseModel):
 
 
 class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(default_factory=list, description="The schema of the OAuth client")
+    client_schema: list[ProviderConfig] = Field(
+        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
+    )
     credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list, description="The schema of the OAuth credentials"
+        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
     )
 
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: str | None = None
-    credentials_schema: list[ProviderConfig] = Field(default_factory=list)
+    credentials_schema: list[ProviderConfig] = Field(default_factory=list[ProviderConfig])
     oauth_schema: OAuthSchema | None = None
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):
-    tools: list[ToolEntity] = Field(default_factory=list)
+    tools: list[ToolEntity] = Field(default_factory=list[ToolEntity])
 
 
 class WorkflowToolParameterConfiguration(BaseModel):

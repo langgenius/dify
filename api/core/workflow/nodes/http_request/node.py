@@ -58,7 +58,7 @@ class HttpRequestNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: dict[str, Any] | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "http-request",
             "config": {
