@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel
 
@@ -65,12 +65,12 @@ class RetrievalSetting(BaseModel):
 
     search_method: Literal["semantic_search", "keyword_search", "fulltext_search", "hybrid_search"]
     top_k: int
-    score_threshold: Optional[float] = 0.5
+    score_threshold: float | None = 0.5
     score_threshold_enabled: bool = False
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: Optional[RerankingModelConfig] = None
-    weights: Optional[WeightedScoreConfig] = None
+    reranking_model: RerankingModelConfig | None = None
+    weights: WeightedScoreConfig | None = None
 
 
 class IndexMethod(BaseModel):
@@ -107,10 +107,10 @@ class OnlineDocumentInfo(BaseModel):
     """
 
     provider: str
-    workspace_id: Optional[str] = None
+    workspace_id: str | None = None
     page_id: str
     page_type: str
-    icon: Optional[OnlineDocumentIcon] = None
+    icon: OnlineDocumentIcon | None = None
 
 
 class WebsiteInfo(BaseModel):

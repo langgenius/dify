@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,7 +10,7 @@ class NotionInfo(BaseModel):
     Notion import info.
     """
 
-    credential_id: Optional[str] = None
+    credential_id: str | None = None
     notion_workspace_id: str
     notion_obj_id: str
     notion_page_type: str

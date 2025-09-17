@@ -1546,7 +1546,7 @@ class WorkflowDraftVariableFile(Base):
         comment="Size of the original variable content in bytes",
     )
 
-    length: Mapped[Optional[int]] = mapped_column(
+    length: Mapped[int | None] = mapped_column(
         sa.Integer,
         nullable=True,
         comment=(

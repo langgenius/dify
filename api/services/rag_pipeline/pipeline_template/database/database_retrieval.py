@@ -1,4 +1,3 @@
-from typing import Optional
 
 import yaml
 
@@ -33,7 +32,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         """
 
         pipeline_built_in_templates: list[PipelineBuiltInTemplate] = (
-            db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.language == language).all()
+            db.session.query(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language).all()
         )
 
         recommended_pipelines_results = []
@@ -53,7 +52,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict | None:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID
@@ -61,7 +60,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         """
         # is in public recommended list
         pipeline_template = (
-            db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.id == template_id).first()
+            db.session.query(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.id == template_id).first()
         )
 
         if not pipeline_template:

@@ -242,7 +242,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_loop_run: Optional[SingleLoopRunEntity] = None
+    single_loop_run: SingleLoopRunEntity | None = None
 
 
 class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
@@ -256,9 +256,9 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     datasource_info: Mapping[str, Any]
     dataset_id: str
     batch: str
-    document_id: Optional[str] = None
-    original_document_id: Optional[str] = None
-    start_node_id: Optional[str] = None
+    document_id: str | None = None
+    original_document_id: str | None = None
+    start_node_id: str | None = None
 
 
 # Import TraceQueueManager at runtime to resolve forward references

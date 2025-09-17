@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Optional
 
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.file import File, FileTransferMethod, FileType
@@ -17,7 +16,7 @@ class DatasourceFileMessageTransformer:
         messages: Generator[DatasourceMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> Generator[DatasourceMessage, None, None]:
         """
         Transform datasource message and handle file download
@@ -121,5 +120,5 @@ class DatasourceFileMessageTransformer:
                 yield message
 
     @classmethod
-    def get_datasource_file_url(cls, datasource_file_id: str, extension: Optional[str]) -> str:
+    def get_datasource_file_url(cls, datasource_file_id: str, extension: str | None) -> str:
         return f"/files/datasources/{datasource_file_id}{extension or '.bin'}"

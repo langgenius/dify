@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -114,9 +114,9 @@ class VariableEntity(BaseModel):
     hide: bool = False
     max_length: int | None = None
     options: Sequence[str] = Field(default_factory=list)
-    allowed_file_types: Optional[Sequence[FileType]] = Field(default_factory=list)
-    allowed_file_extensions: Optional[Sequence[str]] = Field(default_factory=list)
-    allowed_file_upload_methods: Optional[Sequence[FileTransferMethod]] = Field(default_factory=list)
+    allowed_file_types: Sequence[FileType] | None = Field(default_factory=list)
+    allowed_file_extensions: Sequence[str] | None = Field(default_factory=list)
+    allowed_file_upload_methods: Sequence[FileTransferMethod] | None = Field(default_factory=list)
 
     @field_validator("description", mode="before")
     @classmethod
@@ -134,8 +134,8 @@ class RagPipelineVariableEntity(VariableEntity):
     Rag Pipeline Variable Entity.
     """
 
-    tooltips: Optional[str] = None
-    placeholder: Optional[str] = None
+    tooltips: str | None = None
+    placeholder: str | None = None
     belong_to_node_id: str
 
 
@@ -298,7 +298,7 @@ class AppConfig(BaseModel):
     tenant_id: str
     app_id: str
     app_mode: AppMode
-    additional_features: Optional[AppAdditionalFeatures] = None
+    additional_features: AppAdditionalFeatures | None = None
     variables: list[VariableEntity] = []
     sensitive_word_avoidance: SensitiveWordAvoidanceEntity | None = None
 

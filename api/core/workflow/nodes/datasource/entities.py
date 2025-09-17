@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -10,7 +10,7 @@ class DatasourceEntity(BaseModel):
     plugin_id: str
     provider_name: str  # redundancy
     provider_type: str
-    datasource_name: Optional[str] = "local_file"
+    datasource_name: str | None = "local_file"
     datasource_configurations: dict[str, Any] | None = None
     plugin_unique_identifier: str | None = None  # redundancy
 
@@ -19,7 +19,7 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
     class DatasourceInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]
-        type: Optional[Literal["mixed", "variable", "constant"]] = None
+        type: Literal["mixed", "variable", "constant"] | None = None
 
         @field_validator("type", mode="before")
         @classmethod

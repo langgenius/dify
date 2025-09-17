@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -252,8 +252,8 @@ class NodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         index: int
-        predecessor_node_id: Optional[str] = None
-        inputs: Optional[Mapping[str, Any]] = None
+        predecessor_node_id: str | None = None
+        inputs: Mapping[str, Any] | None = None
         inputs_truncated: bool = False
         created_at: int
         extras: dict[str, object] = Field(default_factory=dict)
@@ -310,12 +310,12 @@ class NodeFinishStreamResponse(StreamResponse):
         node_type: str
         title: str
         index: int
-        predecessor_node_id: Optional[str] = None
-        inputs: Optional[Mapping[str, Any]] = None
+        predecessor_node_id: str | None = None
+        inputs: Mapping[str, Any] | None = None
         inputs_truncated: bool = False
-        process_data: Optional[Mapping[str, Any]] = None
+        process_data: Mapping[str, Any] | None = None
         process_data_truncated: bool = False
-        outputs: Optional[Mapping[str, Any]] = None
+        outputs: Mapping[str, Any] | None = None
         outputs_truncated: bool = True
         status: str
         error: str | None = None
@@ -382,12 +382,12 @@ class NodeRetryStreamResponse(StreamResponse):
         node_type: str
         title: str
         index: int
-        predecessor_node_id: Optional[str] = None
-        inputs: Optional[Mapping[str, Any]] = None
+        predecessor_node_id: str | None = None
+        inputs: Mapping[str, Any] | None = None
         inputs_truncated: bool = False
-        process_data: Optional[Mapping[str, Any]] = None
+        process_data: Mapping[str, Any] | None = None
         process_data_truncated: bool = False
-        outputs: Optional[Mapping[str, Any]] = None
+        outputs: Mapping[str, Any] | None = None
         outputs_truncated: bool = False
         status: str
         error: str | None = None
@@ -503,11 +503,11 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[Mapping] = None
+        outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: Optional[dict] = None
-        inputs: Optional[Mapping] = None
+        extras: dict | None = None
+        inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
         error: str | None = None
@@ -541,8 +541,8 @@ class LoopNodeStartStreamResponse(StreamResponse):
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
-        parallel_id: Optional[str] = None
-        parallel_start_node_id: Optional[str] = None
+        parallel_id: str | None = None
+        parallel_start_node_id: str | None = None
 
     event: StreamEvent = StreamEvent.LOOP_STARTED
     workflow_run_id: str
@@ -590,11 +590,11 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[Mapping] = None
+        outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: Optional[dict] = None
-        inputs: Optional[Mapping] = None
+        extras: dict | None = None
+        inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
         error: str | None = None

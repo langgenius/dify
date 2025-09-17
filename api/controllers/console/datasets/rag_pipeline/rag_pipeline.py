@@ -104,7 +104,7 @@ class CustomizedPipelineTemplateApi(Resource):
     def post(self, template_id: str):
         with Session(db.engine) as session:
             template = (
-                session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
+                session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
             )
             if not template:
                 raise ValueError("Customized pipeline template not found.")

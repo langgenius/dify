@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional, cast
+from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
@@ -40,7 +40,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
-        workflow_thread_pool_id: Optional[str] = None,
+        workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
         :param application_generate_entity: application generate entity
@@ -69,13 +69,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         user_id = None
         if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
+            end_user = db.session.query(EndUser).where(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
                 user_id = end_user.session_id
         else:
             user_id = self.application_generate_entity.user_id
 
-        pipeline = db.session.query(Pipeline).filter(Pipeline.id == app_config.app_id).first()
+        pipeline = db.session.query(Pipeline).where(Pipeline.id == app_config.app_id).first()
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -188,7 +188,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             )
             self._handle_event(workflow_entry, event)
 
-    def get_workflow(self, pipeline: Pipeline, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
         """
         Get workflow
         """
@@ -205,7 +205,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         return workflow
 
     def _init_rag_pipeline_graph(
-        self, workflow: Workflow, graph_runtime_state: GraphRuntimeState, start_node_id: Optional[str] = None
+        self, workflow: Workflow, graph_runtime_state: GraphRuntimeState, start_node_id: str | None = None
     ) -> Graph:
         """
         Init pipeline graph

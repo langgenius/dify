@@ -1,4 +1,3 @@
-from typing import Optional
 
 import yaml
 from flask_login import current_user
@@ -56,14 +55,14 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict | None:
         """
         Fetch pipeline template detail from db.
         :param template_id: Template ID
         :return:
         """
         pipeline_template = (
-            db.session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
+            db.session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
         )
         if not pipeline_template:
             return None

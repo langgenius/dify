@@ -1,7 +1,7 @@
 import json
 import logging
 import operator
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import requests
 
@@ -35,9 +35,9 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: Optional[DocumentModel] = None,
-        notion_access_token: Optional[str] = None,
-        credential_id: Optional[str] = None,
+        document_model: DocumentModel | None = None,
+        notion_access_token: str | None = None,
+        credential_id: str | None = None,
     ):
         self._notion_access_token = None
         self._document_model = document_model
@@ -369,7 +369,7 @@ class NotionExtractor(BaseExtractor):
         return cast(str, data["last_edited_time"])
 
     @classmethod
-    def _get_access_token(cls, tenant_id: str, credential_id: Optional[str]) -> str:
+    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str:
         # get credential from tenant_id and credential_id
         if not credential_id:
             raise Exception(f"No credential id found for tenant {tenant_id}")
