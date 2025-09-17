@@ -288,7 +288,8 @@ class DatasetService:
                 names,
                 "Untitled",
             )
-
+        if not current_user or not current_user.id:
+            raise ValueError("Current user or current user id not found")
         pipeline = Pipeline(
             tenant_id=tenant_id,
             name=rag_pipeline_dataset_create_entity.name,
@@ -824,6 +825,8 @@ class DatasetService:
     def update_rag_pipeline_dataset_settings(
         session: Session, dataset: Dataset, knowledge_configuration: KnowledgeConfiguration, has_published: bool = False
     ):
+        if not current_user or not current_user.current_tenant_id:
+            raise ValueError("Current user or current tenant not found")
         dataset = session.merge(dataset)
         if not has_published:
             dataset.chunk_structure = knowledge_configuration.chunk_structure
@@ -831,7 +834,7 @@ class DatasetService:
             if knowledge_configuration.indexing_technique == "high_quality":
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_user.current_tenant_id,  # ignore type error
                     provider=knowledge_configuration.embedding_model_provider or "",
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=knowledge_configuration.embedding_model or "",
@@ -906,6 +909,7 @@ class DatasetService:
                         ):
                             action = "update"
                             model_manager = ModelManager()
+                            embedding_model = None
                             try:
                                 embedding_model = model_manager.get_model_instance(
                                     tenant_id=current_user.current_tenant_id,
@@ -919,14 +923,15 @@ class DatasetService:
                                 # Skip the rest of the embedding model update
                                 skip_embedding_update = True
                             if not skip_embedding_update:
-                                dataset.embedding_model = embedding_model.model
-                                dataset.embedding_model_provider = embedding_model.provider
-                                dataset_collection_binding = (
-                                    DatasetCollectionBindingService.get_dataset_collection_binding(
-                                        embedding_model.provider, embedding_model.model
+                                if embedding_model:
+                                    dataset.embedding_model = embedding_model.model
+                                    dataset.embedding_model_provider = embedding_model.provider
+                                    dataset_collection_binding = (
+                                        DatasetCollectionBindingService.get_dataset_collection_binding(
+                                            embedding_model.provider, embedding_model.model
+                                        )
                                     )
-                                )
-                                dataset.collection_binding_id = dataset_collection_binding.id
+                                    dataset.collection_binding_id = dataset_collection_binding.id
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
@@ -1025,6 +1030,8 @@ class DatasetService:
         if dataset is None:
             raise NotFound("Dataset not found.")
         dataset.enable_api = status
+        if not current_user or not current_user.id:
+            raise ValueError("Current user or current user id not found")
         dataset.updated_by = current_user.id
         dataset.updated_at = naive_utc_now()
         db.session.commit()
@@ -1361,6 +1368,8 @@ class DocumentService:
             redis_client.setex(retry_indexing_cache_key, 600, 1)
         # trigger async task
         document_ids = [document.id for document in documents]
+        if not current_user or not current_user.id:
+            raise ValueError("Current user or current user id not found")
         retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod

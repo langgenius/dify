@@ -145,6 +145,9 @@ class File(BaseModel):
             case FileTransferMethod.TOOL_FILE:
                 if not self.related_id:
                     raise ValueError("Missing file related_id")
+            case FileTransferMethod.DATASOURCE_FILE:
+                if not self.related_id:
+                    raise ValueError("Missing file related_id")
         return self
 
     @property

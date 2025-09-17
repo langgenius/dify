@@ -260,26 +260,6 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     original_document_id: Optional[str] = None
     start_node_id: Optional[str] = None
 
-    class SingleIterationRunEntity(BaseModel):
-        """
-        Single Iteration Run Entity.
-        """
-
-        node_id: str
-        inputs: dict
-
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
-
-    class SingleLoopRunEntity(BaseModel):
-        """
-        Single Loop Run Entity.
-        """
-
-        node_id: str
-        inputs: dict
-
-    single_loop_run: Optional[SingleLoopRunEntity] = None
-
 
 # Import TraceQueueManager at runtime to resolve forward references
 from core.ops.ops_trace_manager import TraceQueueManager

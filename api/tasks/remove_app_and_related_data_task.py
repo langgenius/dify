@@ -452,12 +452,12 @@ def _delete_draft_variable_offload_data(conn, file_ids: list[str]) -> int:
 
         # Delete from object storage and collect upload file IDs
         upload_file_ids = []
-        for variable_file_id, storage_key, upload_file_id in file_records:
+        for _, storage_key, upload_file_id in file_records:
             try:
                 storage.delete(storage_key)
                 upload_file_ids.append(upload_file_id)
                 files_deleted += 1
-            except Exception as e:
+            except Exception:
                 logging.exception("Failed to delete storage object %s", storage_key)
                 # Continue with database cleanup even if storage deletion fails
                 upload_file_ids.append(upload_file_id)

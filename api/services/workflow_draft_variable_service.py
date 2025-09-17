@@ -430,6 +430,10 @@ class WorkflowDraftVariableService:
             .where(WorkflowDraftVariable.id == variable.id)
         )
         variable_reloaded = self._session.execute(variable_query).scalars().first()
+        if variable_reloaded is None:
+            logger.warning("Associated WorkflowDraftVariable not found, draft_var_id=%s", variable.id)
+            self._session.delete(variable)
+            return
         variable_file = variable_reloaded.variable_file
         if variable_file is None:
             logger.warning(

@@ -71,7 +71,7 @@ class PipelineGenerator(BaseAppGenerator):
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
         is_retry: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None: ...
+    ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
     def generate(

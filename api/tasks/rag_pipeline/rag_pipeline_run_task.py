@@ -177,7 +177,8 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
                 pipeline_generator = PipelineGenerator()
-                pipeline_generator._generate(
+                # Using protected method intentionally for async execution
+                pipeline_generator._generate(  # type: ignore[attr-defined]
                     flask_app=flask_app,
                     context=context,
                     pipeline=pipeline,
