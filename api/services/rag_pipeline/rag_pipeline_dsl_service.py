@@ -411,6 +411,7 @@ class RagPipelineDslService:
                 data=data,
                 account=account,
             )
+            dataset = pipeline.retrieve_dataset(session=self._session)
 
             # create dataset
             name = pipeline.name
