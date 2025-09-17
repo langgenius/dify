@@ -111,7 +111,7 @@ const baseClient = ky.create({
   timeout: TIME_OUT,
 })
 
-export const baseOptions: RequestInit = {
+export const getBaseOptions = (): RequestInit => ({
   method: 'GET',
   mode: 'cors',
   credentials: 'include', // always send cookies、HTTP Basic authentication.
@@ -119,9 +119,10 @@ export const baseOptions: RequestInit = {
     'Content-Type': ContentType.json,
   }),
   redirect: 'follow',
-}
+})
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
+  const baseOptions = getBaseOptions()
   const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
   const {
     isPublicAPI = false,
