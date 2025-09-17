@@ -105,6 +105,8 @@ class GraphEngine:
         self._response_coordinator = ResponseStreamCoordinator(
             variable_pool=self._graph_runtime_state.variable_pool, graph=self._graph
         )
+        if graph_runtime_state.response_coordinator_json != "":
+            self._response_coordinator.loads(graph_runtime_state.response_coordinator_json)
 
         # === Event Management ===
         # Event manager handles both collection and emission of events

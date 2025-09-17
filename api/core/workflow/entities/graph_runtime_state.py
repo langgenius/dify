@@ -17,6 +17,7 @@ class GraphRuntimeState(BaseModel):
     _node_run_steps: int = PrivateAttr(default=0)
     _ready_queue_json: str = PrivateAttr()
     _graph_execution_json: str = PrivateAttr()
+    _response_coordinator_json: str = PrivateAttr()
 
     def __init__(
         self,
@@ -29,6 +30,7 @@ class GraphRuntimeState(BaseModel):
         node_run_steps: int = 0,
         ready_queue_json: str = "",
         graph_execution_json: str = "",
+        response_coordinator_json: str = "",
         **kwargs: object,
     ):
         """Initialize the GraphRuntimeState with validation."""
@@ -57,6 +59,7 @@ class GraphRuntimeState(BaseModel):
 
         self._ready_queue_json = ready_queue_json
         self._graph_execution_json = graph_execution_json
+        self._response_coordinator_json = response_coordinator_json
 
     @property
     def variable_pool(self) -> VariablePool:
@@ -151,7 +154,7 @@ class GraphRuntimeState(BaseModel):
         """Get a copy of the serialized graph execution state."""
         return self._graph_execution_json
 
-    @graph_execution_json.setter
-    def graph_execution_json(self, value: str) -> None:
-        """Set the serialized graph execution state."""
-        self._graph_execution_json = value
+    @property
+    def response_coordinator_json(self) -> str:
+        """Get a copy of the serialized response coordinator state."""
+        return self._response_coordinator_json

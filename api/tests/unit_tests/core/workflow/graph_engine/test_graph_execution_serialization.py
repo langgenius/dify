@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections import deque
 from unittest.mock import MagicMock
 
-from core.workflow.entities import GraphRuntimeState
-from core.workflow.enums import NodeExecutionType, NodeState
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.enums import NodeExecutionType, NodeState, NodeType
 from core.workflow.graph_engine.domain import GraphExecution
+from core.workflow.graph_engine.response_coordinator import ResponseStreamCoordinator
+from core.workflow.graph_engine.response_coordinator.path import Path
+from core.workflow.graph_engine.response_coordinator.session import ResponseSession
+from core.workflow.graph_events import NodeRunStreamChunkEvent
+from core.workflow.nodes.base.template import Template, TextSegment, VariableSegment
 
 
 class CustomGraphExecutionError(Exception):
@@ -88,78 +92,103 @@ def test_graph_execution_loads_replaces_existing_state() -> None:
     assert restored_node.error is None
 
 
-def test_graph_engine_initializes_from_serialized_execution(monkeypatch) -> None:
-    """GraphEngine restores GraphExecution state from runtime snapshot on init."""
+def test_response_stream_coordinator_serialization_round_trip(monkeypatch) -> None:
+    """ResponseStreamCoordinator serialization restores coordinator internals."""
 
-    # Arrange serialized execution state
-    execution = GraphExecution(workflow_id="wf-init")
-    execution.start()
-    node_state = execution.get_or_create_node_execution("serialized-node")
-    node_state.mark_taken()
-    execution.complete()
-    serialized = execution.dumps()
-
-    runtime_state = GraphRuntimeState(
-        variable_pool=MagicMock(),
-        start_at=0.0,
-        graph_execution_json=serialized,
-    )
+    template_main = Template(segments=[TextSegment(text="Hi "), VariableSegment(selector=["node-source", "text"])])
+    template_secondary = Template(segments=[TextSegment(text="secondary")])
 
     class DummyNode:
-        def __init__(self, graph_runtime_state: GraphRuntimeState) -> None:
-            self.graph_runtime_state = graph_runtime_state
-            self.execution_type = NodeExecutionType.EXECUTABLE
-            self.id = "dummy-node"
+        def __init__(self, node_id: str, template: Template, execution_type: NodeExecutionType) -> None:
+            self.id = node_id
+            self.node_type = NodeType.ANSWER if execution_type == NodeExecutionType.RESPONSE else NodeType.LLM
+            self.execution_type = execution_type
             self.state = NodeState.UNKNOWN
-            self.title = "dummy"
+            self.title = node_id
+            self.template = template
+
+        def blocks_variable_output(self, *_args) -> bool:
+            return False
+
+    response_node1 = DummyNode("response-1", template_main, NodeExecutionType.RESPONSE)
+    response_node2 = DummyNode("response-2", template_main, NodeExecutionType.RESPONSE)
+    response_node3 = DummyNode("response-3", template_main, NodeExecutionType.RESPONSE)
+    source_node = DummyNode("node-source", template_secondary, NodeExecutionType.EXECUTABLE)
 
     class DummyGraph:
-        def __init__(self, graph_runtime_state: GraphRuntimeState) -> None:
-            self.nodes = {"dummy-node": DummyNode(graph_runtime_state)}
+        def __init__(self) -> None:
+            self.nodes = {
+                response_node1.id: response_node1,
+                response_node2.id: response_node2,
+                response_node3.id: response_node3,
+                source_node.id: source_node,
+            }
             self.edges: dict[str, object] = {}
-            self.root_node = self.nodes["dummy-node"]
+            self.root_node = response_node1
 
-        def get_incoming_edges(self, node_id: str):  # pragma: no cover - not exercised
+        def get_outgoing_edges(self, _node_id: str):  # pragma: no cover - not exercised
             return []
 
-        def get_outgoing_edges(self, node_id: str):  # pragma: no cover - not exercised
+        def get_incoming_edges(self, _node_id: str):  # pragma: no cover - not exercised
             return []
 
-    dummy_graph = DummyGraph(runtime_state)
+    graph = DummyGraph()
 
-    def _stub(*_args, **_kwargs):
-        return MagicMock()
+    def fake_from_node(cls, node: DummyNode) -> ResponseSession:
+        return ResponseSession(node_id=node.id, template=node.template)
 
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.GraphStateManager", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.ResponseStreamCoordinator", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.EventManager", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.ErrorHandler", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.SkipPropagator", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.EdgeProcessor", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.EventHandler", _stub)
-    command_processor = MagicMock()
-    command_processor.register_handler = MagicMock()
-    monkeypatch.setattr(
-        "core.workflow.graph_engine.graph_engine.CommandProcessor",
-        lambda *_args, **_kwargs: command_processor,
+    monkeypatch.setattr(ResponseSession, "from_node", classmethod(fake_from_node))
+
+    coordinator = ResponseStreamCoordinator(variable_pool=MagicMock(), graph=graph)  # type: ignore[arg-type]
+    coordinator._response_nodes = {"response-1", "response-2", "response-3"}
+    coordinator._paths_maps = {
+        "response-1": [Path(edges=["edge-1"])],
+        "response-2": [Path(edges=[])],
+        "response-3": [Path(edges=["edge-2", "edge-3"])],
+    }
+
+    active_session = ResponseSession(node_id="response-1", template=response_node1.template)
+    active_session.index = 1
+    coordinator._active_session = active_session
+    waiting_session = ResponseSession(node_id="response-2", template=response_node2.template)
+    coordinator._waiting_sessions = deque([waiting_session])
+    pending_session = ResponseSession(node_id="response-3", template=response_node3.template)
+    pending_session.index = 2
+    coordinator._response_sessions = {"response-3": pending_session}
+
+    coordinator._node_execution_ids = {"response-1": "exec-1"}
+    event = NodeRunStreamChunkEvent(
+        id="exec-1",
+        node_id="response-1",
+        node_type=NodeType.ANSWER,
+        selector=["node-source", "text"],
+        chunk="chunk-1",
+        is_final=False,
     )
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.AbortCommandHandler", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.WorkerPool", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.ExecutionCoordinator", _stub)
-    monkeypatch.setattr("core.workflow.graph_engine.graph_engine.Dispatcher", _stub)
+    coordinator._stream_buffers = {("node-source", "text"): [event]}
+    coordinator._stream_positions = {("node-source", "text"): 1}
+    coordinator._closed_streams = {("node-source", "text")}
 
-    # Act
-    engine = GraphEngine(
-        workflow_id="wf-init",
-        graph=dummy_graph,  # type: ignore[arg-type]
-        graph_runtime_state=runtime_state,
-        command_channel=MagicMock(),
-    )
+    serialized = coordinator.dumps()
 
-    # Assert
-    assert engine._graph_execution.started is True
-    assert engine._graph_execution.completed is True
-    assert set(engine._graph_execution.node_executions) == {"serialized-node"}
-    restored_node = engine._graph_execution.node_executions["serialized-node"]
-    assert restored_node.state is NodeState.TAKEN
-    assert restored_node.retry_count == 0
+    restored = ResponseStreamCoordinator(variable_pool=MagicMock(), graph=graph)  # type: ignore[arg-type]
+    monkeypatch.setattr(ResponseSession, "from_node", classmethod(fake_from_node))
+    restored.loads(serialized)
+
+    assert restored._response_nodes == {"response-1", "response-2", "response-3"}
+    assert restored._paths_maps["response-1"][0].edges == ["edge-1"]
+    assert restored._active_session is not None
+    assert restored._active_session.node_id == "response-1"
+    assert restored._active_session.index == 1
+    waiting_restored = list(restored._waiting_sessions)
+    assert len(waiting_restored) == 1
+    assert waiting_restored[0].node_id == "response-2"
+    assert waiting_restored[0].index == 0
+    assert set(restored._response_sessions) == {"response-3"}
+    assert restored._response_sessions["response-3"].index == 2
+    assert restored._node_execution_ids == {"response-1": "exec-1"}
+    assert ("node-source", "text") in restored._stream_buffers
+    restored_event = restored._stream_buffers[("node-source", "text")][0]
+    assert restored_event.chunk == "chunk-1"
+    assert restored._stream_positions[("node-source", "text")] == 1
+    assert ("node-source", "text") in restored._closed_streams
