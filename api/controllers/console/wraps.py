@@ -242,6 +242,19 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
+def email_register_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.is_allow_register:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+
+    return decorated
+
+
 def enable_change_email(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):

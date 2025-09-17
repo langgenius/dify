@@ -84,7 +84,7 @@ class ClickzettaConnectionPool:
         self._pool_locks: dict[str, threading.Lock] = {}
         self._max_pool_size = 5  # Maximum connections per configuration
         self._connection_timeout = 300  # 5 minutes timeout
-        self._cleanup_thread: Optional[threading.Thread] = None
+        self._cleanup_thread: threading.Thread | None = None
         self._shutdown = False
         self._start_cleanup_thread()
 
@@ -303,8 +303,8 @@ class ClickzettaVector(BaseVector):
     """
 
     # Class-level write queue and lock for serializing writes
-    _write_queue: Optional[queue.Queue] = None
-    _write_thread: Optional[threading.Thread] = None
+    _write_queue: queue.Queue | None = None
+    _write_thread: threading.Thread | None = None
     _write_lock = threading.Lock()
     _shutdown = False
 
@@ -328,7 +328,7 @@ class ClickzettaVector(BaseVector):
 
         def __init__(self, vector_instance: "ClickzettaVector"):
             self.vector = vector_instance
-            self.connection: Optional[Connection] = None
+            self.connection: Connection | None = None
 
         def __enter__(self) -> "Connection":
             self.connection = self.vector._get_connection()
@@ -641,7 +641,7 @@ class ClickzettaVector(BaseVector):
 
         for doc, embedding in zip(batch_docs, batch_embeddings):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata if doc.metadata else {}
+            metadata = doc.metadata or {}
 
             if not isinstance(metadata, dict):
                 metadata = {}

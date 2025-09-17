@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -29,7 +29,7 @@ class GraphRunStartedEvent(BaseGraphEvent):
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, Any] | None = None
     """outputs"""
 
 
@@ -40,7 +40,7 @@ class GraphRunFailedEvent(BaseGraphEvent):
 
 class GraphRunPartialSucceededEvent(BaseGraphEvent):
     exceptions_count: int = Field(..., description="exception count")
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, Any] | None = None
 
 
 ###########################################
@@ -54,33 +54,33 @@ class BaseNodeEvent(GraphEngineEvent):
     node_type: NodeType = Field(..., description="node type")
     node_data: BaseNodeData = Field(..., description="node data")
     route_node_state: RouteNodeState = Field(..., description="route node state")
-    parallel_id: Optional[str] = None
+    parallel_id: str | None = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
     # The version of the node, or "1" if not specified.
     node_version: str = "1"
 
 
 class NodeRunStartedEvent(BaseNodeEvent):
-    predecessor_node_id: Optional[str] = None
+    predecessor_node_id: str | None = None
     """predecessor node id"""
-    parallel_mode_run_id: Optional[str] = None
+    parallel_mode_run_id: str | None = None
     """iteration node parallel mode run id"""
-    agent_strategy: Optional[AgentNodeStrategyInit] = None
+    agent_strategy: AgentNodeStrategyInit | None = None
 
 
 class NodeRunStreamChunkEvent(BaseNodeEvent):
     chunk_content: str = Field(..., description="chunk content")
-    from_variable_selector: Optional[list[str]] = None
+    from_variable_selector: list[str] | None = None
     """from variable selector"""
 
 
@@ -125,13 +125,13 @@ class BaseParallelBranchEvent(GraphEngineEvent):
     """parallel id"""
     parallel_start_node_id: str = Field(..., description="parallel start node id")
     """parallel start node id"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    in_iteration_id: Optional[str] = None
+    in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
-    in_loop_id: Optional[str] = None
+    in_loop_id: str | None = None
     """loop id if node is in loop"""
 
 
@@ -157,45 +157,45 @@ class BaseIterationEvent(GraphEngineEvent):
     iteration_node_id: str = Field(..., description="iteration node id")
     iteration_node_type: NodeType = Field(..., description="node type, iteration or loop")
     iteration_node_data: BaseNodeData = Field(..., description="node data")
-    parallel_id: Optional[str] = None
+    parallel_id: str | None = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    parallel_mode_run_id: Optional[str] = None
+    parallel_mode_run_id: str | None = None
     """iteration run in parallel mode run id"""
 
 
 class IterationRunStartedEvent(BaseIterationEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
-    predecessor_node_id: Optional[str] = None
+    inputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
+    predecessor_node_id: str | None = None
 
 
 class IterationRunNextEvent(BaseIterationEvent):
     index: int = Field(..., description="index")
-    pre_iteration_output: Optional[Any] = None
-    duration: Optional[float] = None
+    pre_iteration_output: Any | None = None
+    duration: float | None = None
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
     steps: int = 0
-    iteration_duration_map: Optional[dict[str, float]] = None
+    iteration_duration_map: dict[str, float] | None = None
 
 
 class IterationRunFailedEvent(BaseIterationEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
     steps: int = 0
     error: str = Field(..., description="failed reason")
 
@@ -210,45 +210,45 @@ class BaseLoopEvent(GraphEngineEvent):
     loop_node_id: str = Field(..., description="loop node id")
     loop_node_type: NodeType = Field(..., description="node type, loop or loop")
     loop_node_data: BaseNodeData = Field(..., description="node data")
-    parallel_id: Optional[str] = None
+    parallel_id: str | None = None
     """parallel id if node is in parallel"""
-    parallel_start_node_id: Optional[str] = None
+    parallel_start_node_id: str | None = None
     """parallel start node id if node is in parallel"""
-    parent_parallel_id: Optional[str] = None
+    parent_parallel_id: str | None = None
     """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: Optional[str] = None
+    parent_parallel_start_node_id: str | None = None
     """parent parallel start node id if node is in parallel"""
-    parallel_mode_run_id: Optional[str] = None
+    parallel_mode_run_id: str | None = None
     """loop run in parallel mode run id"""
 
 
 class LoopRunStartedEvent(BaseLoopEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
-    predecessor_node_id: Optional[str] = None
+    inputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
+    predecessor_node_id: str | None = None
 
 
 class LoopRunNextEvent(BaseLoopEvent):
     index: int = Field(..., description="index")
-    pre_loop_output: Optional[Any] = None
-    duration: Optional[float] = None
+    pre_loop_output: Any | None = None
+    duration: float | None = None
 
 
 class LoopRunSucceededEvent(BaseLoopEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
     steps: int = 0
-    loop_duration_map: Optional[dict[str, float]] = None
+    loop_duration_map: dict[str, float] | None = None
 
 
 class LoopRunFailedEvent(BaseLoopEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Mapping[str, Any] | None = None
+    outputs: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
     steps: int = 0
     error: str = Field(..., description="failed reason")
 
@@ -270,7 +270,7 @@ class AgentLogEvent(BaseAgentEvent):
     error: str | None = Field(..., description="error")
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
-    metadata: Optional[Mapping[str, Any]] = Field(default=None, description="metadata")
+    metadata: Mapping[str, Any] | None = Field(default=None, description="metadata")
     node_id: str = Field(..., description="agent node id")
 
 
