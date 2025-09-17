@@ -10,11 +10,9 @@ import time
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import GraphRunStartedEvent, GraphRunSucceededEvent
-from models.enums import UserFrom
 
 # Import the test framework from the new module
 from .test_table_runner import TableTestRunner, WorkflowRunner, WorkflowTestCase
@@ -460,18 +458,9 @@ def test_layer_system_basic():
 
     # Create engine with layer
     engine = GraphEngine(
-        tenant_id="test_tenant",
-        app_id="test_app",
         workflow_id="test_workflow",
-        user_id="test_user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
-        call_depth=0,
         graph=graph,
-        graph_config=fixture_data.get("workflow", {}).get("graph", {}),
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=300,
-        max_execution_time=60,
         command_channel=InMemoryChannel(),
     )
 
@@ -525,18 +514,9 @@ def test_layer_chaining():
 
     # Create engine
     engine = GraphEngine(
-        tenant_id="test_tenant",
-        app_id="test_app",
         workflow_id="test_workflow",
-        user_id="test_user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
-        call_depth=0,
         graph=graph,
-        graph_config=fixture_data.get("workflow", {}).get("graph", {}),
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=300,
-        max_execution_time=60,
         command_channel=InMemoryChannel(),
     )
 
@@ -581,18 +561,9 @@ def test_layer_error_handling():
 
     # Create engine with faulty layer
     engine = GraphEngine(
-        tenant_id="test_tenant",
-        app_id="test_app",
         workflow_id="test_workflow",
-        user_id="test_user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
-        call_depth=0,
         graph=graph,
-        graph_config=fixture_data.get("workflow", {}).get("graph", {}),
         graph_runtime_state=graph_runtime_state,
-        max_execution_steps=300,
-        max_execution_time=60,
         command_channel=InMemoryChannel(),
     )
 

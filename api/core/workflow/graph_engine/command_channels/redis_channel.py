@@ -97,8 +97,12 @@ class RedisChannel:
         Returns:
             Deserialized command or None if invalid
         """
+        command_type_value = data.get("command_type")
+        if not isinstance(command_type_value, str):
+            return None
+
         try:
-            command_type = CommandType(data.get("command_type"))
+            command_type = CommandType(command_type_value)
 
             if command_type == CommandType.ABORT:
                 return AbortCommand(**data)

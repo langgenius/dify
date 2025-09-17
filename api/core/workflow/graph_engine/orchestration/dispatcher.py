@@ -34,7 +34,6 @@ class Dispatcher:
         event_handler: "EventHandler",
         event_collector: EventManager,
         execution_coordinator: ExecutionCoordinator,
-        max_execution_time: int,
         event_emitter: EventManager | None = None,
     ) -> None:
         """
@@ -45,14 +44,12 @@ class Dispatcher:
             event_handler: Event handler registry for processing events
             event_collector: Event manager for collecting unhandled events
             execution_coordinator: Coordinator for execution flow
-            max_execution_time: Maximum execution time in seconds
             event_emitter: Optional event manager to signal completion
         """
         self._event_queue = event_queue
         self._event_handler = event_handler
         self._event_collector = event_collector
         self._execution_coordinator = execution_coordinator
-        self._max_execution_time = max_execution_time
         self._event_emitter = event_emitter
 
         self._thread: threading.Thread | None = None
@@ -89,7 +86,7 @@ class Dispatcher:
                 try:
                     event = self._event_queue.get(timeout=0.1)
                     # Route to the event handler
-                    self._event_handler.handle_event(event)
+                    self._event_handler.dispatch(event)
                     self._event_queue.task_done()
                 except queue.Empty:
                     # Check if execution is complete

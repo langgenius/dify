@@ -64,7 +64,7 @@ class MockNodeMixin:
 
         return default_outputs
 
-    def _should_simulate_error(self) -> Optional[str]:
+    def _should_simulate_error(self) -> str | None:
         """Check if this node should simulate an error."""
         if not self.mock_config:
             return None
@@ -615,18 +615,9 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
-            call_depth=self.workflow_call_depth,
             graph=iteration_graph,
-            graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=10000,  # Use default or config value
-            max_execution_time=600,  # Use default or config value
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 
@@ -685,18 +676,9 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
-            call_depth=self.workflow_call_depth,
             graph=loop_graph,
-            graph_config=self.graph_config,
             graph_runtime_state=graph_runtime_state_copy,
-            max_execution_steps=10000,  # Use default or config value
-            max_execution_time=600,  # Use default or config value
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
         )
 

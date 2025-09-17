@@ -39,7 +39,7 @@ class TemplateTransformNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
         Get default config of node.
         :param filters: filter by node config parameters.

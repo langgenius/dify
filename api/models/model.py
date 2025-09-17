@@ -846,7 +846,7 @@ class Conversation(Base):
         )
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         with Session(db.engine, expire_on_commit=False) as session:
             return session.query(App).where(App.id == self.app_id).first()
 
@@ -1140,7 +1140,7 @@ class Message(Base):
         )
 
     @property
-    def retriever_resources(self) -> Any | list[Any]:
+    def retriever_resources(self) -> Any:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property

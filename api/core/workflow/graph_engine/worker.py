@@ -22,6 +22,8 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 from core.workflow.nodes.base.node import Node
 from libs.flask_utils import preserve_flask_contexts
 
+from .ready_queue import ReadyQueue
+
 
 @final
 class Worker(threading.Thread):
@@ -35,7 +37,7 @@ class Worker(threading.Thread):
 
     def __init__(
         self,
-        ready_queue: queue.Queue[str],
+        ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         worker_id: int = 0,
@@ -46,7 +48,7 @@ class Worker(threading.Thread):
         Initialize worker thread.
 
         Args:
-            ready_queue: Queue containing node IDs ready for execution
+            ready_queue: Ready queue containing node IDs ready for execution
             event_queue: Queue for pushing execution events
             graph: Graph containing nodes to execute
             worker_id: Unique identifier for this worker

@@ -563,12 +563,12 @@ class WorkflowService:
             # This will prevent validation errors from breaking the workflow
             return []
 
-    def get_default_block_configs(self) -> list[dict]:
+    def get_default_block_configs(self) -> Sequence[Mapping[str, object]]:
         """
         Get default block configs
         """
         # return default block config
-        default_block_configs = []
+        default_block_configs: list[Mapping[str, object]] = []
         for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
             node_class = node_class_mapping[LATEST_VERSION]
             default_config = node_class.get_default_config()
@@ -577,7 +577,9 @@ class WorkflowService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: dict | None = None) -> dict | None:
+    def get_default_block_config(
+        self, node_type: str, filters: Mapping[str, object] | None = None
+    ) -> Mapping[str, object]:
         """
         Get default config of node.
         :param node_type: node type
@@ -588,12 +590,12 @@ class WorkflowService:
 
         # return default block config
         if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
-            return None
+            return {}
 
         node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
         default_config = node_class.get_default_config(filters=filters)
         if not default_config:
-            return None
+            return {}
 
         return default_config
 
@@ -807,11 +809,13 @@ class WorkflowService:
                 WorkflowNodeExecutionStatus.EXCEPTION,
             )
             error = node_run_result.error if not run_succeeded else None
-
             return node, node_run_result, run_succeeded, error
-
         except WorkflowNodeRunFailedError as e:
-            return e._node, None, False, e._error
+            node = e.node
+            run_succeeded = False
+            node_run_result = None
+            error = e.error
+            return node, node_run_result, run_succeeded, error
 
     def _apply_error_strategy(self, node: Node, node_run_result: NodeRunResult) -> NodeRunResult:
         """Apply error strategy when node execution fails."""

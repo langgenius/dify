@@ -1,5 +1,3 @@
-from typing import Any, Optional
-
 from pydantic import Field
 
 from core.workflow.graph_events import BaseGraphEvent
@@ -10,7 +8,7 @@ class GraphRunStartedEvent(BaseGraphEvent):
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, object] = Field(default_factory=dict)
 
 
 class GraphRunFailedEvent(BaseGraphEvent):
@@ -20,11 +18,11 @@ class GraphRunFailedEvent(BaseGraphEvent):
 
 class GraphRunPartialSucceededEvent(BaseGraphEvent):
     exceptions_count: int = Field(..., description="exception count")
-    outputs: Optional[dict[str, Any]] = None
+    outputs: dict[str, object] = Field(default_factory=dict)
 
 
 class GraphRunAbortedEvent(BaseGraphEvent):
     """Event emitted when a graph run is aborted by user command."""
 
-    reason: Optional[str] = Field(default=None, description="reason for abort")
-    outputs: Optional[dict[str, Any]] = Field(default=None, description="partial outputs if any")
+    reason: str | None = Field(default=None, description="reason for abort")
+    outputs: dict[str, object] = Field(default_factory=dict, description="partial outputs if any")

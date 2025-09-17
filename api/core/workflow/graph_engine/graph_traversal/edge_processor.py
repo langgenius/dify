@@ -9,8 +9,8 @@ from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Edge, Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent
 
+from ..graph_state_manager import GraphStateManager
 from ..response_coordinator import ResponseStreamCoordinator
-from ..state_management import UnifiedStateManager
 
 if TYPE_CHECKING:
     from .skip_propagator import SkipPropagator
@@ -29,7 +29,7 @@ class EdgeProcessor:
     def __init__(
         self,
         graph: Graph,
-        state_manager: UnifiedStateManager,
+        state_manager: GraphStateManager,
         response_coordinator: ResponseStreamCoordinator,
         skip_propagator: "SkipPropagator",
     ) -> None:

@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -43,7 +43,7 @@ class WorkflowEntry:
         call_depth: int,
         variable_pool: VariablePool,
         graph_runtime_state: GraphRuntimeState,
-        command_channel: Optional[CommandChannel] = None,
+        command_channel: CommandChannel | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -73,18 +73,9 @@ class WorkflowEntry:
 
         self.command_channel = command_channel
         self.graph_engine = GraphEngine(
-            tenant_id=tenant_id,
-            app_id=app_id,
             workflow_id=workflow_id,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
             graph=graph,
-            graph_config=graph_config,
             graph_runtime_state=graph_runtime_state,
-            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             command_channel=command_channel,
         )
 

@@ -43,6 +43,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
+      - name: Run Import Linter
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --directory api --dev lint-imports
+
       - name: Run Basedpyright Checks
         if: steps.changed-files.outputs.any_changed == 'true'
         run: dev/basedpyright-check

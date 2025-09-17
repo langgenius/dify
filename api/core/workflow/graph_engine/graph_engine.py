@@ -8,16 +8,16 @@ Domain-Driven Design principles for improved maintainability and testability.
 import contextvars
 import logging
 import queue
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import final
 
 from flask import Flask, current_app
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
+from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphNodeEventBase,
@@ -26,19 +26,19 @@ from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from models.enums import UserFrom
 
 from .command_processing import AbortCommandHandler, CommandProcessor
-from .domain import ExecutionContext, GraphExecution
+from .domain import GraphExecution
 from .entities.commands import AbortCommand
-from .error_handling import ErrorHandler
+from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
+from .graph_state_manager import GraphStateManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
+from .ready_queue import ReadyQueue, ReadyQueueState, create_ready_queue_from_state
 from .response_coordinator import ResponseStreamCoordinator
-from .state_management import UnifiedStateManager
 from .worker_management import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -55,18 +55,9 @@ class GraphEngine:
 
     def __init__(
         self,
-        tenant_id: str,
-        app_id: str,
         workflow_id: str,
-        user_id: str,
-        user_from: UserFrom,
-        invoke_from: InvokeFrom,
-        call_depth: int,
         graph: Graph,
-        graph_config: Mapping[str, object],
         graph_runtime_state: GraphRuntimeState,
-        max_execution_steps: int,
-        max_execution_time: int,
         command_channel: CommandChannel,
         min_workers: int | None = None,
         max_workers: int | None = None,
@@ -75,27 +66,14 @@ class GraphEngine:
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
 
-        # === Domain Models ===
-        # Execution context encapsulates workflow execution metadata
-        self._execution_context = ExecutionContext(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            workflow_id=workflow_id,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
-            max_execution_steps=max_execution_steps,
-            max_execution_time=max_execution_time,
-        )
-
         # Graph execution tracks the overall execution state
         self._graph_execution = GraphExecution(workflow_id=workflow_id)
+        if graph_runtime_state.graph_execution_json != "":
+            self._graph_execution.loads(graph_runtime_state.graph_execution_json)
 
         # === Core Dependencies ===
         # Graph structure and configuration
         self._graph = graph
-        self._graph_config = graph_config
         self._graph_runtime_state = graph_runtime_state
         self._command_channel = command_channel
 
@@ -107,20 +85,28 @@ class GraphEngine:
         self._scale_down_idle_time = scale_down_idle_time
 
         # === Execution Queues ===
-        # Queue for nodes ready to execute
-        self._ready_queue: queue.Queue[str] = queue.Queue()
+        # Create ready queue from saved state or initialize new one
+        self._ready_queue: ReadyQueue
+        if self._graph_runtime_state.ready_queue_json == "":
+            self._ready_queue = InMemoryReadyQueue()
+        else:
+            ready_queue_state = ReadyQueueState.model_validate_json(self._graph_runtime_state.ready_queue_json)
+            self._ready_queue = create_ready_queue_from_state(ready_queue_state)
+
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
 
         # === State Management ===
         # Unified state manager handles all node state transitions and queue operations
-        self._state_manager = UnifiedStateManager(self._graph, self._ready_queue)
+        self._state_manager = GraphStateManager(self._graph, self._ready_queue)
 
         # === Response Coordination ===
         # Coordinates response streaming from response nodes
         self._response_coordinator = ResponseStreamCoordinator(
             variable_pool=self._graph_runtime_state.variable_pool, graph=self._graph
         )
+        if graph_runtime_state.response_coordinator_json != "":
+            self._response_coordinator.loads(graph_runtime_state.response_coordinator_json)
 
         # === Event Management ===
         # Event manager handles both collection and emission of events
@@ -216,7 +202,6 @@ class GraphEngine:
             event_handler=self._event_handler_registry,
             event_collector=self._event_manager,
             execution_coordinator=self._execution_coordinator,
-            max_execution_time=self._execution_context.max_execution_time,
             event_emitter=self._event_manager,
         )
 

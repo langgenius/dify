@@ -70,6 +70,7 @@ def test_tool_variable_invoke():
         config={
             "id": "1",
             "data": {
+                "type": "tool",
                 "title": "a",
                 "desc": "a",
                 "provider_id": "time",
@@ -101,6 +102,7 @@ def test_tool_mixed_invoke():
         config={
             "id": "1",
             "data": {
+                "type": "tool",
                 "title": "a",
                 "desc": "a",
                 "provider_id": "time",
