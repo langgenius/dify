@@ -194,6 +194,7 @@ class ProviderConfig(BasicProviderConfig):
     required: bool = False
     default: Optional[Union[int, str, float, bool, list]] = None
     options: Optional[list[Option]] = None
+    multiple: bool | None = False
     label: Optional[I18nObject] = None
     help: Optional[I18nObject] = None
     url: Optional[str] = None
