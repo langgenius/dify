@@ -22,7 +22,8 @@ def get_example_filename() -> str:
 
 
 def get_example_data(length: int = 4) -> bytes:
-    result = "".join("test"[i % 4] for i in range(length)).encode()
+    chars = "test"
+    result = "".join(chars[i % len(chars)] for i in range(length)).encode()
     assert len(result) == length
     return result
 
