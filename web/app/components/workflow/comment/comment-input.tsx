@@ -1,6 +1,5 @@
 import type { FC } from 'react'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useReactFlow, useViewport } from 'reactflow'
+import { memo, useCallback, useEffect, useState } from 'react'
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
@@ -15,12 +14,6 @@ type CommentInputProps = {
 export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, onCancel }) => {
   const [content, setContent] = useState('')
   const { userProfile } = useAppContext()
-  const { flowToScreenPosition } = useReactFlow()
-  const viewport = useViewport()
-
-  const screenPosition = useMemo(() => {
-    return flowToScreenPosition(position)
-  }, [position.x, position.y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -46,8 +39,8 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
     <div
       className="absolute z-50 w-96"
       style={{
-        left: screenPosition.x,
-        top: screenPosition.y,
+        left: position.x,
+        top: position.y,
       }}
       data-comment-input
     >

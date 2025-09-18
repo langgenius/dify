@@ -17,8 +17,8 @@ export const CommentCursor: FC<CommentCursorProps> = memo(({ mousePosition }) =>
     <div
       className="pointer-events-none absolute z-50 flex h-6 w-6 items-center justify-center"
       style={{
-        left: mousePosition.elementX - 3,
-        top: mousePosition.elementY - 3,
+        left: mousePosition.elementX,
+        top: mousePosition.elementY,
         transform: 'translate(-50%, -50%)',
       }}
     >

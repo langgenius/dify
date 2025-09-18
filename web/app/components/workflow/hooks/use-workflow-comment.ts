@@ -68,9 +68,13 @@ export const useWorkflowComment = () => {
     }
 
     try {
+      // Convert screen position to flow position when submitting
+      const { screenToFlowPosition } = reactflow
+      const flowPosition = screenToFlowPosition({ x: pendingComment.x, y: pendingComment.y })
+
       const newComment = await createWorkflowComment(appId, {
-        position_x: pendingComment.x,
-        position_y: pendingComment.y,
+        position_x: flowPosition.x,
+        position_y: flowPosition.y,
         content,
         mentioned_user_ids: mentionedUserIds,
       })
@@ -85,7 +89,7 @@ export const useWorkflowComment = () => {
       setPendingComment(null)
       setControlMode(ControlMode.Pointer)
     }
-  }, [appId, pendingComment, setControlMode, setPendingComment, loadComments])
+  }, [appId, pendingComment, setControlMode, setPendingComment, loadComments, reactflow])
 
   const handleCommentCancel = useCallback(() => {
     setPendingComment(null)
@@ -270,18 +274,15 @@ export const useWorkflowComment = () => {
     activeCommentIdRef.current = null
   }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
 
-  const handleCreateComment = useCallback((mousePosition: { pageX: number; pageY: number }) => {
+  const handleCreateComment = useCallback((mousePosition: { elementX: number; elementY: number }) => {
     if (controlMode === ControlMode.Comment) {
-      const { screenToFlowPosition } = reactflow
-      const flowPosition = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
-
-      console.log('Setting pending comment at flow position:', flowPosition)
-      setPendingComment(flowPosition)
+      console.log('Setting pending comment at screen position:', mousePosition)
+      setPendingComment({ x: mousePosition.elementX, y: mousePosition.elementY })
     }
     else {
       console.log('Control mode is not Comment:', controlMode)
     }
-  }, [controlMode, setPendingComment, reactflow])
+  }, [controlMode, setPendingComment])
 
   return {
     comments,
