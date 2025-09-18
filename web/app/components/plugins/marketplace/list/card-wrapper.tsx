@@ -29,7 +29,7 @@ const CardWrapper = ({
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
   const { locale: localeFromLocale } = useI18N()
-  const { tagsMap } = useTags(t)
+  const { getTagLabel } = useTags(t)
 
   if (showInstallButton) {
     return (
@@ -43,7 +43,7 @@ const CardWrapper = ({
           footer={
             <CardMoreInfo
               downloadCount={plugin.install_count}
-              tags={plugin.tags.map(tag => tagsMap[tag.name].label)}
+              tags={plugin.tags.map(tag => getTagLabel(tag.name))}
             />
           }
         />
@@ -92,7 +92,7 @@ const CardWrapper = ({
         footer={
           <CardMoreInfo
             downloadCount={plugin.install_count}
-            tags={plugin.tags.map(tag => tagsMap[tag.name].label)}
+            tags={plugin.tags.map(tag => getTagLabel(tag.name))}
           />
         }
       />

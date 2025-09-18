@@ -181,7 +181,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
 
   const outputSchema = useMemo(() => {
     const res: any[] = []
-    if (!inputs.output_schema)
+    if (!inputs.output_schema || !inputs.output_schema.properties)
       return []
     Object.keys(inputs.output_schema.properties).forEach((outputKey) => {
       const output = inputs.output_schema.properties[outputKey]

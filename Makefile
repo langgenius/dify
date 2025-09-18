@@ -62,7 +62,7 @@ check:
 
 lint:
 	@echo "🔧 Running ruff format and check with fixes..."
-	@uv run --directory api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
 	@echo "✅ Linting complete"
 
 type-check:

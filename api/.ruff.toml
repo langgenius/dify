@@ -30,6 +30,7 @@ select = [
     "RUF022",  # unsorted-dunder-all
     "S506",    # unsafe-yaml-load
     "SIM",     # flake8-simplify rules
+    "T201",    # print-found
     "TRY400",  # error-instead-of-exception
     "TRY401",  # verbose-log-message
     "UP",      # pyupgrade rules
@@ -91,11 +92,18 @@ ignore = [
 "configs/*" = [
     "N802", # invalid-function-name
 ]
+"core/model_runtime/callbacks/base_callback.py" = [
+    "T201",
+]
+"core/workflow/callbacks/workflow_logging_callback.py" = [
+    "T201",
+]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
 ]
 "tests/*" = [
     "F811", # redefined-while-unused
+    "T201", # allow print in tests
 ]
 
 [lint.pyflakes]
