@@ -246,7 +246,7 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
   // Return placeholder for cron mode with empty or invalid expression
   if (data.mode === 'cron') {
-    if (!data.cron_expression || data.cron_expression.trim() === '' || !isValidCronExpression(data.cron_expression))
+    if (!data.cron_expression || !isValidCronExpression(data.cron_expression))
       return '--'
   }
 
