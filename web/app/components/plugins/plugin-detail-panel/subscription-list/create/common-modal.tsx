@@ -218,6 +218,7 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
                 formSchemas={credentialsSchema}
                 ref={credentialsFormRef}
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
+                preventDefaultSubmit={true}
               />
             </div>
           )}

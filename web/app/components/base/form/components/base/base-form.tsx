@@ -32,6 +32,8 @@ export type BaseFormProps = {
   ref?: FormRef
   disabled?: boolean
   formFromProps?: AnyFormApi
+  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  preventDefaultSubmit?: boolean
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -45,6 +47,8 @@ const BaseForm = ({
   ref,
   disabled,
   formFromProps,
+  onSubmit,
+  preventDefaultSubmit = false,
 }: BaseFormProps) => {
   const initialDefaultValues = useMemo(() => {
     if (defaultValues)
@@ -114,9 +118,18 @@ const BaseForm = ({
   if (!formSchemas?.length)
     return null
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (preventDefaultSubmit) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    onSubmit?.(e)
+  }
+
   return (
     <form
       className={cn(formClassName)}
+      onSubmit={handleSubmit}
     >
       {formSchemas.map(renderFieldWrapper)}
     </form>
