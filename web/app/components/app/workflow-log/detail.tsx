@@ -21,8 +21,8 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose }) => {
       </span>
       <h1 className='system-xl-semibold shrink-0 px-4 py-1 text-text-primary'>{t('appLog.runDetail.workflowTitle')}</h1>
       <Run
-        runDetailUrl={`/apps/${appDetail?.id}/workflow-runs/${runID}`}
-        tracingListUrl={`/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions`}
+        runDetailUrl={runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}` : ''}
+        tracingListUrl={runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions` : ''}
       />
     </div>
   )

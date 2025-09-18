@@ -1,12 +1,14 @@
 """Integration tests for ChatMessageApi permission verification."""
 
 import uuid
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
 from flask.testing import FlaskClient
 
 from controllers.console.app import completion as completion_api
+from controllers.console.app import message as message_api
 from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, Tenant
@@ -96,6 +98,109 @@ class TestChatMessageApiPermissions:
                 },
                 "response_mode": "blocking",
             },
+        )
+
+        assert response.status_code == status
+
+    @pytest.mark.parametrize(
+        ("role", "status"),
+        [
+            (TenantAccountRole.OWNER, 200),
+            (TenantAccountRole.ADMIN, 200),
+            (TenantAccountRole.EDITOR, 200),
+            (TenantAccountRole.NORMAL, 403),
+            (TenantAccountRole.DATASET_OPERATOR, 403),
+        ],
+    )
+    def test_get_requires_edit_permission(
+        self,
+        test_client: FlaskClient,
+        auth_header,
+        monkeypatch,
+        mock_app_model,
+        mock_account,
+        role: TenantAccountRole,
+        status: int,
+    ):
+        """Ensure GET chat-messages endpoint enforces edit permissions."""
+
+        mock_load_app_model = mock.Mock(return_value=mock_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+
+        conversation_id = uuid.uuid4()
+        created_at = naive_utc_now()
+
+        mock_conversation = SimpleNamespace(id=str(conversation_id), app_id=str(mock_app_model.id))
+        mock_message = SimpleNamespace(
+            id=str(uuid.uuid4()),
+            conversation_id=str(conversation_id),
+            inputs=[],
+            query="hello",
+            message=[{"text": "hello"}],
+            message_tokens=0,
+            re_sign_file_url_answer="",
+            answer_tokens=0,
+            provider_response_latency=0.0,
+            from_source="console",
+            from_end_user_id=None,
+            from_account_id=mock_account.id,
+            feedbacks=[],
+            workflow_run_id=None,
+            annotation=None,
+            annotation_hit_history=None,
+            created_at=created_at,
+            agent_thoughts=[],
+            message_files=[],
+            message_metadata_dict={},
+            status="success",
+            error="",
+            parent_message_id=None,
+        )
+
+        class MockQuery:
+            def __init__(self, model):
+                self.model = model
+
+            def where(self, *args, **kwargs):
+                return self
+
+            def first(self):
+                if getattr(self.model, "__name__", "") == "Conversation":
+                    return mock_conversation
+                return None
+
+            def order_by(self, *args, **kwargs):
+                return self
+
+            def limit(self, *_):
+                return self
+
+            def all(self):
+                if getattr(self.model, "__name__", "") == "Message":
+                    return [mock_message]
+                return []
+
+        mock_session = mock.Mock()
+        mock_session.query.side_effect = MockQuery
+        mock_session.scalar.return_value = False
+
+        monkeypatch.setattr(message_api, "db", SimpleNamespace(session=mock_session))
+        monkeypatch.setattr(message_api, "current_user", mock_account)
+
+        class DummyPagination:
+            def __init__(self, data, limit, has_more):
+                self.data = data
+                self.limit = limit
+                self.has_more = has_more
+
+        monkeypatch.setattr(message_api, "InfiniteScrollPagination", DummyPagination)
+
+        mock_account.role = role
+
+        response = test_client.get(
+            f"/console/api/apps/{mock_app_model.id}/chat-messages",
+            headers=auth_header,
+            query_string={"conversation_id": str(conversation_id)},
         )
 
         assert response.status_code == status

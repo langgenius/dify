@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'ナレッジパイプラインが公開されました',
+      tip: '<CustomLink>ドキュメントに移動</CustomLink>して、ドキュメントを追加または管理してください。',
     },
     error: {
       message: '知識パイプラインの公開に失敗しました',
@@ -54,6 +55,7 @@ const translation = {
     errorTip: 'パイプラインDSLのエクスポートに失敗しました',
   },
   details: {
+    createdBy: '{{author}}により作成',
     structure: '構造',
     structureTooltip: 'チャンク構造は、ドキュメントがどのように分割され、インデックスされるかを決定します。一般、親子、Q&Aモードを提供し、各ナレッジベースにユニークです。',
   },
@@ -94,11 +96,13 @@ const translation = {
     description: 'ユーザー入力フィールドは、パイプライン実行プロセス中に必要な変数を定義および収集するために使用されます。ユーザーは、フィールドタイプをカスタマイズし、異なるデータソースやドキュメント処理ステップのニーズに応じて入力値を柔軟に構成できます。',
   },
   addDocuments: {
+    title: 'ドキュメントを追加する',
     steps: {
+      chooseDatasource: 'データソースを選択する',
       processDocuments: 'ドキュメントを処理する',
       processingDocuments: '文書の処理',
-      chooseDatasource: 'データソースを選択する',
     },
+    backToDataSource: 'データソース',
     stepOne: {
       preview: 'プレビュー',
     },
@@ -110,25 +114,33 @@ const translation = {
       learnMore: 'もっと学ぶ',
     },
     characters: 'キャラクター',
-    backToDataSource: 'データソース',
-    title: 'ドキュメントを追加する',
+    selectOnlineDocumentTip: '最大{{count}}ページまで処理',
+    selectOnlineDriveTip: '最大{{count}}ファイルまで処理、各ファイル最大{{fileSize}}MB',
   },
   documentSettings: {
     title: 'ドキュメント設定',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}}ページ',
+  },
   onlineDrive: {
+    notConnected: '{{name}}が接続されていません',
+    notConnectedTip: '{{name}}と同期するには、まず{{name}}への接続を確立する必要があります。',
     breadcrumbs: {
-      allFiles: 'すべてのファイル',
-      searchPlaceholder: 'ファイルを検索...',
       allBuckets: 'すべてのクラウドストレージバケット',
+      allFiles: 'すべてのファイル',
+      searchResult: '"{{folderName}}"フォルダ内で{{searchResultsLength}}件のアイテムを見つけました',
+      searchPlaceholder: 'ファイルを検索...',
     },
+    notSupportedFileType: 'このファイルタイプはサポートされていません',
     emptyFolder: 'このフォルダーは空です',
     emptySearchResult: 'アイテムは見つかりませんでした',
-    notSupportedFileType: 'このファイルタイプはサポートされていません',
     resetKeywords: 'キーワードをリセットする',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}の{{pluginName}}',
+  },
+  configurationTip: '{{pluginName}}を設定',
   conversion: {
     confirm: {
       title: '確認',

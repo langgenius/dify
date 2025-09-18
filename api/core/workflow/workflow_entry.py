@@ -402,6 +402,8 @@ class WorkflowEntry:
             input_value = user_inputs.get(node_variable)
             if not input_value:
                 input_value = user_inputs.get(node_variable_key)
+            if input_value is None:
+                continue
 
             if isinstance(input_value, dict) and "type" in input_value and "transfer_method" in input_value:
                 input_value = file_factory.build_from_mapping(mapping=input_value, tenant_id=tenant_id)

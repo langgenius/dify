@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -16,6 +17,8 @@ from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+
+logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
@@ -257,7 +260,7 @@ class RagPipelineTransformService:
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:
-            print(need_install_plugin_unique_identifiers)
+            logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
     def _transfrom_to_empty_pipeline(self, dataset: Dataset):

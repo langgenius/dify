@@ -417,7 +417,7 @@ class WeaveDataTrace(BaseTraceInstance):
             if not login_status:
                 raise ValueError("Weave login failed")
             else:
-                print("Weave login successful")
+                logger.info("Weave login successful")
                 return True
         except Exception as e:
             logger.debug("Weave API check failed: %s", str(e))
