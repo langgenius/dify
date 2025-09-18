@@ -118,12 +118,14 @@ class RagPipelineExportApi(Resource):
 
             # Add include_secret params
         parser = reqparse.RequestParser()
-        parser.add_argument("include_secret", type=bool, default=False, location="args")
+        parser.add_argument("include_secret", type=str, default="false", location="args")
         args = parser.parse_args()
 
         with Session(db.engine) as session:
             export_service = RagPipelineDslService(session)
-            result = export_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=args["include_secret"])
+            result = export_service.export_rag_pipeline_dsl(
+                pipeline=pipeline, include_secret=args["include_secret"] == "true"
+            )
 
         return {"data": result}, 200
 
