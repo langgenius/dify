@@ -491,6 +491,15 @@ const translation = {
       unAuthorized: 'Non autorisé',
       specifyModelCredentialTip: 'Utilisez un identifiant de modèle configuré.',
       providerManagedTip: 'La configuration actuelle est hébergée par le fournisseur.',
+      customModelCredentials: 'Informations d’identification du modèle personnalisé',
+      manageCredentials: 'Gérer les informations d’identification',
+      modelCredential: 'Références du modèle',
+      addModel: 'Ajouter un modèle',
+      addNewModelCredential: 'Ajouter de nouvelles informations d’identification de modèle',
+      selectModelCredential: 'Sélectionnez les informations d’identification d’un modèle',
+      customModelCredentialsDeleteTip: 'Les informations d’identification sont en cours d’utilisation et ne peuvent pas être supprimées',
+      removeModel: 'Supprimer le modèle',
+      editModelCredential: 'Modifier les informations d’identification du modèle',
     },
   },
   dataSource: {
@@ -590,6 +599,7 @@ const translation = {
     viewDoc: 'Voir la documentation',
     relatedApp: 'applications liées',
     noRelatedApp: 'Pas d’applications liées',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Parle maintenant...',
@@ -748,6 +758,9 @@ const translation = {
     title: 'Fournir des retours',
     placeholder: 'Veuillez décrire ce qui n\'a pas fonctionné ou comment nous pourrions nous améliorer...',
     subtitle: 'Veuillez nous dire ce qui n\'a pas fonctionné avec cette réponse.',
+  },
+  label: {
+    optional: '(facultatif)',
   },
 }
 

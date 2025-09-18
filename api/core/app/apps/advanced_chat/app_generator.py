@@ -154,7 +154,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         if invoke_from == InvokeFrom.DEBUGGER:
             # always enable retriever resource in debugger mode
-            app_config.additional_features.show_retrieve_source = True
+            app_config.additional_features.show_retrieve_source = True  # type: ignore
 
         workflow_run_id = str(uuid.uuid4())
         # init application generate entity
@@ -467,7 +467,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             stream=stream,
-            draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from),
+            draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from, account=user),
         )
 
         return AdvancedChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
