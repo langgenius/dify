@@ -1,13 +1,13 @@
 'use client'
-import React from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   FloatingPortal,
   autoUpdate,
   flip,
-  hide,
   offset,
   shift,
   size,
+  useClick,
   useDismiss,
   useFloating,
   useFocus,
@@ -34,34 +34,32 @@ export type PortalToFollowElemOptions = {
 
 export function usePortalToFollowElem({
   placement = 'bottom',
-  open,
+  open: controlledOpen,
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
   triggerPopupSameWidth,
 }: PortalToFollowElemOptions = {}) {
-  const setOpen = setControlledOpen
-  const container = document.getElementById('workflow-container') || document.body
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const isControlled = controlledOpen !== undefined
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    setLocalOpen(newOpen)
+    setControlledOpen?.(newOpen)
+  }, [setControlledOpen, setLocalOpen])
+
   const data = useFloating({
     placement,
     open,
-    onOpenChange: setOpen,
+    onOpenChange: handleOpenChange,
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(offsetValue),
       flip({
         crossAxis: placement.includes('-'),
         fallbackAxisSideDirection: 'start',
-        padding: 8,
+        padding: 5,
       }),
-      shift({
-        padding: 8,
-        boundary: container,
-        altBoundary: true,
-      }),
-      hide({
-        // hide when the reference element is not visible
-        boundary: container,
-      }),
+      shift({ padding: 5 }),
       size({
         apply({ rects, elements }) {
           if (triggerPopupSameWidth)
@@ -75,24 +73,33 @@ export function usePortalToFollowElem({
 
   const hover = useHover(context, {
     move: false,
-    enabled: open == null,
+    enabled: !isControlled,
   })
   const focus = useFocus(context, {
-    enabled: open == null,
+    enabled: !isControlled,
   })
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
 
-  const interactions = useInteractions([hover, focus, dismiss, role])
+  const click = useClick(context)
+
+  const interactionsArray = useMemo(() => {
+    const result = [hover, focus, dismiss, role]
+
+    if (!isControlled)
+      result.push(click)
+    return result
+  }, [isControlled, hover, focus, dismiss, role, click])
+  const interactions = useInteractions(interactionsArray)
 
   return React.useMemo(
     () => ({
       open,
-      setOpen,
+      setOpen: handleOpenChange,
       ...interactions,
       ...data,
     }),
-    [open, setOpen, interactions, data],
+    [open, handleOpenChange, interactions, data],
   )
 }
 
