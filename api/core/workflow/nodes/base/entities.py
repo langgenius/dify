@@ -1,7 +1,7 @@
 import json
 from abc import ABC
-from collections.abc import Sequence
 from builtins import type as type_
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
 
