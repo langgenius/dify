@@ -7,14 +7,26 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+import type {
+  BlockEnum,
+  NodeDefault,
+  ToolWithProvider,
+} from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VarInInspect } from '@/types/workflow'
 import type {
   Node,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import type { FlowType } from '@/types/common'
+import type { FileUpload } from '../../base/features/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
-type CommonHooksFnMap = {
+export type AvailableNodesMetaData = {
+  nodes: NodeDefault[]
+  nodesMap?: Record<BlockEnum, NodeDefault<any>>
+}
+export type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: {
@@ -33,10 +45,14 @@ type CommonHooksFnMap = {
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
-  fetchInspectVars: () => Promise<void>
+  availableNodesMetaData?: AvailableNodesMetaData
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
+  exportCheck?: () => Promise<void>
+  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
+  fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
-  fetchInspectVarValue: (selector: ValueSelector) => Promise<void>
+  fetchInspectVarValue: (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => Promise<void>
   editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
   appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
@@ -50,8 +66,8 @@ type CommonHooksFnMap = {
   invalidateConversationVarValues: () => void
   configsMap?: {
     flowId: string
-    conversationVarsUrl: string
-    systemVarsUrl: string
+    flowType: FlowType
+    fileSettings: FileUpload
   }
 }
 
@@ -71,6 +87,15 @@ export const createHooksStore = ({
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
+  availableNodesMetaData = {
+    nodes: [],
+  },
+  getWorkflowRunAndTraceUrl = () => ({
+    runUrl: '',
+    traceUrl: '',
+  }),
+  exportCheck = async () => noop(),
+  handleExportDSL = async () => noop(),
   fetchInspectVars = async () => noop(),
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
@@ -100,6 +125,10 @@ export const createHooksStore = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

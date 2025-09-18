@@ -5,7 +5,7 @@ import {
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Keywords from './common/keywords'
@@ -48,7 +48,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const [showRegenerationModal, setShowRegenerationModal] = useState(false)
   const fullScreen = useSegmentListContext(s => s.fullScreen)
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
-  const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
 
@@ -86,9 +85,9 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     return `${total} ${t('datasetDocuments.segment.characters', { count })}`
   }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
 
-  const isFullDocMode = mode === 'hierarchical' && parentMode === 'full-doc'
+  const isFullDocMode = docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
   const titleText = isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
-  const labelPrefix = mode === 'hierarchical' ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+  const labelPrefix = docForm === ChunkingMode.parentChild ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (

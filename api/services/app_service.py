@@ -20,6 +20,7 @@ from libs.login import current_user
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.tag_service import TagService
@@ -161,6 +162,9 @@ class AppService:
         if FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
+
+        if dify_config.BILLING_ENABLED:
+            BillingService.clean_billing_info_cache(app.tenant_id)
 
         return app
 
@@ -336,6 +340,9 @@ class AppService:
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
+
+        if dify_config.BILLING_ENABLED:
+            BillingService.clean_billing_info_cache(app.tenant_id)
 
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
