@@ -3,7 +3,7 @@ import { RiCheckLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, R
 import { useStore } from '@/app/components/workflow/store'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
-import Avatar from '@/app/components/base/avatar'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import cn from '@/utils/classnames'
 import { ControlMode } from '@/app/components/workflow/types'
 import { resolveWorkflowComment } from '@/service/workflow-comment'
@@ -114,59 +114,23 @@ const CommentsPanel = () => {
               onClick={() => handleSelect(c)}
             >
               <div className='min-w-0'>
-                {/* Participants stacked avatars above creator name */}
-                {(() => {
-                  const creator = {
-                    id: c.created_by,
-                    name: c.created_by_account?.name || 'User',
-                    avatar_url: c.created_by_account?.avatar_url || null,
-                  }
-                  const collaborators = (c.participants || []).filter(p => p.id !== creator.id)
-                  const all = [creator, ...collaborators]
-                  if (!all.length) return null
-                  const shouldShowCount = all.length >= 4
-                  const maxVisible = shouldShowCount ? 2 : 3
-                  const visibleUsers = all.slice(0, maxVisible)
-                  const remainingCount = all.length - maxVisible
-                  return (
-                    <div className='mb-1 flex items-center justify-between'>
-                      <div className='flex items-center -space-x-1'>
-                        {visibleUsers.map((p, index) => (
-                          <div
-                            key={`${p.id}-${index}`}
-                            className='relative'
-                            style={{ zIndex: visibleUsers.length - index }}
-                          >
-                            <Avatar
-                              name={p.name}
-                              avatar={p.avatar_url || null}
-                              size={24}
-                              className='ring-2 ring-white'
-                            />
-                          </div>
-                        ))}
-                        {remainingCount > 0 && (
-                          <div
-                            className='flex h-[24px] w-[24px] items-center justify-center rounded-full bg-components-panel-on-panel-item-bg text-[10px] leading-none text-text-secondary ring-2 ring-white'
-                            style={{ zIndex: 0 }}
-                          >
-                            +{remainingCount}
-                          </div>
-                        )}
-                      </div>
-                      <div className='ml-2 flex items-center'>
-                        {c.resolved ? (
-                          <RiCheckboxCircleFill className='h-4 w-4 text-text-secondary'/>
-                        ) : (
-                          <RiCheckboxCircleLine
-                            className='h-4 w-4 cursor-pointer text-text-tertiary hover:text-text-secondary'
-                            onClick={() => handleResolve(c)}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })()}
+                <div className='mb-1 flex items-center justify-between'>
+                  <UserAvatarList
+                    users={c.participants}
+                    maxVisible={3}
+                    size={24}
+                  />
+                  <div className='ml-2 flex items-center'>
+                    {c.resolved ? (
+                      <RiCheckboxCircleFill className='h-4 w-4 text-text-secondary'/>
+                    ) : (
+                      <RiCheckboxCircleLine
+                        className='h-4 w-4 cursor-pointer text-text-tertiary hover:text-text-secondary'
+                        onClick={() => handleResolve(c)}
+                      />
+                    )}
+                  </div>
+                </div>
                 {/* Header row: creator + time */}
                 <div className='flex items-start'>
                   <div className='flex min-w-0 items-center gap-2'>
