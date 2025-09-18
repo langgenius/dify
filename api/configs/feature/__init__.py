@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import (
@@ -711,10 +712,34 @@ class ToolConfig(BaseSettings):
     )
 
 
+class TemplateMode(StrEnum):
+    # unsafe mode allows flexible operations in templates, but may cause security vulnerabilities
+    UNSAFE = "unsafe"
+
+    # sandbox mode restricts some unsafe operations like accessing __class__.
+    # however, it is still not 100% safe, for example, cpu exploitation can happen.
+    SANDBOX = "sandbox"
+
+    # templating is disabled
+    DISABLED = "disabled"
+
+
 class MailConfig(BaseSettings):
     """
     Configuration for email services
     """
+
+    MAIL_TEMPLATING_MODE: TemplateMode = Field(
+        description="Template mode for email services",
+        default=TemplateMode.SANDBOX,
+    )
+
+    MAIL_TEMPLATING_TIMEOUT: int = Field(
+        description="""
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. 
+        Only available in sandbox mode.""",
+        default=3,
+    )
 
     MAIL_TYPE: str | None = Field(
         description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
