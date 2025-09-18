@@ -96,13 +96,14 @@ const translation = {
       title: '通过OAuth创建',
       authorization: {
         title: 'OAuth授权',
-        description: '授权Dify访问您的账户',
-        redirectUrl: '重定向URL',
-        redirectUrlHelp: '在您的OAuth应用配置中使用此URL',
-        authorizeButton: '使用{{provider}}授权',
+        description: '授权 Dify 访问您的账户',
+        redirectUrl: '重定向 URL',
+        redirectUrlHelp: '在您的 OAuth 应用配置中使用此 URL',
+        authorizeButton: '使用 {{provider}} 授权',
         waitingAuth: '等待授权中...',
         authSuccess: '授权成功',
         authFailed: '授权失败',
+        waitingJump: '已授权，待跳转',
       },
       configuration: {
         title: '配置订阅',
@@ -112,7 +113,7 @@ const translation = {
     },
     manual: {
       title: '手动设置',
-      description: '手动配置您的Webhook订阅',
+      description: '手动配置您的 Webhook 订阅',
       instruction: {
         title: '设置说明',
         step1: '1. 复制下方的回调URL',

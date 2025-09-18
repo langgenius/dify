@@ -62,6 +62,13 @@ export type FormSchema = {
   validators?: AnyValidators
   showRadioUI?: boolean
   disabled?: boolean
+  dynamicSelectParams?: {
+    plugin_id: string
+    provider: string
+    action: string
+    parameter: string
+    credential_id: string
+  }
 }
 
 export type FormValues = Record<string, any>

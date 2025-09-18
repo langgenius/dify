@@ -1,19 +1,21 @@
+import type { FormSchema } from '@/app/components/base/form/types'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import Input from '@/app/components/base/input'
+import Radio from '@/app/components/base/radio'
+import RadioE from '@/app/components/base/radio/ui'
+import { PortalSelect } from '@/app/components/base/select'
+import PureSelect from '@/app/components/base/select/pure'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import cn from '@/utils/classnames'
+import { RiExternalLinkLine } from '@remixicon/react'
+import type { AnyFieldApi } from '@tanstack/react-form'
+import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
   memo,
   useMemo,
 } from 'react'
-import { RiExternalLinkLine } from '@remixicon/react'
-import type { AnyFieldApi } from '@tanstack/react-form'
-import { useStore } from '@tanstack/react-form'
-import cn from '@/utils/classnames'
-import Input from '@/app/components/base/input'
-import PureSelect from '@/app/components/base/select/pure'
-import type { FormSchema } from '@/app/components/base/form/types'
-import { FormTypeEnum } from '@/app/components/base/form/types'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
-import Radio from '@/app/components/base/radio'
-import RadioE from '@/app/components/base/radio/ui'
 
 const getInputType = (type: FormTypeEnum) => {
   switch (type) {
@@ -56,6 +58,7 @@ const BaseField = ({
     disabled: formSchemaDisabled,
     showRadioUI,
     type: formItemType,
+    dynamicSelectParams,
   } = formSchema
   const disabled = propsDisabled || formSchemaDisabled
 
@@ -115,6 +118,26 @@ const BaseField = ({
 
   const value = useStore(field.form.store, s => s.values[field.name])
 
+  const { data: dynamicOptionsData, isLoading: isDynamicOptionsLoading } = useTriggerPluginDynamicOptions(
+    dynamicSelectParams || {
+      plugin_id: '',
+      provider: '',
+      action: '',
+      parameter: '',
+      credential_id: '',
+    },
+    formItemType === FormTypeEnum.dynamicSelect,
+  )
+
+  const dynamicOptions = useMemo(() => {
+    if (!dynamicOptionsData?.options)
+      return []
+    return dynamicOptionsData.options.map(option => ({
+      name: typeof option.label === 'string' ? option.label : renderI18nObject(option.label),
+      value: option.value,
+    }))
+  }, [dynamicOptionsData, renderI18nObject])
+
   const show = useMemo(() => {
     return show_on.every((condition) => {
       return watchedValues[condition.variable] === condition.value
@@ -165,6 +188,22 @@ const BaseField = ({
               placeholder={memorizedPlaceholder}
               options={memorizedOptions}
               triggerPopupSameWidth
+            />
+          )
+        }
+        {
+          formItemType === FormTypeEnum.dynamicSelect && (
+            <PortalSelect
+              value={value}
+              onSelect={(item: any) => field.handleChange(item.value)}
+              readonly={disabled || isDynamicOptionsLoading}
+              placeholder={
+                isDynamicOptionsLoading
+                  ? 'Loading options...'
+                  : memorizedPlaceholder || 'Select an option'
+              }
+              items={dynamicOptions}
+              popupClassName="z-[9999]"
             />
           )
         }

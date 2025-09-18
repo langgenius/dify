@@ -166,7 +166,7 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
       credentials?: Record<string, any>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
-      return post(
+      return post<{ verified: boolean }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify/${subscriptionBuilderId}`,
         { body },
       )
@@ -276,10 +276,11 @@ export const useTriggerPluginDynamicOptions = (payload: {
   provider: string
   action: string
   parameter: string
+  credential_id: string
   extra?: Record<string, any>
 }, enabled = true) => {
   return useQuery<{ options: Array<{ value: string; label: any }> }>({
-    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.extra],
+    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.extra],
     queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
       '/workspaces/current/plugin/parameters/dynamic-options',
       {
@@ -289,7 +290,7 @@ export const useTriggerPluginDynamicOptions = (payload: {
         },
       },
     ),
-    enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter,
+    enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
   })
 }
 

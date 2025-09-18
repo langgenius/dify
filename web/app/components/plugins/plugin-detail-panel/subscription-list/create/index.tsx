@@ -202,6 +202,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       <OAuthClientSettingsModal
         oauthConfig={oauthConfig}
         onClose={hideClientSettingsModal}
+        showOAuthCreateModal={() => setSelectedCreateType(SupportedCreationMethods.OAUTH)}
       />
     )}
   </>

@@ -6,6 +6,7 @@ import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
 import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,
   useDeleteTriggerOAuth,
@@ -23,6 +24,7 @@ import { usePluginStore } from '../../store'
 type Props = {
   oauthConfig?: TriggerOAuthConfig
   onClose: () => void
+  showOAuthCreateModal: () => void
 }
 
 enum AuthorizationStatusEnum {
@@ -36,10 +38,9 @@ enum ClientTypeEnum {
   Custom = 'custom',
 }
 
-export const OAuthClientSettingsModal = ({ oauthConfig, onClose }: Props) => {
+export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreateModal }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
-  const [authorizationUrl, setAuthorizationUrl] = useState('')
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
   const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatusEnum>()
 
@@ -55,22 +56,30 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose }: Props) => {
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
   const { mutate: deleteOAuth } = useDeleteTriggerOAuth()
 
-  useEffect(() => {
-    if (providerName && oauthConfig?.params.client_id && oauthConfig?.params.client_secret) {
-      initiateOAuth(providerName, {
-        onSuccess: (response) => {
-          setAuthorizationUrl(response.authorization_url)
-          setSubscriptionBuilder(response.subscription_builder)
-        },
-        onError: (error: any) => {
-          Toast.notify({
-            type: 'error',
-            message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
-          })
-        },
-      })
-    }
-  }, [initiateOAuth, providerName, t, oauthConfig])
+  const handleAuthorization = () => {
+    setAuthorizationStatus(AuthorizationStatusEnum.Pending)
+    initiateOAuth(providerName, {
+      onSuccess: (response) => {
+        setSubscriptionBuilder(response.subscription_builder)
+        openOAuthPopup(response.authorization_url, (callbackData) => {
+          if (callbackData) {
+            Toast.notify({
+              type: 'success',
+              message: t('pluginTrigger.modal.oauth.authorization.authSuccess'),
+            })
+            onClose()
+            showOAuthCreateModal()
+          }
+        })
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
+        })
+      },
+    })
+  }
 
   useEffect(() => {
     if (providerName && subscriptionBuilder && authorizationStatus === AuthorizationStatusEnum.Pending) {
@@ -81,14 +90,11 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose }: Props) => {
             subscriptionBuilderId: subscriptionBuilder.id,
           },
           {
-            onSuccess: () => {
-              setAuthorizationStatus(AuthorizationStatusEnum.Success)
-              // setCurrentStep(OAuthStepEnum.Configuration)
-              Toast.notify({
-                type: 'success',
-                message: t('pluginTrigger.modal.oauth.authorization.authSuccess'),
-              })
-              clearInterval(pollInterval)
+            onSuccess: (response) => {
+              if (response.verified) {
+                setAuthorizationStatus(AuthorizationStatusEnum.Success)
+                clearInterval(pollInterval)
+              }
             },
             onError: () => {
               // Continue polling - auth might still be in progress
@@ -119,7 +125,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose }: Props) => {
     })
   }
 
-  const handleSaveOnly = () => {
+  const handleSave = (needAuth: boolean) => {
     const clientParams = clientFormRef.current?.getFormValues({})?.values || {}
     if (clientParams.client_id === oauthConfig?.params.client_id)
       clientParams.client_id = '[__HIDDEN__]'
@@ -133,7 +139,11 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose }: Props) => {
       enabled: clientType === ClientTypeEnum.Custom,
     }, {
       onSuccess: () => {
-        onClose()
+        if (needAuth)
+          handleAuthorization()
+        else
+          onClose()
+
         Toast.notify({
           type: 'success',
           message: t('pluginTrigger.modal.oauth.configuration.success'),
@@ -148,27 +158,19 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose }: Props) => {
     })
   }
 
-  const handleSaveAuthorize = () => {
-    handleSaveOnly()
-    if (authorizationUrl) {
-      setAuthorizationStatus(AuthorizationStatusEnum.Pending)
-      // Open authorization URL in new window
-      window.open(authorizationUrl, '_blank', 'width=500,height=600')
-    }
-  }
-
   return (
     <Modal
       title={t('pluginTrigger.modal.oauth.title')}
-      confirmButtonText={t('plugin.auth.saveAndAuth')}
+      confirmButtonText={authorizationStatus === AuthorizationStatusEnum.Pending ? t('pluginTrigger.modal.common.authorizing')
+        : authorizationStatus === AuthorizationStatusEnum.Success ? t('pluginTrigger.modal.oauth.authorization.waitingJump') : t('plugin.auth.saveAndAuth')}
       cancelButtonText={t('plugin.auth.saveOnly')}
       extraButtonText={t('common.operation.cancel')}
       showExtraButton
       extraButtonVariant='secondary'
       onExtraButtonClick={onClose}
       onClose={onClose}
-      onCancel={handleSaveOnly}
-      onConfirm={handleSaveAuthorize}
+      onCancel={() => handleSave(false)}
+      onConfirm={() => handleSave(true)}
       footerSlot={
         oauthConfig?.custom_enabled && oauthConfig?.params && (
           <div className='grow'>

@@ -2,6 +2,7 @@
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject } from '@/app/components/base/form/types'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
@@ -23,6 +24,12 @@ import LogViewer from '../log-viewer'
 type Props = {
   onClose: () => void
   createType: SupportedCreationMethods
+}
+
+const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
+  [SupportedCreationMethods.APIKEY]: TriggerCredentialTypeEnum.ApiKey,
+  [SupportedCreationMethods.OAUTH]: TriggerCredentialTypeEnum.Oauth2,
+  [SupportedCreationMethods.MANUAL]: TriggerCredentialTypeEnum.Unauthorized,
 }
 
 enum ApiKeyStep {
@@ -87,7 +94,7 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
       createBuilder(
         {
           provider: providerName,
-          credential_type: TriggerCredentialTypeEnum.Unauthorized,
+          credential_type: CREDENTIAL_TYPE_MAP[createType],
         },
         {
           onSuccess: (response) => {
@@ -262,7 +269,16 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
         </div>
         {createType !== SupportedCreationMethods.MANUAL && parametersSchema.length > 0 && (
           <BaseForm
-            formSchemas={parametersSchema}
+            formSchemas={parametersSchema.map(schema => ({
+              ...schema,
+              dynamicSelectParams: schema.type === FormTypeEnum.dynamicSelect ? {
+                plugin_id: detail?.plugin_id || '',
+                provider: providerName,
+                action: 'provider',
+                parameter: schema.name,
+                credential_id: subscriptionBuilder?.id || '',
+              } : undefined,
+            }))}
             ref={parametersFormRef}
             labelClassName='system-sm-medium mb-2 block text-text-primary'
           />

@@ -103,6 +103,7 @@ const translation = {
         waitingAuth: 'Waiting for authorization...',
         authSuccess: 'Authorization successful',
         authFailed: 'Authorization failed',
+        waitingJump: 'Authorized, waiting for jump',
       },
       configuration: {
         title: 'Configure Subscription',
