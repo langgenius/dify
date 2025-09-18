@@ -241,6 +241,9 @@ class MessageService:
 
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
+            if not app_config.additional_features:
+                raise ValueError("Additional features not found")
+
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 

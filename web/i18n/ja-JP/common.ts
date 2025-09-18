@@ -508,6 +508,15 @@ const translation = {
       providerManagedTip: '現在の設定はプロバイダーによってホストされています。',
       specifyModelCredential: 'モデルの資格情報を指定してください',
       specifyModelCredentialTip: '構成されたモデルの認証情報を使用してください。',
+      addModel: 'モデルを追加する',
+      addNewModelCredential: '新しいモデルの認証情報を追加する',
+      editModelCredential: 'モデルの資格情報を編集する',
+      removeModel: 'モデルを削除する',
+      customModelCredentialsDeleteTip: '認証情報は使用中で、削除できません。',
+      modelCredential: 'モデルの資格情報',
+      manageCredentials: '認証情報を管理する',
+      customModelCredentials: 'カスタムモデルの認証情報',
+      selectModelCredential: 'モデルの資格情報を選択する',
     },
   },
   dataSource: {
@@ -607,6 +616,7 @@ const translation = {
     viewDoc: 'ドキュメントを表示',
     relatedApp: '関連アプリ',
     noRelatedApp: '関連付けられたアプリはありません',
+    pipeline: 'パイプライン',
   },
   voiceInput: {
     speaking: '今話しています...',
@@ -747,6 +757,9 @@ const translation = {
     title: 'フィードバックを提供する',
     subtitle: 'この回答で何が間違っていたのか教えてください。',
     placeholder: '何が間違っていたか、またはどのように改善できるかを教えてください...',
+  },
+  label: {
+    optional: '(オプション)',
   },
 }
 

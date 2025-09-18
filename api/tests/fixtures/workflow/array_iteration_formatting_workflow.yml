@@ -1,0 +1,275 @@
+app:
+  description: 'This is a simple workflow contains a Iteration.
+
+
+    It doesn''t need any inputs, and will outputs:
+
+
+    ```
+
+    {"output": ["output: 1", "output: 2", "output: 3"]}
+
+    ```'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: test_iteration
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 1754683427386-source-1754683442688-target
+      source: '1754683427386'
+      sourceHandle: source
+      target: '1754683442688'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: 1754683442688-source-1754683430480-target
+      source: '1754683442688'
+      sourceHandle: source
+      target: '1754683430480'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1754683430480'
+        sourceType: iteration-start
+        targetType: template-transform
+      id: 1754683430480start-source-1754683458843-target
+      source: 1754683430480start
+      sourceHandle: source
+      target: '1754683458843'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: end
+      id: 1754683430480-source-1754683480778-target
+      source: '1754683430480'
+      sourceHandle: source
+      target: '1754683480778'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 54
+      id: '1754683427386'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        error_handle_mode: terminated
+        height: 178
+        is_parallel: false
+        iterator_input_type: array[number]
+        iterator_selector:
+        - '1754683442688'
+        - result
+        output_selector:
+        - '1754683458843'
+        - output
+        output_type: array[string]
+        parallel_nums: 10
+        selected: false
+        start_node_id: 1754683430480start
+        title: Iteration
+        type: iteration
+        width: 388
+      height: 178
+      id: '1754683430480'
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 388
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: 1754683430480start
+      parentId: '1754683430480'
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 708
+        y: 350
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        code: "\ndef main() -> dict:\n    return {\n        \"result\": [1, 2, 3],\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: array[number]
+        selected: false
+        title: Code
+        type: code
+        variables: []
+      height: 54
+      id: '1754683442688'
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1754683430480'
+        selected: false
+        template: 'output: {{ arg1 }}'
+        title: Template
+        type: template-transform
+        variables:
+        - value_selector:
+          - '1754683430480'
+          - item
+          value_type: string
+          variable: arg1
+      height: 54
+      id: '1754683458843'
+      parentId: '1754683430480'
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 812
+        y: 350
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754683430480'
+          - output
+          value_type: array[string]
+          variable: output
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: '1754683480778'
+      position:
+        x: 1132
+        y: 282
+      positionAbsolute:
+        x: 1132
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -476
+      y: 3
+      zoom: 1

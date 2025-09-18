@@ -10,6 +10,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import { useStore } from '@/app/components/workflow/store'
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean
@@ -17,6 +18,8 @@ type MixedVariableTextInputProps = {
   availableNodes?: Node[]
   value?: string
   onChange?: (text: string) => void
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 const MixedVariableTextInput = ({
   readOnly = false,
@@ -24,10 +27,15 @@ const MixedVariableTextInput = ({
   availableNodes = [],
   value = '',
   onChange,
+  showManageInputField,
+  onManageInputField,
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
+  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
+
   return (
     <PromptEditor
+      key={controlPromptEditorRerenderKey}
       wrapperClassName={cn(
         'w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
@@ -52,6 +60,8 @@ const MixedVariableTextInput = ({
           }
           return acc
         }, {} as any),
+        showManageInputField,
+        onManageInputField,
       }}
       placeholder={<Placeholder />}
       onChange={onChange}

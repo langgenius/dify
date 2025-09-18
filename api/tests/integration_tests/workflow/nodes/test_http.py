@@ -5,14 +5,12 @@ from urllib.parse import urlencode
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.graph import Graph
 from core.workflow.nodes.http_request.node import HttpRequestNode
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
-from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 
 
@@ -25,15 +23,12 @@ def init_http_node(config: dict):
                 "target": "1",
             },
         ],
-        "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
+        "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -52,12 +47,21 @@ def init_http_node(config: dict):
     variable_pool.add(["a", "args1"], 1)
     variable_pool.add(["a", "args2"], 2)
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node = HttpRequestNode(
         id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
     )
 
     # Initialize node data
@@ -73,6 +77,7 @@ def test_get(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -106,6 +111,7 @@ def test_no_auth(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -135,6 +141,7 @@ def test_custom_authorization_header(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -227,6 +234,7 @@ def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -267,6 +275,7 @@ def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -306,6 +315,7 @@ def test_custom_authorization_with_empty_api_key(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -339,6 +349,7 @@ def test_template(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -374,6 +385,7 @@ def test_json(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -416,6 +428,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -463,6 +476,7 @@ def test_form_data(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -513,6 +527,7 @@ def test_none_data(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "post",
@@ -546,6 +561,7 @@ def test_mock_404(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -575,6 +591,7 @@ def test_multi_colons_parse(setup_http_mock):
         config={
             "id": "1",
             "data": {
+                "type": "http-request",
                 "title": "http",
                 "desc": "",
                 "method": "get",
@@ -627,10 +644,11 @@ def test_nested_object_variable_selector(setup_http_mock):
             },
         ],
         "nodes": [
-            {"data": {"type": "start"}, "id": "start"},
+            {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
                 "id": "1",
                 "data": {
+                    "type": "http-request",
                     "title": "http",
                     "desc": "",
                     "method": "get",
@@ -651,12 +669,9 @@ def test_nested_object_variable_selector(setup_http_mock):
         ],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -676,12 +691,21 @@ def test_nested_object_variable_selector(setup_http_mock):
     variable_pool.add(["a", "args2"], 2)
     variable_pool.add(["a", "args3"], {"nested": "nested_value"})  # Only for this test
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node = HttpRequestNode(
         id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=graph_config["nodes"][1],
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
     )
 
     # Initialize node data

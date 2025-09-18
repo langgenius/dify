@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Değiştir',
     changeRetrievalMethod: 'Geri alma yöntemini değiştir',
+    keyword_search: {
+      title: 'Ters Çevrilmiş İndeks',
+      description: 'Ters İndeks, verimli erişim için kullanılan bir yapıdır. Terimlere göre düzenlenen her terim, onu içeren belgelere veya web sayfalarına işaret eder.',
+    },
   },
   docsFailedNotice: 'belgeler dizine eklenemedi',
   retry: 'Yeniden Dene',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Genel',
     parentChild: 'Ebeveyn-çocuk',
+    graph: 'Grafik',
+    qa: 'Soru-Cevap',
   },
   parentMode: {
     fullDoc: 'Tam doküman',
@@ -217,6 +223,9 @@ const translation = {
     chooseTime: 'Bir zaman seçin...',
   },
   embeddingModelNotAvailable: 'Gömme modeli mevcut değil.',
+  updated: 'Güncel -leştirilmiş',
+  createFromPipeline: 'Bilgi İşlem Hattından Oluşturun',
+  externalKnowledgeBase: 'Harici Bilgi Bankası',
 }
 
 export default translation

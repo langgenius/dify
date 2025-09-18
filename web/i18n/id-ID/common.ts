@@ -441,6 +441,15 @@ const translation = {
       configLoadBalancing: 'Penyeimbangan Beban Konfigurasi',
       addModelCredential: 'Menambahkan kredensial model',
       specifyModelCredential: 'Tentukan kredensial model',
+      addNewModelCredential: 'Menambahkan kredensial model baru',
+      modelCredential: 'Kredensial model',
+      addModel: 'Tambahkan model',
+      removeModel: 'Hapus Model',
+      manageCredentials: 'Kelola Kredensial',
+      selectModelCredential: 'Pilih kredensial model',
+      editModelCredential: 'Mengedit kredensial model',
+      customModelCredentials: 'Kredensial Model Kustom',
+      customModelCredentialsDeleteTip: 'Kredensial sedang digunakan dan tidak dapat dihapus',
     },
     systemModelSettingsLink: 'Mengapa perlu menyiapkan model sistem?',
     apiKey: 'API-KUNCI',
@@ -587,6 +596,7 @@ const translation = {
     settings: 'Pengaturan',
     noRelatedApp: 'Tidak ada aplikasi yang ditautkan',
     viewDoc: 'Lihat dokumentasi',
+    pipeline: 'Pipa',
   },
   voiceInput: {
     speaking: 'Bicaralah sekarang...',
@@ -717,6 +727,9 @@ const translation = {
     dropImageHere: 'Letakkan gambar Anda di sini, atau',
   },
   you: 'Kamu',
+  label: {
+    optional: '(opsional)',
+  },
 }
 
 export default translation

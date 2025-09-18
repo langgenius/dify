@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useMemo,
 } from 'react'
 import { uniqBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
@@ -13,28 +12,28 @@ import type {
   Connection,
 } from 'reactflow'
 import type {
+  BlockEnum,
   Edge,
   Node,
   ValueSelector,
 } from '../types'
 import {
-  BlockEnum,
   WorkflowRunningStatus,
 } from '../types'
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import {
-  getParallelInfo,
-} from '../utils'
+import { getParallelInfo } from '../utils'
 import {
   PARALLEL_DEPTH_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
-import { useNodesExtraData } from './use-nodes-data'
+import { useAvailableBlocks } from './use-available-blocks'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchAllBuiltInTools,
@@ -42,12 +41,11 @@ import {
   fetchAllMCPTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
-import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
-import { canFindTool } from '@/utils'
 import { MAX_PARALLEL_LIMIT } from '@/config'
+import { useNodesMetaData } from '.'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -59,7 +57,17 @@ export const useWorkflow = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const nodesExtraData = useNodesExtraData()
+  const { getAvailableBlocks } = useAvailableBlocks()
+  const { nodesMap } = useNodesMetaData()
+
+  const getNodeById = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
+    return currentNode
+  }, [store])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
@@ -67,13 +75,17 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
-    let startNode = nodes.find(node => node.data.type === BlockEnum.Start)
     const currentNode = nodes.find(node => node.id === nodeId)
 
-    if (currentNode?.parentId)
-      startNode = nodes.find(node => node.parentId === currentNode.parentId && (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_LOOP_START_NODE))
+    let startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
 
-    if (!startNode)
+    if (currentNode?.parentId) {
+      const startNode = nodes.find(node => node.parentId === currentNode.parentId && (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_LOOP_START_NODE))
+      if (startNode)
+        startNodes = [startNode]
+    }
+
+    if (!startNodes.length)
       return []
 
     const list: Node[] = []
@@ -92,8 +104,10 @@ export const useWorkflow = () => {
           callback(root)
       }
     }
-    preOrder(startNode, (node) => {
-      list.push(node)
+    startNodes.forEach((startNode) => {
+      preOrder(startNode, (node) => {
+        list.push(node)
+      })
     })
 
     const incomers = getIncomers({ id: nodeId } as Node, nodes, edges)
@@ -103,7 +117,7 @@ export const useWorkflow = () => {
     return uniqBy(list, 'id').filter((item: Node) => {
       return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
-  }, [store])
+  }, [store, nodesMap])
 
   const getBeforeNodesInSameBranch = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
     const {
@@ -230,33 +244,6 @@ export const useWorkflow = () => {
     return nodes.filter(node => node.parentId === nodeId)
   }, [store])
 
-  const isFromStartNode = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const currentNode = nodes.find(node => node.id === nodeId)
-
-    if (!currentNode)
-      return false
-
-    if (currentNode.data.type === BlockEnum.Start)
-      return true
-
-    const checkPreviousNodes = (node: Node) => {
-      const previousNodes = getBeforeNodeById(node.id)
-
-      for (const prevNode of previousNodes) {
-        if (prevNode.data.type === BlockEnum.Start)
-          return true
-        if (checkPreviousNodes(prevNode))
-          return true
-      }
-
-      return false
-    }
-
-    return checkPreviousNodes(currentNode)
-  }, [store, getBeforeNodeById])
-
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const allNodes = getNodes()
@@ -317,28 +304,102 @@ export const useWorkflow = () => {
     return true
   }, [store, workflowStore, t])
 
-  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string) => {
+  const getRootNodesById = useCallback((nodeId: string) => {
     const {
-      parallelList,
-      hasAbnormalEdges,
-    } = getParallelInfo(nodes, edges, parentNodeId)
-    const { workflowConfig } = workflowStore.getState()
+      getNodes,
+      edges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
 
-    if (hasAbnormalEdges)
-      return false
+    const rootNodes: Node[] = []
 
-    for (let i = 0; i < parallelList.length; i++) {
-      const parallel = parallelList[i]
+    if (!currentNode)
+      return rootNodes
 
-      if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
-        const { setShowTips } = workflowStore.getState()
-        setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
+    if (currentNode.parentId) {
+      const parentNode = nodes.find(node => node.id === currentNode.parentId)
+      if (parentNode) {
+        const parentList = getRootNodesById(parentNode.id)
+
+        rootNodes.push(...parentList)
+      }
+    }
+
+    const traverse = (root: Node, callback: (node: Node) => void) => {
+      if (root) {
+        const incomers = getIncomers(root, nodes, edges)
+
+        if (incomers.length) {
+          incomers.forEach((node) => {
+            traverse(node, callback)
+          })
+        }
+        else {
+          callback(root)
+        }
+      }
+    }
+    traverse(currentNode, (node) => {
+      rootNodes.push(node)
+    })
+
+    const length = rootNodes.length
+    if (length)
+      return uniqBy(rootNodes, 'id')
+
+    return []
+  }, [store])
+
+  const getStartNodes = useCallback((nodes: Node[], currentNode?: Node) => {
+    const { id, parentId } = currentNode || {}
+    let startNodes: Node[] = []
+
+    if (parentId) {
+      const parentNode = nodes.find(node => node.id === parentId)
+      if (!parentNode)
+        throw new Error('Parent node not found')
+
+      const startNode = nodes.find(node => node.id === (parentNode.data as (IterationNodeType | LoopNodeType)).start_node_id)
+      if (startNode)
+        startNodes = [startNode]
+    }
+    else {
+      startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
+    }
+
+    if (!startNodes.length)
+      startNodes = getRootNodesById(id || '')
+
+    return startNodes
+  }, [nodesMap, getRootNodesById])
+
+  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], targetNode?: Node) => {
+    const startNodes = getStartNodes(nodes, targetNode)
+
+    for (let i = 0; i < startNodes.length; i++) {
+      const {
+        parallelList,
+        hasAbnormalEdges,
+      } = getParallelInfo(startNodes[i], nodes, edges)
+      const { workflowConfig } = workflowStore.getState()
+
+      if (hasAbnormalEdges)
         return false
+
+      for (let i = 0; i < parallelList.length; i++) {
+        const parallel = parallelList[i]
+
+        if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
+          const { setShowTips } = workflowStore.getState()
+          setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
+          return false
+        }
       }
     }
 
     return true
-  }, [t, workflowStore])
+  }, [t, workflowStore, getStartNodes])
 
   const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
@@ -359,8 +420,8 @@ export const useWorkflow = () => {
       return false
 
     if (sourceNode && targetNode) {
-      const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
-      const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
+      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNode.data.type, !!sourceNode.parentId).availableNextBlocks
+      const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
 
       if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
         return false
@@ -384,16 +445,10 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [store, nodesExtraData, checkParallelLimit])
-
-  const getNode = useCallback((nodeId?: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-
-    return nodes.find(node => node.id === nodeId) || nodes.find(node => node.data.type === BlockEnum.Start)
-  }, [store])
+  }, [store, checkParallelLimit, getAvailableBlocks])
 
   return {
+    getNodeById,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getBeforeNodesInSameBranchIncludeParent,
@@ -405,11 +460,11 @@ export const useWorkflow = () => {
     checkParallelLimit,
     checkNestedParallelLimit,
     isValidConnection,
-    isFromStartNode,
-    getNode,
     getBeforeNodeById,
     getIterationNodeChildren,
     getLoopNodeChildren,
+    getRootNodesById,
+    getStartNodes,
   }
 }
 
@@ -471,6 +526,7 @@ export const useWorkflowReadOnly = () => {
     getWorkflowReadOnly,
   }
 }
+
 export const useNodesReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -491,31 +547,6 @@ export const useNodesReadOnly = () => {
     nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring),
     getNodesReadOnly,
   }
-}
-
-export const useToolIcon = (data: Node['data']) => {
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
-
-  const toolIcon = useMemo(() => {
-    if (!data)
-      return ''
-    if (data.type === BlockEnum.Tool) {
-      let targetTools = workflowTools
-      if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
-      else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
-      else if (data.provider_type === CollectionType.mcp)
-        targetTools = mcpTools
-
-      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
-    }
-  }, [data, buildInTools, customTools, mcpTools, workflowTools])
-
-  return toolIcon
 }
 
 export const useIsNodeInIteration = (iterationId: string) => {
