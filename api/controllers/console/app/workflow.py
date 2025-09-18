@@ -22,6 +22,7 @@ from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
@@ -129,6 +130,7 @@ class DraftWorkflowApi(Resource):
             parser.add_argument("hash", type=str, required=False, location="json")
             parser.add_argument("environment_variables", type=list, required=True, location="json")
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
+            parser.add_argument("force_upload", type=bool, required=False, default=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -145,6 +147,7 @@ class DraftWorkflowApi(Resource):
                     "hash": data.get("hash"),
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
+                    "force_upload": data.get("force_upload", False),
                 }
             except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
@@ -173,6 +176,7 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                force_upload=args.get("force_upload", False),
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -816,6 +820,27 @@ class WorkflowConfigApi(Resource):
         }
 
 
+class WorkflowFeaturesApi(Resource):
+    """Update draft workflow features."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        parser = reqparse.RequestParser()
+        parser.add_argument("features", type=dict, required=True, location="json")
+        args = parser.parse_args()
+
+        features = args.get("features")
+
+        # Update draft workflow features
+        workflow_service = WorkflowService()
+        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+
+        return {"result": "success"}
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
@@ -1041,6 +1066,10 @@ api.add_resource(
 api.add_resource(
     WorkflowConfigApi,
     "/apps/<uuid:app_id>/workflows/draft/config",
+)
+api.add_resource(
+    WorkflowFeaturesApi,
+    "/apps/<uuid:app_id>/workflows/draft/features",
 )
 api.add_resource(
     AdvancedChatDraftWorkflowRunApi,

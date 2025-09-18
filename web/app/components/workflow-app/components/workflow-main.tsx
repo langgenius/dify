@@ -26,11 +26,12 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { useStoreApi } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -42,18 +43,29 @@ const WorkflowMain = ({
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
   const containerRef = useRef<HTMLDivElement>(null)
+  const reactFlow = useReactFlow()
 
   const store = useStoreApi()
-  const { startCursorTracking, stopCursorTracking, onlineUsers } = useCollaboration(appId, store)
+  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId, store)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isConnected)
+      setMyUserId('current-user')
+  }, [isConnected])
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  )
 
   useEffect(() => {
     if (containerRef.current)
-      startCursorTracking(containerRef as React.RefObject<HTMLElement>)
+      startCursorTracking(containerRef as React.RefObject<HTMLElement>, reactFlow)
 
     return () => {
       stopCursorTracking()
     }
-  }, [startCursorTracking, stopCursorTracking])
+  }, [startCursorTracking, stopCursorTracking, reactFlow])
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -102,6 +114,20 @@ const WorkflowMain = ({
     }
   }, [featuresStore, workflowStore])
 
+  const {
+    doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
+  } = useNodesSyncDraft()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const {
+    handleBackupDraft,
+    handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow,
+    handleRun,
+    handleStopRun,
+  } = useWorkflowRun()
+
   useEffect(() => {
     if (!appId) return
 
@@ -118,18 +144,46 @@ const WorkflowMain = ({
     return unsubscribe
   }, [appId, handleWorkflowDataUpdate])
 
-  const {
-    doSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const {
-    handleBackupDraft,
-    handleLoadBackupDraft,
-    handleRestoreFromPublishedWorkflow,
-    handleRun,
-    handleStopRun,
-  } = useWorkflowRun()
+  // Listen for workflow updates from other users
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
+      console.log('Received workflow update from collaborator, fetching latest workflow data')
+      try {
+        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+
+        // Handle features, variables etc.
+        handleWorkflowDataUpdate(response)
+
+        // Update workflow canvas (nodes, edges, viewport)
+        if (response.graph) {
+          handleUpdateWorkflowCanvas({
+            nodes: response.graph.nodes || [],
+            edges: response.graph.edges || [],
+            viewport: response.graph.viewport || { x: 0, y: 0, zoom: 1 },
+          })
+        }
+      }
+      catch (error) {
+        console.error('Failed to fetch updated workflow:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas])
+
+  // Listen for sync requests from other users (only processed by leader)
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onSyncRequest(() => {
+      console.log('Leader received sync request, performing sync')
+      doSyncWorkflowDraft()
+    })
+
+    return unsubscribe
+  }, [appId, doSyncWorkflowDraft])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
@@ -143,18 +197,6 @@ const WorkflowMain = ({
   } = useDSL()
 
   const configsMap = useConfigsMap()
-
-  const { cursors, isConnected } = useCollaboration(appId)
-  const [myUserId, setMyUserId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isConnected)
-      setMyUserId('current-user')
-  }, [isConnected])
-
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
-  )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,

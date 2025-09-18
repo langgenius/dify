@@ -5,6 +5,7 @@ import type { NoteNodeType } from '../note-node/types'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
 import { useAppContext } from '@/context/app-context'
+import { ControlMode } from '../types'
 
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
@@ -35,7 +36,14 @@ export const useOperator = () => {
     })
   }, [workflowStore, userProfile])
 
+  const handleAddComment = useCallback(() => {
+    workflowStore.setState({
+      controlMode: ControlMode.Comment,
+    })
+  }, [workflowStore])
+
   return {
     handleAddNote,
+    handleAddComment,
   }
 }

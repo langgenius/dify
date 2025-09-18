@@ -1,5 +1,7 @@
 import type { FC } from 'react'
+import { useViewport } from 'reactflow'
 import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types'
+import { getUserColor } from '../utils/user-color'
 
 type UserCursorsProps = {
   cursors: Record<string, CursorPosition>
@@ -7,20 +9,20 @@ type UserCursorsProps = {
   onlineUsers: OnlineUser[]
 }
 
-const getUserColor = (id: string) => {
-  const colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
-  const hash = id.split('').reduce((a, b) => {
-    a = ((a << 5) - a) + b.charCodeAt(0)
-    return a & a
-  }, 0)
-  return colors[Math.abs(hash) % colors.length]
-}
-
 const UserCursors: FC<UserCursorsProps> = ({
   cursors,
   myUserId,
   onlineUsers,
 }) => {
+  const viewport = useViewport()
+
+  const convertToScreenCoordinates = (cursor: CursorPosition) => {
+    // Convert world coordinates to screen coordinates using current viewport
+    const screenX = cursor.x * viewport.zoom + viewport.x
+    const screenY = cursor.y * viewport.zoom + viewport.y
+
+    return { x: screenX, y: screenY }
+  }
   return (
     <>
       {Object.entries(cursors || {}).map(([userId, cursor]) => {
@@ -30,14 +32,15 @@ const UserCursors: FC<UserCursorsProps> = ({
         const userInfo = onlineUsers.find(user => user.user_id === userId)
         const userName = userInfo?.username || `User ${userId.slice(-4)}`
         const userColor = getUserColor(userId)
+        const screenPos = convertToScreenCoordinates(cursor)
 
         return (
           <div
             key={userId}
-            className="pointer-events-none absolute z-[10000] -translate-x-0.5 -translate-y-0.5 transition-all duration-150 ease-out"
+            className="pointer-events-none absolute z-[10000] transition-all duration-150 ease-out"
             style={{
-              left: cursor.x,
-              top: cursor.y,
+              left: screenPos.x,
+              top: screenPos.y,
             }}
           >
             <svg
@@ -49,16 +52,16 @@ const UserCursors: FC<UserCursorsProps> = ({
               className="drop-shadow-md"
             >
               <path
-                d="M3 3L16 8L9 10L7 17L3 3Z"
+                d="M5 3L5 15L8 11.5L11 16L13 15L10 10.5L14 10.5L5 3Z"
                 fill={userColor}
                 stroke="white"
-                strokeWidth="1"
+                strokeWidth="1.5"
                 strokeLinejoin="round"
               />
             </svg>
 
             <div
-              className="absolute -top-0.5 left-[18px] max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
+              className="absolute left-4 top-4 max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
               style={{
                 backgroundColor: userColor,
               }}
