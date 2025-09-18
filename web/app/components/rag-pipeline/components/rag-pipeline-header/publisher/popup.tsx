@@ -209,6 +209,7 @@ const Popup = () => {
     hidePublishAsKnowledgePipelineModal,
     notify,
     t,
+    invalidCustomizedTemplateList,
   ])
 
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
