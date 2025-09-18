@@ -58,7 +58,7 @@ const Configure = ({
 
   const handleToggle = useCallback(() => {
     setOpen(v => !v)
-  }, [setOpen])
+  }, [])
 
   const handleUpdate = useCallback(() => {
     setOpen(false)
