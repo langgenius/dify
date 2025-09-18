@@ -89,7 +89,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     const currTool = currCollection?.tools.find(tool => tool.name === payload.tool_name)
     const output_schema = currTool?.output_schema
     let res: any[] = []
-    if (!output_schema) {
+    if (!output_schema || !output_schema.properties) {
       res = TOOL_OUTPUT_STRUCT
     }
     else {

@@ -23,7 +23,7 @@ import type {
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, baseOptions, getAccessToken } from './fetch'
+import { ContentType, base, getAccessToken, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
 import type {
   DataSourceNodeCompletedResponse,
@@ -400,6 +400,7 @@ export const ssePost = async (
 
   const token = localStorage.getItem('console_token')
 
+  const baseOptions = getBaseOptions()
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
