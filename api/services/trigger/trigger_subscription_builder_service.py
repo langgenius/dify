@@ -35,10 +35,12 @@ class TriggerSubscriptionBuilderService:
     __MAX_TRIGGER_PROVIDER_COUNT__ = 10
 
     ##########################
-    # Validation endpoint
+    # Builder endpoint
     ##########################
+    __BUILDER_CACHE_EXPIRE_SECONDS__ = 30 * 60
+
     __VALIDATION_REQUEST_CACHE_COUNT__ = 10
-    __VALIDATION_REQUEST_CACHE_EXPIRE_MS__ = 30 * 60 * 1000
+    __VALIDATION_REQUEST_CACHE_EXPIRE_SECONDS__ = 30 * 60
 
     @classmethod
     def encode_cache_key(cls, subscription_id: str) -> str:
@@ -168,7 +170,7 @@ class TriggerSubscriptionBuilderService:
         )
         cache_key = cls.encode_cache_key(subscription_id)
         redis_client.setex(
-            cache_key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, subscription_builder.model_dump_json()
+            cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder.model_dump_json()
         )
         return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder)
 
@@ -196,7 +198,7 @@ class TriggerSubscriptionBuilderService:
         subscription_builder_updater.update(subscription_builder_cache)
 
         redis_client.setex(
-            cache_key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, subscription_builder_cache.model_dump_json()
+            cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder_cache.model_dump_json()
         )
         return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder_cache)
 
@@ -259,18 +261,18 @@ class TriggerSubscriptionBuilderService:
             created_at=datetime.now(),
         )
 
-        key = f"trigger:subscription:validation:logs:{endpoint_id}"
+        key = f"trigger:subscription:builder:logs:{endpoint_id}"
         logs = json.loads(redis_client.get(key) or "[]")
         logs.append(log.model_dump(mode="json"))
 
         # Keep last N logs
         logs = logs[-cls.__VALIDATION_REQUEST_CACHE_COUNT__ :]
-        redis_client.setex(key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_MS__, json.dumps(logs, default=str))
+        redis_client.setex(key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_SECONDS__, json.dumps(logs, default=str))
 
     @classmethod
     def list_logs(cls, endpoint_id: str) -> list[RequestLog]:
         """List request logs for validation endpoint."""
-        key = f"trigger:subscription:validation:logs:{endpoint_id}"
+        key = f"trigger:subscription:builder:logs:{endpoint_id}"
         logs_json = redis_client.get(key)
         if not logs_json:
             return []
