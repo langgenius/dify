@@ -1,5 +1,24 @@
 import concurrent.futures
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor as StdThreadPoolExecutor
+
+import greenlet as _greenlet  # type: ignore
+
+try:
+    from gevent.greenlet import Greenlet  # type: ignore
+    from gevent.hub import Hub  # type: ignore
+
+    def _is_gevent_context() -> bool:
+        try:
+            curr = _greenlet.getcurrent()
+            return isinstance(curr, Greenlet) or isinstance(getattr(curr, "parent", None), Hub)
+        except Exception:
+            return False
+except Exception:
+
+    def _is_gevent_context() -> bool:
+        return False
+
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -30,6 +49,98 @@ default_retrieval_model = {
 
 
 class RetrievalService:
+    """Retrieval service with pluggable execution model.
+
+    Introduces a tiny task-runner abstraction to separate gevent and
+    non-gevent execution.
+    """
+
+    class _TaskRunner:
+        def submit(self, fn: Callable[..., list], *args, **kwargs) -> None:  # pragma: no cover - thin wrapper
+            raise NotImplementedError
+
+        def gather(self, timeout: int) -> tuple[list[list], list[str]]:  # pragma: no cover - thin wrapper
+            raise NotImplementedError
+
+        def close(self) -> None:  # pragma: no cover - thin wrapper
+            pass
+
+    class _ThreadTaskRunner(_TaskRunner):
+        def __init__(self, max_workers: int) -> None:
+            self._executor = StdThreadPoolExecutor(max_workers=max_workers)
+            self._futures: list[concurrent.futures.Future] = []
+
+        def submit(self, fn: Callable[..., list], *args, **kwargs) -> None:
+            self._futures.append(self._executor.submit(fn, *args, **kwargs))
+
+        def gather(self, timeout: int) -> tuple[list[list], list[str]]:
+            results: list[list] = []
+            errors: list[str] = []
+            done, not_done = concurrent.futures.wait(
+                self._futures, timeout=timeout, return_when=concurrent.futures.ALL_COMPLETED
+            )
+            for f in done:
+                try:
+                    val = f.result()
+                    if isinstance(val, list) and val:
+                        results.append(val)
+                except Exception as e:
+                    errors.append(str(e))
+            for f in not_done:
+                try:
+                    f.cancel()
+                except Exception:
+                    pass
+            return results, errors
+
+        def close(self) -> None:
+            self._executor.shutdown(wait=False, cancel_futures=True)
+
+    class _GeventTaskRunner(_TaskRunner):
+        def __init__(self) -> None:
+            from gevent import spawn  # type: ignore
+
+            self._spawn = spawn
+            self._greenlets: list[Greenlet] = []
+
+        def submit(self, fn: Callable[..., list], *args, **kwargs) -> None:
+            self._greenlets.append(self._spawn(fn, *args, **kwargs))
+
+        def gather(self, timeout: int) -> tuple[list[list], list[str]]:
+            from gevent import joinall  # type: ignore
+
+            results: list[list] = []
+            errors: list[str] = []
+            if not self._greenlets:
+                return results, errors
+            joinall(self._greenlets, timeout=timeout, raise_error=False)
+            for g in list(self._greenlets):
+                try:
+                    if getattr(g, "ready", lambda: False)():
+                        val = getattr(g, "value", None)
+                        if isinstance(val, list) and val:
+                            # value is list[Document]
+                            results.append(val)
+                    else:
+                        # Best-effort cancel
+                        try:
+                            g.kill()
+                        except Exception:
+                            pass
+                except Exception as e:
+                    errors.append(str(e))
+            return results, errors
+
+    @staticmethod
+    def _make_task_runner() -> "RetrievalService._TaskRunner":
+        if _is_gevent_context():
+            try:
+                return RetrievalService._GeventTaskRunner()
+            except Exception:
+                # Fallback to threads if gevent not importable
+                return RetrievalService._ThreadTaskRunner(dify_config.RETRIEVAL_SERVICE_EXECUTORS)
+        return RetrievalService._ThreadTaskRunner(dify_config.RETRIEVAL_SERVICE_EXECUTORS)
+
     # Cache precompiled regular expressions to avoid repeated compilation
     @classmethod
     def retrieve(
@@ -53,55 +164,59 @@ class RetrievalService:
         all_documents: list[Document] = []
         exceptions: list[str] = []
 
-        # Optimize multithreading with thread pools
-        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
-            futures = []
+        timeout: int = dify_config.RETRIEVAL_SERVICE_TIMEOUT
+
+        # Use task-runner abstraction to split gevent vs threads cleanly
+        runner = cls._make_task_runner()
+        try:
             if retrieval_method == "keyword_search":
-                futures.append(
-                    executor.submit(
-                        cls.keyword_search,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        dataset_id=dataset_id,
-                        query=query,
-                        top_k=top_k,
-                        all_documents=all_documents,
-                        exceptions=exceptions,
-                        document_ids_filter=document_ids_filter,
-                    )
+                runner.submit(
+                    cls.keyword_search,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    dataset_id=dataset_id,
+                    query=query,
+                    top_k=top_k,
+                    document_ids_filter=document_ids_filter,
                 )
             if RetrievalMethod.is_support_semantic_search(retrieval_method):
-                futures.append(
-                    executor.submit(
-                        cls.embedding_search,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        dataset_id=dataset_id,
-                        query=query,
-                        top_k=top_k,
-                        score_threshold=score_threshold,
-                        reranking_model=reranking_model,
-                        all_documents=all_documents,
-                        retrieval_method=retrieval_method,
-                        exceptions=exceptions,
-                        document_ids_filter=document_ids_filter,
-                    )
+                runner.submit(
+                    cls.embedding_search,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    dataset_id=dataset_id,
+                    query=query,
+                    top_k=top_k,
+                    score_threshold=score_threshold,
+                    reranking_model=reranking_model,
+                    retrieval_method=retrieval_method,
+                    document_ids_filter=document_ids_filter,
                 )
             if RetrievalMethod.is_support_fulltext_search(retrieval_method):
-                futures.append(
-                    executor.submit(
-                        cls.full_text_index_search,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        dataset_id=dataset_id,
-                        query=query,
-                        top_k=top_k,
-                        score_threshold=score_threshold,
-                        reranking_model=reranking_model,
-                        all_documents=all_documents,
-                        retrieval_method=retrieval_method,
-                        exceptions=exceptions,
-                        document_ids_filter=document_ids_filter,
-                    )
+                runner.submit(
+                    cls.full_text_index_search,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    dataset_id=dataset_id,
+                    query=query,
+                    top_k=top_k,
+                    score_threshold=score_threshold,
+                    reranking_model=reranking_model,
+                    retrieval_method=retrieval_method,
+                    document_ids_filter=document_ids_filter,
                 )
-            concurrent.futures.wait(futures, timeout=30, return_when=concurrent.futures.ALL_COMPLETED)
+
+            # Collect results uniformly across execution models
+            results, errors = runner.gather(timeout)
+            if results:
+                for lst in results:
+                    all_documents.extend(lst)
+            if errors:
+                exceptions.extend(errors)
+
+        finally:
+            # Ensure resources are released for thread runner
+            try:
+                runner.close()
+            except Exception:
+                pass
 
         if exceptions:
             raise ValueError(";\n".join(exceptions))
@@ -155,24 +270,18 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        all_documents: list,
-        exceptions: list,
         document_ids_filter: list[str] | None = None,
-    ):
+    ) -> list[Document]:
         with flask_app.app_context():
-            try:
-                dataset = cls._get_dataset(dataset_id)
-                if not dataset:
-                    raise ValueError("dataset not found")
+            dataset = cls._get_dataset(dataset_id)
+            if not dataset:
+                raise ValueError("dataset not found")
 
-                keyword = Keyword(dataset=dataset)
-
-                documents = keyword.search(
-                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
-                )
-                all_documents.extend(documents)
-            except Exception as e:
-                exceptions.append(str(e))
+            keyword = Keyword(dataset=dataset)
+            documents = keyword.search(
+                cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+            )
+            return documents
 
     @classmethod
     def embedding_search(
@@ -183,49 +292,43 @@ class RetrievalService:
         top_k: int,
         score_threshold: float | None,
         reranking_model: dict | None,
-        all_documents: list,
         retrieval_method: str,
-        exceptions: list,
         document_ids_filter: list[str] | None = None,
-    ):
+    ) -> list[Document]:
         with flask_app.app_context():
-            try:
-                dataset = cls._get_dataset(dataset_id)
-                if not dataset:
-                    raise ValueError("dataset not found")
+            dataset = cls._get_dataset(dataset_id)
+            if not dataset:
+                raise ValueError("dataset not found")
 
-                vector = Vector(dataset=dataset)
-                documents = vector.search_by_vector(
-                    query,
-                    search_type="similarity_score_threshold",
-                    top_k=top_k,
-                    score_threshold=score_threshold,
-                    filter={"group_id": [dataset.id]},
-                    document_ids_filter=document_ids_filter,
-                )
+            vector = Vector(dataset=dataset)
+            documents = vector.search_by_vector(
+                query,
+                search_type="similarity_score_threshold",
+                top_k=top_k,
+                score_threshold=score_threshold,
+                filter={"group_id": [dataset.id]},
+                document_ids_filter=document_ids_filter,
+            )
 
-                if documents:
-                    if (
-                        reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH.value
-                    ):
-                        data_post_processor = DataPostProcessor(
-                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
-                        )
-                        all_documents.extend(
-                            data_post_processor.invoke(
-                                query=query,
-                                documents=documents,
-                                score_threshold=score_threshold,
-                                top_n=len(documents),
-                            )
-                        )
-                    else:
-                        all_documents.extend(documents)
-            except Exception as e:
-                exceptions.append(str(e))
+            if documents:
+                if (
+                    reranking_model
+                    and reranking_model.get("reranking_model_name")
+                    and reranking_model.get("reranking_provider_name")
+                    and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH.value
+                ):
+                    data_post_processor = DataPostProcessor(
+                        str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
+                    )
+                    return data_post_processor.invoke(
+                        query=query,
+                        documents=documents,
+                        score_threshold=score_threshold,
+                        top_n=len(documents),
+                    )
+                else:
+                    return documents
+            return []
 
     @classmethod
     def full_text_index_search(
@@ -236,44 +339,38 @@ class RetrievalService:
         top_k: int,
         score_threshold: float | None,
         reranking_model: dict | None,
-        all_documents: list,
         retrieval_method: str,
-        exceptions: list,
         document_ids_filter: list[str] | None = None,
-    ):
+    ) -> list[Document]:
         with flask_app.app_context():
-            try:
-                dataset = cls._get_dataset(dataset_id)
-                if not dataset:
-                    raise ValueError("dataset not found")
+            dataset = cls._get_dataset(dataset_id)
+            if not dataset:
+                raise ValueError("dataset not found")
 
-                vector_processor = Vector(dataset=dataset)
+            vector_processor = Vector(dataset=dataset)
 
-                documents = vector_processor.search_by_full_text(
-                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
-                )
-                if documents:
-                    if (
-                        reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH.value
-                    ):
-                        data_post_processor = DataPostProcessor(
-                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
-                        )
-                        all_documents.extend(
-                            data_post_processor.invoke(
-                                query=query,
-                                documents=documents,
-                                score_threshold=score_threshold,
-                                top_n=len(documents),
-                            )
-                        )
-                    else:
-                        all_documents.extend(documents)
-            except Exception as e:
-                exceptions.append(str(e))
+            documents = vector_processor.search_by_full_text(
+                cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+            )
+            if documents:
+                if (
+                    reranking_model
+                    and reranking_model.get("reranking_model_name")
+                    and reranking_model.get("reranking_provider_name")
+                    and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH.value
+                ):
+                    data_post_processor = DataPostProcessor(
+                        str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
+                    )
+                    return data_post_processor.invoke(
+                        query=query,
+                        documents=documents,
+                        score_threshold=score_threshold,
+                        top_n=len(documents),
+                    )
+                else:
+                    return documents
+            return []
 
     @staticmethod
     def escape_query_for_search(query: str) -> str:

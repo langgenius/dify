@@ -192,6 +192,11 @@ class DatabaseConfig(BaseSettings):
         default=os.cpu_count() or 1,
     )
 
+    RETRIEVAL_SERVICE_TIMEOUT: NonNegativeInt = Field(
+        description="Timeout in seconds for knowledge retrieval operations.",
+        default=30,
+    )
+
     @computed_field  # type: ignore[misc]
     @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
