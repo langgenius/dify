@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: '変数値を設定',
     needConnectTip: '接続されていないステップがあります',
     maxTreeDepth: '1 ブランチあたりの最大ノード数：{{depth}}',
+    needAdd: '{{node}}ノードを追加する必要があります',
     needEndNode: '終了ブロックを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',
     workflowProcess: 'ワークフロー処理',
