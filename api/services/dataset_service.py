@@ -532,7 +532,8 @@ class DatasetService:
         filtered_data["updated_by"] = user.id
         filtered_data["updated_at"] = naive_utc_now()
         # update Retrieval model
-        filtered_data["retrieval_model"] = data["retrieval_model"]
+        if data.get("retrieval_model"):
+            filtered_data["retrieval_model"] = data["retrieval_model"]
         # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
