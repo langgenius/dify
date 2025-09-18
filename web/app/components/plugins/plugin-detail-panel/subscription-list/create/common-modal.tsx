@@ -160,23 +160,23 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
     if (!subscriptionBuilder)
       return
 
-    const formValues = propertiesFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
-    if (!formValues.isCheckValidated) {
-      Toast.notify({
-        type: 'error',
-        message: t('pluginTrigger.modal.form.properties.required'),
-      })
-      return
-    }
+    const parameterForm = parametersFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+    // console.log('formValues', formValues)
+    // if (!formValues.isCheckValidated) {
+    //   Toast.notify({
+    //     type: 'error',
+    //     message: t('pluginTrigger.modal.form.properties.required'),
+    //   })
+    //   return
+    // }
 
     buildSubscription(
       {
         provider: providerName,
         subscriptionBuilderId: subscriptionBuilder.id,
-        params: {
-          name: subscriptionName,
-          properties: formValues.values,
-        },
+        name: subscriptionName,
+        parameters: { ...parameterForm.values, events: ['*'] },
+        // properties: formValues.values,
       },
       {
         onSuccess: () => {

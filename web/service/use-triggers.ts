@@ -180,7 +180,7 @@ export const useBuildTriggerSubscription = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
-      params?: Record<string, any>
+      [key: string]: any
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post(
