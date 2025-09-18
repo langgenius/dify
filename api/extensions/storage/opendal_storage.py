@@ -3,7 +3,6 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-import opendal
 from dotenv import dotenv_values
 from opendal import Operator
 from opendal.layers import RetryLayer
