@@ -13,7 +13,7 @@ export type VisualConfig = {
 
 export type ScheduleTriggerNodeType = CommonNodeType & {
   mode: ScheduleMode
-  frequency: ScheduleFrequency
+  frequency?: ScheduleFrequency
   cron_expression?: string
   visual_config?: VisualConfig
   timezone: string
