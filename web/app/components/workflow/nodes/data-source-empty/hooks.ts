@@ -28,7 +28,7 @@ export const useReplaceDataSourceNode = (id: string) => {
     const { newNode } = generateNewNode({
       data: {
         ...(defaultValue as any),
-        ...(toolDefaultValue || {}),
+        ...toolDefaultValue,
       },
       position: {
         x: emptyNode.position.x,

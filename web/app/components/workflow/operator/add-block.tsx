@@ -65,7 +65,7 @@ const AddBlock = ({
       data: {
         ...(defaultValue as any),
         title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
-        ...(toolDefaultValue || {}),
+        ...toolDefaultValue,
         _isCandidate: true,
       },
       position: {

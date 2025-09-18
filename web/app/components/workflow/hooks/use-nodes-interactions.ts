@@ -765,7 +765,7 @@ export const useNodesInteractions = () => {
               nodesWithSameType.length > 0
                 ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
                 : defaultValue.title,
-            ...(toolDefaultValue || {}),
+            ...toolDefaultValue,
             selected: true,
             _showAddVariablePopup:
               (nodeType === BlockEnum.VariableAssigner
@@ -866,7 +866,7 @@ export const useNodesInteractions = () => {
 
         const nodesConnectedSourceOrTargetHandleIdsMap
           = getNodesConnectedSourceOrTargetHandleIdsMap(
-            [...(newEdge ? [{ type: 'add', edge: newEdge }] : [])],
+            (newEdge ? [{ type: 'add', edge: newEdge }] : []),
             nodes,
           )
         const newNodes = produce(nodes, (draft: Node[]) => {
@@ -1331,7 +1331,7 @@ export const useNodesInteractions = () => {
             nodesWithSameType.length > 0
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
               : defaultValue.title,
-          ...(toolDefaultValue || {}),
+          ...toolDefaultValue,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           selected: currentNode.data.selected,
