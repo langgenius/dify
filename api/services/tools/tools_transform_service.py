@@ -262,7 +262,7 @@ class ToolTransformService:
                 author=user.name if user else "Anonymous",
                 name=tool.name,
                 label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
-                description=I18nObject(en_US=tool.description, zh_Hans=tool.description),
+                description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],
             )
