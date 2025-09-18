@@ -7,7 +7,7 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import sqlalchemy as sa
 from sqlalchemy import exists, func, select
@@ -315,8 +315,8 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def get_dataset(dataset_id) -> Optional[Dataset]:
-        dataset: Optional[Dataset] = db.session.query(Dataset).filter_by(id=dataset_id).first()
+    def get_dataset(dataset_id) -> Dataset | None:
+        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
         return dataset
 
     @staticmethod
@@ -419,7 +419,7 @@ class DatasetService:
     def _has_dataset_same_name(tenant_id: str, dataset_id: str, name: str):
         dataset = (
             db.session.query(Dataset)
-            .filter(
+            .where(
                 Dataset.id != dataset_id,
                 Dataset.name == name,
                 Dataset.tenant_id == tenant_id,

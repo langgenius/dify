@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -27,12 +27,12 @@ class DatasourceErrorEvent(BaseDatasourceEvent):
 class DatasourceCompletedEvent(BaseDatasourceEvent):
     event: str = DatasourceStreamEvent.COMPLETED.value
     data: Mapping[str, Any] | list = Field(..., description="result")
-    total: Optional[int] = Field(default=0, description="total")
-    completed: Optional[int] = Field(default=0, description="completed")
-    time_consuming: Optional[float] = Field(default=0.0, description="time consuming")
+    total: int | None = Field(default=0, description="total")
+    completed: int | None = Field(default=0, description="completed")
+    time_consuming: float | None = Field(default=0.0, description="time consuming")
 
 
 class DatasourceProcessingEvent(BaseDatasourceEvent):
     event: str = DatasourceStreamEvent.PROCESSING.value
-    total: Optional[int] = Field(..., description="total")
-    completed: Optional[int] = Field(..., description="completed")
+    total: int | None = Field(..., description="total")
+    completed: int | None = Field(..., description="completed")

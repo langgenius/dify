@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import requests
 
@@ -36,7 +35,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.REMOTE
 
     @classmethod
-    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict | None:
         """
         Fetch pipeline template detail from dify official.
         :param template_id: Pipeline ID

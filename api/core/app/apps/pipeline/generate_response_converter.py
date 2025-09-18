@@ -23,7 +23,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
         :param blocking_response: blocking response
         :return:
         """
-        return dict(blocking_response.to_dict())
+        return dict(blocking_response.model_dump())
 
     @classmethod
     def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
@@ -60,7 +60,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(cast(dict, data))
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump())
             yield response_chunk
 
     @classmethod
@@ -91,5 +91,5 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
                 response_chunk.update(cast(dict, sub_stream_response.to_ignore_detail_dict()))
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump())
             yield response_chunk

@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime
 from mimetypes import guess_extension, guess_type
-from typing import Optional, Union
+from typing import Union
 from uuid import uuid4
 
 import httpx
@@ -62,10 +62,10 @@ class DatasourceFileManager:
         *,
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str],
+        conversation_id: str | None,
         file_binary: bytes,
         mimetype: str,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> UploadFile:
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
@@ -106,7 +106,7 @@ class DatasourceFileManager:
         user_id: str,
         tenant_id: str,
         file_url: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> ToolFile:
         # try to download image
         try:
@@ -152,13 +152,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = (
-            db.session.query(UploadFile)
-            .filter(
-                UploadFile.id == id,
-            )
-            .first()
-        )
+        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == id).first()
 
         if not upload_file:
             return None
@@ -176,13 +170,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile | None = (
-            db.session.query(MessageFile)
-            .filter(
-                MessageFile.id == id,
-            )
-            .first()
-        )
+        message_file: MessageFile | None = db.session.query(MessageFile).where(MessageFile.id == id).first()
 
         # Check if message_file is not None
         if message_file is not None:
@@ -196,13 +184,7 @@ class DatasourceFileManager:
         else:
             tool_file_id = None
 
-        tool_file: ToolFile | None = (
-            db.session.query(ToolFile)
-            .filter(
-                ToolFile.id == tool_file_id,
-            )
-            .first()
-        )
+        tool_file: ToolFile | None = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
 
         if not tool_file:
             return None
@@ -220,13 +202,7 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = (
-            db.session.query(UploadFile)
-            .filter(
-                UploadFile.id == upload_file_id,
-            )
-            .first()
-        )
+        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
 
         if not upload_file:
             return None, None

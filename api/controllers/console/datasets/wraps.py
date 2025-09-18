@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
@@ -10,7 +9,7 @@ from models.dataset import Pipeline
 
 
 def get_rag_pipeline(
-    view: Optional[Callable] = None,
+    view: Callable | None = None,
 ):
     def decorator(view_func):
         @wraps(view_func)
@@ -28,7 +27,7 @@ def get_rag_pipeline(
 
             pipeline = (
                 db.session.query(Pipeline)
-                .filter(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.current_tenant_id)
+                .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.current_tenant_id)
                 .first()
             )
 

@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -112,7 +112,7 @@ class RagPipelineService:
             return result
 
     @classmethod
-    def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> Optional[dict]:
+    def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> dict | None:
         """
         Get pipeline template detail.
         :param template_id: template id
@@ -121,12 +121,12 @@ class RagPipelineService:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            built_in_result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
+            built_in_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
             return built_in_result
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            customized_result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
+            customized_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
             return customized_result
 
     @classmethod
@@ -138,7 +138,7 @@ class RagPipelineService:
         """
         customized_template: PipelineCustomizedTemplate | None = (
             db.session.query(PipelineCustomizedTemplate)
-            .filter(
+            .where(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
             )
@@ -151,7 +151,7 @@ class RagPipelineService:
         if template_name:
             template = (
                 db.session.query(PipelineCustomizedTemplate)
-                .filter(
+                .where(
                     PipelineCustomizedTemplate.name == template_name,
                     PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
                     PipelineCustomizedTemplate.id != template_id,
@@ -174,7 +174,7 @@ class RagPipelineService:
         """
         customized_template: PipelineCustomizedTemplate | None = (
             db.session.query(PipelineCustomizedTemplate)
-            .filter(
+            .where(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
             )
@@ -185,14 +185,14 @@ class RagPipelineService:
         db.session.delete(customized_template)
         db.session.commit()
 
-    def get_draft_workflow(self, pipeline: Pipeline) -> Optional[Workflow]:
+    def get_draft_workflow(self, pipeline: Pipeline) -> Workflow | None:
         """
         Get draft workflow
         """
         # fetch draft workflow by rag pipeline
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
@@ -203,7 +203,7 @@ class RagPipelineService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow(self, pipeline: Pipeline) -> Optional[Workflow]:
+    def get_published_workflow(self, pipeline: Pipeline) -> Workflow | None:
         """
         Get published workflow
         """
@@ -214,7 +214,7 @@ class RagPipelineService:
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.id == pipeline.workflow_id,
@@ -267,7 +267,7 @@ class RagPipelineService:
         *,
         pipeline: Pipeline,
         graph: dict,
-        unique_hash: Optional[str],
+        unique_hash: str | None,
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
@@ -378,18 +378,16 @@ class RagPipelineService:
         Get default block configs
         """
         # return default block config
-        default_block_configs = []
+        default_block_configs: list[dict[str, Any]] = []
         for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
             node_class = node_class_mapping[LATEST_VERSION]
             default_config = node_class.get_default_config()
             if default_config:
-                default_block_configs.append(default_config)
+                default_block_configs.append(dict(default_config))
 
         return default_block_configs
 
-    def get_default_block_config(
-        self, node_type: str, filters: Optional[dict] = None
-    ) -> Optional[Mapping[str, object]]:
+    def get_default_block_config(self, node_type: str, filters: dict | None = None) -> Mapping[str, object] | None:
         """
         Get default config of node.
         :param node_type: node type
@@ -495,7 +493,7 @@ class RagPipelineService:
         account: Account,
         datasource_type: str,
         is_published: bool,
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Generator[Mapping[str, Any], None, None]:
         """
         Run published workflow datasource
@@ -580,10 +578,10 @@ class RagPipelineService:
                     )
                     yield start_event.model_dump()
                     try:
-                        for message in online_document_result:
+                        for online_document_message in online_document_result:
                             end_time = time.time()
                             online_document_event = DatasourceCompletedEvent(
-                                data=message.result, time_consuming=round(end_time - start_time, 2)
+                                data=online_document_message.result, time_consuming=round(end_time - start_time, 2)
                             )
                             yield online_document_event.model_dump()
                     except Exception as e:
@@ -609,10 +607,10 @@ class RagPipelineService:
                         completed=0,
                     )
                     yield start_event.model_dump()
-                    for message in online_drive_result:
+                    for online_drive_message in online_drive_result:
                         end_time = time.time()
                         online_drive_event = DatasourceCompletedEvent(
-                            data=message.result,
+                            data=online_drive_message.result,
                             time_consuming=round(end_time - start_time, 2),
                             total=None,
                             completed=None,
@@ -629,19 +627,20 @@ class RagPipelineService:
                     )
                     start_time = time.time()
                     try:
-                        for message in website_crawl_result:
+                        for website_crawl_message in website_crawl_result:
                             end_time = time.time()
-                            if message.result.status == "completed":
+                            crawl_event: DatasourceCompletedEvent | DatasourceProcessingEvent
+                            if website_crawl_message.result.status == "completed":
                                 crawl_event = DatasourceCompletedEvent(
-                                    data=message.result.web_info_list or [],
-                                    total=message.result.total,
-                                    completed=message.result.completed,
+                                    data=website_crawl_message.result.web_info_list or [],
+                                    total=website_crawl_message.result.total,
+                                    completed=website_crawl_message.result.completed,
                                     time_consuming=round(end_time - start_time, 2),
                                 )
                             else:
                                 crawl_event = DatasourceProcessingEvent(
-                                    total=message.result.total,
-                                    completed=message.result.completed,
+                                    total=website_crawl_message.result.total,
+                                    completed=website_crawl_message.result.completed,
                                 )
                             yield crawl_event.model_dump()
                     except Exception as e:
@@ -661,7 +660,7 @@ class RagPipelineService:
         account: Account,
         datasource_type: str,
         is_published: bool,
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Mapping[str, Any]:
         """
         Run published workflow datasource
@@ -723,12 +722,12 @@ class RagPipelineService:
                     )
                     try:
                         variables: dict[str, Any] = {}
-                        for message in online_document_result:
-                            if message.type == DatasourceMessage.MessageType.VARIABLE:
-                                assert isinstance(message.message, DatasourceMessage.VariableMessage)
-                                variable_name = message.message.variable_name
-                                variable_value = message.message.variable_value
-                                if message.message.stream:
+                        for online_document_message in online_document_result:
+                            if online_document_message.type == DatasourceMessage.MessageType.VARIABLE:
+                                assert isinstance(online_document_message.message, DatasourceMessage.VariableMessage)
+                                variable_name = online_document_message.message.variable_name
+                                variable_value = online_document_message.message.variable_value
+                                if online_document_message.message.stream:
                                     if not isinstance(variable_value, str):
                                         raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
                                     if variable_name not in variables:
@@ -793,8 +792,9 @@ class RagPipelineService:
             for event in generator:
                 if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent)):
                     node_run_result = event.node_run_result
-                    # sign output files
-                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) or {}
+                    if node_run_result:
+                        # sign output files
+                        node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) or {}
                     break
 
             if not node_run_result:
@@ -876,7 +876,7 @@ class RagPipelineService:
                 if invoke_from.value == InvokeFrom.PUBLISHED.value:
                     document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
                     if document_id:
-                        document = db.session.query(Document).filter(Document.id == document_id.value).first()
+                        document = db.session.query(Document).where(Document.id == document_id.value).first()
                         if document:
                             document.indexing_status = "error"
                             document.error = error
@@ -887,7 +887,7 @@ class RagPipelineService:
 
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
-    ) -> Optional[Workflow]:
+    ) -> Workflow | None:
         """
         Update workflow attributes
 
@@ -1016,7 +1016,7 @@ class RagPipelineService:
         """
         limit = int(args.get("limit", 20))
 
-        base_query = db.session.query(WorkflowRun).filter(
+        base_query = db.session.query(WorkflowRun).where(
             WorkflowRun.tenant_id == pipeline.tenant_id,
             WorkflowRun.app_id == pipeline.id,
             or_(
@@ -1026,7 +1026,7 @@ class RagPipelineService:
         )
 
         if args.get("last_id"):
-            last_workflow_run = base_query.filter(
+            last_workflow_run = base_query.where(
                 WorkflowRun.id == args.get("last_id"),
             ).first()
 
@@ -1034,7 +1034,7 @@ class RagPipelineService:
                 raise ValueError("Last workflow run not exists")
 
             workflow_runs = (
-                base_query.filter(
+                base_query.where(
                     WorkflowRun.created_at < last_workflow_run.created_at, WorkflowRun.id != last_workflow_run.id
                 )
                 .order_by(WorkflowRun.created_at.desc())
@@ -1047,7 +1047,7 @@ class RagPipelineService:
         has_more = False
         if len(workflow_runs) == limit:
             current_page_first_workflow_run = workflow_runs[-1]
-            rest_count = base_query.filter(
+            rest_count = base_query.where(
                 WorkflowRun.created_at < current_page_first_workflow_run.created_at,
                 WorkflowRun.id != current_page_first_workflow_run.id,
             ).count()
@@ -1057,7 +1057,7 @@ class RagPipelineService:
 
         return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
-    def get_rag_pipeline_workflow_run(self, pipeline: Pipeline, run_id: str) -> Optional[WorkflowRun]:
+    def get_rag_pipeline_workflow_run(self, pipeline: Pipeline, run_id: str) -> WorkflowRun | None:
         """
         Get workflow run detail
 
@@ -1066,7 +1066,7 @@ class RagPipelineService:
         """
         workflow_run = (
             db.session.query(WorkflowRun)
-            .filter(
+            .where(
                 WorkflowRun.tenant_id == pipeline.tenant_id,
                 WorkflowRun.app_id == pipeline.id,
                 WorkflowRun.id == run_id,
@@ -1113,12 +1113,12 @@ class RagPipelineService:
         """
         Publish customized pipeline template
         """
-        pipeline = db.session.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+        pipeline = db.session.query(Pipeline).where(Pipeline.id == pipeline_id).first()
         if not pipeline:
             raise ValueError("Pipeline not found")
         if not pipeline.workflow_id:
             raise ValueError("Pipeline workflow not found")
-        workflow = db.session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
+        workflow = db.session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
         if not workflow:
             raise ValueError("Workflow not found")
         with Session(db.engine) as session:
@@ -1131,7 +1131,7 @@ class RagPipelineService:
         if template_name:
             template = (
                 db.session.query(PipelineCustomizedTemplate)
-                .filter(
+                .where(
                     PipelineCustomizedTemplate.name == template_name,
                     PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
                 )
@@ -1142,7 +1142,7 @@ class RagPipelineService:
 
         max_position = (
             db.session.query(func.max(PipelineCustomizedTemplate.position))
-            .filter(PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id)
+            .where(PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id)
             .scalar()
         )
 
@@ -1169,7 +1169,7 @@ class RagPipelineService:
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
         return (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
@@ -1278,7 +1278,7 @@ class RagPipelineService:
         # Query active recommended plugins
         pipeline_recommended_plugins = (
             db.session.query(PipelineRecommendedPlugin)
-            .filter(PipelineRecommendedPlugin.active == True)
+            .where(PipelineRecommendedPlugin.active == True)
             .order_by(PipelineRecommendedPlugin.position.asc())
             .all()
         )
@@ -1329,12 +1329,12 @@ class RagPipelineService:
         """
         document_pipeline_excution_log = (
             db.session.query(DocumentPipelineExecutionLog)
-            .filter(DocumentPipelineExecutionLog.document_id == document.id)
+            .where(DocumentPipelineExecutionLog.document_id == document.id)
             .first()
         )
         if not document_pipeline_excution_log:
             raise ValueError("Document pipeline execution log not found")
-        pipeline = db.session.query(Pipeline).filter(Pipeline.id == document_pipeline_excution_log.pipeline_id).first()
+        pipeline = db.session.query(Pipeline).where(Pipeline.id == document_pipeline_excution_log.pipeline_id).first()
         if not pipeline:
             raise ValueError("Pipeline not found")
         # convert to app config
@@ -1358,3 +1358,99 @@ class RagPipelineService:
             workflow_thread_pool_id=None,
             is_retry=True,
         )
+
+    def get_datasource_plugins(self, tenant_id: str, dataset_id: str, is_published: bool) -> list[dict]:
+        """
+        Get datasource plugins
+        """
+        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+
+        workflow: Workflow | None = None
+        if is_published:
+            workflow = self.get_published_workflow(pipeline=pipeline)
+        else:
+            workflow = self.get_draft_workflow(pipeline=pipeline)
+        if not pipeline or not workflow:
+            raise ValueError("Pipeline or workflow not found")
+
+        datasource_nodes = workflow.graph_dict.get("nodes", [])
+        datasource_plugins = []
+        for datasource_node in datasource_nodes:
+            if datasource_node.get("type") == "datasource":
+                datasource_node_data = datasource_node.get("data", {})
+                if not datasource_node_data:
+                    continue
+
+                variables = workflow.rag_pipeline_variables
+                if variables:
+                    variables_map = {item["variable"]: item for item in variables}
+                else:
+                    variables_map = {}
+
+                datasource_parameters = datasource_node_data.get("datasource_parameters", {})
+                user_input_variables_keys = []
+                user_input_variables = []
+
+                for _, value in datasource_parameters.items():
+                    if value.get("value") and isinstance(value.get("value"), str):
+                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        match = re.match(pattern, value["value"])
+                        if match:
+                            full_path = match.group(1)
+                            last_part = full_path.split(".")[-1]
+                            user_input_variables_keys.append(last_part)
+                    elif value.get("value") and isinstance(value.get("value"), list):
+                        last_part = value.get("value")[-1]
+                        user_input_variables_keys.append(last_part)
+                for key, value in variables_map.items():
+                    if key in user_input_variables_keys:
+                        user_input_variables.append(value)
+
+                # get credentials
+                datasource_provider_service: DatasourceProviderService = DatasourceProviderService()
+                credentials: list[dict[Any, Any]] = datasource_provider_service.list_datasource_credentials(
+                    tenant_id=tenant_id,
+                    provider=datasource_node_data.get("provider_name"),
+                    plugin_id=datasource_node_data.get("plugin_id"),
+                )
+                credential_info_list: list[Any] = []
+                for credential in credentials:
+                    credential_info_list.append(
+                        {
+                            "id": credential.get("id"),
+                            "name": credential.get("name"),
+                            "type": credential.get("type"),
+                            "is_default": credential.get("is_default"),
+                        }
+                    )
+
+                datasource_plugins.append(
+                    {
+                        "node_id": datasource_node.get("id"),
+                        "plugin_id": datasource_node_data.get("plugin_id"),
+                        "provider_name": datasource_node_data.get("provider_name"),
+                        "datasource_type": datasource_node_data.get("provider_type"),
+                        "title": datasource_node_data.get("title"),
+                        "user_input_variables": user_input_variables,
+                        "credentials": credential_info_list,
+                    }
+                )
+
+        return datasource_plugins
+
+    def get_pipeline(self, tenant_id: str, dataset_id: str) -> Pipeline:
+        """
+        Get pipeline
+        """
+        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+        return pipeline

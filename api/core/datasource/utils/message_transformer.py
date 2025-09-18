@@ -1,11 +1,11 @@
 import logging
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Optional
 
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.file import File, FileTransferMethod, FileType
 from core.tools.tool_file_manager import ToolFileManager
+from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class DatasourceFileMessageTransformer:
         messages: Generator[DatasourceMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> Generator[DatasourceMessage, None, None]:
         """
         Transform datasource message and handle file download
@@ -32,20 +32,20 @@ class DatasourceFileMessageTransformer:
                 try:
                     assert isinstance(message.message, DatasourceMessage.TextMessage)
                     tool_file_manager = ToolFileManager()
-                    file = tool_file_manager.create_file_by_url(
+                    tool_file: ToolFile | None = tool_file_manager.create_file_by_url(
                         user_id=user_id,
                         tenant_id=tenant_id,
                         file_url=message.message.text,
                         conversation_id=conversation_id,
                     )
+                    if tool_file:
+                        url = f"/files/datasources/{tool_file.id}{guess_extension(tool_file.mimetype) or '.png'}"
 
-                    url = f"/files/datasources/{file.id}{guess_extension(file.mimetype) or '.png'}"
-
-                    yield DatasourceMessage(
-                        type=DatasourceMessage.MessageType.IMAGE_LINK,
-                        message=DatasourceMessage.TextMessage(text=url),
-                        meta=message.meta.copy() if message.meta is not None else {},
-                    )
+                        yield DatasourceMessage(
+                            type=DatasourceMessage.MessageType.IMAGE_LINK,
+                            message=DatasourceMessage.TextMessage(text=url),
+                            meta=message.meta.copy() if message.meta is not None else {},
+                        )
                 except Exception as e:
                     yield DatasourceMessage(
                         type=DatasourceMessage.MessageType.TEXT,
@@ -72,7 +72,7 @@ class DatasourceFileMessageTransformer:
                 # FIXME: should do a type check here.
                 assert isinstance(message.message.blob, bytes)
                 tool_file_manager = ToolFileManager()
-                file = tool_file_manager.create_file_by_raw(
+                blob_tool_file: ToolFile | None = tool_file_manager.create_file_by_raw(
                     user_id=user_id,
                     tenant_id=tenant_id,
                     conversation_id=conversation_id,
@@ -80,25 +80,27 @@ class DatasourceFileMessageTransformer:
                     mimetype=mimetype,
                     filename=filename,
                 )
-
-                url = cls.get_datasource_file_url(datasource_file_id=file.id, extension=guess_extension(file.mimetype))
-
-                # check if file is image
-                if "image" in mimetype:
-                    yield DatasourceMessage(
-                        type=DatasourceMessage.MessageType.IMAGE_LINK,
-                        message=DatasourceMessage.TextMessage(text=url),
-                        meta=meta.copy() if meta is not None else {},
+                if blob_tool_file:
+                    url = cls.get_datasource_file_url(
+                        datasource_file_id=blob_tool_file.id, extension=guess_extension(blob_tool_file.mimetype)
                     )
-                else:
-                    yield DatasourceMessage(
-                        type=DatasourceMessage.MessageType.BINARY_LINK,
-                        message=DatasourceMessage.TextMessage(text=url),
-                        meta=meta.copy() if meta is not None else {},
-                    )
+
+                    # check if file is image
+                    if "image" in mimetype:
+                        yield DatasourceMessage(
+                            type=DatasourceMessage.MessageType.IMAGE_LINK,
+                            message=DatasourceMessage.TextMessage(text=url),
+                            meta=meta.copy() if meta is not None else {},
+                        )
+                    else:
+                        yield DatasourceMessage(
+                            type=DatasourceMessage.MessageType.BINARY_LINK,
+                            message=DatasourceMessage.TextMessage(text=url),
+                            meta=meta.copy() if meta is not None else {},
+                        )
             elif message.type == DatasourceMessage.MessageType.FILE:
                 meta = message.meta or {}
-                file = meta.get("file", None)
+                file: File | None = meta.get("file")
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
                         assert file.related_id is not None
@@ -121,5 +123,5 @@ class DatasourceFileMessageTransformer:
                 yield message
 
     @classmethod
-    def get_datasource_file_url(cls, datasource_file_id: str, extension: Optional[str]) -> str:
+    def get_datasource_file_url(cls, datasource_file_id: str, extension: str | None) -> str:
         return f"/files/datasources/{datasource_file_id}{extension or '.bin'}"

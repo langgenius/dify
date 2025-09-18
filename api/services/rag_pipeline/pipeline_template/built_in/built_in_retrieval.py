@@ -1,7 +1,6 @@
 import json
 from os import path
 from pathlib import Path
-from typing import Optional
 
 from flask import current_app
 
@@ -14,7 +13,7 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval pipeline template from built-in, the location  is constants/pipeline_templates.json
     """
 
-    builtin_data: Optional[dict] = None
+    builtin_data: dict | None = None
 
     def get_type(self) -> str:
         return PipelineTemplateType.BUILTIN
@@ -54,7 +53,7 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return builtin_data.get("pipeline_templates", {}).get(language, {})
 
     @classmethod
-    def fetch_pipeline_template_detail_from_builtin(cls, template_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_builtin(cls, template_id: str) -> dict | None:
         """
         Fetch pipeline template detail from builtin.
         :param template_id: Template ID

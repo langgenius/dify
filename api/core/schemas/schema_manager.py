@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.schemas.registry import SchemaRegistry
 
@@ -7,7 +7,7 @@ from core.schemas.registry import SchemaRegistry
 class SchemaManager:
     """Schema manager provides high-level schema operations"""
 
-    def __init__(self, registry: Optional[SchemaRegistry] = None):
+    def __init__(self, registry: SchemaRegistry | None = None):
         self.registry = registry or SchemaRegistry.default_registry()
 
     def get_all_schema_definitions(self, version: str = "v1") -> list[Mapping[str, Any]]:
@@ -22,7 +22,7 @@ class SchemaManager:
         """
         return self.registry.get_all_schemas_for_version(version)
 
-    def get_schema_by_name(self, schema_name: str, version: str = "v1") -> Optional[Mapping[str, Any]]:
+    def get_schema_by_name(self, schema_name: str, version: str = "v1") -> Mapping[str, Any] | None:
         """
         Get a specific schema by name
 

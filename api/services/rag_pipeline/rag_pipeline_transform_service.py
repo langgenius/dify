@@ -1,7 +1,6 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 import yaml
@@ -21,7 +20,7 @@ from services.plugin.plugin_service import PluginService
 
 class RagPipelineTransformService:
     def transform_dataset(self, dataset_id: str):
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == "rag_pipeline":
@@ -90,7 +89,7 @@ class RagPipelineTransformService:
             "status": "success",
         }
 
-    def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: Optional[str]):
+    def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None):
         pipeline_yaml = {}
         if doc_form == "text_model":
             match datasource_type:
@@ -152,7 +151,7 @@ class RagPipelineTransformService:
         return node
 
     def _deal_knowledge_index(
-        self, dataset: Dataset, doc_form: str, indexing_technique: Optional[str], retrieval_model: dict, node: dict
+        self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
     ):
         knowledge_configuration_dict = node.get("data", {})
         knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)
@@ -289,7 +288,7 @@ class RagPipelineTransformService:
         jina_node_id = "1752491761974"
         firecrawl_node_id = "1752565402678"
 
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset.id).all()
+        documents = db.session.query(Document).where(Document.dataset_id == dataset.id).all()
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
@@ -299,7 +298,7 @@ class RagPipelineTransformService:
                 document.data_source_type = "local_file"
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
-                    file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+                    file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
                     if file:
                         data_source_info = json.dumps(
                             {

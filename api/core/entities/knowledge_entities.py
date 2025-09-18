@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -16,7 +14,7 @@ class QAPreviewDetail(BaseModel):
 class IndexingEstimate(BaseModel):
     total_segments: int
     preview: list[PreviewDetail]
-    qa_preview: Optional[list[QAPreviewDetail]] = None
+    qa_preview: list[QAPreviewDetail] | None = None
 
 
 class PipelineDataset(BaseModel):
@@ -30,10 +28,10 @@ class PipelineDocument(BaseModel):
     id: str
     position: int
     data_source_type: str
-    data_source_info: Optional[dict] = None
+    data_source_info: dict | None = None
     name: str
     indexing_status: str
-    error: Optional[str] = None
+    error: str | None = None
     enabled: bool
 
 

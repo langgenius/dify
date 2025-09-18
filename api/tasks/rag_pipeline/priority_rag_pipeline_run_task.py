@@ -104,20 +104,20 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
             with Session(db.engine, expire_on_commit=False) as session:
                 # Load required entities
-                account = session.query(Account).filter(Account.id == user_id).first()
+                account = session.query(Account).where(Account.id == user_id).first()
                 if not account:
                     raise ValueError(f"Account {user_id} not found")
 
-                tenant = session.query(Tenant).filter(Tenant.id == tenant_id).first()
+                tenant = session.query(Tenant).where(Tenant.id == tenant_id).first()
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
                 account.current_tenant = tenant
 
-                pipeline = session.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+                pipeline = session.query(Pipeline).where(Pipeline.id == pipeline_id).first()
                 if not pipeline:
                     raise ValueError(f"Pipeline {pipeline_id} not found")
 
-                workflow = session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
+                workflow = session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
                 if not workflow:
                     raise ValueError(f"Workflow {pipeline.workflow_id} not found")
 

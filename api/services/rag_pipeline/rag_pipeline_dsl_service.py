@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Optional, cast
+from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -66,11 +66,11 @@ class ImportStatus(StrEnum):
 class RagPipelineImportInfo(BaseModel):
     id: str
     status: ImportStatus
-    pipeline_id: Optional[str] = None
+    pipeline_id: str | None = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
-    dataset_id: Optional[str] = None
+    dataset_id: str | None = None
 
 
 class CheckDependenciesResult(BaseModel):
@@ -121,12 +121,12 @@ class RagPipelineDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: Optional[str] = None,
-        yaml_url: Optional[str] = None,
-        pipeline_id: Optional[str] = None,
-        dataset: Optional[Dataset] = None,
-        dataset_name: Optional[str] = None,
-        icon_info: Optional[IconInfo] = None,
+        yaml_content: str | None = None,
+        yaml_url: str | None = None,
+        pipeline_id: str | None = None,
+        dataset: Dataset | None = None,
+        dataset_name: str | None = None,
+        icon_info: IconInfo | None = None,
     ) -> RagPipelineImportInfo:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -318,7 +318,7 @@ class RagPipelineDslService:
                     if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
                             self._session.query(DatasetCollectionBinding)
-                            .filter(
+                            .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
@@ -452,7 +452,7 @@ class RagPipelineDslService:
                     if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
                             self._session.query(DatasetCollectionBinding)
-                            .filter(
+                            .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
@@ -530,10 +530,10 @@ class RagPipelineDslService:
     def _create_or_update_pipeline(
         self,
         *,
-        pipeline: Optional[Pipeline],
+        pipeline: Pipeline | None,
         data: dict,
         account: Account,
-        dependencies: Optional[list[PluginDependency]] = None,
+        dependencies: list[PluginDependency] | None = None,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         if not account.current_tenant_id:
@@ -599,7 +599,7 @@ class RagPipelineDslService:
             )
         workflow = (
             self._session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
@@ -673,7 +673,7 @@ class RagPipelineDslService:
 
         workflow = (
             self._session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",

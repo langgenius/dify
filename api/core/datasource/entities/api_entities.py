@@ -12,9 +12,9 @@ class DatasourceApiEntity(BaseModel):
     name: str  # identifier
     label: I18nObject  # label
     description: I18nObject
-    parameters: Optional[list[DatasourceParameter]] = None
+    parameters: list[DatasourceParameter] | None = None
     labels: list[str] = Field(default_factory=list)
-    output_schema: Optional[dict] = None
+    output_schema: dict | None = None
 
 
 ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
@@ -28,12 +28,12 @@ class DatasourceProviderApiEntity(BaseModel):
     icon: str | dict
     label: I18nObject  # label
     type: str
-    masked_credentials: Optional[dict] = None
-    original_credentials: Optional[dict] = None
+    masked_credentials: dict | None = None
+    original_credentials: dict | None = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    plugin_id: Optional[str] = Field(default="", description="The plugin id of the datasource")
-    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the datasource")
+    plugin_id: str | None = Field(default="", description="The plugin id of the datasource")
+    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the datasource")
     datasources: list[DatasourceApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
 
@@ -62,7 +62,7 @@ class DatasourceProviderApiEntity(BaseModel):
             "description": self.description.to_dict(),
             "icon": self.icon,
             "label": self.label.to_dict(),
-            "type": self.type.value,
+            "type": self.type,
             "team_credentials": self.masked_credentials,
             "is_team_authorization": self.is_team_authorization,
             "allow_delete": self.allow_delete,

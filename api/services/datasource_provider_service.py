@@ -77,7 +77,7 @@ class DatasourceProviderService:
             provider_id=f"{plugin_id}/{provider}",
             credential_type=CredentialType.of(datasource_provider.auth_type),
         )
-        encrypted_credentials = raw_credentials.copy()
+        encrypted_credentials = dict(raw_credentials)
         for key, value in encrypted_credentials.items():
             if key in provider_credential_secret_variables:
                 encrypted_credentials[key] = encrypter.encrypt_token(tenant_id, value)
@@ -690,7 +690,7 @@ class DatasourceProviderService:
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = (
             db.session.query(DatasourceProvider)
-            .filter(
+            .where(
                 DatasourceProvider.tenant_id == tenant_id,
                 DatasourceProvider.provider == provider,
                 DatasourceProvider.plugin_id == plugin_id,
@@ -862,7 +862,7 @@ class DatasourceProviderService:
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = (
             db.session.query(DatasourceProvider)
-            .filter(
+            .where(
                 DatasourceProvider.tenant_id == tenant_id,
                 DatasourceProvider.provider == provider,
                 DatasourceProvider.plugin_id == plugin_id,
