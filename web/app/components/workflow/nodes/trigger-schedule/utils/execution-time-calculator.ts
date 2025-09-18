@@ -244,6 +244,12 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 }
 
 export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
+  // Return placeholder for cron mode with empty or invalid expression
+  if (data.mode === 'cron') {
+    if (!data.cron_expression || data.cron_expression.trim() === '' || !isValidCronExpression(data.cron_expression))
+      return '--'
+  }
+
   const times = getFormattedExecutionTimes(data, 1)
   if (times.length === 0) {
     const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
