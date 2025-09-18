@@ -25,7 +25,7 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
   } = useMarketplacePlugins()
 
   const getCollectionPlugins = useCallback(async () => {
-    const collectionPlugins = await getMarketplacePluginsByCollectionId('__model-settings-pinned-models')
+    const collectionPlugins = await getMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
 
     setCollectionPlugins(collectionPlugins)
   }, [])
