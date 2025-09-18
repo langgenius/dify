@@ -1544,7 +1544,7 @@ def transform_datasource_credentials():
                 if jina_plugin_id not in installed_plugins_ids:
                     if jina_plugin_unique_identifier:
                         # install jina plugin
-                        print(jina_plugin_unique_identifier)
+                        logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
                         PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
 
                 auth_count = 0
