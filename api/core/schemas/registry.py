@@ -86,7 +86,7 @@ class SchemaRegistry:
             self.metadata[uri] = metadata
 
         except (OSError, json.JSONDecodeError) as e:
-            self.logger.debug("Failed to load schema %s/%s: %s", version, schema_name, e)
+            self.logger.warning("Failed to load schema %s/%s: %s", version, schema_name, e)
 
     def get_schema(self, uri: str) -> Any | None:
         """Retrieves a schema by URI with version support"""
