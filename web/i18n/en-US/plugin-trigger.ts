@@ -107,6 +107,7 @@ const translation = {
       configuration: {
         title: 'Configure Subscription',
         description: 'Set up your subscription parameters after authorization',
+        success: 'OAuth configuration successful',
       },
     },
     manual: {

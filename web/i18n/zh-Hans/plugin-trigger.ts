@@ -107,6 +107,7 @@ const translation = {
       configuration: {
         title: '配置订阅',
         description: '授权完成后设置您的订阅参数',
+        success: 'OAuth 配置成功',
       },
     },
     manual: {
