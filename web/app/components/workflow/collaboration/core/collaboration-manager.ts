@@ -430,6 +430,7 @@ export class CollaborationManager {
 
     const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
     const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
+    const shouldSyncDataKey = (key: string) => !key.startsWith('_') && key !== 'selected'
 
     // Delete removed nodes
     oldNodes.forEach((oldNode) => {
@@ -456,7 +457,7 @@ export class CollaborationManager {
 
         // Clone data properties, excluding private ones
         Object.entries(newNode.data).forEach(([key, value]) => {
-          if (!key.startsWith('_') && value !== undefined)
+          if (shouldSyncDataKey(key) && value !== undefined)
             nodeData.data[key] = JSON.parse(JSON.stringify(value))
         })
 
@@ -491,7 +492,7 @@ export class CollaborationManager {
 
           // Only update changed properties in data
           Object.entries(newData).forEach(([key, value]) => {
-            if (!key.startsWith('_')) {
+            if (shouldSyncDataKey(key)) {
               const oldValue = (oldData as any)[key]
               if (!isEqual(oldValue, value))
                 updatedNode.data[key] = JSON.parse(JSON.stringify(value))
@@ -500,7 +501,7 @@ export class CollaborationManager {
 
           // Remove deleted properties from data
           Object.keys(oldData).forEach((key) => {
-            if (!key.startsWith('_') && !(key in newData))
+            if (shouldSyncDataKey(key) && !(key in newData))
               delete updatedNode.data[key]
           })
 
@@ -522,7 +523,7 @@ export class CollaborationManager {
           }
 
           Object.entries(newNode.data).forEach(([key, value]) => {
-            if (!key.startsWith('_') && value !== undefined)
+            if (shouldSyncDataKey(key) && value !== undefined)
               nodeData.data[key] = JSON.parse(JSON.stringify(value))
           })
 

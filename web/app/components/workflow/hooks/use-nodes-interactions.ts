@@ -312,7 +312,7 @@ export const useNodesInteractions = () => {
           else node.data.selected = false
         })
       })
-      setNodes(newNodes)
+      setNodes(newNodes, false)
 
       const connectedEdges = getConnectedEdges(
         [{ id: nodeId } as Node],
@@ -334,10 +334,8 @@ export const useNodesInteractions = () => {
           }
         })
       })
-      setEdges(newEdges)
-
-      handleSyncWorkflowDraft()
-    }, [collaborativeWorkflow, handleSyncWorkflowDraft])
+      setEdges(newEdges, false)
+    }, [collaborativeWorkflow])
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
