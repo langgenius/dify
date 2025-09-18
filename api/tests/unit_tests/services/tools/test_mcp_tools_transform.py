@@ -2,6 +2,8 @@
 
 from unittest.mock import Mock
 
+import pytest
+
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -10,17 +12,83 @@ from models.tools import MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 
+@pytest.fixture
+def mock_user():
+    """Provides a mock user object."""
+    user = Mock()
+    user.name = "Test User"
+    return user
+
+
+@pytest.fixture
+def mock_provider(mock_user):
+    """Provides a mock MCPToolProvider with a loaded user."""
+    provider = Mock(spec=MCPToolProvider)
+    provider.load_user.return_value = mock_user
+    return provider
+
+
+@pytest.fixture
+def mock_provider_no_user():
+    """Provides a mock MCPToolProvider with no user."""
+    provider = Mock(spec=MCPToolProvider)
+    provider.load_user.return_value = None
+    return provider
+
+
+@pytest.fixture
+def mock_provider_full(mock_user):
+    """Provides a fully configured mock MCPToolProvider for detailed tests."""
+    provider = Mock(spec=MCPToolProvider)
+    provider.id = "provider-id-123"
+    provider.server_identifier = "server-identifier-456"
+    provider.name = "Test MCP Provider"
+    provider.provider_icon = "icon.png"
+    provider.authed = True
+    provider.masked_server_url = "https://*****.com/mcp"
+    provider.timeout = 30
+    provider.sse_read_timeout = 300
+    provider.masked_headers = {"Authorization": "Bearer *****"}
+    provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
+
+    # Mock timestamp
+    mock_updated_at = Mock()
+    mock_updated_at.timestamp.return_value = 1234567890
+    provider.updated_at = mock_updated_at
+
+    provider.load_user.return_value = mock_user
+    return provider
+
+
+@pytest.fixture
+def sample_mcp_tools():
+    """Provides sample MCP tools for testing."""
+    return {
+        "simple": MCPTool(
+            name="simple_tool", description="A simple test tool", inputSchema={"type": "object", "properties": {}}
+        ),
+        "none_desc": MCPTool(name="tool_none_desc", description=None, inputSchema={"type": "object", "properties": {}}),
+        "complex": MCPTool(
+            name="complex_tool",
+            description="A tool with complex parameters",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Input text"},
+                    "count": {"type": "integer", "description": "Number of items", "minimum": 1, "maximum": 100},
+                    "options": {"type": "array", "items": {"type": "string"}, "description": "List of options"},
+                },
+                "required": ["text"],
+            },
+        ),
+    }
+
+
 class TestMCPToolTransform:
     """Test cases for MCP tool transformation methods."""
 
-    def test_mcp_tool_to_user_tool_with_none_description(self):
+    def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider):
         """Test that mcp_tool_to_user_tool handles None description correctly."""
-        # Create mock MCP provider
-        mock_provider = Mock(spec=MCPToolProvider)
-        mock_user = Mock()
-        mock_user.name = "Test User"
-        mock_provider.load_user.return_value = mock_user
-
         # Create MCP tools with None description
         tools = [
             MCPTool(
@@ -59,14 +127,8 @@ class TestMCPToolTransform:
         assert result[1].description.en_US == ""
         assert result[1].description.zh_Hans == ""
 
-    def test_mcp_tool_to_user_tool_with_description(self):
+    def test_mcp_tool_to_user_tool_with_description(self, mock_provider):
         """Test that mcp_tool_to_user_tool handles normal description correctly."""
-        # Create mock MCP provider
-        mock_provider = Mock(spec=MCPToolProvider)
-        mock_user = Mock()
-        mock_user.name = "Test User"
-        mock_provider.load_user.return_value = mock_user
-
         # Create MCP tools with description
         tools = [
             MCPTool(
@@ -86,46 +148,22 @@ class TestMCPToolTransform:
         assert result[0].description.en_US == "This is a test tool that does something useful"
         assert result[0].description.zh_Hans == "This is a test tool that does something useful"
 
-    def test_mcp_tool_to_user_tool_with_no_user(self):
+    def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user):
         """Test that mcp_tool_to_user_tool handles None user correctly."""
-        # Create mock MCP provider with no user
-        mock_provider = Mock(spec=MCPToolProvider)
-        mock_provider.load_user.return_value = None
-
         # Create MCP tool
         tools = [MCPTool(name="tool1", description="Test tool", inputSchema={"type": "object", "properties": {}})]
 
         # Call the method
-        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+        result = ToolTransformService.mcp_tool_to_user_tool(mock_provider_no_user, tools)
 
         # Verify the result
         assert len(result) == 1
         assert result[0].author == "Anonymous"
 
-    def test_mcp_tool_to_user_tool_with_complex_schema(self):
+    def test_mcp_tool_to_user_tool_with_complex_schema(self, mock_provider, sample_mcp_tools):
         """Test that mcp_tool_to_user_tool correctly converts complex input schemas."""
-        # Create mock MCP provider
-        mock_provider = Mock(spec=MCPToolProvider)
-        mock_user = Mock()
-        mock_user.name = "Test User"
-        mock_provider.load_user.return_value = mock_user
-
-        # Create MCP tool with complex schema
-        tools = [
-            MCPTool(
-                name="complex_tool",
-                description="A tool with complex parameters",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "text": {"type": "string", "description": "Input text"},
-                        "count": {"type": "integer", "description": "Number of items", "minimum": 1, "maximum": 100},
-                        "options": {"type": "array", "items": {"type": "string"}, "description": "List of options"},
-                    },
-                    "required": ["text"],
-                },
-            )
-        ]
+        # Use complex tool from fixtures
+        tools = [sample_mcp_tools["complex"]]
 
         # Call the method
         result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
@@ -137,30 +175,13 @@ class TestMCPToolTransform:
         # The actual parameter conversion is handled by convert_mcp_schema_to_parameter
         # which should be tested separately
 
-    def test_mcp_provider_to_user_provider_for_list(self):
+    def test_mcp_provider_to_user_provider_for_list(self, mock_provider_full):
         """Test mcp_provider_to_user_provider with for_list=True."""
-        # Create mock MCP provider
-        mock_provider = Mock(spec=MCPToolProvider)
-        mock_provider.id = "provider-id-123"
-        mock_provider.server_identifier = "server-identifier-456"
-        mock_provider.name = "Test MCP Provider"
-        mock_provider.provider_icon = "icon.png"
-        mock_provider.authed = True
-        mock_provider.masked_server_url = "https://*****.com/mcp"
-        mock_provider.timeout = 30
-        mock_provider.sse_read_timeout = 300
-        mock_provider.masked_headers = {"Authorization": "Bearer *****"}
-        mock_provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
-        mock_updated_at = Mock()
-        mock_updated_at.timestamp.return_value = 1234567890
-        mock_provider.updated_at = mock_updated_at
-        mock_provider.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
-        mock_user = Mock()
-        mock_user.name = "Test User"
-        mock_provider.load_user.return_value = mock_user
+        # Set tools data with null description
+        mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
 
         # Call the method with for_list=True
-        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider, for_list=True)
+        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=True)
 
         # Verify the result
         assert isinstance(result, ToolProviderApiEntity)
@@ -172,30 +193,13 @@ class TestMCPToolTransform:
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == ""  # Should handle None description
 
-    def test_mcp_provider_to_user_provider_not_for_list(self):
+    def test_mcp_provider_to_user_provider_not_for_list(self, mock_provider_full):
         """Test mcp_provider_to_user_provider with for_list=False."""
-        # Create mock MCP provider
-        mock_provider = Mock(spec=MCPToolProvider)
-        mock_provider.id = "provider-id-123"
-        mock_provider.server_identifier = "server-identifier-456"
-        mock_provider.name = "Test MCP Provider"
-        mock_provider.provider_icon = "icon.png"
-        mock_provider.authed = True
-        mock_provider.masked_server_url = "https://*****.com/mcp"
-        mock_provider.timeout = 30
-        mock_provider.sse_read_timeout = 300
-        mock_provider.masked_headers = {"Authorization": "Bearer *****"}
-        mock_provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
-        mock_updated_at = Mock()
-        mock_updated_at.timestamp.return_value = 1234567890
-        mock_provider.updated_at = mock_updated_at
-        mock_provider.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
-        mock_user = Mock()
-        mock_user.name = "Test User"
-        mock_provider.load_user.return_value = mock_user
+        # Set tools data with description
+        mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
 
         # Call the method with for_list=False
-        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider, for_list=False)
+        result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=False)
 
         # Verify the result
         assert isinstance(result, ToolProviderApiEntity)
