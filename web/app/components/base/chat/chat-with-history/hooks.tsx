@@ -155,6 +155,17 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [appId, conversationIdInfo, setConversationIdInfo, userId])
 
   const [newConversationId, setNewConversationId] = useState('')
+
+  // Reset newConversationId when conversations are cleared
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === CONVERSATION_ID_INFO && e.newValue === '{}')
+        setNewConversationId('')
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId)
       return ''
@@ -495,10 +506,34 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       }))
       onSuccess()
     }
+    catch (error: any) {
+      // Handle case where conversation was deleted after being shown in UI
+      if (error.status === 404 || error.message?.includes('Conversation Not Exists') || error.message?.includes('NOT FOUND')) {
+        notify({
+          type: 'error',
+          message: t('common.actionMsg.modifiedUnsuccessfully'),
+        })
+        // Remove the deleted conversation from the local list
+        setOriginConversationList(produce((draft) => {
+          const index = originConversationList.findIndex(item => item.id === conversationId)
+          if (index !== -1)
+            draft.splice(index, 1)
+        }))
+        // Refresh the conversation lists to sync with server
+        handleUpdateConversationList()
+      }
+      else {
+        // Handle other errors
+        notify({
+          type: 'error',
+          message: t('common.actionMsg.modifyFailed'),
+        })
+      }
+    }
     finally {
       setConversationRenaming(false)
     }
-  }, [isInstalledApp, appId, notify, t, conversationRenaming, originConversationList])
+  }, [isInstalledApp, appId, notify, t, conversationRenaming, originConversationList, handleUpdateConversationList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
