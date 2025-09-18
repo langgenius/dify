@@ -14,7 +14,7 @@ try:
             return isinstance(curr, Greenlet) or isinstance(getattr(curr, "parent", None), Hub)
         except Exception:
             return False
-except Exception:
+except ImportError:
 
     def _is_gevent_context() -> bool:
         return False
@@ -116,8 +116,8 @@ class RetrievalService:
             joinall(self._greenlets, timeout=timeout, raise_error=False)
             for g in list(self._greenlets):
                 try:
-                    if getattr(g, "ready", lambda: False)():
-                        val = getattr(g, "value", None)
+                    if g.ready():
+                        val = g.get(block=False)
                         if isinstance(val, list) and val:
                             # value is list[Document]
                             results.append(val)
