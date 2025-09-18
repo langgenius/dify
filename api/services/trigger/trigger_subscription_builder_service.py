@@ -42,7 +42,7 @@ class TriggerSubscriptionBuilderService:
 
     @classmethod
     def encode_cache_key(cls, subscription_id: str) -> str:
-        return f"trigger:subscription:validation:{subscription_id}"
+        return f"trigger:subscription:builder:{subscription_id}"
 
     @classmethod
     def verify_trigger_subscription_builder(
