@@ -178,6 +178,7 @@ class PluginDependency(BaseModel):
 
     class Marketplace(BaseModel):
         marketplace_plugin_unique_identifier: str
+        version: str | None = None
 
         @property
         def plugin_unique_identifier(self) -> str:
