@@ -5,6 +5,7 @@ import { useStore } from '../store'
 import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
+import { collaborationManager } from '@/app/components/workflow/collaboration'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -37,6 +38,20 @@ export const useWorkflowComment = () => {
     commentDetailCacheRef.current = commentDetailCache
   }, [commentDetailCache])
 
+  const refreshActiveComment = useCallback(async (commentId: string) => {
+    if (!appId) return
+
+    const detailResponse = await fetchWorkflowComment(appId, commentId)
+    const detail = (detailResponse as any)?.data ?? detailResponse
+
+    commentDetailCacheRef.current = {
+      ...commentDetailCacheRef.current,
+      [commentId]: detail,
+    }
+    setCommentDetailCache(commentDetailCacheRef.current)
+    setActiveComment(detail)
+  }, [appId, setActiveComment, setCommentDetailCache])
+
   const loadComments = useCallback(async () => {
     if (!appId) return
 
@@ -52,6 +67,19 @@ export const useWorkflowComment = () => {
       setCommentsLoading(false)
     }
   }, [appId, setComments, setCommentsLoading])
+
+  // Setup collaboration
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onCommentsUpdate(() => {
+      loadComments()
+      if (activeCommentIdRef.current)
+        refreshActiveComment(activeCommentIdRef.current)
+    })
+
+    return unsubscribe
+  }, [appId, loadComments, refreshActiveComment])
 
   useEffect(() => {
     loadComments()
@@ -80,6 +108,9 @@ export const useWorkflowComment = () => {
       })
 
       console.log('Comment created successfully:', newComment)
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       await loadComments()
       setPendingComment(null)
       setControlMode(ControlMode.Pointer)
@@ -133,26 +164,15 @@ export const useWorkflowComment = () => {
     }
   }, [appId, reactflow, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache, setControlMode, setPendingComment])
 
-  const refreshActiveComment = useCallback(async (commentId: string) => {
-    if (!appId) return
-
-    const detailResponse = await fetchWorkflowComment(appId, commentId)
-    const detail = (detailResponse as any)?.data ?? detailResponse
-
-    commentDetailCacheRef.current = {
-      ...commentDetailCacheRef.current,
-      [commentId]: detail,
-    }
-    setCommentDetailCache(commentDetailCacheRef.current)
-    setActiveComment(detail)
-  }, [appId, setActiveComment, setCommentDetailCache])
-
   const handleCommentResolve = useCallback(async (commentId: string) => {
     if (!appId) return
 
     setActiveCommentLoading(true)
     try {
       await resolveWorkflowComment(appId, commentId)
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       await refreshActiveComment(commentId)
       await loadComments()
     }
@@ -170,6 +190,9 @@ export const useWorkflowComment = () => {
     setActiveCommentLoading(true)
     try {
       await deleteWorkflowComment(appId, commentId)
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       const updatedCache = { ...commentDetailCacheRef.current }
       delete updatedCache[commentId]
       commentDetailCacheRef.current = updatedCache
@@ -210,6 +233,9 @@ export const useWorkflowComment = () => {
     setActiveCommentLoading(true)
     try {
       await createWorkflowCommentReply(appId, commentId, { content: trimmed, mentioned_user_ids: mentionedUserIds })
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       await refreshActiveComment(commentId)
       await loadComments()
     }
@@ -229,6 +255,9 @@ export const useWorkflowComment = () => {
     setActiveCommentLoading(true)
     try {
       await updateWorkflowCommentReply(appId, commentId, replyId, { content: trimmed, mentioned_user_ids: mentionedUserIds })
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       await refreshActiveComment(commentId)
       await loadComments()
     }
@@ -246,6 +275,9 @@ export const useWorkflowComment = () => {
     setActiveCommentLoading(true)
     try {
       await deleteWorkflowCommentReply(appId, commentId, replyId)
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       await refreshActiveComment(commentId)
       await loadComments()
     }

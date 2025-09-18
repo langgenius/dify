@@ -276,6 +276,24 @@ export class CollaborationManager {
     return this.eventEmitter.on('leaderChange', callback)
   }
 
+  onCommentsUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
+    return this.eventEmitter.on('commentsUpdate', callback)
+  }
+
+  emitCommentsUpdate(appId: string): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+
+    const socket = webSocketClient.getSocket(this.currentAppId)
+    if (socket) {
+      console.log('Emitting Comments update event')
+      socket.emit('collaboration_event', {
+        type: 'commentsUpdate',
+        data: { appId, timestamp: Date.now() },
+        timestamp: Date.now(),
+      })
+    }
+  }
+
   onUndoRedoStateChange(callback: (state: { canUndo: boolean; canRedo: boolean }) => void): () => void {
     return this.eventEmitter.on('undoRedoStateChange', callback)
   }
@@ -612,6 +630,10 @@ export class CollaborationManager {
       else if (update.type === 'workflowUpdate') {
         console.log('Processing workflowUpdate event:', update)
         this.eventEmitter.emit('workflowUpdate', update.data)
+      }
+      else if (update.type === 'commentsUpdate') {
+        console.log('Processing commentsUpdate event:', update)
+        this.eventEmitter.emit('commentsUpdate', update.data)
       }
       else if (update.type === 'syncRequest') {
         console.log('Received sync request from another user')

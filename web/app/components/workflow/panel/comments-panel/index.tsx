@@ -10,6 +10,7 @@ import { resolveWorkflowComment } from '@/service/workflow-comment'
 import { useParams } from 'next/navigation'
 import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
 import { useAppContext } from '@/context/app-context'
+import { collaborationManager } from '@/app/components/workflow/collaboration'
 
 const CommentsPanel = () => {
   const activeCommentId = useStore(s => s.activeCommentId)
@@ -43,6 +44,9 @@ const CommentsPanel = () => {
     if (!appId) return
     try {
       await resolveWorkflowComment(appId, comment.id)
+
+      collaborationManager.emitCommentsUpdate(appId)
+
       await loadComments()
       setActiveCommentId(comment.id)
     }
