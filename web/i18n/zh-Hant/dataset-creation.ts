@@ -88,6 +88,7 @@ const translation = {
       waterCrawlNotConfiguredDescription: '配置 Watercrawl 並使用 API 金鑰來使用它。',
       configureJinaReader: '配置 Jina Reader',
       waterCrawlNotConfigured: 'Watercrawl 尚未配置',
+      running: '流動的',
     },
   },
   stepTwo: {
@@ -172,6 +173,7 @@ const translation = {
     fullDoc: '完整文件',
     parentChildTip: '當使用 parent-child 模式時，child-chunk 用於檢索，parent-chunk 用於作為上下文調用 call。',
     switch: '開關',
+    qaTip: '使用結構化 Q&A 資料時，您可以建立將問題與答案配對的文件。這些文件根據問題部分進行索引，允許系統根據查詢相似性檢索相關答案。',
   },
   stepThree: {
     creationTitle: '🎉 知識庫已建立',
