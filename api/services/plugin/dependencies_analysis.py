@@ -1,4 +1,5 @@
 import re
+
 from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginDependency, PluginInstallationSource
@@ -51,7 +52,9 @@ class DependenciesAnalysisService:
             unique_identifier = dependency.value.plugin_unique_identifier
             if unique_identifier in missing_plugin_unique_identifiers:
                 if dependency.type == PluginDependency.Type.Marketplace:
-                    version = re.search(r":(?P<version>[0-9]+(?:\.[0-9]+){2}(?:[+-][0-9A-Za-z.-]+)?)(?:@|$)", unique_identifier)
+                    version = re.search(
+                        r":(?P<version>[0-9]+(?:\.[0-9]+){2}(?:[+-][0-9A-Za-z.-]+)?)(?:@|$)", unique_identifier
+                    )
                     if version:
                         dependency.value.version = version.group("version")
                     leaked_dependencies.append(
