@@ -59,7 +59,7 @@ class DependenciesAnalysisService:
                     version_match = _VERSION_REGEX.search(unique_identifier)
                     if version_match:
                         dependency.value.version = version_match.group("version")
-                
+
                 # Create and append the dependency (same for all types)
                 leaked_dependencies.append(
                     PluginDependency(
