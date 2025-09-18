@@ -46,8 +46,8 @@ class TriggerScheduleNode(BaseNode):
             "type": "trigger-schedule",
             "config": {
                 "mode": "visual",
-                "frequency": "weekly",
-                "visual_config": {"time": "11:30 AM", "on_minute": 0, "weekdays": ["sun"], "monthly_days": [1]},
+                "frequency": "daily",
+                "visual_config": {"time": "12:00 AM", "on_minute": 0, "weekdays": ["sun"], "monthly_days": [1]},
                 "timezone": "UTC",
             },
         }
