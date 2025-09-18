@@ -18,6 +18,8 @@ import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/node
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import cn from '@/utils/classnames'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 
 const EnvPanel = () => {
   const { t } = useTranslation()
@@ -28,6 +30,7 @@ const EnvPanel = () => {
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
   const setEnvSecrets = useStore(s => s.setEnvSecrets)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const appId = useWorkflowStore(s => s.appId)
 
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
@@ -65,18 +68,28 @@ const EnvPanel = () => {
     setShowVariableModal(true)
   }
 
-  const handleDelete = useCallback((env: EnvironmentVariable) => {
+  const handleDelete = useCallback(async (env: EnvironmentVariable) => {
     removeUsedVarInNodes(env)
     updateEnvList(envList.filter(e => e.id !== env.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    doSyncWorkflowDraft()
+    await doSyncWorkflowDraft()
+
+    // Emit update event to other connected clients
+    const socket = webSocketClient.getSocket(appId)
+    if (socket?.connected) {
+      socket.emit('collaboration_event', {
+        type: 'varsAndFeaturesUpdate',
+        timestamp: Date.now(),
+      })
+    }
+
     if (env.value_type === 'secret') {
       const newMap = { ...envSecrets }
       delete newMap[env.id]
       setEnvSecrets(newMap)
     }
-  }, [doSyncWorkflowDraft, envList, envSecrets, removeUsedVarInNodes, setEnvSecrets, updateEnvList])
+  }, [doSyncWorkflowDraft, envList, envSecrets, removeUsedVarInNodes, setEnvSecrets, updateEnvList, appId])
 
   const deleteCheck = useCallback((env: EnvironmentVariable) => {
     const effectedNodes = getEffectedNodes(env)
@@ -102,6 +115,12 @@ const EnvPanel = () => {
       const newList = [env, ...envList]
       updateEnvList(newList)
       await doSyncWorkflowDraft()
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'varsAndFeaturesUpdate',
+        })
+      }
       updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
       return
     }
@@ -143,8 +162,14 @@ const EnvPanel = () => {
       setNodes(newNodes)
     }
     await doSyncWorkflowDraft()
+    const socket = webSocketClient.getSocket(appId)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'varsAndFeaturesUpdate',
+      })
+    }
     updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
-  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, getEffectedNodes, setEnvSecrets, store, updateEnvList])
+  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, getEffectedNodes, setEnvSecrets, store, updateEnvList, appId])
 
   return (
     <div

@@ -25,6 +25,7 @@ import {
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
@@ -35,15 +36,20 @@ const WorkflowAppWithAdditionalContext = () => {
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
   const nodesData = useMemo(() => {
-    if (data)
-      return initialNodes(data.graph.nodes, data.graph.edges)
-
+    if (data) {
+      const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
+      collaborationManager.setNodes([], processedNodes)
+      return processedNodes
+    }
     return []
   }, [data])
-  const edgesData = useMemo(() => {
-    if (data)
-      return initialEdges(data.graph.edges, data.graph.nodes)
 
+  const edgesData = useMemo(() => {
+    if (data) {
+      const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
+      collaborationManager.setEdges([], processedEdges)
+      return processedEdges
+    }
     return []
   }, [data])
 

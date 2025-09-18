@@ -23,6 +23,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
+from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -1004,3 +1005,101 @@ class DraftWorkflowNodeLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("last run not found")
         return node_exec
+
+
+class WorkflowOnlineUsersApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(online_user_list_fields)
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("workflow_ids", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        workflow_ids = [id.strip() for id in args["workflow_ids"].split(",")]
+
+        results = {}
+        for workflow_id in workflow_ids:
+            users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+
+            users = []
+            for _, user_info_json in users_json.items():
+                try:
+                    users.append(json.loads(user_info_json))
+                except Exception:
+                    continue
+            results[workflow_id] = users
+
+        return {"data": results}
+
+
+api.add_resource(
+    DraftWorkflowApi,
+    "/apps/<uuid:app_id>/workflows/draft",
+)
+api.add_resource(
+    WorkflowConfigApi,
+    "/apps/<uuid:app_id>/workflows/draft/config",
+)
+api.add_resource(
+    AdvancedChatDraftWorkflowRunApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run",
+)
+api.add_resource(
+    DraftWorkflowRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/run",
+)
+api.add_resource(
+    WorkflowTaskStopApi,
+    "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop",
+)
+api.add_resource(
+    DraftWorkflowNodeRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    AdvancedChatDraftRunIterationNodeApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    WorkflowDraftRunIterationNodeApi,
+    "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    AdvancedChatDraftRunLoopNodeApi,
+    "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    WorkflowDraftRunLoopNodeApi,
+    "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    PublishedWorkflowApi,
+    "/apps/<uuid:app_id>/workflows/publish",
+)
+api.add_resource(
+    PublishedAllWorkflowApi,
+    "/apps/<uuid:app_id>/workflows",
+)
+api.add_resource(
+    DefaultBlockConfigsApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs",
+)
+api.add_resource(
+    DefaultBlockConfigApi,
+    "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>",
+)
+api.add_resource(
+    ConvertToWorkflowApi,
+    "/apps/<uuid:app_id>/convert-to-workflow",
+)
+api.add_resource(
+    WorkflowByIdApi,
+    "/apps/<uuid:app_id>/workflows/<string:workflow_id>",
+)
+api.add_resource(
+    DraftWorkflowNodeLastRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
+)
+api.add_resource(WorkflowOnlineUsersApi, "/apps/workflows/online-users")

@@ -14,7 +14,6 @@ import {
   getConnectedEdges,
   getOutgoers,
   useReactFlow,
-  useStoreApi,
 } from 'reactflow'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
@@ -46,7 +45,7 @@ import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useHelpline } from './use-helpline'
 import {
@@ -62,13 +61,13 @@ import { useNodesMetaData } from './use-nodes-meta-data'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
-  const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { checkNestedParallelLimit, getAfterNodesInSameBranch } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
@@ -120,50 +119,42 @@ export const useNodesInteractions = () => {
 
       if (node.type === CUSTOM_LOOP_START_NODE) return
 
-      const { getNodes, setNodes } = store.getState()
-      e.stopPropagation()
+    e.stopPropagation()
 
-      const nodes = getNodes()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
 
-      const { restrictPosition } = handleNodeIterationChildDrag(node)
-      const { restrictPosition: restrictLoopPosition }
-        = handleNodeLoopChildDrag(node)
+    const { restrictPosition } = handleNodeIterationChildDrag(node)
+    const { restrictPosition: restrictLoopPosition }
+      = handleNodeLoopChildDrag(node)
 
-      const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
-        = handleSetHelpline(node)
-      const showHorizontalHelpLineNodesLength
-        = showHorizontalHelpLineNodes.length
-      const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
+    const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
+      = handleSetHelpline(node)
+    const showHorizontalHelpLineNodesLength
+      = showHorizontalHelpLineNodes.length
+    const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
 
-      const newNodes = produce(nodes, (draft) => {
-        const currentNode = draft.find(n => n.id === node.id)!
+    const newNodes = produce(nodes, (draft) => {
+      const currentNode = draft.find(n => n.id === node.id)!
 
-        if (showVerticalHelpLineNodesLength > 0)
-          currentNode.position.x = showVerticalHelpLineNodes[0].position.x
-        else if (restrictPosition.x !== undefined)
-          currentNode.position.x = restrictPosition.x
-        else if (restrictLoopPosition.x !== undefined)
-          currentNode.position.x = restrictLoopPosition.x
-        else currentNode.position.x = node.position.x
+      if (showVerticalHelpLineNodesLength > 0)
+        currentNode.position.x = showVerticalHelpLineNodes[0].position.x
+      else if (restrictPosition.x !== undefined)
+        currentNode.position.x = restrictPosition.x
+      else if (restrictLoopPosition.x !== undefined)
+        currentNode.position.x = restrictLoopPosition.x
+      else currentNode.position.x = node.position.x
 
-        if (showHorizontalHelpLineNodesLength > 0)
-          currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
-        else if (restrictPosition.y !== undefined)
-          currentNode.position.y = restrictPosition.y
-        else if (restrictLoopPosition.y !== undefined)
-          currentNode.position.y = restrictLoopPosition.y
-        else currentNode.position.y = node.position.y
-      })
-      setNodes(newNodes)
-    },
-    [
-      getNodesReadOnly,
-      store,
-      handleNodeIterationChildDrag,
-      handleNodeLoopChildDrag,
-      handleSetHelpline,
-    ],
-  )
+    if (showHorizontalHelpLineNodesLength > 0)
+      currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
+    else if (restrictPosition.y !== undefined)
+      currentNode.position.y = restrictPosition.y
+    else if (restrictLoopPosition.y !== undefined)
+      currentNode.position.y = restrictLoopPosition.y
+    else
+      currentNode.position.y = node.position.y
+  })
+    setNodes(newNodes)
+  }, [getNodesReadOnly, collaborativeWorkflow, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>(
     (_, node) => {
@@ -210,62 +201,62 @@ export const useNodesInteractions = () => {
       )
         return
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-      const nodes = getNodes()
-      const { connectingNodePayload, setEnteringNodePayload }
-        = workflowStore.getState()
+    const { nodes, edges, setNodes, setEdges } = collaborativeWorkflow.getState()
+    const {
+      connectingNodePayload,
+      setEnteringNodePayload,
+    } = workflowStore.getState()
+    if (connectingNodePayload) {
+      if (connectingNodePayload.nodeId === node.id) return
+      const connectingNode: Node = nodes.find(
+        n => n.id === connectingNodePayload.nodeId,
+      )!
+      const sameLevel = connectingNode.parentId === node.parentId
 
-      if (connectingNodePayload) {
-        if (connectingNodePayload.nodeId === node.id) return
-        const connectingNode: Node = nodes.find(
-          n => n.id === connectingNodePayload.nodeId,
-        )!
-        const sameLevel = connectingNode.parentId === node.parentId
-
-        if (sameLevel) {
-          setEnteringNodePayload({
-            nodeId: node.id,
-            nodeData: node.data as VariableAssignerNodeType,
-          })
-          const fromType = connectingNodePayload.handleType
-
-          const newNodes = produce(nodes, (draft) => {
-            draft.forEach((n) => {
-              if (
-                n.id === node.id
-                && fromType === 'source'
-                && (node.data.type === BlockEnum.VariableAssigner
-                  || node.data.type === BlockEnum.VariableAggregator)
-              ) {
-                if (!node.data.advanced_settings?.group_enabled)
-                  n.data._isEntering = true
-              }
-              if (
-                n.id === node.id
-                && fromType === 'target'
-                && (connectingNode.data.type === BlockEnum.VariableAssigner
-                  || connectingNode.data.type === BlockEnum.VariableAggregator)
-                && node.data.type !== BlockEnum.IfElse
-                && node.data.type !== BlockEnum.QuestionClassifier
-              )
-                n.data._isEntering = true
-            })
-          })
-          setNodes(newNodes)
-        }
-      }
-      const newEdges = produce(edges, (draft) => {
-        const connectedEdges = getConnectedEdges([node], edges)
-
-        connectedEdges.forEach((edge) => {
-          const currentEdge = draft.find(e => e.id === edge.id)
-          if (currentEdge) currentEdge.data._connectedNodeIsHovering = true
+      if (sameLevel) {
+        setEnteringNodePayload({
+          nodeId: node.id,
+          nodeData: node.data as VariableAssignerNodeType,
         })
+        const fromType = connectingNodePayload.handleType
+
+        const newNodes = produce(nodes, (draft) => {
+          draft.forEach((n) => {
+            if (
+              n.id === node.id
+              && fromType === 'source'
+              && (node.data.type === BlockEnum.VariableAssigner
+                || node.data.type === BlockEnum.VariableAggregator)
+            ) {
+              if (!node.data.advanced_settings?.group_enabled)
+                n.data._isEntering = true
+            }
+            if (
+              n.id === node.id
+              && fromType === 'target'
+              && (connectingNode.data.type === BlockEnum.VariableAssigner
+                || connectingNode.data.type === BlockEnum.VariableAggregator)
+              && node.data.type !== BlockEnum.IfElse
+              && node.data.type !== BlockEnum.QuestionClassifier
+            )
+              n.data._isEntering = true
+          })
+        })
+        setNodes(newNodes, false)
+      }
+    }
+    const newEdges = produce(edges, (draft) => {
+      const connectedEdges = getConnectedEdges([node], edges)
+
+      connectedEdges.forEach((edge) => {
+        const currentEdge = draft.find(e => e.id === edge.id)
+        if (currentEdge) currentEdge.data._connectedNodeIsHovering = true
       })
-      setEdges(newEdges)
-    },
-    [store, workflowStore, getNodesReadOnly],
-  )
+    })
+    setEdges(newEdges, false)
+  },
+  [collaborativeWorkflow, workflowStore, getNodesReadOnly],
+)
 
   const handleNodeLeave = useCallback<NodeMouseHandler>(
     (_, node) => {
@@ -285,21 +276,21 @@ export const useNodesInteractions = () => {
 
       const { setEnteringNodePayload } = workflowStore.getState()
       setEnteringNodePayload(undefined)
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-      const newNodes = produce(getNodes(), (draft) => {
+      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+      const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
           node.data._isEntering = false
         })
       })
-      setNodes(newNodes)
+      setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         draft.forEach((edge) => {
           edge.data._connectedNodeIsHovering = false
         })
       })
-      setEdges(newEdges)
+      setEdges(newEdges, false)
     },
-    [store, workflowStore, getNodesReadOnly],
+    [collaborativeWorkflow, workflowStore, getNodesReadOnly],
   )
 
   const handleNodeSelect = useCallback(
@@ -310,9 +301,7 @@ export const useNodesInteractions = () => {
     ) => {
       if (initShowLastRunTab)
         workflowStore.setState({ initShowLastRunTab: true })
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-
-      const nodes = getNodes()
+      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const selectedNode = nodes.find(node => node.data.selected)
 
       if (!cancelSelection && selectedNode?.id === nodeId) return
@@ -347,10 +336,8 @@ export const useNodesInteractions = () => {
       })
       setEdges(newEdges)
 
-      handleSyncWorkflowDraft()
-    },
-    [store, handleSyncWorkflowDraft],
-  )
+    handleSyncWorkflowDraft()
+  }, [collaborativeWorkflow, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
@@ -367,10 +354,9 @@ export const useNodesInteractions = () => {
       if (source === target) return
       if (getNodesReadOnly()) return
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-      const nodes = getNodes()
-      const targetNode = nodes.find(node => node.id === target!)
-      const sourceNode = nodes.find(node => node.id === source!)
+    const { nodes, edges, setNodes, setEdges } = collaborativeWorkflow.getState()
+    const targetNode = nodes.find(node => node.id === target!)
+    const sourceNode = nodes.find(node => node.id === source!)
 
       if (targetNode?.parentId !== sourceNode?.parentId) return
 
@@ -454,7 +440,7 @@ export const useNodesInteractions = () => {
     },
     [
       getNodesReadOnly,
-      store,
+      collaborativeWorkflow,
       workflowStore,
       handleSyncWorkflowDraft,
       saveStateToHistory,
@@ -468,8 +454,8 @@ export const useNodesInteractions = () => {
 
       if (nodeId && handleType) {
         const { setConnectingNodePayload } = workflowStore.getState()
-        const { getNodes } = store.getState()
-        const node = getNodes().find(n => n.id === nodeId)!
+        const { nodes } = collaborativeWorkflow.getState()
+        const node = nodes.find(n => n.id === nodeId)!
 
         if (node.type === CUSTOM_NOTE_NODE) return
 
@@ -479,16 +465,14 @@ export const useNodesInteractions = () => {
         )
           if (handleType === 'target') return
 
-        setConnectingNodePayload({
-          nodeId,
-          nodeType: node.data.type,
-          handleType,
-          handleId,
-        })
-      }
-    },
-    [store, workflowStore, getNodesReadOnly],
-  )
+      setConnectingNodePayload({
+        nodeId,
+        nodeType: node.data.type,
+        handleType,
+        handleId,
+      })
+    }
+  }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
 
   const handleNodeConnectEnd = useCallback<OnConnectEnd>(
     (e: any) => {
@@ -504,8 +488,7 @@ export const useNodesInteractions = () => {
         const { setShowAssignVariablePopup, hoveringAssignVariableGroupId }
           = workflowStore.getState()
         const { screenToFlowPosition } = reactflow
-        const { getNodes, setNodes } = store.getState()
-        const nodes = getNodes()
+        const { nodes, setNodes } = collaborativeWorkflow.getState()
         const fromHandleType = connectingNodePayload.handleType
         const fromHandleId = connectingNodePayload.handleId
         const fromNode = nodes.find(
@@ -562,7 +545,7 @@ export const useNodesInteractions = () => {
       setConnectingNodePayload(undefined)
       setEnteringNodePayload(undefined)
     },
-    [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow],
+    [collaborativeWorkflow, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow],
   )
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
@@ -571,9 +554,7 @@ export const useNodesInteractions = () => {
     (nodeId: string) => {
       if (getNodesReadOnly()) return
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-
-      const nodes = getNodes()
+      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
       const currentNode = nodes[currentNodeIndex]
 
@@ -728,7 +709,7 @@ export const useNodesInteractions = () => {
     },
     [
       getNodesReadOnly,
-      store,
+      collaborativeWorkflow,
       handleSyncWorkflowDraft,
       saveStateToHistory,
       workflowStore,
@@ -750,8 +731,7 @@ export const useNodesInteractions = () => {
     ) => {
       if (getNodesReadOnly()) return
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-      const nodes = getNodes()
+      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const nodesWithSameType = nodes.filter(
         node => node.data.type === nodeType,
       )
@@ -1292,7 +1272,7 @@ export const useNodesInteractions = () => {
     },
     [
       getNodesReadOnly,
-      store,
+      collaborativeWorkflow,
       handleSyncWorkflowDraft,
       saveStateToHistory,
       workflowStore,
@@ -1311,8 +1291,7 @@ export const useNodesInteractions = () => {
     ) => {
       if (getNodesReadOnly()) return
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-      const nodes = getNodes()
+      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNode = nodes.find(node => node.id === currentNodeId)!
       const connectedEdges = getConnectedEdges([currentNode], edges)
       const nodesWithSameType = nodes.filter(
@@ -1390,7 +1369,7 @@ export const useNodesInteractions = () => {
     },
     [
       getNodesReadOnly,
-      store,
+      collaborativeWorkflow,
       handleSyncWorkflowDraft,
       saveStateToHistory,
       nodesMetaDataMap,
@@ -1398,16 +1377,14 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodesCancelSelected = useCallback(() => {
-    const { getNodes, setNodes } = store.getState()
-
-    const nodes = getNodes()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         node.data.selected = false
       })
     })
     setNodes(newNodes)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeContextMenu = useCallback(
     (e: MouseEvent, node: Node) => {
@@ -1444,9 +1421,7 @@ export const useNodesInteractions = () => {
 
       const { setClipboardElements } = workflowStore.getState()
 
-      const { getNodes } = store.getState()
-
-      const nodes = getNodes()
+      const { nodes } = collaborativeWorkflow.getState()
 
       if (nodeId) {
         // If nodeId is provided, copy that specific node
@@ -1485,7 +1460,7 @@ export const useNodesInteractions = () => {
         if (selectedNode) setClipboardElements([selectedNode])
       }
     },
-    [getNodesReadOnly, store, workflowStore],
+    [getNodesReadOnly, collaborativeWorkflow, workflowStore],
   )
 
   const handleNodesPaste = useCallback(() => {
@@ -1493,11 +1468,10 @@ export const useNodesInteractions = () => {
 
     const { clipboardElements, mousePosition } = workflowStore.getState()
 
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
 
     const nodesToPaste: Node[] = []
     const edgesToPaste: Edge[] = []
-    const nodes = getNodes()
 
     if (clipboardElements.length) {
       const { x, y } = getTopLeftNodePosition(clipboardElements)
@@ -1649,7 +1623,7 @@ export const useNodesInteractions = () => {
   }, [
     getNodesReadOnly,
     workflowStore,
-    store,
+    collaborativeWorkflow,
     reactflow,
     saveStateToHistory,
     handleSyncWorkflowDraft,
@@ -1671,9 +1645,8 @@ export const useNodesInteractions = () => {
   const handleNodesDelete = useCallback(() => {
     if (getNodesReadOnly()) return
 
-    const { getNodes, edges } = store.getState()
+    const { nodes, edges } = collaborativeWorkflow.getState()
 
-    const nodes = getNodes()
     const bundledNodes = nodes.filter(
       node => node.data._isBundled && node.data.type !== BlockEnum.Start,
     )
@@ -1692,16 +1665,15 @@ export const useNodesInteractions = () => {
     )
 
     if (selectedNode) handleNodeDelete(selectedNode.id)
-  }, [store, getNodesReadOnly, handleNodeDelete])
+  }, [collaborativeWorkflow, getNodesReadOnly, handleNodeDelete])
 
   const handleNodeResize = useCallback(
     (nodeId: string, params: ResizeParamsWithDirection) => {
       if (getNodesReadOnly()) return
 
-      const { getNodes, setNodes } = store.getState()
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
       const { x, y, width, height } = params
 
-      const nodes = getNodes()
       const currentNode = nodes.find(n => n.id === nodeId)!
       const childrenNodes = nodes.filter(n =>
         currentNode.data._children?.find((c: any) => c.nodeId === n.id),
@@ -1760,15 +1732,14 @@ export const useNodesInteractions = () => {
       handleSyncWorkflowDraft()
       saveStateToHistory(WorkflowHistoryEvent.NodeResize, { nodeId })
     },
-    [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory],
+    [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory],
   )
 
   const handleNodeDisconnect = useCallback(
     (nodeId: string) => {
       if (getNodesReadOnly()) return
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
-      const nodes = getNodes()
+      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNode = nodes.find(node => node.id === nodeId)!
       const connectedEdges = getConnectedEdges([currentNode], edges)
       const nodesConnectedSourceOrTargetHandleIdsMap
@@ -1799,24 +1770,24 @@ export const useNodesInteractions = () => {
       handleSyncWorkflowDraft()
       saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
     },
-    [store, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory],
+    [collaborativeWorkflow, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory],
   )
 
   const handleHistoryBack = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly()) return
 
-    const { setEdges, setNodes } = store.getState()
-    undo()
+    // Use collaborative undo from Loro
+    const undoResult = collaborationManager.undo()
 
-    const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
-
-    setEdges(edges)
-    setNodes(nodes)
+    if (undoResult) {
+      // The undo operation will automatically trigger subscriptions
+      // which will update the nodes and edges through setupSubscriptions
+      console.log('Collaborative undo performed')
+    }
+    else {
+      console.log('Nothing to undo')
+    }
   }, [
-    store,
-    undo,
-    workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
   ])
@@ -1824,18 +1795,17 @@ export const useNodesInteractions = () => {
   const handleHistoryForward = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly()) return
 
-    const { setEdges, setNodes } = store.getState()
-    redo()
+    // Use collaborative redo from Loro
+    const redoResult = collaborationManager.redo()
 
-    const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
-
-    setEdges(edges)
-    setNodes(nodes)
+    if (redoResult) {
+      // The redo operation will automatically trigger subscriptions
+      // which will update the nodes and edges through setupSubscriptions
+      console.log('Collaborative redo performed')
+    } else {
+      console.log('Nothing to redo')
+    }
   }, [
-    redo,
-    store,
-    workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
   ])
@@ -1844,8 +1814,7 @@ export const useNodesInteractions = () => {
   /** Add opacity-30 to all nodes except the nodeId */
   const dimOtherNodes = useCallback(() => {
     if (isDimming) return
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
-    const nodes = getNodes()
+    const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
 
     const selectedNode = nodes.find(n => n.data.selected)
     if (!selectedNode) return
@@ -1938,12 +1907,11 @@ export const useNodesInteractions = () => {
       draft.push(...tempEdges)
     })
     setEdges(newEdges)
-  }, [isDimming, store])
+  }, [isDimming, collaborativeWorkflow])
 
   /** Restore all nodes to full opacity */
   const undimAllNodes = useCallback(() => {
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
-    const nodes = getNodes()
+    const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
     setIsDimming(false)
 
     const newNodes = produce(nodes, (draft) => {
@@ -1963,7 +1931,7 @@ export const useNodesInteractions = () => {
       },
     )
     setEdges(newEdges)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   return {
     handleNodeDragStart,

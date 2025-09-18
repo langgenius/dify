@@ -21,6 +21,7 @@ import type {
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -32,6 +33,7 @@ const ChatVariablePanel = () => {
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
+  const appId = useStore(s => s.appId)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     invalidateConversationVarValues,
@@ -40,9 +42,17 @@ const ChatVariablePanel = () => {
     doSyncWorkflowDraft(false, {
       onSuccess() {
         invalidateConversationVarValues()
+        if (appId) {
+          const socket = webSocketClient.getSocket(appId)
+          if (socket) {
+            socket.emit('collaboration_event', {
+              type: 'varsAndFeaturesUpdate',
+            })
+          }
+        }
       },
     })
-  }, [doSyncWorkflowDraft, invalidateConversationVarValues])
+  }, [doSyncWorkflowDraft, invalidateConversationVarValues, appId])
 
   const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)

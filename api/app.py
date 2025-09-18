@@ -33,8 +33,13 @@ else:
 
     from app_factory import create_app
 
-    app = create_app()
+    socketio_app, app = create_app()
     celery = app.extensions["celery"]
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    from gevent import pywsgi
+
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 5001))
+    server = pywsgi.WSGIServer((host, port), socketio_app)
+    server.serve_forever()

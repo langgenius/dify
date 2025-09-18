@@ -79,6 +79,7 @@ from .app import (
     mcp_server,
     message,
     model_config,
+    online_user,
     ops_trace,
     site,
     statistic,

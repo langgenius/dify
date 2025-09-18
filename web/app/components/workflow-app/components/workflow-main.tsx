@@ -1,11 +1,19 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
+import UserCursors from '@/app/components/workflow/collaboration/components/user-cursors'
+
 import {
   useAvailableNodesMetaData,
   useConfigsMap,
@@ -18,7 +26,11 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useCollaboration } from '@/app/components/workflow/collaboration'
+import { collaborationManager } from '@/app/components/workflow/collaboration'
+import { fetchWorkflowDraft } from '@/service/workflow'
+import { useStoreApi } from 'reactflow'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -28,6 +40,20 @@ const WorkflowMain = ({
 }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
+  const appId = useStore(s => s.appId)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const store = useStoreApi()
+  const { startCursorTracking, stopCursorTracking, onlineUsers } = useCollaboration(appId, store)
+
+  useEffect(() => {
+    if (containerRef.current)
+      startCursorTracking(containerRef as React.RefObject<HTMLElement>)
+
+    return () => {
+      stopCursorTracking()
+    }
+  }, [startCursorTracking, stopCursorTracking])
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -38,7 +64,33 @@ const WorkflowMain = ({
     if (features && featuresStore) {
       const { setFeatures } = featuresStore.getState()
 
-      setFeatures(features)
+      const transformedFeatures: FeaturesData = {
+        file: {
+          image: {
+            enabled: !!features.file_upload?.image?.enabled,
+            number_limits: features.file_upload?.image?.number_limits || 3,
+            transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          },
+          enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
+          allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
+          allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+          allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
+        },
+        opening: {
+          enabled: !!features.opening_statement,
+          opening_statement: features.opening_statement,
+          suggested_questions: features.suggested_questions,
+        },
+        suggested: features.suggested_questions_after_answer || { enabled: false },
+        speech2text: features.speech_to_text || { enabled: false },
+        text2speech: features.text_to_speech || { enabled: false },
+        citation: features.retriever_resource || { enabled: false },
+        moderation: features.sensitive_word_avoidance || { enabled: false },
+        annotationReply: features.annotation_reply || { enabled: false },
+      }
+
+      setFeatures(transformedFeatures)
     }
     if (conversation_variables) {
       const { setConversationVariables } = workflowStore.getState()
@@ -49,6 +101,22 @@ const WorkflowMain = ({
       setEnvironmentVariables(environment_variables)
     }
   }, [featuresStore, workflowStore])
+
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (update: any) => {
+      try {
+        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+        handleWorkflowDataUpdate(response)
+      }
+      catch (error) {
+        console.error('workflow vars and features update failed:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId, handleWorkflowDataUpdate])
 
   const {
     doSyncWorkflowDraft,
@@ -75,6 +143,19 @@ const WorkflowMain = ({
   } = useDSL()
 
   const configsMap = useConfigsMap()
+
+  const { cursors, isConnected } = useCollaboration(appId)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isConnected)
+      setMyUserId('current-user')
+  }, [isConnected])
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  )
+
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
   })
@@ -164,15 +245,21 @@ const WorkflowMain = ({
   ])
 
   return (
-    <WorkflowWithInnerContext
-      nodes={nodes}
-      edges={edges}
-      viewport={viewport}
-      onWorkflowDataUpdate={handleWorkflowDataUpdate}
-      hooksStore={hooksStore as any}
+    <div
+      ref={containerRef}
+      className="relative h-full w-full"
     >
-      <WorkflowChildren />
-    </WorkflowWithInnerContext>
+      <WorkflowWithInnerContext
+        nodes={nodes}
+        edges={edges}
+        viewport={viewport}
+        onWorkflowDataUpdate={handleWorkflowDataUpdate}
+        hooksStore={hooksStore as any}
+      >
+        <WorkflowChildren />
+      </WorkflowWithInnerContext>
+      <UserCursors cursors={filteredCursors} myUserId={myUserId} onlineUsers={onlineUsers} />
+    </div>
   )
 }
 

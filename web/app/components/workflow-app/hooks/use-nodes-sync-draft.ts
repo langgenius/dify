@@ -13,6 +13,7 @@ import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
 import { useWorkflowRefreshDraft } from '.'
+import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
@@ -21,6 +22,7 @@ export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const params = useParams()
+  const { isLeader } = useCollaboration(params.appId as string)
 
   const getPostParams = useCallback(() => {
     const {
@@ -85,13 +87,14 @@ export const useNodesSyncDraft = () => {
           environment_variables: environmentVariables,
           conversation_variables: conversationVariables,
           hash: syncWorkflowDraftHash,
+          _is_collaborative: true,
         },
       }
     }
   }, [store, featuresStore, workflowStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (getNodesReadOnly())
+    if (getNodesReadOnly() || !isLeader)
       return
     const postParams = getPostParams()
 
@@ -111,8 +114,10 @@ export const useNodesSyncDraft = () => {
       onSettled?: () => void
     },
   ) => {
-    if (getNodesReadOnly())
+    if (getNodesReadOnly() || !isLeader)
       return
+
+    console.log('I am the leader, saving draft...')
     const postParams = getPostParams()
 
     if (postParams) {
@@ -130,7 +135,9 @@ export const useNodesSyncDraft = () => {
         if (error && error.json && !error.bodyUsed) {
           error.json().then((err: any) => {
             if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
+              // TODO: hjlarry test collaboration
+              // handleRefreshWorkflowDraft()
+              console.error('draft_workflow_not_sync', err)
           })
         }
         callback?.onError && callback.onError()
