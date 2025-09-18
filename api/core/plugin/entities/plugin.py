@@ -186,6 +186,7 @@ class PluginDependency(BaseModel):
 
     class Package(BaseModel):
         plugin_unique_identifier: str
+        version: str | None = None
 
     type: Type
     value: Github | Marketplace | Package
