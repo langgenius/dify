@@ -219,7 +219,7 @@ class LLMNode(Node):
                 model_instance=model_instance,
             )
 
-            query = None
+            query: str | None = None
             if self._node_data.memory:
                 query = self._node_data.memory.query_prompt_template
                 if not query and (
