@@ -219,12 +219,19 @@ class LLMNode(Node):
                 model_instance=model_instance,
             )
 
-            query = None
+            query: str | None = None
             if self._node_data.memory:
                 query = self._node_data.memory.query_prompt_template
                 if not query and (
                     query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
                 ):
+                    query = query_variable.text
+            else:
+                if (
+                    query_variable := self.graph_runtime_state.variable_pool.get(
+                        (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY)
+                    )
+                ) is not None:
                     query = query_variable.text
 
             prompt_messages, stop = LLMNode.fetch_prompt_messages(
