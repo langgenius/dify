@@ -3,6 +3,8 @@ const translation = {
   chunkingMode: {
     general: '汎用',
     parentChild: '親子',
+    qa: 'Q&A',
+    graph: 'グラフ',
   },
   parentMode: {
     paragraph: '段落',
@@ -123,6 +125,10 @@ const translation = {
     },
     change: '変更',
     changeRetrievalMethod: '検索方法の変更',
+    keyword_search: {
+      title: '逆インデックス',
+      description: '逆インデックスは効率的な検索のために使用される構造です。用語によって整理されており、各用語はそれを含む文書やウェブページを指し示します。',
+    },
   },
   docsFailedNotice: 'ドキュメントのインデックス作成に失敗しました',
   retry: '再試行',
@@ -217,6 +223,9 @@ const translation = {
       technicalParameters: '技術パラメータ',
     },
   },
+  updated: '更新された',
+  createFromPipeline: '知識パイプラインから作成する',
+  externalKnowledgeBase: '外部知識ベース',
 }
 
 export default translation

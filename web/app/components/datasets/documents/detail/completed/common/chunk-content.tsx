@@ -31,8 +31,8 @@ const Textarea: FC<IContentProps> = React.memo(({
 Textarea.displayName = 'Textarea'
 
 type IAutoResizeTextAreaProps = ComponentProps<'textarea'> & {
-  containerRef: React.RefObject<HTMLDivElement>
-  labelRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
+  labelRef: React.RefObject<HTMLDivElement | null>
 }
 
 const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
@@ -45,7 +45,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
   ...rest
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const observerRef = useRef<ResizeObserver>()
+  const observerRef = useRef<ResizeObserver>(null)
   const [maxHeight, setMaxHeight] = useState(0)
 
   useEffect(() => {

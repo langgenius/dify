@@ -49,6 +49,10 @@ const translation = {
     },
     change: 'Cambia',
     changeRetrievalMethod: 'Cambia metodo di recupero',
+    keyword_search: {
+      title: 'Indice invertito',
+      description: 'L\'indice invertito è una struttura utilizzata per un recupero efficiente. Organizzato per termini, ogni termine rimanda a documenti o pagine web che lo contengono.',
+    },
   },
   docsFailedNotice: 'documenti non riusciti a essere indicizzati',
   retry: 'Riprova',
@@ -156,6 +160,8 @@ const translation = {
   chunkingMode: {
     general: 'Generale',
     parentChild: 'Genitore-figlio',
+    graph: 'Grafico',
+    qa: 'Domande e risposte',
   },
   parentMode: {
     paragraph: 'Paragrafo',
@@ -224,6 +230,9 @@ const translation = {
     chooseTime: 'Scegli un orario...',
   },
   embeddingModelNotAvailable: 'Il modello di embedding non è disponibile.',
+  updated: 'Aggiornato',
+  externalKnowledgeBase: 'Base di conoscenza esterna',
+  createFromPipeline: 'Creazione da pipeline di conoscenza',
 }
 
 export default translation

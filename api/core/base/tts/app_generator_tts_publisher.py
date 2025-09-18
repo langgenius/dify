@@ -109,7 +109,9 @@ class AppGeneratorTTSPublisher:
                 elif isinstance(message.event, QueueNodeSucceededEvent):
                     if message.event.outputs is None:
                         continue
-                    self.msg_text += message.event.outputs.get("output", "")
+                    output = message.event.outputs.get("output", "")
+                    if isinstance(output, str):
+                        self.msg_text += output
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
                 if len(sentence_arr) >= min(self.max_sentence, 7):
@@ -119,7 +121,7 @@ class AppGeneratorTTSPublisher:
                         _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice
                     )
                     future_queue.put(futures_result)
-                    if text_tmp:
+                    if isinstance(text_tmp, str):
                         self.msg_text = text_tmp
                     else:
                         self.msg_text = ""

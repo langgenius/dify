@@ -92,6 +92,7 @@ const translation = {
       watercrawlTitle: 'Watercrawl ile web içeriğini çıkar',
       configureJinaReader: 'Jina Okuyucusunu Yapılandır',
       configureWatercrawl: 'Watercrawl\'ı yapılandır',
+      running: 'Koşarak',
     },
     cancel: 'İptal',
   },
@@ -177,6 +178,7 @@ const translation = {
     highQualityTip: 'Yüksek Kalite modunda yerleştirme işlemi tamamlandıktan sonra, Ekonomik moda geri dönülemez.',
     childChunkForRetrieval: 'Alma için alt yığın',
     parentChunkForContext: 'Bağlam için üst yığın',
+    qaTip: 'Yapılandırılmış Soru-Cevap verilerini kullanırken, soruları yanıtlarla eşleştiren belgeler oluşturabilirsiniz. Bu belgeler, soru bölümüne göre dizine eklenir ve sistemin sorgu benzerliğine dayalı olarak ilgili yanıtları almasına olanak tanır.',
   },
   stepThree: {
     creationTitle: '🎉 Bilgi oluşturuldu',
