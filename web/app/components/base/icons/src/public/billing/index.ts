@@ -1,6 +1,7 @@
 export { default as ArCube1 } from './ArCube1'
 export { default as Asterisk } from './Asterisk'
-export { default as AwsMarketplace } from './AwsMarketplace'
+export { default as AwsMarketplaceDark } from './AwsMarketplaceDark'
+export { default as AwsMarketplaceLight } from './AwsMarketplaceLight'
 export { default as Azure } from './Azure'
 export { default as Buildings } from './Buildings'
 export { default as Diamond } from './Diamond'

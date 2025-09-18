@@ -88,7 +88,6 @@ const translation = {
       depthLimit: '평행 중첩 레이어 {{num}}개 레이어의 제한',
       limit: '병렬 처리는 {{num}}개의 분기로 제한됩니다.',
     },
-    parallelRun: '병렬 실행',
     disconnect: '분리하다',
     jumpToNode: '이 노드로 이동',
     addParallelNode: '병렬 노드 추가',
@@ -227,6 +226,8 @@ const translation = {
     back: '뒤로',
     iteration: '반복',
     loop: '루프',
+    reRun: '다시 실행',
+    preparingDataSource: '데이터 소스 준비',
   },
   tabs: {
     'tools': '도구',
@@ -245,6 +246,8 @@ const translation = {
     'searchBlock': '검색 노드',
     'allAdded': '모두 추가됨',
     'addAll': '모두 추가',
+    'sources': '소스',
+    'searchDataSource': '데이터 소스 검색',
   },
   blocks: {
     'start': '시작',
@@ -269,6 +272,8 @@ const translation = {
     'loop-start': '루프 시작',
     'loop-end': '루프 종료',
     'loop': '루프',
+    'datasource': '데이터 소스',
+    'knowledge-index': '기술 자료',
   },
   blocksAbout: {
     'start': '워크플로우를 시작하기 위한 초기 매개변수를 정의합니다',
@@ -303,6 +308,8 @@ const translation = {
     'loop': '종료 조건이 충족되거나 최대 반복 횟수에 도달할 때까지 논리 루프를 실행합니다.',
     'loop-end':
       '"break"와 동일합니다. 이 노드는 구성 항목이 없습니다. 루프 본문이 이 노드에 도달하면 루프가 종료됩니다.',
+    'datasource': '데이터 소스 정보',
+    'knowledge-index': '기술 자료 정보',
   },
   operator: {
     zoomIn: '확대',
@@ -406,6 +413,7 @@ const translation = {
         input: '입력 값',
         variable: '변수를 사용하세요',
       },
+      inputVars: '입력 변수',
     },
     start: {
       required: '필수',
@@ -964,6 +972,27 @@ const translation = {
       loopNode: '루프 노드',
       inputMode: '입력 모드',
     },
+    dataSource: {
+      add: '데이터 원본 추가',
+      supportedFileFormatsPlaceholder: '파일 확장자, e.g. doc',
+      supportedFileFormats: '지원되는 파일 형식',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: '더 알아보세요',
+        title: '청크 구조를 선택해 주세요',
+        message: 'Dify 기술 자료는 일반, 부모-자식 및 Q&A의 세 가지 청크 구조를 지원합니다. 각 기술 자료는 하나의 구조만 가질 수 있습니다. 이전 노드의 출력은 선택한 청크 구조와 일치해야 합니다. 청크 구조의 선택은 사용 가능한 인덱스 메서드에 영향을 줍니다.',
+      },
+      chunkStructure: '청크 구조',
+      chunkIsRequired: '청크 구조가 필요합니다.',
+      chooseChunkStructure: '청크 구조 선택',
+      aboutRetrieval: '검색 방법에 대해.',
+      changeChunkStructure: '청크 구조 변경',
+      indexMethodIsRequired: '인덱스 메서드가 필요합니다.',
+      retrievalSettingIsRequired: '검색 설정이 필요합니다.',
+      chunksInput: '청크',
+      chunksInputTip: '지식 기반 노드의 입력 변수는 Chunks입니다. 변수 유형은 선택된 청크 구조와 일치해야 하는 특정 JSON 스키마를 가진 객체입니다.',
+    },
   },
   tracing: {
     stopBy: '{{user}}에 의해 중지됨',
@@ -1037,6 +1066,10 @@ const translation = {
       reset: '마지막 실행 값으로 재설정',
       emptyTip:
         '캔버스에서 노드를 한 단계씩 실행한 후, 변수 검사에서 노드 변수의 현재 값을 볼 수 있습니다.',
+      export: '수출',
+      largeData: '대용량 데이터, 읽기 전용 미리 보기. 모두 보도록 내보내기.',
+      exportToolTip: '변수를 파일로 내보내기',
+      largeDataNoExport: '대용량 데이터 - 부분 미리 보기만',
     },
     settingsTab: '설정',
     lastRunTab: '마지막 실행',

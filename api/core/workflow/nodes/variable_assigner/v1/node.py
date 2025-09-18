@@ -5,11 +5,11 @@ from core.variables import SegmentType, Variable
 from core.variables.segments import BooleanSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from factories import variable_factory
@@ -18,14 +18,14 @@ from ..common.impl import conversation_variable_updater_factory
 from .node_data import VariableAssignerData, WriteMode
 
 if TYPE_CHECKING:
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphRuntimeState
 
 
 _CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
 
 
-class VariableAssignerNode(BaseNode):
-    _node_type = NodeType.VARIABLE_ASSIGNER
+class VariableAssignerNode(Node):
+    node_type = NodeType.VARIABLE_ASSIGNER
     _conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY
 
     _node_data: VariableAssignerData
@@ -56,20 +56,14 @@ class VariableAssignerNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: str | None = None,
-        thread_pool_id: str | None = None,
         conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
     ):
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
-            thread_pool_id=thread_pool_id,
         )
         self._conv_var_updater_factory = conv_var_updater_factory
 
@@ -123,12 +117,7 @@ class VariableAssignerNode(BaseNode):
 
             case WriteMode.CLEAR:
                 income_value = get_zero_value(original_variable.value_type)
-                if income_value is None:
-                    raise VariableOperatorNodeError("income value not found")
                 updated_variable = original_variable.model_copy(update={"value": income_value.to_object()})
-
-            case _:
-                raise VariableOperatorNodeError(f"unsupported write mode: {self._node_data.write_mode}")
 
         # Over write the variable.
         self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
