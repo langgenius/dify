@@ -102,7 +102,6 @@ jobs:
         working-directory: ./web
         run: |
           pnpm run lint
-          pnpm run eslint
 
   docker-compose-template:
     name: Docker Compose Template
