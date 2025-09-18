@@ -23,13 +23,13 @@
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
-    "lint": "npx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint-only-show-error": "npx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
-    "fix": "eslint --fix .",
-    "eslint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "eslint-fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
-    "eslint-fix-only-show-error": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix --quiet",
-    "eslint-complexity": "eslint --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "lint-only-show-error": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
+    "fix": "eslint --concurrency=auto --fix .",
+    "eslint": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "eslint-fix": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
+    "eslint-fix-only-show-error": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix --quiet",
+    "eslint-complexity": "eslint --concurrency=auto --rule 'complexity: [error, {max: 15}]' --quiet",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.mjs",
     "uglify-embed": "node ./bin/uglify-embed",
@@ -205,7 +205,7 @@
     "bing-translate-api": "^4.0.2",
     "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",
-    "eslint": "^9.32.0",
+    "eslint": "^9.35.0",
     "eslint-config-next": "15.5.0",
     "eslint-plugin-oxlint": "^1.6.0",
     "eslint-plugin-react-hooks": "^5.1.0",
@@ -235,10 +235,10 @@
   },
   "lint-staged": {
     "**/*.js?(x)": [
-      "eslint --fix"
+      "eslint --concurrency=auto --fix"
     ],
     "**/*.ts?(x)": [
-      "eslint --fix"
+      "eslint --concurrency=auto --fix"
     ]
   },
   "pnpm": {
