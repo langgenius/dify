@@ -46,7 +46,7 @@ def create_app() -> tuple[any, DifyApp]:
     end_time = time.perf_counter()
     if dify_config.DEBUG:
         logger.info("Finished create_app (%s ms)", round((end_time - start_time) * 1000, 2))
-    return app
+    return socketio_app, app
 
 
 def initialize_extensions(app: DifyApp):

@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import fields
 
 online_user_partial_fields = {
     "id": fields.String,

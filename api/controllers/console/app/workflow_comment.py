@@ -1,6 +1,6 @@
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
