@@ -2,9 +2,9 @@ import type { ScheduleTriggerNodeType } from './types'
 
 export const getDefaultScheduleConfig = (): Partial<ScheduleTriggerNodeType> => ({
   mode: 'visual',
-  frequency: 'weekly',
+  frequency: 'daily',
   visual_config: {
-    time: '11:30 AM',
+    time: '12:00 AM',
     weekdays: ['sun'],
     on_minute: 0,
     monthly_days: [1],
@@ -12,7 +12,7 @@ export const getDefaultScheduleConfig = (): Partial<ScheduleTriggerNodeType> => 
 })
 
 export const getDefaultVisualConfig = () => ({
-  time: '11:30 AM',
+  time: '12:00 AM',
   weekdays: ['sun'],
   on_minute: 0,
   monthly_days: [1],
