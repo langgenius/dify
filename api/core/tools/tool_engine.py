@@ -152,7 +152,6 @@ class ToolEngine:
         user_id: str,
         workflow_tool_callback: DifyWorkflowCallbackHandler,
         workflow_call_depth: int,
-        thread_pool_id: str | None = None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
@@ -166,7 +165,6 @@ class ToolEngine:
 
             if isinstance(tool, WorkflowTool):
                 tool.workflow_call_depth = workflow_call_depth + 1
-                tool.thread_pool_id = thread_pool_id
 
             if tool.runtime and tool.runtime.runtime_parameters:
                 tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}

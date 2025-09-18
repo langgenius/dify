@@ -7,29 +7,12 @@ implementation details like tenant_id, app_id, etc.
 
 from collections.abc import Mapping
 from datetime import datetime
-from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
-
-
-class WorkflowType(StrEnum):
-    """
-    Workflow Type Enum for domain layer
-    """
-
-    WORKFLOW = "workflow"
-    CHAT = "chat"
-
-
-class WorkflowExecutionStatus(StrEnum):
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    STOPPED = "stopped"
-    PARTIAL_SUCCEEDED = "partial-succeeded"
 
 
 class WorkflowExecution(BaseModel):

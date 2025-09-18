@@ -31,14 +31,9 @@ from core.app.entities.queue_entities import (
     QueueMessageReplaceEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent,
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
@@ -65,8 +60,8 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.entities import GraphRuntimeState
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -387,9 +382,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _handle_node_failed_events(
         self,
-        event: Union[
-            QueueNodeFailedEvent, QueueNodeInIterationFailedEvent, QueueNodeInLoopFailedEvent, QueueNodeExceptionEvent
-        ],
+        event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle various node failure events."""
@@ -433,32 +426,6 @@ class AdvancedChatAppGenerateTaskPipeline:
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
         )
-
-    def _handle_parallel_branch_started_event(
-        self, event: QueueParallelBranchRunStartedEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
-        """Handle parallel branch started events."""
-        self._ensure_workflow_initialized()
-
-        parallel_start_resp = self._workflow_response_converter.workflow_parallel_branch_start_to_stream_response(
-            task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
-            event=event,
-        )
-        yield parallel_start_resp
-
-    def _handle_parallel_branch_finished_events(
-        self, event: Union[QueueParallelBranchRunSucceededEvent, QueueParallelBranchRunFailedEvent], **kwargs
-    ) -> Generator[StreamResponse, None, None]:
-        """Handle parallel branch finished events."""
-        self._ensure_workflow_initialized()
-
-        parallel_finish_resp = self._workflow_response_converter.workflow_parallel_branch_finished_to_stream_response(
-            task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
-            event=event,
-        )
-        yield parallel_finish_resp
 
     def _handle_iteration_start_event(
         self, event: QueueIterationStartEvent, **kwargs
@@ -751,8 +718,6 @@ class AdvancedChatAppGenerateTaskPipeline:
             QueueNodeRetryEvent: self._handle_node_retry_event,
             QueueNodeStartedEvent: self._handle_node_started_event,
             QueueNodeSucceededEvent: self._handle_node_succeeded_event,
-            # Parallel branch events
-            QueueParallelBranchRunStartedEvent: self._handle_parallel_branch_started_event,
             # Iteration events
             QueueIterationStartEvent: self._handle_iteration_start_event,
             QueueIterationNextEvent: self._handle_iteration_next_event,
@@ -800,23 +765,10 @@ class AdvancedChatAppGenerateTaskPipeline:
             event,
             (
                 QueueNodeFailedEvent,
-                QueueNodeInIterationFailedEvent,
-                QueueNodeInLoopFailedEvent,
                 QueueNodeExceptionEvent,
             ),
         ):
             yield from self._handle_node_failed_events(
-                event,
-                graph_runtime_state=graph_runtime_state,
-                tts_publisher=tts_publisher,
-                trace_manager=trace_manager,
-                queue_message=queue_message,
-            )
-            return
-
-        # Handle parallel branch finished events with isinstance check
-        if isinstance(event, (QueueParallelBranchRunSucceededEvent, QueueParallelBranchRunFailedEvent)):
-            yield from self._handle_parallel_branch_finished_events(
                 event,
                 graph_runtime_state=graph_runtime_state,
                 tts_publisher=tts_publisher,
@@ -847,11 +799,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                 case QueueWorkflowStartedEvent():
                     graph_runtime_state = event.graph_runtime_state
                     yield from self._handle_workflow_started_event(event)
-
-                case QueueTextChunkEvent():
-                    yield from self._handle_text_chunk_event(
-                        event, tts_publisher=tts_publisher, queue_message=queue_message
-                    )
 
                 case QueueErrorEvent():
                     yield from self._handle_error_event(event)

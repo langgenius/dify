@@ -6,6 +6,7 @@ const translation = {
     models: 'Моделі',
     extensions: 'Розширення',
     agents: 'Стратегії агентів',
+    datasources: 'Джерела даних',
   },
   categorySingle: {
     agent: 'Стратегія агента',
@@ -13,6 +14,7 @@ const translation = {
     tool: 'Інструмент',
     extension: 'Збільшення',
     model: 'Модель',
+    datasource: 'Джерело даних',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: 'Індивідуальні облікові дані наразі недоступні',
     credentialUnavailable: 'Облікові дані наразі недоступні. Будь ласка, зверніться до адміністратора.',
     credentialUnavailableInButton: 'Облікові дані недоступні',
+    connectedWorkspace: 'Підключене робоче середовище',
+    emptyAuth: 'Будь ласка, налаштуйте аутентифікацію',
   },
   deprecated: 'Застарілий',
   autoUpdate: {

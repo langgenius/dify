@@ -10,7 +10,10 @@ import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Modal from '@/app/components/base/modal/modal'
 import { CredentialTypeEnum } from '../types'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type { FormRefObject } from '@/app/components/base/form/types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
@@ -28,6 +31,7 @@ export type ApiKeyModalProps = {
   onRemove?: () => void
   disabled?: boolean
   onUpdate?: () => void
+  formSchemas?: FormSchema[]
 }
 const ApiKeyModal = ({
   pluginPayload,
@@ -36,6 +40,7 @@ const ApiKeyModal = ({
   onRemove,
   disabled,
   onUpdate,
+  formSchemas: formSchemasFromProps = [],
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -46,6 +51,12 @@ const ApiKeyModal = ({
     setDoingAction(value)
   }, [])
   const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const mergedData = useMemo(() => {
+    if (formSchemasFromProps?.length)
+      return formSchemasFromProps
+
+    return data
+  }, [formSchemasFromProps, data])
   const formSchemas = useMemo(() => {
     return [
       {
@@ -54,9 +65,9 @@ const ApiKeyModal = ({
         label: t('plugin.auth.authorizationName'),
         required: false,
       },
-      ...data,
+      ...mergedData,
     ]
-  }, [data, t])
+  }, [mergedData, t])
   const defaultValues = formSchemas.reduce((acc, schema) => {
     if (schema.default)
       acc[schema.name] = schema.default
@@ -150,7 +161,7 @@ const ApiKeyModal = ({
         )
       }
       {
-        !isLoading && !!data.length && (
+        !isLoading && !!mergedData.length && (
           <AuthForm
             ref={formRef}
             formSchemas={formSchemas}
