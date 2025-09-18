@@ -188,7 +188,6 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       }}
       triggerClassName='h-8'
       popupClassName={cn('z-[1000]')}
-      popupInnerClassName={cn('w-[354px]')}
       value={methodType}
       items={allOptions.filter(option => option.show)}
       onSelect={item => onChooseCreateType(item.value as any)}

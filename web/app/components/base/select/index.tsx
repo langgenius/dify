@@ -349,6 +349,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
       onOpenChange={setOpen}
       placement='bottom-start'
       offset={4}
+      triggerPopupSameWidth={true}
     >
       <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className='w-full'>
         {renderTrigger
@@ -376,7 +377,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div
-          className={classNames('max-h-60 overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={classNames('max-h-60 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div
