@@ -1008,7 +1008,7 @@ def _setup_variable_pool(
         if workflow.type != WorkflowType.WORKFLOW.value:
             system_variable.query = query
             system_variable.conversation_id = conversation_id
-            system_variable.dialogue_count = 0
+            system_variable.dialogue_count = 1
     else:
         system_variable = SystemVariable.empty()
 
