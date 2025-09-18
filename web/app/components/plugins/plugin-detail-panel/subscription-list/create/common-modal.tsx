@@ -31,18 +31,22 @@ enum ApiKeyStep {
 }
 
 const StatusStep = ({ isActive, text }: { isActive: boolean, text: string }) => {
-  return <div className={`system-2xs-semibold-uppercase ${isActive
+  return <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
     ? 'text-state-accent-solid'
     : 'text-text-tertiary'}`}>
+    {/* Active indicator dot */}
+    {isActive && (
+      <div className='h-1 w-1 rounded-full bg-state-accent-solid'></div>
+    )}
     {text}
   </div>
 }
 
 const MultiSteps = ({ currentStep }: { currentStep: ApiKeyStep }) => {
   const { t } = useTranslation()
-  return <div className='mb-2 flex w-1/3 items-center gap-2'>
+  return <div className='mb-6 flex w-1/3 items-center gap-2'>
     <StatusStep isActive={currentStep === ApiKeyStep.Verify} text={t('pluginTrigger.modal.steps.verify')} />
-    <div className='h-px w-3 bg-divider-subtle'></div>
+    <div className='h-px w-3 shrink-0 bg-divider-deep'></div>
     <StatusStep isActive={currentStep === ApiKeyStep.Configuration} text={t('pluginTrigger.modal.steps.configuration')} />
   </div>
 }
@@ -213,6 +217,7 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
               <BaseForm
                 formSchemas={credentialsSchema}
                 ref={credentialsFormRef}
+                labelClassName='system-sm-medium mb-2 block text-text-primary'
               />
             </div>
           )}
@@ -258,6 +263,7 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
           <BaseForm
             formSchemas={parametersSchema}
             ref={parametersFormRef}
+            labelClassName='system-sm-medium mb-2 block text-text-primary'
           />
         )}
         {createType === SupportedCreationMethods.MANUAL && <>
@@ -266,6 +272,7 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
               <BaseForm
                 formSchemas={propertiesSchema}
                 ref={propertiesFormRef}
+                labelClassName='system-sm-medium mb-2 block text-text-primary'
               />
             </div>
           )}
