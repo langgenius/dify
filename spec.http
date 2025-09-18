@@ -1,0 +1,4 @@
+GET /console/api/spec/schema-definitions
+Host: cloud-rag.dify.dev
+authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNzExMDZhYTQtZWJlMC00NGMzLWI4NWYtMWQ4Mjc5ZTExOGZmIiwiZXhwIjoxNzU2MTkyNDE4LCJpc3MiOiJDTE9VRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.Yx_TMdWVXCp5YEoQ8WR90lRhHHKggxAQvEl5RUnkZuc
+###

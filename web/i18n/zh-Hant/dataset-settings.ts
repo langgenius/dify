@@ -37,6 +37,14 @@ const translation = {
     upgradeHighQualityTip: '升級到高品質模式后，無法恢復到經濟模式',
     helpText: '瞭解如何編寫良好的數據集描述。',
     searchModel: '搜索模型',
+    chunkStructure: {
+      learnMore: '瞭解詳情',
+      title: '區塊結構',
+      description: '關於塊結構。',
+    },
+    numberOfKeywords: '關鍵字數量',
+    onSearchResults: '沒有成員符合您的搜尋查詢。\n請再次嘗試搜尋。',
+    nameAndIcon: '名稱和圖示',
   },
 }
 
