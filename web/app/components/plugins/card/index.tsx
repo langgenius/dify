@@ -51,7 +51,7 @@ const Card = ({
   const { t } = useMixedTranslation(localeFromProps)
   const { categoriesMap } = useSingleCategories(t)
   const { category, type, name, org, label, brief, icon, verified, badges = [] } = payload
-  const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent-strategy'].includes(type)
+  const isBundle = !['plugin', 'model', 'tool', 'datasource', 'extension', 'agent-strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''

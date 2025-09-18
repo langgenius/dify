@@ -17,6 +17,7 @@ const translation = {
     entertainment: 'Entretenimento',
     search: 'Procurar',
     travel: 'Viajar',
+    rag: 'TRAPO',
   },
   allTags: 'Todas as tags',
   searchTags: 'Tags de pesquisa',

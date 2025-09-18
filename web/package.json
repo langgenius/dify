@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.8.1",
+  "version": "2.0.0-beta2",
   "private": true,
   "packageManager": "pnpm@10.16.0",
   "engines": {

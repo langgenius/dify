@@ -116,6 +116,9 @@ workflow_run_node_execution_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "finished_at": TimestampField,
+    "inputs_truncated": fields.Boolean,
+    "outputs_truncated": fields.Boolean,
+    "process_data_truncated": fields.Boolean,
 }
 
 workflow_run_node_execution_list_fields = {

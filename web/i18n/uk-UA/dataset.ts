@@ -43,6 +43,10 @@ const translation = {
     },
     change: 'Змінити',
     changeRetrievalMethod: 'Змінити метод пошуку',
+    keyword_search: {
+      title: 'Перевернутий індекс',
+      description: 'Перевернутий індекс — це структура, яка використовується для ефективного пошуку. Упорядкований за термінами, кожен термін вказує на документи або веб-сторінки, що містять його.',
+    },
   },
   docsFailedNotice: 'документи не вдалося проіндексувати',
   retry: 'Повторити спробу',
@@ -150,6 +154,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'Батьки-діти',
     general: 'Загальне',
+    graph: 'Графік',
+    qa: 'Питання та відповіді',
   },
   parentMode: {
     fullDoc: 'Повний документ',
@@ -218,6 +224,9 @@ const translation = {
     addMetadata: 'Додати метадані',
   },
   embeddingModelNotAvailable: 'Модель вбудовування недоступна.',
+  updated: 'Оновлено',
+  createFromPipeline: 'Створюйте на основі Knowledge Pipeline',
+  externalKnowledgeBase: 'Зовнішня база знань',
 }
 
 export default translation
