@@ -43,6 +43,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
           on_minute: inputs.visual_config?.on_minute ?? 0,
         },
       },
+      cron_expression: undefined,
     }
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -51,6 +52,8 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     const newInputs = {
       ...inputs,
       cron_expression: value,
+      frequency: undefined,
+      visual_config: undefined,
     }
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -62,6 +65,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
         ...inputs.visual_config,
         weekdays,
       },
+      cron_expression: undefined,
     }
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -73,6 +77,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
         ...inputs.visual_config,
         time,
       },
+      cron_expression: undefined,
     }
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -84,6 +89,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
         ...inputs.visual_config,
         on_minute,
       },
+      cron_expression: undefined,
     }
     setInputs(newInputs)
   }, [inputs, setInputs])
