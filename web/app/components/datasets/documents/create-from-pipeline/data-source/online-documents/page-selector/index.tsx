@@ -91,7 +91,7 @@ const PageSelector = ({
     if (current.expand) {
       current.expand = false
 
-      newDataList = [...dataList.filter(item => !descendantsIds.includes(item.page_id))]
+      newDataList = dataList.filter(item => !descendantsIds.includes(item.page_id))
     }
     else {
       current.expand = true
@@ -110,7 +110,7 @@ const PageSelector = ({
   }, [dataList, listMapWithChildrenAndDescendants, pagesMap])
 
   const handleCheck = useCallback((index: number) => {
-    const copyValue = new Set([...checkedIds])
+    const copyValue = new Set(checkedIds)
     const current = currentDataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
@@ -138,7 +138,7 @@ const PageSelector = ({
       }
     }
 
-    onSelect(new Set([...copyValue]))
+    onSelect(new Set(copyValue))
   }, [currentDataList, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue, checkedIds])
 
   const handlePreview = useCallback((index: number) => {
