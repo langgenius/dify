@@ -156,7 +156,7 @@ def upgrade():
     sa.Column('type', sa.String(20), nullable=False),
     sa.Column('file_id', models.types.StringUUID(), nullable=False),
     sa.PrimaryKeyConstraint('id', name=op.f('workflow_node_execution_offload_pkey')),
-    sa.UniqueConstraint('node_execution_id', 'type', name=op.f('workflow_node_execution_offload_node_execution_id_key'), postgresql_nulls_not_distinct=False)
+    sa.UniqueConstraint('node_execution_id', 'type', name=op.f('workflow_node_execution_offload_node_execution_id_key'))
     )
     with op.batch_alter_table('datasets', schema=None) as batch_op:
         batch_op.add_column(sa.Column('keyword_number', sa.Integer(), server_default=sa.text('10'), nullable=True))

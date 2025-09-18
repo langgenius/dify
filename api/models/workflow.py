@@ -890,12 +890,18 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 class WorkflowNodeExecutionOffload(Base):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
+        # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
+        # allowing multiple records with NULL values for the same column combination.
+        #
+        # This behavior allows us to have multiple records with NULL node_execution_id,
+        # simplifying garbage collection process.
         UniqueConstraint(
             "node_execution_id",
             "type",
-            # Treat `NULL` as distinct for this unique index, so
-            # we can have mutitple records with `NULL` node_exeution_id, simplify garbage collection process.
-            postgresql_nulls_not_distinct=False,
+            # Note: PostgreSQL 15+ supports explicit `nulls distinct` behavior through
+            # `postgresql_nulls_not_distinct=False`, which would make our intention clearer.
+            # We rely on PostgreSQL's default behavior of treating NULLs as distinct values.
+            # postgresql_nulls_not_distinct=False,
         ),
     )
     _HASH_COL_SIZE = 64
