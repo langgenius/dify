@@ -1,6 +1,8 @@
 import {
   memo,
+  useCallback,
   useMemo,
+  useState,
 } from 'react'
 import {
   RiAddLine,
@@ -36,6 +38,7 @@ const Configure = ({
   disabled,
 }: ConfigureProps) => {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   const canApiKey = item.credential_schema?.length
   const oAuthData = item.oauth_schema || {}
   const canOAuth = oAuthData.client_schema?.length
@@ -53,16 +56,27 @@ const Configure = ({
     }
   }, [pluginPayload, t])
 
+  const handleToggle = useCallback(() => {
+    setOpen(v => !v)
+  }, [])
+
+  const handleUpdate = useCallback(() => {
+    setOpen(false)
+    onUpdate?.()
+  }, [onUpdate])
+
   return (
     <>
       <PortalToFollowElem
+        open={open}
+        onOpenChange={setOpen}
         placement='bottom-end'
         offset={{
           mainAxis: 4,
           crossAxis: -4,
         }}
       >
-        <PortalToFollowElemTrigger>
+        <PortalToFollowElemTrigger onClick={handleToggle}>
           <Button
             variant='secondary-accent'
           >
@@ -76,7 +90,7 @@ const Configure = ({
               !!canOAuth && (
                 <AddOAuthButton
                   {...oAuthButtonProps}
-                  onUpdate={onUpdate}
+                  onUpdate={handleUpdate}
                   oAuthData={{
                     schema: oAuthData.client_schema || [],
                     is_oauth_custom_client_enabled: oAuthData.is_oauth_custom_client_enabled,
@@ -102,7 +116,7 @@ const Configure = ({
                 <AddApiKeyButton
                   {...apiKeyButtonProps}
                   formSchemas={item.credential_schema}
-                  onUpdate={onUpdate}
+                  onUpdate={handleUpdate}
                   disabled={disabled}
                 />
               )
