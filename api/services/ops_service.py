@@ -102,6 +102,15 @@ class OpsService:
             except Exception:
                 new_decrypt_tracing_config.update({"project_url": "https://arms.console.aliyun.com/"})
 
+        if tracing_provider == "tencent" and (
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+        ):
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update({"project_url": project_url})
+            except Exception:
+                new_decrypt_tracing_config.update({"project_url": "https://console.cloud.tencent.com/apm"})
+
         trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
 
@@ -144,7 +153,7 @@ class OpsService:
                 project_url = f"{tracing_config.get('host')}/project/{project_key}"
             except Exception:
                 project_url = None
-        elif tracing_provider in ("langsmith", "opik"):
+        elif tracing_provider in ("langsmith", "opik", "tencent"):
             try:
                 project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
             except Exception:
