@@ -38,11 +38,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transfrom_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset)
 
         doc_form = dataset.doc_form
         if not doc_form:
-            return self._transfrom_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset)
         retrieval_model = dataset.retrieval_model
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -263,7 +263,7 @@ class RagPipelineTransformService:
             logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
-    def _transfrom_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
