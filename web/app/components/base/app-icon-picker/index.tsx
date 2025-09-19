@@ -5,7 +5,6 @@ import type { Area } from 'react-easy-crop'
 import Modal from '../modal'
 import Divider from '../divider'
 import Button from '../button'
-import { ImagePlus } from '../icons/src/vender/line/images'
 import { useLocalFileUploader } from '../image-uploader/hooks'
 import EmojiPickerInner from '../emoji-picker/Inner'
 import type { OnImageInput } from './ImageInput'
@@ -16,6 +15,7 @@ import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { noop } from 'lodash-es'
+import { RiImageCircleAiLine } from '@remixicon/react'
 
 export type AppIconEmojiSelection = {
   type: 'emoji'
@@ -46,7 +46,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
 
   const tabs = [
     { key: 'emoji', label: t('app.iconPicker.emoji'), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('app.iconPicker.image'), icon: <ImagePlus /> },
+    { key: 'image', label: t('app.iconPicker.image'), icon: <RiImageCircleAiLine className='size-4' /> },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
 
@@ -119,10 +119,10 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
         {tabs.map(tab => (
           <button
             key={tab.key}
-            className={`
-                        flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 text-sm font-medium
-                        ${activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active shadow-md'}
-                      `}
+            className={cn(
+              'system-sm-medium flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 text-text-tertiary',
+              activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
+            )}
             onClick={() => setActiveTab(tab.key as AppIconType)}
           >
             {tab.icon} &nbsp; {tab.label}

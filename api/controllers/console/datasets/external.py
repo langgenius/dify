@@ -148,7 +148,7 @@ class ExternalApiTemplateApi(Resource):
         external_knowledge_api_id = str(external_knowledge_api_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor or current_user.is_dataset_operator:
+        if not (current_user.is_editor or current_user.is_dataset_operator):
             raise Forbidden()
 
         ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)

@@ -1,0 +1,90 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "214",
+			"height": "124",
+			"viewBox": "0 0 214 124",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Effect",
+					"opacity": "0.5",
+					"filter": "url(#filter0_f_6128_89310)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "circle",
+						"attributes": {
+							"cx": "26",
+							"cy": "26",
+							"r": "28",
+							"fill": "#6172F3"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "filter",
+						"attributes": {
+							"id": "filter0_f_6128_89310",
+							"x": "-162",
+							"y": "-162",
+							"width": "376",
+							"height": "376",
+							"filterUnits": "userSpaceOnUse",
+							"color-interpolation-filters": "sRGB"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "feFlood",
+								"attributes": {
+									"flood-opacity": "0",
+									"result": "BackgroundImageFix"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in": "SourceGraphic",
+									"in2": "BackgroundImageFix",
+									"result": "shape"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feGaussianBlur",
+								"attributes": {
+									"stdDeviation": "80",
+									"result": "effect1_foregroundBlur_6128_89310"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "OptionCardEffectBlue"
+}

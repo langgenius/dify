@@ -15,6 +15,9 @@ type CodeEditorProps = {
   editorWrapperClassName?: string
   readOnly?: boolean
   hideTopMenu?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
+  topContent?: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
 
 const CodeEditor: FC<CodeEditorProps> = ({
@@ -24,7 +27,10 @@ const CodeEditor: FC<CodeEditorProps> = ({
   editorWrapperClassName,
   readOnly = false,
   hideTopMenu = false,
+  topContent,
   className,
+  onFocus,
+  onBlur,
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -45,6 +51,14 @@ const CodeEditor: FC<CodeEditorProps> = ({
   const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor
     monacoRef.current = monaco
+
+    editor.onDidFocusEditorText(() => {
+      onFocus?.()
+    })
+    editor.onDidBlurEditorText(() => {
+      onBlur?.()
+    })
+
     monaco.editor.defineTheme('light-theme', {
       base: 'vs',
       inherit: true,
@@ -127,6 +141,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
         </div>
       )}
+      {topContent}
       <div className={classNames('relative overflow-hidden', editorWrapperClassName)}>
         <Editor
           defaultLanguage='json'

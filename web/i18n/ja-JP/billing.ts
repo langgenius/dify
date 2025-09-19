@@ -5,8 +5,8 @@ const translation = {
     buildApps: 'アプリを作成する',
     annotationQuota: 'アノテーション・クォータ',
     documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
-    vectorSpace: '知識データストレージ',
-    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、知識データストレージのリソースを消費します。知識データストレージの上限に達すると、新しいドキュメントはアップロードされません。',
+    vectorSpace: 'ナレッジベースのデータストレージ',
+    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
   },
   upgradeBtn: {
     plain: 'プランをアップグレード',
@@ -16,7 +16,10 @@ const translation = {
   viewBilling: '請求とサブスクリプションの管理',
   buyPermissionDeniedTip: 'サブスクリプションするには、エンタープライズ管理者に連絡してください',
   plansCommon: {
-    title: 'あなたの AI の旅を支える価格設定',
+    title: {
+      plans: 'プラン',
+      description: 'あなたのAIの旅に最適な価格',
+    },
     freeTrialTipPrefix: 'サインアップ後、',
     freeTrialTip: '200 回の OpenAI コールの無料に受け取る',
     freeTrialTipSuffix: '。クレジットカード不要',
@@ -48,10 +51,10 @@ const translation = {
     teamMember_other: 'チームメンバー：{{count,number}}人',
     annotationQuota: 'アノテーション・クォータ',
     buildApps: 'アプリの数：{{count,number}}個',
-    documents: '{{count,number}}の知識文書',
+    documents: '{{count,number}}のナレッジベース内のドキュメント数',
     documentsTooltip: 'ナレッジデータソースからインポートされたドキュメントの数に対するクォータ。',
-    vectorSpace: '{{size}}の知識データストレージ',
-    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、知識データストレージのリソースを消費します。知識データストレージの上限に達すると、新しいドキュメントはアップロードされません。',
+    vectorSpace: '{{size}}のナレッジベースのデータストレージ',
+    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
     documentsRequestQuota: '{{count,number}}/分のナレッジ リクエストのレート制限',
     documentsRequestQuotaTooltip: 'ナレッジベース内でワークスペースが 1 分間に実行できる操作の総数を示します。これには、データセットの作成、削除、更新、ドキュメントのアップロード、修正、アーカイブ、およびナレッジベースクエリが含まれます。この指標は、ナレッジベースリクエストのパフォーマンスを評価するために使用されます。例えば、Sandbox ユーザーが 1 分間に 10 回連続でヒットテストを実行した場合、そのワークスペースは次の 1 分間、データセットの作成、削除、更新、ドキュメントのアップロードや修正などの操作を一時的に実行できなくなります。',
     apiRateLimit: 'API レート制限',
@@ -101,6 +104,7 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Dify のナレッジベース処理機能のみを呼び出す API 呼び出しの数を指します。',
     receiptInfo: 'チームオーナーとチーム管理者のみが購読および請求情報を表示できます',
+    startBuilding: '構築を開始する',
   },
   plans: {
     sandbox: {
@@ -154,7 +158,7 @@ const translation = {
       price: 'カスタム',
       priceTip: '年間契約専用',
       btnText: '営業に相談',
-      includesTitle: 'プレミアム版機能に加えて：',
+      includesTitle: '<highlight>プレミアム</highlight>版機能に加えて：',
       features: [
         'エンタープライズ向け拡張ソリューション',
         '商用ライセンス認可',
@@ -169,7 +173,7 @@ const translation = {
     },
   },
   vectorSpace: {
-    fullTip: '知識データストレージがいっぱいです。',
+    fullTip: 'ナレッジベースのデータストレージがいっぱいです。',
     fullSolution: 'より多くのスペースを得るためにプランをアップグレードしてください。',
   },
   apps: {

@@ -1,11 +1,11 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import AfterValidator, BaseModel
 
 from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.types import SegmentType
-from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.base.entities import VariableSelector
 
 _ALLOWED_OUTPUT_FROM_CODE = frozenset(
     [
@@ -34,7 +34,7 @@ class CodeNodeData(BaseNodeData):
 
     class Output(BaseModel):
         type: Annotated[SegmentType, AfterValidator(_validate_type)]
-        children: dict[str, "CodeNodeData.Output"] | None = None
+        children: dict[str, Self] | None = None
 
     class Dependency(BaseModel):
         name: str
