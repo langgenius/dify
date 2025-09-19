@@ -1382,7 +1382,7 @@ class RagPipelineService:
         datasource_plugins = []
         for datasource_node in datasource_nodes:
             if datasource_node.get("data", {}).get("type") == "datasource":
-                datasource_node_data = datasource_node['data']
+                datasource_node_data = datasource_node["data"]
                 if not datasource_node_data:
                     continue
 
