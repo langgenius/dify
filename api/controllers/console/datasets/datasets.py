@@ -758,7 +758,6 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.PGVECTO_RS
-                | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
@@ -785,6 +784,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TENCENT
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
+                | VectorType.BAIDU
             ):
                 return {
                     "retrieval_method": [
@@ -814,7 +814,6 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.PGVECTO_RS
-                | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
@@ -839,6 +838,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
+                | VectorType.BAIDU
             ):
                 return {
                     "retrieval_method": [
