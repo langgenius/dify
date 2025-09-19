@@ -147,6 +147,7 @@ api/.idea
 
 api/.env
 api/storage/*
+api/Dockerfile.local
 
 docker-legacy/volumes/app/storage/*
 docker-legacy/volumes/db/data/*
