@@ -122,10 +122,13 @@ class OceanBaseVector(BaseVector):
             if self._hybrid_search_enabled:
                 # Get parser from config or use default ik parser
                 parser_name = dify_config.OCEANBASE_FULLTEXT_PARSER or "ik"
-                logger.debug(f"DEBUG: Hybrid search is enabled, parser_name='{parser_name}'")
-                    
-                logger.debug(f"DEBUG: About to create fulltext index for collection '{self._collection_name}' using parser '{parser_name}'")
-                    
+
+                allowed_parsers = ['ik', 'japanese_ftparser', 'thai_ftparser']
+                if parser_name not in allowed_parsers:
+                    raise ValueError(f"Invalid OceanBase full-text parser: {parser_name}. "
+                                     f"Allowed values are: {', '.join(allowed_parsers)}")
+                logger.debug(f"Hybrid search is enabled, parser_name='{parser_name}'")
+                logger.debug(f"About to create fulltext index for collection '{self._collection_name}' using parser '{parser_name}'")
                 try:
                     sql_command = f"""ALTER TABLE {self._collection_name}
                     ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER {parser_name}"""
@@ -133,8 +136,8 @@ class OceanBaseVector(BaseVector):
                     self._client.perform_raw_text_sql(sql_command)
                     logger.debug(f"DEBUG: Fulltext index created successfully for '{self._collection_name}'")
                 except Exception as e:
-                    logger.error(f"DEBUG: Exception occurred while creating fulltext index: {str(e)}")
-                    logger.error(f"DEBUG: Exception type: {type(e)}")
+                    logger.error(f"Exception occurred while creating fulltext index: {e}")
+                    logger.error(f"Exception type: {type(e)}")
                     raise Exception(
                         "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
                         + "to support fulltext index and vector index in the same table",

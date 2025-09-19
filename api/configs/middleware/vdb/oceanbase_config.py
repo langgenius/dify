@@ -39,7 +39,9 @@ class OceanBaseVectorConfig(BaseSettings):
     )
     
     OCEANBASE_FULLTEXT_PARSER: str | None = Field(
-        description="Fulltext parser to use for text indexing. Options: 'japanese_ftparser'(Japanese),'thai_ftparser' (Thai), 'ik' (Chinese), "
-        "Default is 'ik'",
+        description=(
+            "Fulltext parser to use for text indexing. Options: 'japanese_ftparser' (Japanese), "
+            "'thai_ftparser' (Thai), 'ik' (Chinese). Default is 'ik'"
+        ),
         default="ik",
     )
