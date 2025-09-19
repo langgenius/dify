@@ -9,7 +9,7 @@ export class WebSocketClient {
 
   constructor(config: WebSocketConfig = {}) {
     this.config = {
-      url: config.url || process.env.NEXT_PUBLIC_SOCKET_URL || 'ws://api:5001',
+      url: config.url || process.env.NEXT_PUBLIC_SOCKET_URL || 'wss://api:5001',
       transports: config.transports || ['websocket'],
       withCredentials: config.withCredentials !== false,
       ...config,
