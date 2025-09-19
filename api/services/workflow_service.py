@@ -450,7 +450,8 @@ class WorkflowService:
             )
 
             if not default_provider:
-                raise ValueError("No default credential found")
+                # plugin does not require credentials, skip
+                return
 
             # Check credential policy compliance using the default credential ID
             from core.helper.credential_utils import check_credential_policy_compliance
@@ -1008,7 +1009,7 @@ def _setup_variable_pool(
         if workflow.type != WorkflowType.WORKFLOW.value:
             system_variable.query = query
             system_variable.conversation_id = conversation_id
-            system_variable.dialogue_count = 0
+            system_variable.dialogue_count = 1
     else:
         system_variable = SystemVariable.empty()
 
