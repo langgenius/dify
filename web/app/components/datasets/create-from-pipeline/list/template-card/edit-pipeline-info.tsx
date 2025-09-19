@@ -9,8 +9,7 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { PipelineTemplateListQueryKeyPrefix, useUpdateTemplateInfo } from '@/service/use-pipeline'
-import { useInvalid } from '@/service/use-base'
+import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
   onClose: () => void
@@ -63,7 +62,7 @@ const EditPipelineInfo = ({
   }, [])
 
   const { mutateAsync: updatePipeline } = useUpdateTemplateInfo()
-  const invalidCustomizedTemplateList = useInvalid([...PipelineTemplateListQueryKeyPrefix, 'customized'])
+  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
 
   const handleSave = useCallback(async () => {
     if (!name) {

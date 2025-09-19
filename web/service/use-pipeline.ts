@@ -48,6 +48,10 @@ export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   })
 }
 
+export const useInvalidCustomizedTemplateList = () => {
+  return useInvalid([...PipelineTemplateListQueryKeyPrefix, 'customized'])
+}
+
 export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, enabled: boolean) => {
   const { template_id, type } = params
   return useQuery<PipelineTemplateByIdResponse>({

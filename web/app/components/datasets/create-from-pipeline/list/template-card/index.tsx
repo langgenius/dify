@@ -5,9 +5,9 @@ import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemplate } from '@/models/pipeline'
 import Confirm from '@/app/components/base/confirm'
 import {
-  PipelineTemplateListQueryKeyPrefix,
   useDeleteTemplate,
   useExportTemplateDSL,
+  useInvalidCustomizedTemplateList,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
@@ -18,7 +18,6 @@ import Details from './details'
 import Content from './content'
 import Actions from './actions'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import { useInvalid } from '@/service/use-base'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 type TemplateCardProps = {
@@ -128,7 +127,7 @@ const TemplateCard = ({
   }, [])
 
   const { mutateAsync: deletePipeline } = useDeleteTemplate()
-  const invalidCustomizedTemplateList = useInvalid([...PipelineTemplateListQueryKeyPrefix, 'customized'])
+  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
 
   const onConfirmDelete = useCallback(async () => {
     await deletePipeline(pipeline.id, {

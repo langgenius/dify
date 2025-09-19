@@ -685,12 +685,24 @@ class RagPipelineDslService:
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         for node in workflow_dict.get("graph", {}).get("nodes", []):
-            if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
-                dataset_ids = node["data"].get("dataset_ids", [])
+            node_data = node.get("data", {})
+            if not node_data:
+                continue
+            data_type = node_data.get("type", "")
+            if data_type == NodeType.KNOWLEDGE_RETRIEVAL.value:
+                dataset_ids = node_data.get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     self.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=pipeline.tenant_id)
                     for dataset_id in dataset_ids
                 ]
+            # filter credential id from tool node
+            if not include_secret and data_type == NodeType.TOOL.value:
+                node_data.pop("credential_id", None)
+            # filter credential id from agent node
+            if not include_secret and data_type == NodeType.AGENT.value:
+                for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
+                    tool.pop("credential_id", None)
+
         export_data["workflow"] = workflow_dict
         dependencies = self._extract_dependencies_from_workflow(workflow)
         export_data["dependencies"] = [
