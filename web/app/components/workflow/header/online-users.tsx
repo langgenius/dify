@@ -50,7 +50,7 @@ const useAvatarUrls = (users: any[]) => {
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
-  const { onlineUsers, cursors } = useCollaboration(appId)
+  const { onlineUsers, cursors } = useCollaboration(appId as string)
   const { userProfile } = useAppContext()
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)

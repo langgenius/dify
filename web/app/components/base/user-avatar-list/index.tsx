@@ -1,5 +1,7 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { useAppContext } from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
 
 type User = {
@@ -23,6 +25,7 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   className = '',
   showCount = true,
 }) => {
+  const { userProfile } = useAppContext()
   if (!users.length) return null
 
   const shouldShowCount = showCount && users.length > maxVisible
@@ -30,22 +33,31 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   const visibleUsers = users.slice(0, actualMaxVisible)
   const remainingCount = users.length - actualMaxVisible
 
+  const currentUserId = userProfile?.id
+
   return (
     <div className={`flex items-center -space-x-1 ${className}`}>
-      {visibleUsers.map((user, index) => (
-        <div
-          key={`${user.id}-${index}`}
-          className='relative'
-          style={{ zIndex: visibleUsers.length - index }}
-        >
-          <Avatar
-            name={user.name}
-            avatar={user.avatar_url || null}
-            size={size}
-            className='ring-2 ring-white'
-          />
-        </div>
-      ))}
+      {visibleUsers.map((user, index) => {
+        const isCurrentUser = user.id === currentUserId
+        const userColor = isCurrentUser ? undefined : getUserColor(user.id)
+        return (
+          <div
+            key={`${user.id}-${index}`}
+            className='relative'
+            style={{ zIndex: visibleUsers.length - index }}
+          >
+            <Avatar
+              name={user.name}
+              avatar={user.avatar_url || null}
+              size={size}
+              className='ring-2 ring-white'
+              backgroundColor={userColor}
+            />
+          </div>
+        )
+      },
+
+      )}
       {shouldShowCount && remainingCount > 0 && (
         <div
           className={'flex items-center justify-center rounded-full bg-components-panel-on-panel-item-bg text-[10px] leading-none text-text-secondary ring-2 ring-white'}

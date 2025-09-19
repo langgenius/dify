@@ -93,7 +93,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     return Object.values(presence)
       .filter(viewer => viewer.userId && viewer.userId !== currentUserPresence.userId)
       .map(viewer => ({
-        id: viewer.clientId,
+        id: viewer.userId,
         name: viewer.username,
         avatar_url: viewer.avatar || null,
       }))
