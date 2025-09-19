@@ -24,10 +24,12 @@ import {
   fetchAppParams,
   fetchChatList,
   fetchConversations,
-  fetchTryAppInfo,
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
+import {
+  fetchTryAppInfo,
+} from '@/service/try-app'
 import type {
   // AppData,
   ConversationItem,
@@ -257,6 +259,8 @@ export const useEmbeddedChatbot = (appSourceType = AppSourceType.webApp, tryAppI
   useEffect(() => {
     // init inputs from url params
     (async () => {
+      if(isTryApp)
+        return
       const inputs = await getProcessedInputsFromUrlParams()
       const userVariables = await getProcessedUserVariablesFromUrlParams()
       setInitInputs(inputs)

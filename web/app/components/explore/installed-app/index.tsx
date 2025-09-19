@@ -33,7 +33,6 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   const { isFetching: isFetchingAppMeta, data: appMeta, error: appMetaError } = useGetInstalledAppMeta(installedApp?.id ?? null)
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: installedApp?.app.id, isInstalledApp: true })
 
-  console.log(appParams, appMeta)
   useEffect(() => {
     if (!installedApp) {
       updateAppInfo(null)

@@ -141,11 +141,6 @@ export const fetchAppInfo = async () => {
   return get('/site') as Promise<AppData>
 }
 
-// would use trial-apps after api is ok
-export const fetchTryAppInfo = async () => {
-  return get('/site') as Promise<AppData>
-}
-
 export const fetchConversations = async (appSourceType: AppSourceType, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
   return getAction('get', appSourceType)(getUrl('conversations', appSourceType, installedAppId), { params: { limit: limit || 20, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
 }

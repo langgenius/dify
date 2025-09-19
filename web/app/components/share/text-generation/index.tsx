@@ -41,24 +41,9 @@ import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useWebAppStore } from '@/context/web-app-context'
-
+import type { Task } from './types'
+import { TaskStatus } from './types'
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
-enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  completed = 'completed',
-  failed = 'failed',
-}
-
-type TaskParam = {
-  inputs: Record<string, any>
-}
-
-type Task = {
-  id: number
-  status: TaskStatus
-  params: TaskParam
-}
 
 export type IMainProps = {
   isInstalledApp?: boolean
