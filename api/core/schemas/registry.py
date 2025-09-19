@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
@@ -7,6 +8,8 @@ from typing import Any, ClassVar, Optional
 
 class SchemaRegistry:
     """Schema registry manages JSON schemas with version support"""
+
+    logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
     _default_instance: ClassVar[Optional["SchemaRegistry"]] = None
     _lock: ClassVar[threading.Lock] = threading.Lock()
@@ -83,7 +86,7 @@ class SchemaRegistry:
             self.metadata[uri] = metadata
 
         except (OSError, json.JSONDecodeError) as e:
-            print(f"Warning: failed to load schema {version}/{schema_name}: {e}")
+            self.logger.warning("Failed to load schema %s/%s: %s", version, schema_name, e)
 
     def get_schema(self, uri: str) -> Any | None:
         """Retrieves a schema by URI with version support"""

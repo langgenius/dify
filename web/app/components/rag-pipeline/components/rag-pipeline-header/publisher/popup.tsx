@@ -33,6 +33,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useInvalid } from '@/service/use-base'
 import {
   publishedPipelineInfoQueryKeyPrefix,
+  useInvalidCustomizedTemplateList,
   usePublishAsCustomizedPipeline,
 } from '@/service/use-pipeline'
 import Confirm from '@/app/components/base/confirm'
@@ -158,6 +159,8 @@ const Popup = () => {
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
   }, [datasetId, push])
 
+  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+
   const handlePublishAsKnowledgePipeline = useCallback(async (
     name: string,
     icon: IconInfo,
@@ -189,6 +192,7 @@ const Popup = () => {
           </div>
         ),
       })
+      invalidCustomizedTemplateList()
     }
     catch {
       notify({ type: 'error', message: t('datasetPipeline.publishTemplate.error.message') })
