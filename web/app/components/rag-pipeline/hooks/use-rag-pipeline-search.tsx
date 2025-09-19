@@ -8,9 +8,10 @@ import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/r
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { setupNodeSelectionListener } from '@/app/components/workflow/utils/node-navigation'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { Emoji } from '@/app/components/tools/types'
-import { canFindTool } from '@/utils'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 
 /**
  * Hook to register RAG pipeline nodes search functionality
@@ -18,45 +19,32 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 export const useRagPipelineSearch = () => {
   const nodes = useNodes()
   const { handleNodeSelect } = useNodesInteractions()
+  const getToolIcon = useGetToolIcon()
 
   // Process nodes to create searchable data structure
   const searchableNodes = useMemo(() => {
     return nodes.map((node) => {
       const nodeData = node.data as CommonNodeType
-      let title = nodeData.title || nodeData.type || 'Untitled Node'
+      const title = nodeData.title || nodeData.type || 'Untitled Node'
       let desc = nodeData.desc || ''
-      let toolIcon: Emoji | undefined
 
-      // Handle different node types for better search experience
+      // Keep the original node title for consistency with workflow display
+      // Only enhance description for better search context
       if (nodeData.type === BlockEnum.Tool) {
-        const toolData = nodeData as any
-        if (toolData.provider_id && toolData.tool_name) {
-          title = `${toolData.tool_name} (${toolData.provider_id})`
-          desc = toolData.tool_label || toolData.description || desc
-
-          if (canFindTool(toolData.provider_id, toolData.tool_name)) {
-            toolIcon = {
-              content: toolData.tool_icon || '🔧',
-              background: toolData.tool_icon_background || '#F3F4F6',
-            }
-          }
-        }
+        const toolData = nodeData as ToolNodeType
+        desc = toolData.tool_description || toolData.tool_label || desc
       }
 
-      // Handle LLM nodes
       if (nodeData.type === BlockEnum.LLM) {
         const llmData = nodeData as LLMNodeType
-        if (llmData.model?.provider && llmData.model?.name) {
-          title = `${llmData.model.name} (${llmData.model.provider})`
-          desc = llmData.model.mode || desc
-        }
+        if (llmData.model?.provider && llmData.model?.name)
+          desc = `${llmData.model.name} (${llmData.model.provider}) - ${llmData.model.mode || desc}`
       }
 
-      // Handle Knowledge Retrieval nodes
       if (nodeData.type === BlockEnum.KnowledgeRetrieval) {
-        const knowledgeData = nodeData as any
+        const knowledgeData = nodeData as KnowledgeRetrievalNodeType
         if (knowledgeData.dataset_ids?.length)
-          title = `Knowledge Retrieval (${knowledgeData.dataset_ids.length} datasets)`
+          desc = `Knowledge Retrieval with ${knowledgeData.dataset_ids.length} datasets - ${desc}`
       }
 
       return {
@@ -66,15 +54,19 @@ export const useRagPipelineSearch = () => {
         type: nodeData.type,
         blockType: nodeData.type,
         nodeData,
-        toolIcon,
-        modelInfo: {
-          provider: (nodeData as LLMNodeType)?.model?.provider,
-          name: (nodeData as LLMNodeType)?.model?.name,
-          mode: (nodeData as LLMNodeType)?.model?.mode,
+        toolIcon: getToolIcon(nodeData),
+        modelInfo: nodeData.type === BlockEnum.LLM ? {
+          provider: (nodeData as LLMNodeType).model?.provider,
+          name: (nodeData as LLMNodeType).model?.name,
+          mode: (nodeData as LLMNodeType).model?.mode,
+        } : {
+          provider: undefined,
+          name: undefined,
+          mode: undefined,
         },
       }
     })
-  }, [nodes])
+  }, [nodes, getToolIcon])
 
   // Calculate relevance score for search results
   const calculateScore = useCallback((node: {
@@ -125,7 +117,7 @@ export const useRagPipelineSearch = () => {
           id: node.id,
           title: node.title,
           description: node.desc || node.type,
-          type: 'rag-pipeline-node' as const,
+          type: 'workflow-node' as const,
           path: `#${node.id}`,
           icon: (
             <BlockIcon

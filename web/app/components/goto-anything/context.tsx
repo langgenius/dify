@@ -41,11 +41,19 @@ export const GotoAnythingProvider: React.FC<GotoAnythingProviderProps> = ({ chil
   const [isRagPipelinePage, setIsRagPipelinePage] = useState(false)
   const pathname = usePathname()
 
-  // Update context based on current pathname
+  // Update context based on current pathname using more robust route matching
   useEffect(() => {
-    // Check if current path contains workflow or RAG pipeline
-    const isWorkflow = pathname?.includes('/workflow') || false
-    const isRagPipeline = (pathname?.includes('/datasets/') && pathname?.includes('/pipeline')) || false
+    if (!pathname) {
+      setIsWorkflowPage(false)
+      setIsRagPipelinePage(false)
+      return
+    }
+
+    // Workflow pages: /app/[appId]/workflow or /workflow/[token] (shared)
+    const isWorkflow = /^\/app\/[^/]+\/workflow$/.test(pathname) || /^\/workflow\/[^/]+$/.test(pathname)
+    // RAG Pipeline pages: /datasets/[datasetId]/pipeline
+    const isRagPipeline = /^\/datasets\/[^/]+\/pipeline$/.test(pathname)
+
     setIsWorkflowPage(isWorkflow)
     setIsRagPipelinePage(isRagPipeline)
   }, [pathname])
