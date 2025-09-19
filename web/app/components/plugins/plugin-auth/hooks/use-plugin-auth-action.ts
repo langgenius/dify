@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
-import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
+import type { PluginPayload } from '../types'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,

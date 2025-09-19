@@ -6,14 +6,6 @@ from datetime import datetime
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
-from core.plugin.entities.plugin import GenericProviderID
-from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.signature import sign_tool_file
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-
-if TYPE_CHECKING:
-    from models.workflow import Workflow
-
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
@@ -24,13 +16,19 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
+from core.tools.signature import sign_tool_file
+from core.workflow.enums import WorkflowExecutionStatus
 from libs.helper import generate_string  # type: ignore[import-not-found]
 
 from .account import Account, Tenant
 from .base import Base
 from .engine import db
 from .enums import CreatorUserRole
+from .provider_ids import GenericProviderID
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from models.workflow import Workflow
 
 
 class DifySetup(Base):
@@ -47,6 +45,8 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
+    CHANNEL = "channel"
+    RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":
@@ -163,7 +163,7 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list[dict[str, str]]:
-        from core.tools.tool_manager import ToolManager
+        from core.tools.tool_manager import ToolManager, ToolProviderType
         from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
@@ -178,6 +178,7 @@ class App(Base):
         tools = agent_mode.get("tools", [])
 
         api_provider_ids: list[str] = []
+
         builtin_provider_ids: list[GenericProviderID] = []
 
         for tool in tools:
@@ -846,7 +847,8 @@ class Conversation(Base):
 
     @property
     def app(self) -> App | None:
-        return db.session.query(App).where(App.id == self.app_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            return session.query(App).where(App.id == self.app_id).first()
 
     @property
     def from_end_user_session_id(self):
@@ -1138,7 +1140,7 @@ class Message(Base):
         )
 
     @property
-    def retriever_resources(self) -> Any | list[Any]:
+    def retriever_resources(self) -> Any:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
@@ -1621,6 +1623,9 @@ class UploadFile(Base):
         sa.Index("upload_file_tenant_idx", "tenant_id"),
     )
 
+    # NOTE: The `id` field is generated within the application to minimize extra roundtrips
+    # (especially when generating `source_url`).
+    # The `server_default` serves as a fallback mechanism.
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1629,12 +1634,32 @@ class UploadFile(Base):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # Its value is derived from the `CreatorUserRole` enumeration.
     created_by_role: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'account'::character varying")
     )
+
+    # The `created_by` field stores the ID of the entity that created this upload file.
+    #
+    # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
+    # Otherwise, it corresponds to `EndUser.id`.
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # The fields `used` and `used_by` are not consistently maintained.
+    #
+    # When using this model in new code, ensure the following:
+    #
+    # 1. Set `used` to `true` when the file is utilized.
+    # 2. Assign `used_by` to the corresponding `Account.id` or `EndUser.id` based on the `created_by_role`.
+    # 3. Avoid relying on these fields for logic, as their values may not always be accurate.
+    #
+    # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+
+    # `used_by` may indicate the ID of the user who utilized this file.
     used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1659,6 +1684,7 @@ class UploadFile(Base):
         hash: str | None = None,
         source_url: str = "",
     ):
+        self.id = str(uuid.uuid4())
         self.tenant_id = tenant_id
         self.storage_type = storage_type
         self.key = key

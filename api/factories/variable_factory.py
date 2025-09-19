@@ -40,7 +40,10 @@ from core.variables.variables import (
     StringVariable,
     Variable,
 )
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
 
 
 class UnsupportedSegmentTypeError(Exception):
@@ -79,6 +82,12 @@ def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Va
     if not mapping.get("name"):
         raise VariableError("missing name")
     return _build_variable_from_mapping(mapping=mapping, selector=[ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]])
+
+
+def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+    if not mapping.get("variable"):
+        raise VariableError("missing variable")
+    return mapping["variable"]
 
 
 def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:

@@ -32,14 +32,11 @@ from core.variables import (
     StringSegment,
 )
 from core.variables.segments import ArrayObjectSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import (
-    ModelInvokeCompletedEvent,
-)
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_ASSISTANT_PROMPT_1,
     METADATA_FILTER_ASSISTANT_PROMPT_2,
@@ -70,7 +67,7 @@ from .exc import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +80,8 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeRetrievalNode(BaseNode):
-    _node_type = NodeType.KNOWLEDGE_RETRIEVAL
+class KnowledgeRetrievalNode(Node):
+    node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     _node_data: KnowledgeRetrievalNodeData
 
@@ -99,10 +96,7 @@ class KnowledgeRetrievalNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: str | None = None,
-        thread_pool_id: str | None = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -110,10 +104,7 @@ class KnowledgeRetrievalNode(BaseNode):
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
-            thread_pool_id=thread_pool_id,
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs: list[File] = []
@@ -197,7 +188,7 @@ class KnowledgeRetrievalNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
-                process_data=None,
+                process_data={},
                 outputs=outputs,  # type: ignore
             )
 
@@ -426,7 +417,7 @@ class KnowledgeRetrievalNode(BaseNode):
             Document.enabled == True,
             Document.archived == False,
         )
-        filters = []  # type: ignore
+        filters: list[Any] = []
         metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
             return None, None
@@ -440,7 +431,7 @@ class KnowledgeRetrievalNode(BaseNode):
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
                         filter.get("value"),
-                        filters,  # type: ignore
+                        filters,
                     )
                     conditions.append(
                         Condition(
@@ -550,7 +541,8 @@ class KnowledgeRetrievalNode(BaseNode):
                 structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
-                node_id=self.node_id,
+                node_id=self._node_id,
+                node_type=self.node_type,
             )
 
             for event in generator:
@@ -576,10 +568,10 @@ class KnowledgeRetrievalNode(BaseNode):
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
-    ):
+        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
+    ) -> list[Any]:
         if value is None and condition not in ("empty", "not empty"):
-            return
+            return filters
 
         key = f"{metadata_name}_{sequence}"
         key_value = f"{metadata_name}_{sequence}_value"
@@ -664,6 +656,7 @@ class KnowledgeRetrievalNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # graph_config is not used in this node type
         # Create typed NodeData from dict
         typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
 

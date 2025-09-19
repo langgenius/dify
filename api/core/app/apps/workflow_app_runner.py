@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -13,14 +14,9 @@ from core.app.entities.queue_entities import (
     QueueLoopStartEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -28,42 +24,39 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_engine.entities.event import (
-    AgentLogEvent,
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.graph import Graph
+from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
-    IterationRunFailedEvent,
-    IterationRunNextEvent,
-    IterationRunStartedEvent,
-    IterationRunSucceededEvent,
-    LoopRunFailedEvent,
-    LoopRunNextEvent,
-    LoopRunStartedEvent,
-    LoopRunSucceededEvent,
-    NodeInIterationFailedEvent,
-    NodeInLoopFailedEvent,
+    NodeRunAgentLogEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunIterationFailedEvent,
+    NodeRunIterationNextEvent,
+    NodeRunIterationStartedEvent,
+    NodeRunIterationSucceededEvent,
+    NodeRunLoopFailedEvent,
+    NodeRunLoopNextEvent,
+    NodeRunLoopStartedEvent,
+    NodeRunLoopSucceededEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
-    ParallelBranchRunFailedEvent,
-    ParallelBranchRunStartedEvent,
-    ParallelBranchRunSucceededEvent,
 )
-from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_events.graph import GraphRunAbortedEvent
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from models.enums import UserFrom
 from models.workflow import Workflow
 
 
@@ -79,7 +72,14 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
 
-    def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
+    def _init_graph(
+        self,
+        graph_config: Mapping[str, Any],
+        graph_runtime_state: GraphRuntimeState,
+        workflow_id: str = "",
+        tenant_id: str = "",
+        user_id: str = "",
+    ) -> Graph:
         """
         Init graph
         """
@@ -91,8 +91,28 @@ class WorkflowBasedAppRunner:
 
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
+
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=tenant_id or "",
+            app_id=self._app_id,
+            workflow_id=workflow_id,
+            graph_config=graph_config,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        # Use the provided graph_runtime_state for consistent state management
+
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=graph_config)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -104,6 +124,7 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         node_id: str,
         user_inputs: dict,
+        graph_runtime_state: GraphRuntimeState,
     ) -> tuple[Graph, VariablePool]:
         """
         Get variable pool of single iteration
@@ -145,8 +166,25 @@ class WorkflowBasedAppRunner:
 
         graph_config["edges"] = edge_configs
 
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            workflow_id=workflow.id,
+            graph_config=graph_config,
+            user_id="",
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=graph_config, root_node_id=node_id)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -201,6 +239,7 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         node_id: str,
         user_inputs: dict,
+        graph_runtime_state: GraphRuntimeState,
     ) -> tuple[Graph, VariablePool]:
         """
         Get variable pool of single loop
@@ -242,8 +281,25 @@ class WorkflowBasedAppRunner:
 
         graph_config["edges"] = edge_configs
 
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            workflow_id=workflow.id,
+            graph_config=graph_config,
+            user_id="",
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=graph_config, root_node_id=node_id)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -310,39 +366,32 @@ class WorkflowBasedAppRunner:
             )
         elif isinstance(event, GraphRunFailedEvent):
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
+        elif isinstance(event, GraphRunAbortedEvent):
+            self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
         elif isinstance(event, NodeRunRetryEvent):
-            node_run_result = event.route_node_state.node_run_result
-            inputs: Mapping[str, Any] | None = {}
-            process_data: Mapping[str, Any] | None = {}
-            outputs: Mapping[str, Any] | None = {}
-            execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = {}
-            if node_run_result:
-                inputs = node_run_result.inputs
-                process_data = node_run_result.process_data
-                outputs = node_run_result.outputs
-                execution_metadata = node_run_result.metadata
+            node_run_result = event.node_run_result
+            inputs = node_run_result.inputs
+            process_data = node_run_result.process_data
+            outputs = node_run_result.outputs
+            execution_metadata = node_run_result.metadata
             self._publish_event(
                 QueueNodeRetryEvent(
                     node_execution_id=event.id,
                     node_id=event.node_id,
+                    node_title=event.node_title,
                     node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.start_at,
-                    node_run_index=event.route_node_state.index,
                     predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
-                    parallel_mode_run_id=event.parallel_mode_run_id,
                     inputs=inputs,
                     process_data=process_data,
                     outputs=outputs,
                     error=event.error,
                     execution_metadata=execution_metadata,
                     retry_index=event.retry_index,
+                    provider_type=event.provider_type,
+                    provider_id=event.provider_id,
                 )
             )
         elif isinstance(event, NodeRunStartedEvent):
@@ -350,44 +399,29 @@ class WorkflowBasedAppRunner:
                 QueueNodeStartedEvent(
                     node_execution_id=event.id,
                     node_id=event.node_id,
+                    node_title=event.node_title,
                     node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    node_run_index=event.route_node_state.index,
+                    start_at=event.start_at,
                     predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
-                    parallel_mode_run_id=event.parallel_mode_run_id,
                     agent_strategy=event.agent_strategy,
+                    provider_type=event.provider_type,
+                    provider_id=event.provider_id,
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):
-            node_run_result = event.route_node_state.node_run_result
-            if node_run_result:
-                inputs = node_run_result.inputs
-                process_data = node_run_result.process_data
-                outputs = node_run_result.outputs
-                execution_metadata = node_run_result.metadata
-            else:
-                inputs = {}
-                process_data = {}
-                outputs = {}
-                execution_metadata = {}
+            node_run_result = event.node_run_result
+            inputs = node_run_result.inputs
+            process_data = node_run_result.process_data
+            outputs = node_run_result.outputs
+            execution_metadata = node_run_result.metadata
             self._publish_event(
                 QueueNodeSucceededEvent(
                     node_execution_id=event.id,
                     node_id=event.node_id,
                     node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
+                    start_at=event.start_at,
                     inputs=inputs,
                     process_data=process_data,
                     outputs=outputs,
@@ -396,34 +430,18 @@ class WorkflowBasedAppRunner:
                     in_loop_id=event.in_loop_id,
                 )
             )
-
         elif isinstance(event, NodeRunFailedEvent):
             self._publish_event(
                 QueueNodeFailedEvent(
                     node_execution_id=event.id,
                     node_id=event.node_id,
                     node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs or {}
-                    if event.route_node_state.node_run_result
-                    else {},
-                    error=event.route_node_state.node_run_result.error
-                    if event.route_node_state.node_run_result and event.route_node_state.node_run_result.error
-                    else "Unknown error",
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
+                    start_at=event.start_at,
+                    inputs=event.node_run_result.inputs,
+                    process_data=event.node_run_result.process_data,
+                    outputs=event.node_run_result.outputs,
+                    error=event.node_run_result.error or "Unknown error",
+                    execution_metadata=event.node_run_result.metadata,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                 )
@@ -434,93 +452,21 @@ class WorkflowBasedAppRunner:
                     node_execution_id=event.id,
                     node_id=event.node_id,
                     node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    error=event.route_node_state.node_run_result.error
-                    if event.route_node_state.node_run_result and event.route_node_state.node_run_result.error
-                    else "Unknown error",
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
+                    start_at=event.start_at,
+                    inputs=event.node_run_result.inputs,
+                    process_data=event.node_run_result.process_data,
+                    outputs=event.node_run_result.outputs,
+                    error=event.node_run_result.error or "Unknown error",
+                    execution_metadata=event.node_run_result.metadata,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
-                )
-            )
-
-        elif isinstance(event, NodeInIterationFailedEvent):
-            self._publish_event(
-                QueueNodeInIterationFailedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs or {}
-                    if event.route_node_state.node_run_result
-                    else {},
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
-                    in_iteration_id=event.in_iteration_id,
-                    error=event.error,
-                )
-            )
-        elif isinstance(event, NodeInLoopFailedEvent):
-            self._publish_event(
-                QueueNodeInLoopFailedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs or {}
-                    if event.route_node_state.node_run_result
-                    else {},
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
-                    in_loop_id=event.in_loop_id,
-                    error=event.error,
                 )
             )
         elif isinstance(event, NodeRunStreamChunkEvent):
             self._publish_event(
                 QueueTextChunkEvent(
-                    text=event.chunk_content,
-                    from_variable_selector=event.from_variable_selector,
+                    text=event.chunk,
+                    from_variable_selector=list(event.selector),
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                 )
@@ -533,10 +479,10 @@ class WorkflowBasedAppRunner:
                     in_loop_id=event.in_loop_id,
                 )
             )
-        elif isinstance(event, AgentLogEvent):
+        elif isinstance(event, NodeRunAgentLogEvent):
             self._publish_event(
                 QueueAgentLogEvent(
-                    id=event.id,
+                    id=event.message_id,
                     label=event.label,
                     node_execution_id=event.node_execution_id,
                     parent_id=event.parent_id,
@@ -547,51 +493,13 @@ class WorkflowBasedAppRunner:
                     node_id=event.node_id,
                 )
             )
-        elif isinstance(event, ParallelBranchRunStartedEvent):
-            self._publish_event(
-                QueueParallelBranchRunStartedEvent(
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
-                )
-            )
-        elif isinstance(event, ParallelBranchRunSucceededEvent):
-            self._publish_event(
-                QueueParallelBranchRunSucceededEvent(
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
-                )
-            )
-        elif isinstance(event, ParallelBranchRunFailedEvent):
-            self._publish_event(
-                QueueParallelBranchRunFailedEvent(
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
-                    error=event.error,
-                )
-            )
-        elif isinstance(event, IterationRunStartedEvent):
+        elif isinstance(event, NodeRunIterationStartedEvent):
             self._publish_event(
                 QueueIterationStartEvent(
-                    node_execution_id=event.iteration_id,
-                    node_id=event.iteration_node_id,
-                    node_type=event.iteration_node_type,
-                    node_data=event.iteration_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
@@ -599,55 +507,41 @@ class WorkflowBasedAppRunner:
                     metadata=event.metadata,
                 )
             )
-        elif isinstance(event, IterationRunNextEvent):
+        elif isinstance(event, NodeRunIterationNextEvent):
             self._publish_event(
                 QueueIterationNextEvent(
-                    node_execution_id=event.iteration_id,
-                    node_id=event.iteration_node_id,
-                    node_type=event.iteration_node_type,
-                    node_data=event.iteration_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_iteration_output,
-                    parallel_mode_run_id=event.parallel_mode_run_id,
-                    duration=event.duration,
                 )
             )
-        elif isinstance(event, (IterationRunSucceededEvent | IterationRunFailedEvent)):
+        elif isinstance(event, (NodeRunIterationSucceededEvent | NodeRunIterationFailedEvent)):
             self._publish_event(
                 QueueIterationCompletedEvent(
-                    node_execution_id=event.iteration_id,
-                    node_id=event.iteration_node_id,
-                    node_type=event.iteration_node_type,
-                    node_data=event.iteration_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
                     outputs=event.outputs,
                     metadata=event.metadata,
                     steps=event.steps,
-                    error=event.error if isinstance(event, IterationRunFailedEvent) else None,
+                    error=event.error if isinstance(event, NodeRunIterationFailedEvent) else None,
                 )
             )
-        elif isinstance(event, LoopRunStartedEvent):
+        elif isinstance(event, NodeRunLoopStartedEvent):
             self._publish_event(
                 QueueLoopStartEvent(
-                    node_execution_id=event.loop_id,
-                    node_id=event.loop_node_id,
-                    node_type=event.loop_node_type,
-                    node_data=event.loop_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
@@ -655,42 +549,32 @@ class WorkflowBasedAppRunner:
                     metadata=event.metadata,
                 )
             )
-        elif isinstance(event, LoopRunNextEvent):
+        elif isinstance(event, NodeRunLoopNextEvent):
             self._publish_event(
                 QueueLoopNextEvent(
-                    node_execution_id=event.loop_id,
-                    node_id=event.loop_node_id,
-                    node_type=event.loop_node_type,
-                    node_data=event.loop_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_loop_output,
-                    parallel_mode_run_id=event.parallel_mode_run_id,
-                    duration=event.duration,
                 )
             )
-        elif isinstance(event, (LoopRunSucceededEvent | LoopRunFailedEvent)):
+        elif isinstance(event, (NodeRunLoopSucceededEvent | NodeRunLoopFailedEvent)):
             self._publish_event(
                 QueueLoopCompletedEvent(
-                    node_execution_id=event.loop_id,
-                    node_id=event.loop_node_id,
-                    node_type=event.loop_node_type,
-                    node_data=event.loop_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
                     outputs=event.outputs,
                     metadata=event.metadata,
                     steps=event.steps,
-                    error=event.error if isinstance(event, LoopRunFailedEvent) else None,
+                    error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
                 )
             )
 

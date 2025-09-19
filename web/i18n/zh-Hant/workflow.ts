@@ -89,7 +89,6 @@ const translation = {
       limit: '並行度僅限於 {{num}} 個分支。',
       depthLimit: '並行嵌套層限制為 {{num}} 個層',
     },
-    parallelRun: '並行運行',
     disconnect: '斷開',
     jumpToNode: '跳轉到此節點',
     addParallelNode: '添加並行節點',
@@ -218,6 +217,8 @@ const translation = {
     back: '返回',
     iteration: '迭代',
     loop: '循環',
+    preparingDataSource: '準備資料來源',
+    reRun: '重新運行',
   },
   tabs: {
     'searchBlock': '搜索節點',
@@ -236,6 +237,8 @@ const translation = {
     'plugin': '插件',
     'allAdded': '所有已添加的',
     'addAll': '全部添加',
+    'sources': '來源',
+    'searchDataSource': '搜尋資料來源',
   },
   blocks: {
     'start': '開始',
@@ -260,6 +263,8 @@ const translation = {
     'loop-start': '循環開始',
     'loop': '循環',
     'loop-end': '退出循環',
+    'knowledge-index': '知識庫',
+    'datasource': '資料來源',
   },
   blocksAbout: {
     'start': '定義一個 workflow 流程啟動的參數',
@@ -282,6 +287,8 @@ const translation = {
     'agent': '調用大型語言模型來回答問題或處理自然語言',
     'loop-end': '等同於「中斷」。這個節點沒有配置項目。當循環體達到這個節點時，循環終止。',
     'loop': '執行邏輯迴圈，直到滿足終止條件或達到最大迴圈次數。',
+    'datasource': '資料來源 關於',
+    'knowledge-index': '知識庫 關於',
   },
   operator: {
     zoomIn: '放大',
@@ -382,6 +389,7 @@ const translation = {
         input: '輸入值',
         variable: '使用變數',
       },
+      inputVars: '輸入變數',
     },
     start: {
       required: '必填',
@@ -916,6 +924,27 @@ const translation = {
       setLoopVariables: '在迴圈範圍內設置變數',
       deleteTitle: '刪除循環節點嗎？',
     },
+    dataSource: {
+      add: '新增資料來源',
+      supportedFileFormats: '支援的檔案格式',
+      supportedFileFormatsPlaceholder: '檔案副檔名， e.g. doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: '瞭解詳情',
+        title: '請選擇區塊結構',
+        message: 'Dify 知識庫支援三種區塊結構：一般、親子和 Q&A。每個知識庫只能有一個結構。前一個節點的輸出必須與選取的區塊結構一致。請注意，區塊結構的選擇會影響可用的索引方法。',
+      },
+      chunkIsRequired: '需要區塊結構',
+      aboutRetrieval: '關於檢索方法。',
+      chooseChunkStructure: '選擇區塊結構',
+      indexMethodIsRequired: '索引方法是必填的',
+      chunkStructure: '區塊結構',
+      changeChunkStructure: '變更區塊結構',
+      retrievalSettingIsRequired: '需要檢索設定',
+      chunksInput: '區塊',
+      chunksInputTip: '知識庫節點的輸入變數是 Chunks。該變數類型是一個物件，具有特定的 JSON Schema，必須與所選的塊結構一致。',
+    },
   },
   tracing: {
     stopBy: '由{{user}}終止',
@@ -989,6 +1018,10 @@ const translation = {
       edited: '編輯的',
       emptyTip: '在畫布上逐步執行節點或逐步運行節點後，您可以在變數檢視中查看節點變數的當前值。',
       resetConversationVar: '將對話變數重置為默認值',
+      export: '出口',
+      largeData: '大數據，唯讀預覽。匯出以檢視全部。',
+      exportToolTip: '將變數匯出為檔案',
+      largeDataNoExport: '大型資料 - 僅部分預覽',
     },
     relations: {
       dependencies: '依賴',

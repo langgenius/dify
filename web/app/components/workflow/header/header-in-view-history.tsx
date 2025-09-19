@@ -10,11 +10,17 @@ import {
 } from '../hooks'
 import Divider from '../../base/divider'
 import RunningTitle from './running-title'
+import type { ViewHistoryProps } from './view-history'
 import ViewHistory from './view-history'
 import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
-const HeaderInHistory = () => {
+export type HeaderInHistoryProps = {
+  viewHistoryProps?: ViewHistoryProps
+}
+const HeaderInHistory = ({
+  viewHistoryProps,
+}: HeaderInHistoryProps) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
 
@@ -33,7 +39,7 @@ const HeaderInHistory = () => {
         <RunningTitle />
       </div>
       <div className='flex items-center space-x-2'>
-        <ViewHistory withText />
+        <ViewHistory {...viewHistoryProps} withText />
         <Divider type='vertical' className='mx-auto h-3.5' />
         <Button
           variant='primary'

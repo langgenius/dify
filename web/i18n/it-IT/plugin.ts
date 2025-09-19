@@ -6,6 +6,7 @@ const translation = {
     bundles: 'Pacchetti',
     models: 'Modelli',
     all: 'Tutto',
+    datasources: 'Fonti dei dati',
   },
   categorySingle: {
     bundle: 'Fascio',
@@ -13,6 +14,7 @@ const translation = {
     agent: 'Strategia dell\'agente',
     extension: 'Estensione',
     tool: 'Strumento',
+    datasource: 'Origine dati',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: 'Le credenziali personalizzate attualmente non sono disponibili',
     credentialUnavailable: 'Credenziali attualmente non disponibili. Si prega di contattare l\'amministratore.',
     credentialUnavailableInButton: 'Credenziali non disponibili',
+    emptyAuth: 'Configurare l\'autenticazione',
+    connectedWorkspace: 'Area di lavoro connessa',
   },
   deprecated: 'Deprecato',
   autoUpdate: {
