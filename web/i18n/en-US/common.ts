@@ -527,6 +527,7 @@ const translation = {
       selectModelCredential: 'Select a model credential',
       customModelCredentialsDeleteTip: 'Credential is in use and cannot be deleted',
     },
+    parametersInvalidRemoved: 'Some parameters are invalid and have been removed',
   },
   dataSource: {
     add: 'Add a data source',
