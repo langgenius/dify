@@ -1327,14 +1327,14 @@ class RagPipelineService:
         """
         Retry error document
         """
-        document_pipeline_excution_log = (
+        document_pipeline_execution_log = (
             db.session.query(DocumentPipelineExecutionLog)
             .where(DocumentPipelineExecutionLog.document_id == document.id)
             .first()
         )
-        if not document_pipeline_excution_log:
+        if not document_pipeline_execution_log:
             raise ValueError("Document pipeline execution log not found")
-        pipeline = db.session.query(Pipeline).where(Pipeline.id == document_pipeline_excution_log.pipeline_id).first()
+        pipeline = db.session.query(Pipeline).where(Pipeline.id == document_pipeline_execution_log.pipeline_id).first()
         if not pipeline:
             raise ValueError("Pipeline not found")
         # convert to app config
@@ -1346,10 +1346,10 @@ class RagPipelineService:
             workflow=workflow,
             user=user,
             args={
-                "inputs": document_pipeline_excution_log.input_data,
-                "start_node_id": document_pipeline_excution_log.datasource_node_id,
-                "datasource_type": document_pipeline_excution_log.datasource_type,
-                "datasource_info_list": [json.loads(document_pipeline_excution_log.datasource_info)],
+                "inputs": document_pipeline_execution_log.input_data,
+                "start_node_id": document_pipeline_execution_log.datasource_node_id,
+                "datasource_type": document_pipeline_execution_log.datasource_type,
+                "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
                 "original_document_id": document.id,
             },
             invoke_from=InvokeFrom.PUBLISHED,
