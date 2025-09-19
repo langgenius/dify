@@ -739,18 +739,18 @@ where sites.id is null limit 1000"""
                 try:
                     app = db.session.query(App).where(App.id == app_id).first()
                     if not app:
-                        print(f"App {app_id} not found")
+                        logger.info("App %s not found", app_id)
                         continue
 
                     tenant = app.tenant
                     if tenant:
                         accounts = tenant.get_accounts()
                         if not accounts:
-                            print(f"Fix failed for app {app.id}")
+                            logger.info("Fix failed for app %s", app.id)
                             continue
 
                         account = accounts[0]
-                        print(f"Fixing missing site for app {app.id}")
+                        logger.info("Fixing missing site for app %s", app.id)
                         app_was_created.send(app, account=account)
                 except Exception:
                     failed_app_ids.append(app_id)
@@ -1544,7 +1544,7 @@ def transform_datasource_credentials():
                 if jina_plugin_id not in installed_plugins_ids:
                     if jina_plugin_unique_identifier:
                         # install jina plugin
-                        print(jina_plugin_unique_identifier)
+                        logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
                         PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
 
                 auth_count = 0

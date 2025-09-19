@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 
 
 def _log(message: str):
-    print(message, flush=True)
+    _logger.debug(message)
 
 
 # grpc gevent
