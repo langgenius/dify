@@ -143,15 +143,16 @@ class TestDuplicateDocumentIndexingTask:
         segments = []
 
         for i in range(segment_count):
+            segment_text = fake.text(max_nb_chars=200)
             segment = DocumentSegment(
                 id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
                 position=i,
-                content=fake.text(max_nb_chars=200),
-                word_count=len(fake.text(max_nb_chars=200).split()),
-                tokens=len(fake.text(max_nb_chars=200).split()) * 2,
+                content=segment_text,
+                word_count=len(segment_text.split()),
+                tokens=len(segment_text.split()) * 2,
                 index_node_id=f"node_{i}",
                 index_node_hash=f"hash_{i}",
                 enabled=False,
