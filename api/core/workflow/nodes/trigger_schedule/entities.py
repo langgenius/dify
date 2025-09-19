@@ -38,7 +38,7 @@ class VisualConfig(BaseModel):
     on_minute: Optional[int] = Field(default=0, ge=0, le=59, description="Minute of the hour (0-59)")
 
     # For daily, weekly, monthly frequencies
-    time: Optional[str] = Field(default="12:00 PM", description="Time in 12-hour format (e.g., '2:30 PM')")
+    time: Optional[str] = Field(default="12:00 AM", description="Time in 12-hour format (e.g., '2:30 PM')")
 
     # For weekly frequency
     weekdays: Optional[list[Literal["sun", "mon", "tue", "wed", "thu", "fri", "sat"]]] = Field(

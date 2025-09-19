@@ -48,7 +48,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   }
 
   const times: Date[] = []
-  const defaultTime = data.visual_config?.time || '11:30 AM'
+  const defaultTime = data.visual_config?.time || '12:00 AM'
 
   // Get "today" in user's timezone for display purposes
   const now = new Date()

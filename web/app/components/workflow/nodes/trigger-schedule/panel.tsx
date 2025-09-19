@@ -55,7 +55,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                       {t('workflow.nodes.triggerSchedule.frequencyLabel')}
                     </label>
                     <FrequencySelector
-                      frequency={inputs.frequency}
+                      frequency={inputs.frequency || 'daily'}
                       onChange={handleFrequencyChange}
                     />
                   </div>
@@ -75,7 +75,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                           timezone={inputs.timezone}
                           value={inputs.visual_config?.time
                             ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
-                            : dayjs('1/1/2000 11:30 AM')
+                            : dayjs('1/1/2000 12:00 AM')
                           }
                           onChange={(time) => {
                             if (time) {
@@ -84,7 +84,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                             }
                           }}
                           onClear={() => {
-                            handleTimeChange('11:30 AM')
+                            handleTimeChange('12:00 AM')
                           }}
                           placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
                         />
