@@ -35,39 +35,64 @@ class PineconeVector(BaseVector):
         super().__init__(collection_name)
         self._client_config = config
         self._group_id = group_id
-        
-        # Initialize Pinecone client
-        self._pc = Pinecone(api_key=config.api_key)
-        
-        # Use collection_name as index name
-        self._index_name = collection_name
+
+        # Initialize Pinecone client with SSL configuration
+        try:
+            self._pc = Pinecone(
+                api_key=config.api_key,
+                # Configure SSL to handle connection issues
+                ssl_ca_certs=None,  # Use system default CA certificates
+            )
+        except Exception as e:
+            # Fallback to basic initialization if SSL config fails
+            import logging
+            logging.warning(f"Failed to initialize Pinecone with SSL config: {e}, using basic config")
+            self._pc = Pinecone(api_key=config.api_key)
+
+        # Normalize index name: lowercase, only a-z0-9- and <=45 chars
+        import re, hashlib
+        base_name = collection_name.lower()
+        base_name = re.sub(r'[^a-z0-9-]+', '-', base_name)  # replace invalid chars with '-'
+        base_name = re.sub(r'-+', '-', base_name).strip('-')
+        if len(base_name) > 45:
+            hash_suffix = hashlib.md5(base_name.encode()).hexdigest()[:8]
+            truncated_name = base_name[:45-9].rstrip('-')
+            self._index_name = f"{truncated_name}-{hash_suffix}"
+        else:
+            self._index_name = base_name
+        # Guard empty name
+        if not self._index_name:
+            self._index_name = f"index-{hashlib.md5(collection_name.encode()).hexdigest()[:8]}"
         self._index = None
         
     def get_type(self) -> str:
         """Return vector database type identifier"""
         return "pinecone"
-    
+
     def to_index_struct(self) -> dict:
         """Generate index structure dictionary"""
         return {
-            "type": self.get_type(), 
+            "type": self.get_type(),
             "vector_store": {"class_prefix": self._collection_name}
         }
-    
+
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """Create vector index"""
         if texts:
             # Get vector dimension
             vector_size = len(embeddings[0])
-            
+
             # Create Pinecone index
             self.create_index(vector_size)
-            
+
             # Add vector data
             self.add_texts(texts, embeddings, **kwargs)
-    
+
     def create_index(self, dimension: int):
         """Create Pinecone index"""
+        # Debug: Log the index name being used
+        import logging
+        logging.warning(f"Pinecone: Creating index with name: {self._index_name} (length: {len(self._index_name)})")
         lock_name = f"vector_indexing_lock_{self._index_name}"
         
         with redis_client.lock(lock_name, timeout=30):
@@ -117,19 +142,29 @@ class PineconeVector(BaseVector):
             batch_embeddings = embeddings[i:i + batch_size]
             batch_uuids = uuids[i:i + batch_size]
             
-            # Build Pinecone vector data
+            # Build Pinecone vector data (metadata must be primitives or list[str])
             vectors_to_upsert = []
             for doc, embedding, doc_id in zip(batch_documents, batch_embeddings, batch_uuids):
-                metadata = {
-                    Field.CONTENT_KEY.value: doc.page_content,
-                    Field.METADATA_KEY.value: doc.metadata or {},
-                    Field.GROUP_KEY.value: self._group_id,
-                }
-                
+                raw_meta = doc.metadata or {}
+                safe_meta: dict[str, Any] = {}
+                # lift common identifiers to top-level fields for filtering
+                for k, v in raw_meta.items():
+                    if isinstance(v, (str, int, float, bool)):
+                        safe_meta[k] = v
+                    elif isinstance(v, list) and all(isinstance(x, str) for x in v):
+                        safe_meta[k] = v
+                    else:
+                        safe_meta[k] = json.dumps(v, ensure_ascii=False)
+
+                # keep content as string metadata if needed
+                safe_meta[Field.CONTENT_KEY.value] = doc.page_content
+                # group id as string
+                safe_meta[Field.GROUP_KEY.value] = str(self._group_id)
+
                 vectors_to_upsert.append({
                     "id": doc_id,
                     "values": embedding,
-                    "metadata": metadata
+                    "metadata": safe_meta
                 })
             
             # Batch insert to Pinecone

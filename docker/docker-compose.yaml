@@ -151,6 +151,12 @@ x-shared-env: &shared-api-worker-env
   VECTOR_INDEX_NAME_PREFIX: ${VECTOR_INDEX_NAME_PREFIX:-Vector_index}
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+  PINECONE_API_KEY: ${PINECONE_API_KEY:-}
+  PINECONE_ENVIRONMENT: ${PINECONE_ENVIRONMENT:-}
+  PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-}
+  PINECONE_CLIENT_TIMEOUT: ${PINECONE_CLIENT_TIMEOUT:-30}
+  PINECONE_BATCH_SIZE: ${PINECONE_BATCH_SIZE:-100}
+  PINECONE_METRIC: ${PINECONE_METRIC:-cosine}
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
@@ -582,7 +588,9 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.8.0
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     restart: always
     environment:
       # Use the shared environment variables.
@@ -611,7 +619,9 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.8.0
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     restart: always
     environment:
       # Use the shared environment variables.
@@ -638,7 +648,9 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.8.0
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     restart: always
     environment:
       # Use the shared environment variables.
@@ -656,7 +668,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.8.0
+    image: langgenius/dify-web:release-e-1.8.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -691,10 +703,10 @@ services:
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
-               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
-               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
-               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
-               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+        -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
+        -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
+        -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
+        -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
@@ -719,7 +731,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.12
+    image: langgenius/dify-sandbox:latest
     restart: always
     environment:
       # The DifySandbox configurations
@@ -743,7 +755,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.2.0-local
+    image: langgenius/dify-plugin-daemon:deploy-dev-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -910,7 +922,7 @@ services:
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: langgenius/qdrant:latest
     profiles:
       - qdrant
     restart: always
