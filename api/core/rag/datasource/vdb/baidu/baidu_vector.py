@@ -132,7 +132,9 @@ class BaiduVector(BaseVector):
         self._db.table(self._collection_name).delete(filter=f"{VDBField.PRIMARY_KEY} IN({', '.join(quoted_ids)})")
 
     def delete_by_metadata_field(self, key: str, value: str):
-        self._db.table(self._collection_name).delete(filter=f'metadata["{key}"] = "{value.replace('"', '\\"')}"')
+        # Escape double quotes in value to prevent injection
+        escaped_value = value.replace('"', '\\"')
+        self._db.table(self._collection_name).delete(filter=f'metadata["{key}"] = "{escaped_value}"')
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
