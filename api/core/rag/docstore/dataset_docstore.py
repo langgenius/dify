@@ -93,6 +93,17 @@ class DatasetDocumentStore:
 
             segment_document = self.get_document_segment(doc_id=doc.metadata["doc_id"])
 
+            # Check if a segment with the same content hash already exists in the dataset
+            existing_segment_by_hash = db.session.query(DocumentSegment).filter_by(
+                dataset_id=self._dataset.id,
+                index_node_hash=doc.metadata["doc_hash"],
+                enabled=True
+            ).first()
+
+            if existing_segment_by_hash:
+                # Skip creating duplicate segment with same content hash
+                continue
+
             # NOTE: doc could already exist in the store, but we overwrite it
             if not allow_update and segment_document:
                 raise ValueError(

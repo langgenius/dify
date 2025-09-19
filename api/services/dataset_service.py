@@ -2623,6 +2623,17 @@ class SegmentService:
             tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
         lock_name = f"add_segment_lock_document_id_{document.id}"
         with redis_client.lock(lock_name, timeout=600):
+            # Check if a segment with the same content hash already exists
+            existing_segment = db.session.query(DocumentSegment).filter_by(
+                dataset_id=document.dataset_id,
+                index_node_hash=segment_hash,
+                enabled=True
+            ).first()
+
+            if existing_segment:
+                logger.info(f"Segment with same content hash already exists: {segment_hash}")
+                return existing_segment
+
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
                 .where(DocumentSegment.document_id == document.id)
@@ -2689,6 +2700,15 @@ class SegmentService:
                 .where(DocumentSegment.document_id == document.id)
                 .scalar()
             )
+            # Batch query existing hashes before the loop
+            segment_hashes = [helper.generate_text_hash(seg["content"]) for seg in segments]
+            existing_segments = db.session.query(DocumentSegment.index_node_hash).filter(
+                DocumentSegment.dataset_id == document.dataset_id,
+                DocumentSegment.index_node_hash.in_(segment_hashes),
+                DocumentSegment.enabled == True
+            ).all()
+            existing_hashes = {seg.index_node_hash for seg in existing_segments}
+
             pre_segment_data_list = []
             segment_data_list = []
             keywords_list = []
@@ -2697,6 +2717,12 @@ class SegmentService:
                 content = segment_item["content"]
                 doc_id = str(uuid.uuid4())
                 segment_hash = helper.generate_text_hash(content)
+
+                # Skip existing segments
+                if segment_hash in existing_hashes:
+                    logger.info(f"Skipping duplicate segment with hash: {segment_hash}")
+                    continue
+
                 tokens = 0
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens

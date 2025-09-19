@@ -689,6 +689,7 @@ class DocumentSegment(Base):
         sa.Index("document_segment_tenant_document_idx", "document_id", "tenant_id"),
         sa.Index("document_segment_node_dataset_idx", "index_node_id", "dataset_id"),
         sa.Index("document_segment_tenant_idx", "tenant_id"),
+        sa.Index("document_segment_dataset_hash_idx", "dataset_id", "index_node_hash"),
     )
 
     # initial fields
