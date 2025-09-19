@@ -92,8 +92,14 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   webpack: (config, { dev, isServer }) => {
-    if (dev) {
-      config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true,
+    }
+    config.output.environment = {
+      asyncFunction: true,
     }
 
     return config

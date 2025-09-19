@@ -39,6 +39,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 
 type UpdateDSLModalProps = {
   onCancel: () => void
@@ -201,6 +202,8 @@ const UpdateDSLModal = ({
           return
         }
         handleWorkflowUpdate(app_id)
+        // Notify other collaboration clients about the workflow update
+        collaborationManager.emitWorkflowUpdate(app_id)
         await handleCheckPluginDependencies(app_id)
         if (onImport)
           onImport()

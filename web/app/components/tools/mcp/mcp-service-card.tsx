@@ -26,6 +26,8 @@ import {
 import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { fetchAppDetail } from '@/service/apps'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 
 export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
@@ -90,6 +92,19 @@ function MCPServiceCard({
   const onGenCode = async () => {
     await refreshMCPServerCode(detail?.id || '')
     invalidateMCPServerDetail(appId)
+
+    // Emit collaboration event to notify other clients of MCP server changes
+    const socket = webSocketClient.getSocket(appId)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'mcpServerUpdate',
+        data: {
+          action: 'codeRegenerated',
+          timestamp: Date.now(),
+        },
+        timestamp: Date.now(),
+      })
+    }
   }
 
   const onChangeStatus = async (state: boolean) => {
@@ -119,6 +134,20 @@ function MCPServiceCard({
       })
       invalidateMCPServerDetail(appId)
     }
+
+    // Emit collaboration event to notify other clients of MCP server status change
+    const socket = webSocketClient.getSocket(appId)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'mcpServerUpdate',
+        data: {
+          action: 'statusChanged',
+          status: state ? 'active' : 'inactive',
+          timestamp: Date.now(),
+        },
+        timestamp: Date.now(),
+      })
+    }
   }
 
   const handleServerModalHide = () => {
@@ -130,6 +159,23 @@ function MCPServiceCard({
   useEffect(() => {
     setActivated(serverActivated)
   }, [serverActivated])
+
+  // Listen for collaborative MCP server updates from other clients
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onMcpServerUpdate(async (update: any) => {
+      try {
+        console.log('Received MCP server update from collaboration:', update)
+        invalidateMCPServerDetail(appId)
+      }
+      catch (error) {
+        console.error('MCP server update failed:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId, invalidateMCPServerDetail])
 
   if (!currentWorkflow && isAdvancedApp)
     return null

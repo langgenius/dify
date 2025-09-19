@@ -67,12 +67,15 @@ import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
+import CommentManager from './comment-manager'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import LimitTips from './limit-tips'
 import { setupScrollToNodeListener } from './utils/node-navigation'
+import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
+import { useWorkflowComment } from './hooks/use-workflow-comment'
 import {
   useStore,
   useWorkflowStore,
@@ -127,6 +130,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
+  const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null)
+  const [pendingDeleteReply, setPendingDeleteReply] = useState<{ commentId: string; replyId: string } | null>(null)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -171,6 +177,23 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
   const { eventEmitter } = useEventEmitterContextContext()
+  const {
+    comments,
+    pendingComment,
+    activeComment,
+    activeCommentLoading,
+    handleCommentSubmit,
+    handleCommentCancel,
+    handleCommentIconClick,
+    handleActiveCommentClose,
+    handleCommentResolve,
+    handleCommentDelete,
+    handleCommentNavigate,
+    handleCommentReply,
+    handleCommentReplyUpdate,
+    handleCommentReplyDelete,
+  } = useWorkflowComment()
+  const mousePosition = useStore(s => s.mousePosition)
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
@@ -241,6 +264,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
           elementY: e.clientY - containerClientRect.top,
         },
       })
+      const target = e.target as HTMLElement
+      const onPane = !!target?.closest('.react-flow__pane')
+      setIsMouseOverCanvas(onPane)
     }
   })
   const { handleFetchAllTools } = useFetchToolsData()
@@ -356,6 +382,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
+      <CommentManager />
       <div
         className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
         style={{ height: controlHeight }}
@@ -367,24 +394,90 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <NodeContextmenu />
       <SelectionContextmenu />
       <HelpLine />
-      {
-        !!showConfirm && (
-          <Confirm
-            isShow
-            onCancel={() => setShowConfirm(undefined)}
-            onConfirm={showConfirm.onConfirm}
-            title={showConfirm.title}
-            content={showConfirm.desc}
+      {!!showConfirm && (
+        <Confirm
+          isShow
+          onCancel={() => setShowConfirm(undefined)}
+          onConfirm={showConfirm.onConfirm}
+          title={showConfirm.title}
+          content={showConfirm.desc}
+        />
+      )}
+      {pendingDeleteCommentId && (
+        <Confirm
+          isShow
+          title='Delete this thread?'
+          content='This action will permanently delete the thread and all its replies. This cannot be undone.'
+          onCancel={() => setPendingDeleteCommentId(null)}
+          onConfirm={async () => {
+            await handleCommentDelete(pendingDeleteCommentId)
+            setPendingDeleteCommentId(null)
+          }}
+        />
+      )}
+      {pendingDeleteReply && (
+        <Confirm
+          isShow
+          title='Delete this reply?'
+          content='This reply will be removed permanently.'
+          onCancel={() => setPendingDeleteReply(null)}
+          onConfirm={async () => {
+            await handleCommentReplyDelete(pendingDeleteReply.commentId, pendingDeleteReply.replyId)
+            setPendingDeleteReply(null)
+          }}
+        />
+      )}
+      <LimitTips />
+      {controlMode === ControlMode.Comment && isMouseOverCanvas && (
+        <CommentCursor mousePosition={mousePosition} />
+      )}
+      {pendingComment && (
+        <CommentInput
+          position={pendingComment}
+          onSubmit={handleCommentSubmit}
+          onCancel={handleCommentCancel}
+        />
+      )}
+      {comments.map((comment, index) => {
+        const isActive = activeComment?.id === comment.id
+
+        if (isActive && activeComment) {
+          const canGoPrev = index > 0
+          const canGoNext = index < comments.length - 1
+          return (
+            <CommentThread
+              key={comment.id}
+              comment={activeComment}
+              loading={activeCommentLoading}
+              onClose={handleActiveCommentClose}
+              onResolve={() => handleCommentResolve(comment.id)}
+              onDelete={() => setPendingDeleteCommentId(comment.id)}
+              onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
+              onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
+              onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
+              onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
+              onReplyDelete={replyId => setPendingDeleteReply({ commentId: comment.id, replyId })}
+              canGoPrev={canGoPrev}
+              canGoNext={canGoNext}
+            />
+          )
+        }
+
+        return (
+          <CommentIcon
+            key={comment.id}
+            comment={comment}
+            onClick={() => handleCommentIconClick(comment)}
           />
         )
-      }
-      <LimitTips />
+      })}
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}

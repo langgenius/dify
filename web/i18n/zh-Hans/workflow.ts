@@ -70,6 +70,7 @@ const translation = {
     pasteHere: '粘贴到这里',
     pointerMode: '指针模式',
     handMode: '手模式',
+    commentMode: '评论模式',
     exportImage: '导出图片',
     exportPNG: '导出为 PNG',
     exportJPEG: '导出为 JPEG',

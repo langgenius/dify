@@ -71,6 +71,7 @@ const translation = {
     pasteHere: 'Paste Here',
     pointerMode: 'Pointer Mode',
     handMode: 'Hand Mode',
+    commentMode: 'Comment Mode',
     exportImage: 'Export Image',
     exportPNG: 'Export as PNG',
     exportJPEG: 'Export as JPEG',

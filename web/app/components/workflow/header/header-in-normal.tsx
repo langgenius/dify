@@ -18,6 +18,7 @@ import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import VersionHistoryButton from './version-history-button'
+import OnlineUsers from './online-users'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 export type HeaderInNormalProps = {
@@ -64,7 +65,9 @@ const HeaderInNormal = ({
         <EditingTitle />
       </div>
       <div className='flex items-center gap-2'>
+        <OnlineUsers />
         {components?.left}
+        <Divider type='vertical' className='mx-auto h-3.5' />
         <EnvButton disabled={nodesReadOnly} />
         <Divider type='vertical' className='mx-auto h-3.5' />
         <RunAndHistory {...runAndHistoryProps} />
