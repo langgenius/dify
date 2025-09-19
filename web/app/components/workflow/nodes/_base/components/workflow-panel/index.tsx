@@ -75,6 +75,10 @@ import { DataSourceClassification } from '@/app/components/workflow/nodes/data-s
 import { useModalContext } from '@/context/modal-context'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useAppContext } from '@/context/app-context'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -97,10 +101,50 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
+  const appId = useStore(s => s.appId)
+  const { userProfile } = useAppContext()
+  const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+
+  const currentUserPresence = useMemo(() => {
+    const userId = userProfile?.id || ''
+    const username = userProfile?.name || userProfile?.email || 'User'
+    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
+
+    return {
+      userId,
+      username,
+      avatar,
+    }
+  }, [userProfile?.avatar, userProfile?.avatar_url, userProfile?.email, userProfile?.id, userProfile?.name])
+
+  useEffect(() => {
+    if (!isConnected || !currentUserPresence.userId)
+      return
+
+    collaborationManager.emitNodePanelPresence(id, true, currentUserPresence)
+
+    return () => {
+      collaborationManager.emitNodePanelPresence(id, false, currentUserPresence)
+    }
+  }, [id, isConnected, currentUserPresence])
+
+  const viewingUsers = useMemo(() => {
+    const presence = nodePanelPresence?.[id]
+    if (!presence)
+      return []
+
+    return Object.values(presence)
+      .filter(viewer => viewer.userId && viewer.userId !== currentUserPresence.userId)
+      .map(viewer => ({
+        id: viewer.clientId,
+        name: viewer.username,
+        avatar_url: viewer.avatar || null,
+      }))
+  }, [currentUserPresence.userId, id, nodePanelPresence])
 
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
@@ -393,6 +437,15 @@ const BasePanel: FC<BasePanelProps> = ({
               value={data.title || ''}
               onBlur={handleTitleBlur}
             />
+            {viewingUsers.length > 0 && (
+              <div className='ml-3 shrink-0'>
+                <UserAvatarList
+                  users={viewingUsers}
+                  maxVisible={3}
+                  size={24}
+                />
+              </div>
+            )}
             <div className='flex shrink-0 items-center text-text-tertiary'>
               {
                 isSupportSingleRun && !nodesReadOnly && (

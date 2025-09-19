@@ -4,7 +4,21 @@ import { webSocketClient } from './websocket-manager'
 import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
 import type { Edge, Node } from '../../types'
-import type { CollaborationState, CursorPosition, OnlineUser } from '../types/collaboration'
+import type {
+  CollaborationState,
+  CursorPosition,
+  NodePanelPresenceMap,
+  NodePanelPresenceUser,
+  OnlineUser,
+} from '../types/collaboration'
+
+type NodePanelPresenceEventData = {
+  nodeId: string
+  action: 'open' | 'close'
+  user: NodePanelPresenceUser
+  clientId: string
+  timestamp?: number
+}
 
 export class CollaborationManager {
   private doc: LoroDoc | null = null
@@ -18,8 +32,74 @@ export class CollaborationManager {
   private isLeader = false
   private leaderId: string | null = null
   private cursors: Record<string, CursorPosition> = {}
+  private nodePanelPresence: NodePanelPresenceMap = {}
   private activeConnections = new Set<string>()
   private isUndoRedoInProgress = false
+
+  private getNodePanelPresenceSnapshot(): NodePanelPresenceMap {
+    const snapshot: NodePanelPresenceMap = {}
+    Object.entries(this.nodePanelPresence).forEach(([nodeId, viewers]) => {
+      snapshot[nodeId] = { ...viewers }
+    })
+    return snapshot
+  }
+
+  private applyNodePanelPresenceUpdate(update: NodePanelPresenceEventData): void {
+    const { nodeId, action, clientId, user, timestamp } = update
+
+    if (action === 'open') {
+      // ensure a client only appears on a single node at a time
+      Object.entries(this.nodePanelPresence).forEach(([id, viewers]) => {
+        if (viewers[clientId]) {
+          delete viewers[clientId]
+          if (Object.keys(viewers).length === 0)
+            delete this.nodePanelPresence[id]
+        }
+      })
+
+      if (!this.nodePanelPresence[nodeId])
+        this.nodePanelPresence[nodeId] = {}
+
+      this.nodePanelPresence[nodeId][clientId] = {
+        ...user,
+        clientId,
+        timestamp: timestamp || Date.now(),
+      }
+    }
+    else {
+      const viewers = this.nodePanelPresence[nodeId]
+      if (viewers) {
+        delete viewers[clientId]
+        if (Object.keys(viewers).length === 0)
+          delete this.nodePanelPresence[nodeId]
+      }
+    }
+
+    this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
+  }
+
+  private cleanupNodePanelPresence(activeClientIds: Set<string>, activeUserIds: Set<string>): void {
+    let hasChanges = false
+
+    Object.entries(this.nodePanelPresence).forEach(([nodeId, viewers]) => {
+      Object.keys(viewers).forEach((clientId) => {
+        const viewer = viewers[clientId]
+        const clientActive = activeClientIds.has(clientId)
+        const userActive = viewer?.userId ? activeUserIds.has(viewer.userId) : false
+
+        if (!clientActive && !userActive) {
+          delete viewers[clientId]
+          hasChanges = true
+        }
+      })
+
+      if (Object.keys(viewers).length === 0)
+        delete this.nodePanelPresence[nodeId]
+    })
+
+    if (hasChanges)
+      this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
+  }
 
   init = (appId: string, reactFlowStore: any): void => {
     if (!reactFlowStore) {
@@ -172,6 +252,7 @@ export class CollaborationManager {
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
+    this.nodePanelPresence = {}
     this.isUndoRedoInProgress = false
 
     // Only reset leader status when actually disconnecting
@@ -240,6 +321,29 @@ export class CollaborationManager {
     }
   }
 
+  emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+
+    const socket = webSocketClient.getSocket(this.currentAppId)
+    if (!socket || !nodeId || !user?.userId) return
+
+    const payload: NodePanelPresenceEventData = {
+      nodeId,
+      action: isOpen ? 'open' : 'close',
+      user,
+      clientId: socket.id as string,
+      timestamp: Date.now(),
+    }
+
+    socket.emit('collaboration_event', {
+      type: 'nodePanelPresence',
+      data: payload,
+      timestamp: payload.timestamp,
+    })
+
+    this.applyNodePanelPresenceUpdate(payload)
+  }
+
   onSyncRequest(callback: () => void): () => void {
     return this.eventEmitter.on('syncRequest', callback)
   }
@@ -270,6 +374,12 @@ export class CollaborationManager {
 
   onMcpServerUpdate(callback: (update: any) => void): () => void {
     return this.eventEmitter.on('mcpServerUpdate', callback)
+  }
+
+  onNodePanelPresenceUpdate(callback: (presence: NodePanelPresenceMap) => void): () => void {
+    const off = this.eventEmitter.on('nodePanelPresence', callback)
+    callback(this.getNodePanelPresenceSnapshot())
+    return off
   }
 
   onLeaderChange(callback: (isLeader: boolean) => void): () => void {
@@ -636,6 +746,10 @@ export class CollaborationManager {
         console.log('Processing commentsUpdate event:', update)
         this.eventEmitter.emit('commentsUpdate', update.data)
       }
+      else if (update.type === 'nodePanelPresence') {
+        console.log('Processing nodePanelPresence event:', update)
+        this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
+      }
       else if (update.type === 'syncRequest') {
         console.log('Received sync request from another user')
         // Only process if we are the leader
@@ -654,12 +768,19 @@ export class CollaborationManager {
         }
 
         const onlineUserIds = new Set(data.users.map((user: OnlineUser) => user.user_id))
+        const onlineClientIds = new Set(
+          data.users
+            .map((user: OnlineUser) => user.sid)
+            .filter((sid): sid is string => typeof sid === 'string' && sid.length > 0),
+        )
 
         // Remove cursors for offline users
         Object.keys(this.cursors).forEach((userId) => {
           if (!onlineUserIds.has(userId))
             delete this.cursors[userId]
         })
+
+        this.cleanupNodePanelPresence(onlineClientIds, onlineUserIds)
 
         // Update leader information
         if (data.leader && typeof data.leader === 'string')

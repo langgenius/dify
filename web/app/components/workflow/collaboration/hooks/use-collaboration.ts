@@ -9,6 +9,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     isConnected: false,
     onlineUsers: [],
     cursors: {},
+    nodePanelPresence: {},
     isLeader: false,
   })
 
@@ -43,6 +44,10 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
       setState((prev: any) => ({ ...prev, onlineUsers: users }))
     })
 
+    const unsubscribeNodePanelPresence = collaborationManager.onNodePanelPresenceUpdate((presence) => {
+      setState((prev: any) => ({ ...prev, nodePanelPresence: presence }))
+    })
+
     const unsubscribeLeaderChange = collaborationManager.onLeaderChange((isLeader: boolean) => {
       console.log('Leader status changed:', isLeader)
       setState((prev: any) => ({ ...prev, isLeader }))
@@ -52,6 +57,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
       unsubscribeStateChange()
       unsubscribeCursors()
       unsubscribeUsers()
+      unsubscribeNodePanelPresence()
       unsubscribeLeaderChange()
       cursorServiceRef.current?.stopTracking()
       if (connectionId)
@@ -75,6 +81,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     isConnected: state.isConnected || false,
     onlineUsers: state.onlineUsers || [],
     cursors: state.cursors || {},
+    nodePanelPresence: state.nodePanelPresence || {},
     isLeader: state.isLeader || false,
     leaderId: collaborationManager.getLeaderId(),
     startCursorTracking,

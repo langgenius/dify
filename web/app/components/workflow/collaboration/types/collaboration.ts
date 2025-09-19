@@ -23,11 +23,25 @@ export type CursorPosition = {
   timestamp: number
 }
 
+export type NodePanelPresenceUser = {
+  userId: string
+  username: string
+  avatar?: string | null
+}
+
+export type NodePanelPresenceInfo = NodePanelPresenceUser & {
+  clientId: string
+  timestamp: number
+}
+
+export type NodePanelPresenceMap = Record<string, Record<string, NodePanelPresenceInfo>>
+
 export type CollaborationState = {
   appId: string
   isConnected: boolean
   onlineUsers: OnlineUser[]
   cursors: Record<string, CursorPosition>
+  nodePanelPresence: NodePanelPresenceMap
 }
 
 export type GraphSyncData = {
