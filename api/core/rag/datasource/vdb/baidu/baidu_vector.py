@@ -109,7 +109,7 @@ class BaiduVector(BaseVector):
 
         # rebuild vector index after upsert finished
         table.rebuild_index(self.vector_index)
-        timeout = 3600  # 5 minutes timeout
+        timeout = 3600  # 1 hour timeout
         start_time = time.time()
         while True:
             time.sleep(1)
@@ -132,7 +132,7 @@ class BaiduVector(BaseVector):
         self._db.table(self._collection_name).delete(filter=f"{VDBField.PRIMARY_KEY} IN({', '.join(quoted_ids)})")
 
     def delete_by_metadata_field(self, key: str, value: str):
-        self._db.table(self._collection_name).delete(filter=f'metadata["{key}"] = "{value}"')
+        self._db.table(self._collection_name).delete(filter=f'metadata["{key}"] = "{value.replace('"', '\\"')}"')
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
@@ -285,21 +285,17 @@ class BaiduVector(BaseVector):
             )
 
             # Get analyzer and parse_mode from config
-            analyzer = None
-            for k, v in InvertedIndexAnalyzer.__members__.items():
-                if k == self._client_config.inverted_index_analyzer:
-                    analyzer = v
-                    break
-            if analyzer is None:
-                analyzer = InvertedIndexAnalyzer.DEFAULT_ANALYZER
+            analyzer = getattr(
+                InvertedIndexAnalyzer,
+                self._client_config.inverted_index_analyzer,
+                InvertedIndexAnalyzer.DEFAULT_ANALYZER,
+            )
 
-            parse_mode = None
-            for k, v in InvertedIndexParseMode.__members__.items():
-                if k == self._client_config.inverted_index_parser_mode:
-                    parse_mode = v
-                    break
-            if parse_mode is None:
-                parse_mode = InvertedIndexParseMode.COARSE_MODE
+            parse_mode = getattr(
+                InvertedIndexParseMode,
+                self._client_config.inverted_index_parser_mode,
+                InvertedIndexParseMode.COARSE_MODE,
+            )
 
             # Inverted index
             indexes.append(
