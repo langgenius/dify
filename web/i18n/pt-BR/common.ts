@@ -500,6 +500,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'A credencial está em uso e não pode ser excluída',
       addNewModelCredential: 'Adicionar nova credencial de modelo',
     },
+    parametersInvalidRemoved: 'Alguns parâmetros são inválidos e foram removidos',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',
