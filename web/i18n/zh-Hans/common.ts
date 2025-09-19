@@ -521,6 +521,7 @@ const translation = {
       selectModelCredential: '选择模型凭据',
       customModelCredentialsDeleteTip: '模型凭据正在使用中，无法删除',
     },
+    parametersInvalidRemoved: '部分参数无效，已移除',
   },
   dataSource: {
     add: '添加数据源',
