@@ -464,6 +464,7 @@ const Configuration: FC = () => {
         provider,
         modelId,
         completionParams,
+        isAdvancedMode,
       )
       if (Object.keys(removedDetails).length)
         Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
