@@ -1,3 +1,5 @@
+'use client'
+
 import type { FC } from 'react'
 import { memo, useMemo } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
