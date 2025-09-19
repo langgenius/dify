@@ -231,3 +231,7 @@ api/.env.backup
 # Benchmark
 scripts/stress-test/setup/config/
 scripts/stress-test/reports/
+
+# mcp
+.playwright-mcp/
+.serena/
