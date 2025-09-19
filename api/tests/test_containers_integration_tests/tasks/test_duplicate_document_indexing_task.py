@@ -476,7 +476,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Mock BATCH_UPLOAD_LIMIT to be lower than document count
         with patch("tasks.duplicate_document_indexing_task.dify_config") as mock_config:
-            mock_config.BATCH_UPLOAD_LIMIT = 3
+            mock_config.BATCH_UPLOAD_LIMIT = len(documents) - 2
 
             document_ids = [doc.id for doc in documents]
 
