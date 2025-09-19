@@ -20,7 +20,6 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
-from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
@@ -33,6 +32,7 @@ from fields.document_fields import document_status_fields
 from libs.login import login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
+from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
@@ -337,6 +337,15 @@ class DatasetApi(Resource):
             location="json",
             help="Invalid external knowledge api id.",
         )
+
+        parser.add_argument(
+            "icon_info",
+            type=dict,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid icon info.",
+        )
         args = parser.parse_args()
         data = request.get_json()
 
@@ -387,7 +396,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor or current_user.is_dataset_operator:
+        if not (current_user.is_editor or current_user.is_dataset_operator):
             raise Forbidden()
 
         try:
@@ -503,10 +512,12 @@ class DatasetIndexingEstimateApi(Resource):
             notion_info_list = args["info_list"]["notion_info_list"]
             for notion_info in notion_info_list:
                 workspace_id = notion_info["workspace_id"]
+                credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.NOTION.value,
                         notion_info={
+                            "credential_id": credential_id,
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
                             "notion_page_type": page["type"],
@@ -728,6 +739,19 @@ class DatasetApiDeleteApi(Resource):
         db.session.commit()
 
         return {"result": "success"}, 204
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
+class DatasetEnableApiApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, status):
+        dataset_id_str = str(dataset_id)
+
+        DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
+
+        return {"result": "success"}, 200
 
 
 @console_ns.route("/datasets/api-base-info")

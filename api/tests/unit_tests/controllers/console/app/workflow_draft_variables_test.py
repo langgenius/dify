@@ -1,7 +1,9 @@
 import uuid
 from collections import OrderedDict
 from typing import Any, NamedTuple
+from unittest.mock import MagicMock, patch
 
+import pytest
 from flask_restx import marshal
 
 from controllers.console.app.workflow_draft_variable import (
@@ -9,11 +11,14 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS,
     _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS,
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
+    _serialize_full_content,
 )
+from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
 from libs.datetime_utils import naive_utc_now
-from models.workflow import WorkflowDraftVariable
+from libs.uuid_utils import uuidv7
+from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
 _TEST_APP_ID = "test_app_id"
@@ -21,6 +26,54 @@ _TEST_NODE_EXEC_ID = str(uuid.uuid4())
 
 
 class TestWorkflowDraftVariableFields:
+    def test_serialize_full_content(self):
+        """Test that _serialize_full_content uses pre-loaded relationships."""
+        # Create mock objects with relationships pre-loaded
+        mock_variable_file = MagicMock(spec=WorkflowDraftVariableFile)
+        mock_variable_file.size = 100000
+        mock_variable_file.length = 50
+        mock_variable_file.value_type = SegmentType.OBJECT
+        mock_variable_file.upload_file_id = "test-upload-file-id"
+
+        mock_variable = MagicMock(spec=WorkflowDraftVariable)
+        mock_variable.file_id = "test-file-id"
+        mock_variable.variable_file = mock_variable_file
+
+        # Mock the file helpers
+        with patch("controllers.console.app.workflow_draft_variable.file_helpers") as mock_file_helpers:
+            mock_file_helpers.get_signed_file_url.return_value = "http://example.com/signed-url"
+
+            # Call the function
+            result = _serialize_full_content(mock_variable)
+
+            # Verify it returns the expected structure
+            assert result is not None
+            assert result["size_bytes"] == 100000
+            assert result["length"] == 50
+            assert result["value_type"] == "object"
+            assert "download_url" in result
+            assert result["download_url"] == "http://example.com/signed-url"
+
+            # Verify it used the pre-loaded relationships (no database queries)
+            mock_file_helpers.get_signed_file_url.assert_called_once_with("test-upload-file-id", as_attachment=True)
+
+    def test_serialize_full_content_handles_none_cases(self):
+        """Test that _serialize_full_content handles None cases properly."""
+
+        # Test with no file_id
+        draft_var = WorkflowDraftVariable()
+        draft_var.file_id = None
+        result = _serialize_full_content(draft_var)
+        assert result is None
+
+    def test_serialize_full_content_should_raises_when_file_id_exists_but_file_is_none(self):
+        # Test with no file_id
+        draft_var = WorkflowDraftVariable()
+        draft_var.file_id = str(uuid.uuid4())
+        draft_var.variable_file = None
+        with pytest.raises(AssertionError):
+            result = _serialize_full_content(draft_var)
+
     def test_conversation_variable(self):
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
@@ -39,12 +92,14 @@ class TestWorkflowDraftVariableFields:
                 "value_type": "number",
                 "edited": False,
                 "visible": True,
+                "is_truncated": False,
             }
         )
 
         assert marshal(conv_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = 1
+        expected_with_value["full_content"] = None
         assert marshal(conv_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
 
     def test_create_sys_variable(self):
@@ -70,11 +125,13 @@ class TestWorkflowDraftVariableFields:
                 "value_type": "string",
                 "edited": True,
                 "visible": True,
+                "is_truncated": False,
             }
         )
         assert marshal(sys_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = "a"
+        expected_with_value["full_content"] = None
         assert marshal(sys_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
 
     def test_node_variable(self):
@@ -100,13 +157,64 @@ class TestWorkflowDraftVariableFields:
                 "value_type": "array[any]",
                 "edited": True,
                 "visible": False,
+                "is_truncated": False,
             }
         )
 
         assert marshal(node_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = [1, "a"]
+        expected_with_value["full_content"] = None
         assert marshal(node_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
+
+    def test_node_variable_with_file(self):
+        node_var = WorkflowDraftVariable.new_node_variable(
+            app_id=_TEST_APP_ID,
+            node_id="test_node",
+            name="node_var",
+            value=build_segment([1, "a"]),
+            visible=False,
+            node_execution_id=_TEST_NODE_EXEC_ID,
+        )
+
+        node_var.id = str(uuid.uuid4())
+        node_var.last_edited_at = naive_utc_now()
+        variable_file = WorkflowDraftVariableFile(
+            id=str(uuidv7()),
+            upload_file_id=str(uuid.uuid4()),
+            size=1024,
+            length=10,
+            value_type=SegmentType.ARRAY_STRING,
+        )
+        node_var.variable_file = variable_file
+        node_var.file_id = variable_file.id
+
+        expected_without_value: OrderedDict[str, Any] = OrderedDict(
+            {
+                "id": str(node_var.id),
+                "type": node_var.get_variable_type().value,
+                "name": "node_var",
+                "description": "",
+                "selector": ["test_node", "node_var"],
+                "value_type": "array[any]",
+                "edited": True,
+                "visible": False,
+                "is_truncated": True,
+            }
+        )
+
+        with patch("controllers.console.app.workflow_draft_variable.file_helpers") as mock_file_helpers:
+            mock_file_helpers.get_signed_file_url.return_value = "http://example.com/signed-url"
+            assert marshal(node_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
+            expected_with_value = expected_without_value.copy()
+            expected_with_value["value"] = [1, "a"]
+            expected_with_value["full_content"] = {
+                "size_bytes": 1024,
+                "value_type": "array[string]",
+                "length": 10,
+                "download_url": "http://example.com/signed-url",
+            }
+            assert marshal(node_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
 
 
 class TestWorkflowDraftVariableList:
@@ -135,6 +243,7 @@ class TestWorkflowDraftVariableList:
                 "value_type": "string",
                 "edited": False,
                 "visible": True,
+                "is_truncated": False,
             }
         )
 
