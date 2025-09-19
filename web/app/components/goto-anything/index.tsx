@@ -114,7 +114,7 @@ const GotoAnything: FC<Props> = ({
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()
         const action = matchAction(query, Actions)
-        return await searchAnything(defaultLocale, query, action)
+        return await searchAnything(defaultLocale, query, action, Actions)
       },
       enabled: !!searchQueryDebouncedValue && !isCommandsMode,
       staleTime: 30000,

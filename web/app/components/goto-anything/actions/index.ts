@@ -212,6 +212,7 @@ export const searchAnything = async (
   locale: string,
   query: string,
   actionItem?: ActionItem,
+  dynamicActions?: Record<string, ActionItem>,
 ): Promise<SearchResult[]> => {
   if (actionItem) {
     const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
@@ -227,7 +228,7 @@ export const searchAnything = async (
   if (query.startsWith('@') || query.startsWith('/'))
     return []
 
-  const globalSearchActions = Object.values(Actions)
+  const globalSearchActions = Object.values(dynamicActions || Actions)
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {
