@@ -72,12 +72,18 @@ const Details = ({
             imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
             showEditIcon
           />
-          <div className='flex grow flex-col gap-y-1 py-px'>
-            <div className='system-md-semibold text-text-secondary'>
+          <div className='flex grow flex-col gap-y-1 overflow-hidden py-px'>
+            <div
+              className='system-md-semibold truncate text-text-secondary'
+              title={pipelineTemplateInfo.name}
+            >
               {pipelineTemplateInfo.name}
             </div>
             {pipelineTemplateInfo.created_by && (
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>
+              <div
+                className='system-2xs-medium-uppercase truncate text-text-tertiary'
+                title={pipelineTemplateInfo.created_by}
+              >
                 {t('datasetPipeline.details.createdBy', {
                   author: pipelineTemplateInfo.created_by,
                 })}
