@@ -13,6 +13,7 @@ class ToolRuntime(BaseModel):
     """
 
     tenant_id: str
+    app_id: str | None = None
     tool_id: str | None = None
     invoke_from: InvokeFrom | None = None
     tool_invoke_from: ToolInvokeFrom | None = None
@@ -29,6 +30,7 @@ class FakeToolRuntime(ToolRuntime):
     def __init__(self):
         super().__init__(
             tenant_id="fake_tenant_id",
+            app_id="fake_app_id",
             tool_id="fake_tool_id",
             invoke_from=InvokeFrom.DEBUGGER,
             tool_invoke_from=ToolInvokeFrom.AGENT,
