@@ -93,6 +93,7 @@ const translation = {
     freeTrialTip: '200 OpenAI çağrısının ücretsiz denemesi.',
     teamWorkspace: '{{count,number}} Takım Çalışma Alanı',
     documentsRequestQuotaTooltip: 'Bir çalışma alanının bilgi tabanında, veri seti oluşturma, silme, güncellemeler, belge yüklemeleri, değişiklikler, arşivleme ve bilgi tabanı sorguları dahil olmak üzere, dakikada gerçekleştirebileceği toplam işlem sayısını belirtir. Bu ölçüt, bilgi tabanı taleplerinin performansını değerlendirmek için kullanılır. Örneğin, bir Sandbox kullanıcısı bir dakika içinde ardışık 10 vurma testi gerçekleştirirse, çalışma alanı bir sonraki dakika için aşağıdaki işlemleri gerçekleştirmesi geçici olarak kısıtlanacaktır: veri seti oluşturma, silme, güncellemeler ve belge yüklemeleri veya değişiklikler.',
+    startBuilding: 'İnşa Etmeye Başlayın',
   },
   plans: {
     sandbox: {
@@ -115,6 +116,15 @@ const translation = {
       description: 'Büyük ölçekli kritik sistemler için tam yetenekler ve destek.',
       includesTitle: 'Takım plandaki her şey, artı:',
       features: {
+        4: 'SSO',
+        2: 'Özel Kurumsal Özellikler',
+        1: 'Ticari Lisans Yetkilendirmesi',
+        3: 'Çoklu Çalışma Alanları ve Kurumsal Yönetim',
+        8: 'Profesyonel Teknik Destek',
+        6: 'Gelişmiş Güvenlik ve Kontroller',
+        7: 'Resmi olarak Dify tarafından Güncellemeler ve Bakım',
+        0: 'Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri',
+        5: 'Dify Partners tarafından müzakere edilen SLA\'lar',
       },
       priceTip: 'Yıllık Faturalama Sadece',
       for: 'Büyük boyutlu Takımlar için',
@@ -123,6 +133,9 @@ const translation = {
     },
     community: {
       features: {
+        1: 'Tek Çalışma Alanı',
+        2: 'Dify Açık Kaynak Lisansı ile uyumludur',
+        0: 'Genel depo altında yayınlanan tüm temel özellikler',
       },
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
@@ -133,6 +146,10 @@ const translation = {
     },
     premium: {
       features: {
+        1: 'Tek Çalışma Alanı',
+        3: 'Öncelikli E-posta ve Sohbet Desteği',
+        2: 'WebApp Logosu ve Marka Özelleştirmesi',
+        0: 'Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendini Yöneten Güvenilirlik',
       },
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',

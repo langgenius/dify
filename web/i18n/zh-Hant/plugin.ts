@@ -6,6 +6,7 @@ const translation = {
     agents: '代理策略',
     all: '都',
     bundles: '束',
+    datasources: '資料來源',
   },
   categorySingle: {
     model: '型',
@@ -13,6 +14,7 @@ const translation = {
     agent: '代理策略',
     tool: '工具',
     bundle: '捆',
+    datasource: '資料來源',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: '自訂憑證目前無法使用',
     credentialUnavailable: '凭證目前無法使用。請聯繫管理員。',
     credentialUnavailableInButton: '憑證不可用',
+    emptyAuth: '請設定驗證',
+    connectedWorkspace: '連線工作區',
   },
   deprecated: '不推薦使用的',
   autoUpdate: {

@@ -4,8 +4,8 @@ import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
-import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import {
+  RiArrowRightLine,
   RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiLoader2Fill,
@@ -31,6 +31,9 @@ import { sleep } from '@/utils'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import Divider from '@/app/components/base/divider'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import Link from 'next/link'
 
 type Props = {
   datasetId: string
@@ -129,7 +132,7 @@ const RuleDetail: FC<{
     <FieldInfo
       label={t('datasetSettings.form.retrievalSetting.title')}
       // displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
-      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'invertedIndex' : retrievalMethod}.title`) as string}
+      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
       valueIcon={
         <Image
           className='size-4'
@@ -211,9 +214,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     invalidDocumentList()
     router.push(`/datasets/${datasetId}/documents`)
   }
-  const navToApiDocs = () => {
-    router.push('/datasets?category=api')
-  }
+  const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbedding = useMemo(() => {
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
@@ -250,102 +251,118 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   return (
     <>
-      <div className="mb-3 flex h-5 items-center">
-        <div className="mr-2 flex items-center justify-between text-sm font-medium text-text-secondary">
-          {isEmbedding && <div className='flex items-center'>
-            <RiLoader2Fill className='mr-1 size-4 animate-spin text-text-secondary' />
-            {t('datasetDocuments.embedding.processing')}
-          </div>}
+      <div className='flex flex-col gap-y-3'>
+        <div className='system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary'>
+          {isEmbedding && (
+            <>
+              <RiLoader2Fill className='size-4 animate-spin' />
+              <span>{t('datasetDocuments.embedding.processing')}</span>
+            </>
+          )}
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
         </div>
-      </div>
-      {
-        enableBilling && plan.type !== Plan.team && (
-          <div className='mb-3 flex h-14 items-center rounded-xl border-[0.5px] border-black/5 bg-white p-3 shadow-md'>
-            <div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFF6ED]'>
-              <ZapFast className='h-4 w-4 text-[#FB6514]' />
-            </div>
-            <div className='mx-3 grow text-[13px] font-medium text-gray-700'>
-              {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
-            </div>
-            <UpgradeBtn loc='knowledge-speed-up' />
-          </div>
-        )
-      }
-      <div className="flex flex-col gap-0.5 pb-2">
-        {indexingStatusBatchDetail.map(indexingStatusDetail => (
-          <div key={indexingStatusDetail.id} className={cn(
-            'relative h-[26px] overflow-hidden rounded-md bg-components-progress-bar-bg',
-            indexingStatusDetail.indexing_status === 'error' && 'bg-state-destructive-hover-alt',
-            // indexingStatusDetail.indexing_status === 'completed' && 's.success',
-          )}>
-            {isSourceEmbedding(indexingStatusDetail) && (
-              <div className="absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress" style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
-            )}
-            <div className="z-[1] flex h-full items-center gap-1 pl-[6px] pr-2">
-              {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
-                // <div className={cn(
-                //   'shrink-0 marker:size-4 bg-center bg-no-repeat bg-contain',
-                //   s[getFileType(getSourceName(indexingStatusDetail.id))] || s.unknownFileIcon,
-                // )} />
-                <DocumentFileIcon
-                  className="size-4 shrink-0"
-                  name={getSourceName(indexingStatusDetail.id)}
-                  extension={getFileType(getSourceName(indexingStatusDetail.id))}
-                />
-              )}
-              {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
-                <NotionIcon
-                  className='shrink-0'
-                  type='page'
-                  src={getIcon(indexingStatusDetail.id)}
-                />
-              )}
-              <div className="flex w-0 grow items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
-                <div className="system-xs-medium truncate text-text-secondary">
-                  {getSourceName(indexingStatusDetail.id)}
-                </div>
-                {
-                  enableBilling && (
-                    <PriorityLabel className='ml-0' />
-                  )
-                }
+        {
+          enableBilling && plan.type !== Plan.team && (
+            <div className='flex h-14 items-center rounded-xl border-[0.5px] border-black/5 bg-white p-3 shadow-md'>
+              <div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFF6ED]'>
+                <ZapFast className='h-4 w-4 text-[#FB6514]' />
               </div>
-              {isSourceEmbedding(indexingStatusDetail) && (
-                <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
-              )}
-              {indexingStatusDetail.indexing_status === 'error' && (
-                <Tooltip
-                  popupClassName='px-4 py-[14px] max-w-60 text-sm leading-4 text-text-secondary border-[0.5px] border-components-panel-border rounded-xl'
-                  offset={4}
-                  popupContent={indexingStatusDetail.error}
-                >
-                  <span>
-                    <RiErrorWarningFill className='size-4 shrink-0 text-text-destructive' />
-                  </span>
-                </Tooltip>
-              )}
-              {indexingStatusDetail.indexing_status === 'completed' && (
-                <RiCheckboxCircleFill className='size-4 shrink-0 text-text-success' />
-              )}
+              <div className='mx-3 grow text-[13px] font-medium text-gray-700'>
+                {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
+              </div>
+              <UpgradeBtn loc='knowledge-speed-up' />
             </div>
-          </div>
-        ))}
+          )
+        }
+        <div className='flex flex-col gap-0.5 pb-2'>
+          {indexingStatusBatchDetail.map(indexingStatusDetail => (
+            <div
+              key={indexingStatusDetail.id}
+              className={cn(
+                'relative h-[26px] overflow-hidden rounded-md bg-components-progress-bar-bg',
+                indexingStatusDetail.indexing_status === 'error' && 'bg-state-destructive-hover-alt',
+              )}
+            >
+              {isSourceEmbedding(indexingStatusDetail) && (
+                <div
+                  className='absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress'
+                  style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
+                />
+              )}
+              <div className='z-[1] flex h-full items-center gap-1 pl-[6px] pr-2'>
+                {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
+                  <DocumentFileIcon
+                    size='sm'
+                    className='shrink-0'
+                    name={getSourceName(indexingStatusDetail.id)}
+                    extension={getFileType(getSourceName(indexingStatusDetail.id))}
+                  />
+                )}
+                {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
+                  <NotionIcon
+                    className='shrink-0'
+                    type='page'
+                    src={getIcon(indexingStatusDetail.id)}
+                  />
+                )}
+                <div className='flex w-0 grow items-center gap-1' title={getSourceName(indexingStatusDetail.id)}>
+                  <div className='system-xs-medium truncate text-text-secondary'>
+                    {getSourceName(indexingStatusDetail.id)}
+                  </div>
+                  {
+                    enableBilling && (
+                      <PriorityLabel className='ml-0' />
+                    )
+                  }
+                </div>
+                {isSourceEmbedding(indexingStatusDetail) && (
+                  <div className='shrink-0 text-xs text-text-secondary'>{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+                )}
+                {indexingStatusDetail.indexing_status === 'error' && (
+                  <Tooltip
+                    popupClassName='px-4 py-[14px] max-w-60 body-xs-regular text-text-secondary border-[0.5px] border-components-panel-border rounded-xl'
+                    offset={4}
+                    popupContent={indexingStatusDetail.error}
+                  >
+                    <span>
+                      <RiErrorWarningFill className='size-4 shrink-0 text-text-destructive' />
+                    </span>
+                  </Tooltip>
+                )}
+                {indexingStatusDetail.indexing_status === 'completed' && (
+                  <RiCheckboxCircleFill className='size-4 shrink-0 text-text-success' />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <Divider type='horizontal' className='my-0 bg-divider-subtle' />
+        <RuleDetail
+          sourceData={ruleDetail}
+          indexingType={indexingType}
+          retrievalMethod={retrievalMethod}
+        />
       </div>
-      <hr className="my-3 h-px border-0 bg-divider-subtle" />
-      <RuleDetail
-        sourceData={ruleDetail}
-        indexingType={indexingType}
-        retrievalMethod={retrievalMethod}
-      />
-      <div className='my-10 flex items-center gap-2'>
-        <Button className='w-fit' onClick={navToApiDocs}>
-          <RiTerminalBoxLine className='mr-2 size-4' />
-          <span>Access the API</span>
-        </Button>
-        <Button className='w-fit' variant='primary' onClick={navToDocumentList}>
-          <span>{t('datasetCreation.stepThree.navTo')}</span>
-          <ArrowRightIcon className='ml-2 size-4 stroke-current stroke-1' />
+      <div className='mt-6 flex items-center gap-x-2 py-2'>
+        <Link
+          href={apiReferenceUrl}
+          target='_blank'
+          rel='noopener noreferrer'
+        >
+          <Button
+            className='w-fit gap-x-0.5 px-3'
+          >
+            <RiTerminalBoxLine className='size-4' />
+            <span className='px-0.5'>Access the API</span>
+          </Button>
+        </Link>
+        <Button
+          className='w-fit gap-x-0.5 px-3'
+          variant='primary'
+          onClick={navToDocumentList}
+        >
+          <span className='px-0.5'>{t('datasetCreation.stepThree.navTo')}</span>
+          <RiArrowRightLine className='size-4 stroke-current stroke-1' />
         </Button>
       </div>
     </>

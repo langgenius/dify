@@ -4,8 +4,8 @@ import logging
 import click
 import sqlalchemy as sa
 
-from core.plugin.entities.plugin import GenericProviderID, ModelProviderID, ToolProviderID
-from models.engine import db
+from extensions.ext_database import db
+from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,11 @@ limit 1000"""
                     record_id = str(i.id)
                     provider_name = str(i.provider_name)
                     retrieval_model = i.retrieval_model
-                    print(type(retrieval_model))
+                    logger.debug(
+                        "Processing dataset %s with retrieval model of type %s",
+                        record_id,
+                        type(retrieval_model),
+                    )
 
                     if record_id in failed_ids:
                         continue

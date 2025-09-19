@@ -10,7 +10,6 @@ from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
-    GenericProviderID,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -26,6 +25,7 @@ from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
+from models.provider_ids import GenericProviderID
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 

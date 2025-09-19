@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import {
   useIsChatMode,
   useWorkflow,
@@ -70,6 +71,54 @@ const useNodesAvailableVarList = (nodes: Node[], {
     nodeAvailabilityMap[nodeId] = result
   })
   return nodeAvailabilityMap
+}
+
+export const useGetNodesAvailableVarList = () => {
+  const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
+  const { getNodeAvailableVars } = useWorkflowVariables()
+  const isChatMode = useIsChatMode()
+  const getNodesAvailableVarList = useCallback((nodes: Node[], {
+    onlyLeafNodeVar,
+    filterVar,
+    hideEnv,
+    hideChatVar,
+    passedInAvailableNodes,
+  }: Params = {
+    onlyLeafNodeVar: false,
+    filterVar: () => true,
+  }) => {
+    const nodeAvailabilityMap: { [key: string ]: { availableVars: NodeOutPutVar[], availableNodes: Node[] } } = {}
+
+    nodes.forEach((node) => {
+      const nodeId = node.id
+      const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+      if (node.data.type === BlockEnum.Loop)
+        availableNodes.push(node)
+
+      const {
+        parentNode: iterationNode,
+      } = getNodeInfo(nodeId, nodes)
+
+      const availableVars = getNodeAvailableVars({
+        parentNode: iterationNode,
+        beforeNodes: availableNodes,
+        isChatMode,
+        filterVar,
+        hideEnv,
+        hideChatVar,
+      })
+      const result = {
+        node,
+        availableVars,
+        availableNodes,
+      }
+      nodeAvailabilityMap[nodeId] = result
+    })
+    return nodeAvailabilityMap
+  }, [getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
+  return {
+    getNodesAvailableVarList,
+  }
 }
 
 export default useNodesAvailableVarList

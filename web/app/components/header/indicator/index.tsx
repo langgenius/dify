@@ -46,14 +46,14 @@ export default function Indicator({
   className = '',
 }: IndicatorProps) {
   return (
-    <div className={classNames(
-      'h-2 w-2 rounded-[3px] border border-solid',
-      BACKGROUND_MAP[color],
-      BORDER_MAP[color],
-      SHADOW_MAP[color],
-      className,
-    )}>
-
-    </div>
+    <div
+      className={classNames(
+        'h-2 w-2 rounded-[3px] border border-solid',
+        BACKGROUND_MAP[color],
+        BORDER_MAP[color],
+        SHADOW_MAP[color],
+        className,
+      )}
+    />
   )
 }

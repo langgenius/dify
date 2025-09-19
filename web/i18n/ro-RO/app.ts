@@ -80,6 +80,7 @@ const translation = {
     forAdvanced: 'PENTRU UTILIZATORII AVANSAȚI',
     chooseAppType: 'Alegeți un tip de aplicație',
     dropDSLToCreateApp: 'Trageți fișierul DSL aici pentru a crea aplicația',
+    import: 'Importa',
   },
   editApp: 'Editează Info',
   editAppTitle: 'Editează Info Aplicație',

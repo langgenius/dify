@@ -80,6 +80,7 @@ const translation = {
     advancedShortDescription: 'Flusso di lavoro migliorato per conversazioni multiple',
     chooseAppType: 'Scegli un tipo di app',
     dropDSLToCreateApp: 'Trascina il file DSL qui per creare l\'app',
+    import: 'Importazione',
   },
   editApp: 'Modifica Info',
   editAppTitle: 'Modifica Info App',

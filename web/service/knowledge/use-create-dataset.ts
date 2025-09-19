@@ -3,11 +3,30 @@ import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
 import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { ChunkingMode, CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DataSourceType, FileIndexingEstimateResponse, IndexingEstimateParams, NotionInfo, ProcessRule, ProcessRuleResponse, createDocumentResponse } from '@/models/datasets'
+import type {
+  ChunkingMode,
+  CrawlOptions,
+  CrawlResultItem,
+  CreateDatasetReq,
+  CreateDatasetResponse,
+  CreateDocumentReq,
+  CustomFile,
+  DataSourceType,
+  FileIndexingEstimateResponse,
+  IndexingEstimateParams,
+  NotionInfo,
+  ProcessRule,
+  ProcessRuleResponse,
+  createDocumentResponse,
+} from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
+import { post } from '../base'
+
+const NAME_SPACE = 'knowledge/create-dataset'
 
 export const getNotionInfo = (
   notionPages: NotionPage[],
+  credentialId: string,
 ) => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
   const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
@@ -18,6 +37,7 @@ export const getNotionInfo = (
   })
   return workspaces.map((workspace) => {
     return {
+      credential_id: credentialId,
       workspace_id: workspace.workspaceId,
       pages: workspace.pages.map((page) => {
         const { page_id, page_name, page_icon, type } = page
@@ -101,6 +121,7 @@ export const useFetchFileIndexingEstimateForFile = (
 type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
   dataSourceType: DataSourceType.NOTION
   notionPages: NotionPage[]
+  credential_id: string
 }
 
 const getFileIndexingEstimateParamsForNotion = ({
@@ -111,11 +132,12 @@ const getFileIndexingEstimateParamsForNotion = ({
   indexingTechnique,
   processRule,
   dataset_id,
+  credential_id,
 }: GetFileIndexingEstimateParamsOptionNotion): IndexingEstimateParams => {
   return {
     info_list: {
       data_source_type: dataSourceType,
-      notion_info_list: getNotionInfo(notionPages),
+      notion_info_list: getNotionInfo(notionPages, credential_id),
     },
     indexing_technique: indexingTechnique,
     process_rule: processRule,
@@ -217,6 +239,30 @@ export const useFetchDefaultProcessRule = (
   return useMutation({
     mutationFn: async (url: string) => {
       return fetchDefaultProcessRule({ url })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useCreatePipelineDataset = (
+  mutationOptions: MutationOptions<CreateDatasetResponse, Error> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-pipeline-empty-dataset'],
+    mutationFn: () => {
+      return post<CreateDatasetResponse>('/rag/pipeline/empty-dataset')
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useCreatePipelineDatasetFromCustomized = (
+  mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-pipeline-dataset'],
+    mutationFn: (req: CreateDatasetReq) => {
+      return post<CreateDatasetResponse>('/rag/pipeline/dataset', { body: req })
     },
     ...mutationOptions,
   })

@@ -1,4 +1,6 @@
 import json
+from collections.abc import Generator
+from typing import cast
 
 from flask import request
 from flask_login import current_user
@@ -9,6 +11,8 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
+from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -19,6 +23,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
+from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
@@ -111,6 +116,18 @@ class DataSourceNotionListApi(Resource):
     @marshal_with(integrate_notion_info_list_fields)
     def get(self):
         dataset_id = request.args.get("dataset_id", default=None, type=str)
+        credential_id = request.args.get("credential_id", default=None, type=str)
+        if not credential_id:
+            raise ValueError("Credential id is required.")
+        datasource_provider_service = DatasourceProviderService()
+        credential = datasource_provider_service.get_datasource_credentials(
+            tenant_id=current_user.current_tenant_id,
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+        if not credential:
+            raise NotFound("Credential not found.")
         exist_page_ids = []
         with Session(db.engine) as session:
             # import notion in the exist dataset
@@ -134,31 +151,49 @@ class DataSourceNotionListApi(Resource):
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
             # get all authorized pages
-            data_source_bindings = session.scalars(
-                select(DataSourceOauthBinding).filter_by(
-                    tenant_id=current_user.current_tenant_id, provider="notion", disabled=False
+            from core.datasource.datasource_manager import DatasourceManager
+
+            datasource_runtime = DatasourceManager.get_datasource_runtime(
+                provider_id="langgenius/notion_datasource/notion_datasource",
+                datasource_name="notion_datasource",
+                tenant_id=current_user.current_tenant_id,
+                datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
+            )
+            datasource_provider_service = DatasourceProviderService()
+            if credential:
+                datasource_runtime.runtime.credentials = credential
+            datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+            online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
+                datasource_runtime.get_online_document_pages(
+                    user_id=current_user.id,
+                    datasource_parameters={},
+                    provider_type=datasource_runtime.datasource_provider_type(),
                 )
-            ).all()
-            if not data_source_bindings:
-                return {"notion_info": []}, 200
-            pre_import_info_list = []
-            for data_source_binding in data_source_bindings:
-                source_info = data_source_binding.source_info
-                pages = source_info["pages"]
-                # Filter out already bound pages
-                for page in pages:
-                    if page["page_id"] in exist_page_ids:
-                        page["is_bound"] = True
-                    else:
-                        page["is_bound"] = False
-                pre_import_info = {
-                    "workspace_name": source_info["workspace_name"],
-                    "workspace_icon": source_info["workspace_icon"],
-                    "workspace_id": source_info["workspace_id"],
-                    "pages": pages,
-                }
-                pre_import_info_list.append(pre_import_info)
-            return {"notion_info": pre_import_info_list}, 200
+            )
+            try:
+                pages = []
+                workspace_info = {}
+                for message in online_document_result:
+                    result = message.result
+                    for info in result:
+                        workspace_info = {
+                            "workspace_id": info.workspace_id,
+                            "workspace_name": info.workspace_name,
+                            "workspace_icon": info.workspace_icon,
+                        }
+                        for page in info.pages:
+                            page_info = {
+                                "page_id": page.page_id,
+                                "page_name": page.page_name,
+                                "type": page.type,
+                                "parent_id": page.parent_id,
+                                "is_bound": page.page_id in exist_page_ids,
+                                "page_icon": page.page_icon,
+                            }
+                            pages.append(page_info)
+            except Exception as e:
+                raise e
+            return {"notion_info": {**workspace_info, "pages": pages}}, 200
 
 
 class DataSourceNotionApi(Resource):
@@ -166,27 +201,25 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, workspace_id, page_id, page_type):
+        credential_id = request.args.get("credential_id", default=None, type=str)
+        if not credential_id:
+            raise ValueError("Credential id is required.")
+        datasource_provider_service = DatasourceProviderService()
+        credential = datasource_provider_service.get_datasource_credentials(
+            tenant_id=current_user.current_tenant_id,
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+
         workspace_id = str(workspace_id)
         page_id = str(page_id)
-        with Session(db.engine) as session:
-            data_source_binding = session.execute(
-                select(DataSourceOauthBinding).where(
-                    db.and_(
-                        DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                        DataSourceOauthBinding.provider == "notion",
-                        DataSourceOauthBinding.disabled == False,
-                        DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                    )
-                )
-            ).scalar_one_or_none()
-        if not data_source_binding:
-            raise NotFound("Data source binding not found.")
 
         extractor = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
             notion_page_type=page_type,
-            notion_access_token=data_source_binding.access_token,
+            notion_access_token=credential.get("integration_secret"),
             tenant_id=current_user.current_tenant_id,
         )
 
@@ -211,10 +244,12 @@ class DataSourceNotionApi(Resource):
         extract_settings = []
         for notion_info in notion_info_list:
             workspace_id = notion_info["workspace_id"]
+            credential_id = notion_info.get("credential_id")
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
                     notion_info={
+                        "credential_id": credential_id,
                         "notion_workspace_id": workspace_id,
                         "notion_obj_id": page["page_id"],
                         "notion_page_type": page["type"],

@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -10,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
-from core.plugin.entities.plugin import ToolProviderID
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import (
@@ -30,6 +29,7 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -311,42 +311,20 @@ class BuiltinToolManageService:
     def generate_builtin_tool_provider_name(
         session: Session, tenant_id: str, provider: str, credential_type: CredentialType
     ) -> str:
-        try:
-            db_providers = (
-                session.query(BuiltinToolProvider)
-                .filter_by(
-                    tenant_id=tenant_id,
-                    provider=provider,
-                    credential_type=credential_type.value,
-                )
-                .order_by(BuiltinToolProvider.created_at.desc())
-                .all()
+        db_providers = (
+            session.query(BuiltinToolProvider)
+            .filter_by(
+                tenant_id=tenant_id,
+                provider=provider,
+                credential_type=credential_type.value,
             )
-
-            # Get the default name pattern
-            default_pattern = f"{credential_type.get_name()}"
-
-            # Find all names that match the default pattern: "{default_pattern} {number}"
-            pattern = rf"^{re.escape(default_pattern)}\s+(\d+)$"
-            numbers = []
-
-            for db_provider in db_providers:
-                if db_provider.name:
-                    match = re.match(pattern, db_provider.name.strip())
-                    if match:
-                        numbers.append(int(match.group(1)))
-
-            # If no default pattern names found, start with 1
-            if not numbers:
-                return f"{default_pattern} 1"
-
-            # Find the next number
-            max_number = max(numbers)
-            return f"{default_pattern} {max_number + 1}"
-        except Exception as e:
-            logger.warning("Error generating next provider name for %s: %s", provider, str(e))
-            # fallback
-            return f"{credential_type.get_name()} 1"
+            .order_by(BuiltinToolProvider.created_at.desc())
+            .all()
+        )
+        return generate_incremental_name(
+            [provider.name for provider in db_providers],
+            f"{credential_type.get_name()}",
+        )
 
     @staticmethod
     def get_builtin_tool_provider_credentials(

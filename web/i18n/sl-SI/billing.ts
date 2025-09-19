@@ -93,6 +93,7 @@ const translation = {
     freeTrialTip: 'brezplačno preizkušnjo 200 klicev OpenAI.',
     getStarted: 'Začnite',
     documentsRequestQuotaTooltip: 'Določa skupno število dejanj, ki jih lahko delovno mesto opravi na minuto znotraj znanja baze, vključno s kreiranjem, brisanjem, posodobitvami, nalaganjem dokumentov, spremembami, arhiviranjem in poizvedbami po znanju bazi. Ta meritev se uporablja za ocenjevanje uspešnosti poizvedb v bazi znanja. Na primer, če uporabnik Sandbox izvede 10 zaporednih testov udarca v eni minuti, bo njegovo delovno mesto začasno omejeno pri izvajanju naslednjih dejanj v naslednji minuti: kreiranje podatkovnih nizov, brisanje, posodobitve in nalaganje ali spremembe dokumentov.',
+    startBuilding: 'Začnite graditi',
   },
   plans: {
     sandbox: {
@@ -115,6 +116,15 @@ const translation = {
       description: 'Pridobite vse zmogljivosti in podporo za velike sisteme kritične za misijo.',
       includesTitle: 'Vse v načrtu Ekipa, plus:',
       features: {
+        4: 'SSO',
+        6: 'Napredna varnost in nadzor',
+        8: 'Strokovna tehnična podpora',
+        2: 'Ekskluzivne funkcije za podjetja',
+        1: 'Dovoljenje za komercialno licenco',
+        3: 'Več delovnih prostorov in upravljanje podjetja',
+        7: 'Posodobitve in vzdrževanje s strani Dify Official',
+        5: 'Dogovorjene pogodbe o ravni storitev s strani Dify Partners',
+        0: 'Prilagodljive rešitve za uvajanje na ravni podjetij',
       },
       priceTip: 'Letno zaračunavanje samo',
       price: 'Po meri',
@@ -123,6 +133,9 @@ const translation = {
     },
     community: {
       features: {
+        2: 'Skladen z odprtokodno licenco Dify',
+        1: 'En delovni prostor',
+        0: 'Vse osnovne funkcije, izdane v javnem repozitoriju',
       },
       includesTitle: 'Brezplačne funkcije:',
       price: 'Brezplačno',
@@ -133,6 +146,10 @@ const translation = {
     },
     premium: {
       features: {
+        3: 'Prednostna podpora po e-pošti in klepetu',
+        0: 'Samostojna zanesljivost različnih ponudnikov storitev v oblaku',
+        2: 'Prilagajanje logotipa in blagovne znamke WebApp',
+        1: 'En delovni prostor',
       },
       name: 'Premium',
       priceTip: 'Na podlagi oblaka Marketplace',

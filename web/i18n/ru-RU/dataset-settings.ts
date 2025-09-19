@@ -37,6 +37,14 @@ const translation = {
     upgradeHighQualityTip: 'После обновления до режима «Высокое качество» возврат к экономичному режиму невозможен',
     indexMethodChangeToEconomyDisabledTip: 'Недоступно для понижения уровня с HQ до ECO',
     searchModel: 'Поиск модели',
+    chunkStructure: {
+      learnMore: 'Подробнее',
+      title: 'Структура чанка',
+      description: 'о структуре чанка.',
+    },
+    nameAndIcon: 'Имя и иконка',
+    numberOfKeywords: 'Количество ключевых слов',
+    onSearchResults: 'Ни один участник не соответствует вашему поисковому запросу.\nПовторите попытку поиска.',
   },
 }
 

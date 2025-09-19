@@ -114,6 +114,10 @@ const translation = {
     },
     change: 'Spremeni',
     changeRetrievalMethod: 'Spremeni metodo pridobivanja',
+    keyword_search: {
+      title: 'Obrnjeni indeks',
+      description: 'Obrnjeni indeks je struktura, ki se uporablja za učinkovito iskanje. Vsak izraz, organiziran po izrazih, kaže na dokumente ali spletne strani, ki ga vsebujejo.',
+    },
   },
   docsFailedNotice: 'dokumentov ni bilo mogoče indeksirati',
   retry: 'Poskusi znova',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Splošno',
     parentChild: 'Starš-otrok',
+    graph: 'Graf',
+    qa: 'Vprašanja in odgovori',
   },
   parentMode: {
     fullDoc: 'Celoten dokument',
@@ -217,6 +223,9 @@ const translation = {
     addMetadata: 'Dodaj metapodatke',
   },
   embeddingModelNotAvailable: 'Model za zajemanje ni na voljo.',
+  createFromPipeline: 'Ustvarjanje iz cevovoda znanja',
+  updated: 'Posodobljene',
+  externalKnowledgeBase: 'Zunanja baza znanja',
 }
 
 export default translation

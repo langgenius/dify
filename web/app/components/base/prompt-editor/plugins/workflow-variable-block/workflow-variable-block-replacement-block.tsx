@@ -21,6 +21,13 @@ const WorkflowVariableBlockReplacementBlock = ({
   variables,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
+  const ragVariables = variables?.reduce<any[]>((acc, curr) => {
+    if (curr.nodeId === 'rag')
+      acc.push(...curr.vars)
+    else
+      acc.push(...curr.vars.filter(v => v.isRagVariable))
+    return acc
+  }, [])
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -32,7 +39,7 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || []))
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], ragVariables))
   }, [onInsert, workflowNodesMap, getVarType, variables])
 
   const getMatch = useCallback((text: string) => {

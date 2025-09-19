@@ -6,6 +6,7 @@ const translation = {
     all: 'Cały',
     tools: 'Narzędzia',
     models: 'Modele',
+    datasources: 'Źródła danych',
   },
   categorySingle: {
     model: 'Model',
@@ -13,6 +14,7 @@ const translation = {
     bundle: 'Pakiet',
     agent: 'Strategia agenta',
     tool: 'Narzędzie',
+    datasource: 'Źródło danych',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: 'Niestandardowe dane logowania są obecnie niedostępne',
     credentialUnavailable: 'Kredencje są obecnie niedostępne. Proszę skontaktować się z administratorem.',
     credentialUnavailableInButton: 'Credential niedostępny',
+    connectedWorkspace: 'Połączona przestrzeń robocza',
+    emptyAuth: 'Skonfiguruj uwierzytelnianie',
   },
   deprecated: 'Nieaktualny',
   autoUpdate: {

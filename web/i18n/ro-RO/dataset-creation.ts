@@ -87,6 +87,7 @@ const translation = {
       configureFirecrawl: 'Configurează Firecrawl',
       watercrawlDoc: 'Documentele Watercrawl',
       configureWatercrawl: 'Configurează Watercrawl',
+      running: 'Rulează',
     },
     cancel: 'Anula',
   },
@@ -172,6 +173,7 @@ const translation = {
     qaSwitchHighQualityTipContent: 'În prezent, numai metoda de index de înaltă calitate acceptă fragmentarea formatului de întrebări și răspunsuri. Doriți să treceți la modul de înaltă calitate?',
     parentChildChunkDelimiterTip: 'Un delimitator este caracterul folosit pentru a separa textul. \\n este recomandat pentru împărțirea bucăților părinte în bucăți copii mici. De asemenea, puteți utiliza delimitatori speciali definiți de dvs.',
     useQALanguage: 'Fragmentați folosind formatul Întrebări și răspunsuri în',
+    qaTip: 'Când utilizați date structurate de întrebări și răspunsuri, puteți crea documente care asociază întrebări cu răspunsuri. Aceste documente sunt indexate pe baza porțiunii de întrebare, permițând sistemului să preia răspunsuri relevante pe baza similitudinii interogărilor.',
   },
   stepThree: {
     creationTitle: '🎉 Cunoștință creată',

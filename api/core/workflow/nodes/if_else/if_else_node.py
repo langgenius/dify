@@ -3,19 +3,19 @@ from typing import Any, Literal
 
 from typing_extensions import deprecated
 
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.entities import VariablePool
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.utils.condition.entities import Condition
 from core.workflow.utils.condition.processor import ConditionProcessor
 
 
-class IfElseNode(BaseNode):
-    _node_type = NodeType.IF_ELSE
+class IfElseNode(Node):
+    node_type = NodeType.IF_ELSE
+    execution_type = NodeExecutionType.BRANCH
 
     _node_data: IfElseNodeData
 
@@ -49,13 +49,13 @@ class IfElseNode(BaseNode):
         Run node
         :return:
         """
-        node_inputs: dict[str, list] = {"conditions": []}
+        node_inputs: dict[str, Sequence[Mapping[str, Any]]] = {"conditions": []}
 
         process_data: dict[str, list] = {"condition_results": []}
 
-        input_conditions = []
+        input_conditions: Sequence[Mapping[str, Any]] = []
         final_result = False
-        selected_case_id = None
+        selected_case_id = "false"
         condition_processor = ConditionProcessor()
         try:
             # Check if the new cases structure is used

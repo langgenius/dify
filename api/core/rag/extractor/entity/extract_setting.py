@@ -9,6 +9,7 @@ class NotionInfo(BaseModel):
     Notion import info.
     """
 
+    credential_id: str | None = None
     notion_workspace_id: str
     notion_obj_id: str
     notion_page_type: str

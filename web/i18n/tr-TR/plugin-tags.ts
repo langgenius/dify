@@ -17,6 +17,7 @@ const translation = {
     news: 'Haberler',
     entertainment: 'Eğlence',
     search: 'Aramak',
+    rag: 'PAÇAVRA',
   },
   allTags: 'Tüm Etiketler',
   searchTags: 'Arama Etiketleri',

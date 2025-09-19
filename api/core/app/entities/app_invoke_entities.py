@@ -1,8 +1,11 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -35,6 +38,7 @@ class InvokeFrom(StrEnum):
     # DEBUGGER indicates that this invocation is from
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
+    PUBLISHED = "published"
 
     @classmethod
     def value_of(cls, value: str):
@@ -113,8 +117,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    # Using Any to avoid circular import with TraceQueueManager
-    trace_manager: Any | None = None
+    trace_manager: Optional["TraceQueueManager"] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -240,3 +243,34 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         inputs: dict
 
     single_loop_run: SingleLoopRunEntity | None = None
+
+
+class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
+    """
+    RAG Pipeline Application Generate Entity.
+    """
+
+    # pipeline config
+    pipeline_config: WorkflowUIBasedAppConfig
+    datasource_type: str
+    datasource_info: Mapping[str, Any]
+    dataset_id: str
+    batch: str
+    document_id: str | None = None
+    original_document_id: str | None = None
+    start_node_id: str | None = None
+
+
+# Import TraceQueueManager at runtime to resolve forward references
+from core.ops.ops_trace_manager import TraceQueueManager
+
+# Rebuild models that use forward references
+AppGenerateEntity.model_rebuild()
+EasyUIBasedAppGenerateEntity.model_rebuild()
+ConversationAppGenerateEntity.model_rebuild()
+ChatAppGenerateEntity.model_rebuild()
+CompletionAppGenerateEntity.model_rebuild()
+AgentChatAppGenerateEntity.model_rebuild()
+AdvancedChatAppGenerateEntity.model_rebuild()
+WorkflowAppGenerateEntity.model_rebuild()
+RagPipelineGenerateEntity.model_rebuild()

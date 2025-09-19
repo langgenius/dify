@@ -6,6 +6,7 @@ const translation = {
     all: 'Все',
     bundles: 'Пакеты',
     agents: 'Агентские стратегии',
+    datasources: 'Источники данных',
   },
   categorySingle: {
     bundle: 'Связка',
@@ -13,6 +14,7 @@ const translation = {
     model: 'Модель',
     extension: 'Расширение',
     tool: 'Инструмент',
+    datasource: 'Источник данных',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: 'Кастомные учетные данные в настоящее время недоступны',
     credentialUnavailable: 'Учетные данные в настоящее время недоступны. Пожалуйста, свяжитесь с администратором.',
     credentialUnavailableInButton: 'Учетные данные недоступны',
+    emptyAuth: 'Пожалуйста, настройте аутентификацию',
+    connectedWorkspace: 'Подключенное рабочее пространство',
   },
   deprecated: 'Устаревший',
   autoUpdate: {

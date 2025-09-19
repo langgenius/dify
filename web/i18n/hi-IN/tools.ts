@@ -249,6 +249,7 @@ const translation = {
       publishTip: 'ऐप प्रकाशित नहीं हुआ। कृपया पहले ऐप प्रकाशित करें।',
     },
   },
+  allTools: 'सभी उपकरण',
 }
 
 export default translation

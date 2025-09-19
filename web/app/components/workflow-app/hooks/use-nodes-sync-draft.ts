@@ -28,6 +28,7 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
+    const nodes = getNodes()
     const [x, y, zoom] = transform
     const {
       appId,
@@ -36,8 +37,7 @@ export const useNodesSyncDraft = () => {
       syncWorkflowDraftHash,
     } = workflowStore.getState()
 
-    if (appId) {
-      const nodes = getNodes()
+    if (appId && !!nodes.length) {
       const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
       if (!hasStartNode)

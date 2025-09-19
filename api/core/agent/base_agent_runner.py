@@ -90,7 +90,9 @@ class BaseAgentRunner(AppRunner):
             tenant_id=tenant_id,
             dataset_ids=app_config.dataset.dataset_ids if app_config.dataset else [],
             retrieve_config=app_config.dataset.retrieve_config if app_config.dataset else None,
-            return_resource=app_config.additional_features.show_retrieve_source,
+            return_resource=(
+                app_config.additional_features.show_retrieve_source if app_config.additional_features else False
+            ),
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
             user_id=user_id,

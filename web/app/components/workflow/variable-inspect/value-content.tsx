@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import Textarea from '@/app/components/base/textarea'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
@@ -12,7 +12,6 @@ import {
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
-import { useFeatures } from '@/app/components/base/features/hooks'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
@@ -21,16 +20,23 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import LargeDataAlert from './large-data-alert'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
+import { useStore } from '@/app/components/workflow/store'
+import { PreviewMode } from '../../base/features/types'
+import DisplayContent from './display-content'
+import { CHUNK_SCHEMA_TYPES, PreviewType } from './types'
 
 type Props = {
   currentVar: VarInInspect
   handleValueChange: (varId: string, value: any) => void
+  isTruncated: boolean
 }
 
 const ValueContent = ({
   currentVar,
   handleValueChange,
+  isTruncated,
 }: Props) => {
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
@@ -43,6 +49,13 @@ const ValueContent = ({
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
   const JSONEditorDisabled = currentVar.value_type === 'array[any]'
+  const fileUploadConfig = useStore(s => s.fileUploadConfig)
+
+  const hasChunks = useMemo(() => {
+    if (!currentVar.schemaType)
+      return false
+    return CHUNK_SCHEMA_TYPES.includes(currentVar.schemaType)
+  }, [currentVar.schemaType])
 
   const formatFileValue = (value: VarInInspect) => {
     if (value.value_type === 'file')
@@ -56,7 +69,6 @@ const ValueContent = ({
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const fileFeature = useFeatures(s => s.features.file)
   const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
@@ -78,6 +90,8 @@ const ValueContent = ({
   }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {
+    if (isTruncated)
+      return
     if (currentVar.value_type === 'string')
       setValue(value)
 
@@ -127,6 +141,8 @@ const ValueContent = ({
   }
 
   const handleEditorChange = (value: string) => {
+    if (isTruncated)
+      return
     setJson(value)
     if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
@@ -170,15 +186,31 @@ const ValueContent = ({
       ref={contentContainerRef}
       className='flex h-full flex-col'
     >
-      <div className={cn('grow')} style={{ height: `${editorHeight}px` }}>
+      <div className={cn('relative grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
-          <Textarea
-            readOnly={textEditorDisabled}
-            disabled={textEditorDisabled}
-            className='h-full'
-            value={value as any}
-            onChange={e => handleTextChange(e.target.value)}
-          />
+          <>
+            {isTruncated && <LargeDataAlert className='absolute left-3 right-3 top-1' />}
+            {
+              currentVar.value_type === 'string' ? (
+                <DisplayContent
+                  previewType={PreviewType.Markdown}
+                  varType={currentVar.value_type}
+                  mdString={value as any}
+                  readonly={textEditorDisabled}
+                  handleTextChange={handleTextChange}
+                  className={cn(isTruncated && 'pt-[36px]')}
+                />
+              ) : (
+                <Textarea
+                  readOnly={textEditorDisabled}
+                  disabled={textEditorDisabled || isTruncated}
+                  className={cn('h-full', isTruncated && 'pt-[48px]')}
+                  value={value as any}
+                  onChange={e => handleTextChange(e.target.value)}
+                />
+              )
+            }
+          </>
         )}
         {showBoolEditor && (
           <div className='w-[295px]'>
@@ -210,13 +242,27 @@ const ValueContent = ({
           )
         }
         {showJSONEditor && (
-          <SchemaEditor
-            readonly={JSONEditorDisabled}
-            className='overflow-y-auto'
-            hideTopMenu
-            schema={json}
-            onUpdate={handleEditorChange}
-          />
+          hasChunks
+            ? (
+              <DisplayContent
+                previewType={PreviewType.Chunks}
+                varType={currentVar.value_type}
+                schemaType={currentVar.schemaType ?? ''}
+                jsonString={json ?? '{}'}
+                readonly={JSONEditorDisabled}
+                handleEditorChange={handleEditorChange}
+              />
+            )
+            : (
+              <SchemaEditor
+                readonly={JSONEditorDisabled || isTruncated}
+                className='overflow-y-auto'
+                hideTopMenu
+                schema={json}
+                onUpdate={handleEditorChange}
+                isTruncated={isTruncated}
+              />
+            )
         )}
         {showFileEditor && (
           <div className='max-w-[460px]'>
@@ -237,8 +283,12 @@ const ValueContent = ({
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ],
                 allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-                number_limits: currentVar.value_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
-                fileUploadConfig: (fileFeature as any).fileUploadConfig,
+                number_limits: currentVar.value_type === 'file' ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
+                fileUploadConfig,
+                preview_config: {
+                  mode: PreviewMode.NewPage,
+                  file_type_list: ['application/pdf'],
+                },
               }}
               isDisabled={textEditorDisabled}
             />
@@ -249,8 +299,8 @@ const ValueContent = ({
         {parseError && <ErrorMessage className='mt-1' message={parseError.message} />}
         {validationError && <ErrorMessage className='mt-1' message={validationError} />}
       </div>
-    </div>
+    </div >
   )
 }
 
-export default ValueContent
+export default React.memo(ValueContent)

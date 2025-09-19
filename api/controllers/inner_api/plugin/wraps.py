@@ -32,11 +32,20 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             user_model = (
                 session.query(EndUser)
                 .where(
-                    EndUser.session_id == user_id,
+                    EndUser.id == user_id,
                     EndUser.tenant_id == tenant_id,
                 )
                 .first()
             )
+            if not user_model:
+                user_model = (
+                    session.query(EndUser)
+                    .where(
+                        EndUser.session_id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .first()
+                )
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,

@@ -322,6 +322,7 @@ const FileUploader = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
+            batchCount: fileUploadConfig.batch_count_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
@@ -339,7 +340,8 @@ const FileUploader = ({
           >
             <div className="flex w-12 shrink-0 items-center justify-center">
               <DocumentFileIcon
-                className="size-6 shrink-0"
+                size='xl'
+                className="shrink-0"
                 name={fileItem.file.name}
                 extension={getFileType(fileItem.file)}
               />

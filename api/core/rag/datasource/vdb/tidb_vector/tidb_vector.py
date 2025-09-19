@@ -164,8 +164,8 @@ class TiDBVector(BaseVector):
                 delete_condition = table.c.id.in_(ids)
                 conn.execute(table.delete().where(delete_condition))
                 return True
-        except Exception as e:
-            print("Delete operation failed:", str(e))
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
     def get_ids_by_metadata_field(self, key: str, value: str):

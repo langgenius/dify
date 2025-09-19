@@ -87,6 +87,7 @@ const translation = {
       watercrawlTitle: 'Trích xuất nội dung web bằng Watercrawl',
       watercrawlDoc: 'Tài liệu Watercrawl',
       waterCrawlNotConfigured: 'Watercrawl chưa được cấu hình',
+      running: 'Chạy',
     },
     cancel: 'Hủy',
   },
@@ -172,6 +173,7 @@ const translation = {
     parentChildDelimiterTip: 'Dấu phân cách là ký tự được sử dụng để phân tách văn bản. \\n\\n được khuyến nghị để chia tài liệu gốc thành các phần lớn của cha mẹ. Bạn cũng có thể sử dụng các dấu phân cách đặc biệt do chính bạn xác định.',
     parentChildChunkDelimiterTip: 'Dấu phân cách là ký tự được sử dụng để phân tách văn bản. \\n được khuyến nghị để chia các chunk cha thành các chunk con nhỏ. Bạn cũng có thể sử dụng các dấu phân cách đặc biệt do chính bạn xác định.',
     paragraphTip: 'Chế độ này chia văn bản thành các đoạn văn dựa trên dấu phân cách và độ dài khối tối đa, sử dụng văn bản được tách làm phần gốc để truy xuất.',
+    qaTip: 'Khi sử dụng dữ liệu Hỏi đáp có cấu trúc, bạn có thể tạo tài liệu ghép câu hỏi với câu trả lời. Các tài liệu này được lập chỉ mục dựa trên phần câu hỏi, cho phép hệ thống truy xuất các câu trả lời có liên quan dựa trên sự tương đồng của truy vấn.',
   },
   stepThree: {
     creationTitle: '🎉 Kiến thức đã được tạo',

@@ -6,6 +6,7 @@ const translation = {
     tools: 'Instrumente',
     extensions: 'Extensii',
     models: 'Modele',
+    datasources: 'Surse de date',
   },
   categorySingle: {
     tool: 'Unealtă',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'Extensie',
     agent: 'Strategia agentului',
     model: 'Model',
+    datasource: 'Sursa datelor',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: 'Credentialele personalizate sunt în prezent indisponibile',
     credentialUnavailable: 'Credențialele nu sunt disponibile în acest moment. Vă rugăm să contactați administratorul.',
     credentialUnavailableInButton: 'Credential indisponibil',
+    connectedWorkspace: 'Spațiu de lucru conectat',
+    emptyAuth: 'Vă rugăm să configurați autentificarea',
   },
   deprecated: 'Încetat de a mai fi utilizat',
   autoUpdate: {

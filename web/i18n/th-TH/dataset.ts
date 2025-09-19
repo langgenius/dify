@@ -113,6 +113,10 @@ const translation = {
     },
     change: 'เปลี่ยน',
     changeRetrievalMethod: 'วิธีการเรียกดูการเปลี่ยนแปลง',
+    keyword_search: {
+      title: 'ดัชนีกลับด้าน',
+      description: 'Inverted Index เป็นโครงสร้างที่ใช้สําหรับการดึงข้อมูลอย่างมีประสิทธิภาพ จัดเรียงตามคําศัพท์ แต่ละคําชี้ไปที่เอกสารหรือหน้าเว็บที่มีคําดังกล่าว',
+    },
   },
   docsFailedNotice: 'เอกสารไม่สามารถจัดทําดัชนีได้',
   retry: 'ลอง',
@@ -148,6 +152,8 @@ const translation = {
   chunkingMode: {
     general: 'ทั่วไป',
     parentChild: 'พ่อแม่ลูก',
+    graph: 'กราฟ',
+    qa: 'ถาม & ตอบ',
   },
   parentMode: {
     paragraph: 'วรรค',
@@ -216,6 +222,9 @@ const translation = {
     chooseTime: 'เลือกเวลา...',
   },
   embeddingModelNotAvailable: 'โมเดลฝังตัวไม่สามารถใช้งานได้.',
+  updated: 'ปรับ ปรุง',
+  externalKnowledgeBase: 'ฐานความรู้ภายนอก',
+  createFromPipeline: 'สร้างจากไปป์ไลน์ความรู้',
 }
 
 export default translation

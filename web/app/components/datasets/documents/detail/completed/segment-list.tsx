@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import SegmentCard from './segment-card'
 import Empty from './common/empty'
 import GeneralListSkeleton from './skeleton/general-list-skeleton'
 import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 import { useSegmentListContext } from './index'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 
@@ -45,14 +45,14 @@ const SegmentList = (
     ref: React.LegacyRef<HTMLDivElement>
   },
 ) => {
-  const mode = useDocumentContext(s => s.mode)
+  const docForm = useDocumentContext(s => s.docForm)
   const parentMode = useDocumentContext(s => s.parentMode)
   const currSegment = useSegmentListContext(s => s.currSegment)
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   const Skeleton = useMemo(() => {
-    return (mode === 'hierarchical' && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
-  }, [mode, parentMode])
+    return (docForm === ChunkingMode.parentChild && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
+  }, [docForm, parentMode])
 
   // Loading skeleton
   if (isLoading)

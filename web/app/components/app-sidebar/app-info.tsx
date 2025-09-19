@@ -144,9 +144,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${appDetail.name}.yml`
       a.click()
+      URL.revokeObjectURL(url)
     }
     catch {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -313,7 +315,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         <div className='flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4'>
           <div className='flex items-center gap-3 self-stretch'>
             <AppIcon
-              size="large"
+              size='large'
               iconType={appDetail.icon_type}
               icon={appDetail.icon}
               background={appDetail.icon_background}

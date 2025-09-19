@@ -244,6 +244,7 @@ const translation = {
       publishTip: '앱이 게시되지 않았습니다. 먼저 앱을 게시하십시오.',
     },
   },
+  allTools: '모든 도구',
 }
 
 export default translation

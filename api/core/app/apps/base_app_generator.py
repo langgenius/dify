@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileUploadConfig
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaver,
     DraftVariableSaverFactory,
@@ -14,6 +14,7 @@ from core.workflow.repositories.draft_variable_repository import (
 )
 from factories import file_factory
 from libs.orjson import orjson_dumps
+from models import Account, EndUser
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -44,9 +45,9 @@ class BaseAppGenerator:
                 mapping=v,
                 tenant_id=tenant_id,
                 config=FileUploadConfig(
-                    allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_types=entity_dictionary[k].allowed_file_types or [],
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions or [],
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods or [],
                 ),
                 strict_type_validation=strict_type_validation,
             )
@@ -59,9 +60,9 @@ class BaseAppGenerator:
                 mappings=v,
                 tenant_id=tenant_id,
                 config=FileUploadConfig(
-                    allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_types=entity_dictionary[k].allowed_file_types or [],
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions or [],
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods or [],
                 ),
             )
             for k, v in user_inputs.items()
@@ -182,8 +183,9 @@ class BaseAppGenerator:
 
     @final
     @staticmethod
-    def _get_draft_var_saver_factory(invoke_from: InvokeFrom) -> DraftVariableSaverFactory:
+    def _get_draft_var_saver_factory(invoke_from: InvokeFrom, account: Account | EndUser) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
+            assert isinstance(account, Account)
 
             def draft_var_saver_factory(
                 session: Session,
@@ -200,6 +202,7 @@ class BaseAppGenerator:
                     node_type=node_type,
                     node_execution_id=node_execution_id,
                     enclosing_node_id=enclosing_node_id,
+                    user=account,
                 )
         else:
 

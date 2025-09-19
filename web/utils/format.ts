@@ -14,8 +14,8 @@ export const formatNumber = (num: number | string) => {
 /**
  * Format file size into standard string format.
  * @param fileSize file size (Byte)
- * @example formatFileSize(1024) will return '1.00KB'
- * @example formatFileSize(1024 * 1024) will return '1.00MB'
+ * @example formatFileSize(1024) will return '1.00 KB'
+ * @example formatFileSize(1024 * 1024) will return '1.00 MB'
  */
 export const formatFileSize = (fileSize: number) => {
   if (!fileSize)
@@ -26,7 +26,9 @@ export const formatFileSize = (fileSize: number) => {
     fileSize = fileSize / 1024
     index++
   }
-  return `${fileSize.toFixed(2)}${units[index]}B`
+  if (index === 0)
+    return `${fileSize.toFixed(2)} bytes`
+  return `${fileSize.toFixed(2)} ${units[index]}B`
 }
 
 /**
@@ -55,4 +57,36 @@ export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string 
   a.click()
   a.remove()
   window.URL.revokeObjectURL(url)
+}
+
+/**
+ * Formats a number into a readable string using "k", "M", or "B" suffix.
+ * @example
+ * 950     => "950"
+ * 1200    => "1.2k"
+ * 1500000 => "1.5M"
+ * 2000000000 => "2B"
+ *
+ * @param {number} num - The number to format
+ * @returns {string} - The formatted number string
+ */
+export const formatNumberAbbreviated = (num: number) => {
+  // If less than 1000, return as-is
+  if (num < 1000) return num.toString()
+
+  // Define thresholds and suffixes
+  const units = [
+    { value: 1e9, symbol: 'B' },
+    { value: 1e6, symbol: 'M' },
+    { value: 1e3, symbol: 'k' },
+  ]
+
+  for (let i = 0; i < units.length; i++) {
+    if (num >= units[i].value) {
+      const formatted = (num / units[i].value).toFixed(1)
+      return formatted.endsWith('.0')
+        ? `${Number.parseInt(formatted)}${units[i].symbol}`
+        : `${formatted}${units[i].symbol}`
+    }
+  }
 }

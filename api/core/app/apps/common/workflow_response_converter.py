@@ -1,7 +1,7 @@
 import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import Any, Union
 
 from sqlalchemy.orm import Session
 
@@ -16,14 +16,9 @@ from core.app.entities.queue_entities import (
     QueueLoopStartEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent,
 )
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
@@ -36,24 +31,23 @@ from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeRetryStreamResponse,
     NodeStartStreamResponse,
-    ParallelBranchFinishedStreamResponse,
-    ParallelBranchStartStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.file import FILE_MODEL_IDENTITY, File
+from core.plugin.impl.datasource import PluginDatasourceManager
+from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
-from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import (
     Account,
     EndUser,
 )
+from services.variable_truncator import VariableTruncator
 
 
 class WorkflowResponseConverter:
@@ -65,6 +59,7 @@ class WorkflowResponseConverter:
     ):
         self._application_generate_entity = application_generate_entity
         self._user = user
+        self._truncator = VariableTruncator.default()
 
     def workflow_start_to_stream_response(
         self,
@@ -156,7 +151,8 @@ class WorkflowResponseConverter:
                 title=workflow_node_execution.title,
                 index=workflow_node_execution.index,
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
-                inputs=workflow_node_execution.inputs,
+                inputs=workflow_node_execution.get_response_inputs(),
+                inputs_truncated=workflow_node_execution.inputs_truncated,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
@@ -171,11 +167,19 @@ class WorkflowResponseConverter:
 
         # extras logic
         if event.node_type == NodeType.TOOL:
-            node_data = cast(ToolNodeData, event.node_data)
             response.data.extras["icon"] = ToolManager.get_tool_icon(
                 tenant_id=self._application_generate_entity.app_config.tenant_id,
-                provider_type=node_data.provider_type,
-                provider_id=node_data.provider_id,
+                provider_type=ToolProviderType(event.provider_type),
+                provider_id=event.provider_id,
+            )
+        elif event.node_type == NodeType.DATASOURCE:
+            manager = PluginDatasourceManager()
+            provider_entity = manager.fetch_datasource_provider(
+                self._application_generate_entity.app_config.tenant_id,
+                event.provider_id,
+            )
+            response.data.extras["icon"] = provider_entity.declaration.identity.generate_datasource_icon_url(
+                self._application_generate_entity.app_config.tenant_id
             )
 
         return response
@@ -183,11 +187,7 @@ class WorkflowResponseConverter:
     def workflow_node_finish_to_stream_response(
         self,
         *,
-        event: QueueNodeSucceededEvent
-        | QueueNodeFailedEvent
-        | QueueNodeInIterationFailedEvent
-        | QueueNodeInLoopFailedEvent
-        | QueueNodeExceptionEvent,
+        event: QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeExceptionEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> NodeFinishStreamResponse | None:
@@ -210,9 +210,12 @@ class WorkflowResponseConverter:
                 index=workflow_node_execution.index,
                 title=workflow_node_execution.title,
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
-                inputs=workflow_node_execution.inputs,
-                process_data=workflow_node_execution.process_data,
-                outputs=json_converter.to_json_encodable(workflow_node_execution.outputs),
+                inputs=workflow_node_execution.get_response_inputs(),
+                inputs_truncated=workflow_node_execution.inputs_truncated,
+                process_data=workflow_node_execution.get_response_process_data(),
+                process_data_truncated=workflow_node_execution.process_data_truncated,
+                outputs=json_converter.to_json_encodable(workflow_node_execution.get_response_outputs()),
+                outputs_truncated=workflow_node_execution.outputs_truncated,
                 status=workflow_node_execution.status,
                 error=workflow_node_execution.error,
                 elapsed_time=workflow_node_execution.elapsed_time,
@@ -221,9 +224,6 @@ class WorkflowResponseConverter:
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
                 parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
             ),
@@ -255,9 +255,12 @@ class WorkflowResponseConverter:
                 index=workflow_node_execution.index,
                 title=workflow_node_execution.title,
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
-                inputs=workflow_node_execution.inputs,
-                process_data=workflow_node_execution.process_data,
-                outputs=json_converter.to_json_encodable(workflow_node_execution.outputs),
+                inputs=workflow_node_execution.get_response_inputs(),
+                inputs_truncated=workflow_node_execution.inputs_truncated,
+                process_data=workflow_node_execution.get_response_process_data(),
+                process_data_truncated=workflow_node_execution.process_data_truncated,
+                outputs=json_converter.to_json_encodable(workflow_node_execution.get_response_outputs()),
+                outputs_truncated=workflow_node_execution.outputs_truncated,
                 status=workflow_node_execution.status,
                 error=workflow_node_execution.error,
                 elapsed_time=workflow_node_execution.elapsed_time,
@@ -275,50 +278,6 @@ class WorkflowResponseConverter:
             ),
         )
 
-    def workflow_parallel_branch_start_to_stream_response(
-        self,
-        *,
-        task_id: str,
-        workflow_execution_id: str,
-        event: QueueParallelBranchRunStartedEvent,
-    ) -> ParallelBranchStartStreamResponse:
-        return ParallelBranchStartStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_execution_id,
-            data=ParallelBranchStartStreamResponse.Data(
-                parallel_id=event.parallel_id,
-                parallel_branch_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-                created_at=int(time.time()),
-            ),
-        )
-
-    def workflow_parallel_branch_finished_to_stream_response(
-        self,
-        *,
-        task_id: str,
-        workflow_execution_id: str,
-        event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
-    ) -> ParallelBranchFinishedStreamResponse:
-        return ParallelBranchFinishedStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_execution_id,
-            data=ParallelBranchFinishedStreamResponse.Data(
-                parallel_id=event.parallel_id,
-                parallel_branch_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-                status="succeeded" if isinstance(event, QueueParallelBranchRunSucceededEvent) else "failed",
-                error=event.error if isinstance(event, QueueParallelBranchRunFailedEvent) else None,
-                created_at=int(time.time()),
-            ),
-        )
-
     def workflow_iteration_start_to_stream_response(
         self,
         *,
@@ -326,6 +285,7 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueIterationStartEvent,
     ) -> IterationNodeStartStreamResponse:
+        new_inputs, truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
         return IterationNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -333,13 +293,12 @@ class WorkflowResponseConverter:
                 id=event.node_id,
                 node_id=event.node_id,
                 node_type=event.node_type.value,
-                title=event.node_data.title,
+                title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
-                inputs=event.inputs or {},
+                inputs=new_inputs,
+                inputs_truncated=truncated,
                 metadata=event.metadata or {},
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
             ),
         )
 
@@ -357,15 +316,10 @@ class WorkflowResponseConverter:
                 id=event.node_id,
                 node_id=event.node_id,
                 node_type=event.node_type.value,
-                title=event.node_data.title,
+                title=event.node_title,
                 index=event.index,
-                pre_iteration_output=event.output,
                 created_at=int(time.time()),
                 extras={},
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parallel_mode_run_id=event.parallel_mode_run_id,
-                duration=event.duration,
             ),
         )
 
@@ -377,6 +331,11 @@ class WorkflowResponseConverter:
         event: QueueIterationCompletedEvent,
     ) -> IterationNodeCompletedStreamResponse:
         json_converter = WorkflowRuntimeTypeConverter()
+
+        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
+            json_converter.to_json_encodable(event.outputs) or {}
+        )
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -384,28 +343,29 @@ class WorkflowResponseConverter:
                 id=event.node_id,
                 node_id=event.node_id,
                 node_type=event.node_type.value,
-                title=event.node_data.title,
-                outputs=json_converter.to_json_encodable(event.outputs),
+                title=event.node_title,
+                outputs=new_outputs,
+                outputs_truncated=outputs_truncated,
                 created_at=int(time.time()),
                 extras={},
-                inputs=event.inputs or {},
+                inputs=new_inputs,
+                inputs_truncated=inputs_truncated,
                 status=WorkflowNodeExecutionStatus.SUCCEEDED
                 if event.error is None
                 else WorkflowNodeExecutionStatus.FAILED,
                 error=None,
                 elapsed_time=(naive_utc_now() - event.start_at).total_seconds(),
-                total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
+                total_tokens=(lambda x: x if isinstance(x, int) else 0)(event.metadata.get("total_tokens", 0)),
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),
                 steps=event.steps,
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
             ),
         )
 
     def workflow_loop_start_to_stream_response(
         self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
+        new_inputs, truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
         return LoopNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -413,10 +373,11 @@ class WorkflowResponseConverter:
                 id=event.node_id,
                 node_id=event.node_id,
                 node_type=event.node_type.value,
-                title=event.node_data.title,
+                title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
-                inputs=event.inputs or {},
+                inputs=new_inputs,
+                inputs_truncated=truncated,
                 metadata=event.metadata or {},
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
@@ -437,15 +398,16 @@ class WorkflowResponseConverter:
                 id=event.node_id,
                 node_id=event.node_id,
                 node_type=event.node_type.value,
-                title=event.node_data.title,
+                title=event.node_title,
                 index=event.index,
-                pre_loop_output=event.output,
+                # The `pre_loop_output` field is not utilized by the frontend.
+                # Previously, it was assigned the value of `event.output`.
+                pre_loop_output={},
                 created_at=int(time.time()),
                 extras={},
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parallel_mode_run_id=event.parallel_mode_run_id,
-                duration=event.duration,
             ),
         )
 
@@ -456,6 +418,11 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
+        json_converter = WorkflowRuntimeTypeConverter()
+        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
+            json_converter.to_json_encodable(event.outputs) or {}
+        )
         return LoopNodeCompletedStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -463,17 +430,19 @@ class WorkflowResponseConverter:
                 id=event.node_id,
                 node_id=event.node_id,
                 node_type=event.node_type.value,
-                title=event.node_data.title,
-                outputs=WorkflowRuntimeTypeConverter().to_json_encodable(event.outputs),
+                title=event.node_title,
+                outputs=new_outputs,
+                outputs_truncated=outputs_truncated,
                 created_at=int(time.time()),
                 extras={},
-                inputs=event.inputs or {},
+                inputs=new_inputs,
+                inputs_truncated=inputs_truncated,
                 status=WorkflowNodeExecutionStatus.SUCCEEDED
                 if event.error is None
                 else WorkflowNodeExecutionStatus.FAILED,
                 error=None,
                 elapsed_time=(naive_utc_now() - event.start_at).total_seconds(),
-                total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
+                total_tokens=(lambda x: x if isinstance(x, int) else 0)(event.metadata.get("total_tokens", 0)),
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),
                 steps=event.steps,

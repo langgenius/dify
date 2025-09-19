@@ -36,9 +36,9 @@ const SearchBoxWrapper = ({
       onSearchChange={handleSearchPluginTextChange}
       tags={filterPluginTags}
       onTagsChange={handleFilterPluginTagsChange}
-      size='large'
       locale={locale}
       placeholder={t('plugin.searchPlugins')}
+      usedInMarketplace
     />
   )
 }

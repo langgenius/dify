@@ -86,6 +86,7 @@ const translation = {
     customTools: 'Alat Kustom',
     modelProviders: 'Mendukung OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replite',
     member: 'Anggota',
+    startBuilding: 'Mulai Membangun',
   },
   plans: {
     sandbox: {

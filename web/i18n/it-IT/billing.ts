@@ -101,6 +101,7 @@ const translation = {
     getStarted: 'Inizia',
     annualBilling: 'Fatturazione annuale',
     documentsRequestQuotaTooltip: 'Specifica il numero totale di azioni che un\'area di lavoro può eseguire al minuto all\'interno della base di conoscenza, compresi la creazione, l\'eliminazione, gli aggiornamenti dei dataset, il caricamento di documenti, le modifiche, l\'archiviazione e le query sulla base di conoscenza. Questa metrica viene utilizzata per valutare le prestazioni delle richieste alla base di conoscenza. Ad esempio, se un utente di Sandbox esegue 10 test consecutivi in un minuto, la sua area di lavoro sarà temporaneamente limitata dall\'eseguire le seguenti azioni per il minuto successivo: creazione, eliminazione, aggiornamenti dei dataset e caricamento o modifica di documenti.',
+    startBuilding: 'Inizia a costruire',
   },
   plans: {
     sandbox: {
@@ -126,6 +127,15 @@ const translation = {
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
       features: {
+        4: 'SSO',
+        8: 'Supporto tecnico professionale',
+        6: 'Sicurezza e controlli avanzati',
+        1: 'Autorizzazione Licenza Commerciale',
+        2: 'Funzionalità esclusive per le aziende',
+        3: 'Spazi di lavoro multipli e gestione aziendale',
+        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
+        5: 'SLA negoziati dai partner Dify',
+        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
       },
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
@@ -134,6 +144,9 @@ const translation = {
     },
     community: {
       features: {
+        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
+        2: 'Conforme alla licenza Open Source Dify',
+        1: 'Area di lavoro singola',
       },
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
@@ -144,6 +157,10 @@ const translation = {
     },
     premium: {
       features: {
+        3: 'Supporto prioritario via e-mail e chat',
+        1: 'Area di lavoro singola',
+        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
+        2: 'Personalizzazione del logo e del marchio WebApp',
       },
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',

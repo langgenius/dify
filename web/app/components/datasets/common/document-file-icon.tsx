@@ -22,7 +22,7 @@ const extendToFileTypeMap: { [key: string]: FileAppearanceType } = {
 type Props = {
   extension?: string
   name?: string
-  size?: 'sm' | 'lg' | 'md'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 

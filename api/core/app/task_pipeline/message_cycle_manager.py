@@ -138,6 +138,8 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
+        if not self._application_generate_entity.app_config.additional_features:
+            raise ValueError("Additional features not found")
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             self._task_state.metadata.retriever_resources = event.retriever_resources
 

@@ -19,11 +19,11 @@ import { useWorkflowRun } from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
 import { TransferMethod } from '../../base/text-generation/types'
 import Button from '@/app/components/base/button'
-import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
+import { useHooksStore } from '../hooks-store'
 
 type Props = {
   onRun: () => void
@@ -36,7 +36,7 @@ const InputsPanel = ({ onRun }: Props) => {
     inputs: s.inputs,
     setInputs: s.setInputs,
   }))
-  const fileSettings = useFeatures(s => s.features.file)
+  const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
   const nodes = useNodes<StartNodeType>()
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)

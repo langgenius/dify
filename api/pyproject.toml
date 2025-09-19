@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.8.1"
+version = "2.0.0-beta2"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -165,6 +165,7 @@ dev = [
     "pandas-stubs~=2.2.3",
     "scipy-stubs>=1.15.3.0",
     "types-python-http-client>=3.3.7.20240910",
+    "import-linter>=2.3",
     "types-redis>=4.6.0.20241004",
     "celery-types>=0.23.0",
     "mypy~=1.17.1",
@@ -182,7 +183,7 @@ storage = [
     "cos-python-sdk-v5==1.9.30",
     "esdk-obs-python==3.24.6.1",
     "google-cloud-storage==2.16.0",
-    "opendal~=0.45.16",
+    "opendal~=0.46.0",
     "oss2==2.18.5",
     "supabase~=2.18.1",
     "tos~=2.7.1",
@@ -218,7 +219,7 @@ vdb = [
     "tidb-vector==0.0.9",
     "upstash-vector==0.6.0",
     "volcengine-compat~=1.0.0",
-    "weaviate-client~=3.26.7",
+    "weaviate-client~=3.24.0",
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]

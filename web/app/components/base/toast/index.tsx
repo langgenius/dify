@@ -11,7 +11,7 @@ import {
 } from '@remixicon/react'
 import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 export type IToastProps = {
@@ -48,28 +48,31 @@ const Toast = ({
   if (typeof message !== 'string')
     return null
 
-  return <div className={classNames(
+  return <div className={cn(
     className,
     'fixed z-[9999] mx-8 my-4 w-[360px] grow overflow-hidden rounded-xl',
-    size === 'md' ? 'p-3' : 'p-2',
     'border border-components-panel-border-subtle bg-components-panel-bg-blur shadow-sm',
     'top-0',
     'right-0',
+    size === 'md' ? 'p-3' : 'p-2',
+    className,
   )}>
-    <div className={`absolute inset-0 -z-10 opacity-40 ${(type === 'success' && 'bg-toast-success-bg')
-      || (type === 'warning' && 'bg-toast-warning-bg')
-      || (type === 'error' && 'bg-toast-error-bg')
-      || (type === 'info' && 'bg-toast-info-bg')
-    }`}
+    <div className={cn(
+      'absolute inset-0 -z-10 opacity-40',
+      type === 'success' && 'bg-toast-success-bg',
+      type === 'warning' && 'bg-toast-warning-bg',
+      type === 'error' && 'bg-toast-error-bg',
+      type === 'info' && 'bg-toast-info-bg',
+    )}
     />
-    <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
-      <div className={`flex items-center justify-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
-        {type === 'success' && <RiCheckboxCircleFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-success`} aria-hidden="true" />}
-        {type === 'error' && <RiErrorWarningFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-destructive`} aria-hidden="true" />}
-        {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-warning-secondary`} aria-hidden="true" />}
-        {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'h-5 w-5' : 'h-4 w-4'} text-text-accent`} aria-hidden="true" />}
+    <div className={cn('flex', size === 'md' ? 'gap-1' : 'gap-0.5')}>
+      <div className={cn('flex items-center justify-center', size === 'md' ? 'p-0.5' : 'p-1')}>
+        {type === 'success' && <RiCheckboxCircleFill className={cn('text-text-success', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
+        {type === 'error' && <RiErrorWarningFill className={cn('text-text-destructive', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
+        {type === 'warning' && <RiAlertFill className={cn('text-text-warning-secondary', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
+        {type === 'info' && <RiInformation2Fill className={cn('text-text-accent', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
       </div>
-      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} grow flex-col items-start gap-1`}>
+      <div className={cn('flex grow flex-col items-start gap-1 py-1', size === 'md' ? 'px-1' : 'px-0.5')}>
         <div className='flex items-center gap-1'>
           <div className='system-sm-semibold text-text-primary [word-break:break-word]'>{message}</div>
           {customComponent}

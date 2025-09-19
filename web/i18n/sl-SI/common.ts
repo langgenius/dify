@@ -575,6 +575,15 @@ const translation = {
       addApiKey: 'Dodajte API ključ',
       configModel: 'Konfiguriraj model',
       authorizationError: 'Napaka pri avtorizaciji',
+      addModel: 'Dodajanje modela',
+      removeModel: 'Odstrani model',
+      editModelCredential: 'Urejanje poverilnic modela',
+      modelCredential: 'Poverilnice modela',
+      selectModelCredential: 'Izberite poverilnice modela',
+      manageCredentials: 'Upravljanje poverilnic',
+      addNewModelCredential: 'Dodajanje poverilnic novega modela',
+      customModelCredentialsDeleteTip: 'Poverilnice so v uporabi in jih ni mogoče izbrisati',
+      customModelCredentials: 'Poverilnice modela po meri',
     },
   },
   dataSource: {
@@ -674,6 +683,7 @@ const translation = {
     viewDoc: 'Oglejte si dokumentacijo',
     relatedApp: 'Povezane aplikacije',
     noRelatedApp: 'Brez povezanih aplikacij',
+    pipeline: 'Cevovod',
   },
   voiceInput: {
     notAllow: 'Mikrofon ni pooblaščen',
@@ -828,6 +838,9 @@ const translation = {
     content: 'Vsebina povratnih informacij',
     placeholder: 'Prosimo, opišite, kaj je šlo narobe ali kako lahko izboljšamo ...',
     subtitle: 'Prosim, povejte nam, kaj je šlo narobe s tem odzivom.',
+  },
+  label: {
+    optional: '(neobvezno)',
   },
 }
 

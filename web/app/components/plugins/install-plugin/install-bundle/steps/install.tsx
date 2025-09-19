@@ -39,11 +39,18 @@ const Install: FC<Props> = ({
   const selectedPluginsNum = selectedPlugins.length
   const installMultiRef = useRef<ExposeRefs>(null)
   const { refreshPluginList } = useRefreshPluginList()
-
+  const [isSelectAll, setIsSelectAll] = useState(false)
+  const handleClickSelectAll = useCallback(() => {
+    if (isSelectAll)
+      installMultiRef.current?.deSelectAllPlugins()
+    else
+      installMultiRef.current?.selectAllPlugins()
+  }, [isSelectAll])
   const [canInstall, setCanInstall] = React.useState(false)
   const [installedInfo, setInstalledInfo] = useState<Record<string, VersionInfo> | undefined>(undefined)
 
   const handleLoadedAllPlugin = useCallback((installedInfo: Record<string, VersionInfo> | undefined) => {
+    handleClickSelectAll()
     setInstalledInfo(installedInfo)
     setCanInstall(true)
   }, [])
@@ -74,14 +81,7 @@ const Install: FC<Props> = ({
       installedInfo: installedInfo!,
     })
   }
-  const [isSelectAll, setIsSelectAll] = useState(false)
   const [isIndeterminate, setIsIndeterminate] = useState(false)
-  const handleClickSelectAll = useCallback(() => {
-    if (isSelectAll)
-      installMultiRef.current?.deSelectAllPlugins()
-    else
-      installMultiRef.current?.selectAllPlugins()
-  }, [isSelectAll])
   const handleSelectAll = useCallback((plugins: Plugin[], selectedIndexes: number[]) => {
     setSelectedPlugins(plugins)
     setSelectedIndexes(selectedIndexes)

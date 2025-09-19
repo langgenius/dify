@@ -503,6 +503,15 @@ const translation = {
       addNewModel: 'Dodaj nowy model',
       authRemoved: 'Autoryzacja usunięta',
       addModelCredential: 'Dodaj dane uwierzytelniające modelu',
+      customModelCredentials: 'Poświadczenia modelu niestandardowego',
+      modelCredential: 'Poświadczenie modelu',
+      removeModel: 'Usuń model',
+      addModel: 'Dodaj model',
+      manageCredentials: 'Zarządzanie poświadczeniami',
+      addNewModelCredential: 'Dodawanie nowego poświadczenia modelu',
+      customModelCredentialsDeleteTip: 'Poświadczenie jest w użyciu i nie można go usunąć',
+      selectModelCredential: 'Wybieranie poświadczeń modelu',
+      editModelCredential: 'Edytowanie poświadczeń modelu',
     },
   },
   dataSource: {
@@ -604,6 +613,7 @@ const translation = {
     viewDoc: 'Zobacz dokumentację',
     relatedApp: 'powiązane aplikacje',
     noRelatedApp: 'Brak połączonych aplikacji',
+    pipeline: 'Rurociąg',
   },
   voiceInput: {
     speaking: 'Mów teraz...',
@@ -765,6 +775,9 @@ const translation = {
     content: 'Treść opinii',
     subtitle: 'Proszę powiedz nam, co poszło nie tak z tą odpowiedzią.',
     placeholder: 'Proszę opisać, co poszło nie tak lub jak możemy poprawić...',
+  },
+  label: {
+    optional: '(Opcjonalnie)',
   },
 }
 

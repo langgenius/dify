@@ -4,14 +4,13 @@ import operator
 from typing import Any, cast
 
 import requests
-from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
-from models.source import DataSourceOauthBinding
+from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +37,18 @@ class NotionExtractor(BaseExtractor):
         tenant_id: str,
         document_model: DocumentModel | None = None,
         notion_access_token: str | None = None,
+        credential_id: str | None = None,
     ):
         self._notion_access_token = None
         self._document_model = document_model
         self._notion_workspace_id = notion_workspace_id
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
+        self._credential_id = credential_id
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            self._notion_access_token = self._get_access_token(tenant_id, self._notion_workspace_id)
+            self._notion_access_token = self._get_access_token(tenant_id, self._credential_id)
             if not self._notion_access_token:
                 integration_token = dify_config.NOTION_INTEGRATION_TOKEN
                 if integration_token is None:
@@ -368,18 +369,18 @@ class NotionExtractor(BaseExtractor):
         return cast(str, data["last_edited_time"])
 
     @classmethod
-    def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
-        stmt = select(DataSourceOauthBinding).where(
-            DataSourceOauthBinding.tenant_id == tenant_id,
-            DataSourceOauthBinding.provider == "notion",
-            DataSourceOauthBinding.disabled == False,
-            DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
+    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str:
+        # get credential from tenant_id and credential_id
+        if not credential_id:
+            raise Exception(f"No credential id found for tenant {tenant_id}")
+        datasource_provider_service = DatasourceProviderService()
+        credential = datasource_provider_service.get_datasource_credentials(
+            tenant_id=tenant_id,
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
         )
-        data_source_binding = db.session.scalar(stmt)
+        if not credential:
+            raise Exception(f"No notion credential found for tenant {tenant_id} and credential {credential_id}")
 
-        if not data_source_binding:
-            raise Exception(
-                f"No notion data source binding found for tenant {tenant_id} and notion workspace {notion_workspace_id}"
-            )
-
-        return data_source_binding.access_token
+        return cast(str, credential["integration_secret"])

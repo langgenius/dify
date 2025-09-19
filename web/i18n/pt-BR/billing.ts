@@ -93,6 +93,7 @@ const translation = {
     unlimitedApiRate: 'Sem limite de taxa da API',
     apiRateLimitTooltip: 'O limite da taxa da API se aplica a todas as solicitações feitas através da API Dify, incluindo geração de texto, conversas de chat, execuções de fluxo de trabalho e processamento de documentos.',
     documentsRequestQuotaTooltip: 'Especifica o número total de ações que um espaço de trabalho pode realizar por minuto dentro da base de conhecimento, incluindo criação, exclusão, atualizações de conjuntos de dados, uploads de documentos, modificações, arquivamento e consultas à base de conhecimento. Esse métrica é utilizada para avaliar o desempenho das solicitações à base de conhecimento. Por exemplo, se um usuário do Sandbox realizar 10 testes de impacto consecutivos dentro de um minuto, seu espaço de trabalho ficará temporariamente restrito de realizar as seguintes ações no minuto seguinte: criação, exclusão, atualizações de conjuntos de dados e uploads ou modificações de documentos.',
+    startBuilding: 'Comece a construir',
   },
   plans: {
     sandbox: {
@@ -115,6 +116,15 @@ const translation = {
       description: 'Obtenha capacidades completas e suporte para sistemas críticos em larga escala.',
       includesTitle: 'Tudo no plano Equipe, além de:',
       features: {
+        7: 'Atualizações e manutenção por Dify oficialmente',
+        6: 'Segurança e controles avançados',
+        0: 'Soluções de implantação escaláveis de nível empresarial',
+        2: 'Recursos exclusivos da empresa',
+        5: 'SLAs negociados pela Dify Partners',
+        1: 'Autorização de Licença Comercial',
+        8: 'Suporte Técnico Profissional',
+        4: 'SSO',
+        3: 'Vários espaços de trabalho e gerenciamento corporativo',
       },
       btnText: 'Contate Vendas',
       priceTip: 'Faturamento Anual Apenas',
@@ -123,6 +133,9 @@ const translation = {
     },
     community: {
       features: {
+        1: 'Espaço de trabalho individual',
+        0: 'Todos os principais recursos lançados no repositório público',
+        2: 'Está em conformidade com a licença de código aberto Dify',
       },
       name: 'Comunidade',
       description: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
@@ -133,6 +146,10 @@ const translation = {
     },
     premium: {
       features: {
+        0: 'Confiabilidade autogerenciada por vários provedores de nuvem',
+        1: 'Espaço de trabalho individual',
+        2: 'Personalização do logotipo e da marca do WebApp',
+        3: 'Suporte prioritário por e-mail e bate-papo',
       },
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',

@@ -4,11 +4,10 @@ from typing import Any, TypeAlias, TypeVar
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
 from core.variables.segments import ArrayAnySegment, ArrayBooleanSegment, ArraySegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 
 from .entities import FilterOperator, ListOperatorNodeData, Order
 from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
@@ -36,8 +35,8 @@ def _negation(filter_: Callable[[_T], bool]) -> Callable[[_T], bool]:
     return wrapper
 
 
-class ListOperatorNode(BaseNode):
-    _node_type = NodeType.LIST_OPERATOR
+class ListOperatorNode(Node):
+    node_type = NodeType.LIST_OPERATOR
 
     _node_data: ListOperatorNodeData
 
@@ -171,27 +170,23 @@ class ListOperatorNode(BaseNode):
                 )
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
-            elif isinstance(variable, ArrayBooleanSegment):
+            else:
                 if not isinstance(condition.value, bool):
-                    raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
+                    raise ValueError(f"Boolean filter expects a boolean value, got {type(condition.value)}")
                 filter_func = _get_boolean_filter_func(condition=condition.comparison_operator, value=condition.value)
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
-            else:
-                raise AssertionError("this statement should be unreachable.")
         return variable
 
     def _apply_order(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
         if isinstance(variable, (ArrayStringSegment, ArrayNumberSegment, ArrayBooleanSegment)):
-            result = sorted(variable.value, reverse=self._node_data.order_by == Order.DESC)
+            result = sorted(variable.value, reverse=self._node_data.order_by.value == Order.DESC)
             variable = variable.model_copy(update={"value": result})
-        elif isinstance(variable, ArrayFileSegment):
+        else:
             result = _order_file(
                 order=self._node_data.order_by.value, order_by=self._node_data.order_by.key, array=variable.value
             )
             variable = variable.model_copy(update={"value": result})
-        else:
-            raise AssertionError("this statement should be unreachable.")
 
         return variable
 
@@ -305,7 +300,7 @@ def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str
     if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
-    if key in {"type", "transfer_method"} and isinstance(value, Sequence):
+    if key in {"type", "transfer_method"}:
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_sequence_filter_func(condition=condition, value=value)(extract_func(x))
     elif key == "size" and isinstance(value, str):

@@ -91,6 +91,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
         "pool_size": 30,
         "pool_use_lifo": False,
         "pool_reset_on_return": None,
+        "pool_timeout": 30,
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"

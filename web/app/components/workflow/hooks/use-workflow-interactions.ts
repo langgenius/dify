@@ -1,13 +1,11 @@
 import {
   useCallback,
-  useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import produce from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
-  CUSTOM_NODE, DSL_EXPORT_CHECK,
+  CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
   WORKFLOW_DATA_UPDATE,
@@ -30,10 +28,6 @@ import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-withou
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { exportAppConfig } from '@/service/apps'
-import { useToastContext } from '@/app/components/base/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
@@ -334,72 +328,6 @@ export const useWorkflowUpdate = () => {
 
   return {
     handleUpdateWorkflowCanvas,
-  }
-}
-
-export const useDSL = () => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
-  const { eventEmitter } = useEventEmitterContextContext()
-  const [exporting, setExporting] = useState(false)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
-  const appDetail = useAppStore(s => s.appDetail)
-
-  const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
-    if (!appDetail)
-      return
-
-    if (exporting)
-      return
-
-    try {
-      setExporting(true)
-      await doSyncWorkflowDraft()
-      const { data } = await exportAppConfig({
-        appID: appDetail.id,
-        workflowID: workflowId,
-        include,
-      })
-      const a = document.createElement('a')
-      const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
-      a.download = `${appDetail.name}.yml`
-      a.click()
-    }
-    catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-    finally {
-      setExporting(false)
-    }
-  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
-
-  const exportCheck = useCallback(async () => {
-    if (!appDetail)
-      return
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
-      if (list.length === 0) {
-        handleExportDSL()
-        return
-      }
-      eventEmitter?.emit({
-        type: DSL_EXPORT_CHECK,
-        payload: {
-          data: list,
-        },
-      } as any)
-    }
-    catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
-
-  return {
-    exportCheck,
-    handleExportDSL,
   }
 }
 

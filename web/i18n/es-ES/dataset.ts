@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Cambiar',
     changeRetrievalMethod: 'Cambiar método de recuperación',
+    keyword_search: {
+      title: 'Índice invertido',
+      description: 'El índice invertido es una estructura utilizada para una recuperación eficiente. Organizado por términos, cada término apunta a documentos o páginas web que lo contienen.',
+    },
   },
   docsFailedNotice: 'no se pudieron indexar los documentos',
   retry: 'Reintentar',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'Padre-hijo',
     general: 'General',
+    graph: 'gráfico',
+    qa: 'Preguntas y respuestas',
   },
   parentMode: {
     fullDoc: 'Documento completo',
@@ -217,6 +223,9 @@ const translation = {
     addMetadata: 'Agregar Metadatos',
   },
   embeddingModelNotAvailable: 'El modelo de embeddings no está disponible.',
+  externalKnowledgeBase: 'Base de conocimientos externa',
+  createFromPipeline: 'Crear desde Knowledge Pipeline',
+  updated: 'Actualizado',
 }
 
 export default translation

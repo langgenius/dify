@@ -21,8 +21,11 @@ def get_example_filename() -> str:
     return "test.txt"
 
 
-def get_example_data() -> bytes:
-    return b"test"
+def get_example_data(length: int = 4) -> bytes:
+    chars = "test"
+    result = "".join(chars[i % len(chars)] for i in range(length)).encode()
+    assert len(result) == length
+    return result
 
 
 def get_example_filepath() -> str:

@@ -10,7 +10,7 @@ from core.file import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import ImagePromptMessageContent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -27,19 +27,17 @@ from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, Comp
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.variables.types import ArrayValidation, SegmentType
-from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import ModelConfig, llm_utils
-from core.workflow.utils import variable_template_parser
 from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
-    InvalidInvokeResultError,
     InvalidModelModeError,
     InvalidModelTypeError,
     InvalidNumberOfParametersError,
@@ -86,12 +84,12 @@ def extract_json(text):
     return None
 
 
-class ParameterExtractorNode(BaseNode):
+class ParameterExtractorNode(Node):
     """
     Parameter Extractor Node.
     """
 
-    _node_type = NodeType.PARAMETER_EXTRACTOR
+    node_type = NodeType.PARAMETER_EXTRACTOR
 
     _node_data: ParameterExtractorNodeData
 
@@ -120,7 +118,7 @@ class ParameterExtractorNode(BaseNode):
     _model_config: ModelConfigWithCredentialsEntity | None = None
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "model": {
                 "prompt_templates": {
@@ -306,8 +304,6 @@ class ParameterExtractorNode(BaseNode):
         )
 
         # handle invoke result
-        if not isinstance(invoke_result, LLMResult):
-            raise InvalidInvokeResultError(f"Invalid invoke result: {invoke_result}")
 
         text = invoke_result.message.content or ""
         if not isinstance(text, str):
@@ -318,9 +314,6 @@ class ParameterExtractorNode(BaseNode):
 
         # deduct quota
         llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
-
-        if text is None:
-            text = ""
 
         return text, usage, tool_call
 
@@ -585,18 +578,19 @@ class ParameterExtractorNode(BaseNode):
             return int(value)
         elif isinstance(value, (int, float)):
             return value
-        elif not isinstance(value, str):
-            return None
-        if "." in value:
-            try:
-                return float(value)
-            except ValueError:
-                return None
+        elif isinstance(value, str):
+            if "." in value:
+                try:
+                    return float(value)
+                except ValueError:
+                    return None
+            else:
+                try:
+                    return int(value)
+                except ValueError:
+                    return None
         else:
-            try:
-                return int(value)
-            except ValueError:
-                return None
+            return None
 
     def _transform_result(self, data: ParameterExtractorNodeData, result: dict):
         """
@@ -699,7 +693,7 @@ class ParameterExtractorNode(BaseNode):
         for parameter in data.parameters:
             if parameter.type == "number":
                 result[parameter.name] = 0
-            elif parameter.type == "bool":
+            elif parameter.type == "boolean":
                 result[parameter.name] = False
             elif parameter.type in {"string", "select"}:
                 result[parameter.name] = ""

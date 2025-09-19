@@ -3,8 +3,9 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-import opendal  # type: ignore[import]
 from dotenv import dotenv_values
+from opendal import Operator
+from opendal.layers import RetryLayer
 
 from extensions.storage.base_storage import BaseStorage
 
@@ -34,10 +35,9 @@ class OpenDALStorage(BaseStorage):
             root = kwargs.get("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
-        self.op = opendal.Operator(scheme=scheme, **kwargs)  # type: ignore
+        retry_layer = RetryLayer(max_times=3, factor=2.0, jitter=True)
+        self.op = Operator(scheme=scheme, **kwargs).layer(retry_layer)
         logger.debug("opendal operator created with scheme %s", scheme)
-        retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
-        self.op = self.op.layer(retry_layer)
         logger.debug("added retry layer to opendal operator")
 
     def save(self, filename: str, data: bytes):
@@ -57,22 +57,24 @@ class OpenDALStorage(BaseStorage):
             raise FileNotFoundError("File not found")
 
         batch_size = 4096
-        file = self.op.open(path=filename, mode="rb")
-        while chunk := file.read(batch_size):
-            yield chunk
+        with self.op.open(
+            path=filename,
+            mode="rb",
+            chunck=batch_size,
+        ) as file:
+            while chunk := file.read(batch_size):
+                yield chunk
         logger.debug("file %s loaded as stream", filename)
 
     def download(self, filename: str, target_filepath: str):
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
 
-        with Path(target_filepath).open("wb") as f:
-            f.write(self.op.read(path=filename))
+        Path(target_filepath).write_bytes(self.op.read(path=filename))
         logger.debug("file %s downloaded to %s", filename, target_filepath)
 
     def exists(self, filename: str) -> bool:
-        res: bool = self.op.exists(path=filename)
-        return res
+        return self.op.exists(path=filename)
 
     def delete(self, filename: str):
         if self.exists(filename):
@@ -85,7 +87,7 @@ class OpenDALStorage(BaseStorage):
         if not self.exists(path):
             raise FileNotFoundError("Path not found")
 
-        all_files = self.op.scan(path=path)
+        all_files = self.op.list(path=path)
         if files and directories:
             logger.debug("files and directories on %s scanned", path)
             return [f.path for f in all_files]

@@ -129,9 +129,9 @@ const ComponentPicker = ({
         needRemove.remove()
     })
     const isFlat = variables.length === 1
-    if(isFlat) {
+    if (isFlat) {
       const varName = variables[0]
-      if(varName === 'current')
+      if (varName === 'current')
         editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
       else if (varName === 'error_message')
         editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
@@ -192,6 +192,8 @@ const ComponentPicker = ({
                         isSupportFileVar={isSupportFileVar}
                         onClose={handleClose}
                         onBlur={handleClose}
+                        showManageInputField={workflowVariableBlock.showManageInputField}
+                        onManageInputField={workflowVariableBlock.onManageInputField}
                         autoFocus={false}
                         isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
                       />
@@ -234,7 +236,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin

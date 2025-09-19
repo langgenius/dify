@@ -38,7 +38,19 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   // output
   const { getLoopNodeChildren } = useWorkflow()
   const loopChildrenNodes = [{ id, data: payload } as any, ...getLoopNodeChildren(id)]
-  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables)
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const dataSourceList = useStore(s => s.dataSourceList)
+  const allPluginInfoList = {
+    buildInTools,
+    customTools,
+    workflowTools,
+    mcpTools,
+    dataSourceList: dataSourceList ?? [],
+  }
+  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables, [], allPluginInfoList)
 
   const {
     getIsVarFileAttribute,

@@ -99,6 +99,9 @@ const translation = {
       upload_file: 'Enviar arquivo',
       notion: 'Sincronizar do Notion',
       github: 'Sincronizar do Github',
+      website_crawl: 'Rastreamento de sites',
+      local_file: 'Arquivo local',
+      online_document: 'Documento Online',
     },
     type: {
       book: 'Livro',
@@ -336,6 +339,7 @@ const translation = {
     hierarchical: 'Pai-filho',
     parentMaxTokens: 'Pai',
     childMaxTokens: 'Criança',
+    waiting: 'Aguarde a incorporação...',
   },
   segment: {
     paragraphs: 'Parágrafos',

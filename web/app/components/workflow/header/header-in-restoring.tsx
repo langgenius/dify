@@ -17,8 +17,8 @@ import {
 import Toast from '../../base/toast'
 import RestoringTitle from './restoring-title'
 import Button from '@/app/components/base/button'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useHooksStore } from '../hooks-store'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 
@@ -31,9 +31,8 @@ const HeaderInRestoring = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
-  const appDetail = useAppStore.getState().appDetail
-
-  const invalidAllLastRun = useInvalidAllLastRun(appDetail!.id)
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
   } = workflowStore.getState()

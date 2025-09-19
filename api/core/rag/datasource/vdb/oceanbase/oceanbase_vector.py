@@ -229,7 +229,7 @@ class OceanBaseVector(BaseVector):
                         try:
                             metadata = json.loads(metadata_str)
                         except json.JSONDecodeError:
-                            print(f"Invalid JSON metadata: {metadata_str}")
+                            logger.warning("Invalid JSON metadata: %s", metadata_str)
                             metadata = {}
                         metadata["score"] = score
                         docs.append(Document(page_content=_text, metadata=metadata))

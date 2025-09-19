@@ -32,6 +32,7 @@ export enum CollectionType {
   model = 'model',
   workflow = 'workflow',
   mcp = 'mcp',
+  datasource = 'datasource',
 }
 
 export type Emoji = {
@@ -46,7 +47,7 @@ export type Collection = {
   description: TypeWithI18N
   icon: string | Emoji
   label: TypeWithI18N
-  type: CollectionType
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
@@ -61,6 +62,8 @@ export type Collection = {
   sse_read_timeout?: number
   headers?: Record<string, string>
   masked_headers?: Record<string, string>
+  is_authorized?: boolean
+  provider?: string
 }
 
 export type ToolParameter = {

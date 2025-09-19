@@ -2,9 +2,11 @@ import { useMemo } from 'react'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import {
   isConversationVar,
   isENV,
+  isRagVariableVar,
   isSystemVar,
 } from '../utils'
 import { VarInInspectType } from '@/types/workflow'
@@ -12,6 +14,9 @@ import { VarInInspectType } from '@/types/workflow'
 export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
   if (variableCategory === 'loop')
     return Loop
+
+  if (variableCategory === 'rag' || isRagVariableVar(variables))
+    return InputField
 
   if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
     return Env
@@ -41,7 +46,11 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
 }
 
 export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
-  const variableFullPathName = variables.slice(1).join('.')
+  let variableFullPathName = variables.slice(1).join('.')
+
+  if (isRagVariableVar(variables))
+    variableFullPathName = variables.slice(2).join('.')
+
   const variablesLength = variables.length
   const varName = useMemo(() => {
     const isSystem = isSystemVar(variables)

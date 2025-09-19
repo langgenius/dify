@@ -23,7 +23,7 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
 from app_factory import create_app
-from models import db
+from extensions.ext_database import db
 
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -344,6 +344,12 @@ def _create_app_with_containers() -> Flask:
         with db.engine.connect() as conn, conn.begin():
             conn.execute(text(_UUIDv7SQL))
         db.create_all()
+        # migration_dir = _get_migration_dir()
+        # alembic_config = Config()
+        # alembic_config.config_file_name = str(migration_dir / "alembic.ini")
+        # alembic_config.set_main_option("sqlalchemy.url", _get_engine_url(db.engine))
+        # alembic_config.set_main_option("script_location", str(migration_dir))
+        # alembic_command.upgrade(revision="head", config=alembic_config)
     logger.info("Database schema created successfully")
 
     logger.info("Flask application configured and ready for testing")

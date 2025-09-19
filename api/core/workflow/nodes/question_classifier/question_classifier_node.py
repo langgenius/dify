@@ -10,21 +10,20 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import ModelInvokeCompletedEvent
-from core.workflow.nodes.llm import (
-    LLMNode,
-    LLMNodeChatModelMessage,
-    LLMNodeCompletionModelPromptTemplate,
-    llm_utils,
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import (
+    ErrorStrategy,
+    NodeExecutionType,
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
+from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.nodes.llm import LLMNode, LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, llm_utils
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -41,11 +40,12 @@ from .template_prompts import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphRuntimeState
 
 
-class QuestionClassifierNode(BaseNode):
-    _node_type = NodeType.QUESTION_CLASSIFIER
+class QuestionClassifierNode(Node):
+    node_type = NodeType.QUESTION_CLASSIFIER
+    execution_type = NodeExecutionType.BRANCH
 
     _node_data: QuestionClassifierNodeData
 
@@ -57,10 +57,7 @@ class QuestionClassifierNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: str | None = None,
-        thread_pool_id: str | None = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -68,10 +65,7 @@ class QuestionClassifierNode(BaseNode):
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
-            thread_pool_id=thread_pool_id,
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs: list[File] = []
@@ -187,7 +181,8 @@ class QuestionClassifierNode(BaseNode):
                 structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
-                node_id=self.node_id,
+                node_id=self._node_id,
+                node_type=self.node_type,
             )
 
             for event in generator:
@@ -259,6 +254,7 @@ class QuestionClassifierNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # graph_config is not used in this node type
         # Create typed NodeData from dict
         typed_node_data = QuestionClassifierNodeData.model_validate(node_data)
 
@@ -275,12 +271,13 @@ class QuestionClassifierNode(BaseNode):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None):
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
         Get default config of node.
-        :param filters: filter by node config parameters.
+        :param filters: filter by node config parameters (not used in this implementation).
         :return:
         """
+        # filters parameter is not used in this node type
         return {"type": "question-classifier", "config": {"instructions": ""}}
 
     def _calculate_rest_token(

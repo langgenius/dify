@@ -1,0 +1,400 @@
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/general_chunker:0.0.1@e3da408b7277866404c3f884d599261f9d0b9003ea4ef7eb3b64489bdf39d18b
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/notion_datasource:0.0.1@2dd49c2c3ffff976be8d22efb1ac0f63522a8d0f24ef8c44729d0a50a94ec039
+kind: rag_pipeline
+rag_pipeline:
+  description: ''
+  icon: 📙
+  icon_background: '#FFF4ED'
+  icon_type: emoji
+  name: notion-general-high-quality
+version: 0.1.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: knowledge-index
+      id: 1752482151668-source-1752477924228-target
+      source: '1752482151668'
+      sourceHandle: source
+      target: '1752477924228'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: datasource
+        targetType: tool
+      id: 1752489759475-source-1752482151668-target
+      source: '1752489759475'
+      sourceHandle: source
+      target: '1752482151668'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        chunk_structure: text_model
+        embedding_model: text-embedding-ada-002
+        embedding_model_provider: langgenius/openai/openai
+        index_chunk_variable_selector:
+        - '1752482151668'
+        - result
+        indexing_technique: high_quality
+        keyword_number: 10
+        retrieval_model:
+          score_threshold: 0.5
+          score_threshold_enabled: false
+          search_method: semantic_search
+          top_k: 3
+          vector_setting:
+            embedding_model_name: text-embedding-ada-002
+            embedding_provider_name: langgenius/openai/openai
+        selected: true
+        title: Knowledge Base
+        type: knowledge-index
+      height: 114
+      id: '1752477924228'
+      position:
+        x: 1444.5503479271906
+        y: 281.3910724383104
+      positionAbsolute:
+        x: 1444.5503479271906
+        y: 281.3910724383104
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_team_authorization: true
+        output_schema:
+          properties:
+            result:
+              description: The result of the general chunk tool.
+              properties:
+                general_chunks:
+                  items:
+                    description: The chunk of the text.
+                    type: string
+                  type: array
+              type: object
+          type: object
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: The text you want to chunk.
+            ja_JP: チャンク化したいテキスト。
+            pt_BR: O texto que você deseja dividir.
+            zh_Hans: 你想要分块的文本。
+          label:
+            en_US: Input Variable
+            ja_JP: 入力変数
+            pt_BR: Variável de entrada
+            zh_Hans: 输入变量
+          llm_description: The text you want to chunk.
+          max: null
+          min: null
+          name: input_variable
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: The delimiter of the chunks.
+            ja_JP: チャンクの区切り記号。
+            pt_BR: O delimitador dos pedaços.
+            zh_Hans: 块的分隔符。
+          label:
+            en_US: Delimiter
+            ja_JP: 区切り記号
+            pt_BR: Delimitador
+            zh_Hans: 分隔符
+          llm_description: The delimiter of the chunks, the format of the delimiter
+            must be a string.
+          max: null
+          min: null
+          name: delimiter
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: The maximum chunk length.
+            ja_JP: 最大長のチャンク。
+            pt_BR: O comprimento máximo do bloco
+            zh_Hans: 最大块的长度。
+          label:
+            en_US: Maximum Chunk Length
+            ja_JP: チャンク最大長
+            pt_BR: O comprimento máximo do bloco
+            zh_Hans: 最大块的长度
+          llm_description: The maximum chunk length, the format of the chunk size
+            must be an integer.
+          max: null
+          min: null
+          name: max_chunk_length
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: The chunk overlap length.
+            ja_JP: チャンクの重複長
+            pt_BR: The chunk overlap length.
+            zh_Hans: 块的重叠长度。
+          label:
+            en_US: Chunk Overlap Length
+            ja_JP: チャンク重複長
+            pt_BR: Chunk Overlap Length
+            zh_Hans: 块的重叠长度
+          llm_description: The chunk overlap length, the format of the chunk overlap
+            length must be an integer.
+          max: null
+          min: null
+          name: chunk_overlap_length
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Replace consecutive spaces, newlines and tabs
+            ja_JP: 連続のスペース、改行、まだはタブを置換する
+            pt_BR: Replace consecutive spaces, newlines and tabs
+            zh_Hans: 替换连续的空格、换行符和制表符
+          label:
+            en_US: Replace Consecutive Spaces, Newlines and Tabs
+            ja_JP: 連続のスペース、改行、まだはタブを置換する
+            pt_BR: Replace Consecutive Spaces, Newlines and Tabs
+            zh_Hans: 替换连续的空格、换行符和制表符
+          llm_description: Replace consecutive spaces, newlines and tabs, the format
+            of the replace must be a boolean.
+          max: null
+          min: null
+          name: replace_consecutive_spaces_newlines_tabs
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Delete all URLs and email addresses
+            ja_JP: すべてのURLとメールアドレスを削除する
+            pt_BR: Delete all URLs and email addresses
+            zh_Hans: 删除所有URL和电子邮件地址
+          label:
+            en_US: Delete All URLs and Email Addresses
+            ja_JP: すべてのURLとメールアドレスを削除する
+            pt_BR: Delete All URLs and Email Addresses
+            zh_Hans: 删除所有URL和电子邮件地址
+          llm_description: Delete all URLs and email addresses, the format of the
+            delete must be a boolean.
+          max: null
+          min: null
+          name: delete_all_urls_and_email_addresses
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        params:
+          chunk_overlap_length: ''
+          delete_all_urls_and_email_addresses: ''
+          delimiter: ''
+          input_variable: ''
+          max_chunk_length: ''
+          replace_consecutive_spaces_newlines_tabs: ''
+        provider_id: langgenius/general_chunker/general_chunker
+        provider_name: langgenius/general_chunker/general_chunker
+        provider_type: builtin
+        selected: false
+        title: General Chunker
+        tool_configurations: {}
+        tool_description: A tool for general text chunking mode, the chunks retrieved and recalled are the same.
+        tool_label: General Chunker
+        tool_name: general_chunker
+        tool_parameters:
+          chunk_overlap_length:
+            type: variable
+            value:
+            - rag
+            - shared
+            - chunk_overlap
+          delete_all_urls_and_email_addresses:
+            type: mixed
+            value: '{{#rag.shared.delete_urls_email#}}'
+          delimiter:
+            type: mixed
+            value: '{{#rag.shared.delimiter#}}'
+          input_variable:
+            type: mixed
+            value: '{{#1752489759475.content#}}'
+          max_chunk_length:
+            type: variable
+            value:
+            - rag
+            - shared
+            - max_chunk_length
+          replace_consecutive_spaces_newlines_tabs:
+            type: mixed
+            value: '{{#rag.shared.replace_consecutive_spaces#}}'
+        type: tool
+      height: 52
+      id: '1752482151668'
+      position:
+        x: 1063.6922916384628
+        y: 281.3910724383104
+      positionAbsolute:
+        x: 1063.6922916384628
+        y: 281.3910724383104
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        datasource_configurations: {}
+        datasource_label: Notion数据源
+        datasource_name: notion_datasource
+        datasource_parameters: {}
+        plugin_id: langgenius/notion_datasource
+        provider_name: notion_datasource
+        provider_type: online_document
+        selected: false
+        title: Notion数据源
+        type: datasource
+      height: 52
+      id: '1752489759475'
+      position:
+        x: 736.9082104000458
+        y: 281.3910724383104
+      positionAbsolute:
+        x: 736.9082104000458
+        y: 281.3910724383104
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: -838.569649323166
+      y: -168.94656489167426
+      zoom: 1.286925643857699
+  rag_pipeline_variables:
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: \n\n
+    label: Delimiter
+    max_length: 100
+    options: []
+    placeholder: null
+    required: true
+    tooltips: A delimiter is the character used to separate text. \n\n is recommended
+      for splitting the original document into large parent chunks. You can also use
+      special delimiters defined by yourself.
+    type: text-input
+    unit: null
+    variable: delimiter
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: null
+    label: Maximum chunk length
+    max_length: 48
+    options: []
+    placeholder: null
+    required: true
+    tooltips: null
+    type: number
+    unit: characters
+    variable: max_chunk_length
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: null
+    label: Chunk overlap
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: number
+    unit: characters
+    variable: chunk_overlap
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: null
+    label: Replace consecutive spaces, newlines and tabs
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: checkbox
+    unit: null
+    variable: replace_consecutive_spaces
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: null
+    label: Delete all URLs and email addresses
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: checkbox
+    unit: null
+    variable: delete_urls_email

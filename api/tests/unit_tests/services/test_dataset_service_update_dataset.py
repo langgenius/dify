@@ -104,6 +104,7 @@ class TestDatasetServiceUpdateDataset:
             patch("services.dataset_service.DatasetService.check_dataset_permission") as mock_check_perm,
             patch("extensions.ext_database.db.session") as mock_db,
             patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
+            patch("services.dataset_service.DatasetService._has_dataset_same_name") as has_dataset_same_name,
         ):
             current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
             mock_naive_utc_now.return_value = current_time
@@ -114,6 +115,7 @@ class TestDatasetServiceUpdateDataset:
                 "db_session": mock_db,
                 "naive_utc_now": mock_naive_utc_now,
                 "current_time": current_time,
+                "has_dataset_same_name": has_dataset_same_name,
             }
 
     @pytest.fixture
@@ -190,9 +192,9 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": "new_api_id",
         }
 
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
-        # Verify permission check was called
         mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
 
         # Verify dataset and binding updates
@@ -214,6 +216,7 @@ class TestDatasetServiceUpdateDataset:
 
         user = DatasetUpdateTestDataFactory.create_user_mock()
         update_data = {"name": "new_name", "external_knowledge_api_id": "api_id"}
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         with pytest.raises(ValueError) as context:
             DatasetService.update_dataset("dataset-123", update_data, user)
@@ -227,6 +230,7 @@ class TestDatasetServiceUpdateDataset:
 
         user = DatasetUpdateTestDataFactory.create_user_mock()
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         with pytest.raises(ValueError) as context:
             DatasetService.update_dataset("dataset-123", update_data, user)
@@ -250,6 +254,7 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_id": "knowledge_id",
             "external_knowledge_api_id": "api_id",
         }
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         with pytest.raises(ValueError) as context:
             DatasetService.update_dataset("dataset-123", update_data, user)
@@ -280,6 +285,7 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "text-embedding-ada-002",
         }
 
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
         # Verify permission check was called
@@ -320,6 +326,8 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": None,  # Should be filtered out
         }
 
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
+
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
         # Verify database update was called with filtered data
@@ -356,6 +364,7 @@ class TestDatasetServiceUpdateDataset:
         user = DatasetUpdateTestDataFactory.create_user_mock()
 
         update_data = {"indexing_technique": "economy", "retrieval_model": "new_model"}
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
@@ -402,6 +411,7 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "text-embedding-ada-002",
             "retrieval_model": "new_model",
         }
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
@@ -453,6 +463,7 @@ class TestDatasetServiceUpdateDataset:
         user = DatasetUpdateTestDataFactory.create_user_mock()
 
         update_data = {"name": "new_name", "indexing_technique": "high_quality", "retrieval_model": "new_model"}
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
@@ -505,6 +516,7 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "text-embedding-3-small",
             "retrieval_model": "new_model",
         }
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
@@ -558,6 +570,7 @@ class TestDatasetServiceUpdateDataset:
             "indexing_technique": "high_quality",  # Same as current
             "retrieval_model": "new_model",
         }
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
@@ -588,6 +601,7 @@ class TestDatasetServiceUpdateDataset:
 
         user = DatasetUpdateTestDataFactory.create_user_mock()
         update_data = {"name": "new_name"}
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         with pytest.raises(ValueError) as context:
             DatasetService.update_dataset("dataset-123", update_data, user)
@@ -603,6 +617,8 @@ class TestDatasetServiceUpdateDataset:
         mock_dataset_service_dependencies["check_permission"].side_effect = NoPermissionError("No permission")
 
         update_data = {"name": "new_name"}
+
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         with pytest.raises(NoPermissionError):
             DatasetService.update_dataset("dataset-123", update_data, user)
@@ -627,6 +643,8 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "invalid_model",
             "retrieval_model": "new_model",
         }
+
+        mock_dataset_service_dependencies["has_dataset_same_name"].return_value = False
 
         with pytest.raises(Exception) as context:
             DatasetService.update_dataset("dataset-123", update_data, user)

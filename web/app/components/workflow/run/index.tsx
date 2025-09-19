@@ -12,19 +12,24 @@ import Loading from '@/app/components/base/loading'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import { useStore as useAppStore } from '@/app/components/app/store'
 export type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
-  runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
+  runDetailUrl: string
+  tracingListUrl: string
 }
 
-const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback }) => {
+const RunPanel: FC<RunProps> = ({
+  hideResult,
+  activeTab = 'RESULT',
+  getResultCallback,
+  runDetailUrl,
+  tracingListUrl,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const appDetail = useAppStore(state => state.appDetail)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
@@ -37,12 +42,9 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     return 'N/A'
   }, [runDetail])
 
-  const getResult = useCallback(async (appID: string, runID: string) => {
+  const getResult = useCallback(async () => {
     try {
-      const res = await fetchRunDetail({
-        appID,
-        runID,
-      })
+      const res = await fetchRunDetail(runDetailUrl)
       setRunDetail(res)
       if (getResultCallback)
         getResultCallback(res)
@@ -53,12 +55,12 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         message: `${err}`,
       })
     }
-  }, [notify, getResultCallback])
+  }, [notify, getResultCallback, runDetailUrl])
 
-  const getTracingList = useCallback(async (appID: string, runID: string) => {
+  const getTracingList = useCallback(async () => {
     try {
       const { data: nodeList } = await fetchTracingList({
-        url: `/apps/${appID}/workflow-runs/${runID}/node-executions`,
+        url: tracingListUrl,
       })
       setList(nodeList)
     }
@@ -68,27 +70,27 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         message: `${err}`,
       })
     }
-  }, [notify])
+  }, [notify, tracingListUrl])
 
-  const getData = async (appID: string, runID: string) => {
+  const getData = useCallback(async () => {
     setLoading(true)
-    await getResult(appID, runID)
-    await getTracingList(appID, runID)
+    await getResult()
+    await getTracingList()
     setLoading(false)
-  }
+  }, [getResult, getTracingList])
 
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
     if (tab === 'RESULT')
-      appDetail?.id && await getResult(appDetail.id, runID)
-    appDetail?.id && await getTracingList(appDetail.id, runID)
+      runDetailUrl && await getResult()
+    tracingListUrl && await getTracingList()
   }
 
   useEffect(() => {
     // fetch data
-    if (appDetail && runID)
-      getData(appDetail.id, runID)
-  }, [appDetail, runID])
+    if (runDetailUrl && tracingListUrl)
+      getData()
+  }, [runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -147,7 +149,10 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
             inputs={runDetail.inputs}
+            inputs_truncated={runDetail.inputs_truncated}
             outputs={runDetail.outputs}
+            outputs_truncated={runDetail.outputs_truncated}
+            outputs_full_content={runDetail.outputs_full_content}
             status={runDetail.status}
             error={runDetail.error}
             elapsed_time={runDetail.elapsed_time}

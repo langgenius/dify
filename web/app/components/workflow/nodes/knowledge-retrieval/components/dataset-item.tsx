@@ -8,15 +8,13 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { DataSet } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import FileIcon from '@/app/components/base/file-icon'
-import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
+import AppIcon from '@/app/components/base/app-icon'
 
 type Props = {
   payload: DataSet
@@ -54,6 +52,13 @@ const DatasetItem: FC<Props> = ({
     onRemove()
   }, [onRemove])
 
+  const iconInfo = payload.icon_info || {
+    icon: '📙',
+    icon_type: 'emoji',
+    icon_background: '#FFF4ED',
+    icon_url: '',
+  }
+
   return (
     <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg
       border-[0.5px] border-components-panel-border-subtle px-2
@@ -62,17 +67,13 @@ const DatasetItem: FC<Props> = ({
       : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
     }`}>
       <div className='flex w-0 grow items-center space-x-1.5'>
-        {
-          payload.data_source_type === DataSourceType.NOTION
-            ? (
-              <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5]'>
-                <FileIcon type='notion' className='h-4 w-4' />
-              </div>
-            )
-            : <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF]'>
-              <Folder className='h-4 w-4 text-[#444CE7]' />
-            </div>
-        }
+        <AppIcon
+          size='tiny'
+          iconType={iconInfo.icon_type}
+          icon={iconInfo.icon}
+          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
+          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
+        />
         <div className='system-sm-medium w-0 grow truncate text-text-secondary'>{payload.name}</div>
       </div>
       {!readonly && (

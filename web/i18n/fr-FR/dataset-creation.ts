@@ -89,6 +89,7 @@ const translation = {
       configureWatercrawl: 'Configurer Watercrawl',
       waterCrawlNotConfigured: 'Watercrawl n\'est pas configuré',
       configureFirecrawl: 'Configurer Firecrawl',
+      running: 'Course',
     },
     cancel: 'Annuler',
   },
@@ -174,6 +175,7 @@ const translation = {
     previewChunkTip: 'Cliquez sur le bouton « Preview Chunk » sur la gauche pour charger l’aperçu',
     parentChildChunkDelimiterTip: 'Un délimiteur est le caractère utilisé pour séparer le texte. \\n est recommandé pour diviser les blocs parents en petits blocs enfants. Vous pouvez également utiliser des délimiteurs spéciaux définis par vous-même.',
     generalTip: 'Mode général de segmentation du texte, les morceaux récupérés et rappelés sont les mêmes.',
+    qaTip: 'Lorsque vous utilisez des données de questions-réponses structurées, vous pouvez créer des documents qui associent des questions et des réponses. Ces documents sont indexés en fonction de la partie question, ce qui permet au système de récupérer des réponses pertinentes en fonction de la similarité des requêtes.',
   },
   stepThree: {
     creationTitle: '🎉 Connaissance créée',

@@ -3,11 +3,13 @@ import type { WorkflowRunDetailResponse } from '@/models/log'
 import Run from '../run'
 import { useStore } from '../store'
 import { useWorkflowUpdate } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
 const Record = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const getWorkflowRunAndTraceUrl = useHooksStore(s => s.getWorkflowRunAndTraceUrl)
 
   const handleResultCallback = useCallback((res: WorkflowRunDetailResponse) => {
     const graph = res.graph
@@ -24,7 +26,8 @@ const Record = () => {
         {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
       </div>
       <Run
-        runID={historyWorkflowData?.id || ''}
+        runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
+        tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
         getResultCallback={handleResultCallback}
       />
     </div>

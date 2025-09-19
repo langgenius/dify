@@ -57,7 +57,7 @@ const AppNav = () => {
     { revalidateFirstPage: false },
   )
 
-  const handleLoadmore = useCallback(() => {
+  const handleLoadMore = useCallback(() => {
     setSize(size => size + 1)
   }, [setSize])
 
@@ -122,11 +122,11 @@ const AppNav = () => {
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link='/apps'
-        curNav={appDetail as any}
-        navs={navItems}
+        curNav={appDetail}
+        navigationItems={navItems}
         createText={t('common.menus.newApp')}
         onCreate={openModal}
-        onLoadmore={handleLoadmore}
+        onLoadMore={handleLoadMore}
       />
       <CreateAppModal
         show={showNewAppDialog}

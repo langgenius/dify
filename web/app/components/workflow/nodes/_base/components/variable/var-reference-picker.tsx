@@ -10,14 +10,18 @@ import {
   RiMoreLine,
 } from '@remixicon/react'
 import produce from 'immer'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import {
+  useNodes,
+  useReactFlow,
+  useStoreApi,
+} from 'reactflow'
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar, varTypeToStructType } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
-import type { Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -59,6 +63,7 @@ type Props = {
   defaultVarKindType?: VarKindType
   onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  isFilterFileVar?: boolean
   availableNodes?: Node[]
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
@@ -74,6 +79,7 @@ type Props = {
   zIndex?: number
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  preferSchemaType?: boolean
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -90,6 +96,7 @@ const VarReferencePicker: FC<Props> = ({
   defaultVarKindType = VarKindType.constant,
   onlyLeafNodeVar,
   filterVar = () => true,
+  isFilterFileVar,
   availableNodes: passedInAvailableNodes,
   availableVars: passedInAvailableVars,
   isAddBtnTrigger,
@@ -105,14 +112,12 @@ const VarReferencePicker: FC<Props> = ({
   zIndex,
   currentTool,
   currentProvider,
+  preferSchemaType,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const {
-    getNodes,
-  } = store.getState()
+  const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
-
   const { getCurrentVariableType } = useWorkflowVariables()
   const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar,
@@ -126,12 +131,12 @@ const VarReferencePicker: FC<Props> = ({
     return node.data.type === BlockEnum.Start
   })
 
-  const node = getNodes().find(n => n.id === nodeId)
-  const isInIteration = !!node?.data.isInIteration
-  const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
+  const node = nodes.find(n => n.id === nodeId)
+  const isInIteration = !!(node?.data as any)?.isInIteration
+  const iterationNode = isInIteration ? nodes.find(n => n.id === node?.parentId) : null
 
-  const isInLoop = !!node?.data.isInLoop
-  const loopNode = isInLoop ? getNodes().find(n => n.id === node.parentId) : null
+  const isInLoop = !!(node?.data as any)?.isInLoop
+  const loopNode = isInLoop ? nodes.find(n => n.id === node?.parentId) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
@@ -143,7 +148,10 @@ const VarReferencePicker: FC<Props> = ({
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
 
-  const outputVars = useMemo(() => (passedInAvailableVars || availableVars), [passedInAvailableVars, availableVars])
+  const outputVars = useMemo(() => {
+    const results = passedInAvailableVars || availableVars
+    return isFilterFileVar ? removeFileVars(results) : results
+  }, [passedInAvailableVars, availableVars, isFilterFileVar])
 
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -190,7 +198,7 @@ const VarReferencePicker: FC<Props> = ({
     }
   }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode, isLoopVar, loopNode])
 
-  const isShowAPart = (value as ValueSelector).length > 2
+  const isShowAPart = (value as ValueSelector).length > 2 && !isRagVariableVar((value as ValueSelector))
 
   const varName = useMemo(() => {
     if (!hasValue)
@@ -275,21 +283,24 @@ const VarReferencePicker: FC<Props> = ({
   }, [availableNodes, reactflow, store])
 
   const type = getCurrentVariableType({
-    parentNode: isInIteration ? iterationNode : loopNode,
+    parentNode: (isInIteration ? iterationNode : loopNode) as any,
     valueSelector: value as ValueSelector,
     availableNodes,
     isChatMode,
     isConstant: !!isConstant,
+    preferSchemaType,
   })
 
-  const { isEnv, isChatVar, isValidVar, isException } = useMemo(() => {
+  const { isEnv, isChatVar, isRagVar, isValidVar, isException } = useMemo(() => {
     const isEnv = isENV(value as ValueSelector)
     const isChatVar = isConversationVar(value as ValueSelector)
-    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar
+    const isRagVar = isRagVariableVar(value as ValueSelector)
+    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar || isRagVar
     const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,
       isChatVar,
+      isRagVar,
       isValidVar,
       isException,
     }
@@ -382,8 +393,9 @@ const VarReferencePicker: FC<Props> = ({
     if (isEnv) return 'environment'
     if (isChatVar) return 'conversation'
     if (isLoopVar) return 'loop'
+    if (isRagVar) return 'rag'
     return 'system'
-  }, [isEnv, isChatVar, isLoopVar])
+  }, [isEnv, isChatVar, isLoopVar, isRagVar])
 
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
@@ -455,7 +467,7 @@ const VarReferencePicker: FC<Props> = ({
                             {hasValue
                               ? (
                                 <>
-                                  {isShowNodeName && !isEnv && !isChatVar && (
+                                  {isShowNodeName && !isEnv && !isChatVar && !isRagVar && (
                                     <div className='flex items-center' onClick={(e) => {
                                       if (e.metaKey || e.ctrlKey) {
                                         e.stopPropagation()
@@ -553,6 +565,7 @@ const VarReferencePicker: FC<Props> = ({
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
               zIndex={zIndex}
+              preferSchemaType={preferSchemaType}
             />
           )}
         </PortalToFollowElemContent>

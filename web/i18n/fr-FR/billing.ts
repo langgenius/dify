@@ -93,6 +93,7 @@ const translation = {
     apiRateLimitTooltip: 'La limite de taux de l\'API s\'applique à toutes les demandes effectuées via l\'API Dify, y compris la génération de texte, les conversations de chat, les exécutions de flux de travail et le traitement de documents.',
     documents: '{{count,number}} Documents de connaissance',
     documentsRequestQuotaTooltip: 'Spécifie le nombre total d\'actions qu\'un espace de travail peut effectuer par minute dans la base de connaissances, y compris la création, la suppression, les mises à jour de jeux de données, le téléchargement de documents, les modifications, l\'archivage et les requêtes de la base de connaissances. Ce paramètre est utilisé pour évaluer les performances des requêtes de la base de connaissances. Par exemple, si un utilisateur de Sandbox effectue 10 tests de validité consécutifs en une minute, son espace de travail sera temporairement restreint dans l\'exécution des actions suivantes pendant la minute suivante : création, suppression, mises à jour de jeux de données, et téléchargements ou modifications de documents.',
+    startBuilding: 'Commencez à construire',
   },
   plans: {
     sandbox: {

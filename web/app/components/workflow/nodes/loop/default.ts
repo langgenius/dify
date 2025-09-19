@@ -1,29 +1,29 @@
-import { BlockEnum, VarType } from '../../types'
+import { VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { ComparisonOperator, LogicalOperator, type LoopNodeType } from './types'
 import { isEmptyRelatedOperator } from './utils'
 import { TransferMethod } from '@/types/app'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { LOOP_NODE_MAX_COUNT } from '@/config'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 3,
+  type: BlockEnum.Loop,
+  author: 'AICT-Team',
+  isTypeFixed: true,
+})
 const nodeDefault: NodeDefault<LoopNodeType> = {
+  metaData,
   defaultValue: {
     start_node_id: '',
     break_conditions: [],
     loop_count: 10,
     _children: [],
     logical_operator: LogicalOperator.and,
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: LoopNodeType, t: any) {
     let errorMessages = ''

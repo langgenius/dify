@@ -53,7 +53,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        workflow_thread_pool_id: str | None,
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -67,7 +66,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        workflow_thread_pool_id: str | None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -81,7 +79,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        workflow_thread_pool_id: str | None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
@@ -94,7 +91,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        workflow_thread_pool_id: str | None = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -186,7 +182,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
-            workflow_thread_pool_id=workflow_thread_pool_id,
         )
 
     def _generate(
@@ -200,7 +195,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
-        workflow_thread_pool_id: str | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
@@ -214,7 +208,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
-        :param workflow_thread_pool_id: workflow thread pool id
         """
         # init queue manager
         queue_manager = WorkflowAppQueueManager(
@@ -237,16 +230,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "context": context,
-                "workflow_thread_pool_id": workflow_thread_pool_id,
                 "variable_loader": variable_loader,
             },
         )
 
         worker_thread.start()
 
-        draft_var_saver_factory = self._get_draft_var_saver_factory(
-            invoke_from,
-        )
+        draft_var_saver_factory = self._get_draft_var_saver_factory(invoke_from, user)
 
         # return response or stream generator
         response = self._handle_response(
@@ -434,8 +424,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
-        workflow_thread_pool_id: str | None = None,
-    ):
+    ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -444,7 +433,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
-
         with preserve_flask_contexts(flask_app, context_vars=context):
             with Session(db.engine, expire_on_commit=False) as session:
                 workflow = session.scalar(
@@ -474,7 +462,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             runner = WorkflowAppRunner(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
-                workflow_thread_pool_id=workflow_thread_pool_id,
                 variable_loader=variable_loader,
                 workflow=workflow,
                 system_user_id=system_user_id,

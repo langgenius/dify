@@ -1,12 +1,37 @@
 import json
 from abc import ABC
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
 
 from pydantic import BaseModel, model_validator
 
-from core.workflow.nodes.base.exc import DefaultValueTypeError
-from core.workflow.nodes.enums import ErrorStrategy
+from core.workflow.enums import ErrorStrategy
+
+from .exc import DefaultValueTypeError
+
+_NumberType = Union[int, float]
+
+
+class RetryConfig(BaseModel):
+    """node retry config"""
+
+    max_retries: int = 0  # max retry times
+    retry_interval: int = 0  # retry interval in milliseconds
+    retry_enabled: bool = False  # whether retry is enabled
+
+    @property
+    def retry_interval_seconds(self) -> float:
+        return self.retry_interval / 1000
+
+
+class VariableSelector(BaseModel):
+    """
+    Variable Selector.
+    """
+
+    variable: str
+    value_selector: Sequence[str]
 
 
 class DefaultValueType(StrEnum):
@@ -17,9 +42,6 @@ class DefaultValueType(StrEnum):
     ARRAY_STRING = "array[string]"
     ARRAY_OBJECT = "array[object]"
     ARRAY_FILES = "array[file]"
-
-
-NumberType = Union[int, float]
 
 
 class DefaultValue(BaseModel):
@@ -51,9 +73,6 @@ class DefaultValue(BaseModel):
 
     @model_validator(mode="after")
     def validate_value_type(self) -> "DefaultValue":
-        if self.type is None:
-            raise DefaultValueTypeError("type field is required")
-
         # Type validation configuration
         type_validators = {
             DefaultValueType.STRING: {
@@ -61,7 +80,7 @@ class DefaultValue(BaseModel):
                 "converter": lambda x: x,
             },
             DefaultValueType.NUMBER: {
-                "type": NumberType,
+                "type": _NumberType,
                 "converter": self._convert_number,
             },
             DefaultValueType.OBJECT: {
@@ -70,7 +89,7 @@ class DefaultValue(BaseModel):
             },
             DefaultValueType.ARRAY_NUMBER: {
                 "type": list,
-                "element_type": NumberType,
+                "element_type": _NumberType,
                 "converter": self._parse_json,
             },
             DefaultValueType.ARRAY_STRING: {
@@ -105,18 +124,6 @@ class DefaultValue(BaseModel):
             raise DefaultValueTypeError(f"All elements must be {validator['element_type'].__name__} for {self.value}")
 
         return self
-
-
-class RetryConfig(BaseModel):
-    """node retry config"""
-
-    max_retries: int = 0  # max retry times
-    retry_interval: int = 0  # retry interval in milliseconds
-    retry_enabled: bool = False  # whether retry is enabled
-
-    @property
-    def retry_interval_seconds(self) -> float:
-        return self.retry_interval / 1000
 
 
 class BaseNodeData(ABC, BaseModel):

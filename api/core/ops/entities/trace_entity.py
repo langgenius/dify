@@ -136,3 +136,4 @@ class TraceTaskName(StrEnum):
     DATASET_RETRIEVAL_TRACE = "dataset_retrieval"
     TOOL_TRACE = "tool"
     GENERATE_NAME_TRACE = "generate_conversation_name"
+    DATASOURCE_TRACE = "datasource"

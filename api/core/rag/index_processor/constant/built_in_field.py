@@ -13,3 +13,5 @@ class MetadataDataSource(StrEnum):
     upload_file = "file_upload"
     website_crawl = "website"
     notion_import = "notion"
+    local_file = "file_upload"
+    online_document = "online_document"

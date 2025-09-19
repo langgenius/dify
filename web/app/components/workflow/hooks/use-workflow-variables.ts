@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import type {
   Node,
@@ -10,13 +10,20 @@ import type {
 } from '@/app/components/workflow/types'
 import { useIsChatMode } from './use-workflow'
 import { useStoreApi } from 'reactflow'
+import { useStore } from '@/app/components/workflow/store'
 import type { Type } from '../nodes/llm/types'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
-  const environmentVariables = useStore(s => s.environmentVariables)
-  const conversationVariables = useStore(s => s.conversationVariables)
+  const workflowStore = useWorkflowStore()
+  const { schemaTypeDefinitions } = useMatchSchemaType()
 
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const dataSourceList = useStore(s => s.dataSourceList)
   const getNodeAvailableVars = useCallback(({
     parentNode,
     beforeNodes,
@@ -32,6 +39,11 @@ export const useWorkflowVariables = () => {
     hideEnv?: boolean
     hideChatVar?: boolean
   }): NodeOutPutVar[] => {
+    const {
+      conversationVariables,
+      environmentVariables,
+      ragPipelineVariables,
+    } = workflowStore.getState()
     return toNodeAvailableVars({
       parentNode,
       t,
@@ -39,9 +51,18 @@ export const useWorkflowVariables = () => {
       isChatMode,
       environmentVariables: hideEnv ? [] : environmentVariables,
       conversationVariables: (isChatMode && !hideChatVar) ? conversationVariables : [],
+      ragVariables: ragPipelineVariables,
       filterVar,
+      allPluginInfoList: {
+        buildInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+        dataSourceList: dataSourceList ?? [],
+      },
+      schemaTypeDefinitions,
     })
-  }, [conversationVariables, environmentVariables, t])
+  }, [t, workflowStore, schemaTypeDefinitions, buildInTools])
 
   const getCurrentVariableType = useCallback(({
     parentNode,
@@ -51,6 +72,7 @@ export const useWorkflowVariables = () => {
     availableNodes,
     isChatMode,
     isConstant,
+    preferSchemaType,
   }: {
     valueSelector: ValueSelector
     parentNode?: Node | null
@@ -59,7 +81,18 @@ export const useWorkflowVariables = () => {
     availableNodes: any[]
     isChatMode: boolean
     isConstant?: boolean
+    preferSchemaType?: boolean
   }) => {
+    const {
+      conversationVariables,
+      environmentVariables,
+      ragPipelineVariables,
+      buildInTools,
+      customTools,
+      workflowTools,
+      mcpTools,
+      dataSourceList,
+    } = workflowStore.getState()
     return getVarType({
       parentNode,
       valueSelector,
@@ -70,8 +103,18 @@ export const useWorkflowVariables = () => {
       isConstant,
       environmentVariables,
       conversationVariables,
+      ragVariables: ragPipelineVariables,
+      allPluginInfoList: {
+        buildInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+        dataSourceList: dataSourceList ?? [],
+      },
+      schemaTypeDefinitions,
+      preferSchemaType,
     })
-  }, [conversationVariables, environmentVariables])
+  }, [workflowStore, getVarType, schemaTypeDefinitions])
 
   return {
     getNodeAvailableVars,

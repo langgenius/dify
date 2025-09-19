@@ -69,6 +69,7 @@ def build_from_mapping(
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
         FileTransferMethod.REMOTE_URL: _build_from_remote_url,
         FileTransferMethod.TOOL_FILE: _build_from_tool_file,
+        FileTransferMethod.DATASOURCE_FILE: _build_from_datasource_file,
     }
 
     build_func = build_functions.get(transfer_method)
@@ -313,6 +314,54 @@ def _build_from_tool_file(
         mime_type=tool_file.mimetype,
         size=tool_file.size,
         storage_key=tool_file.file_key,
+    )
+
+
+def _build_from_datasource_file(
+    *,
+    mapping: Mapping[str, Any],
+    tenant_id: str,
+    transfer_method: FileTransferMethod,
+    strict_type_validation: bool = False,
+) -> File:
+    datasource_file = (
+        db.session.query(UploadFile)
+        .where(
+            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+    if datasource_file is None:
+        raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
+
+    extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
+
+    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
+
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    file_type = (
+        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
+    )
+
+    return File(
+        id=mapping.get("datasource_file_id"),
+        tenant_id=tenant_id,
+        filename=datasource_file.name,
+        type=file_type,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        remote_url=datasource_file.source_url,
+        related_id=datasource_file.id,
+        extension=extension,
+        mime_type=datasource_file.mime_type,
+        size=datasource_file.size,
+        storage_key=datasource_file.key,
+        url=datasource_file.source_url,
     )
 
 

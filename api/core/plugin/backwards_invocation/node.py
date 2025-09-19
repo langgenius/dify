@@ -1,5 +1,5 @@
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
 )

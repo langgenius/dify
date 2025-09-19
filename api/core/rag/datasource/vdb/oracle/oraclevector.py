@@ -1,5 +1,6 @@
 import array
 import json
+import logging
 import re
 import uuid
 from typing import Any
@@ -18,6 +19,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 oracledb.defaults.fetch_lobs = False
 
@@ -180,8 +183,8 @@ class OracleVector(BaseVector):
                             value,
                         )
                         conn.commit()
-                    except Exception as e:
-                        print(e)
+                    except Exception:
+                        logger.exception("Failed to insert record %s into %s", value[0], self.table_name)
             conn.close()
         return pks
 

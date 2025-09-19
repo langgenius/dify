@@ -100,6 +100,7 @@ const translation = {
     freeTrialTipSuffix: 'Nie jest wymagana karta kredytowa',
     documentsRequestQuota: '{{count,number}}/min Limit wiedzy na żądanie',
     documentsRequestQuotaTooltip: 'Określa całkowitą liczbę działań, jakie przestrzeń robocza może wykonać na minutę w ramach bazy wiedzy, w tym tworzenie zbiorów danych, usuwanie, aktualizacje, przesyłanie dokumentów, modyfikacje, archiwizowanie i zapytania do bazy wiedzy. Ta metryka jest używana do oceny wydajności zapytań do bazy wiedzy. Na przykład, jeśli użytkownik Sandbox wykona 10 kolejnych testów w ciągu jednej minuty, jego przestrzeń robocza zostanie tymczasowo ograniczona w wykonywaniu następujących działań przez następną minutę: tworzenie zbiorów danych, usuwanie, aktualizacje oraz przesyłanie lub modyfikacje dokumentów.',
+    startBuilding: 'Zacznij budować',
   },
   plans: {
     sandbox: {
@@ -125,6 +126,15 @@ const translation = {
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
       features: {
+        4: 'Usługi rejestracji jednokrotnej',
+        3: 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem',
+        8: 'Profesjonalne wsparcie techniczne',
+        7: 'Aktualizacje i konserwacja przez Dify oficjalnie',
+        5: 'Umowy SLA wynegocjowane przez Dify Partners',
+        0: 'Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej',
+        2: 'Wyjątkowe funkcje dla przedsiębiorstw',
+        1: 'Autoryzacja licencji komercyjnej',
+        6: 'Zaawansowane zabezpieczenia i kontrola',
       },
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
@@ -133,6 +143,9 @@ const translation = {
     },
     community: {
       features: {
+        1: 'Pojedyncza przestrzeń robocza',
+        2: 'Zgodny z licencją Dify Open Source',
+        0: 'Wszystkie podstawowe funkcje udostępnione w repozytorium publicznym',
       },
       includesTitle: 'Darmowe funkcje:',
       name: 'Społeczność',
@@ -143,6 +156,10 @@ const translation = {
     },
     premium: {
       features: {
+        2: 'Personalizacja logo i brandingu aplikacji internetowej',
+        1: 'Pojedyncza przestrzeń robocza',
+        0: 'Niezawodność samodzielnego zarządzania przez różnych dostawców usług w chmurze',
+        3: 'Priorytetowa pomoc techniczna przez e-mail i czat',
       },
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',

@@ -84,6 +84,7 @@ const translation = {
     chooseAppType: 'เลือกประเภทแอป',
     advancedShortDescription: 'โฟลว์ที่เสริมประสิทธิภาพสำหรับการสนทนาหลายรอบ',
     dropDSLToCreateApp: 'ลากไฟล์ DSL มาที่นี่เพื่สร้างแอป',
+    import: 'นําเข้า',
   },
   editApp: 'แก้ไขข้อมูล',
   editAppTitle: 'แก้ไขข้อมูลโปรเจกต์',

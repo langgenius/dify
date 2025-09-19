@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import type { RemixiconComponentType } from '@remixicon/react'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -12,115 +12,22 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
-import {
-  PaperClipIcon,
-} from '@heroicons/react/24/outline'
-import { RiApps2AddLine, RiBookOpenLine, RiInformation2Line } from '@remixicon/react'
-import classNames from '@/utils/classnames'
-import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
-import type { RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
-import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
-import Tooltip from '@/app/components/base/tooltip'
-import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
+import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import useDocumentTitle from '@/hooks/use-document-title'
+import ExtraInfo from '@/app/components/datasets/extra-info'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import cn from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
   params: { datasetId: string }
-}
-
-type IExtraInfoProps = {
-  isMobile: boolean
-  relatedApps?: RelatedAppResponse
-  expand: boolean
-}
-
-const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const { t } = useTranslation()
-  const docLink = useDocLink()
-
-  const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
-  const relatedAppsTotal = relatedApps?.data?.length || 0
-
-  return <div>
-    {/* Related apps for desktop */}
-    <div className={classNames(
-      'transition-all duration-200 ease-in-out',
-      (hasRelatedApps && !isMobile)
-        ? 'w-auto opacity-100'
-        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
-    )}>
-      <Tooltip
-        position='right'
-        noDecoration
-        popupContent={
-          <LinkedAppsPanel
-            relatedApps={relatedApps?.data || []}
-            isMobile={isMobile}
-          />
-        }
-      >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 whitespace-nowrap text-text-secondary'>
-          <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
-          <RiInformation2Line className='h-4 w-4' />
-        </div>
-      </Tooltip>
-    </div>
-
-    {/* Related apps for mobile */}
-    <div className={classNames(
-      'transition-all duration-200 ease-in-out',
-      (hasRelatedApps && isMobile)
-        ? 'w-auto opacity-100'
-        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
-    )}>
-      <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 whitespace-nowrap !px-0')}>
-        {relatedAppsTotal || '--'}
-        <PaperClipIcon className='h-4 w-4 text-text-secondary' />
-      </div>
-    </div>
-
-    {/* No related apps tooltip */}
-    <div className={classNames(
-      'transition-all duration-200 ease-in-out',
-      (!hasRelatedApps && !expand)
-        ? 'w-auto opacity-100'
-        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
-    )}>
-      <Tooltip
-        position='right'
-        noDecoration
-        popupContent={
-          <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
-            <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
-              <RiApps2AddLine className='h-4 w-4 text-text-tertiary' />
-            </div>
-            <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
-            <a
-              className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
-              target='_blank' rel='noopener noreferrer'
-            >
-              <RiBookOpenLine className='mr-1 text-text-accent' />
-              {t('common.datasetMenus.viewDoc')}
-            </a>
-          </div>
-        }
-      >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 whitespace-nowrap text-text-secondary'>
-          <span>{t('common.datasetMenus.noRelatedApp')}</span>
-          <RiInformation2Line className='h-4 w-4' />
-        </div>
-      </Tooltip>
-    </div>
-  </div>
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -128,72 +35,112 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     params: { datasetId },
   } = props
-  const pathname = usePathname()
-  const hideSideBar = pathname.endsWith('documents/create')
   const { t } = useTranslation()
+  const pathname = usePathname()
+  const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
+  const isPipelineCanvas = pathname.endsWith('/pipeline')
+  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === 'workflow-canvas-maximize')
+      setHideHeader(v.payload)
+  })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
-    url: 'fetchDatasetDetail',
-    datasetId,
-  }, apiParams => fetchDatasetDetail(apiParams.datasetId))
+  const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
 
-  const { data: relatedApps } = useSWR({
-    action: 'fetchDatasetRelatedApps',
-    datasetId,
-  }, apiParams => fetchDatasetRelatedApps(apiParams.datasetId))
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId)
+
+  const isButtonDisabledWithPipeline = useMemo(() => {
+    if (!datasetRes)
+      return true
+    if (datasetRes.provider === 'external')
+      return false
+    if (datasetRes.runtime_mode === 'general')
+      return false
+    return !datasetRes.is_published
+  }, [datasetRes])
 
   const navigation = useMemo(() => {
     const baseNavigation = [
-      { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: RiFocus2Line, selectedIcon: RiFocus2Fill },
-      { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: RiEqualizer2Line, selectedIcon: RiEqualizer2Fill },
+      {
+        name: t('common.datasetMenus.hitTesting'),
+        href: `/datasets/${datasetId}/hitTesting`,
+        icon: RiFocus2Line,
+        selectedIcon: RiFocus2Fill,
+        disabled: isButtonDisabledWithPipeline,
+      },
+      {
+        name: t('common.datasetMenus.settings'),
+        href: `/datasets/${datasetId}/settings`,
+        icon: RiEqualizer2Line,
+        selectedIcon: RiEqualizer2Fill,
+        disabled: false,
+      },
     ]
 
     if (datasetRes?.provider !== 'external') {
+      baseNavigation.unshift({
+        name: t('common.datasetMenus.pipeline'),
+        href: `/datasets/${datasetId}/pipeline`,
+        icon: PipelineLine as RemixiconComponentType,
+        selectedIcon: PipelineFill as RemixiconComponentType,
+        disabled: false,
+      })
       baseNavigation.unshift({
         name: t('common.datasetMenus.documents'),
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
+        disabled: isButtonDisabledWithPipeline,
       })
     }
+
     return baseNavigation
-  }, [datasetRes?.provider, datasetId, t])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
-  const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
+  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
-    setAppSiderbarExpand(isMobile ? mode : localeMode)
-  }, [isMobile, setAppSiderbarExpand])
+    setAppSidebarExpand(isMobile ? mode : localeMode)
+  }, [isMobile, setAppSidebarExpand])
 
   if (!datasetRes && !error)
     return <Loading type='app' />
 
   return (
-    <div className='flex grow overflow-hidden'>
-      {!hideSideBar && <AppSideBar
-        title={datasetRes?.name || '--'}
-        icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
-        icon_background={datasetRes?.icon_background || '#F5F5F5'}
-        desc={datasetRes?.description || '--'}
-        isExternal={datasetRes?.provider === 'external'}
-        navigation={navigation}
-        extraInfo={!isCurrentWorkspaceDatasetOperator ? mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} expand={mode === 'collapse'} /> : undefined}
-        iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
-      />}
+    <div
+      className={cn(
+        'flex grow overflow-hidden',
+        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl border-t border-effects-highlight',
+      )}
+    >
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
-        mutateDatasetRes: () => mutateDatasetRes(),
+        mutateDatasetRes,
       }}>
-        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
+        {!hideSideBar && (
+          <AppSideBar
+            navigation={navigation}
+            extraInfo={
+              !isCurrentWorkspaceDatasetOperator
+                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
+                : undefined
+            }
+            iconType='dataset'
+          />
+        )}
+        <div className='grow overflow-hidden bg-background-default-subtle'>{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

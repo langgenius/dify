@@ -69,13 +69,14 @@ const FILE_TYPE_ICON_MAP = {
 }
 type FileTypeIconProps = {
   type: FileAppearanceType
-  size?: 'sm' | 'lg' | 'md'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 const SizeMap = {
-  sm: 'w-4 h-4',
-  md: 'w-5 h-5',
-  lg: 'w-6 h-6',
+  sm: 'size-4',
+  md: 'size-[18px]',
+  lg: 'size-5',
+  xl: 'size-6',
 }
 const FileTypeIcon = ({
   type,

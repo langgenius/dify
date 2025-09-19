@@ -4,6 +4,8 @@ import logging
 import re
 import threading
 import uuid
+from collections.abc import Mapping
+from typing import Any
 
 import pandas as pd
 from flask import Flask, current_app
@@ -13,13 +15,16 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document
+from core.rag.models.document import Document, QAStructureChunk
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset
+from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
 
 logger = logging.getLogger(__name__)
@@ -161,6 +166,40 @@ class QAIndexProcessor(BaseIndexProcessor):
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
+
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+        qa_chunks = QAStructureChunk(**chunks)
+        documents = []
+        for qa_chunk in qa_chunks.qa_chunks:
+            metadata = {
+                "dataset_id": dataset.id,
+                "document_id": document.id,
+                "doc_id": str(uuid.uuid4()),
+                "doc_hash": helper.generate_text_hash(qa_chunk.question),
+                "answer": qa_chunk.answer,
+            }
+            doc = Document(page_content=qa_chunk.question, metadata=metadata)
+            documents.append(doc)
+        if documents:
+            # save node to document segment
+            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            doc_store.add_documents(docs=documents, save_child=False)
+            if dataset.indexing_technique == "high_quality":
+                vector = Vector(dataset)
+                vector.create(documents)
+            else:
+                raise ValueError("Indexing technique must be high quality.")
+
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+        qa_chunks = QAStructureChunk(**chunks)
+        preview = []
+        for qa_chunk in qa_chunks.qa_chunks:
+            preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
+        return {
+            "chunk_structure": IndexType.QA_INDEX,
+            "qa_preview": preview,
+            "total_segments": len(qa_chunks.qa_chunks),
+        }
 
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []

@@ -1,11 +1,11 @@
 import logging
+import time
 from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -23,16 +23,17 @@ from core.app.features.annotation_reply.annotation_reply import AnnotationReplyF
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
-from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import GraphRuntimeState, VariablePool
+from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models import Workflow
 from models.enums import UserFrom
 from models.model import App, Conversation, Message, MessageAnnotation
-from models.workflow import ConversationVariable, WorkflowType
+from models.workflow import ConversationVariable
 
 logger = logging.getLogger(__name__)
 
@@ -78,23 +79,29 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if not app_record:
             raise ValueError("App not found")
 
-        workflow_callbacks: list[WorkflowCallback] = []
-        if dify_config.DEBUG:
-            workflow_callbacks.append(WorkflowLoggingCallback())
-
         if self.application_generate_entity.single_iteration_run:
             # if only single iteration run is requested
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=VariablePool.empty(),
+                start_at=time.time(),
+            )
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=self._workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
                 user_inputs=dict(self.application_generate_entity.single_iteration_run.inputs),
+                graph_runtime_state=graph_runtime_state,
             )
         elif self.application_generate_entity.single_loop_run:
             # if only single loop run is requested
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=VariablePool.empty(),
+                start_at=time.time(),
+            )
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
                 workflow=self._workflow,
                 node_id=self.application_generate_entity.single_loop_run.node_id,
                 user_inputs=dict(self.application_generate_entity.single_loop_run.inputs),
+                graph_runtime_state=graph_runtime_state,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -146,16 +153,27 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph = self._init_graph(graph_config=self._workflow.graph_dict)
+            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                graph_runtime_state=graph_runtime_state,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+                user_id=self.application_generate_entity.user_id,
+            )
 
         db.session.close()
 
         # RUN WORKFLOW
+        # Create Redis command channel for this workflow execution
+        task_id = self.application_generate_entity.task_id
+        channel_key = f"workflow:{task_id}:commands"
+        command_channel = RedisChannel(redis_client, channel_key)
+
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
             workflow_id=self._workflow.id,
-            workflow_type=WorkflowType.value_of(self._workflow.type),
             graph=graph,
             graph_config=self._workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,
@@ -167,11 +185,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
+            command_channel=command_channel,
         )
 
-        generator = workflow_entry.run(
-            callbacks=workflow_callbacks,
-        )
+        generator = workflow_entry.run()
 
         for event in generator:
             self._handle_event(workflow_entry, event)

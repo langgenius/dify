@@ -42,6 +42,10 @@ const translation = {
     },
     change: '更改',
     changeRetrievalMethod: '更改檢索方法',
+    keyword_search: {
+      title: '倒掛索引',
+      description: '倒掛索引是一種用於高效檢索的結構。依字詞組織，每個字詞都指向包含它的文件或網頁。',
+    },
   },
   docsFailedNotice: '文件無法被索引',
   retry: '重試',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: '父子',
     general: '常規',
+    graph: '圖形',
+    qa: '問與答',
   },
   parentMode: {
     paragraph: '段',
@@ -217,6 +223,9 @@ const translation = {
     addMetadata: '添加元數據',
   },
   embeddingModelNotAvailable: '嵌入模型無法使用。',
+  externalKnowledgeBase: '外部知識庫',
+  createFromPipeline: '從知識管線建立',
+  updated: '更新時間',
 }
 
 export default translation

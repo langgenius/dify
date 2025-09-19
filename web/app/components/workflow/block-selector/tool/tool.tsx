@@ -90,7 +90,6 @@ const Tool: FC<Props> = ({
                 tool_description: tool.description[language],
                 title: tool.label[language],
                 is_team_authorization: payload.is_team_authorization,
-                output_schema: tool.output_schema,
                 paramSchemas: tool.parameters,
                 params,
               }
@@ -170,7 +169,6 @@ const Tool: FC<Props> = ({
               tool_description: tool.description[language],
               title: tool.label[language],
               is_team_authorization: payload.is_team_authorization,
-              output_schema: tool.output_schema,
               paramSchemas: tool.parameters,
               params,
             })

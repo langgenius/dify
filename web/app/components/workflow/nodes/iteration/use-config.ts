@@ -14,6 +14,7 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { Item } from '@/app/components/base/select'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { isEqual } from 'lodash-es'
+import { useStore } from '../../store'
 
 const useConfig = (id: string, payload: IterationNodeType) => {
   const {
@@ -39,7 +40,19 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   // output
   const { getIterationNodeChildren } = useWorkflow()
   const iterationChildrenNodes = getIterationNodeChildren(id)
-  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const dataSourceList = useStore(s => s.dataSourceList)
+  const allPluginInfoList = {
+    buildInTools,
+    customTools,
+    workflowTools,
+    mcpTools,
+    dataSourceList: dataSourceList ?? [],
+  }
+  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode, undefined, [], [], [], allPluginInfoList)
 
   const handleOutputVarChange = useCallback((output: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
     if (isEqual(inputs.output_selector, output as ValueSelector))
