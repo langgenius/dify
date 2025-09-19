@@ -117,22 +117,32 @@ class OceanBaseVector(BaseVector):
                 columns=cols,
                 vidxs=vidx_params,
             )
-            try:
-                if self._hybrid_search_enabled:
-                    self._client.create_fts_idx_with_fts_index_param(
-                        table_name=self._collection_name,
-                        fts_idx_param=FtsIndexParam(
-                            index_name="fulltext_index_for_col_text",
-                            field_names=["text"],
-                            parser_type=FtsParser.IK,
-                        ),
+            logger.debug(f"DEBUG: Table '{self._collection_name}' created successfully")
+            
+            if self._hybrid_search_enabled:
+                # Get parser from config or use default ik parser
+                parser_name = dify_config.OCEANBASE_FULLTEXT_PARSER or "ik"
+                logger.debug(f"DEBUG: Hybrid search is enabled, parser_name='{parser_name}'")
+                    
+                logger.debug(f"DEBUG: About to create fulltext index for collection '{self._collection_name}' using parser '{parser_name}'")
+                    
+                try:
+                    sql_command = f"""ALTER TABLE {self._collection_name}
+                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER {parser_name}"""
+                    logger.debug(f"DEBUG: Executing SQL: {sql_command}")
+                    self._client.perform_raw_text_sql(sql_command)
+                    logger.debug(f"DEBUG: Fulltext index created successfully for '{self._collection_name}'")
+                except Exception as e:
+                    logger.error(f"DEBUG: Exception occurred while creating fulltext index: {str(e)}")
+                    logger.error(f"DEBUG: Exception type: {type(e)}")
+                    raise Exception(
+                        "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
+                        + "to support fulltext index and vector index in the same table",
+                        e,
                     )
-            except Exception as e:
-                raise Exception(
-                    "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
-                    + "to support fulltext index and vector index in the same table",
-                    e,
-                )
+            else:
+                logger.debug(f"DEBUG: Hybrid search is NOT enabled for '{self._collection_name}'")
+                
             self._client.refresh_metadata([self._collection_name])
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
