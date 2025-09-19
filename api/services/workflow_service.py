@@ -452,7 +452,8 @@ class WorkflowService:
             )
 
             if not default_provider:
-                raise ValueError("No default credential found")
+                # plugin does not require credentials, skip
+                return
 
             # Check credential policy compliance using the default credential ID
             from core.helper.credential_utils import check_credential_policy_compliance
