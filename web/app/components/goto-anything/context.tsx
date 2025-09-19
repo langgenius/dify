@@ -12,11 +12,16 @@ type GotoAnythingContextType = {
    * Whether the current page is a workflow page
    */
   isWorkflowPage: boolean
+  /**
+   * Whether the current page is a RAG pipeline page
+   */
+  isRagPipelinePage: boolean
 }
 
 // Create context with default values
 const GotoAnythingContext = createContext<GotoAnythingContextType>({
   isWorkflowPage: false,
+  isRagPipelinePage: false,
 })
 
 /**
@@ -33,17 +38,20 @@ type GotoAnythingProviderProps = {
  */
 export const GotoAnythingProvider: React.FC<GotoAnythingProviderProps> = ({ children }) => {
   const [isWorkflowPage, setIsWorkflowPage] = useState(false)
+  const [isRagPipelinePage, setIsRagPipelinePage] = useState(false)
   const pathname = usePathname()
 
   // Update context based on current pathname
   useEffect(() => {
-    // Check if current path contains workflow
+    // Check if current path contains workflow or RAG pipeline
     const isWorkflow = pathname?.includes('/workflow') || false
+    const isRagPipeline = (pathname?.includes('/datasets/') && pathname?.includes('/pipeline')) || false
     setIsWorkflowPage(isWorkflow)
+    setIsRagPipelinePage(isRagPipeline)
   }, [pathname])
 
   return (
-    <GotoAnythingContext.Provider value={{ isWorkflowPage }}>
+    <GotoAnythingContext.Provider value={{ isWorkflowPage, isRagPipelinePage }}>
       {children}
     </GotoAnythingContext.Provider>
   )
