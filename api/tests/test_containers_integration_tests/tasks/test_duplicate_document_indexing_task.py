@@ -394,7 +394,9 @@ class TestDuplicateDocumentIndexingTask:
         mock_features = mock_external_service_dependencies["features"]
         mock_features.billing.enabled = True
         mock_features.vector_space.size = 5
-        mock_features.vector_space.limit = mock_features.vector_space.size + len(documents) - 1  # Exceed limit by adding documents
+        mock_features.vector_space.limit = (
+            mock_features.vector_space.size + len(documents) - 1
+        )  # Exceed limit by adding documents
 
         document_ids = [doc.id for doc in documents]
 
