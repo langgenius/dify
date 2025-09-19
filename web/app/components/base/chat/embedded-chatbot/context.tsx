@@ -42,6 +42,7 @@ export type EmbeddedChatbotContextValue = {
   isInstalledApp: boolean
   allowResetChat: boolean
   appId?: string
+  disableFeedback?: boolean
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder

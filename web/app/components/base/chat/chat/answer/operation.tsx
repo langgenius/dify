@@ -51,6 +51,7 @@ const Operation: FC<OperationProps> = ({
     onAnnotationAdded,
     onAnnotationEdited,
     onAnnotationRemoved,
+    disableFeedback,
     onFeedback,
     onRegenerate,
   } = useChatContext()
@@ -166,7 +167,7 @@ const Operation: FC<OperationProps> = ({
             )}
           </div>
         )}
-        {!isOpeningStatement && config?.supportFeedback && !localFeedback?.rating && onFeedback && (
+        {!disableFeedback && !isOpeningStatement && config?.supportFeedback && !localFeedback?.rating && onFeedback && (
           <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {!localFeedback?.rating && (
               <>
@@ -180,7 +181,7 @@ const Operation: FC<OperationProps> = ({
             )}
           </div>
         )}
-        {!isOpeningStatement && config?.supportFeedback && localFeedback?.rating && onFeedback && (
+        {!disableFeedback && !isOpeningStatement && config?.supportFeedback && localFeedback?.rating && onFeedback && (
           <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
             {localFeedback?.rating === 'like' && (
               <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>

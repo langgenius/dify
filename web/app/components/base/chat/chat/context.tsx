@@ -15,6 +15,7 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
+  | 'disableFeedback'
   | 'onFeedback'
 >
 
@@ -39,6 +40,7 @@ export const ChatContextProvider = ({
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
+  disableFeedback,
   onFeedback,
 }: ChatContextProviderProps) => {
   return (
@@ -54,6 +56,7 @@ export const ChatContextProvider = ({
       onAnnotationEdited,
       onAnnotationAdded,
       onAnnotationRemoved,
+      disableFeedback,
       onFeedback,
     }}>
       {children}

@@ -60,6 +60,7 @@ export type ChatProps = {
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
+  disableFeedback?: boolean
   onFeedback?: (messageId: string, feedback: Feedback) => void
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
@@ -99,6 +100,7 @@ const Chat: FC<ChatProps> = ({
   onAnnotationEdited,
   onAnnotationRemoved,
   chatNode,
+  disableFeedback,
   onFeedback,
   chatAnswerContainerInner,
   hideProcessDetail,
@@ -225,6 +227,7 @@ const Chat: FC<ChatProps> = ({
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
+      disableFeedback={disableFeedback}
       onFeedback={onFeedback}
     >
       <div className='relative h-full'>

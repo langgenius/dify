@@ -24,6 +24,7 @@ import {
   fetchAppParams,
   fetchChatList,
   fetchConversations,
+  fetchTryAppInfo,
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
@@ -66,25 +67,27 @@ function getFormattedChatList(messages: any[]) {
   return newChatList
 }
 
-export const useEmbeddedChatbot = () => {
-  const isInstalledApp = false
-  const appSourceType = AppSourceType.webApp
+export const useEmbeddedChatbot = (appSourceType = AppSourceType.webApp, tryAppId?: string) => {
+  // const isWebApp = appSourceType === AppSourceType.webApp
+  const isInstalledApp = false // webapp and try app
+  const isTryApp = appSourceType === AppSourceType.tryApp
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', fetchAppInfo)
+  const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', isTryApp ? fetchTryAppInfo : fetchAppInfo)
   const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
     appId: appInfo?.app_id,
     isInstalledApp,
-    enabled: systemFeatures.webapp_auth.enabled,
+    enabled: systemFeatures.webapp_auth.enabled && !isTryApp,
   })
 
   const appData = useMemo(() => {
     return appInfo
   }, [appInfo])
-  const appId = useMemo(() => appData?.app_id, [appData])
+  const appId = useMemo(() => isTryApp ? tryAppId : appData?.app_id, [appData, appSourceType, tryAppId])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
   useEffect(() => {
+    if(isTryApp) return
     getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
       setUserId(user_id)
       setConversationId(conversation_id)
@@ -92,6 +95,7 @@ export const useEmbeddedChatbot = () => {
   }, [])
 
   useEffect(() => {
+    if(isTryApp) return
     const setLanguageFromParams = async () => {
       // Check URL parameters for language override
       const urlParams = new URLSearchParams(window.location.search)
@@ -147,11 +151,11 @@ export const useEmbeddedChatbot = () => {
     return currentConversationId
   }, [currentConversationId, newConversationId])
 
-  const { data: appParams } = useSWR(['appParams', isInstalledApp, appId], () => fetchAppParams(appSourceType, appId))
-  const { data: appMeta } = useSWR(['appMeta', isInstalledApp, appId], () => fetchAppMeta(appSourceType, appId))
-  const { data: appPinnedConversationData } = useSWR(['appConversationData', isInstalledApp, appId, true], () => fetchConversations(appSourceType, appId, undefined, true, 100))
-  const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(appSourceType, appId, undefined, false, 100))
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, appSourceType, appId))
+  const { data: appParams } = useSWR(['appParams', appSourceType, appId], () => fetchAppParams(appSourceType, appId))
+  const { data: appMeta } = useSWR(['appMeta', appSourceType, appId], () => fetchAppMeta(appSourceType, appId))
+  const { data: appPinnedConversationData } = useSWR(['appConversationData', appSourceType, appId, true], () => fetchConversations(appSourceType, appId, undefined, true, 100))
+  const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(isTryApp ? null : ['appConversationData', appSourceType, appId, false], () => fetchConversations(appSourceType, appId, undefined, false, 100))
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, appSourceType, appId] : null, () => fetchChatList(chatShouldReloadKey, appSourceType, appId))
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -268,7 +272,7 @@ export const useEmbeddedChatbot = () => {
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
 
-  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(appSourceType, appId, newConversationId), { revalidateOnFocus: false })
+  const { data: newConversation } = useSWR((!isTryApp && newConversationId) ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(appSourceType, appId, newConversationId), { revalidateOnFocus: false })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
@@ -399,7 +403,7 @@ export const useEmbeddedChatbot = () => {
   return {
     appInfoError,
     appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && isCheckingPermission),
-    userCanAccess: systemFeatures.webapp_auth.enabled ? (userCanAccessResult as { result: boolean })?.result : true,
+    userCanAccess: isTryApp || (systemFeatures.webapp_auth.enabled ? (userCanAccessResult as { result: boolean })?.result : true),
     isInstalledApp,
     allowResetChat,
     appId,

@@ -11,6 +11,7 @@ import {
   useEmbeddedChatbot,
 } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import cn from '@/utils/classnames'
+import { AppSourceType } from '@/service/share'
 
 type Props = {
   appId: string
@@ -24,10 +25,11 @@ const TryApp: FC<Props> = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const themeBuilder = useThemeContext()
-  const chatData = useEmbeddedChatbot()
+  const chatData = useEmbeddedChatbot(AppSourceType.tryApp, appId)
   return (
     <EmbeddedChatbotContext.Provider value={{
       ...chatData,
+      disableFeedback: true,
       isMobile,
       themeBuilder,
     }}>

@@ -44,6 +44,7 @@ const ChatWrapper = () => {
     isInstalledApp,
     appId,
     appMeta,
+    disableFeedback,
     handleFeedback,
     currentChatInstanceRef,
     themeBuilder,
@@ -258,6 +259,7 @@ const ChatWrapper = () => {
         </>
       }
       allToolIcons={appMeta?.tool_icons || {}}
+      disableFeedback={disableFeedback}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
       answerIcon={answerIcon}

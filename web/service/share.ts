@@ -39,7 +39,7 @@ export enum AppSourceType {
 const apiPrefix = {
   [AppSourceType.webApp]: '',
   [AppSourceType.installedApp]: 'installed-apps',
-  [AppSourceType.tryApp]: 'try-apps',
+  [AppSourceType.tryApp]: 'installed-apps', // 'trial-apps', use 'installed-apps' for test
 }
 
 function getIsPublicAPI(appSourceType: AppSourceType) {
@@ -141,6 +141,11 @@ export const fetchAppInfo = async () => {
   return get('/site') as Promise<AppData>
 }
 
+// would use trial-apps after api is ok
+export const fetchTryAppInfo = async () => {
+  return get('/site') as Promise<AppData>
+}
+
 export const fetchConversations = async (appSourceType: AppSourceType, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
   return getAction('get', appSourceType)(getUrl('conversations', appSourceType, installedAppId), { params: { limit: limit || 20, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
 }
@@ -175,8 +180,8 @@ export const fetchChatList = async (conversationId: string, appSourceType: AppSo
 // }
 
 // init value. wait for server update
-export const fetchAppParams = async (appSourceType: AppSourceType, installedAppId = '') => {
-  return (getAction('get', appSourceType))(getUrl('parameters', appSourceType, installedAppId)) as Promise<ChatConfig>
+export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') => {
+  return (getAction('get', appSourceType))(getUrl('parameters', appSourceType, appId)) as Promise<ChatConfig>
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
