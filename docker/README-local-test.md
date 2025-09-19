@@ -6,11 +6,10 @@
 
 ```
 docker/
-├── .env                 # 本地环境配置
-├── env.local           # 本地环境配置（备选方案）
-├── docker-compose.override.yaml  # 本地覆盖配置
-├── start-local-test.sh           # 启动脚本
-└── README-local-test.md          # 本文档
+├── .env                        # 本地环境配置
+├── docker-compose.override.yaml # 本地覆盖配置
+├── start-local-test.bat         # Windows启动脚本
+└── README-local-test.md         # 本文档
 ```
 
 ## 🚀 快速开始
@@ -20,8 +19,10 @@ docker/
 **使用 `.env`**
 ```bash
 cd docker
-cp .env.example .env
+copy .env.example .env
 ```
+
+**注意**: 请确保 Docker Desktop 正在运行，然后执行启动脚本。
 
 ### 2. 修改配置（可选）
 
@@ -46,11 +47,17 @@ VECTOR_STORE=weaviate
 
 ### 3. 启动测试环境
 
-```bash
+**Windows用户**：
+```cmd
 cd docker
-chmod +x start-local-test.sh
-./start-local-test.sh
+start-local-test.bat
 ```
+
+**脚本会自动**：
+- 检查 Docker Desktop 是否运行
+- 验证 `.env` 配置文件存在
+- 构建 worker 镜像（使用本地 Dockerfile）
+- 启动所有服务
 
 或者手动启动：
 

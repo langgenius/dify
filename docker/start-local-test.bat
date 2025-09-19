@@ -1,44 +1,63 @@
 @echo off
-REM 本地测试环境启动脚本 (Windows)
-REM 用于快速启动本地开发和测试环境
+chcp 65001 >nul
+REM Dify Local Test Environment Startup Script (Windows)
+REM Used to quickly start local development and testing environment
 
-echo 🚀 启动Dify本地测试环境...
+echo [INFO] Starting Dify local test environment...
 
-REM 确保在docker目录中
+REM Ensure in docker directory
 cd /d "%~dp0"
 
-REM 检查.env文件是否存在
-if not exist ".env" (
-    echo ❌ 未找到 .env 配置文件
-    echo    请先创建: copy .env.example .env
+REM Check if Docker is running
+docker info >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Docker is not running. Please start Docker Desktop first.
     pause
     exit /b 1
 )
 
-echo 📄 使用配置文件: .env
+REM Check if .env file exists
+if not exist ".env" (
+    echo [ERROR] .env configuration file not found
+    echo         Please create first: copy .env.example .env
+    pause
+    exit /b 1
+)
 
-REM 构建worker镜像
-echo 🔨 构建worker镜像...
+echo [INFO] Using config file: .env
+
+REM Build worker image
+echo [INFO] Building worker image...
 docker compose --env-file .env build worker
+if errorlevel 1 (
+    echo [ERROR] Failed to build worker image
+    pause
+    exit /b 1
+)
 
-REM 启动所有服务
-echo 🚀 启动所有服务...
+REM Start all services
+echo [INFO] Starting all services...
 docker compose --env-file .env up -d
+if errorlevel 1 (
+    echo [ERROR] Failed to start services
+    pause
+    exit /b 1
+)
 
-echo ✅ 本地测试环境启动完成！
+echo [SUCCESS] Local test environment started successfully!
 echo.
-echo 🌐 服务地址:
-echo    - Web界面: http://localhost
-echo    - API文档: http://localhost/swagger-ui.html
-echo    - API服务: http://localhost:5001
+echo [SERVICES] Service URLs:
+echo    - Web UI: http://localhost
+echo    - API Docs: http://localhost/swagger-ui.html
+echo    - API Service: http://localhost:5001
 echo.
-echo 📊 查看日志: docker compose logs -f
-echo 🛑 停止服务: docker compose down
-echo 🧹 清理数据: docker compose -f docker-compose.middleware.yaml down -v
-echo 🔄 重启服务: docker compose restart
-
+echo [COMMANDS] Available commands:
+echo    - View logs: docker compose logs -f
+echo    - Stop services: docker compose down
+echo    - Clean data: docker compose -f docker-compose.middleware.yaml down -v
+echo    - Restart services: docker compose restart
 echo.
-echo 💡 提示: 如果是首次运行，可能需要等待几分钟让服务完全启动
-echo    可以使用 'docker compose ps' 查看服务状态
+echo [TIP] If first run, wait a few minutes for services to fully start
+echo       Use 'docker compose ps' to check service status
 
 pause
