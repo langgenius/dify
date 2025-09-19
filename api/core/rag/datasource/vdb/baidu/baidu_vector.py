@@ -1,7 +1,7 @@
 import json
+import logging
 import time
 import uuid
-import logging
 from typing import Any
 
 import numpy as np
@@ -10,21 +10,21 @@ from pymochow import MochowClient  # type: ignore
 from pymochow.auth.bce_credentials import BceCredentials  # type: ignore
 from pymochow.configuration import Configuration  # type: ignore
 from pymochow.exception import ServerError  # type: ignore
+from pymochow.model.database import Database
 from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState  # type: ignore
 from pymochow.model.schema import (
     Field,
+    FilteringIndex,
     HNSWParams,
+    InvertedIndex,
+    InvertedIndexAnalyzer,
+    InvertedIndexFieldAttribute,
+    InvertedIndexParams,
+    InvertedIndexParseMode,
     Schema,
     VectorIndex,
-    FilteringIndex,
-    InvertedIndex,
-    InvertedIndexParams,
-    InvertedIndexAnalyzer,
-    InvertedIndexParseMode,
-    InvertedIndexFieldAttribute,
 )  # type: ignore
-from pymochow.model.table import AnnSearch, HNSWSearchParams, Partition, Row, BM25SearchRequest  # type: ignore
-from pymochow.model.database import Database
+from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams, Partition, Row  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as VDBField
