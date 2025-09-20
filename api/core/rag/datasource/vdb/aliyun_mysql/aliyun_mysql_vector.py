@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Any
 
 import mysql.connector
-from mysql.connector import Error as MySQLError
+from mysql.connector import Error as MySQLError, pooling
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -88,9 +88,20 @@ class AliyunMySQLVector(BaseVector):
         return VectorType.ALIYUN_MYSQL
 
     def _create_connection_pool(self, config: AliyunMySQLVectorConfig):
-        # PyMySQL doesn't have built-in connection pooling, so we'll create connections on demand
-        # In a production environment, you might want to implement a proper connection pool
-        self._config = config
+        # Create connection pool using mysql-connector-python pooling
+        pool_config = {
+            'host': config.host,
+            'port': config.port,
+            'user': config.user,
+            'password': config.password,
+            'database': config.database,
+            'charset': config.charset,
+            'autocommit': True,
+            'pool_name': f'aliyun_mysql_pool_{self.table_name}',
+            'pool_size': config.max_connection,
+            'pool_reset_session': True,
+        }
+        return mysql.connector.pooling.MySQLConnectionPool(**pool_config)
 
     def _check_vector_support(self):
         """Check if the MySQL server supports vector operations."""
@@ -113,15 +124,7 @@ class AliyunMySQLVector(BaseVector):
 
     @contextmanager
     def _get_cursor(self):
-        conn = mysql.connector.connect(
-            host=self._config.host,
-            port=self._config.port,
-            user=self._config.user,
-            password=self._config.password,
-            database=self._config.database,
-            charset=self._config.charset,
-            autocommit=True,
-        )
+        conn = self.pool.get_connection()
         cur = conn.cursor(dictionary=True)
         try:
             yield cur
@@ -141,7 +144,7 @@ class AliyunMySQLVector(BaseVector):
             if doc.metadata is not None:
                 doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
                 pks.append(doc_id)
-                # Convert embedding list to MariaDB vector format
+                # Convert embedding list to Aliyun MySQL vector format
                 vector_str = '[' + ','.join(map(str, embeddings[i])) + ']'
                 values.append(
                     (
