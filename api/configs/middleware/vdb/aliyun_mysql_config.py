@@ -46,3 +46,8 @@ class AliyunMySQLConfig(BaseSettings):
         description="Character set for Aliyun MySQL connection (default is 'utf8mb4')",
         default="utf8mb4",
     )
+
+    ALIYUN_MYSQL_DISTANCE_FUNCTION: str = Field(
+        description="Distance function used for vector similarity search in Aliyun MySQL (e.g., 'cosine', 'euclidean')",
+        default="cosine",
+    )

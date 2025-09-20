@@ -359,6 +359,6 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 min_connection=dify_config.ALIYUN_MYSQL_MIN_CONNECTION,
                 max_connection=dify_config.ALIYUN_MYSQL_MAX_CONNECTION,
                 charset=dify_config.ALIYUN_MYSQL_CHARSET or "utf8mb4",
-                distance_function=getattr(dify_config, 'ALIYUN_MYSQL_DISTANCE_FUNCTION', 'cosine'),
+                distance_function=dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or 'cosine',
             ),
         )
