@@ -4,7 +4,7 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient, l2_distance  # type: ignore
+from pyobvector import VECTOR, ObVecClient, l2_distance  # type: ignore
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -117,35 +117,39 @@ class OceanBaseVector(BaseVector):
                 columns=cols,
                 vidxs=vidx_params,
             )
-            logger.debug(f"DEBUG: Table '{self._collection_name}' created successfully")
-            
+            logger.debug("DEBUG: Table '%s' created successfully", self._collection_name)
+
             if self._hybrid_search_enabled:
                 # Get parser from config or use default ik parser
                 parser_name = dify_config.OCEANBASE_FULLTEXT_PARSER or "ik"
 
-                allowed_parsers = ['ik', 'japanese_ftparser', 'thai_ftparser']
+                allowed_parsers = ["ik", "japanese_ftparser", "thai_ftparser"]
                 if parser_name not in allowed_parsers:
-                    raise ValueError(f"Invalid OceanBase full-text parser: {parser_name}. "
-                                     f"Allowed values are: {', '.join(allowed_parsers)}")
-                logger.debug(f"Hybrid search is enabled, parser_name='{parser_name}'")
-                logger.debug(f"About to create fulltext index for collection '{self._collection_name}' using parser '{parser_name}'")
+                    raise ValueError(
+                        f"Invalid OceanBase full-text parser: {parser_name}. "
+                        f"Allowed values are: {', '.join(allowed_parsers)}"
+                    )
+                logger.debug("Hybrid search is enabled, parser_name='%s'", parser_name)
+                logger.debug(
+                    "About to create fulltext index for collection '%s' using parser '%s'",
+                    self._collection_name,
+                    parser_name,
+                )
                 try:
                     sql_command = f"""ALTER TABLE {self._collection_name}
                     ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER {parser_name}"""
-                    logger.debug(f"DEBUG: Executing SQL: {sql_command}")
+                    logger.debug("DEBUG: Executing SQL: %s", sql_command)
                     self._client.perform_raw_text_sql(sql_command)
-                    logger.debug(f"DEBUG: Fulltext index created successfully for '{self._collection_name}'")
+                    logger.debug("DEBUG: Fulltext index created successfully for '%s'", self._collection_name)
                 except Exception as e:
-                    logger.error(f"Exception occurred while creating fulltext index: {e}")
-                    logger.error(f"Exception type: {type(e)}")
+                    logger.exception("Exception occurred while creating fulltext index")
                     raise Exception(
-                        "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
-                        + "to support fulltext index and vector index in the same table",
-                        e,
-                    )
+                        "Failed to add fulltext index to the target table, your OceanBase version must be "
+                        "4.3.5.1 or above to support fulltext index and vector index in the same table"
+                    ) from e
             else:
-                logger.debug(f"DEBUG: Hybrid search is NOT enabled for '{self._collection_name}'")
-                
+                logger.debug("DEBUG: Hybrid search is NOT enabled for '%s'", self._collection_name)
+
             self._client.refresh_metadata([self._collection_name])
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
