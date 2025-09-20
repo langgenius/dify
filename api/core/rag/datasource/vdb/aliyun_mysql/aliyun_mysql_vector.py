@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Any
 
 import mysql.connector
-from mysql.connector import Error as MySQLError, pooling
+from mysql.connector import Error as MySQLError
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -97,7 +97,7 @@ class AliyunMySQLVector(BaseVector):
             'database': config.database,
             'charset': config.charset,
             'autocommit': True,
-            'pool_name': f'aliyun_mysql_pool_{self.table_name}',
+            'pool_name': 'vector_pool',
             'pool_size': config.max_connection,
             'pool_reset_session': True,
         }
@@ -202,7 +202,7 @@ class AliyunMySQLVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
-        Search the nearest neighbors to a vector using RSD MySQL vector distance functions.
+        Search the nearest neighbors to a vector using RDS MySQL vector distance functions.
 
         :param query_vector: The input vector to search for similar items.
         :return: List of Documents that are nearest to the query vector.
@@ -220,7 +220,7 @@ class AliyunMySQLVector(BaseVector):
             where_clause = f" WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, '$.document_id')) IN ({placeholders}) "
             params.extend(document_ids_filter)
 
-        # Convert query vector to MariaDB vector format
+        # Convert query vector to RDS MySQL vector format
         query_vector_str = '[' + ','.join(map(str, query_vector)) + ']'
 
         # Use RSD MySQL's native vector distance functions
