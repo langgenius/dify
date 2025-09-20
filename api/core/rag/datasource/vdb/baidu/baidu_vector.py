@@ -180,6 +180,17 @@ class BaiduVector(BaseVector):
             row_data = row.get("row", {})
             score = row.get("score", 0.0)
             meta = row_data.get(VDBField.METADATA_KEY, {})
+
+            # Handle both JSON string and dict formats for backward compatibility
+            if isinstance(meta, str):
+                try:
+                    import json
+                    meta = json.loads(meta)
+                except (json.JSONDecodeError, TypeError):
+                    meta = {}
+            elif not isinstance(meta, dict):
+                meta = {}
+
             if score >= score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=row_data.get(VDBField.CONTENT_KEY), metadata=meta)
