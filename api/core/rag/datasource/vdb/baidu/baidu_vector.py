@@ -185,6 +185,7 @@ class BaiduVector(BaseVector):
             if isinstance(meta, str):
                 try:
                     import json
+
                     meta = json.loads(meta)
                 except (json.JSONDecodeError, TypeError):
                     meta = {}
