@@ -1,5 +1,6 @@
 import json
 from abc import ABC
+from builtins import type as type_
 from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
@@ -58,10 +59,9 @@ class DefaultValue(BaseModel):
             raise DefaultValueTypeError(f"Invalid JSON format for value: {value}")
 
     @staticmethod
-    def _validate_array(value: Any, element_type: DefaultValueType) -> bool:
+    def _validate_array(value: Any, element_type: type_ | tuple[type_, ...]) -> bool:
         """Unified array type validation"""
-        # FIXME, type ignore here for do not find the reason mypy complain, if find the root cause, please fix it
-        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)  # type: ignore
+        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)
 
     @staticmethod
     def _convert_number(value: str) -> float:

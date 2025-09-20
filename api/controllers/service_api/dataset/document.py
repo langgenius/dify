@@ -135,7 +135,7 @@ class DocumentAddByTextApi(DatasetApiResource):
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
         }
         args["data_source"] = data_source
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
 
@@ -219,7 +219,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
@@ -328,7 +328,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         }
         args["data_source"] = data_source
         # validate args
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
@@ -429,7 +429,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         # validate args
         args["original_document_id"] = str(document_id)
 
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
