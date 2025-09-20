@@ -809,6 +809,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TENCENT
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
+                | VectorType.ALIYUN_MYSQL
             ):
                 return {
                     "retrieval_method": [
@@ -863,6 +864,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
+                | VectorType.ALIYUN_MYSQL
             ):
                 return {
                     "retrieval_method": [
