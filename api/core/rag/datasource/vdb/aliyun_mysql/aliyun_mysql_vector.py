@@ -45,12 +45,8 @@ class AliyunMySQLVectorConfig(BaseModel):
             raise ValueError("config ALIYUN_MYSQL_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config ALIYUN_MYSQL_DATABASE is required")
-        if not values["min_connection"]:
-            raise ValueError("config ALIYUN_MYSQL_MIN_CONNECTION is required")
         if not values["max_connection"]:
             raise ValueError("config ALIYUN_MYSQL_MAX_CONNECTION is required")
-        if values["min_connection"] > values["max_connection"]:
-            raise ValueError("config ALIYUN_MYSQL_MIN_CONNECTION should be less than ALIYUN_MYSQL_MAX_CONNECTION")
         return values
 
 
@@ -359,7 +355,6 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 user=dify_config.ALIYUN_MYSQL_USER or "root",
                 password=dify_config.ALIYUN_MYSQL_PASSWORD or "",
                 database=dify_config.ALIYUN_MYSQL_DATABASE or "dify",
-                min_connection=dify_config.ALIYUN_MYSQL_MIN_CONNECTION,
                 max_connection=dify_config.ALIYUN_MYSQL_MAX_CONNECTION,
                 charset=dify_config.ALIYUN_MYSQL_CHARSET or "utf8mb4",
                 distance_function=dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or 'cosine',

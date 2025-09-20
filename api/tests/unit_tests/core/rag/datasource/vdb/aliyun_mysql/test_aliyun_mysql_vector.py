@@ -28,7 +28,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
             charset="utf8mb4",
         )
         self.collection_name = "test_collection"
-        
+
         # Sample documents for testing
         self.sample_documents = [
             Document(
@@ -40,7 +40,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 metadata={"doc_id": "doc2", "document_id": "dataset1", "source": "test"}
             )
         ]
-        
+
         # Sample embeddings
         self.sample_embeddings = [
             [0.1, 0.2, 0.3, 0.4],
@@ -53,7 +53,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         # Mock connection and cursor for vector support check
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -63,7 +63,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},  # Version check
             {"vector_support": True}   # Vector support check
         ]
-        
+
         aliyun_mysql_vector = AliyunMySQLVector(self.collection_name, self.config)
 
         self.assertEqual(aliyun_mysql_vector.collection_name, self.collection_name)
@@ -85,7 +85,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         # Mock connection and cursor
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -118,17 +118,6 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 max_connection=5,
             )
 
-        # Test min_connection > max_connection
-        with self.assertRaises(ValueError):
-            AliyunMySQLVectorConfig(
-                host="localhost",
-                port=3306,
-                user="test",
-                password="test",
-                database="test",
-                min_connection=10,
-                max_connection=5,  # Should be greater than min_connection
-            )
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_vector_support_check_success(self, mock_pool_class):
@@ -136,7 +125,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -145,7 +134,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         # Should not raise an exception
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         self.assertIsNotNone(vector_store)
@@ -156,7 +145,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -165,10 +154,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.35"},
             {"vector_support": False}
         ]
-        
+
         with self.assertRaises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
-        
+
         self.assertIn("RDS MySQL Vector functions are not available", str(context.exception))
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -177,17 +166,17 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.return_value = {"VERSION()": "8.0.36"}
         mock_cursor.execute.side_effect = [None, MySQLError(errno=1305, msg="FUNCTION VEC_FromText does not exist")]
-        
+
         with self.assertRaises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
-        
+
         self.assertIn("RDS MySQL Vector functions are not available", str(context.exception))
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -196,10 +185,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         """Test creating documents with embeddings."""
         # Setup mocks
         self._setup_mocks(mock_redis, mock_pool_class)
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         result = vector_store.create(self.sample_documents, self.sample_embeddings)
-        
+
         self.assertEqual(len(result), 2)
         self.assertIn("doc1", result)
         self.assertIn("doc2", result)
@@ -210,7 +199,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -219,10 +208,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         result = vector_store.add_texts(self.sample_documents, self.sample_embeddings)
-        
+
         self.assertEqual(len(result), 2)
         mock_cursor.executemany.assert_called_once()
 
@@ -232,7 +221,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -242,10 +231,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"vector_support": True},
             {"id": "doc1"}  # Text exists
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         exists = vector_store.text_exists("doc1")
-        
+
         self.assertTrue(exists)
         # Check that the correct SQL was executed (last call after init)
         execute_calls = mock_cursor.execute.call_args_list
@@ -259,7 +248,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -269,10 +258,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"vector_support": True},
             None  # Text does not exist
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         exists = vector_store.text_exists("nonexistent")
-        
+
         self.assertFalse(exists)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -281,7 +270,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -294,10 +283,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"meta": json.dumps({"doc_id": "doc1", "source": "test"}), "text": "Test document 1"},
             {"meta": json.dumps({"doc_id": "doc2", "source": "test"}), "text": "Test document 2"}
         ])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.get_by_ids(["doc1", "doc2"])
-        
+
         self.assertEqual(len(docs), 2)
         self.assertEqual(docs[0].page_content, "Test document 1")
         self.assertEqual(docs[1].page_content, "Test document 2")
@@ -308,7 +297,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -317,10 +306,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.get_by_ids([])
-        
+
         self.assertEqual(len(docs), 0)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -329,7 +318,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -338,10 +327,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete_by_ids(["doc1", "doc2"])
-        
+
         # Check that delete SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         delete_calls = [call for call in execute_calls if "DELETE" in str(call)]
@@ -356,7 +345,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -365,10 +354,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete_by_ids([])  # Should not raise an exception
-        
+
         # Verify no delete SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         delete_calls = [call for call in execute_calls if "DELETE" in str(call)]
@@ -380,7 +369,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -394,7 +383,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
             if "DELETE" in args[0]:
                 raise MySQLError(errno=1146, msg="Table doesn't exist")
         mock_cursor.execute.side_effect = execute_side_effect
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         # Should not raise an exception
         vector_store.delete_by_ids(["doc1"])
@@ -405,7 +394,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -414,10 +403,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete_by_metadata_field("document_id", "dataset1")
-        
+
         # Check that the correct SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         delete_calls = [call for call in execute_calls if "DELETE" in str(call)]
@@ -432,7 +421,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -448,11 +437,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 "distance": 0.1
             }
         ])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(query_vector, top_k=5)
-        
+
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].page_content, "Test document 1")
         self.assertAlmostEqual(docs[0].metadata["score"], 0.9, places=1)  # 1 - 0.1 = 0.9
@@ -471,11 +460,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
             max_connection=5,
             distance_function="euclidean"
         )
-        
+
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -491,11 +480,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 "distance": 2.0
             }
         ])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(query_vector, top_k=5)
-        
+
         self.assertEqual(len(docs), 1)
         self.assertAlmostEqual(docs[0].metadata["score"], 1.0/3.0, places=2)  # 1/(1+2) = 1/3
 
@@ -505,7 +494,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -515,15 +504,15 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"vector_support": True}
         ]
         mock_cursor.__iter__ = lambda self: iter([])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(
-            query_vector, 
-            top_k=5, 
+            query_vector,
+            top_k=5,
             document_ids_filter=["dataset1"]
         )
-        
+
         # Verify the SQL contains the WHERE clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
         search_calls = [call for call in execute_calls if "VEC_DISTANCE" in str(call)]
@@ -537,7 +526,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -558,15 +547,15 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 "distance": 0.8  # Low similarity (score = 0.2)
             }
         ])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(
-            query_vector, 
-            top_k=5, 
+            query_vector,
+            top_k=5,
             score_threshold=0.5
         )
-        
+
         # Only the high similarity document should be returned
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].page_content, "High similarity document")
@@ -577,7 +566,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -586,13 +575,13 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
-        
+
         with self.assertRaises(ValueError):
             vector_store.search_by_vector(query_vector, top_k=0)
-        
+
         with self.assertRaises(ValueError):
             vector_store.search_by_vector(query_vector, top_k="invalid")
 
@@ -602,7 +591,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -618,10 +607,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 "score": 1.5
             }
         ])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.search_by_full_text("machine learning", top_k=5)
-        
+
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].page_content, "This document contains machine learning content")
         self.assertEqual(docs[0].metadata["score"], 1.5)
@@ -632,7 +621,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -642,14 +631,14 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"vector_support": True}
         ]
         mock_cursor.__iter__ = lambda self: iter([])
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.search_by_full_text(
-            "machine learning", 
-            top_k=5, 
+            "machine learning",
+            top_k=5,
             document_ids_filter=["dataset1"]
         )
-        
+
         # Verify the SQL contains the AND clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
         search_calls = [call for call in execute_calls if "MATCH" in str(call)]
@@ -663,7 +652,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -672,12 +661,12 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
-        
+
         with self.assertRaises(ValueError):
             vector_store.search_by_full_text("test", top_k=0)
-        
+
         with self.assertRaises(ValueError):
             vector_store.search_by_full_text("test", top_k="invalid")
 
@@ -687,7 +676,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -696,10 +685,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete()
-        
+
         # Check that DROP TABLE SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         drop_calls = [call for call in execute_calls if "DROP TABLE" in str(call)]
@@ -720,11 +709,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
             max_connection=5,
             distance_function="manhattan"  # Unsupported
         )
-        
+
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
@@ -733,10 +722,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"VERSION()": "8.0.36"},
             {"vector_support": True}
         ]
-        
+
         with self.assertRaises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, config)
-        
+
         self.assertIn("Unsupported distance function", str(context.exception))
 
     def _setup_mocks(self, mock_redis, mock_pool_class):
@@ -750,7 +739,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Mock the connection pool
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
-        
+
         # Mock connection and cursor
         mock_conn = MagicMock()
         mock_cursor = MagicMock()

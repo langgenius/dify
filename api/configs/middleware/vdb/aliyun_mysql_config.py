@@ -32,11 +32,6 @@ class AliyunMySQLConfig(BaseSettings):
         default="dify",
     )
 
-    ALIYUN_MYSQL_MIN_CONNECTION: PositiveInt = Field(
-        description="Minimum number of connections in the connection pool",
-        default=1,
-    )
-
     ALIYUN_MYSQL_MAX_CONNECTION: PositiveInt = Field(
         description="Maximum number of connections in the connection pool",
         default=10,
