@@ -290,8 +290,8 @@ class AliyunMySQLVector(BaseVector):
                     WHERE MATCH(text) AGAINST(%s IN NATURAL LANGUAGE MODE)
                     {where_clause}
                     ORDER BY score DESC
-                    LIMIT {top_k}""",
-                [query, query] + (params[1:] if document_ids_filter else []),
+                    LIMIT %s""",
+                [query, query] + (params[1:] if document_ids_filter else []) + [top_k],
             )
 
             docs = []
@@ -307,10 +307,9 @@ class AliyunMySQLVector(BaseVector):
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
     def _create_collection(self, dimension: int):
-        cache_key = f"vector_indexing_{self._collection_name}"
-        lock_name = f"{cache_key}_lock"
+        collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
+        lock_name = f"{collection_exist_cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
 
