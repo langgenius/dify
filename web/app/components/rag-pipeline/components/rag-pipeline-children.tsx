@@ -16,6 +16,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import PublishToast from './publish-toast'
+import { useRagPipelineSearch } from '../hooks/use-rag-pipeline-search'
 
 const RagPipelineChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -29,6 +30,9 @@ const RagPipelineChildren = () => {
     exportCheck,
     handleExportDSL,
   } = useDSL()
+
+  // Initialize RAG pipeline search functionality
+  useRagPipelineSearch()
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === DSL_EXPORT_CHECK)

@@ -513,6 +513,7 @@ const translation = {
       selectModelCredential: 'Wybieranie poświadczeń modelu',
       editModelCredential: 'Edytowanie poświadczeń modelu',
     },
+    parametersInvalidRemoved: 'Niektóre parametry są nieprawidłowe i zostały usunięte.',
   },
   dataSource: {
     add: 'Dodaj źródło danych',
