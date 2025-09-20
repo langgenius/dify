@@ -36,6 +36,8 @@ import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import { useStore } from '@/app/components/workflow/store'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
+import Button from '@/app/components/base/button'
+import { Memory } from '@/app/components/base/icons/src/vender/line/others'
 
 type Props = {
   className?: string
@@ -75,10 +77,11 @@ type Props = {
   titleTooltip?: ReactNode
   inputClassName?: string
   editorContainerClassName?: string
-  placeholder?: string
+  placeholder?: string | React.JSX.Element
   placeholderClassName?: string
   titleClassName?: string
   required?: boolean
+  isMemorySupported?: boolean
 }
 
 const Editor: FC<Props> = ({
@@ -118,6 +121,7 @@ const Editor: FC<Props> = ({
   titleClassName,
   editorContainerClassName,
   required,
+  isMemorySupported,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -233,68 +237,78 @@ const Editor: FC<Props> = ({
           </div>
 
           {/* Min: 80 Max: 560. Header: 24 */}
-          <div className={cn('pb-2', isExpand && 'flex grow flex-col')}>
+          <div className={cn('pb-2', isExpand && 'flex grow flex-col', isMemorySupported && isFocus && 'pb-1.5')}>
             {!(isSupportJinja && editionType === EditionType.jinja2)
               ? (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
-                  <PromptEditor
-                    key={controlPromptEditorRerenderKey}
-                    placeholder={placeholder}
-                    placeholderClassName={placeholderClassName}
-                    instanceId={instanceId}
-                    compact
-                    className={cn('min-h-[56px]', inputClassName)}
-                    style={isExpand ? { height: editorExpandHeight - 5 } : {}}
-                    value={value}
-                    contextBlock={{
-                      show: justVar ? false : isShowContext,
-                      selectable: !hasSetBlockStatus?.context,
-                      canNotAddContext: true,
-                    }}
-                    historyBlock={{
-                      show: justVar ? false : isShowHistory,
-                      selectable: !hasSetBlockStatus?.history,
-                      history: {
-                        user: 'Human',
-                        assistant: 'Assistant',
-                      },
-                    }}
-                    queryBlock={{
-                      show: false, // use [sys.query] instead of query block
-                      selectable: false,
-                    }}
-                    workflowVariableBlock={{
-                      show: true,
-                      variables: nodesOutputVars || [],
-                      getVarType: getVarType as any,
-                      workflowNodesMap: availableNodes.reduce((acc, node) => {
-                        acc[node.id] = {
-                          title: node.data.title,
-                          type: node.data.type,
-                          width: node.width,
-                          height: node.height,
-                          position: node.position,
-                        }
-                        if (node.data.type === BlockEnum.Start) {
-                          acc.sys = {
-                            title: t('workflow.blocks.start'),
-                            type: BlockEnum.Start,
+                <>
+                  <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
+                    <PromptEditor
+                      key={controlPromptEditorRerenderKey}
+                      placeholder={placeholder}
+                      placeholderClassName={placeholderClassName}
+                      instanceId={instanceId}
+                      compact
+                      className={cn('min-h-[56px]', inputClassName)}
+                      style={isExpand ? { height: editorExpandHeight - 5 } : {}}
+                      value={value}
+                      contextBlock={{
+                        show: justVar ? false : isShowContext,
+                        selectable: !hasSetBlockStatus?.context,
+                        canNotAddContext: true,
+                      }}
+                      historyBlock={{
+                        show: justVar ? false : isShowHistory,
+                        selectable: !hasSetBlockStatus?.history,
+                        history: {
+                          user: 'Human',
+                          assistant: 'Assistant',
+                        },
+                      }}
+                      queryBlock={{
+                        show: false, // use [sys.query] instead of query block
+                        selectable: false,
+                      }}
+                      workflowVariableBlock={{
+                        show: true,
+                        variables: nodesOutputVars || [],
+                        getVarType,
+                        workflowNodesMap: availableNodes.reduce((acc, node) => {
+                          acc[node.id] = {
+                            title: node.data.title,
+                            type: node.data.type,
+                            width: node.width,
+                            height: node.height,
+                            position: node.position,
                           }
-                        }
-                        return acc
-                      }, {} as any),
-                      showManageInputField: !!pipelineId,
-                      onManageInputField: () => setShowInputFieldPanel?.(true),
-                    }}
-                    onChange={onChange}
-                    onBlur={setBlur}
-                    onFocus={setFocus}
-                    editable={!readOnly}
-                    isSupportFileVar={isSupportFileVar}
-                  />
-                  {/* to patch Editor not support dynamic change editable status */}
-                  {readOnly && <div className='absolute inset-0 z-10'></div>}
-                </div>
+                          if (node.data.type === BlockEnum.Start) {
+                            acc.sys = {
+                              title: t('workflow.blocks.start'),
+                              type: BlockEnum.Start,
+                            }
+                          }
+                          return acc
+                        }, {} as any),
+                        showManageInputField: !!pipelineId,
+                        onManageInputField: () => setShowInputFieldPanel?.(true),
+                      }}
+                      onChange={onChange}
+                      onBlur={setBlur}
+                      onFocus={setFocus}
+                      editable={!readOnly}
+                      isSupportFileVar={isSupportFileVar}
+                    />
+                    {/* to patch Editor not support dynamic change editable status */}
+                    {readOnly && <div className='absolute inset-0 z-10'></div>}
+                  </div>
+                  {isMemorySupported && isFocus && (
+                    <div className='pl-1.5'>
+                      <Button variant='ghost' size='small' className='text-text-tertiary'>
+                        <Memory className='h-3.5 w-3.5' />
+                        <span className='ml-1'>{t('workflow.nodes.llm.memory.addButton')}</span>
+                      </Button>
+                    </div>
+                  )}
+                </>
               )
               : (
                 <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>

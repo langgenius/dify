@@ -15,6 +15,8 @@ type Params = {
   hideChatVar?: boolean
   filterVar: (payload: Var, selector: ValueSelector) => boolean
   passedInAvailableNodes?: Node[]
+  conversationVariablesFirst?: boolean
+  memoryVarSortFn?: (a: string, b: string) => number
 }
 
 // TODO: loop type?
@@ -24,6 +26,8 @@ const useAvailableVarList = (nodeId: string, {
   hideEnv,
   hideChatVar,
   passedInAvailableNodes,
+  conversationVariablesFirst,
+  memoryVarSortFn,
 }: Params = {
   onlyLeafNodeVar: false,
   filterVar: () => true,
@@ -70,6 +74,8 @@ const useAvailableVarList = (nodeId: string, {
     filterVar,
     hideEnv,
     hideChatVar,
+    conversationVariablesFirst,
+    memoryVarSortFn,
   }), ...dataSourceRagVars]
 
   return {

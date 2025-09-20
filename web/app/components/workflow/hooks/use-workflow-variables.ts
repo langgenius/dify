@@ -31,6 +31,8 @@ export const useWorkflowVariables = () => {
     filterVar,
     hideEnv,
     hideChatVar,
+    conversationVariablesFirst,
+    memoryVarSortFn,
   }: {
     parentNode?: Node | null
     beforeNodes: Node[]
@@ -38,6 +40,8 @@ export const useWorkflowVariables = () => {
     filterVar: (payload: Var, selector: ValueSelector) => boolean
     hideEnv?: boolean
     hideChatVar?: boolean
+    conversationVariablesFirst?: boolean
+    memoryVarSortFn?: (a: string, b: string) => number
   }): NodeOutPutVar[] => {
     const {
       conversationVariables,
@@ -61,6 +65,8 @@ export const useWorkflowVariables = () => {
         dataSourceList: dataSourceList ?? [],
       },
       schemaTypeDefinitions,
+      conversationVariablesFirst,
+      memoryVarSortFn,
     })
   }, [t, workflowStore, schemaTypeDefinitions, buildInTools])
 

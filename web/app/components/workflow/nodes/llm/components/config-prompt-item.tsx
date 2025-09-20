@@ -146,6 +146,17 @@ const ConfigPromptItem: FC<Props> = ({
       varList={varList}
       handleAddVariable={handleAddVariable}
       isSupportFileVar
+      placeholder={
+        <>
+          <div>
+            {t(`${i18nPrefix}.promptEditorPlaceholder1`)}
+          </div>
+          <div>
+            {t(`${i18nPrefix}.promptEditorPlaceholder2`)}
+          </div>
+        </>
+      }
+      isMemorySupported
     />
   )
 }

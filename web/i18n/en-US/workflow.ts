@@ -522,6 +522,11 @@ const translation = {
           saveSchema: 'Please finish editing the current field before saving the schema',
         },
       },
+      promptEditorPlaceholder1: 'Click here to edit Prompt',
+      promptEditorPlaceholder2: 'Type \'/\' to insert variable',
+      memory: {
+        addButton: 'Add Memory',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',

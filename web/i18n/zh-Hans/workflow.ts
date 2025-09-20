@@ -522,6 +522,11 @@ const translation = {
         tagged: '保持思考标签',
         separated: '分开思考标签',
       },
+      promptEditorPlaceholder1: '点击此处编辑提示词',
+      promptEditorPlaceholder2: '输入 \'/\' 插入变量',
+      memory: {
+        addButton: '添加记忆',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',

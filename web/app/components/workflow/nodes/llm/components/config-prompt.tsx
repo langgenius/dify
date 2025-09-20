@@ -34,6 +34,7 @@ type Props = {
   varList?: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig: ModelConfig
+  memoryVarSortFn?: (a: string, b: string) => number
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -49,6 +50,7 @@ const ConfigPrompt: FC<Props> = ({
   varList = [],
   handleAddVariable,
   modelConfig,
+  memoryVarSortFn,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -73,6 +75,8 @@ const ConfigPrompt: FC<Props> = ({
   } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
+    conversationVariablesFirst: true,
+    memoryVarSortFn,
   })
 
   const handleChatModePromptChange = useCallback((index: number) => {

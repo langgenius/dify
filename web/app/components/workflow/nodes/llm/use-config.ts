@@ -23,7 +23,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
@@ -331,6 +331,17 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterVar: filterMemoryPromptVar,
   })
 
+  const memoryVarSortFn = useCallback((a: string, b: string) => {
+    const idsInNode = inputs.memory?.block_id || []
+    const aInNode = idsInNode.includes(a)
+    const bInNode = idsInNode.includes(b)
+
+    if (aInNode && !bInNode) return -1
+    if (!aInNode && bInNode) return 1
+
+    return a.localeCompare(b)
+  }, [inputs.memory?.block_id])
+
   return {
     readOnly,
     isChatMode,
@@ -364,6 +375,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    memoryVarSortFn,
   }
 }
 

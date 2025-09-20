@@ -313,6 +313,7 @@ const formatItem = (
   allPluginInfoList: Record<string, ToolWithProvider[]>,
   ragVars?: Var[],
   schemaTypeDefinitions: SchemaTypeDefinition[] = [],
+  memoryVarSortFn?: (a: string, b: string) => number,
 ): NodeOutPutVar => {
   const { id, data } = item
 
@@ -630,6 +631,8 @@ const formatItem = (
     }
 
     case 'conversation': {
+      if (memoryVarSortFn)
+        data.chatVarList.sort(memoryVarSortFn)
       res.vars = data.chatVarList.map((chatVar: ConversationVariable) => {
         return {
           variable: `conversation.${chatVar.name}`,
@@ -759,6 +762,8 @@ export const toNodeOutputVars = (
   ragVariables: RAGPipelineVariable[] = [],
   allPluginInfoList: Record<string, ToolWithProvider[]>,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
+  conversationVariablesFirst: boolean = false,
+  memoryVarSortFn?: (a: string, b: string) => number,
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
   const ENV_NODE = {
@@ -801,44 +806,56 @@ export const toNodeOutputVars = (
     return (b.position?.x || 0) - (a.position?.x || 0)
   })
 
-  const res = [
-    ...sortedNodes.filter(node =>
-      SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type),
-    ),
-    ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
-    ...(isChatMode && conversationVariables.length > 0 ? [CHAT_VAR_NODE] : []),
-    ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
-      ? [RAG_PIPELINE_NODE]
-      : []),
-  ]
-    .map((node) => {
-      let ragVariablesInDataSource: RAGPipelineVariable[] = []
-      if (node.data.type === BlockEnum.DataSource) {
-        ragVariablesInDataSource = ragVariables.filter(
-          ragVariable => ragVariable.belong_to_node_id === node.id,
-        )
-      }
-      return {
-        ...formatItem(
-          node,
-          isChatMode,
-          filterVar,
-          allPluginInfoList,
-          ragVariablesInDataSource.map(
-            (ragVariable: RAGPipelineVariable) =>
-              ({
-                variable: `rag.${node.id}.${ragVariable.variable}`,
-                type: inputVarTypeToVarType(ragVariable.type as any),
-                description: ragVariable.label,
-                isRagVariable: true,
-              } as Var),
-          ),
-          schemaTypeDefinitions,
+  let nodeList = []
+  if (conversationVariablesFirst) {
+    nodeList = [
+      ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
+      ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
+      ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
+      ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
+        ? [RAG_PIPELINE_NODE]
+        : []),
+    ]
+  }
+  else {
+    nodeList = [
+      ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
+      ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
+      ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
+      ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
+        ? [RAG_PIPELINE_NODE]
+        : []),
+    ]
+  }
+
+  const res = nodeList.map((node) => {
+    let ragVariablesInDataSource: RAGPipelineVariable[] = []
+    if (node.data.type === BlockEnum.DataSource) {
+      ragVariablesInDataSource = ragVariables.filter(
+        ragVariable => ragVariable.belong_to_node_id === node.id,
+      )
+    }
+    return {
+      ...formatItem(
+        node,
+        isChatMode,
+        filterVar,
+        allPluginInfoList,
+        ragVariablesInDataSource.map(
+          (ragVariable: RAGPipelineVariable) =>
+            ({
+              variable: `rag.${node.id}.${ragVariable.variable}`,
+              type: inputVarTypeToVarType(ragVariable.type as any),
+              description: ragVariable.label,
+              isRagVariable: true,
+            } as Var),
         ),
-        isStartNode: node.data.type === BlockEnum.Start,
-      }
-    })
-    .filter(item => item.vars.length > 0)
+        schemaTypeDefinitions,
+        memoryVarSortFn,
+      ),
+      isStartNode: node.data.type === BlockEnum.Start,
+    }
+  }).filter(item => item.vars.length > 0)
   return res
 }
 
@@ -1119,6 +1136,8 @@ export const toNodeAvailableVars = ({
   filterVar,
   allPluginInfoList,
   schemaTypeDefinitions,
+  conversationVariablesFirst,
+  memoryVarSortFn,
 }: {
   parentNode?: Node | null;
   t?: any;
@@ -1134,6 +1153,8 @@ export const toNodeAvailableVars = ({
   filterVar: (payload: Var, selector: ValueSelector) => boolean;
   allPluginInfoList: Record<string, ToolWithProvider[]>;
   schemaTypeDefinitions?: SchemaTypeDefinition[];
+  conversationVariablesFirst?: boolean
+  memoryVarSortFn?: (a: string, b: string) => number
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
     beforeNodes,
@@ -1144,6 +1165,8 @@ export const toNodeAvailableVars = ({
     ragVariables,
     allPluginInfoList,
     schemaTypeDefinitions,
+    conversationVariablesFirst,
+    memoryVarSortFn,
   )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
