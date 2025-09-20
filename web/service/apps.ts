@@ -159,11 +159,7 @@ export const updateTracingStatus: Fetcher<CommonResponse, { appId: string; body:
 
 // Webhook Trigger
 export const fetchWebhookUrl: Fetcher<WebhookTriggerResponse, { appId: string; nodeId: string }> = ({ appId, nodeId }) => {
-  return post<WebhookTriggerResponse>(`apps/${appId}/workflows/triggers/webhook`, { params: { node_id: nodeId } })
-}
-
-export const deleteWebhookUrl: Fetcher<CommonResponse, { appId: string; nodeId: string }> = ({ appId, nodeId }) => {
-  return del<CommonResponse>(`apps/${appId}/workflows/triggers/webhook`, { params: { node_id: nodeId } })
+  return get<WebhookTriggerResponse>(`apps/${appId}/workflows/triggers/webhook`, { params: { node_id: nodeId } })
 }
 
 export const fetchTracingConfig: Fetcher<TracingConfig & { has_not_configured: true }, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {

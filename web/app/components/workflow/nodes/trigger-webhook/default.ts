@@ -26,14 +26,6 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(payload: WebhookTriggerNodeType, t: any) {
-    // Validate webhook configuration
-    if (!payload.webhook_url) {
-      return {
-        isValid: false,
-        errorMessage: t('workflow.nodes.triggerWebhook.validation.webhookUrlRequired'),
-      }
-    }
-
     // Validate parameter types for params and body
     const parametersWithTypes = [
       ...(payload.params || []),
