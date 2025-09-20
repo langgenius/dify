@@ -5,10 +5,9 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import pymysql
-import pymysql.cursors
+import mysql.connector
+from mysql.connector import Error as MySQLError
 from pydantic import BaseModel, model_validator
-from pymysql.err import Error as PyMySQLError
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -100,32 +99,30 @@ class AliyunMySQLVector(BaseVector):
                 # Check MySQL version and vector support
                 cur.execute("SELECT VERSION()")
                 version = cur.fetchone()["VERSION()"]
-                logger.info("Connected to MySQL version: %s", version)
-
+                logger.debug("Connected to MySQL version: %s", version)
                 # Try to execute a simple vector function to verify support
                 cur.execute("SELECT VEC_FromText('[1,2,3]') IS NOT NULL as vector_support")
                 result = cur.fetchone()
                 if not result or not result.get("vector_support"):
                     raise ValueError("RDS MySQL Vector functions are not available. Please ensure you're using RDS MySQL 8.0.36+ with Vector support.")
 
-        except PyMySQLError as e:
+        except MySQLError as e:
             if "FUNCTION" in str(e) and "VEC_FromText" in str(e):
                 raise ValueError("RDS MySQL Vector functions are not available. Please ensure you're using RDS MySQL 8.0.36+ with Vector support.") from e
             raise e
 
     @contextmanager
     def _get_cursor(self):
-        conn = pymysql.connect(
+        conn = mysql.connector.connect(
             host=self._config.host,
             port=self._config.port,
             user=self._config.user,
             password=self._config.password,
             database=self._config.database,
             charset=self._config.charset,
-            cursorclass=pymysql.cursors.DictCursor,
             autocommit=True,
         )
-        cur = conn.cursor()
+        cur = conn.cursor(dictionary=True)
         try:
             yield cur
         finally:
@@ -189,8 +186,8 @@ class AliyunMySQLVector(BaseVector):
             try:
                 placeholders = ",".join(["%s"] * len(ids))
                 cur.execute(f"DELETE FROM {self.table_name} WHERE id IN ({placeholders})", ids)
-            except PyMySQLError as e:
-                if e.args[0] == 1146:  # Table doesn't exist
+            except MySQLError as e:
+                if e.errno == 1146:  # Table doesn't exist
                     logger.warning("Table %s not found, skipping delete operation.", self.table_name)
                     return
                 else:
@@ -320,11 +317,6 @@ class AliyunMySQLVector(BaseVector):
 
             with self._get_cursor() as cur:
                 # Create table with vector column and vector index
-                logger.info(SQL_CREATE_TABLE.format(
-                    table_name=self.table_name,
-                    dimension=dimension,
-                    distance_function=self.distance_function
-                ))
                 cur.execute(SQL_CREATE_TABLE.format(
                     table_name=self.table_name,
                     dimension=dimension,
@@ -333,15 +325,15 @@ class AliyunMySQLVector(BaseVector):
                 # Create metadata index (check if exists first)
                 try:
                     cur.execute(SQL_CREATE_META_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
-                except PyMySQLError as e:
-                    if e.args[0] != 1061:  # Duplicate key name
+                except MySQLError as e:
+                    if e.errno != 1061:  # Duplicate key name
                         logger.warning("Could not create meta index: %s", e)
 
                 # Create full-text index for text search
                 try:
                     cur.execute(SQL_CREATE_FULLTEXT_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
-                except PyMySQLError as e:
-                    if e.args[0] != 1061:  # Duplicate key name
+                except MySQLError as e:
+                    if e.errno != 1061:  # Duplicate key name
                         logger.warning("Could not create fulltext index: %s", e)
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
