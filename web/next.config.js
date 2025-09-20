@@ -1,4 +1,6 @@
 const { codeInspectorPlugin } = require('code-inspector-plugin')
+const fs = require('fs')
+const path = require('path')
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -75,7 +77,7 @@ const withMDX = require('@next/mdx')({
     remarkPlugins: [],
     rehypePlugins: [],
     // If you use `MDXProvider`, uncomment the following line.
-    // providerImportSource: "@mdx-js/react",
+    // providerImportSource: '@mdx-js/react',
   },
 })
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
@@ -94,6 +96,54 @@ const nextConfig = {
   webpack: (config, { dev, isServer }) => {
     if (dev) {
       config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+    }
+    if (!dev) {
+      config.plugins.push({
+        apply: (compiler) => {
+          compiler.hooks.afterEmit.tapAsync(
+            'AfterEmitCopyPlugin',
+            (compilation, callback) => {
+              const ROOT = process.cwd(); // Project root directory
+              const STATIC_SRC = path.join(ROOT, '.next', 'static');
+              const STATIC_DEST = path.join(
+                ROOT,
+                '.next',
+                'standalone',
+                '.next',
+                'static'
+              );
+
+              const PUBLIC_SRC = path.join(ROOT, 'public');
+              const PUBLIC_DEST = path.join(
+                ROOT,
+                '.next',
+                'standalone',
+                'public'
+              );
+
+              // Synchronously copy directory (natively supported in Node.js 16.7+)
+              const copyDirSync = (src, dest) => {
+                if (!fs.existsSync(src)) {
+                  console.warn(`⚠️ Source directory does not exist: ${src}`);
+                  return;
+                }
+                try {
+                  fs.mkdirSync(path.dirname(dest), { recursive: true });
+                  fs.cpSync(src, dest, { recursive: true });
+                } catch (err) {
+                  console.error(`❌ Copy failed: ${src} → ${dest}`, err.message);
+                }
+              };
+
+              copyDirSync(STATIC_SRC, STATIC_DEST);
+              copyDirSync(PUBLIC_SRC, PUBLIC_DEST);
+
+              callback();
+            }
+          );
+        },
+        constructor: { name: 'CopyForStandalonePlugin' },
+      });
     }
 
     return config
