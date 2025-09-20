@@ -139,9 +139,13 @@ const Annotation: FC<Props> = (props) => {
     setControlUpdateList(Date.now())
   }
 
-  useEffect(() => {
-    if (!isShowEdit) setControlRefreshSwitch(Date.now())
-  }, [isShowEdit])
+  const [prevShowEdit, setPrevShowEdit] = useState(isShowEdit)
+  if (isShowEdit !== prevShowEdit) {
+    if(!isShowEdit) {
+      setPrevShowEdit(isShowEdit)
+      setControlRefreshSwitch(Date.now())
+    }
+  }
 
   return (
     <div className='flex h-full flex-col'>
