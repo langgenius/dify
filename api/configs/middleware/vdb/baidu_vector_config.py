@@ -41,3 +41,13 @@ class BaiduVectorDBConfig(BaseSettings):
         description="Number of replicas for the Baidu Vector Database (default is 3)",
         default=3,
     )
+
+    BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER: str = Field(
+        description="Analyzer type for inverted index in Baidu Vector Database (default is DEFAULT_ANALYZER)",
+        default="DEFAULT_ANALYZER",
+    )
+
+    BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE: str = Field(
+        description="Parser mode for inverted index in Baidu Vector Database (default is COARSE_MODE)",
+        default="COARSE_MODE",
+    )
