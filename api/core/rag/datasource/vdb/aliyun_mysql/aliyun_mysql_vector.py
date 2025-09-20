@@ -31,7 +31,7 @@ class AliyunMySQLVectorConfig(BaseModel):
     min_connection: int
     max_connection: int
     charset: str = "utf8mb4"
-    distance_function: str = "euclidean"  # cosine or euclidean
+    distance_function: str = "cosine"  # cosine or euclidean
 
     @model_validator(mode="before")
     @classmethod
@@ -94,23 +94,23 @@ class AliyunMySQLVector(BaseVector):
         self._config = config
 
     def _check_vector_support(self):
-        """Check if the MariaDB server supports vector operations."""
+        """Check if the MySQL server supports vector operations."""
         try:
             with self._get_cursor() as cur:
-                # Check MariaDB version and vector support
+                # Check MySQL version and vector support
                 cur.execute("SELECT VERSION()")
                 version = cur.fetchone()["VERSION()"]
-                logger.info("Connected to MariaDB version: %s", version)
+                logger.info("Connected to MySQL version: %s", version)
 
                 # Try to execute a simple vector function to verify support
                 cur.execute("SELECT VEC_FromText('[1,2,3]') IS NOT NULL as vector_support")
                 result = cur.fetchone()
                 if not result or not result.get("vector_support"):
-                    raise ValueError("MariaDB Vector functions are not available. Please ensure you're using MariaDB 11.7+ with Vector support.")
+                    raise ValueError("RDS MySQL Vector functions are not available. Please ensure you're using RDS MySQL 8.0.36+ with Vector support.")
 
         except PyMySQLError as e:
             if "FUNCTION" in str(e) and "VEC_FromText" in str(e):
-                raise ValueError("MariaDB Vector functions are not available. Please ensure you're using MariaDB 11.7+ with Vector support.") from e
+                raise ValueError("RDS MySQL Vector functions are not available. Please ensure you're using RDS MySQL 8.0.36+ with Vector support.") from e
             raise e
 
     @contextmanager
@@ -202,7 +202,7 @@ class AliyunMySQLVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
-        Search the nearest neighbors to a vector using MariaDB vector distance functions.
+        Search the nearest neighbors to a vector using RSD MySQL vector distance functions.
 
         :param query_vector: The input vector to search for similar items.
         :return: List of Documents that are nearest to the query vector.
@@ -223,12 +223,12 @@ class AliyunMySQLVector(BaseVector):
         # Convert query vector to MariaDB vector format
         query_vector_str = '[' + ','.join(map(str, query_vector)) + ']'
 
-        # Use MariaDB's native vector distance functions
+        # Use RSD MySQL's native vector distance functions
         with self._get_cursor() as cur:
             # Choose distance function based on configuration
             distance_func = "VEC_DISTANCE_COSINE" if self.distance_function == "cosine" else "VEC_DISTANCE_EUCLIDEAN"
 
-            # Note: MariaDB optimizer will use vector index when ORDER BY + LIMIT are present
+            # Note: RSD MySQL optimizer will use vector index when ORDER BY + LIMIT are present
             sql = f"""
             SELECT meta, text,
                    {distance_func}(embedding, VEC_FromText(%s)) AS distance
@@ -237,7 +237,6 @@ class AliyunMySQLVector(BaseVector):
             ORDER BY {distance_func}(embedding, VEC_FromText(%s))
             LIMIT %s
             """
-            logger.info("SQL: %s", sql)
             query_params = [query_vector_str, query_vector_str, top_k]
             if document_ids_filter:
                 query_params = [query_vector_str] + params + [query_vector_str, top_k]
@@ -368,6 +367,6 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 min_connection=dify_config.ALIYUN_MYSQL_MIN_CONNECTION,
                 max_connection=dify_config.ALIYUN_MYSQL_MAX_CONNECTION,
                 charset=dify_config.ALIYUN_MYSQL_CHARSET or "utf8mb4",
-                distance_function=getattr(dify_config, 'ALIYUN_MYSQL_DISTANCE_FUNCTION', 'euclidean'),
+                distance_function=getattr(dify_config, 'ALIYUN_MYSQL_DISTANCE_FUNCTION', 'cosine'),
             ),
         )
