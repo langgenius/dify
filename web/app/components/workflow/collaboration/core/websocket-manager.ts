@@ -8,8 +8,14 @@ export class WebSocketClient {
   private config: WebSocketConfig
 
   constructor(config: WebSocketConfig = {}) {
+    const inferUrl = () => {
+      if (typeof window === 'undefined')
+        return 'ws://localhost:5001'
+      const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${scheme}//${window.location.host}`
+    }
     this.config = {
-      url: config.url || process.env.NEXT_PUBLIC_SOCKET_URL || 'ws://localhost:5001',
+      url: config.url || process.env.NEXT_PUBLIC_SOCKET_URL || inferUrl(),
       transports: config.transports || ['websocket'],
       withCredentials: config.withCredentials !== false,
       ...config,
