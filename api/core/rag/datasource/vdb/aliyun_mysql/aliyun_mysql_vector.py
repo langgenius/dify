@@ -84,16 +84,16 @@ class AliyunMySQLVector(BaseVector):
     def _create_connection_pool(self, config: AliyunMySQLVectorConfig):
         # Create connection pool using mysql-connector-python pooling
         pool_config: dict[str, Any] = {
-            'host': config.host,
-            'port': config.port,
-            'user': config.user,
-            'password': config.password,
-            'database': config.database,
-            'charset': config.charset,
-            'autocommit': True,
-            'pool_name': 'vector_pool',
-            'pool_size': config.max_connection,
-            'pool_reset_session': True,
+            "host": config.host,
+            "port": config.port,
+            "user": config.user,
+            "password": config.password,
+            "database": config.database,
+            "charset": config.charset,
+            "autocommit": True,
+            "pool_name": "vector_pool",
+            "pool_size": config.max_connection,
+            "pool_reset_session": True,
         }
         return mysql.connector.pooling.MySQLConnectionPool(**pool_config)
 
@@ -109,13 +109,17 @@ class AliyunMySQLVector(BaseVector):
                 cur.execute("SELECT VEC_FromText('[1,2,3]') IS NOT NULL as vector_support")
                 result = cur.fetchone()
                 if not result or not result.get("vector_support"):
-                    raise ValueError("RDS MySQL Vector functions are not available."
-                                     " Please ensure you're using RDS MySQL 8.0.36+ with Vector support.")
+                    raise ValueError(
+                        "RDS MySQL Vector functions are not available."
+                        " Please ensure you're using RDS MySQL 8.0.36+ with Vector support."
+                    )
 
         except MySQLError as e:
             if "FUNCTION" in str(e) and "VEC_FromText" in str(e):
-                raise ValueError("RDS MySQL Vector functions are not available."
-                                 " Please ensure you're using RDS MySQL 8.0.36+ with Vector support.") from e
+                raise ValueError(
+                    "RDS MySQL Vector functions are not available."
+                    " Please ensure you're using RDS MySQL 8.0.36+ with Vector support."
+                ) from e
             raise e
 
     @contextmanager
@@ -141,7 +145,7 @@ class AliyunMySQLVector(BaseVector):
                 doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
                 pks.append(doc_id)
                 # Convert embedding list to Aliyun MySQL vector format
-                vector_str = '[' + ','.join(map(str, embeddings[i])) + ']'
+                vector_str = "[" + ",".join(map(str, embeddings[i])) + "]"
                 values.append(
                     (
                         doc_id,
@@ -152,8 +156,9 @@ class AliyunMySQLVector(BaseVector):
                 )
 
         with self._get_cursor() as cur:
-            insert_sql = (f"INSERT INTO {self.table_name} (id, text, meta, embedding)"
-                          f" VALUES (%s, %s, %s, VEC_FromText(%s))")
+            insert_sql = (
+                f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (%s, %s, %s, VEC_FromText(%s))"
+            )
             cur.executemany(insert_sql, values)
         return pks
 
@@ -195,8 +200,9 @@ class AliyunMySQLVector(BaseVector):
 
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
-            cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s",
-                        (f"$.{key}", value))
+            cur.execute(
+                f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s", (f"$.{key}", value)
+            )
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
@@ -219,7 +225,7 @@ class AliyunMySQLVector(BaseVector):
             params.extend(document_ids_filter)
 
         # Convert query vector to RDS MySQL vector format
-        query_vector_str = '[' + ','.join(map(str, query_vector)) + ']'
+        query_vector_str = "[" + ",".join(map(str, query_vector)) + "]"
 
         # Use RSD MySQL's native vector distance functions
         with self._get_cursor() as cur:
@@ -317,11 +323,11 @@ class AliyunMySQLVector(BaseVector):
 
             with self._get_cursor() as cur:
                 # Create table with vector column and vector index
-                cur.execute(SQL_CREATE_TABLE.format(
-                    table_name=self.table_name,
-                    dimension=dimension,
-                    distance_function=self.distance_function
-                ))
+                cur.execute(
+                    SQL_CREATE_TABLE.format(
+                        table_name=self.table_name, dimension=dimension, distance_function=self.distance_function
+                    )
+                )
                 # Create metadata index (check if exists first)
                 try:
                     cur.execute(SQL_CREATE_META_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
@@ -331,8 +337,9 @@ class AliyunMySQLVector(BaseVector):
 
                 # Create full-text index for text search
                 try:
-                    cur.execute(SQL_CREATE_FULLTEXT_INDEX.format(table_name=self.table_name,
-                                                                 index_hash=self.index_hash))
+                    cur.execute(
+                        SQL_CREATE_FULLTEXT_INDEX.format(table_name=self.table_name, index_hash=self.index_hash)
+                    )
                 except MySQLError as e:
                     if e.errno != 1061:  # Duplicate key name
                         logger.warning("Could not create fulltext index: %s", e)
@@ -365,7 +372,8 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 database=dify_config.ALIYUN_MYSQL_DATABASE or "dify",
                 max_connection=dify_config.ALIYUN_MYSQL_MAX_CONNECTION,
                 charset=dify_config.ALIYUN_MYSQL_CHARSET or "utf8mb4",
-                distance_function=self._validate_distance_function(dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION
-                                                                   or 'cosine'),
+                distance_function=self._validate_distance_function(
+                    dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or "cosine"
+                ),
             ),
         )
