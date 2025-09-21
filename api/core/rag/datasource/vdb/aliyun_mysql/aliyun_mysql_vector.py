@@ -332,7 +332,7 @@ class AliyunMySQLVector(BaseVector):
                         table_name=self.table_name,
                         dimension=dimension,
                         distance_function=self.distance_function,
-                        hnsw_m=self.hnsw_m
+                        hnsw_m=self.hnsw_m,
                     )
                 )
                 # Create metadata index (check if exists first)
