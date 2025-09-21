@@ -14,7 +14,7 @@ def calculate_next_run_at(
     Calculate the next run time for a cron expression in a specific timezone.
 
     Args:
-        cron_expression: Cron expression string (supports croniter extensions like 'L')
+        cron_expression: Standard 5-field cron expression or predefined expression
         timezone: Timezone string (e.g., 'UTC', 'America/New_York')
         base_time: Base time to calculate from (defaults to current UTC time)
 
@@ -22,10 +22,25 @@ def calculate_next_run_at(
         Next run time in UTC
 
     Note:
-        Supports croniter's extended syntax including:
-        - 'L' for last day of month
-        - Standard 5-field cron expressions
+        Supports enhanced cron syntax including:
+        - Month abbreviations: JAN, FEB, MAR-JUN, JAN,JUN,DEC
+        - Day abbreviations: MON, TUE, MON-FRI, SUN,WED,FRI
+        - Predefined expressions: @daily, @weekly, @monthly, @yearly, @hourly
+        - Special characters: ? wildcard, L (last day), Sunday as 7
+        - Standard 5-field format only (minute hour day month dayOfWeek)
     """
+    # Validate cron expression format to match frontend behavior
+    if not cron_expression or cron_expression.strip() == '':
+        raise ValueError("Cron expression cannot be empty")
+
+    parts = cron_expression.strip().split()
+
+    # Support both 5-field format and predefined expressions (matching frontend)
+    if len(parts) != 5 and not cron_expression.startswith('@'):
+        raise ValueError(
+            f"Cron expression must have exactly 5 fields or be a predefined expression "
+            f"(@daily, @weekly, etc.). Got {len(parts)} fields: '{cron_expression}'"
+        )
 
     tz = pytz.timezone(timezone)
 
