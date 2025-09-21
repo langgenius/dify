@@ -34,7 +34,7 @@ class AliyunMySQLConfig(BaseSettings):
 
     ALIYUN_MYSQL_MAX_CONNECTION: PositiveInt = Field(
         description="Maximum number of connections in the connection pool",
-        default=10,
+        default=5,
     )
 
     ALIYUN_MYSQL_CHARSET: str = Field(
@@ -45,4 +45,9 @@ class AliyunMySQLConfig(BaseSettings):
     ALIYUN_MYSQL_DISTANCE_FUNCTION: str = Field(
         description="Distance function used for vector similarity search in Aliyun MySQL (e.g., 'cosine', 'euclidean')",
         default="cosine",
+    )
+
+    ALIYUN_MYSQL_HNSW_M: PositiveInt = Field(
+        description="Maximum number of connections per layer for HNSW vector index (default is 6, range: 3-200)",
+        default=6,
     )

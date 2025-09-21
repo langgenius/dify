@@ -30,6 +30,7 @@ class AliyunMySQLVectorConfig(BaseModel):
     max_connection: int
     charset: str = "utf8mb4"
     distance_function: Literal["cosine", "euclidean"] = "cosine"
+    hnsw_m: int = 6
 
     @model_validator(mode="before")
     @classmethod
@@ -55,7 +56,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
     text LONGTEXT NOT NULL,
     meta JSON NOT NULL,
     embedding VECTOR({dimension}) NOT NULL,
-    VECTOR INDEX (embedding) M=6 DISTANCE={distance_function}
+    VECTOR INDEX (embedding) M={hnsw_m} DISTANCE={distance_function}
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 
@@ -76,6 +77,7 @@ class AliyunMySQLVector(BaseVector):
         self.table_name = collection_name.lower()
         self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.distance_function = config.distance_function.lower()
+        self.hnsw_m = config.hnsw_m
         self._check_vector_support()
 
     def get_type(self) -> str:
@@ -91,7 +93,7 @@ class AliyunMySQLVector(BaseVector):
             "database": config.database,
             "charset": config.charset,
             "autocommit": True,
-            "pool_name": "vector_pool",
+            "pool_name": f"pool_{self.collection_name}",
             "pool_size": config.max_connection,
             "pool_reset_session": True,
         }
@@ -233,17 +235,16 @@ class AliyunMySQLVector(BaseVector):
             distance_func = "VEC_DISTANCE_COSINE" if self.distance_function == "cosine" else "VEC_DISTANCE_EUCLIDEAN"
 
             # Note: RSD MySQL optimizer will use vector index when ORDER BY + LIMIT are present
+            # Use column alias in ORDER BY to avoid calculating distance twice
             sql = f"""
             SELECT meta, text,
                    {distance_func}(embedding, VEC_FromText(%s)) AS distance
             FROM {self.table_name}
             {where_clause}
-            ORDER BY {distance_func}(embedding, VEC_FromText(%s))
+            ORDER BY distance
             LIMIT %s
             """
-            query_params = [query_vector_str, query_vector_str, top_k]
-            if document_ids_filter:
-                query_params = [query_vector_str] + params + [query_vector_str, top_k]
+            query_params = [query_vector_str] + params + [top_k]
 
             cur.execute(sql, query_params)
 
@@ -325,7 +326,10 @@ class AliyunMySQLVector(BaseVector):
                 # Create table with vector column and vector index
                 cur.execute(
                     SQL_CREATE_TABLE.format(
-                        table_name=self.table_name, dimension=dimension, distance_function=self.distance_function
+                        table_name=self.table_name,
+                        dimension=dimension,
+                        distance_function=self.distance_function,
+                        hnsw_m=self.hnsw_m
                     )
                 )
                 # Create metadata index (check if exists first)
@@ -375,5 +379,6 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 distance_function=self._validate_distance_function(
                     dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or "cosine"
                 ),
+                hnsw_m=dify_config.ALIYUN_MYSQL_HNSW_M or 6,
             ),
         )
