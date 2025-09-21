@@ -698,35 +698,25 @@ class TestAliyunMySQLVector(unittest.TestCase):
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_unsupported_distance_function(self, mock_pool_class):
-        """Test initialization with unsupported distance function."""
-        config = AliyunMySQLVectorConfig(
-            host="localhost",
-            port=3306,
-            user="test_user",
-            password="test_password",
-            database="test_db",
-            min_connection=1,
-            max_connection=5,
-            distance_function="manhattan"  # Unsupported
-        )
-
-        # Mock the connection pool
-        mock_pool = MagicMock()
-        mock_pool_class.return_value = mock_pool
-
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_pool.get_connection.return_value = mock_conn
-        mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
-
+        """Test that Pydantic validation rejects unsupported distance functions."""
+        # Test that creating config with unsupported distance function raises ValidationError
         with self.assertRaises(ValueError) as context:
-            AliyunMySQLVector(self.collection_name, config)
-
-        self.assertIn("Unsupported distance function", str(context.exception))
+            AliyunMySQLVectorConfig(
+                host="localhost",
+                port=3306,
+                user="test_user",
+                password="test_password",
+                database="test_db",
+                min_connection=1,
+                max_connection=5,
+                distance_function="manhattan"  # Unsupported - not in Literal["cosine", "euclidean"]
+            )
+        
+        # The error should be related to validation
+        self.assertTrue(
+            "Input should be 'cosine' or 'euclidean'" in str(context.exception) or
+            "manhattan" in str(context.exception)
+        )
 
     def _setup_mocks(self, mock_redis, mock_pool_class):
         """Helper method to setup common mocks."""

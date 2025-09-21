@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Literal
 
 import mysql.connector
 from mysql.connector import Error as MySQLError
@@ -30,7 +30,7 @@ class AliyunMySQLVectorConfig(BaseModel):
     min_connection: int
     max_connection: int
     charset: str = "utf8mb4"
-    distance_function: str = "cosine"  # cosine or euclidean
+    distance_function: Literal["cosine", "euclidean"] = "cosine"
 
     @model_validator(mode="before")
     @classmethod
