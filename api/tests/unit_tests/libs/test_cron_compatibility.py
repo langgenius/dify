@@ -221,8 +221,8 @@ class TestTimezoneCompatibility(unittest.TestCase):
     def test_half_hour_timezones(self):
         """Test timezones with half-hour offsets."""
         timezones_with_offsets = [
-            ("Asia/Kolkata", 9, 30),    # UTC+5:30 -> 12:00 UTC = 17:30 IST
-            ("Australia/Adelaide", 8, 0),  # UTC+9:30/+10:30 -> varies by season
+            ("Asia/Kolkata", 17, 30),    # UTC+5:30 -> 12:00 UTC = 17:30 IST
+            ("Australia/Adelaide", 22, 30),  # UTC+10:30 -> 12:00 UTC = 22:30 ACDT (summer time)
         ]
 
         expression = "0 12 * * *"  # Noon UTC
