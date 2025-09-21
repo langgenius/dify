@@ -234,7 +234,7 @@ class AliyunMySQLVector(BaseVector):
             # Choose distance function based on configuration
             distance_func = "VEC_DISTANCE_COSINE" if self.distance_function == "cosine" else "VEC_DISTANCE_EUCLIDEAN"
 
-            # Note: RSD MySQL optimizer will use vector index when ORDER BY + LIMIT are present
+            # Note: RDS MySQL optimizer will use vector index when ORDER BY + LIMIT are present
             # Use column alias in ORDER BY to avoid calculating distance twice
             sql = f"""
             SELECT meta, text,
@@ -294,7 +294,7 @@ class AliyunMySQLVector(BaseVector):
         with self._get_cursor() as cur:
             # Build query parameters: query (twice for MATCH clauses), document_ids_filter (if any), top_k
             query_params = [query, query] + params + [top_k]
-            
+
             cur.execute(
                 f"""SELECT meta, text,
                     MATCH(text) AGAINST(%s IN NATURAL LANGUAGE MODE) AS score
