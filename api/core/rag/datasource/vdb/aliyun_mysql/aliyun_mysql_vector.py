@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 """
 
 SQL_CREATE_META_INDEX = """
-CREATE INDEX idx_{index_hash}_meta ON {table_name} ((CAST(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.document_id')) AS CHAR(36))));
+CREATE INDEX idx_{index_hash}_meta ON {table_name}
+    ((CAST(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.document_id')) AS CHAR(36))));
 """
 
 SQL_CREATE_FULLTEXT_INDEX = """
@@ -110,11 +111,13 @@ class AliyunMySQLVector(BaseVector):
                 cur.execute("SELECT VEC_FromText('[1,2,3]') IS NOT NULL as vector_support")
                 result = cur.fetchone()
                 if not result or not result.get("vector_support"):
-                    raise ValueError("RDS MySQL Vector functions are not available. Please ensure you're using RDS MySQL 8.0.36+ with Vector support.")
+                    raise ValueError("RDS MySQL Vector functions are not available."
+                                     " Please ensure you're using RDS MySQL 8.0.36+ with Vector support.")
 
         except MySQLError as e:
             if "FUNCTION" in str(e) and "VEC_FromText" in str(e):
-                raise ValueError("RDS MySQL Vector functions are not available. Please ensure you're using RDS MySQL 8.0.36+ with Vector support.") from e
+                raise ValueError("RDS MySQL Vector functions are not available."
+                                 " Please ensure you're using RDS MySQL 8.0.36+ with Vector support.") from e
             raise e
 
     @contextmanager
@@ -151,7 +154,8 @@ class AliyunMySQLVector(BaseVector):
                 )
 
         with self._get_cursor() as cur:
-            insert_sql = f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (%s, %s, %s, VEC_FromText(%s))"
+            insert_sql = (f"INSERT INTO {self.table_name} (id, text, meta, embedding)"
+                          f" VALUES (%s, %s, %s, VEC_FromText(%s))")
             cur.executemany(insert_sql, values)
         return pks
 
@@ -193,7 +197,8 @@ class AliyunMySQLVector(BaseVector):
 
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
-            cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s", (f"$.{key}", value))
+            cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s",
+                        (f"$.{key}", value))
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
@@ -328,7 +333,8 @@ class AliyunMySQLVector(BaseVector):
 
                 # Create full-text index for text search
                 try:
-                    cur.execute(SQL_CREATE_FULLTEXT_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
+                    cur.execute(SQL_CREATE_FULLTEXT_INDEX.format(table_name=self.table_name,
+                                                                 index_hash=self.index_hash))
                 except MySQLError as e:
                     if e.errno != 1061:  # Duplicate key name
                         logger.warning("Could not create fulltext index: %s", e)

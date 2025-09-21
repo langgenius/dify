@@ -23,7 +23,6 @@ class TestAliyunMySQLVector(unittest.TestCase):
             user="test_user",
             password="test_password",
             database="test_db",
-            min_connection=1,
             max_connection=5,
             charset="utf8mb4",
         )
@@ -66,11 +65,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
 
         aliyun_mysql_vector = AliyunMySQLVector(self.collection_name, self.config)
 
-        self.assertEqual(aliyun_mysql_vector.collection_name, self.collection_name)
-        self.assertEqual(aliyun_mysql_vector.table_name, self.collection_name.lower())
-        self.assertEqual(aliyun_mysql_vector.get_type(), "aliyun_mysql")
-        self.assertEqual(aliyun_mysql_vector.distance_function, "cosine")
-        self.assertIsNotNone(aliyun_mysql_vector.pool)
+        assert aliyun_mysql_vector.collection_name == self.collection_name
+        assert aliyun_mysql_vector.table_name == self.collection_name.lower()
+        assert aliyun_mysql_vector.get_type() == "aliyun_mysql"
+        assert aliyun_mysql_vector.distance_function == "cosine"
+        assert aliyun_mysql_vector.pool is not None
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.redis_client")
@@ -100,8 +99,8 @@ class TestAliyunMySQLVector(unittest.TestCase):
         aliyun_mysql_vector._create_collection(768)
 
         # Verify SQL execution calls - should include table creation and index creation
-        self.assertTrue(mock_cursor.execute.called)
-        self.assertGreaterEqual(mock_cursor.execute.call_count, 3)  # CREATE TABLE + 2 indexes
+        assert mock_cursor.execute.called
+        assert mock_cursor.execute.call_count >= 3  # CREATE TABLE + 2 indexes
         mock_redis.set.assert_called_once()
 
     def test_config_validation(self):
@@ -137,7 +136,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
 
         # Should not raise an exception
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
-        self.assertIsNotNone(vector_store)
+        assert vector_store is not None
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_vector_support_check_failure(self, mock_pool_class):
@@ -158,7 +157,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
 
-        self.assertIn("RDS MySQL Vector functions are not available", str(context.exception))
+        assert "RDS MySQL Vector functions are not available" in str(context.exception)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_vector_support_check_function_error(self, mock_pool_class):
@@ -177,7 +176,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
 
-        self.assertIn("RDS MySQL Vector functions are not available", str(context.exception))
+        assert "RDS MySQL Vector functions are not available" in str(context.exception)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.redis_client")
@@ -189,9 +188,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         result = vector_store.create(self.sample_documents, self.sample_embeddings)
 
-        self.assertEqual(len(result), 2)
-        self.assertIn("doc1", result)
-        self.assertIn("doc2", result)
+        assert len(result) == 2
+        assert "doc1" in result
+        assert "doc2" in result
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_add_texts(self, mock_pool_class):
@@ -212,7 +211,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         result = vector_store.add_texts(self.sample_documents, self.sample_embeddings)
 
-        self.assertEqual(len(result), 2)
+        assert len(result) == 2
         mock_cursor.executemany.assert_called_once()
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -235,12 +234,12 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         exists = vector_store.text_exists("doc1")
 
-        self.assertTrue(exists)
+        assert exists
         # Check that the correct SQL was executed (last call after init)
         execute_calls = mock_cursor.execute.call_args_list
         last_call = execute_calls[-1]
-        self.assertIn("SELECT id FROM", last_call[0][0])
-        self.assertEqual(last_call[0][1], ("doc1",))
+        assert "SELECT id FROM" in last_call[0][0]
+        assert last_call[0][1] == ("doc1",)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_text_not_exists(self, mock_pool_class):
@@ -262,7 +261,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         exists = vector_store.text_exists("nonexistent")
 
-        self.assertFalse(exists)
+        assert not exists
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_get_by_ids(self, mock_pool_class):
@@ -287,9 +286,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.get_by_ids(["doc1", "doc2"])
 
-        self.assertEqual(len(docs), 2)
-        self.assertEqual(docs[0].page_content, "Test document 1")
-        self.assertEqual(docs[1].page_content, "Test document 2")
+        assert len(docs) == 2
+        assert docs[0].page_content == "Test document 1"
+        assert docs[1].page_content == "Test document 2"
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_get_by_ids_empty_list(self, mock_pool_class):
@@ -310,7 +309,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.get_by_ids([])
 
-        self.assertEqual(len(docs), 0)
+        assert len(docs) == 0
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_delete_by_ids(self, mock_pool_class):
@@ -334,10 +333,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Check that delete SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         delete_calls = [call for call in execute_calls if "DELETE" in str(call)]
-        self.assertEqual(len(delete_calls), 1)
+        assert len(delete_calls) == 1
         delete_call = delete_calls[0]
-        self.assertIn("DELETE FROM", delete_call[0][0])
-        self.assertEqual(delete_call[0][1], ["doc1", "doc2"])
+        assert "DELETE FROM" in delete_call[0][0]
+        assert delete_call[0][1] == ["doc1", "doc2"]
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_delete_by_ids_empty_list(self, mock_pool_class):
@@ -361,7 +360,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Verify no delete SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         delete_calls = [call for call in execute_calls if "DELETE" in str(call)]
-        self.assertEqual(len(delete_calls), 0)
+        assert len(delete_calls) == 0
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_delete_by_ids_table_not_exists(self, mock_pool_class):
@@ -410,10 +409,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Check that the correct SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         delete_calls = [call for call in execute_calls if "DELETE" in str(call)]
-        self.assertEqual(len(delete_calls), 1)
+        assert len(delete_calls) == 1
         delete_call = delete_calls[0]
-        self.assertIn("JSON_UNQUOTE(JSON_EXTRACT(meta", delete_call[0][0])
-        self.assertEqual(delete_call[0][1], ("$.document_id", "dataset1"))
+        assert "JSON_UNQUOTE(JSON_EXTRACT(meta" in delete_call[0][0]
+        assert delete_call[0][1] == ("$.document_id", "dataset1")
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_cosine(self, mock_pool_class):
@@ -442,10 +441,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(query_vector, top_k=5)
 
-        self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0].page_content, "Test document 1")
-        self.assertAlmostEqual(docs[0].metadata["score"], 0.9, places=1)  # 1 - 0.1 = 0.9
-        self.assertEqual(docs[0].metadata["distance"], 0.1)
+        assert len(docs) == 1
+        assert docs[0].page_content == "Test document 1"
+        assert abs(docs[0].metadata["score"] - 0.9) < 0.1  # 1 - 0.1 = 0.9
+        assert docs[0].metadata["distance"] == 0.1
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_euclidean(self, mock_pool_class):
@@ -485,8 +484,8 @@ class TestAliyunMySQLVector(unittest.TestCase):
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(query_vector, top_k=5)
 
-        self.assertEqual(len(docs), 1)
-        self.assertAlmostEqual(docs[0].metadata["score"], 1.0/3.0, places=2)  # 1/(1+2) = 1/3
+        assert len(docs) == 1
+        assert abs(docs[0].metadata["score"] - 1.0/3.0) < 0.01  # 1/(1+2) = 1/3
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_with_filter(self, mock_pool_class):
@@ -516,9 +515,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Verify the SQL contains the WHERE clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
         search_calls = [call for call in execute_calls if "VEC_DISTANCE" in str(call)]
-        self.assertTrue(len(search_calls) > 0)
+        assert len(search_calls) > 0
         search_call = search_calls[0]
-        self.assertIn("WHERE JSON_UNQUOTE", search_call[0][0])
+        assert "WHERE JSON_UNQUOTE" in search_call[0][0]
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_with_score_threshold(self, mock_pool_class):
@@ -557,8 +556,8 @@ class TestAliyunMySQLVector(unittest.TestCase):
         )
 
         # Only the high similarity document should be returned
-        self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0].page_content, "High similarity document")
+        assert len(docs) == 1
+        assert docs[0].page_content == "High similarity document"
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_invalid_top_k(self, mock_pool_class):
@@ -611,9 +610,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.search_by_full_text("machine learning", top_k=5)
 
-        self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0].page_content, "This document contains machine learning content")
-        self.assertEqual(docs[0].metadata["score"], 1.5)
+        assert len(docs) == 1
+        assert docs[0].page_content == "This document contains machine learning content"
+        assert docs[0].metadata["score"] == 1.5
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_full_text_with_filter(self, mock_pool_class):
@@ -642,9 +641,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Verify the SQL contains the AND clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
         search_calls = [call for call in execute_calls if "MATCH" in str(call)]
-        self.assertTrue(len(search_calls) > 0)
+        assert len(search_calls) > 0
         search_call = search_calls[0]
-        self.assertIn("AND JSON_UNQUOTE", search_call[0][0])
+        assert "AND JSON_UNQUOTE" in search_call[0][0]
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_full_text_invalid_top_k(self, mock_pool_class):
@@ -692,9 +691,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
         # Check that DROP TABLE SQL was executed
         execute_calls = mock_cursor.execute.call_args_list
         drop_calls = [call for call in execute_calls if "DROP TABLE" in str(call)]
-        self.assertEqual(len(drop_calls), 1)
+        assert len(drop_calls) == 1
         drop_call = drop_calls[0]
-        self.assertIn(f"DROP TABLE IF EXISTS {self.collection_name.lower()}", drop_call[0][0])
+        assert f"DROP TABLE IF EXISTS {self.collection_name.lower()}" in drop_call[0][0]
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_unsupported_distance_function(self, mock_pool_class):
@@ -711,9 +710,9 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 max_connection=5,
                 distance_function="manhattan"  # Unsupported - not in Literal["cosine", "euclidean"]
             )
-        
+
         # The error should be related to validation
-        self.assertTrue(
+        assert (
             "Input should be 'cosine' or 'euclidean'" in str(context.exception) or
             "manhattan" in str(context.exception)
         )
