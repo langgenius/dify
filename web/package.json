@@ -76,6 +76,7 @@
     "classnames": "^2.5.1",
     "cmdk": "^1.1.1",
     "copy-to-clipboard": "^3.3.3",
+    "cron-parser": "^5.4.0",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
     "decimal.js": "^10.4.3",
