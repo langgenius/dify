@@ -1,11 +1,12 @@
 import json
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector import AliyunMySQLVector, AliyunMySQLVectorConfig
 from core.rag.models.document import Document
+
 try:
     from mysql.connector import Error as MySQLError
 except ImportError:
@@ -34,19 +35,16 @@ class TestAliyunMySQLVector(unittest.TestCase):
         self.sample_documents = [
             Document(
                 page_content="This is a test document about AI.",
-                metadata={"doc_id": "doc1", "document_id": "dataset1", "source": "test"}
+                metadata={"doc_id": "doc1", "document_id": "dataset1", "source": "test"},
             ),
             Document(
                 page_content="Another document about machine learning.",
-                metadata={"doc_id": "doc2", "document_id": "dataset1", "source": "test"}
-            )
+                metadata={"doc_id": "doc2", "document_id": "dataset1", "source": "test"},
+            ),
         ]
 
         # Sample embeddings
-        self.sample_embeddings = [
-            [0.1, 0.2, 0.3, 0.4],
-            [0.5, 0.6, 0.7, 0.8]
-        ]
+        self.sample_embeddings = [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_init(self, mock_pool_class):
@@ -62,7 +60,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.side_effect = [
             {"VERSION()": "8.0.36"},  # Version check
-            {"vector_support": True}   # Vector support check
+            {"vector_support": True},  # Vector support check
         ]
 
         aliyun_mysql_vector = AliyunMySQLVector(self.collection_name, self.config)
@@ -94,7 +92,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.side_effect = [
             {"VERSION()": "8.0.36"},  # Version check
-            {"vector_support": True}   # Vector support check
+            {"vector_support": True},  # Vector support check
         ]
 
         aliyun_mysql_vector = AliyunMySQLVector(self.collection_name, self.config)
@@ -118,7 +116,6 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 max_connection=5,
             )
 
-
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_vector_support_check_success(self, mock_pool_class):
         """Test successful vector support check."""
@@ -130,10 +127,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         # Should not raise an exception
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
@@ -150,10 +144,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.35"},
-            {"vector_support": False}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.35"}, {"vector_support": False}]
 
         with pytest.raises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
@@ -204,10 +195,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         result = vector_store.add_texts(self.sample_documents, self.sample_embeddings)
@@ -229,7 +217,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor.fetchone.side_effect = [
             {"VERSION()": "8.0.36"},
             {"vector_support": True},
-            {"id": "doc1"}  # Text exists
+            {"id": "doc1"},  # Text exists
         ]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
@@ -256,7 +244,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor.fetchone.side_effect = [
             {"VERSION()": "8.0.36"},
             {"vector_support": True},
-            None  # Text does not exist
+            None,  # Text does not exist
         ]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
@@ -275,14 +263,13 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
-        mock_cursor.__iter__ = lambda self: iter([
-            {"meta": json.dumps({"doc_id": "doc1", "source": "test"}), "text": "Test document 1"},
-            {"meta": json.dumps({"doc_id": "doc2", "source": "test"}), "text": "Test document 2"}
-        ])
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+        mock_cursor.__iter__ = lambda self: iter(
+            [
+                {"meta": json.dumps({"doc_id": "doc1", "source": "test"}), "text": "Test document 1"},
+                {"meta": json.dumps({"doc_id": "doc2", "source": "test"}), "text": "Test document 2"},
+            ]
+        )
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.get_by_ids(["doc1", "doc2"])
@@ -302,10 +289,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.get_by_ids([])
@@ -323,10 +307,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete_by_ids(["doc1", "doc2"])
@@ -350,10 +331,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete_by_ids([])  # Should not raise an exception
@@ -374,14 +352,14 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+
         # Simulate table doesn't exist error on delete
+
         def execute_side_effect(*args, **kwargs):
             if "DELETE" in args[0]:
                 raise MySQLError(errno=1146, msg="Table doesn't exist")
+
         mock_cursor.execute.side_effect = execute_side_effect
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
@@ -399,10 +377,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete_by_metadata_field("document_id", "dataset1")
@@ -415,7 +390,6 @@ class TestAliyunMySQLVector(unittest.TestCase):
         assert "JSON_UNQUOTE(JSON_EXTRACT(meta" in delete_call[0][0]
         assert delete_call[0][1] == ("$.document_id", "dataset1")
 
-
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_cosine(self, mock_pool_class):
         """Test vector search with cosine distance."""
@@ -427,17 +401,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
-        mock_cursor.__iter__ = lambda self: iter([
-            {
-                "meta": json.dumps({"doc_id": "doc1", "source": "test"}),
-                "text": "Test document 1",
-                "distance": 0.1
-            }
-        ])
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+        mock_cursor.__iter__ = lambda self: iter(
+            [{"meta": json.dumps({"doc_id": "doc1", "source": "test"}), "text": "Test document 1", "distance": 0.1}]
+        )
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
@@ -458,7 +425,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
             password="test_password",
             database="test_db",
             max_connection=5,
-            distance_function="euclidean"
+            distance_function="euclidean",
         )
 
         # Mock the connection pool
@@ -469,24 +436,17 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
-        mock_cursor.__iter__ = lambda self: iter([
-            {
-                "meta": json.dumps({"doc_id": "doc1", "source": "test"}),
-                "text": "Test document 1",
-                "distance": 2.0
-            }
-        ])
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+        mock_cursor.__iter__ = lambda self: iter(
+            [{"meta": json.dumps({"doc_id": "doc1", "source": "test"}), "text": "Test document 1", "distance": 2.0}]
+        )
 
         vector_store = AliyunMySQLVector(self.collection_name, config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
         docs = vector_store.search_by_vector(query_vector, top_k=5)
 
         assert len(docs) == 1
-        assert abs(docs[0].metadata["score"] - 1.0/3.0) < 0.01  # 1/(1+2) = 1/3
+        assert abs(docs[0].metadata["score"] - 1.0 / 3.0) < 0.01  # 1/(1+2) = 1/3
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_with_filter(self, mock_pool_class):
@@ -499,19 +459,12 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
         mock_cursor.__iter__ = lambda self: iter([])
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
-        docs = vector_store.search_by_vector(
-            query_vector,
-            top_k=5,
-            document_ids_filter=["dataset1"]
-        )
+        docs = vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["dataset1"])
 
         # Verify the SQL contains the WHERE clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
@@ -531,30 +484,25 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
-        mock_cursor.__iter__ = lambda self: iter([
-            {
-                "meta": json.dumps({"doc_id": "doc1", "source": "test"}),
-                "text": "High similarity document",
-                "distance": 0.1  # High similarity (score = 0.9)
-            },
-            {
-                "meta": json.dumps({"doc_id": "doc2", "source": "test"}),
-                "text": "Low similarity document",
-                "distance": 0.8  # Low similarity (score = 0.2)
-            }
-        ])
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+        mock_cursor.__iter__ = lambda self: iter(
+            [
+                {
+                    "meta": json.dumps({"doc_id": "doc1", "source": "test"}),
+                    "text": "High similarity document",
+                    "distance": 0.1,  # High similarity (score = 0.9)
+                },
+                {
+                    "meta": json.dumps({"doc_id": "doc2", "source": "test"}),
+                    "text": "Low similarity document",
+                    "distance": 0.8,  # Low similarity (score = 0.2)
+                },
+            ]
+        )
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
-        docs = vector_store.search_by_vector(
-            query_vector,
-            top_k=5,
-            score_threshold=0.5
-        )
+        docs = vector_store.search_by_vector(query_vector, top_k=5, score_threshold=0.5)
 
         # Only the high similarity document should be returned
         assert len(docs) == 1
@@ -571,10 +519,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
@@ -596,17 +541,16 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
-        mock_cursor.__iter__ = lambda self: iter([
-            {
-                "meta": {"doc_id": "doc1", "source": "test"},
-                "text": "This document contains machine learning content",
-                "score": 1.5
-            }
-        ])
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+        mock_cursor.__iter__ = lambda self: iter(
+            [
+                {
+                    "meta": {"doc_id": "doc1", "source": "test"},
+                    "text": "This document contains machine learning content",
+                    "score": 1.5,
+                }
+            ]
+        )
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         docs = vector_store.search_by_full_text("machine learning", top_k=5)
@@ -626,18 +570,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
         mock_cursor.__iter__ = lambda self: iter([])
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
-        docs = vector_store.search_by_full_text(
-            "machine learning",
-            top_k=5,
-            document_ids_filter=["dataset1"]
-        )
+        docs = vector_store.search_by_full_text("machine learning", top_k=5, document_ids_filter=["dataset1"])
 
         # Verify the SQL contains the AND clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
@@ -657,10 +594,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
 
@@ -681,10 +615,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         vector_store.delete()
@@ -708,14 +639,11 @@ class TestAliyunMySQLVector(unittest.TestCase):
                 password="test_password",
                 database="test_db",
                 max_connection=5,
-                distance_function="manhattan"  # Unsupported - not in Literal["cosine", "euclidean"]
+                distance_function="manhattan",  # Unsupported - not in Literal["cosine", "euclidean"]
             )
 
         # The error should be related to validation
-        assert (
-            "Input should be 'cosine' or 'euclidean'" in str(context.value) or
-            "manhattan" in str(context.value)
-        )
+        assert "Input should be 'cosine' or 'euclidean'" in str(context.value) or "manhattan" in str(context.value)
 
     def _setup_mocks(self, mock_redis, mock_pool_class):
         """Helper method to setup common mocks."""
@@ -734,10 +662,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.side_effect = [
-            {"VERSION()": "8.0.36"},
-            {"vector_support": True}
-        ]
+        mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
 
 
 if __name__ == "__main__":
