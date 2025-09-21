@@ -2,6 +2,8 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch, call
 
+import pytest
+
 from core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector import AliyunMySQLVector, AliyunMySQLVectorConfig
 from core.rag.models.document import Document
 try:
@@ -106,14 +108,13 @@ class TestAliyunMySQLVector(unittest.TestCase):
     def test_config_validation(self):
         """Test configuration validation."""
         # Test missing required fields
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             AliyunMySQLVectorConfig(
                 host="",  # Empty host should raise error
                 port=3306,
                 user="test",
                 password="test",
                 database="test",
-                min_connection=1,
                 max_connection=5,
             )
 
@@ -154,10 +155,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
             {"vector_support": False}
         ]
 
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
 
-        assert "RDS MySQL Vector functions are not available" in str(context.exception)
+        assert "RDS MySQL Vector functions are not available" in str(context.value)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_vector_support_check_function_error(self, mock_pool_class):
@@ -173,10 +174,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         mock_cursor.fetchone.return_value = {"VERSION()": "8.0.36"}
         mock_cursor.execute.side_effect = [None, MySQLError(errno=1305, msg="FUNCTION VEC_FromText does not exist")]
 
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as context:
             AliyunMySQLVector(self.collection_name, self.config)
 
-        assert "RDS MySQL Vector functions are not available" in str(context.exception)
+        assert "RDS MySQL Vector functions are not available" in str(context.value)
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.redis_client")
@@ -414,6 +415,7 @@ class TestAliyunMySQLVector(unittest.TestCase):
         assert "JSON_UNQUOTE(JSON_EXTRACT(meta" in delete_call[0][0]
         assert delete_call[0][1] == ("$.document_id", "dataset1")
 
+
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     def test_search_by_vector_cosine(self, mock_pool_class):
         """Test vector search with cosine distance."""
@@ -455,7 +457,6 @@ class TestAliyunMySQLVector(unittest.TestCase):
             user="test_user",
             password="test_password",
             database="test_db",
-            min_connection=1,
             max_connection=5,
             distance_function="euclidean"
         )
@@ -578,10 +579,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             vector_store.search_by_vector(query_vector, top_k=0)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             vector_store.search_by_vector(query_vector, top_k="invalid")
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -663,10 +664,10 @@ class TestAliyunMySQLVector(unittest.TestCase):
 
         vector_store = AliyunMySQLVector(self.collection_name, self.config)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             vector_store.search_by_full_text("test", top_k=0)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             vector_store.search_by_full_text("test", top_k="invalid")
 
     @patch("core.rag.datasource.vdb.aliyun_mysql.aliyun_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -699,22 +700,21 @@ class TestAliyunMySQLVector(unittest.TestCase):
     def test_unsupported_distance_function(self, mock_pool_class):
         """Test that Pydantic validation rejects unsupported distance functions."""
         # Test that creating config with unsupported distance function raises ValidationError
-        with self.assertRaises(ValueError) as context:
+        with pytest.raises(ValueError) as context:
             AliyunMySQLVectorConfig(
                 host="localhost",
                 port=3306,
                 user="test_user",
                 password="test_password",
                 database="test_db",
-                min_connection=1,
                 max_connection=5,
                 distance_function="manhattan"  # Unsupported - not in Literal["cosine", "euclidean"]
             )
 
         # The error should be related to validation
         assert (
-            "Input should be 'cosine' or 'euclidean'" in str(context.exception) or
-            "manhattan" in str(context.exception)
+            "Input should be 'cosine' or 'euclidean'" in str(context.value) or
+            "manhattan" in str(context.value)
         )
 
     def _setup_mocks(self, mock_redis, mock_pool_class):

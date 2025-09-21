@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from contextlib import contextmanager
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import mysql.connector
 from mysql.connector import Error as MySQLError
@@ -34,17 +34,17 @@ class AliyunMySQLVectorConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict):
-        if not values["host"]:
+        if not values.get("host"):
             raise ValueError("config ALIYUN_MYSQL_HOST is required")
-        if not values["port"]:
+        if not values.get("port"):
             raise ValueError("config ALIYUN_MYSQL_PORT is required")
-        if not values["user"]:
+        if not values.get("user"):
             raise ValueError("config ALIYUN_MYSQL_USER is required")
-        if not values["password"]:
+        if values.get("password") is None:
             raise ValueError("config ALIYUN_MYSQL_PASSWORD is required")
-        if not values["database"]:
+        if not values.get("database"):
             raise ValueError("config ALIYUN_MYSQL_DATABASE is required")
-        if not values["max_connection"]:
+        if not values.get("max_connection"):
             raise ValueError("config ALIYUN_MYSQL_MAX_CONNECTION is required")
         return values
 
@@ -76,8 +76,6 @@ class AliyunMySQLVector(BaseVector):
         self.table_name = collection_name.lower()
         self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.distance_function = config.distance_function.lower()
-        if self.distance_function not in ["cosine", "euclidean"]:
-            raise ValueError(f"Unsupported distance function: {self.distance_function}. Supported: cosine, euclidean")
         self._check_vector_support()
 
     def get_type(self) -> str:
@@ -85,7 +83,7 @@ class AliyunMySQLVector(BaseVector):
 
     def _create_connection_pool(self, config: AliyunMySQLVectorConfig):
         # Create connection pool using mysql-connector-python pooling
-        pool_config = {
+        pool_config: dict[str, Any] = {
             'host': config.host,
             'port': config.port,
             'user': config.user,
@@ -196,6 +194,10 @@ class AliyunMySQLVector(BaseVector):
                     raise e
 
     def delete_by_metadata_field(self, key: str, value: str):
+        # Simple validation to prevent SQL injection - only allow alphanumeric, underscore and dot
+        if not key.replace('_', '').replace('.', '').isalnum():
+            raise ValueError(f"Invalid metadata key: '{key}'. Key must contain only alphanumeric characters, underscores, and dots.")
+
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s",
                         (f"$.{key}", value))
@@ -343,6 +345,12 @@ class AliyunMySQLVector(BaseVector):
 
 
 class AliyunMySQLVectorFactory(AbstractVectorFactory):
+    def _validate_distance_function(self, distance_function: str) -> Literal["cosine", "euclidean"]:
+        """Validate and return the distance function as a proper Literal type."""
+        if distance_function not in ["cosine", "euclidean"]:
+            raise ValueError(f"Invalid distance function: {distance_function}. Must be 'cosine' or 'euclidean'")
+        return cast(Literal["cosine", "euclidean"], distance_function)
+    
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> AliyunMySQLVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -361,6 +369,6 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 database=dify_config.ALIYUN_MYSQL_DATABASE or "dify",
                 max_connection=dify_config.ALIYUN_MYSQL_MAX_CONNECTION,
                 charset=dify_config.ALIYUN_MYSQL_CHARSET or "utf8mb4",
-                distance_function=dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or 'cosine',
+                distance_function=self._validate_distance_function(dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or 'cosine'),
             ),
         )
