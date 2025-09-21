@@ -669,6 +669,7 @@ class WebhookService:
                         created_by=app.created_by,
                     )
                     session.add(webhook_record)
+                    session.flush()
                     cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
                     redis_client.set(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}", cache.model_dump_json(), ex=60 * 60)
                 session.commit()

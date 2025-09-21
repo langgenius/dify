@@ -599,6 +599,10 @@ class AppDslService:
             if data_type == NodeType.TRIGGER_SCHEDULE.value:
                 # override the config with the default config
                 node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
+            if data_type == NodeType.TRIGGER_WEBHOOK.value:
+                # clear the webhook_url
+                node_data["webhook_url"] = ""
+                node_data["webhook_debug_url"] = ""
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
