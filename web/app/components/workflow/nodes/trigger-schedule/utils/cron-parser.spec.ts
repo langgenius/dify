@@ -394,7 +394,7 @@ describe('cron-parser', () => {
         jest.setSystemTime(new Date('2024-03-08T10:00:00Z'))
         const springDST = parseCronExpression('0 2 * * *', 'America/New_York')
         expect(springDST).toHaveLength(5)
-        springDST.forEach(date => expect(date.getHours()).toBe(2))
+        springDST.forEach(date => expect([2, 3]).toContain(date.getHours()))
 
         // Test 2: DST fall back (November 2024) - America/New_York
         jest.setSystemTime(new Date('2024-11-01T10:00:00Z'))

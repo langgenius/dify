@@ -51,7 +51,7 @@ export const parseCronExpression = (cronExpression: string, timezone: string = '
       return convertToUserTimezoneRepresentation(utcDate, timezone)
     })
   }
-  catch (error) {
+  catch {
     // Return empty array if parsing fails
     return []
   }
@@ -78,7 +78,7 @@ export const isValidCronExpression = (cronExpression: string): boolean => {
     CronExpressionParser.parse(cronExpression)
     return true
   }
-  catch (error) {
+  catch {
     return false
   }
 }
