@@ -27,7 +27,6 @@ class AliyunMySQLVectorConfig(BaseModel):
     user: str
     password: str
     database: str
-    min_connection: int
     max_connection: int
     charset: str = "utf8mb4"
     distance_function: Literal["cosine", "euclidean"] = "cosine"
