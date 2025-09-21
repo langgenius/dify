@@ -75,8 +75,7 @@ const List = () => {
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
   })
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
-  const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const newAppCardRef = useRef<HTMLDivElement>(null)
@@ -171,10 +170,8 @@ const List = () => {
   }
 
   const handleCreatedByMeChange = useCallback(() => {
-    const newValue = !isCreatedByMe
-    setIsCreatedByMe(newValue)
-    setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
-  }, [isCreatedByMe, setQuery])
+    setQuery(prev => ({ ...prev, isCreatedByMe: !prev.isCreatedByMe }))
+  }, [setQuery])
 
   return (
     <>

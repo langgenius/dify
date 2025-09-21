@@ -1,5 +1,5 @@
 import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
 type AppsQuery = {
   tagIDs?: string[]
@@ -37,24 +37,24 @@ function updateSearchParams(query: AppsQuery, current: URLSearchParams) {
 
 function useAppsQueryState() {
   const searchParams = useSearchParams()
-  const [query, setQuery] = useState<AppsQuery>(() => parseParams(searchParams))
+  const query = useMemo(() => parseParams(searchParams), [searchParams])
 
   const router = useRouter()
   const pathname = usePathname()
-  const syncSearchParams = useCallback((params: URLSearchParams) => {
-    const search = params.toString()
-    const query = search ? `?${search}` : ''
-    router.push(`${pathname}${query}`, { scroll: false })
-  }, [router, pathname])
 
-  // Update the URL search string whenever the query changes.
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    updateSearchParams(query, params)
-    syncSearchParams(params)
-  }, [query, syncSearchParams])
+  const setQuery = useCallback(
+    (updater: (prev: AppsQuery) => AppsQuery) => {
+      const newQuery = updater(query)
+      const params = new URLSearchParams()
+      updateSearchParams(newQuery, params)
+      const search = params.toString()
+      const queryString = search ? `?${search}` : ''
+      router.push(`${pathname}${queryString}`, { scroll: false })
+    },
+    [query, router, pathname],
+  )
 
-  return useMemo(() => ({ query, setQuery }), [query])
+  return useMemo(() => ({ query, setQuery }), [query, setQuery])
 }
 
 export default useAppsQueryState
