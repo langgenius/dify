@@ -284,7 +284,7 @@ class AliyunMySQLVector(BaseVector):
 
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
-        params = [f"%{query}%"]
+        params = []
 
         if document_ids_filter:
             placeholders = ",".join(["%s"] * len(document_ids_filter))
@@ -292,6 +292,9 @@ class AliyunMySQLVector(BaseVector):
             params.extend(document_ids_filter)
 
         with self._get_cursor() as cur:
+            # Build query parameters: query (twice for MATCH clauses), document_ids_filter (if any), top_k
+            query_params = [query, query] + params + [top_k]
+            
             cur.execute(
                 f"""SELECT meta, text,
                     MATCH(text) AGAINST(%s IN NATURAL LANGUAGE MODE) AS score
@@ -300,7 +303,7 @@ class AliyunMySQLVector(BaseVector):
                     {where_clause}
                     ORDER BY score DESC
                     LIMIT %s""",
-                [query, query] + (params[1:] if document_ids_filter else []) + [top_k],
+                query_params,
             )
 
             docs = []
