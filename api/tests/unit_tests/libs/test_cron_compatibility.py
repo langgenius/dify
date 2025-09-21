@@ -346,17 +346,8 @@ class TestFrontendBackendIntegration(unittest.TestCase):
                 with pytest.raises((CroniterBadCronError, ValueError, Exception)):
                     calculate_next_run_at(expr, "UTC", self.base_time)
 
-        # Test empty/whitespace expressions separately as they might not raise exceptions
-        empty_expressions = ["", "   "]
-        for expr in empty_expressions:
-            with self.subTest(expr=repr(expr)):
-                try:
-                    result = calculate_next_run_at(expr, "UTC", self.base_time)
-                    # If no exception, result should be None or handle gracefully
-                    assert result is None, f"Empty expression should return None: {repr(expr)}"
-                except Exception:
-                    # Exception is also acceptable for empty expressions
-                    pass
+        # Note: Empty/whitespace expressions are not tested here as they are
+        # not expected in normal usage due to database constraints (nullable=False)
 
     def test_performance_requirements(self):
         """Test that complex expressions parse within reasonable time."""

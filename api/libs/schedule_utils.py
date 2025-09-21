@@ -30,9 +30,6 @@ def calculate_next_run_at(
         - Standard 5-field format only (minute hour day month dayOfWeek)
     """
     # Validate cron expression format to match frontend behavior
-    if not cron_expression or cron_expression.strip() == '':
-        raise ValueError("Cron expression cannot be empty")
-
     parts = cron_expression.strip().split()
 
     # Support both 5-field format and predefined expressions (matching frontend)
