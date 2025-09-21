@@ -17,6 +17,7 @@ const translation = {
     education: 'Образование',
     productivity: 'Продуктивность',
     entertainment: 'Развлечение',
+    rag: 'ТРЯПКА',
   },
   allTags: 'Все теги',
   searchTags: 'Поиск тегов',

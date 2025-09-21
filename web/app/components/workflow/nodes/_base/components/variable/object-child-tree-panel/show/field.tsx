@@ -44,7 +44,7 @@ const Field: FC<Props> = ({
               />
             )}
             <div className={cn('system-sm-medium ml-[7px] h-6 truncate leading-6 text-text-secondary', isRoot && rootClassName)}>{name}</div>
-            <div className='system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary'>{getFieldType(payload)}</div>
+            <div className='system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary'>{getFieldType(payload)}{(payload.schemaType && payload.schemaType !== 'file' && ` (${payload.schemaType})`)}</div>
             {required && <div className='system-2xs-medium-uppercase ml-3 leading-6 text-text-warning'>{t('app.structOutput.required')}</div>}
           </div>
           {payload.description && (

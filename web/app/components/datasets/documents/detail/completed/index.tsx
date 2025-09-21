@@ -5,7 +5,7 @@ import { useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import SegmentList from './segment-list'
@@ -105,7 +105,6 @@ const Completed: FC<ICompletedProps> = ({
   const datasetId = useDocumentContext(s => s.datasetId) || ''
   const documentId = useDocumentContext(s => s.documentId) || ''
   const docForm = useDocumentContext(s => s.docForm)
-  const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
@@ -151,10 +150,10 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   const isFullDocMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'full-doc'
-  }, [mode, parentMode])
+    return docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
+  }, [docForm, parentMode])
 
-  const { isFetching: isLoadingSegmentList, data: segmentListData } = useSegmentList(
+  const { isLoading: isLoadingSegmentList, data: segmentListData } = useSegmentList(
     {
       datasetId,
       documentId,
@@ -184,7 +183,7 @@ const Completed: FC<ICompletedProps> = ({
     }
   }, [segments])
 
-  const { isFetching: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
+  const { isLoading: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
     {
       datasetId,
       documentId,
@@ -413,7 +412,7 @@ const Completed: FC<ICompletedProps> = ({
     if (!isSearch) {
       const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
       const count = total === '--' ? 0 : segmentListData!.total
-      const translationKey = (mode === 'hierarchical' && parentMode === 'paragraph')
+      const translationKey = (docForm === ChunkingMode.parentChild && parentMode === 'paragraph')
         ? 'datasetDocuments.segment.parentChunks'
         : 'datasetDocuments.segment.chunks'
       return `${total} ${t(translationKey, { count })}`
@@ -423,7 +422,7 @@ const Completed: FC<ICompletedProps> = ({
       const count = segmentListData?.total || 0
       return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
-  }, [segmentListData, mode, parentMode, searchValue, selectedStatus, t])
+  }, [segmentListData, docForm, parentMode, searchValue, selectedStatus, t])
 
   const toggleFullScreen = useCallback(() => {
     setFullScreen(!fullScreen)
@@ -665,8 +664,11 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={currSegment.showModal}
         fullScreen={fullScreen}
         onClose={onCloseSegmentDetail}
+        showOverlay={false}
+        needCheckChunks
       >
         <SegmentDetail
+          key={currSegment.segInfo?.id}
           segInfo={currSegment.segInfo ?? { id: '' }}
           docForm={docForm}
           isEditMode={currSegment.isEditMode}
@@ -679,6 +681,7 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={showNewSegmentModal}
         fullScreen={fullScreen}
         onClose={onCloseNewSegmentModal}
+        modal
       >
         <NewSegment
           docForm={docForm}
@@ -692,8 +695,11 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={currChildChunk.showModal}
         fullScreen={fullScreen}
         onClose={onCloseChildSegmentDetail}
+        showOverlay={false}
+        needCheckChunks
       >
         <ChildSegmentDetail
+          key={currChildChunk.childChunkInfo?.id}
           chunkId={currChunkId}
           childChunkInfo={currChildChunk.childChunkInfo ?? { id: '' }}
           docForm={docForm}
@@ -706,6 +712,7 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={showNewChildSegmentModal}
         fullScreen={fullScreen}
         onClose={onCloseNewChildChunkModal}
+        modal
       >
         <NewChildSegment
           chunkId={currChunkId}
@@ -715,15 +722,16 @@ const Completed: FC<ICompletedProps> = ({
         />
       </FullScreenDrawer>
       {/* Batch Action Buttons */}
-      {selectedSegmentIds.length > 0
-        && <BatchAction
+      {selectedSegmentIds.length > 0 && (
+        <BatchAction
           className='absolute bottom-16 left-0 z-20'
           selectedIds={selectedSegmentIds}
           onBatchEnable={onChangeSwitch.bind(null, true, '')}
           onBatchDisable={onChangeSwitch.bind(null, false, '')}
           onBatchDelete={onDelete.bind(null, '')}
           onCancel={onCancelBatchOperation}
-        />}
+        />
+      )}
     </SegmentListContext.Provider>
   )
 }
