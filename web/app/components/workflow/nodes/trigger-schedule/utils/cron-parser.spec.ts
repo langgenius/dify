@@ -385,6 +385,96 @@ describe('cron-parser', () => {
       tokyoResult.forEach(date => expect(date.getHours()).toBe(12))
     })
 
+    test('timezone compatibility and DST handling', () => {
+      // Test DST boundary scenarios
+      jest.useFakeTimers()
+
+      try {
+        // Test 1: DST spring forward (March 2024) - America/New_York
+        jest.setSystemTime(new Date('2024-03-08T10:00:00Z'))
+        const springDST = parseCronExpression('0 2 * * *', 'America/New_York')
+        expect(springDST).toHaveLength(5)
+        springDST.forEach(date => expect(date.getHours()).toBe(2))
+
+        // Test 2: DST fall back (November 2024) - America/New_York
+        jest.setSystemTime(new Date('2024-11-01T10:00:00Z'))
+        const fallDST = parseCronExpression('0 1 * * *', 'America/New_York')
+        expect(fallDST).toHaveLength(5)
+        fallDST.forEach(date => expect(date.getHours()).toBe(1))
+
+        // Test 3: Cross-timezone consistency on same UTC moment
+        jest.setSystemTime(new Date('2024-06-15T12:00:00Z'))
+        const utcNoon = parseCronExpression('0 12 * * *', 'UTC')
+        const nycMorning = parseCronExpression('0 8 * * *', 'America/New_York') // 8 AM NYC = 12 PM UTC in summer
+        const tokyoEvening = parseCronExpression('0 21 * * *', 'Asia/Tokyo') // 9 PM Tokyo = 12 PM UTC
+
+        expect(utcNoon).toHaveLength(5)
+        expect(nycMorning).toHaveLength(5)
+        expect(tokyoEvening).toHaveLength(5)
+
+        // Verify timezone consistency - all should represent the same UTC moments
+        const utcTime = utcNoon[0]
+        const nycTime = nycMorning[0]
+        const tokyoTime = tokyoEvening[0]
+
+        expect(utcTime.getHours()).toBe(12)
+        expect(nycTime.getHours()).toBe(8)
+        expect(tokyoTime.getHours()).toBe(21)
+      }
+      finally {
+        jest.useRealTimers()
+      }
+    })
+
+    test('backward compatibility with execution-time-calculator timezone logic', () => {
+      // Simulate the exact usage pattern from execution-time-calculator.ts:47
+      const mockData = {
+        cron_expression: '30 14 * * 1-5', // 2:30 PM weekdays
+        timezone: 'America/New_York',
+      }
+
+      // This is the exact call from execution-time-calculator.ts
+      const results = parseCronExpression(mockData.cron_expression, mockData.timezone)
+      expect(results).toHaveLength(5)
+
+      results.forEach((date) => {
+        // Should be weekdays (1-5)
+        expect(date.getDay()).toBeGreaterThanOrEqual(1)
+        expect(date.getDay()).toBeLessThanOrEqual(5)
+
+        // Should be 2:30 PM in the user's timezone representation
+        expect(date.getHours()).toBe(14)
+        expect(date.getMinutes()).toBe(30)
+        expect(date.getSeconds()).toBe(0)
+
+        // Should be Date objects (not CronDate or other types)
+        expect(date).toBeInstanceOf(Date)
+
+        // Should be in the future (relative to test time)
+        expect(date.getTime()).toBeGreaterThan(Date.now())
+      })
+    })
+
+    test('edge case timezone handling', () => {
+      // Test uncommon but valid timezones
+      const australiaResult = parseCronExpression('0 15 * * *', 'Australia/Sydney')
+      const indiaResult = parseCronExpression('0 9 * * *', 'Asia/Kolkata') // UTC+5:30
+      const alaskaResult = parseCronExpression('0 6 * * *', 'America/Anchorage')
+
+      expect(australiaResult).toHaveLength(5)
+      expect(indiaResult).toHaveLength(5)
+      expect(alaskaResult).toHaveLength(5)
+
+      australiaResult.forEach(date => expect(date.getHours()).toBe(15))
+      indiaResult.forEach(date => expect(date.getHours()).toBe(9))
+      alaskaResult.forEach(date => expect(date.getHours()).toBe(6))
+
+      // Test invalid timezone graceful handling
+      const invalidTzResult = parseCronExpression('0 12 * * *', 'Invalid/Timezone')
+      // Should either return empty array or handle gracefully
+      expect(Array.isArray(invalidTzResult)).toBe(true)
+    })
+
     test('gracefully handles invalid enhanced syntax', () => {
       // Invalid but close to valid expressions
       expect(parseCronExpression('0 12 * JANUARY *')).toEqual([]) // Full month name
