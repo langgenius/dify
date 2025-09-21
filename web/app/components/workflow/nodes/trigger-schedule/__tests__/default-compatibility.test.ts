@@ -122,7 +122,7 @@ describe('Schedule Trigger Default - Backward Compatibility', () => {
     })
 
     it('should handle execution time calculation errors gracefully', () => {
-      // Test with an expression that might cause execution time calculation issues
+      // Test with an expression that contains invalid date (Feb 30th)
       const payload: ScheduleTriggerNodeType = {
         mode: 'cron',
         timezone: 'UTC',
@@ -130,9 +130,9 @@ describe('Schedule Trigger Default - Backward Compatibility', () => {
       }
 
       const result = nodeDefault.checkValid(payload, mockT)
-      // Should either be invalid expression or no valid execution time
+      // Should be an invalid expression error since cron-parser detects Feb 30th as invalid
       expect(result.isValid).toBe(false)
-      expect(['Invalid cron expression', 'No valid execution time']).toContain(result.errorMessage)
+      expect(result.errorMessage).toBe('Invalid cron expression')
     })
   })
 
