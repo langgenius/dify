@@ -194,10 +194,6 @@ class AliyunMySQLVector(BaseVector):
                     raise e
 
     def delete_by_metadata_field(self, key: str, value: str):
-        # Simple validation to prevent SQL injection - only allow alphanumeric, underscore and dot
-        if not key.replace('_', '').replace('.', '').isalnum():
-            raise ValueError(f"Invalid metadata key: '{key}'. Key must contain only alphanumeric characters, underscores, and dots.")
-
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s",
                         (f"$.{key}", value))
@@ -350,7 +346,7 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
         if distance_function not in ["cosine", "euclidean"]:
             raise ValueError(f"Invalid distance function: {distance_function}. Must be 'cosine' or 'euclidean'")
         return cast(Literal["cosine", "euclidean"], distance_function)
-    
+
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> AliyunMySQLVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -369,6 +365,7 @@ class AliyunMySQLVectorFactory(AbstractVectorFactory):
                 database=dify_config.ALIYUN_MYSQL_DATABASE or "dify",
                 max_connection=dify_config.ALIYUN_MYSQL_MAX_CONNECTION,
                 charset=dify_config.ALIYUN_MYSQL_CHARSET or "utf8mb4",
-                distance_function=self._validate_distance_function(dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION or 'cosine'),
+                distance_function=self._validate_distance_function(dify_config.ALIYUN_MYSQL_DISTANCE_FUNCTION
+                                                                   or 'cosine'),
             ),
         )
