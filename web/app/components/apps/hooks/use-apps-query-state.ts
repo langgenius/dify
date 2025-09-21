@@ -52,7 +52,7 @@ function useAppsQueryState() {
     const params = new URLSearchParams(searchParams)
     updateSearchParams(query, params)
     syncSearchParams(params)
-  }, [query, searchParams, syncSearchParams])
+  }, [query, syncSearchParams])
 
   return useMemo(() => ({ query, setQuery }), [query])
 }
