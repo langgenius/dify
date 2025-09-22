@@ -1,8 +1,11 @@
-import { $insertNodes } from 'lexical'
+import {
+  $insertNodes,
+} from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { textToEditorState } from '../utils'
 import { CustomTextNode } from './custom-text/node'
 import { CLEAR_HIDE_MENU_TIMEOUT } from './workflow-variable-block'
+import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from '../../../workflow/nodes/_base/components/prompt/add-memory-button'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER = 'PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER'
@@ -29,6 +32,18 @@ const UpdateBlock = ({
       editor.focus()
       editor.update(() => {
         const textNode = new CustomTextNode('/')
+        $insertNodes([textNode])
+
+        editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
+      })
+    }
+  })
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === MEMORY_POPUP_SHOW_BY_EVENT_EMITTER && v.instanceId === instanceId) {
+      editor.focus()
+      editor.update(() => {
+        const textNode = new CustomTextNode('')
         $insertNodes([textNode])
 
         editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)

@@ -36,8 +36,7 @@ import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import { useStore } from '@/app/components/workflow/store'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
-import Button from '@/app/components/base/button'
-import { Memory } from '@/app/components/base/icons/src/vender/line/others'
+import AddMemoryButton, { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from './add-memory-button'
 
 type Props = {
   className?: string
@@ -156,6 +155,11 @@ const Editor: FC<Props> = ({
   const getVarType = useWorkflowVariableType()
   const pipelineId = useStore(s => s.pipelineId)
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
+
+  const handleAddMemory = () => {
+    setFocus()
+    eventEmitter?.emit({ type: MEMORY_POPUP_SHOW_BY_EVENT_EMITTER, instanceId } as any)
+  }
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
@@ -296,18 +300,12 @@ const Editor: FC<Props> = ({
                       onFocus={setFocus}
                       editable={!readOnly}
                       isSupportFileVar={isSupportFileVar}
+                      isMemorySupported
                     />
                     {/* to patch Editor not support dynamic change editable status */}
                     {readOnly && <div className='absolute inset-0 z-10'></div>}
                   </div>
-                  {isMemorySupported && isFocus && (
-                    <div className='pl-1.5'>
-                      <Button variant='ghost' size='small' className='text-text-tertiary'>
-                        <Memory className='h-3.5 w-3.5' />
-                        <span className='ml-1'>{t('workflow.nodes.llm.memory.addButton')}</span>
-                      </Button>
-                    </div>
-                  )}
+                  {isMemorySupported && <AddMemoryButton onAddMemory={handleAddMemory} />}
                 </>
               )
               : (

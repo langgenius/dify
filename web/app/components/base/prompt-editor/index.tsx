@@ -61,6 +61,8 @@ import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
 import OnBlurBlock from './plugins/on-blur-or-focus-block'
 import UpdateBlock from './plugins/update-block'
+import MemoryPopupPlugin from './plugins/memory-popup-plugin'
+
 import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
@@ -103,6 +105,7 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
+  isMemorySupported?: boolean
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -128,6 +131,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
+  isMemorySupported,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -198,6 +202,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
+        {isMemorySupported && (
+          <MemoryPopupPlugin instanceId={instanceId} />
+        )}
         <ComponentPickerBlock
           triggerString='/'
           contextBlock={contextBlock}
