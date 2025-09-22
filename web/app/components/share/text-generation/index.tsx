@@ -401,8 +401,8 @@ const TextGeneration: FC<IMainProps> = ({
     isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
     isMobile={!isPC}
-    isInstalledApp={isInstalledApp}
-    installedAppInfo={installedAppInfo}
+    appSourceType={isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp}
+    appId={installedAppInfo?.id}
     isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}

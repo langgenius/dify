@@ -52,7 +52,7 @@ export type IGenerationItemProps = {
   onFeedback?: (feedback: FeedbackType) => void
   onSave?: (messageId: string) => void
   isMobile?: boolean
-  isInstalledApp: boolean
+  appSourceType: AppSourceType
   installedAppId?: string
   taskId?: string
   controlClearMoreLikeThis?: number
@@ -86,7 +86,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   onSave,
   depth = 1,
   isMobile,
-  isInstalledApp,
+  appSourceType,
   installedAppId,
   taskId,
   controlClearMoreLikeThis,
@@ -111,8 +111,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
-  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
-
   const handleFeedback = async (childFeedback: FeedbackType) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, appSourceType, installedAppId)
     setChildFeedback(childFeedback)
@@ -132,7 +130,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     onSave,
     isShowTextToSpeech,
     isMobile,
-    isInstalledApp,
+    appSourceType,
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
@@ -294,7 +292,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {!isWorkflow && <span>{content?.length} {t('common.unit.char')}</span>}
               {/* action buttons */}
               <div className='absolute bottom-1 right-2 flex items-center'>
-                {!isInWebApp && !isInstalledApp && !isResponding && (
+                {!isInWebApp && (appSourceType !== AppSourceType.installedApp) && !isResponding && (
                   <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
                     <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
                       <RiFileList3Line className='h-4 w-4' />

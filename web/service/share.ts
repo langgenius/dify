@@ -113,9 +113,9 @@ export const sendWorkflowMessage = async (
     onTextReplace: IOnTextReplace
   },
   appSourceType: AppSourceType,
-  installedAppId = '',
+  appId = '',
 ) => {
-  return ssePost(getUrl('workflows/run', appSourceType, installedAppId), {
+  return ssePost(getUrl('workflows/run', appSourceType, appId), {
     body: {
       ...body,
       response_mode: 'streaming',

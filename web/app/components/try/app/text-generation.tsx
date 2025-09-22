@@ -20,18 +20,19 @@ import Res from '@/app/components/share/text-generation/result'
 import type { Task } from '../../share/text-generation/types'
 import { TaskStatus } from '../../share/text-generation/types'
 import { noop } from 'lodash'
+import { AppSourceType } from '@/service/share'
 
 type Props = {
   appId: string
-  isWorkflow?: boolean
   className?: string
 }
 
 const TextGeneration: FC<Props> = ({
-  isWorkflow = false,
+  appId,
   className,
 }) => {
   // const { t } = useTranslation()
+  const isWorkflow = true // wait for detail app info to decide // app.mode === 'completion' ｜ 'workflow'
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -54,7 +55,6 @@ const TextGeneration: FC<Props> = ({
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
   const [controlSend, setControlSend] = useState(0)
-  const [controlStopResponding, setControlStopResponding] = useState(0)
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
@@ -62,10 +62,7 @@ const TextGeneration: FC<Props> = ({
     transfer_methods: [TransferMethod.local_file],
   })
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
-  const [controlRetry, setControlRetry] = useState(0)
   const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
-// to temp fix lint
-  console.log(setControlStopResponding, setControlRetry)
   const showResultPanel = () => {
     // fix: useClickAway hideResSidebar will close sidebar
     setTimeout(() => {
@@ -125,15 +122,13 @@ const TextGeneration: FC<Props> = ({
     isCallBatchAPI={false}
     isPC={isPC}
     isMobile={!isPC}
-    isInstalledApp={false}
-    installedAppInfo={{}}
+    appSourceType={AppSourceType.webApp} // todo for call the api
+    appId={appId}
     isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
     inputs={inputs}
     controlSend={controlSend}
-    controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
-    controlStopResponding={controlStopResponding}
     onShowRes={showResultPanel}
     handleSaveMessage={noop}
     taskId={task?.id}
