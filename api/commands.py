@@ -84,7 +84,6 @@ def reset_password(email, new_password, password_confirm):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
-        session.commit()
         AccountService.reset_login_error_rate_limit(email)
         click.echo(click.style("Password reset successfully.", fg="green"))
 
@@ -115,7 +114,6 @@ def reset_email(email, new_email, email_confirm):
             return
 
         account.email = new_email
-        session.commit()
         click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -151,7 +149,6 @@ def reset_encrypt_key_pair():
 
             session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
             session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
-            session.commit()
 
             click.echo(
                 click.style(
