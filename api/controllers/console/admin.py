@@ -15,7 +15,7 @@ from constants.languages import supported_language
 from controllers.console import api, console_ns
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
-from models.model import App, InstalledApp, RecommendedApp
+from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
 
 
 def admin_required(view: Callable[P, R]):
@@ -61,6 +61,8 @@ class InsertExploreAppListApi(Resource):
                 "language": fields.String(required=True, description="Language code"),
                 "category": fields.String(required=True, description="App category"),
                 "position": fields.Integer(required=True, description="Display position"),
+                "can_trial": fields.Boolean(required=True, description="Can trial"),
+                "trial_limit": fields.Integer(required=True, description="Trial limit"),
             },
         )
     )
@@ -79,6 +81,8 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument("language", type=supported_language, required=True, nullable=False, location="json")
         parser.add_argument("category", type=str, required=True, nullable=False, location="json")
         parser.add_argument("position", type=int, required=True, nullable=False, location="json")
+        parser.add_argument("can_trial", type=bool, required=True, nullable=False, location="json")
+        parser.add_argument("trial_limit", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
@@ -115,6 +119,20 @@ class InsertExploreAppListApi(Resource):
                 )
 
                 db.session.add(recommended_app)
+                if args["can_trial"]:
+                    trial_app = db.session.execute(
+                        select(TrialApp).where(TrialApp.app_id == args["app_id"])
+                    ).scalar_one_or_none()
+                    if not trial_app:
+                        db.session.add(
+                            TrialApp(
+                                app_id=args["app_id"],
+                                tenant_id=app.tenant_id,
+                                trial_limit=args["trial_limit"],
+                            )
+                        )
+                    else:
+                        trial_app.trial_limit = args["trial_limit"]
 
                 app.is_public = True
                 db.session.commit()
@@ -129,6 +147,20 @@ class InsertExploreAppListApi(Resource):
                 recommended_app.category = args["category"]
                 recommended_app.position = args["position"]
 
+                if args["can_trial"]:
+                    trial_app = db.session.execute(
+                        select(TrialApp).where(TrialApp.app_id == args["app_id"])
+                    ).scalar_one_or_none()
+                    if not trial_app:
+                        db.session.add(
+                            TrialApp(
+                                app_id=args["app_id"],
+                                tenant_id=app.tenant_id,
+                                trial_limit=args["trial_limit"],
+                            )
+                        )
+                    else:
+                        trial_app.trial_limit = args["trial_limit"]
                 app.is_public = True
 
                 db.session.commit()
@@ -174,7 +206,67 @@ class InsertExploreAppApi(Resource):
             for installed_app in installed_apps:
                 session.delete(installed_app)
 
+            trial_app = session.execute(
+                select(TrialApp).where(TrialApp.app_id == recommended_app.app_id)
+            ).scalar_one_or_none()
+            if trial_app:
+                session.delete(trial_app)
+
         db.session.delete(recommended_app)
+        db.session.commit()
+
+        return {"result": "success"}, 204
+
+
+@console_ns.route("/admin/insert-explore-banner")
+class InsertExploreBanner(Resource):
+    @api.doc("insert_explore_banner")
+    @api.doc(description="Insert an explore banner")
+    @api.expect(
+        api.model(
+            "InsertExploreBannerRequest",
+            {
+                "content": fields.String(required=True, description="Banner content"),
+                "link": fields.String(required=True, description="Banner link"),
+                "sort": fields.Integer(required=True, description="Banner sort"),
+            },
+        )
+    )
+    @api.response(200, "Banner inserted successfully")
+    @admin_required
+    @only_edition_cloud
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("link", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("sort", type=int, required=True, nullable=False, location="json")
+
+        args = parser.parse_args()
+
+        banner = ExporleBanner(
+            content=args["content"],
+            link=args["link"],
+            sort=args["sort"],
+        )
+        db.session.add(banner)
+        db.session.commit()
+
+        return {"result": "success"}, 200
+
+
+@console_ns.route("/admin/delete-explore-banner/<uuid:banner_id>")
+class DeleteExploreBanner(Resource):
+    @api.doc("delete_explore_banner")
+    @api.doc(description="Delete an explore banner")
+    @api.response(204, "Banner deleted successfully")
+    @admin_required
+    @only_edition_cloud
+    def delete(self, banner_id):
+        banner = db.session.execute(select(ExporleBanner).where(ExporleBanner.id == banner_id)).scalar_one_or_none()
+        if not banner:
+            raise NotFound(f"Banner '{banner_id}' is not found")
+
+        db.session.delete(banner)
         db.session.commit()
 
         return {"result": "success"}, 204

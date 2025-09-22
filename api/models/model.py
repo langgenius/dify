@@ -581,6 +581,63 @@ class InstalledApp(Base):
         return tenant
 
 
+class TrialApp(Base):
+    __tablename__ = "trial_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
+        sa.Index("trial_app_app_id_idx", "app_id"),
+        sa.Index("trial_app_tenant_id_idx", "tenant_id"),
+        sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id = mapped_column(StringUUID, nullable=False)
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+
+class AccountTrialAppRecord(Base):
+    __tablename__ = "account_trial_app_records"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
+        sa.Index("account_trial_app_record_account_id_idx", "account_id"),
+        sa.Index("account_trial_app_record_app_id_idx", "app_id"),
+        sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
+    )
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    account_id = mapped_column(StringUUID, nullable=False)
+    app_id = mapped_column(StringUUID, nullable=False)
+    count = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+    @property
+    def user(self) -> Account | None:
+        user = db.session.query(Account).where(Account.id == self.account_id).first()
+        return user
+
+
+class ExporleBanner(Base):
+    __tablename__ = "exporle_banners"
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    content = mapped_column(sa.JSON, nullable=False)
+    link = mapped_column(String(255), nullable=False)
+    sort = mapped_column(sa.Integer, nullable=False)
+    status = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"))
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
 class OAuthProviderApp(Base):
     """
     Globally shared OAuth provider app information.
