@@ -10,7 +10,7 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from constants.languages import languages
