@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.http import parse_options_header
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
@@ -260,27 +261,11 @@ def _get_remote_file_info(url: str):
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
         if content_disposition := resp.headers.get("Content-Disposition"):
-            filename_from_header = ""
-            filename_star = ""
-            filename_regular = ""
-            for part in content_disposition.split(";"):
-                part = part.strip()
-                if not part:
-                    continue
-                lower_part = part.lower()
-                if lower_part.startswith("filename*="):
-                    raw_value = part.split("=", 1)[1].strip().strip("\"'")
-                    if "''" in raw_value:
-                        raw_value = raw_value.split("''", 1)[1]
-                    filename_star = urllib.parse.unquote(raw_value)
-                    break
-                if not filename_regular and lower_part.startswith("filename="):
-                    raw_value = part.split("=", 1)[1].strip().strip("\"'")
-                    filename_regular = urllib.parse.unquote(raw_value)
-            filename_from_header = filename_star or filename_regular
+            _, params = parse_options_header(content_disposition)
+            # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
+            filename_from_header = params.get("filename*") or params.get("filename")
             if filename_from_header:
                 filename = filename_from_header
-                # Re-guess mime_type from updated filename
                 mime_type, _ = mimetypes.guess_type(filename)
                 if mime_type is None:
                     mime_type = ""
