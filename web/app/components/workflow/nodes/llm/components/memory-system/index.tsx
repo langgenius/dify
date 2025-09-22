@@ -14,6 +14,7 @@ import LinearMemory from './linear-memory'
 import type { Memory } from '@/app/components/workflow/types'
 import type { LLMNodeType } from '../../types'
 import { useMemory } from './hooks'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 
 type MemoryProps = Pick<Node, 'id' | 'data'> & {
   readonly?: boolean
@@ -37,7 +38,7 @@ const MemorySystem = ({
 
   return (
     <>
-      <div className='py-4'>
+      <div className=''>
         <Collapse
           disabled={!memory?.enabled}
           collapsed={collapsed}
@@ -83,6 +84,7 @@ const MemorySystem = ({
             }
           </>
         </Collapse>
+        <Split className='mt-4' />
       </div>
     </>
   )

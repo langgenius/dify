@@ -41,11 +41,7 @@ const MemoryCreateButton = () => {
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
-        placement='left-start'
-        offset={{
-          mainAxis: 128,
-          alignmentAxis: -48,
-        }}
+        placement='left'
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
           <ActionButton className='shrink-0'>

@@ -14,7 +14,7 @@ export const useMemory = (
   id: string,
   data: LLMNodeType,
 ) => {
-  const { memory = {} as Memory } = data
+  const { memory } = data
   const initCollapsed = useMemo(() => {
     if (!memory?.enabled)
       return true
@@ -74,16 +74,19 @@ export const useMemory = (
   }, [handleNodeDataUpdate])
 
   const memoryType = useMemo(() => {
-    if (memory?.enabled) {
+    if (!memory)
+      return 'disabled'
+
+    if (!('enabled' in memory))
+      return 'linear'
+
+    if (memory.enabled) {
       if (memory.mode === 'linear')
         return 'linear'
       if (memory.mode === 'block')
         return 'block'
     }
     else {
-      if (memory?.window?.enabled)
-        return 'linear'
-
       return 'disabled'
     }
   }, [memory])

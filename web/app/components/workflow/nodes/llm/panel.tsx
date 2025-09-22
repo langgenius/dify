@@ -172,7 +172,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
 
         {/* Memory put place examples. */}
-        {isChatMode && isChatModel && !!inputs.memory && (
+        {isChatMode && isChatModel && !!inputs.memory?.enabled && (
           <div className='mt-4'>
             <div className='flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2'>
               <div className='flex items-center space-x-1'>
@@ -218,7 +218,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         {/* Memory */}
         {isChatMode && (
           <>
-            <Split />
             <MemorySystem
               id={id}
               data={data}
