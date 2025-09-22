@@ -4,15 +4,16 @@ import React, { useRef, useState } from 'react'
 import { useGetState, useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import TypeIcon from '../type-icon'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
-import AppIcon from '@/app/components/base/app-icon'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -32,6 +33,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [loaded, setLoaded] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const [hasInitialized, setHasInitialized] = React.useState(false)
+  const [searchKeyword, setSearchKeyword] = React.useState('')
   const hasNoData = !datasets || datasets?.length === 0
   const canSelectMulti = true
 
@@ -40,13 +42,34 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [isNoMore, setIsNoMore] = useState(false)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
+  // Reset data when search keyword changes
+  const resetData = () => {
+    setDataSets(null)
+    setLoaded(false)
+    setPage(1)
+    setIsNoMore(false)
+    setHasInitialized(false)
+  }
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchKeyword(value)
+    resetData()
+  }
+
   useInfiniteScroll(
     async () => {
       if (!isNoMore) {
-        const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
+        const { data, has_more } = await fetchDatasets({ 
+          url: '/datasets', 
+          params: { 
+            page,
+            ...(searchKeyword && { keyword: searchKeyword })
+          } 
+        })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
+        const newList = [...(datasets || []), ...data.filter((item: DataSet) => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
 
@@ -54,7 +77,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         if (!hasInitialized) {
           if (selectedIds.length > 0) {
             const validSelectedDatasets = selectedIds
-              .map(id => newList.find(item => item.id === id))
+              .map((id: string) => newList.find((item: DataSet) => item.id === id))
               .filter(Boolean) as DataSet[]
             setSelected(validSelectedDatasets)
           }
@@ -68,14 +91,14 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       isNoMore: () => {
         return isNoMore
       },
-      reloadDeps: [isNoMore],
+      reloadDeps: [isNoMore, searchKeyword],
     },
   )
 
   const toggleSelect = (dataSet: DataSet) => {
-    const isSelected = selected.some(item => item.id === dataSet.id)
+    const isSelected = selected.some((item: DataSet) => item.id === dataSet.id)
     if (isSelected) {
-      setSelected(selected.filter(item => item.id !== dataSet.id))
+      setSelected(selected.filter((item: DataSet) => item.id !== dataSet.id))
     }
     else {
       if (canSelectMulti)
@@ -88,7 +111,6 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const handleSelect = () => {
     onSelect(selected)
   }
-
   return (
     <Modal
       isShow={isShow}
@@ -96,6 +118,18 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       className='w-[400px]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
+      <div className="mt-4">
+        <Input
+          value={searchKeyword}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
+          placeholder={t('common.operation.search')}
+          showLeftIcon={true}
+          showClearIcon={true}
+          onClear={() => handleSearchChange('')}
+          className="w-full"
+        />
+      </div>
+      
       {!loaded && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
@@ -117,12 +151,12 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       {datasets && datasets?.length > 0 && (
         <>
           <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
-            {datasets.map(item => (
+            {datasets.map((item: DataSet) => (
               <div
                 key={item.id}
                 className={cn(
                   'flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
-                  selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
+                  selected.some((i: DataSet) => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
                   !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
                 )}
                 onClick={() => {
@@ -133,13 +167,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
               >
                 <div className='mr-1 flex items-center overflow-hidden'>
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                    <AppIcon
-                      size='tiny'
-                      iconType={item.icon_info.icon_type}
-                      icon={item.icon_info.icon}
-                      background={item.icon_info.icon_type === 'image' ? undefined : item.icon_info.icon_background}
-                      imageUrl={item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined}
-                    />
+                    <TypeIcon type="upload_file" size='md' />
                   </div>
                   <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
