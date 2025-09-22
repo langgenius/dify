@@ -1488,7 +1488,11 @@ def transform_datasource_credentials():
                         db.session.add(datasource_provider)
                         deal_notion_count += 1
                 except Exception as e:
-                    click.echo(click.style(f"Error transforming notion credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"))
+                    click.echo(
+                        click.style(
+                            f"Error transforming notion credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        )
+                    )
                     continue
                 db.session.commit()
         # deal firecrawl credentials
@@ -1538,7 +1542,11 @@ def transform_datasource_credentials():
                         db.session.add(datasource_provider)
                         deal_firecrawl_count += 1
                 except Exception as e:
-                    click.echo(click.style(f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"))
+                    click.echo(
+                        click.style(
+                            f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        )
+                    )
                     continue
                 db.session.commit()
         # deal jina credentials
@@ -1587,7 +1595,9 @@ def transform_datasource_credentials():
                         db.session.add(datasource_provider)
                         deal_jina_count += 1
                 except Exception as e:
-                    click.echo(click.style(f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"))
+                    click.echo(
+                        click.style(f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red")
+                    )
                     continue
                 db.session.commit()
     except Exception as e:
