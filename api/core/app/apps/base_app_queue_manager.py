@@ -127,6 +127,21 @@ class AppQueueManager:
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
 
+    @classmethod
+    def set_stop_flag_no_user_check(cls, task_id: str) -> None:
+        """
+        Set task stop flag without user permission check.
+        This method allows stopping workflows without user context.
+
+        :param task_id: The task ID to stop
+        :return:
+        """
+        if not task_id:
+            return
+
+        stopped_cache_key = cls._generate_stopped_cache_key(task_id)
+        redis_client.setex(stopped_cache_key, 600, 1)
+
     def _is_stopped(self) -> bool:
         """
         Check if task is stopped

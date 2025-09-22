@@ -60,9 +60,11 @@ const HeaderOptions: FC<Props> = ({
     const a = document.createElement('a')
     const content = listTransformer(list).join('\n')
     const file = new Blob([content], { type: 'application/jsonl' })
-    a.href = URL.createObjectURL(file)
+    const url = URL.createObjectURL(file)
+    a.href = url
     a.download = `annotations-${locale}.jsonl`
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   const fetchList = async () => {
