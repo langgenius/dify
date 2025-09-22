@@ -2,10 +2,10 @@
 Unified event manager for collecting and emitting events.
 """
 
-from contextlib import contextmanager
 import threading
 import time
 from collections.abc import Generator
+from contextlib import contextmanager
 from typing import final
 
 from core.workflow.graph_events import GraphEngineEvent
