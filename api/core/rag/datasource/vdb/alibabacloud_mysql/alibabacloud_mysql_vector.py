@@ -368,8 +368,9 @@ class AlibabaCloudMySQLVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ALIBABACLOUD_MYSQL,
-                                                                         collection_name))
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.ALIBABACLOUD_MYSQL, collection_name)
+            )
         return AlibabaCloudMySQLVector(
             collection_name=collection_name,
             config=AlibabaCloudMySQLVectorConfig(
