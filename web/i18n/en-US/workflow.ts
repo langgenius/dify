@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: 'Set variable',
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
+    needAdd: '{{node}} node must be added',
     needEndNode: 'The End node must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
@@ -93,7 +94,6 @@ const translation = {
     importWarning: 'Caution',
     importWarningDetails: 'DSL version difference may affect certain features',
     importSuccess: 'Import Successfully',
-    parallelRun: 'Parallel Run',
     parallelTip: {
       click: {
         title: 'Click',
@@ -215,8 +215,10 @@ const translation = {
     toolParameterRequired: '{{field}}: parameter [{{param}}] is required',
   },
   singleRun: {
-    testRun: 'Test Run ',
+    testRun: 'Test Run',
     startRun: 'Start Run',
+    preparingDataSource: 'Preparing Data Source',
+    reRun: 'Re-run',
     running: 'Running',
     testRunIteration: 'Test Run Iteration',
     back: 'Back',
@@ -240,6 +242,8 @@ const translation = {
     'agent': 'Agent Strategy',
     'allAdded': 'All added',
     'addAll': 'Add all',
+    'sources': 'Sources',
+    'searchDataSource': 'Search Data Source',
   },
   blocks: {
     'start': 'Start',
@@ -264,6 +268,8 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'knowledge-index': 'Knowledge Base',
+    'datasource': 'Data Source',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -286,6 +292,8 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'knowledge-index': 'Knowledge Base About',
+    'datasource': 'Data Source About',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -393,6 +401,7 @@ const translation = {
         input: 'Input value',
         variable: 'Use variable',
       },
+      inputVars: 'Input Variables',
     },
     start: {
       required: 'required',
@@ -927,6 +936,27 @@ const translation = {
       clickToViewParameterSchema: 'Click to view parameter schema',
       parameterSchema: 'Parameter Schema',
     },
+    dataSource: {
+      supportedFileFormats: 'Supported file formats',
+      supportedFileFormatsPlaceholder: 'File extension, e.g. doc',
+      add: 'Add data source',
+    },
+    knowledgeBase: {
+      chunkStructure: 'Chunk Structure',
+      chooseChunkStructure: 'Choose a chunk structure',
+      chunkStructureTip: {
+        title: 'Please choose a chunk structure',
+        message: 'The Dify Knowledge Base supports three chunking structures: General, Parent-child, and Q&A. Each knowledge base can have only one structure. The output from the preceding node must align with the selected chunk structure. Note that the choice of chunking structure affects the available index methods.',
+        learnMore: 'Learn more',
+      },
+      changeChunkStructure: 'Change Chunk Structure',
+      chunksInput: 'Chunks',
+      chunksInputTip: 'The input variable of the knowledge base node is Chunks. The variable type is an object with a specific JSON Schema which must be consistent with the selected chunk structure.',
+      aboutRetrieval: 'about retrieval method.',
+      chunkIsRequired: 'Chunk structure is required',
+      indexMethodIsRequired: 'Index method is required',
+      retrievalSettingIsRequired: 'Retrieval setting is required',
+    },
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
@@ -998,6 +1028,10 @@ const translation = {
       envNode: 'Environment',
       chatNode: 'Conversation',
       systemNode: 'System',
+      exportToolTip: 'Export Variable as File',
+      largeData: 'Large data, read-only preview. Export to view all.',
+      largeDataNoExport: 'Large data - partial preview only',
+      export: 'export',
     },
     lastOutput: 'Last Output',
     relations: {

@@ -1,12 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
-import { OperationAction, StatusItem } from '../list'
-import DocumentPicker from '../../common/document-picker'
+import Operations from '../operations'
+import StatusItem from '../status-item'
 import Completed from './completed'
 import Embedding from './embedding'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
@@ -16,74 +15,31 @@ import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast'
-import type { ChunkingMode, FileItem, ParentMode, ProcessMode } from '@/models/datasets'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import Toast from '@/app/components/base/toast'
+import { ChunkingMode } from '@/models/datasets'
+import type { FileItem } from '@/models/datasets'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
+import { DocumentContext } from './context'
+import { DocumentTitle } from './document-title'
 
-type DocumentContextValue = {
-  datasetId?: string
-  documentId?: string
-  docForm: string
-  mode?: ProcessMode
-  parentMode?: ParentMode
-}
-
-export const DocumentContext = createContext<DocumentContextValue>({ docForm: '' })
-
-export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
-  return useContextSelector(DocumentContext, selector)
-}
-
-type DocumentTitleProps = {
-  datasetId: string
-  extension?: string
-  name?: string
-  processMode?: ProcessMode
-  parent_mode?: ParentMode
-  iconCls?: string
-  textCls?: string
-  wrapperCls?: string
-}
-
-export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
-  const router = useRouter()
-  return (
-    <div className={cn('flex flex-1 items-center justify-start', wrapperCls)}>
-      <DocumentPicker
-        datasetId={datasetId}
-        value={{
-          name,
-          extension,
-          processMode,
-          parentMode: parent_mode,
-        }}
-        onChange={(doc) => {
-          router.push(`/datasets/${datasetId}/documents/${doc.id}`)
-        }}
-      />
-    </div>
-  )
-}
-
-type Props = {
+type DocumentDetailProps = {
   datasetId: string
   documentId: string
 }
 
-const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
+const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const { t } = useTranslation()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { notify } = useContext(ToastContext)
-  const { dataset } = useDatasetDetailContext()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
@@ -102,10 +58,11 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
           setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === ProcessStatus.ERROR)
-          notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+          Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
       },
       onError: (e) => {
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+        const message = 'message' in e ? `: ${e.message}` : ''
+        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${message}` })
       },
     })
   }
@@ -121,7 +78,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         checkProcess(res.job_id)
       },
       onError: (e) => {
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+        const message = 'message' in e ? `: ${e.message}` : ''
+        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${message}` })
       },
     })
   }
@@ -172,24 +130,20 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
     }
   }
 
-  const mode = useMemo(() => {
-    return documentDetail?.document_process_rule?.mode
-  }, [documentDetail?.document_process_rule])
-
   const parentMode = useMemo(() => {
-    return documentDetail?.document_process_rule?.rules?.parent_mode
-  }, [documentDetail?.document_process_rule])
+    return documentDetail?.document_process_rule?.rules?.parent_mode || documentDetail?.dataset_process_rule?.rules?.parent_mode || 'paragraph'
+  }, [documentDetail?.document_process_rule?.rules?.parent_mode, documentDetail?.dataset_process_rule?.rules?.parent_mode])
 
   const isFullDocMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'full-doc'
-  }, [mode, parentMode])
+    const chunkMode = documentDetail?.doc_form
+    return chunkMode === ChunkingMode.parentChild && parentMode === 'full-doc'
+  }, [documentDetail?.doc_form, parentMode])
 
   return (
     <DocumentContext.Provider value={{
       datasetId,
       documentId,
-      docForm: documentDetail?.doc_form || '',
-      mode,
+      docForm: documentDetail?.doc_form as ChunkingMode,
       parentMode,
     }}>
       <div className='flex h-full flex-col bg-background-default'>
@@ -203,7 +157,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             name={documentDetail?.name}
             wrapperCls='mr-2'
             parent_mode={parentMode}
-            processMode={mode}
+            chunkingMode={documentDetail?.doc_form as ChunkingMode}
           />
           <div className='flex flex-wrap items-center'>
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
@@ -231,7 +185,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               datasetId={datasetId}
               onUpdate={handleOperate}
             />
-            <OperationAction
+            <Operations
               scene='detail'
               embeddingAvailable={embeddingAvailable}
               detail={{
@@ -262,7 +216,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={cn('flex h-full min-w-0 grow flex-col',
-              embedding ? '' : isFullDocMode ? 'relative pl-11 pr-11 pt-4' : 'relative pl-5 pr-11 pt-3',
+              !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4',
+              !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3',
             )}>
               {embedding
                 ? <Embedding

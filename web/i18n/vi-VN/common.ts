@@ -490,7 +490,17 @@ const translation = {
       addModelCredential: 'Thêm thông tin đăng nhập mô hình',
       authRemoved: 'Chính quyền đã loại bỏ',
       providerManaged: 'Nhà cung cấp đã được quản lý',
+      modelCredential: 'Thông tin đăng nhập mô hình',
+      addModel: 'Thêm mô hình',
+      removeModel: 'Loại bỏ mô hình',
+      manageCredentials: 'Quản lý thông tin đăng nhập',
+      editModelCredential: 'Chỉnh sửa thông tin xác thực mô hình',
+      customModelCredentials: 'Thông tin đăng nhập mô hình tùy chỉnh',
+      customModelCredentialsDeleteTip: 'Thông tin đăng nhập đang được sử dụng và không thể xóa',
+      addNewModelCredential: 'Thêm thông tin xác thực mô hình mới',
+      selectModelCredential: 'Chọn thông tin xác thực mô hình',
     },
+    parametersInvalidRemoved: 'Một số tham số không hợp lệ và đã được loại bỏ',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',
@@ -589,6 +599,7 @@ const translation = {
     viewDoc: 'Xem tài liệu',
     relatedApp: 'các ứng dụng liên kết',
     noRelatedApp: 'Không có ứng dụng được liên kết',
+    pipeline: 'Đường ống',
   },
   voiceInput: {
     speaking: 'Hãy nói...',
@@ -747,6 +758,9 @@ const translation = {
     title: 'Cung cấp phản hồi',
     placeholder: 'Xin vui lòng miêu tả những gì đã xảy ra không đúng hoặc chúng tôi có thể cải thiện như thế nào...',
     subtitle: 'Xin vui lòng cho chúng tôi biết điều gì đã sai với phản hồi này',
+  },
+  label: {
+    optional: '(tùy chọn)',
   },
 }
 

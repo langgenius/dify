@@ -10,7 +10,7 @@ x-shared-env: &shared-api-worker-env
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   APP_API_URL: ${APP_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
-  FILES_URL: ${FILES_URL:-}
+  FILES_URL: ${FILES_URL:-http://api:5001}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
   LANG: ${LANG:-en_US.UTF-8}
   LC_ALL: ${LC_ALL:-en_US.UTF-8}
@@ -62,6 +62,7 @@ x-shared-env: &shared-api-worker-env
   SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
   SQLALCHEMY_POOL_PRE_PING: ${SQLALCHEMY_POOL_PRE_PING:-false}
   SQLALCHEMY_POOL_USE_LIFO: ${SQLALCHEMY_POOL_USE_LIFO:-false}
+  SQLALCHEMY_POOL_TIMEOUT: ${SQLALCHEMY_POOL_TIMEOUT:-30}
   POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
   POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
   POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-4MB}
@@ -285,6 +286,8 @@ x-shared-env: &shared-api-worker-env
   BAIDU_VECTOR_DB_DATABASE: ${BAIDU_VECTOR_DB_DATABASE:-dify}
   BAIDU_VECTOR_DB_SHARD: ${BAIDU_VECTOR_DB_SHARD:-1}
   BAIDU_VECTOR_DB_REPLICAS: ${BAIDU_VECTOR_DB_REPLICAS:-3}
+  BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER: ${BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER:-DEFAULT_ANALYZER}
+  BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE: ${BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE:-COARSE_MODE}
   VIKINGDB_ACCESS_KEY: ${VIKINGDB_ACCESS_KEY:-your-ak}
   VIKINGDB_SECRET_KEY: ${VIKINGDB_SECRET_KEY:-your-sk}
   VIKINGDB_REGION: ${VIKINGDB_REGION:-cn-shanghai}
@@ -305,6 +308,7 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
   OCEANBASE_ENABLE_HYBRID_SEARCH: ${OCEANBASE_ENABLE_HYBRID_SEARCH:-false}
+  OCEANBASE_FULLTEXT_PARSER: ${OCEANBASE_FULLTEXT_PARSER:-ik}
   OPENGAUSS_HOST: ${OPENGAUSS_HOST:-opengauss}
   OPENGAUSS_PORT: ${OPENGAUSS_PORT:-6600}
   OPENGAUSS_USER: ${OPENGAUSS_USER:-postgres}
@@ -396,6 +400,10 @@ x-shared-env: &shared-api-worker-env
   MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
   WORKFLOW_PARALLEL_DEPTH_LIMIT: ${WORKFLOW_PARALLEL_DEPTH_LIMIT:-3}
   WORKFLOW_FILE_UPLOAD_LIMIT: ${WORKFLOW_FILE_UPLOAD_LIMIT:-10}
+  GRAPH_ENGINE_MIN_WORKERS: ${GRAPH_ENGINE_MIN_WORKERS:-1}
+  GRAPH_ENGINE_MAX_WORKERS: ${GRAPH_ENGINE_MAX_WORKERS:-10}
+  GRAPH_ENGINE_SCALE_UP_THRESHOLD: ${GRAPH_ENGINE_SCALE_UP_THRESHOLD:-3}
+  GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: ${GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME:-5.0}
   WORKFLOW_NODE_EXECUTION_STORAGE: ${WORKFLOW_NODE_EXECUTION_STORAGE:-rdbms}
   CORE_WORKFLOW_EXECUTION_REPOSITORY: ${CORE_WORKFLOW_EXECUTION_REPOSITORY:-core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository}
   CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: ${CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY:-core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository}
@@ -585,7 +593,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.8.1
+    image: langgenius/dify-api:2.0.0-beta.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -614,7 +622,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.8.1
+    image: langgenius/dify-api:2.0.0-beta.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -641,7 +649,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.8.1
+    image: langgenius/dify-api:2.0.0-beta.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -659,7 +667,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.8.1
+    image: langgenius/dify-web:2.0.0-beta.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -760,7 +768,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.2.0-local
+    image: langgenius/dify-plugin-daemon:0.3.0b1-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -1087,6 +1095,7 @@ services:
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       OB_SERVER_IP: 127.0.0.1
       MODE: mini
+      LANG: en_US.UTF-8
     ports:
       - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
     healthcheck:

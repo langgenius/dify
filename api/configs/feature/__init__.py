@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import (
@@ -505,6 +506,22 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class WorkflowVariableTruncationConfig(BaseSettings):
+    WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
+        # 100KB
+        1024_000,
+        description="Maximum size for variable to trigger final truncation.",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
+        100000,
+        description="maximum length for string to trigger tuncation, measure in number of characters",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
+        1000,
+        description="maximum length for array to trigger truncation.",
+    )
+
+
 class WorkflowConfig(BaseSettings):
     """
     Configuration for workflow execution
@@ -533,6 +550,28 @@ class WorkflowConfig(BaseSettings):
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
+    )
+
+    # GraphEngine Worker Pool Configuration
+    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
+        description="Minimum number of workers per GraphEngine instance",
+        default=1,
+    )
+
+    GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum number of workers per GraphEngine instance",
+        default=10,
+    )
+
+    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
+        description="Queue depth threshold that triggers worker scale up",
+        default=3,
+    )
+
+    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
+        description="Seconds of idle time before scaling down workers",
+        default=5.0,
+        ge=0.1,
     )
 
 
@@ -673,10 +712,34 @@ class ToolConfig(BaseSettings):
     )
 
 
+class TemplateMode(StrEnum):
+    # unsafe mode allows flexible operations in templates, but may cause security vulnerabilities
+    UNSAFE = "unsafe"
+
+    # sandbox mode restricts some unsafe operations like accessing __class__.
+    # however, it is still not 100% safe, for example, cpu exploitation can happen.
+    SANDBOX = "sandbox"
+
+    # templating is disabled
+    DISABLED = "disabled"
+
+
 class MailConfig(BaseSettings):
     """
     Configuration for email services
     """
+
+    MAIL_TEMPLATING_MODE: TemplateMode = Field(
+        description="Template mode for email services",
+        default=TemplateMode.SANDBOX,
+    )
+
+    MAIL_TEMPLATING_TIMEOUT: int = Field(
+        description="""
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. 
+        Only available in sandbox mode.""",
+        default=3,
+    )
 
     MAIL_TYPE: str | None = Field(
         description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
@@ -1041,5 +1104,6 @@ class FeatureConfig(
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
     WorkflowLogConfig,
+    WorkflowVariableTruncationConfig,
 ):
     pass

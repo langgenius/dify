@@ -31,6 +31,8 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 
 const FormInputItem: FC<Props> = ({
@@ -42,6 +44,8 @@ const FormInputItem: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+  showManageInputField,
+  onManageInputField,
 }) => {
   const language = useLanguage()
 
@@ -64,7 +68,7 @@ const FormInputItem: FC<Props> = ({
   const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray
+  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
 
@@ -84,8 +88,8 @@ const FormInputItem: FC<Props> = ({
       return VarType.arrayFile
     else if (type === FormTypeEnum.file)
       return VarType.file
-    // else if (isSelect)
-    //   return VarType.select
+    else if (isSelect)
+      return VarType.string
     // else if (isAppSelector)
     //   return VarType.appSelector
     // else if (isModelSelector)
@@ -192,6 +196,8 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
+          showManageInputField={showManageInputField}
+          onManageInputField={onManageInputField}
         />
       )}
       {isNumber && isConstant && (
@@ -209,7 +215,7 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
         />
       )}
-      {isSelect && (
+      {isSelect && isConstant && (
         <SimpleSelect
           wrapperClassName='h-8 grow'
           disabled={readOnly}
@@ -271,6 +277,7 @@ const FormInputItem: FC<Props> = ({
           valueTypePlaceHolder={targetVarType()}
           currentTool={currentTool}
           currentProvider={currentProvider}
+          isFilterFileVar={isBoolean}
         />
       )}
     </div>
