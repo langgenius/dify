@@ -135,12 +135,12 @@ class Graph(BaseModel):
 
         # fetch root node
         if not root_node_id:
-            # if no root node id, use the START type node as root node
+            # if no root node id, use any start node (START or trigger types) as root node
             root_node_id = next(
                 (
                     node_config.get("id")
                     for node_config in root_node_configs
-                    if node_config.get("data", {}).get("type", "") == NodeType.START.value
+                    if NodeType(node_config.get("data", {}).get("type", "")).is_start_node
                 ),
                 None,
             )
