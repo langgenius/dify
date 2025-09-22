@@ -836,6 +836,16 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+    ENABLE_TRIAL_APP: bool = Field(
+        description="Enable trial app",
+        default=False,
+    )
+
+    ENABLE_EXPLORE_BANNER: bool = Field(
+        description="Enable explore banner",
+        default=False,
+    )
+
 
 class RagEtlConfig(BaseSettings):
     """
