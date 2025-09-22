@@ -1,11 +1,9 @@
 import logging
-from datetime import UTC, datetime
 from typing import Any
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, inputs, marshal_with, reqparse
-from sqlalchemy import and_
+from flask_restx import Resource, inputs, marshal_with, reqparse
+from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import api
@@ -13,8 +11,9 @@ from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
-from libs.login import login_required
-from models import App, InstalledApp, RecommendedApp
+from libs.datetime_utils import naive_utc_now
+from libs.login import current_user, login_required
+from models import Account, App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -29,17 +28,23 @@ class InstalledAppsListApi(Resource):
     @marshal_with(installed_app_list_fields)
     def get(self):
         app_id = request.args.get("app_id", default=None, type=str)
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         current_tenant_id = current_user.current_tenant_id
 
         if app_id:
-            installed_apps = (
-                db.session.query(InstalledApp)
-                .filter(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
-                .all()
-            )
+            installed_apps = db.session.scalars(
+                select(InstalledApp).where(
+                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id)
+                )
+            ).all()
         else:
-            installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
+            installed_apps = db.session.scalars(
+                select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
+            ).all()
 
+        if current_user.current_tenant is None:
+            raise ValueError("current_user.current_tenant must not be None")
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_app_list: list[dict[str, Any]] = [
             {
@@ -58,23 +63,40 @@ class InstalledAppsListApi(Resource):
         # filter out apps that user doesn't have access to
         if FeatureService.get_system_features().webapp_auth.enabled:
             user_id = current_user.id
-            res = []
             app_ids = [installed_app["app"].id for installed_app in installed_app_list]
             webapp_settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids)
+
+            # Pre-filter out apps without setting or with sso_verified
+            filtered_installed_apps = []
+            app_id_to_app_code = {}
+
             for installed_app in installed_app_list:
-                webapp_setting = webapp_settings.get(installed_app["app"].id)
-                if not webapp_setting:
+                app_id = installed_app["app"].id
+                webapp_setting = webapp_settings.get(app_id)
+                if not webapp_setting or webapp_setting.access_mode == "sso_verified":
                     continue
-                if webapp_setting.access_mode == "sso_verified":
-                    continue
-                app_code = AppService.get_app_code_by_id(str(installed_app["app"].id))
-                if EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
-                    user_id=user_id,
-                    app_code=app_code,
-                ):
+                app_code = AppService.get_app_code_by_id(str(app_id))
+                app_id_to_app_code[app_id] = app_code
+                filtered_installed_apps.append(installed_app)
+
+            app_codes = list(app_id_to_app_code.values())
+
+            # Batch permission check
+            permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
+                user_id=user_id,
+                app_codes=app_codes,
+            )
+
+            # Keep only allowed apps
+            res = []
+            for installed_app in filtered_installed_apps:
+                app_id = installed_app["app"].id
+                app_code = app_id_to_app_code[app_id]
+                if permissions.get(app_code):
                     res.append(installed_app)
+
             installed_app_list = res
-            logger.debug(f"installed_app_list: {installed_app_list}, user_id: {user_id}")
+            logger.debug("installed_app_list: %s, user_id: %s", installed_app_list, user_id)
 
         installed_app_list.sort(
             key=lambda app: (
@@ -94,12 +116,14 @@ class InstalledAppsListApi(Resource):
         parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
 
-        recommended_app = db.session.query(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"]).first()
+        recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == args["app_id"]).first()
         if recommended_app is None:
             raise NotFound("App not found")
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         current_tenant_id = current_user.current_tenant_id
-        app = db.session.query(App).filter(App.id == args["app_id"]).first()
+        app = db.session.query(App).where(App.id == args["app_id"]).first()
 
         if app is None:
             raise NotFound("App not found")
@@ -109,7 +133,7 @@ class InstalledAppsListApi(Resource):
 
         installed_app = (
             db.session.query(InstalledApp)
-            .filter(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
+            .where(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
             .first()
         )
 
@@ -122,7 +146,7 @@ class InstalledAppsListApi(Resource):
                 tenant_id=current_tenant_id,
                 app_owner_tenant_id=app.tenant_id,
                 is_pinned=False,
-                last_used_at=datetime.now(UTC).replace(tzinfo=None),
+                last_used_at=naive_utc_now(),
             )
             db.session.add(new_installed_app)
             db.session.commit()
@@ -137,6 +161,8 @@ class InstalledAppApi(InstalledAppResource):
     """
 
     def delete(self, installed_app):
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         if installed_app.app_owner_tenant_id == current_user.current_tenant_id:
             raise BadRequest("You can't uninstall an app owned by the current tenant")
 

@@ -22,7 +22,6 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, cast
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -46,7 +45,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         session_maker: SQLAlchemy sessionmaker instance for database connections
     """
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(self, session_maker: sessionmaker[Session]):
         """
         Initialize the repository with a sessionmaker.
 
@@ -61,7 +60,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         triggered_from: str,
         limit: int = 20,
-        last_id: Optional[str] = None,
+        last_id: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -107,7 +106,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         run_id: str,
-    ) -> Optional[WorkflowRun]:
+    ) -> WorkflowRun | None:
         """
         Get a specific workflow run by ID with tenant and app isolation.
         """
@@ -117,7 +116,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.app_id == app_id,
                 WorkflowRun.id == run_id,
             )
-            return cast(Optional[WorkflowRun], session.scalar(stmt))
+            return session.scalar(stmt)
 
     def get_expired_runs_batch(
         self,
@@ -137,7 +136,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 )
                 .limit(batch_size)
             )
-            return cast(Sequence[WorkflowRun], session.scalars(stmt).all())
+            return session.scalars(stmt).all()
 
     def delete_runs_by_ids(
         self,
@@ -154,8 +153,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             result = session.execute(stmt)
             session.commit()
 
-            deleted_count = cast(int, result.rowcount)
-            logger.info(f"Deleted {deleted_count} workflow runs by IDs")
+            deleted_count = result.rowcount
+            logger.info("Deleted %s workflow runs by IDs", deleted_count)
             return deleted_count
 
     def delete_runs_by_app(
@@ -193,11 +192,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 batch_deleted = result.rowcount
                 total_deleted += batch_deleted
 
-                logger.info(f"Deleted batch of {batch_deleted} workflow runs for app {app_id}")
+                logger.info("Deleted batch of %s workflow runs for app %s", batch_deleted, app_id)
 
                 # If we deleted fewer records than the batch size, we're done
                 if batch_deleted < batch_size:
                     break
 
-        logger.info(f"Total deleted {total_deleted} workflow runs for app {app_id}")
+        logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted

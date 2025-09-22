@@ -1,10 +1,11 @@
 import logging
-from typing import Optional
 
 from flask import Flask
 
 from configs import dify_config
 from dify_app import DifyApp
+
+logger = logging.getLogger(__name__)
 
 
 class Mail:
@@ -18,7 +19,7 @@ class Mail:
     def init_app(self, app: Flask):
         mail_type = dify_config.MAIL_TYPE
         if not mail_type:
-            logging.warning("MAIL_TYPE is not set")
+            logger.warning("MAIL_TYPE is not set")
             return
 
         if dify_config.MAIL_DEFAULT_SEND_FROM:
@@ -64,9 +65,9 @@ class Mail:
                     sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
                 )
             case _:
-                raise ValueError("Unsupported mail type {}".format(mail_type))
+                raise ValueError(f"Unsupported mail type {mail_type}")
 
-    def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
+    def send(self, to: str, subject: str, html: str, from_: str | None = None):
         if not self._client:
             raise ValueError("Mail client is not initialized")
 

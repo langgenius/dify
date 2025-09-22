@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Crear conocimiento',
-      update: 'Agregar datos',
       fallbackRoute: 'Conocimiento',
     },
     one: 'Elegir fuente de datos',
@@ -28,6 +26,7 @@ const translation = {
     uploader: {
       title: 'Cargar archivo',
       button: 'Arrastre y suelte archivos o carpetas, o',
+      buttonSingleFile: 'Arrastre y suelte archivo, o',
       browse: 'Buscar',
       tip: 'Soporta {{supportTypes}}. Máximo {{size}}MB cada uno.',
       validation: {
@@ -93,6 +92,7 @@ const translation = {
       configureJinaReader: 'Configurar Jina Reader',
       configureWatercrawl: 'Configurar Watercrawl',
       waterCrawlNotConfiguredDescription: 'Configura Watercrawl con la clave de API para usarlo.',
+      running: 'Corriente',
     },
     cancel: 'Cancelar',
   },
@@ -178,6 +178,7 @@ const translation = {
     qaSwitchHighQualityTipTitle: 'El formato de preguntas y respuestas requiere un método de indexación de alta calidad',
     previewChunkCount: '{{conteo}} Fragmentos estimados',
     general: 'General',
+    qaTip: 'Al usar datos estructurados de preguntas y respuestas, puede crear documentos que combinen preguntas con respuestas. Estos documentos se indexan en función de la parte de la pregunta, lo que permite que el sistema recupere respuestas relevantes en función de la similitud de la consulta.',
   },
   stepThree: {
     creationTitle: '🎉 Conocimiento creado',

@@ -2,28 +2,29 @@ from typing import Literal
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
 import services
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
-from controllers.common.errors import FilenameNotExistsError
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_resource_check,
-    setup_required,
-)
-from fields.file_fields import file_fields, upload_config_fields
-from libs.login import login_required
-from services.file_service import FileService
-
-from .error import (
+from controllers.common.errors import (
+    FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
+from extensions.ext_database import db
+from fields.file_fields import file_fields, upload_config_fields
+from libs.login import login_required
+from models import Account
+from services.file_service import FileService
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -49,7 +50,6 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
-        file = request.files["file"]
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
@@ -58,6 +58,7 @@ class FileApi(Resource):
 
         if len(request.files) > 1:
             raise TooManyFilesError()
+        file = request.files["file"]
 
         if not file.filename:
             raise FilenameNotExistsError
@@ -68,8 +69,11 @@ class FileApi(Resource):
         if source not in ("datasets", None):
             source = None
 
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+
         try:
-            upload_file = FileService.upload_file(
+            upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
                 content=file.read(),
                 mimetype=file.mimetype,
@@ -90,7 +94,7 @@ class FilePreviewApi(Resource):
     @account_initialization_required
     def get(self, file_id):
         file_id = str(file_id)
-        text = FileService.get_file_preview(file_id)
+        text = FileService(db.engine).get_file_preview(file_id)
         return {"content": text}
 
 

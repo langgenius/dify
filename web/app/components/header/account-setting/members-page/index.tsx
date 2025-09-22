@@ -1,16 +1,15 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import dayjs from 'dayjs'
-import 'dayjs/locale/zh-cn'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { useContext } from 'use-context-selector'
 import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
 import EditWorkspaceModal from './edit-workspace-modal'
+import TransferOwnershipModal from './transfer-ownership-modal'
 import Operation from './operation'
+import TransferOwnership from './operation/transfer-ownership'
 import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
@@ -21,12 +20,12 @@ import { Plan } from '@/app/components/billing/type'
 import Button from '@/app/components/base/button'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import { RiPencilLine } from '@remixicon/react'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-dayjs.extend(relativeTime)
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const MembersPage = () => {
   const { t } = useTranslation()
@@ -48,14 +47,16 @@ const MembersPage = () => {
     fetchMembers,
   )
   const { systemFeatures } = useGlobalPublicStore()
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
-  const { plan, enableBilling } = useProviderContext()
+  const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
   const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
+  const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
 
   return (
     <>
@@ -70,7 +71,6 @@ const MembersPage = () => {
               {isCurrentWorkspaceOwner && <span>
                 <Tooltip
                   popupContent={t('common.account.editWorkspaceInfo')}
-                  needsDelay
                 >
                   <div
                     className='cursor-pointer rounded-md p-1 hover:bg-black/5'
@@ -131,13 +131,20 @@ const MembersPage = () => {
                       <div className='system-xs-regular text-text-tertiary'>{account.email}</div>
                     </div>
                   </div>
-                  <div className='system-sm-regular flex w-[104px] shrink-0 items-center py-2 text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
+                  <div className='system-sm-regular flex w-[104px] shrink-0 items-center py-2 text-text-secondary'>{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
                   <div className='flex w-[96px] shrink-0 items-center'>
-                    {
-                      isCurrentWorkspaceOwner && account.role !== 'owner'
-                        ? <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
-                        : <div className='system-sm-regular px-3 text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
-                    }
+                    {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
+                      <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
+                    )}
+                    {isCurrentWorkspaceOwner && account.role === 'owner' && !isAllowTransferWorkspace && (
+                      <div className='system-sm-regular px-3 text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
+                    )}
+                    {isCurrentWorkspaceOwner && account.role !== 'owner' && (
+                      <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
+                    )}
+                    {!isCurrentWorkspaceOwner && (
+                      <div className='system-sm-regular px-3 text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
+                    )}
                   </div>
                 </div>
               ))
@@ -173,6 +180,12 @@ const MembersPage = () => {
           />
         )
       }
+      {showTransferOwnershipModal && (
+        <TransferOwnershipModal
+          show={showTransferOwnershipModal}
+          onClose={() => setShowTransferOwnershipModal(false)}
+        />
+      )}
     </>
   )
 }

@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-import requests
+import httpx
 from yarl import URL
 
 from configs import dify_config
@@ -23,12 +23,32 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
         return []
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
-    response = requests.post(url, json={"plugin_ids": plugin_ids})
+    response = httpx.post(url, json={"plugin_ids": plugin_ids})
     response.raise_for_status()
+
     return [MarketplacePluginDeclaration(**plugin) for plugin in response.json()["data"]["plugins"]]
+
+
+def batch_fetch_plugin_manifests_ignore_deserialization_error(
+    plugin_ids: list[str],
+) -> Sequence[MarketplacePluginDeclaration]:
+    if len(plugin_ids) == 0:
+        return []
+
+    url = str(marketplace_api_url / "api/v1/plugins/batch")
+    response = httpx.post(url, json={"plugin_ids": plugin_ids})
+    response.raise_for_status()
+    result: list[MarketplacePluginDeclaration] = []
+    for plugin in response.json()["data"]["plugins"]:
+        try:
+            result.append(MarketplacePluginDeclaration(**plugin))
+        except Exception:
+            pass
+
+    return result
 
 
 def record_install_plugin_event(plugin_unique_identifier: str):
     url = str(marketplace_api_url / "api/v1/stats/plugins/install_count")
-    response = requests.post(url, json={"unique_identifier": plugin_unique_identifier})
+    response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier})
     response.raise_for_status()

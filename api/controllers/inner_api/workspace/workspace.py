@@ -1,9 +1,9 @@
 import json
 
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console.wraps import setup_required
-from controllers.inner_api import api
+from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -11,9 +11,19 @@ from models.account import Account
 from services.account_service import TenantService
 
 
+@inner_api_ns.route("/enterprise/workspace")
 class EnterpriseWorkspace(Resource):
     @setup_required
     @enterprise_inner_api_only
+    @inner_api_ns.doc("create_enterprise_workspace")
+    @inner_api_ns.doc(description="Create a new enterprise workspace with owner assignment")
+    @inner_api_ns.doc(
+        responses={
+            200: "Workspace created successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Owner account not found or service not available",
+        }
+    )
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
@@ -44,9 +54,19 @@ class EnterpriseWorkspace(Resource):
         }
 
 
+@inner_api_ns.route("/enterprise/workspace/ownerless")
 class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @setup_required
     @enterprise_inner_api_only
+    @inner_api_ns.doc("create_enterprise_workspace_ownerless")
+    @inner_api_ns.doc(description="Create a new enterprise workspace without initial owner assignment")
+    @inner_api_ns.doc(
+        responses={
+            200: "Workspace created successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
@@ -71,7 +91,3 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
             "message": "enterprise workspace created.",
             "tenant": resp,
         }
-
-
-api.add_resource(EnterpriseWorkspace, "/enterprise/workspace")
-api.add_resource(EnterpriseWorkspaceNoOwnerEmail, "/enterprise/workspace/ownerless")

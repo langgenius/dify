@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -27,6 +27,20 @@ from core.workflow.nodes.question_classifier.entities import (
 )
 
 
+class InvokeCredentials(BaseModel):
+    tool_credentials: dict[str, str] = Field(
+        default_factory=dict,
+        description="Map of tool provider to credential id, used to store the credential id for the tool provider.",
+    )
+
+
+class PluginInvokeContext(BaseModel):
+    credentials: InvokeCredentials | None = Field(
+        default_factory=InvokeCredentials,
+        description="Credentials context for the plugin invocation or backward invocation.",
+    )
+
+
 class RequestInvokeTool(BaseModel):
     """
     Request to invoke a tool
@@ -36,6 +50,7 @@ class RequestInvokeTool(BaseModel):
     provider: str
     tool: str
     tool_parameters: dict
+    credential_id: str | None = None
 
 
 class BaseRequestInvokeModel(BaseModel):
@@ -55,9 +70,9 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     mode: str
     completion_params: dict[str, Any] = Field(default_factory=dict)
     prompt_messages: list[PromptMessage] = Field(default_factory=list)
-    tools: Optional[list[PromptMessageTool]] = Field(default_factory=list[PromptMessageTool])
-    stop: Optional[list[str]] = Field(default_factory=list[str])
-    stream: Optional[bool] = False
+    tools: list[PromptMessageTool] | None = Field(default_factory=list[PromptMessageTool])
+    stop: list[str] | None = Field(default_factory=list[str])
+    stream: bool | None = False
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -179,10 +194,10 @@ class RequestInvokeApp(BaseModel):
 
     app_id: str
     inputs: dict[str, Any]
-    query: Optional[str] = None
+    query: str | None = None
     response_mode: Literal["blocking", "streaming"]
-    conversation_id: Optional[str] = None
-    user: Optional[str] = None
+    conversation_id: str | None = None
+    user: str | None = None
     files: list[dict] = Field(default_factory=list)
 
 

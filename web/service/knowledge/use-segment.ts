@@ -154,9 +154,9 @@ export const useUpdateChildSegment = () => {
 export const useSegmentBatchImport = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'batchImport'],
-    mutationFn: (payload: { url: string; body: FormData }) => {
+    mutationFn: (payload: { url: string; body: { upload_file_id: string } }) => {
       const { url, body } = payload
-      return post<BatchImportResponse>(url, { body }, { bodyStringify: false, deleteContentType: true })
+      return post<BatchImportResponse>(url, { body })
     },
   })
 }

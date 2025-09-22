@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'Importation en Vrac',
       bulkExport: 'Exportation en Vrac',
       clearAll: 'Effacer toutes les annotations',
+      clearAllConfirm: 'Supprimer toutes les annotations ?',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Enregistrer',
   },
   embeddingModelSwitchTip: 'Modèle de vectorisation de texte d\'annotation, changer de modèles entraînera une ré-intégration, ce qui entraînera des coûts supplémentaires.',
+  list: {
+    delete: {
+      title: 'Êtes-vous sûr de vouloir supprimer ?',
+    },
+  },
+  batchAction: {
+    cancel: 'Annuler',
+    delete: 'Supprimer',
+    selected: 'sélectionné',
+  },
 }
 
 export default translation

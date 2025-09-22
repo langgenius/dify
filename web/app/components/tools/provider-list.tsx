@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from './types'
 import Marketplace from './marketplace'
@@ -20,6 +20,7 @@ import { useAllToolProviders } from '@/service/use-tools'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { ToolTypeEnum } from '../workflow/block-selector/types'
+import { useMarketplace } from './marketplace/hooks'
 
 const getToolType = (type: string) => {
   switch (type) {
@@ -37,7 +38,7 @@ const getToolType = (type: string) => {
 }
 const ProviderList = () => {
   // const searchParams = useSearchParams()
-    // searchParams.get('category') === 'workflow'
+  // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -82,6 +83,41 @@ const ProviderList = () => {
     const detail = pluginList?.plugins.find(plugin => plugin.plugin_id === currentProvider?.plugin_id)
     return detail
   }, [currentProvider?.plugin_id, pluginList?.plugins])
+
+  const toolListTailRef = useRef<HTMLDivElement>(null)
+  const showMarketplacePanel = useCallback(() => {
+    containerRef.current?.scrollTo({
+      top: toolListTailRef.current
+        ? toolListTailRef.current?.offsetTop - 80
+        : 0,
+      behavior: 'smooth',
+    })
+  }, [toolListTailRef])
+
+  const marketplaceContext = useMarketplace(keywords, tagFilterValue)
+  const {
+    handleScroll,
+  } = marketplaceContext
+
+  const [isMarketplaceArrowVisible, setIsMarketplaceArrowVisible] = useState(true)
+  const onContainerScroll = useMemo(() => {
+    return (e: Event) => {
+      handleScroll(e)
+      if (containerRef.current && toolListTailRef.current)
+        setIsMarketplaceArrowVisible(containerRef.current.scrollTop < (toolListTailRef.current?.offsetTop - 80))
+    }
+  }, [handleScroll, containerRef, toolListTailRef, setIsMarketplaceArrowVisible])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (container)
+      container.addEventListener('scroll', onContainerScroll)
+
+    return () => {
+      if (container)
+        container.removeEventListener('scroll', onContainerScroll)
+    }
+  }, [onContainerScroll])
 
   return (
     <>
@@ -152,15 +188,16 @@ const ProviderList = () => {
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('tools.noTools')} className='h-[224px] px-12' />
+            <Empty lightCard text={t('tools.noTools')} className='h-[224px] shrink-0 px-12' />
           )}
+          <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (
             <Marketplace
-              onMarketplaceScroll={() => {
-                containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
-              }}
               searchPluginText={keywords}
               filterPluginTags={tagFilterValue}
+              isMarketplaceArrowVisible={isMarketplaceArrowVisible}
+              showMarketplacePanel={showMarketplacePanel}
+              marketplaceContext={marketplaceContext}
             />
           )}
           {activeTab === 'mcp' && (

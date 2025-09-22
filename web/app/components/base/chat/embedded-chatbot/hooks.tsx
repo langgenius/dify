@@ -31,7 +31,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { useToastContext } from '@/app/components/base/toast'
-import { changeLanguage } from '@/i18n/i18next-config'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
@@ -101,15 +101,15 @@ export const useEmbeddedChatbot = () => {
 
       if (localeParam) {
         // If locale parameter exists in URL, use it instead of default
-        changeLanguage(localeParam)
+        await changeLanguage(localeParam)
       }
       else if (localeFromSysVar) {
         // If locale is set as a system variable, use that
-        changeLanguage(localeFromSysVar)
+        await changeLanguage(localeFromSysVar)
       }
       else if (appInfo?.site.default_language) {
         // Otherwise use the default from app config
-        changeLanguage(appInfo.site.default_language)
+        await changeLanguage(appInfo.site.default_language)
       }
     }
 
@@ -183,23 +183,30 @@ export const useEmbeddedChatbot = () => {
 
         return {
           ...item.paragraph,
-          default: value || item.default,
+          default: value || item.default || item.paragraph.default,
           type: 'paragraph',
         }
       }
       if (item.number) {
-        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
+        const convertedNumber = Number(initInputs[item.number.variable])
         return {
           ...item.number,
-          default: convertedNumber || item.default,
+          default: convertedNumber || item.default || item.number.default,
           type: 'number',
+        }
+      }
+      if (item.checkbox) {
+        return {
+          ...item.checkbox,
+          default: false,
+          type: 'checkbox',
         }
       }
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
           ...item.select,
-          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.default,
+          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.select.default,
           type: 'select',
         }
       }
@@ -218,13 +225,20 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      if (item.json_object) {
+        return {
+          ...item.json_object,
+          type: 'json_object',
+        }
+      }
+
       let value = initInputs[item['text-input'].variable]
       if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
         value = value.slice(0, item['text-input'].max_length)
 
       return {
         ...item['text-input'],
-        default: value || item.default,
+        default: value || item.default || item['text-input'].default,
         type: 'text-input',
       }
     })
@@ -312,7 +326,7 @@ export const useEmbeddedChatbot = () => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -376,7 +390,7 @@ export const useEmbeddedChatbot = () => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 

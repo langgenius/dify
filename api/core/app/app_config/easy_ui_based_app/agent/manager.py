@@ -1,12 +1,10 @@
-from typing import Optional
-
 from core.agent.entities import AgentEntity, AgentPromptEntity, AgentToolEntity
 from core.agent.prompt.template import REACT_PROMPT_TEMPLATES
 
 
 class AgentConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[AgentEntity]:
+    def convert(cls, config: dict) -> AgentEntity | None:
         """
         Convert model config to model config
 
@@ -39,6 +37,7 @@ class AgentConfigManager:
                         "provider_id": tool["provider_id"],
                         "tool_name": tool["tool_name"],
                         "tool_parameters": tool.get("tool_parameters", {}),
+                        "credential_id": tool.get("credential_id", None),
                     }
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))

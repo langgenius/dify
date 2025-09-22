@@ -6,6 +6,10 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
+      - "build/**"
+      - "release/e-*"
+      - "deploy/rag-dev"
+      - "feat/rag-2"
     tags:
       - "*"
 

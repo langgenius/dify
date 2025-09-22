@@ -79,7 +79,7 @@ const Citation: FC<CitationProps> = ({
     <div className='-mb-1 mt-3'>
       <div className='system-xs-medium mb-2 flex items-center text-text-tertiary'>
         {t('common.chat.citation.title')}
-        <div className='ml-2 h-[1px] grow bg-divider-regular' />
+        <div className='ml-2 h-px grow bg-divider-regular' />
       </div>
       <div className='relative flex flex-wrap'>
         {

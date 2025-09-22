@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],

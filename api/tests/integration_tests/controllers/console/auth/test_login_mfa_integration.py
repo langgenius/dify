@@ -59,10 +59,6 @@ class TestLoginMFAIntegration:
                 "/console/api/login", json={"email": setup_account.email, "password": "TestPassword123"}
             )
 
-            # Debug output
-            if response.status_code != 200:
-                print(f"Status: {response.status_code}", file=sys.stderr)
-                print(f"Data: {response.data}", file=sys.stderr)
 
             assert response.status_code == 200
             data = json.loads(response.data)

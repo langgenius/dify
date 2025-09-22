@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
@@ -110,7 +110,6 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const wordCountText = useMemo(() => {
     const count = content.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.length])
 
   return (

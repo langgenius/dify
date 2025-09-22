@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Placement } from '@floating-ui/react'
 import {
@@ -18,21 +18,23 @@ import {
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
+import { useWebAppStore } from '@/context/web-app-context'
 
 type Props = {
   data?: SiteInfo
   placement?: Placement
   hideLogout?: boolean
+  forceClose?: boolean
 }
 
 const MenuDropdown: FC<Props> = ({
   data,
   placement,
   hideLogout,
+  forceClose,
 }) => {
-  const webAppAccessMode = useGlobalPublicStore(s => s.webAppAccessMode)
+  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
@@ -54,6 +56,11 @@ const MenuDropdown: FC<Props> = ({
   }, [router, pathname])
 
   const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (forceClose)
+      setOpen(false)
+  }, [forceClose, setOpen])
 
   return (
     <>

@@ -9,9 +9,9 @@ import Description from './base/description'
 import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import { useSingleCategories } from '../hooks'
-import { renderI18nObject } from '@/i18n'
+import { renderI18nObject } from '@/i18n-config'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
@@ -51,7 +51,7 @@ const Card = ({
   const { t } = useMixedTranslation(localeFromProps)
   const { categoriesMap } = useSingleCategories(t)
   const { category, type, name, org, label, brief, icon, verified, badges = [] } = payload
-  const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent-strategy'].includes(type)
+  const isBundle = !['plugin', 'model', 'tool', 'datasource', 'extension', 'agent-strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''

@@ -2,16 +2,17 @@ import json
 import logging
 
 import click
+import sqlalchemy as sa
 
-from core.plugin.entities.plugin import GenericProviderID, ModelProviderID, ToolProviderID
-from models.engine import db
+from extensions.ext_database import db
+from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 
 logger = logging.getLogger(__name__)
 
 
 class PluginDataMigration:
     @classmethod
-    def migrate(cls) -> None:
+    def migrate(cls):
         cls.migrate_db_records("providers", "provider_name", ModelProviderID)  # large table
         cls.migrate_db_records("provider_models", "provider_name", ModelProviderID)
         cls.migrate_db_records("provider_orders", "provider_name", ModelProviderID)
@@ -25,7 +26,7 @@ class PluginDataMigration:
         cls.migrate_db_records("tool_builtin_providers", "provider", ToolProviderID)
 
     @classmethod
-    def migrate_datasets(cls) -> None:
+    def migrate_datasets(cls):
         table_name = "datasets"
         provider_column_name = "embedding_model_provider"
 
@@ -38,14 +39,18 @@ class PluginDataMigration:
 where {provider_column_name} not like '%/%' and {provider_column_name} is not null and {provider_column_name} != ''
 limit 1000"""
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(sql))
+                rs = conn.execute(sa.text(sql))
 
                 current_iter_count = 0
                 for i in rs:
                     record_id = str(i.id)
                     provider_name = str(i.provider_name)
                     retrieval_model = i.retrieval_model
-                    print(type(retrieval_model))
+                    logger.debug(
+                        "Processing dataset %s with retrieval model of type %s",
+                        record_id,
+                        type(retrieval_model),
+                    )
 
                     if record_id in failed_ids:
                         continue
@@ -94,7 +99,7 @@ limit 1000"""
                         :provider_name
                         {update_retrieval_model_sql}
                         where id = :record_id"""
-                        conn.execute(db.text(sql), params)
+                        conn.execute(sa.text(sql), params)
                         click.echo(
                             click.style(
                                 f"[{processed_count}] Migrated [{table_name}] {record_id} ({provider_name})",
@@ -110,7 +115,7 @@ limit 1000"""
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
+                            "[%s] Failed to migrate [%s] %s (%s)", processed_count, table_name, record_id, provider_name
                         )
                         continue
 
@@ -125,9 +130,7 @@ limit 1000"""
         )
 
     @classmethod
-    def migrate_db_records(
-        cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]
-    ) -> None:
+    def migrate_db_records(cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]):
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
 
         processed_count = 0
@@ -148,7 +151,7 @@ limit 1000"""
             params = {"last_id": last_id or ""}
 
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(sql), params)
+                rs = conn.execute(sa.text(sql), params)
 
                 current_iter_count = 0
                 batch_updates = []
@@ -174,7 +177,7 @@ limit 1000"""
                         # update jina to langgenius/jina_tool/jina etc.
                         updated_value = provider_cls(provider_name).to_string()
                         batch_updates.append((updated_value, record_id))
-                    except Exception as e:
+                    except Exception:
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(
@@ -183,7 +186,7 @@ limit 1000"""
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
+                            "[%s] Failed to migrate [%s] %s (%s)", processed_count, table_name, record_id, provider_name
                         )
                         continue
 
@@ -193,7 +196,7 @@ limit 1000"""
                         SET {provider_column_name} = :updated_value
                         WHERE id = :record_id
                     """
-                    conn.execute(db.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])
+                    conn.execute(sa.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])
                     click.echo(
                         click.style(
                             f"[{processed_count}] Batch migrated [{len(batch_updates)}] records from [{table_name}]",

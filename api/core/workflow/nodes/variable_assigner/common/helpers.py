@@ -4,7 +4,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from core.variables import Segment
-from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.consts import SELECTORS_LENGTH
 from core.variables.types import SegmentType
 
 # Use double underscore (`__`) prefix for internal variables
@@ -16,16 +16,16 @@ class UpdatedVariable(BaseModel):
     name: str
     selector: Sequence[str]
     value_type: SegmentType
-    new_value: Any
+    new_value: Any = None
 
 
 _T = TypeVar("_T", bound=MutableMapping[str, Any])
 
 
 def variable_to_processed_data(selector: Sequence[str], seg: Segment) -> UpdatedVariable:
-    if len(selector) < MIN_SELECTORS_LENGTH:
+    if len(selector) < SELECTORS_LENGTH:
         raise Exception("selector too short")
-    node_id, var_name = selector[:2]
+    _, var_name = selector[:2]
     return UpdatedVariable(
         name=var_name,
         selector=list(selector[:2]),

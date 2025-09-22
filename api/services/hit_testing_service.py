@@ -12,11 +12,13 @@ from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery
 
+logger = logging.getLogger(__name__)
+
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-    "top_k": 2,
+    "top_k": 4,
     "score_threshold_enabled": False,
 }
 
@@ -31,7 +33,7 @@ class HitTestingService:
         retrieval_model: Any,  # FIXME drop this any
         external_retrieval_model: dict,
         limit: int = 10,
-    ) -> dict:
+    ):
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default
@@ -64,7 +66,7 @@ class HitTestingService:
             retrieval_method=retrieval_model.get("search_method", "semantic_search"),
             dataset_id=dataset.id,
             query=query,
-            top_k=retrieval_model.get("top_k", 2),
+            top_k=retrieval_model.get("top_k", 4),
             score_threshold=retrieval_model.get("score_threshold", 0.0)
             if retrieval_model["score_threshold_enabled"]
             else 0.0,
@@ -77,7 +79,7 @@ class HitTestingService:
         )
 
         end = time.perf_counter()
-        logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
+        logger.debug("Hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
@@ -96,7 +98,7 @@ class HitTestingService:
         account: Account,
         external_retrieval_model: dict,
         metadata_filtering_conditions: dict,
-    ) -> dict:
+    ):
         if dataset.provider != "external":
             return {
                 "query": {"content": query},
@@ -113,7 +115,7 @@ class HitTestingService:
         )
 
         end = time.perf_counter()
-        logging.debug(f"External knowledge hit testing retrieve in {end - start:0.4f} seconds")
+        logger.debug("External knowledge hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id

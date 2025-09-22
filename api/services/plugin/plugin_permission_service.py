@@ -8,7 +8,7 @@ class PluginPermissionService:
     @staticmethod
     def get_permission(tenant_id: str) -> TenantPluginPermission | None:
         with Session(db.engine) as session:
-            return session.query(TenantPluginPermission).filter(TenantPluginPermission.tenant_id == tenant_id).first()
+            return session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).first()
 
     @staticmethod
     def change_permission(
@@ -18,7 +18,7 @@ class PluginPermissionService:
     ):
         with Session(db.engine) as session:
             permission = (
-                session.query(TenantPluginPermission).filter(TenantPluginPermission.tenant_id == tenant_id).first()
+                session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).first()
             )
             if not permission:
                 permission = TenantPluginPermission(

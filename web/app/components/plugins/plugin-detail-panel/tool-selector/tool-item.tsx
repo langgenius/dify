@@ -30,7 +30,6 @@ type Props = {
   onSwitchChange?: (value: boolean) => void
   onDelete?: () => void
   noAuth?: boolean
-  onAuth?: () => void
   isError?: boolean
   errorTip?: any
   uninstalled?: boolean
@@ -38,6 +37,7 @@ type Props = {
   onInstall?: () => void
   versionMismatch?: boolean
   open: boolean
+  authRemoved?: boolean
   canChooseMCPTool?: boolean,
 }
 
@@ -53,13 +53,13 @@ const ToolItem = ({
   onSwitchChange,
   onDelete,
   noAuth,
-  onAuth,
   uninstalled,
   installInfo,
   onInstall,
   isError,
   errorTip,
   versionMismatch,
+  authRemoved,
   canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
@@ -125,9 +125,15 @@ const ToolItem = ({
         <McpToolNotSupportTooltip />
       )}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
-        <Button variant='secondary' size='small' onClick={onAuth}>
+        <Button variant='secondary' size='small'>
           {t('tools.notAuthorized')}
           <Indicator className='ml-2' color='orange' />
+        </Button>
+      )}
+      {!isError && !uninstalled && !versionMismatch && authRemoved && (
+        <Button variant='secondary' size='small'>
+          {t('plugin.auth.authRemoved')}
+          <Indicator className='ml-2' color='red' />
         </Button>
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (
@@ -161,7 +167,6 @@ const ToolItem = ({
       {isError && (
         <Tooltip
           popupContent={errorTip}
-          needsDelay
         >
           <div>
             <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />

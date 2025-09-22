@@ -1,11 +1,9 @@
 import logging
 
-from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
-import services
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -25,12 +23,20 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
 from libs.helper import uuid_value
+from libs.login import current_user
+from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageListApi(InstalledAppResource):
@@ -49,12 +55,14 @@ class MessageListApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             return MessageService.pagination_by_first_id(
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
             )
-        except services.errors.conversation.ConversationNotExistsError:
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        except services.errors.message.FirstMessageNotExistsError:
+        except FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
 
 
@@ -70,6 +78,8 @@ class MessageFeedbackApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             MessageService.create_feedback(
                 app_model=app_model,
                 message_id=message_id,
@@ -77,7 +87,7 @@ class MessageFeedbackApi(InstalledAppResource):
                 rating=args.get("rating"),
                 content=args.get("content"),
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
@@ -100,6 +110,8 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         streaming = args["response_mode"] == "streaming"
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
@@ -123,7 +135,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
@@ -137,6 +149,8 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         message_id = str(message_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
@@ -155,7 +169,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

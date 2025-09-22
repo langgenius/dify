@@ -24,7 +24,7 @@ import MembersPage from './members-page'
 import LanguagePage from './language-page'
 import MFAPage from './mfa-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
-import DataSourcePage from './data-source-page'
+import DataSourcePage from './data-source-page-new'
 import ModelProviderPage from './model-provider-page'
 import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
@@ -195,7 +195,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div className='relative flex w-[824px]'>
-          <div className='absolute -right-11 top-6 z-[9999] flex flex-col items-center'>
+          <div className='fixed right-6 top-6 z-[9999] flex flex-col items-center'>
             <Button
               variant='tertiary'
               size='large'

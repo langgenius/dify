@@ -4,7 +4,7 @@ import type {
   MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { useInvalid } from './use-base'
 import {
@@ -16,10 +16,11 @@ import {
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
-export const useAllToolProviders = () => {
+export const useAllToolProviders = (enabled = true) => {
   return useQuery<Collection[]>({
     queryKey: useAllToolProvidersKey,
     queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    enabled,
   })
 }
 
@@ -84,6 +85,9 @@ export const useCreateMCP = () => {
       icon_type: AppIconType
       icon: string
       icon_background?: string | null
+      timeout?: number
+      sse_read_timeout?: number
+      headers?: Record<string, string>
     }) => {
       return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
@@ -108,6 +112,9 @@ export const useUpdateMCP = ({
       icon: string
       icon_background?: string | null
       provider_id: string
+      timeout?: number
+      sse_read_timeout?: number
+      headers?: Record<string, string>
     }) => {
       return put('workspaces/current/tool-provider/mcp', {
         body: {
@@ -206,7 +213,7 @@ export const useCreateMCPServer = () => {
     mutationKey: [NAME_SPACE, 'create-mcp-server'],
     mutationFn: (payload: {
       appID: string
-      description: string
+      description?: string
       parameters?: Record<string, string>
     }) => {
       const { appID, ...rest } = payload
@@ -305,4 +312,17 @@ export const useRemoveProviderCredentials = ({
     },
     onSuccess,
   })
+}
+
+const useRAGRecommendedPluginListKey = [NAME_SPACE, 'rag-recommended-plugins']
+
+export const useRAGRecommendedPlugins = () => {
+  return useQuery<RAGRecommendedPlugins>({
+    queryKey: useRAGRecommendedPluginListKey,
+    queryFn: () => get<RAGRecommendedPlugins>('/rag/pipelines/recommended-plugins'),
+  })
+}
+
+export const useInvalidateRAGRecommendedPlugins = () => {
+  return useInvalid(useRAGRecommendedPluginListKey)
 }

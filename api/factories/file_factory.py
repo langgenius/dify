@@ -1,7 +1,9 @@
 import mimetypes
+import os
+import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from sqlalchemy import select
@@ -39,8 +41,14 @@ def build_from_message_file(
         "url": message_file.url,
         "id": message_file.id,
         "type": message_file.type,
-        "upload_file_id": message_file.upload_file_id,
     }
+
+    # Set the correct ID field based on transfer method
+    if message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+        mapping["tool_file_id"] = message_file.upload_file_id
+    else:
+        mapping["upload_file_id"] = message_file.upload_file_id
+
     return build_from_mapping(
         mapping=mapping,
         tenant_id=tenant_id,
@@ -61,6 +69,7 @@ def build_from_mapping(
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
         FileTransferMethod.REMOTE_URL: _build_from_remote_url,
         FileTransferMethod.TOOL_FILE: _build_from_tool_file,
+        FileTransferMethod.DATASOURCE_FILE: _build_from_datasource_file,
     }
 
     build_func = build_functions.get(transfer_method)
@@ -148,9 +157,7 @@ def _build_from_local_file(
     if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -199,9 +206,7 @@ def _build_from_remote_url(
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
         file_type = (
-            FileType(specified_type)
-            if specified_type and specified_type != FileType.CUSTOM.value
-            else detected_file_type
+            FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
         )
 
         return File(
@@ -244,16 +249,27 @@ def _build_from_remote_url(
 
 def _get_remote_file_info(url: str):
     file_size = -1
-    filename = url.split("/")[-1].split("?")[0] or "unknown_file"
-    mime_type = mimetypes.guess_type(filename)[0] or ""
+    parsed_url = urllib.parse.urlparse(url)
+    url_path = parsed_url.path
+    filename = os.path.basename(url_path)
+
+    # Initialize mime_type from filename as fallback
+    mime_type, _ = mimetypes.guess_type(filename)
+    if mime_type is None:
+        mime_type = ""
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
-    resp = cast(httpx.Response, resp)
     if resp.status_code == httpx.codes.OK:
         if content_disposition := resp.headers.get("Content-Disposition"):
             filename = str(content_disposition.split("filename=")[-1].strip('"'))
+            # Re-guess mime_type from updated filename
+            mime_type, _ = mimetypes.guess_type(filename)
+            if mime_type is None:
+                mime_type = ""
         file_size = int(resp.headers.get("Content-Length", file_size))
-        mime_type = mime_type or str(resp.headers.get("Content-Type", ""))
+        # Fallback to Content-Type header if mime_type is still empty
+        if not mime_type:
+            mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
 
     return mime_type, filename, file_size
 
@@ -265,13 +281,11 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    tool_file = (
-        db.session.query(ToolFile)
-        .filter(
+    tool_file = db.session.scalar(
+        select(ToolFile).where(
             ToolFile.id == mapping.get("tool_file_id"),
             ToolFile.tenant_id == tenant_id,
         )
-        .first()
     )
 
     if tool_file is None:
@@ -279,16 +293,14 @@ def _build_from_tool_file(
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
-    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=tool_file.mimetype)
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
 
     specified_type = mapping.get("type")
 
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -305,6 +317,54 @@ def _build_from_tool_file(
     )
 
 
+def _build_from_datasource_file(
+    *,
+    mapping: Mapping[str, Any],
+    tenant_id: str,
+    transfer_method: FileTransferMethod,
+    strict_type_validation: bool = False,
+) -> File:
+    datasource_file = (
+        db.session.query(UploadFile)
+        .where(
+            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+    if datasource_file is None:
+        raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
+
+    extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
+
+    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
+
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    file_type = (
+        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
+    )
+
+    return File(
+        id=mapping.get("datasource_file_id"),
+        tenant_id=tenant_id,
+        filename=datasource_file.name,
+        type=file_type,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        remote_url=datasource_file.source_url,
+        related_id=datasource_file.id,
+        extension=extension,
+        mime_type=datasource_file.mime_type,
+        size=datasource_file.size,
+        storage_key=datasource_file.key,
+        url=datasource_file.source_url,
+    )
+
+
 def _is_file_valid_with_config(
     *,
     input_file_type: str,
@@ -312,6 +372,11 @@ def _is_file_valid_with_config(
     file_transfer_method: FileTransferMethod,
     config: FileUploadConfig,
 ) -> bool:
+    # FIXME(QIN2DIM): Always allow tool files (files generated by the assistant/model)
+    # These are internally generated and should bypass user upload restrictions
+    if file_transfer_method == FileTransferMethod.TOOL_FILE:
+        return True
+
     if (
         config.allowed_file_types
         and input_file_type not in config.allowed_file_types
@@ -387,7 +452,7 @@ class StorageKeyLoader:
     This loader is batched, the database query count is constant regardless of the input size.
     """
 
-    def __init__(self, session: Session, tenant_id: str) -> None:
+    def __init__(self, session: Session, tenant_id: str):
         self._session = session
         self._tenant_id = tenant_id
 
@@ -446,9 +511,9 @@ class StorageKeyLoader:
                 upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
                     raise ValueError(f"Upload file not found for id: {model_id}")
-                file._storage_key = upload_file_row.key
+                file.storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
                 tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
                     raise ValueError(f"Tool file not found for id: {model_id}")
-                file._storage_key = tool_file_row.file_key
+                file.storage_key = tool_file_row.file_key

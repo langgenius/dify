@@ -9,13 +9,13 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import Badge from '@/app/components/base/badge'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node, ValueSelector } from '@/app/components/workflow/types'
+import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 
 type NodeVariableItemProps = {
-  isEnv: boolean
-  isChatVar: boolean
   node: Node
-  varName: string
+  variable: ValueSelector
   writeMode?: string
   showBorder?: boolean
   className?: string
@@ -25,16 +25,26 @@ type NodeVariableItemProps = {
 const i18nPrefix = 'workflow.nodes.assigner'
 
 const NodeVariableItem = ({
-  isEnv,
-  isChatVar,
   node,
-  varName,
+  variable,
   writeMode,
   showBorder,
   className,
   isException,
 }: NodeVariableItemProps) => {
   const { t } = useTranslation()
+
+  const isSystem = isSystemVar(variable)
+  const isEnv = isENV(variable)
+  const isChatVar = isConversationVar(variable)
+  const isRagVar = isRagVariableVar(variable)
+  const varName = useMemo(() => {
+    if(isSystem)
+      return `sys.${variable[variable.length - 1]}`
+    if(isRagVar)
+      return variable[variable.length - 1]
+    return variable.slice(1).join('.')
+  }, [isRagVar, isSystem, variable])
 
   const VariableIcon = useMemo(() => {
     if (isEnv) {
@@ -49,6 +59,12 @@ const NodeVariableItem = ({
       )
     }
 
+    if(isRagVar) {
+      return (
+        <InputField className='h-3.5 w-3.5 shrink-0 text-text-accent' />
+      )
+    }
+
     return (
       <Variable02
         className={cn(
@@ -57,7 +73,7 @@ const NodeVariableItem = ({
         )}
       />
     )
-  }, [isEnv, isChatVar, isException])
+  }, [isEnv, isChatVar, isRagVar, isException])
 
   const VariableName = useMemo(() => {
     return (

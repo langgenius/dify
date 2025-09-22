@@ -12,7 +12,7 @@ class WorkspaceService:
     def get_tenant_info(cls, tenant: Tenant):
         if not tenant:
             return None
-        tenant_info = {
+        tenant_info: dict[str, object] = {
             "id": tenant.id,
             "name": tenant.name,
             "plan": tenant.plan,
@@ -25,13 +25,13 @@ class WorkspaceService:
         # Get role of user
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
 
-        can_replace_logo = FeatureService.get_features(tenant_info["id"]).can_replace_logo
+        can_replace_logo = FeatureService.get_features(tenant.id).can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
             base_url = dify_config.FILES_URL

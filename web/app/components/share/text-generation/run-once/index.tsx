@@ -1,5 +1,5 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,12 +18,15 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
+import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, any>
-  inputsRef: React.MutableRefObject<Record<string, any>>
+  inputsRef: React.RefObject<Record<string, any>>
   onInputsChange: (inputs: Record<string, any>) => void
   onSend: () => void
   visionConfig: VisionSettings
@@ -41,6 +44,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
+  const [isInitialized, setIsInitialized] = useState(false)
 
   const onClear = () => {
     const newInputs: Record<string, any> = {}
@@ -64,14 +68,24 @@ const RunOnce: FC<IRunOnceProps> = ({
   }, [onInputsChange, inputsRef])
 
   useEffect(() => {
+    if (isInitialized) return
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
-      if (item.type === 'string' || item.type === 'paragraph')
-        newInputs[item.key] = ''
+      if (item.type === 'select')
+        newInputs[item.key] = item.default
+      else if (item.type === 'string' || item.type === 'paragraph')
+        newInputs[item.key] = item.default || ''
+      else if (item.type === 'number')
+        newInputs[item.key] = item.default
+      else if (item.type === 'file')
+        newInputs[item.key] = item.default
+      else if (item.type === 'file-list')
+        newInputs[item.key] = item.default || []
       else
         newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
+    setIsInitialized(true)
   }, [promptConfig.prompt_variables, onInputsChange])
 
   return (
@@ -79,10 +93,12 @@ const RunOnce: FC<IRunOnceProps> = ({
       <section>
         {/* input form */}
         <form onSubmit={onSubmit}>
-          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) ? null
+          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized ? null
             : promptConfig.prompt_variables.map(item => (
               <div className='mt-4 w-full' key={item.key}>
-                <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
+                {item.type !== 'boolean' && (
+                  <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
+                )}
                 <div className='mt-1'>
                   {item.type === 'select' && (
                     <Select
@@ -107,7 +123,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                       className='h-[104px] sm:text-xs'
                       placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                       value={inputs[item.key]}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
                   )}
                   {item.type === 'number' && (
@@ -118,8 +134,17 @@ const RunOnce: FC<IRunOnceProps> = ({
                       onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
                   )}
+                  {item.type === 'boolean' && (
+                    <BoolInput
+                      name={item.name || item.key}
+                      value={!!inputs[item.key]}
+                      required={item.required}
+                      onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
+                    />
+                  )}
                   {item.type === 'file' && (
                     <FileUploaderInAttachmentWrapper
+                      value={inputs[item.key] ? [inputs[item.key]] : []}
                       onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
                       fileConfig={{
                         ...item.config,
@@ -129,11 +154,24 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file-list' && (
                     <FileUploaderInAttachmentWrapper
+                      value={inputs[item.key]}
                       onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
                       fileConfig={{
                         ...item.config,
                         fileUploadConfig: (visionConfig as any).fileUploadConfig,
                       }}
+                    />
+                  )}
+                  {item.type === 'json_object' && (
+                    <CodeEditor
+                      language={CodeLanguage.json}
+                      value={inputs[item.key]}
+                      onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
+                      noWrapper
+                      className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+                      placeholder={
+                        <div className='whitespace-pre'>{item.json_schema}</div>
+                      }
                     />
                   )}
                 </div>

@@ -1,17 +1,20 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -27,28 +30,26 @@ def enable_annotation_reply_task(
     """
     Async enable annotation reply task
     """
-    logging.info(click.style("Start add app annotation to index: {}".format(app_id), fg="green"))
+    logger.info(click.style(f"Start add app annotation to index: {app_id}", fg="green"))
     start_at = time.perf_counter()
     # get app info
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
 
     if not app:
-        logging.info(click.style("App not found: {}".format(app_id), fg="red"))
+        logger.info(click.style(f"App not found: {app_id}", fg="red"))
         db.session.close()
         return
 
-    annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
-    enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
-    enable_app_annotation_job_key = "enable_app_annotation_job_{}".format(str(job_id))
+    annotations = db.session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
+    enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
+    enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
 
     try:
         documents = []
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
             embedding_provider_name, embedding_model_name, "annotation"
         )
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-        )
+        annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
             if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                 old_dataset_collection_binding = (
@@ -70,11 +71,11 @@ def enable_annotation_reply_task(
                     try:
                         old_vector.delete()
                     except Exception as e:
-                        logging.info(click.style("Delete annotation index error: {}".format(str(e)), fg="red"))
+                        logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
             annotation_setting.score_threshold = score_threshold
             annotation_setting.collection_binding_id = dataset_collection_binding.id
             annotation_setting.updated_user_id = user_id
-            annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            annotation_setting.updated_at = naive_utc_now()
             db.session.add(annotation_setting)
         else:
             new_app_annotation_setting = AppAnnotationSetting(
@@ -106,18 +107,16 @@ def enable_annotation_reply_task(
             try:
                 vector.delete_by_metadata_field("app_id", app_id)
             except Exception as e:
-                logging.info(click.style("Delete annotation index error: {}".format(str(e)), fg="red"))
+                logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
             vector.create(documents)
         db.session.commit()
         redis_client.setex(enable_app_annotation_job_key, 600, "completed")
         end_at = time.perf_counter()
-        logging.info(
-            click.style("App annotations added to index: {} latency: {}".format(app_id, end_at - start_at), fg="green")
-        )
+        logger.info(click.style(f"App annotations added to index: {app_id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
-        logging.exception("Annotation batch created index failed")
+        logger.exception("Annotation batch created index failed")
         redis_client.setex(enable_app_annotation_job_key, 600, "error")
-        enable_app_annotation_error_key = "enable_app_annotation_error_{}".format(str(job_id))
+        enable_app_annotation_error_key = f"enable_app_annotation_error_{str(job_id)}"
         redis_client.setex(enable_app_annotation_error_key, 600, str(e))
         db.session.rollback()
     finally:

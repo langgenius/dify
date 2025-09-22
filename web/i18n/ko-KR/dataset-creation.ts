@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: '지식 생성',
-      update: '데이터 추가',
       fallbackRoute: '지식',
     },
     one: '데이터 소스 선택',
@@ -23,6 +21,7 @@ const translation = {
     uploader: {
       title: '텍스트 파일 업로드',
       button: '파일이나 폴더를 끌어서 놓기',
+      buttonSingleFile: '파일을 끌어서 놓기',
       browse: '찾아보기',
       tip: '{{supportTypes}}을 (를) 지원합니다. 파일당 최대 크기는 {{size}}MB 입니다.',
       validation: {
@@ -88,6 +87,7 @@ const translation = {
       configureJinaReader: '지나 리더 설정하기',
       waterCrawlNotConfigured: 'Watercrawl 이 설정되어 있지 않습니다.',
       configureWatercrawl: '워터크롤 구성하기',
+      running: '달리기',
     },
     cancel: '취소',
   },
@@ -173,6 +173,7 @@ const translation = {
     parentChildChunkDelimiterTip: '구분 기호는 텍스트를 구분하는 데 사용되는 문자입니다. \\n 은 부모 청크를 작은 자식 청크로 분할하는 데 권장됩니다. 직접 정의한 특수 구분 기호를 사용할 수도 있습니다.',
     switch: '스위치',
     paragraphTip: '이 모드는 구분 기호와 최대 청크 길이에 따라 텍스트를 단락으로 분할하며, 분할된 텍스트를 검색을 위한 부모 청크로 사용합니다.',
+    qaTip: '구조화된 Q&A 데이터를 사용하는 경우 질문과 답변을 연결하는 문서를 만들 수 있습니다. 이러한 문서는 질문 부분을 기반으로 인덱싱되므로 시스템이 쿼리 유사성을 기반으로 관련 답변을 검색할 수 있습니다.',
   },
   stepThree: {
     creationTitle: '🎉 지식이 생성되었습니다',

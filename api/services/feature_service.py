@@ -88,6 +88,10 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
+class KnowledgePipeline(BaseModel):
+    publish_enabled: bool = False
+
+
 class PluginInstallationScope(StrEnum):
     NONE = "none"
     OFFICIAL_ONLY = "official_only"
@@ -123,15 +127,20 @@ class FeatureModel(BaseModel):
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
-
+    is_allow_transfer_workspace: bool = True
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+    knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
 
 
 class KnowledgeRateLimitModel(BaseModel):
     enabled: bool = False
     limit: int = 10
     subscription_plan: str = ""
+
+
+class PluginManagerModel(BaseModel):
+    enabled: bool = False
 
 
 class SystemFeatureModel(BaseModel):
@@ -149,6 +158,8 @@ class SystemFeatureModel(BaseModel):
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
+    enable_change_email: bool = True
+    plugin_manager: PluginManagerModel = PluginManagerModel()
 
 
 class FeatureService:
@@ -186,6 +197,8 @@ class FeatureService:
         if dify_config.ENTERPRISE_ENABLED:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
+            system_features.enable_change_email = False
+            system_features.plugin_manager.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
@@ -228,6 +241,8 @@ class FeatureService:
 
         if features.billing.subscription.plan != "sandbox":
             features.webapp_copyright_enabled = True
+        else:
+            features.is_allow_transfer_workspace = False
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
@@ -260,6 +275,9 @@ class FeatureService:
 
         if "knowledge_rate_limit" in billing_info:
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+
+        if "knowledge_pipeline_publish_enabled" in billing_info:
+            features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):

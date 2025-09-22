@@ -56,8 +56,8 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
-  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration, (data as Edge['data'])?.isInLoop)
-  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration, (data as Edge['data'])?.isInLoop)
+  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const {
     _sourceRunningStatus,
     _targetRunningStatus,
@@ -134,7 +134,8 @@ const CustomEdge = ({
         style={{
           stroke,
           strokeWidth: 2,
-          opacity: data._waitingRun ? 0.7 : 1,
+          opacity: data._dimmed ? 0.3 : (data._waitingRun ? 0.7 : 1),
+          strokeDasharray: data._isTemp ? '8 8' : undefined,
         }}
       />
       <EdgeLabelRenderer>

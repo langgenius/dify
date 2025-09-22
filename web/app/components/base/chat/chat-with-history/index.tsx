@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import {
-  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -19,12 +18,10 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { checkOrSetAccessToken, removeAccessToken } from '@/app/components/share/utils'
+import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -33,16 +30,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
-    userCanAccess,
-    appInfoError,
     appData,
-    appInfoLoading,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
     themeBuilder,
     sidebarCollapseState,
-    isInstalledApp,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const customConfig = appData?.custom_config
@@ -54,42 +47,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
   }, [site, customConfig, themeBuilder])
 
+  useEffect(() => {
+    if (!isSidebarCollapsed)
+      setShowSidePanel(false)
+  }, [isSidebarCollapsed])
+
   useDocumentTitle(site?.title || 'Chat')
-
-  const { t } = useTranslation()
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
-  const getSigninUrl = useCallback(() => {
-    const params = new URLSearchParams(searchParams)
-    params.delete('message')
-    params.set('redirect_url', pathname)
-    return `/webapp-signin?${params.toString()}`
-  }, [searchParams, pathname])
-
-  const backToHome = useCallback(() => {
-    removeAccessToken()
-    const url = getSigninUrl()
-    router.replace(url)
-  }, [getSigninUrl, router])
-
-  if (appInfoLoading) {
-    return (
-      <Loading type='app' />
-    )
-  }
-  if (!userCanAccess) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
-      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
-      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
-    </div>
-  }
-
-  if (appInfoError) {
-    return (
-      <AppUnavailable />
-    )
-  }
 
   return (
     <div className={cn(
@@ -118,7 +81,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             onMouseEnter={() => setShowSidePanel(true)}
             onMouseLeave={() => setShowSidePanel(false)}
           >
-            <Sidebar isPanel />
+            <Sidebar isPanel panelVisible={showSidePanel} />
           </div>
         )}
         <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
@@ -148,9 +111,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const themeBuilder = useThemeContext()
 
   const {
-    appInfoError,
-    appInfoLoading,
-    userCanAccess,
     appData,
     appParams,
     appMeta,
@@ -187,14 +147,12 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   } = useChatWithHistory(installedAppInfo)
 
   return (
     <ChatWithHistoryContext.Provider value={{
-      appInfoError,
-      appInfoLoading,
       appData,
-      userCanAccess,
       appParams,
       appMeta,
       appChatListDataLoading,
@@ -232,6 +190,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       currentConversationInputs,
       setCurrentConversationInputs,
       allInputsHidden,
+      initUserVariables,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

@@ -149,7 +149,7 @@ export const fetchAppInfo = async () => {
 }
 
 export const fetchConversations = async (isInstalledApp: boolean, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
-  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
+  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { limit: limit || 20, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
 }
 
 export const pinConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
@@ -294,13 +294,6 @@ export const fetchAccessToken = async ({ appCode, userId, webAppAccessToken }: {
   userId && params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
   return get(url, { headers }) as Promise<{ access_token: string }>
-}
-
-export const getAppAccessMode = (appId: string, isInstalledApp: boolean) => {
-  if (isInstalledApp)
-    return consoleGet<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
-
-  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appId=${appId}`)
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {

@@ -12,6 +12,7 @@ import Confirm from '@/app/components/base/confirm'
 import cn from '@/utils/classnames'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   deleteTag,
   updateTag,
@@ -109,7 +110,14 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
             <div className='text-sm leading-5 text-text-secondary'>
               {tag.name}
             </div>
-            <div className='leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary'>{tag.binding_count}</div>
+            <Tooltip
+              popupContent={
+                <div>{t('workflow.common.tagBound')}</div>
+              }
+              needsDelay
+            >
+              <div className='leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary'>{tag.binding_count}</div>
+            </Tooltip>
             <div className='group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover' onClick={() => setIsEditing(true)}>
               <RiEditLine className='h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary' />
             </div>

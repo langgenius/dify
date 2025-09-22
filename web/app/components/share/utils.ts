@@ -10,7 +10,7 @@ export const getInitialTokenV2 = (): Record<string, any> => ({
   version: 2,
 })
 
-export const checkOrSetAccessToken = async (appCode?: string) => {
+export const checkOrSetAccessToken = async (appCode?: string | null) => {
   const sharedToken = appCode || globalThis.location.pathname.split('/').slice(-1)[0]
   const userId = (await getProcessedSystemVariablesFromUrlParams()).user_id
   const accessToken = localStorage.getItem('token') || JSON.stringify(getInitialTokenV2())
@@ -32,6 +32,7 @@ export const checkOrSetAccessToken = async (appCode?: string) => {
       [userId || 'DEFAULT']: res.access_token,
     }
     localStorage.setItem('token', JSON.stringify(accessTokenJson))
+    localStorage.removeItem(CONVERSATION_ID_INFO)
   }
 }
 

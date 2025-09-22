@@ -1,23 +1,19 @@
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
-import type { NodeDefault } from '../../types'
+import { BlockEnum, type NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderI18nObject } from '@/i18n'
+import { genNodeMetaData } from '../../utils'
+
+const metaData = genNodeMetaData({
+  sort: 3,
+  type: BlockEnum.Agent,
+})
+import { renderI18nObject } from '@/i18n-config'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
+  metaData,
   defaultValue: {
-    version: '2',
-  },
-  getAvailablePrevNodes(isChatMode) {
-    return isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-  },
-  getAvailableNextNodes(isChatMode) {
-    return isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
+    tool_node_version: '2',
   },
   checkValid(payload, t, moreDataForCheckValid: {
     strategyProvider?: StrategyPluginDetail,
@@ -62,27 +58,29 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
           const userSettings = toolValue.settings
           const reasoningConfig = toolValue.parameters
           const version = payload.version
+          const toolNodeVersion = payload.tool_node_version
+          const mergeVersion = version || toolNodeVersion
           schemas.forEach((schema: any) => {
             if (schema?.required) {
-              if (schema.form === 'form' && !version && !userSettings[schema.name]?.value) {
+              if (schema.form === 'form' && !mergeVersion && !userSettings[schema.name]?.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'form' && version && !userSettings[schema.name]?.value.value) {
+              if (schema.form === 'form' && mergeVersion && !userSettings[schema.name]?.value.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'llm' && !version && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value) {
+              if (schema.form === 'llm' && !mergeVersion && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'llm' && version && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value.value) {
+              if (schema.form === 'llm' && mergeVersion && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),

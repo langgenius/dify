@@ -48,43 +48,31 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
       if (isInvite && inviteToken)
         loginData.invite_token = inviteToken
 
-      console.log('Sending MFA login request with data:', { ...loginData, password: '[HIDDEN]' })
-
       const res = await login({
         url: '/login',
         body: loginData,
       })
 
-      console.log('MFA login response:', res)
-      console.log('Response type:', typeof res, 'Result:', res.result, 'Data keys:', res.data ? Object.keys(res.data) : 'no data')
       if (res.result === 'success') {
-        console.log('MFA authentication successful!', 'isInvite:', isInvite, 'useBackupCode:', useBackupCode)
         if (isInvite) {
-          console.log('Redirecting to invite settings')
           const params = new URLSearchParams()
           if (inviteToken)
             params.append('invite_token', inviteToken)
           router.replace(`/signin/invite-settings?${params.toString()}`)
         }
         else {
-          console.log('Setting tokens and redirecting to /apps')
-          console.log('Access token exists:', !!res.data.access_token, 'Refresh token exists:', !!res.data.refresh_token)
           localStorage.setItem('console_token', res.data.access_token)
           localStorage.setItem('refresh_token', res.data.refresh_token)
-          console.log('Tokens set, calling router.replace(/apps)')
           router.replace('/apps')
-          console.log('router.replace(/apps) called')
         }
       }
       else if (res.code === 'mfa_token_invalid') {
-        console.log('MFA authentication failed: invalid token')
         Toast.notify({
           type: 'error',
           message: t('mfa.invalidToken'),
         })
       }
       else {
-        console.log('MFA authentication failed:', res)
         Toast.notify({
           type: 'error',
           message: res.data || t('mfa.invalidToken'),
