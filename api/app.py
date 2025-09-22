@@ -15,9 +15,9 @@ def setup_gevent():
     # so we need to disable gevent in debug mode.
     # If you are using debugpy and set GEVENT_SUPPORT=True, you can debug with gevent.
     dotenv.load_dotenv()
-    flask_debug = os.environ.get("FLASK_DEBUG", "0")
+    is_flask_debug = os.environ.get("FLASK_DEBUG", "0").lower() in {"true", "1", "yes"}
     gevent_disable = os.environ.get("GEVENT_DISABLE", "false").lower() in {"true", "1", "yes"}
-    if flask_debug.lower() in {"false", "0", "no"} and not gevent_disable:
+    if not is_flask_debug and not gevent_disable:
         from gevent import monkey
 
         # gevent
