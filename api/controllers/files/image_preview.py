@@ -1,7 +1,8 @@
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView as Resource
+from flask_restx import reqparse
 from werkzeug.exceptions import NotFound
 
 import services
