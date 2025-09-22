@@ -6,6 +6,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common import fields
+from controllers.common.fields import build_site_model
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -25,6 +26,7 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
 )
 from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
+from controllers.service_api import service_api_ns
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -289,6 +291,7 @@ class TrialSitApi(Resource):
 
     @trial_feature_enable
     @get_app_model
+    @service_api_ns.marshal_with(build_site_model(service_api_ns))
     def get(self, app_model):
         """Retrieve app site info.
 
