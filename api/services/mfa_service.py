@@ -60,7 +60,9 @@ class MFAService:
         try:
             totp = pyotp.TOTP(secret)
             return totp.verify(token, valid_window=1)
-        except Exception:
+        except (ValueError, TypeError) as e:
+            import logging
+            logging.error(f"TOTP verification failed: {e}")
             return False
 
     @staticmethod
