@@ -500,6 +500,7 @@ const translation = {
     installProvider: 'Menginstal penyedia model',
     callTimes: 'Waktu panggilan',
     getFreeTokens: 'Dapatkan Token gratis',
+    parametersInvalidRemoved: 'Beberapa parameter tidak valid dan telah dihapus',
   },
   dataSource: {
     notion: {
