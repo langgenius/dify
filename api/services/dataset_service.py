@@ -16,7 +16,6 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
@@ -58,7 +57,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
-    RagPipelineDatasetCreateEntity,
 )
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
