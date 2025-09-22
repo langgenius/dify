@@ -210,6 +210,7 @@ class EventHandler:
         # Update domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_failed(event.error)
+        self._graph_execution.record_node_failure()
 
         result = self._error_handler.handle_node_failure(event)
 
