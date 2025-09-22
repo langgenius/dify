@@ -4,7 +4,6 @@ import logging
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -21,7 +20,7 @@ from configs import dify_config
 from core.helper import ssrf_proxy
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
@@ -61,8 +60,8 @@ class ImportStatus(StrEnum):
 class Import(BaseModel):
     id: str
     status: ImportStatus
-    app_id: Optional[str] = None
-    app_mode: Optional[str] = None
+    app_id: str | None = None
+    app_mode: str | None = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -121,14 +120,14 @@ class AppDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: Optional[str] = None,
-        yaml_url: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        icon_type: Optional[str] = None,
-        icon: Optional[str] = None,
-        icon_background: Optional[str] = None,
-        app_id: Optional[str] = None,
+        yaml_content: str | None = None,
+        yaml_url: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -407,15 +406,15 @@ class AppDslService:
     def _create_or_update_app(
         self,
         *,
-        app: Optional[App],
+        app: App | None,
         data: dict,
         account: Account,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        icon_type: Optional[str] = None,
-        icon: Optional[str] = None,
-        icon_background: Optional[str] = None,
-        dependencies: Optional[list[PluginDependency]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        dependencies: list[PluginDependency] | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -533,7 +532,7 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: Optional[str] = None) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:
         """
         Export app
         :param app_model: App instance
@@ -566,7 +565,7 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: Optional[str] = None
+        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: str | None = None
     ):
         """
         Append workflow export data

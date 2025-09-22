@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -36,7 +36,6 @@ from core.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -51,6 +50,7 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 
@@ -281,7 +281,7 @@ class ProviderManager:
             model_type_instance=model_type_instance,
         )
 
-    def get_default_model(self, tenant_id: str, model_type: ModelType) -> Optional[DefaultModelEntity]:
+    def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
         Get default model.
 
@@ -1028,7 +1028,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type == FormType.SECRET_INPUT:
+            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
@@ -1036,8 +1036,8 @@ class ProviderManager:
     def _to_model_settings(
         self,
         provider_entity: ProviderEntity,
-        provider_model_settings: Optional[list[ProviderModelSetting]] = None,
-        load_balancing_model_configs: Optional[list[LoadBalancingModelConfig]] = None,
+        provider_model_settings: list[ProviderModelSetting] | None = None,
+        load_balancing_model_configs: list[LoadBalancingModelConfig] | None = None,
     ) -> list[ModelSettings]:
         """
         Convert to model settings.

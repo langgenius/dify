@@ -4,7 +4,6 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
@@ -29,7 +28,6 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.provider import (
@@ -42,6 +40,7 @@ from models.provider import (
     ProviderType,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
@@ -92,7 +91,7 @@ class ProviderConfiguration(BaseModel):
             ):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
 
-    def get_current_credentials(self, model_type: ModelType, model: str) -> Optional[dict]:
+    def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
         """
         Get current credentials.
 
@@ -165,7 +164,7 @@ class ProviderConfiguration(BaseModel):
 
             return credentials
 
-    def get_system_configuration_status(self) -> Optional[SystemConfigurationStatus]:
+    def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
         """
         Get system configuration status.
         :return:
@@ -705,6 +704,7 @@ class ProviderConfiguration(BaseModel):
         Get custom model credentials.
         """
         # get provider model
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -793,9 +793,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderModelCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_custom_model_credential(
-        self, model_type: ModelType, model: str, credential_id: str | None
-    ) -> Optional[dict]:
+    def get_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str | None) -> dict | None:
         """
         Get custom model credentials.
 
@@ -1206,6 +1204,7 @@ class ProviderConfiguration(BaseModel):
         """
         Get provider model setting.
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -1272,7 +1271,7 @@ class ProviderConfiguration(BaseModel):
 
         return model_setting
 
-    def get_provider_model_setting(self, model_type: ModelType, model: str) -> Optional[ProviderModelSetting]:
+    def get_provider_model_setting(self, model_type: ModelType, model: str) -> ProviderModelSetting | None:
         """
         Get provider model setting.
         :param model_type: model type
@@ -1289,6 +1288,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -1422,7 +1422,7 @@ class ProviderConfiguration(BaseModel):
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type == FormType.SECRET_INPUT:
+            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
@@ -1448,7 +1448,7 @@ class ProviderConfiguration(BaseModel):
 
     def get_provider_model(
         self, model_type: ModelType, model: str, only_active: bool = False
-    ) -> Optional[ModelWithProviderEntity]:
+    ) -> ModelWithProviderEntity | None:
         """
         Get provider model.
         :param model_type: model type
@@ -1465,7 +1465,7 @@ class ProviderConfiguration(BaseModel):
         return None
 
     def get_provider_models(
-        self, model_type: Optional[ModelType] = None, only_active: bool = False, model: Optional[str] = None
+        self, model_type: ModelType | None = None, only_active: bool = False, model: str | None = None
     ) -> list[ModelWithProviderEntity]:
         """
         Get provider models.
@@ -1649,7 +1649,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get custom provider models.
@@ -1783,7 +1783,7 @@ class ProviderConfigurations(BaseModel):
         super().__init__(tenant_id=tenant_id)
 
     def get_models(
-        self, provider: Optional[str] = None, model_type: Optional[ModelType] = None, only_active: bool = False
+        self, provider: str | None = None, model_type: ModelType | None = None, only_active: bool = False
     ) -> list[ModelWithProviderEntity]:
         """
         Get available models.

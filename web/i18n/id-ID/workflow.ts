@@ -207,6 +207,8 @@ const translation = {
     testRunIteration: 'Iterasi Uji Coba',
     startRun: 'Mulai Lari',
     loop: 'Lari',
+    preparingDataSource: 'Menyiapkan Sumber Data',
+    reRun: 'Jalankan ulang',
   },
   tabs: {
     'utilities': 'Utilitas',
@@ -225,6 +227,8 @@ const translation = {
     'plugin': 'Plugin',
     'transform': 'Mengubah',
     'allTool': 'Semua',
+    'sources': 'Sumber',
+    'searchDataSource': 'Cari Sumber Data',
   },
   blocks: {
     'code': 'Kode',
@@ -249,6 +253,8 @@ const translation = {
     'if-else': 'JIKA/LAIN',
     'loop-start': 'Mulai Loop',
     'variable-aggregator': 'Agregator Variabel',
+    'datasource': 'Sumber Data',
+    'knowledge-index': 'Basis Pengetahuan',
   },
   blocksAbout: {
     'template-transform': 'Mengonversi data menjadi string menggunakan sintaks templat Jinja',
@@ -271,6 +277,8 @@ const translation = {
     'variable-aggregator': 'Agregatkan variabel multi-cabang menjadi satu variabel untuk konfigurasi terpadu simpul hilir.',
     'end': 'Menentukan jenis akhir dan hasil alur kerja',
     'list-operator': 'Digunakan untuk memfilter atau mengurutkan konten array.',
+    'datasource': 'Sumber Data Tentang',
+    'knowledge-index': 'Basis Pengetahuan Tentang',
   },
   operator: {
     zoomIn: 'Perbesar',
@@ -373,6 +381,7 @@ const translation = {
       },
       insertVarTip: 'Sisipkan Variabel',
       outputVars: 'Variabel Keluaran',
+      inputVars: 'Variabel Masukan',
     },
     start: {
       outputVars: {
@@ -890,6 +899,27 @@ const translation = {
       parameterSchema: 'Skema Parameter',
       strategyNotFoundDesc: 'Versi plugin yang diinstal tidak menyediakan strategi ini.',
     },
+    dataSource: {
+      add: 'Menambahkan sumber data',
+      supportedFileFormatsPlaceholder: 'Ekstensi file, e.g. doc',
+      supportedFileFormats: 'Format file yang didukung',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Pelajari lebih lanjut',
+        title: 'Silakan pilih struktur potongan',
+        message: 'Basis Pengetahuan Dify mendukung tiga struktur pemotongan: Umum, Induk-anak, dan Tanya Jawab. Setiap basis pengetahuan hanya dapat memiliki satu struktur. Output dari simpul sebelumnya harus selaras dengan struktur potongan yang dipilih. Perhatikan bahwa pilihan struktur chunking memengaruhi metode indeks yang tersedia.',
+      },
+      chooseChunkStructure: 'Pilih struktur potongan',
+      aboutRetrieval: 'tentang metode pengambilan.',
+      chunkIsRequired: 'Struktur potongan diperlukan',
+      changeChunkStructure: 'Ubah Struktur Potongan',
+      retrievalSettingIsRequired: 'Pengaturan pengambilan diperlukan',
+      indexMethodIsRequired: 'Metode indeks diperlukan',
+      chunkStructure: 'Struktur Potongan',
+      chunksInput: 'Potongan',
+      chunksInputTip: 'Variabel input dari node basis pengetahuan adalah Chunks. Tipe variabel adalah objek dengan Skema JSON tertentu yang harus konsisten dengan struktur chunk yang dipilih.',
+    },
   },
   tracing: {},
   versionHistory: {
@@ -949,6 +979,10 @@ const translation = {
       reset: 'Atur ulang ke nilai eksekusi terakhir',
       resetConversationVar: 'Mengatur ulang variabel percakapan ke nilai default',
       emptyTip: 'Setelah melangkah melalui simpul di kanvas atau menjalankan simpul langkah demi langkah, Anda dapat melihat nilai variabel simpul saat ini di Inspeksi Variabel',
+      export: 'ekspor',
+      largeDataNoExport: 'Data besar - hanya pratinjau sebagian',
+      exportToolTip: 'Ekspor Variabel sebagai File',
+      largeData: 'Data besar, pratinjau baca-saja. Ekspor untuk melihat semua.',
     },
     relations: {
       noDependents: 'Tidak ada tanggungan',
