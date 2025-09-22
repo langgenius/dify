@@ -126,7 +126,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                             data_source_type=document.data_source_type,
                             segment_id=segment.id,
                             retriever_from=self.retriever_from,
-                            score=document_score_list.get(segment.index_node_id, None),
+                            score=document_score_list.get(segment.index_node_id),
                             doc_metadata=document.doc_metadata,
                         )
 
