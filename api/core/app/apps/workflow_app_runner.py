@@ -213,12 +213,14 @@ class WorkflowBasedAppRunner:
             raise ValueError("edges in workflow graph must be a list")
 
         # filter nodes only in the specified node type (iteration or loop)
+        main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
+        start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
         node_configs = [
             node
             for node in graph_config.get("nodes", [])
             if node.get("id") == node_id
             or node.get("data", {}).get(node_type_filter_key, "") == node_id
-            or node.get("id") == f"{node_id}start"
+            or (start_node_id and node.get("id") == start_node_id)
         ]
 
         graph_config["nodes"] = node_configs
