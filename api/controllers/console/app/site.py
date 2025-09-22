@@ -1,4 +1,4 @@
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -78,7 +78,8 @@ class AppSite(Resource):
         args = parse_app_site_args()
 
         # The role of the current user in the ta table must be editor, admin, or owner
-        if not current_user.is_editor:
+        assert isinstance(current_user, Account)
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
@@ -131,6 +132,7 @@ class AppSiteAccessTokenReset(Resource):
     @marshal_with(app_site_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
+        assert isinstance(current_user, Account)
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 

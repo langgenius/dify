@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytz
 import sqlalchemy as sa
 from flask import jsonify
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, reqparse
 
 from controllers.console import api, console_ns
@@ -13,6 +13,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import login_required
+from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 
@@ -44,12 +45,13 @@ FROM
 WHERE
     app_id = :app_id
     AND triggered_from = :triggered_from"""
+        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
+        assert account.timezone
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -112,12 +114,13 @@ FROM
 WHERE
     app_id = :app_id
     AND triggered_from = :triggered_from"""
+        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
+        assert account.timezone
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -180,12 +183,13 @@ FROM
 WHERE
     app_id = :app_id
     AND triggered_from = :triggered_from"""
+        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
+        assert account.timezone
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -266,12 +270,13 @@ FROM
     ) sub
 GROUP BY
     sub.date"""
+        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
+        assert account.timezone
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 

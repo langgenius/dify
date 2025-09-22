@@ -2,7 +2,7 @@ import json
 from typing import cast
 
 from flask import request
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, fields
 from werkzeug.exceptions import Forbidden
 

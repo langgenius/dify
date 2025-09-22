@@ -1,9 +1,10 @@
 from flask import request
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, reqparse
 
 from libs.helper import extract_remote_ip
 from libs.login import login_required
+from models.account import Account
 from services.billing_service import BillingService
 
 from .. import api
@@ -22,7 +23,8 @@ class ComplianceApi(Resource):
 
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")
-
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         return BillingService.get_compliance_download_link(
             doc_name=args.doc_name,
             account_id=current_user.id,
