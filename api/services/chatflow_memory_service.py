@@ -39,7 +39,7 @@ class ChatflowMemoryService:
     def get_persistent_memories(
         app: App,
         version: int | None = None
-    ) -> Sequence[MemoryBlockWithVisibility]:
+    ) -> Sequence[MemoryBlock]:
         if version is None:
             # If version not specified, get the latest version
             stmt = select(ChatflowMemoryVariable).distinct(ChatflowMemoryVariable.memory_id).where(
@@ -60,14 +60,14 @@ class ChatflowMemoryService:
             )
         with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
-        return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
+        return ChatflowMemoryService._convert_to_memory_blocks(app, [result[0] for result in db_results])
 
     @staticmethod
     def get_session_memories(
         app: App,
         conversation_id: str,
         version: int | None = None
-    ) -> Sequence[MemoryBlockWithVisibility]:
+    ) -> Sequence[MemoryBlock]:
         if version is None:
             # If version not specified, get the latest version
             stmt = select(ChatflowMemoryVariable).distinct(ChatflowMemoryVariable.memory_id).where(
@@ -88,7 +88,7 @@ class ChatflowMemoryService:
             )
         with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
-        return ChatflowMemoryService._with_visibility(app, [result[0] for result in db_results])
+        return ChatflowMemoryService._convert_to_memory_blocks(app, [result[0] for result in db_results])
 
     @staticmethod
     def save_memory(memory: MemoryBlock, variable_pool: VariablePool, is_draft: bool) -> None:
@@ -348,6 +348,33 @@ class ChatflowMemoryService:
                     app_id=workflow.app_id,
                     conversation_id=conversation_id
                 )
+
+    @staticmethod
+    def _convert_to_memory_blocks(
+        app: App,
+        raw_results: Sequence[ChatflowMemoryVariable]
+    ) -> Sequence[MemoryBlock]:
+        workflow = WorkflowService().get_published_workflow(app)
+        if not workflow:
+            return []
+        results = []
+        for chatflow_memory_variable in raw_results:
+            spec = next(
+                (spec for spec in workflow.memory_blocks if spec.id == chatflow_memory_variable.memory_id),
+                None
+            )
+            if spec and chatflow_memory_variable.app_id:
+                results.append(
+                    MemoryBlock(
+                        spec=spec,
+                        tenant_id=chatflow_memory_variable.tenant_id,
+                        value=MemoryValueData.model_validate_json(chatflow_memory_variable.value).value,
+                        app_id=chatflow_memory_variable.app_id,
+                        conversation_id=chatflow_memory_variable.conversation_id,
+                        node_id=chatflow_memory_variable.node_id
+                    )
+                )
+        return results
 
     @staticmethod
     def _with_visibility(

@@ -24,8 +24,8 @@ class MemoryListApi(Resource):
         if conversation_id:
             result = [*result, *ChatflowMemoryService.get_session_memories(app_model, conversation_id, version)]
         if memory_id:
-            result = [it for it in result if it.memory_id == memory_id]
-        return [it for it in result if it.end_user_visible]
+            result = [it for it in result if it.spec.id == memory_id]
+        return [it for it in result if it.spec.end_user_visible]
 
 
 class MemoryEditApi(Resource):
