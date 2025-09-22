@@ -518,6 +518,7 @@ const translation = {
       customModelCredentials: 'カスタムモデルの認証情報',
       selectModelCredential: 'モデルの資格情報を選択する',
     },
+    parametersInvalidRemoved: 'いくつかのパラメータが無効であり、削除されました。',
   },
   dataSource: {
     add: 'データソースの追加',

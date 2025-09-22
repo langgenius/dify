@@ -500,6 +500,7 @@ const translation = {
       addNewModelCredential: 'Thêm thông tin xác thực mô hình mới',
       selectModelCredential: 'Chọn thông tin xác thực mô hình',
     },
+    parametersInvalidRemoved: 'Một số tham số không hợp lệ và đã được loại bỏ',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',

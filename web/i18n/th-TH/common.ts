@@ -499,6 +499,7 @@ const translation = {
       customModelCredentials: 'ข้อมูลประจําตัวของโมเดลแบบกําหนดเอง',
       addNewModelCredential: 'เพิ่มข้อมูลประจําตัวของโมเดลใหม่',
     },
+    parametersInvalidRemoved: 'บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก',
   },
   dataSource: {
     add: 'เพิ่มแหล่งข้อมูล',

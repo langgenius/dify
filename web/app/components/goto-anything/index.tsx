@@ -9,7 +9,7 @@ import { useDebounce, useKeyPress } from 'ahooks'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { RiSearchLine } from '@remixicon/react'
-import { Actions as AllActions, type SearchResult, matchAction, searchAnything } from './actions'
+import { type SearchResult, createActions, matchAction, searchAnything } from './actions'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 import { slashCommandRegistry } from './actions/commands/registry'
 import { useQuery } from '@tanstack/react-query'
@@ -29,7 +29,7 @@ const GotoAnything: FC<Props> = ({
 }) => {
   const router = useRouter()
   const defaultLocale = useGetLanguage()
-  const { isWorkflowPage } = useGotoAnythingContext()
+  const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   const { t } = useTranslation()
   const [show, setShow] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -38,16 +38,9 @@ const GotoAnything: FC<Props> = ({
 
   // Filter actions based on context
   const Actions = useMemo(() => {
-    // Create a filtered copy of actions based on current page context
-    if (isWorkflowPage) {
-      // Include all actions on workflow pages
-      return AllActions
-    }
-    else {
-      const { app, knowledge, plugin, slash } = AllActions
-      return { app, knowledge, plugin, slash }
-    }
-  }, [isWorkflowPage])
+    // Create actions based on current page context
+    return createActions(isWorkflowPage, isRagPipelinePage)
+  }, [isWorkflowPage, isRagPipelinePage])
 
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
@@ -99,9 +92,11 @@ const GotoAnything: FC<Props> = ({
 
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
-    return action
-      ? (action.key === '/' ? '@command' : action.key)
-      : 'general'
+
+    if (!action)
+      return 'general'
+
+    return action.key === '/' ? '@command' : action.key
   }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
@@ -112,13 +107,14 @@ const GotoAnything: FC<Props> = ({
         searchQueryDebouncedValue,
         searchMode,
         isWorkflowPage,
+        isRagPipelinePage,
         defaultLocale,
         Object.keys(Actions).sort().join(','),
       ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()
         const action = matchAction(query, Actions)
-        return await searchAnything(defaultLocale, query, action)
+        return await searchAnything(defaultLocale, query, action, Actions)
       },
       enabled: !!searchQueryDebouncedValue && !isCommandsMode,
       staleTime: 30000,
@@ -446,18 +442,20 @@ const GotoAnything: FC<Props> = ({
                 ) : (
                   <>
                     <span className='opacity-60'>
-                      {isCommandsMode
-                        ? t('app.gotoAnything.selectToNavigate')
-                        : searchQuery.trim()
-                          ? t('app.gotoAnything.searching')
-                          : t('app.gotoAnything.startTyping')
-                      }
+                      {(() => {
+                        if (isCommandsMode)
+                          return t('app.gotoAnything.selectToNavigate')
+
+                        if (searchQuery.trim())
+                          return t('app.gotoAnything.searching')
+
+                        return t('app.gotoAnything.startTyping')
+                      })()}
                     </span>
                     <span className='opacity-60'>
                       {searchQuery.trim() || isCommandsMode
                         ? t('app.gotoAnything.tips')
-                        : t('app.gotoAnything.pressEscToClose')
-                      }
+                        : t('app.gotoAnything.pressEscToClose')}
                     </span>
                   </>
                 )}

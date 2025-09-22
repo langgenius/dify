@@ -526,6 +526,7 @@ const translation = {
       removeModel: 'Rimuovi modello',
       editModelCredential: 'Modificare le credenziali del modello',
     },
+    parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
