@@ -1,10 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
-import { useGetState, useInfiniteScroll, useDebounceFn } from 'ahooks'
+import { useDebounceFn, useGetState, useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import TypeIcon from '../type-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
@@ -48,9 +47,10 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const { run: debouncedSearch } = useDebounceFn(
     (keyword: string) => {
       setDebouncedSearchKeyword(keyword)
+      // eslint-disable-next-line ts/no-use-before-define
       resetData()
     },
-    { wait: 300 }
+    { wait: 300 },
   )
 
   // Reset data when search keyword changes
@@ -70,12 +70,12 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   useInfiniteScroll(
     async () => {
       if (!isNoMore) {
-        const { data, has_more } = await fetchDatasets({ 
-          url: '/datasets', 
-          params: { 
+        const { data, has_more } = await fetchDatasets({
+          url: '/datasets',
+          params: {
             page,
-            ...(debouncedSearchKeyword && { keyword: debouncedSearchKeyword })
-          } 
+            ...(debouncedSearchKeyword && { keyword: debouncedSearchKeyword }),
+          },
         })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
@@ -140,7 +140,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           className="w-full"
         />
       </div>
-      
+
       {!loaded && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
