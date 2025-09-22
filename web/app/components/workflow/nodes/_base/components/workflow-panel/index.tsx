@@ -19,7 +19,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import NextStep from '../next-step'
 import PanelOperator from '../panel-operator'
-import NodePosition from '@/app/components/workflow/nodes/_base/components/node-position'
 import HelpLink from '../help-link'
 import {
   DescriptionInput,
@@ -52,6 +51,8 @@ import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workfl
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import AuthMethodSelector from '@/app/components/workflow/nodes/trigger-plugin/components/auth-method-selector'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import BeforeRunForm from '../before-run-form'
@@ -63,18 +64,25 @@ import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { FlowType } from '@/types/common'
 import {
+<<<<<<< HEAD
   AuthorizedInDataSourceNode,
   AuthorizedInNode,
+=======
+>>>>>>> feat/trigger
   PluginAuth,
   PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
+<<<<<<< HEAD
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useModalContext } from '@/context/modal-context'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+=======
+import NodeAuth from './node-auth-factory'
+>>>>>>> feat/trigger
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -263,6 +271,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const currCollection = useMemo(() => {
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
+<<<<<<< HEAD
   const showPluginAuth = useMemo(() => {
     return data.type === BlockEnum.Tool && currCollection?.allow_delete
   }, [currCollection, data.type])
@@ -271,6 +280,42 @@ const BasePanel: FC<BasePanelProps> = ({
     if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
       return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
   }, [dataSourceList, data.plugin_id, data.type, data.provider_type])
+=======
+
+  // For trigger plugins, get basic provider info
+  const { data: triggerProviders = [] } = useAllTriggerPlugins()
+  const currentTriggerProvider = useMemo(() => {
+    if (data.type !== BlockEnum.TriggerPlugin || !data.provider_id || !data.provider_name)
+      return undefined
+    return triggerProviders.find(p => p.plugin_id === data.provider_id && p.name === data.provider_name)
+  }, [data.type, data.provider_id, data.provider_name, triggerProviders])
+
+  const supportedAuthMethods = useMemo(() => {
+    if (!currentTriggerProvider) return []
+    const methods = []
+    if (currentTriggerProvider.oauth_client_schema && currentTriggerProvider.oauth_client_schema.length > 0)
+      methods.push('oauth')
+    if (currentTriggerProvider.credentials_schema && currentTriggerProvider.credentials_schema.length > 0)
+      methods.push('api_key')
+    return methods
+  }, [currentTriggerProvider])
+
+  // Simplified: Always show auth selector for trigger plugins
+  const shouldShowTriggerAuthSelector = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && supportedAuthMethods.length > 0
+  }, [data.type, currentTriggerProvider, supportedAuthMethods.length])
+
+  // Simplified: Always show tab for trigger plugins
+  const shouldShowTriggerTab = useMemo(() => {
+    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider
+  }, [data.type, currentTriggerProvider])
+
+  // Unified check for tool authentication UI
+  const needsToolAuth = useMemo(() => {
+    return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
+  }, [data.type, currCollection?.allow_delete])
+
+>>>>>>> feat/trigger
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
       id,
@@ -284,11 +329,24 @@ const BasePanel: FC<BasePanelProps> = ({
     setShowAccountSettingModal({ payload: 'data-source' })
   }, [setShowAccountSettingModal])
 
+<<<<<<< HEAD
   const {
     appendNodeInspectVars,
   } = useInspectVarsCrud()
 
   if (logParams.showSpecialResultPanel) {
+=======
+  const handleSubscriptionChange = useCallback((subscription_id: string) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        subscription_id,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+
+  if(logParams.showSpecialResultPanel) {
+>>>>>>> feat/trigger
     return (
       <div className={cn(
         'relative mr-1  h-full',
@@ -426,7 +484,6 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
-              <NodePosition nodeId={id}></NodePosition>
               <HelpLink nodeType={data.type} />
               <PanelOperator id={id} data={data} showHelpLink={false} />
               <div className='mx-3 h-3.5 w-[1px] bg-divider-regular' />
@@ -445,7 +502,7 @@ const BasePanel: FC<BasePanelProps> = ({
             />
           </div>
           {
-            showPluginAuth && (
+            needsToolAuth && (
               <PluginAuth
                 className='px-4 pb-2'
                 pluginPayload={{
@@ -458,19 +515,17 @@ const BasePanel: FC<BasePanelProps> = ({
                     value={tabType}
                     onChange={setTabType}
                   />
-                  <AuthorizedInNode
-                    pluginPayload={{
-                      provider: currCollection?.name || '',
-                      category: AuthCategory.tool,
-                    }}
-                    onAuthorizationItemClick={handleAuthorizationItemClick}
-                    credentialId={data.credential_id}
+                  <NodeAuth
+                    data={data}
+                    onAuthorizationChange={handleAuthorizationItemClick}
+                    onSubscriptionChange={handleSubscriptionChange}
                   />
                 </div>
               </PluginAuth>
             )
           }
           {
+<<<<<<< HEAD
             !!currentDataSource && (
               <PluginAuthInDataSourceNode
                 onJumpToDataSourcePage={handleJumpToDataSourcePage}
@@ -491,6 +546,32 @@ const BasePanel: FC<BasePanelProps> = ({
           }
           {
             !showPluginAuth && !currentDataSource && (
+=======
+            shouldShowTriggerAuthSelector && (
+              <AuthMethodSelector
+                provider={currentTriggerProvider!}
+                supportedMethods={supportedAuthMethods}
+              />
+            )
+          }
+          {
+            shouldShowTriggerTab && (
+              <div className='flex items-center justify-between pl-4 pr-3'>
+                <Tab
+                  value={tabType}
+                  onChange={setTabType}
+                />
+                <NodeAuth
+                  data={data}
+                  onAuthorizationChange={handleAuthorizationItemClick}
+                  onSubscriptionChange={handleSubscriptionChange}
+                />
+              </div>
+            )
+          }
+          {
+            !needsToolAuth && data.type !== BlockEnum.TriggerPlugin && (
+>>>>>>> feat/trigger
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}

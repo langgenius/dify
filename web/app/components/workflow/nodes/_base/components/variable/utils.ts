@@ -38,7 +38,11 @@ import type {
 } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
+<<<<<<< HEAD
 import type { RAGPipelineVariable } from '@/models/pipeline'
+=======
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+>>>>>>> feat/trigger
 
 import {
   AGENT_OUTPUT_STRUCT,
@@ -380,6 +384,26 @@ const formatItem = (
       res.vars.push({
         variable: 'sys.workflow_run_id',
         type: VarType.string,
+      })
+
+      break
+    }
+
+    case BlockEnum.TriggerWebhook: {
+      const {
+        variables = [],
+      } = data as WebhookTriggerNodeType
+      res.vars = variables.map((v) => {
+        const type = v.value_type || VarType.string
+        const varRes: Var = {
+          variable: v.variable,
+          type,
+          isParagraph: false,
+          isSelect: false,
+          options: v.options,
+          required: v.required,
+        }
+        return varRes
       })
 
       break

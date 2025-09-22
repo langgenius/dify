@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
+from yarl import URL
 
 from configs import dify_config
 from core.helper import marketplace
@@ -174,6 +175,13 @@ class PluginService:
         """
         manager = PluginInstaller()
         return manager.fetch_plugin_installation_by_ids(tenant_id, ids)
+
+    @classmethod
+    def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
+        url_prefix = (
+            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+        )
+        return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
 
     @staticmethod
     def get_asset(tenant_id: str, asset_file: str) -> tuple[bytes, str]:

@@ -11,7 +11,7 @@ import {
   fetchWorkflowRunHistory,
 } from '@/service/workflow'
 import ChatVariableTrigger from './chat-variable-trigger'
-import FeaturesTrigger from './features-trigger'
+import AppPublisherTrigger from './app-publisher-trigger'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks'
 
@@ -42,7 +42,7 @@ const WorkflowHeader = () => {
       normal: {
         components: {
           left: <ChatVariableTrigger />,
-          middle: <FeaturesTrigger />,
+          middle: <AppPublisherTrigger />,
         },
         runAndHistoryProps: {
           showRunButton: !isChatMode,

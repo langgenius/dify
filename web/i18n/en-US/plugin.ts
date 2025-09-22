@@ -18,6 +18,7 @@ const translation = {
     extension: 'Extension',
     bundle: 'Bundle',
     datasource: 'Data Source',
+    trigger: 'Trigger',
   },
   search: 'Search',
   allCategories: 'All Categories',

@@ -621,7 +621,7 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config.get("data", {})
-        if node_type == NodeType.START:
+        if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
                 conversation_id = draft_var_srv.get_or_create_conversation(

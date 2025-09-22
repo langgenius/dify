@@ -5,6 +5,7 @@ export enum AuthCategory {
   tool = 'tool',
   datasource = 'datasource',
   model = 'model',
+  trigger = 'trigger',
 }
 
 export type PluginPayload = {

@@ -21,7 +21,11 @@ import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
+<<<<<<< HEAD
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+=======
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+>>>>>>> feat/trigger
 import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -38,6 +42,7 @@ import {
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
@@ -46,7 +51,6 @@ import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
-import type { Tool } from '@/app/components/tools/types'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 const TRIGGER_DEFAULT_WIDTH = 227
@@ -77,9 +81,14 @@ type Props = {
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
   zIndex?: number
+<<<<<<< HEAD
   currentTool?: Tool
   currentProvider?: ToolWithProvider
   preferSchemaType?: boolean
+=======
+  currentResource?: BaseResource
+  currentProvider?: BaseResourceProvider
+>>>>>>> feat/trigger
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -110,7 +119,7 @@ const VarReferencePicker: FC<Props> = ({
   minWidth,
   popupFor,
   zIndex,
-  currentTool,
+  currentResource,
   currentProvider,
   preferSchemaType,
 }) => {
@@ -339,11 +348,11 @@ const VarReferencePicker: FC<Props> = ({
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
-    currentProvider?.plugin_id || '', currentProvider?.name || '', currentTool?.name || '', (schema as CredentialFormSchemaSelect)?.variable || '',
+    currentProvider?.plugin_id || '', currentProvider?.name || '', currentResource?.name || '', (schema as CredentialFormSchemaSelect)?.variable || '',
     'tool',
   )
   const handleFetchDynamicOptions = async () => {
-    if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider)
+    if (schema?.type !== FormTypeEnum.dynamicSelect || !currentResource || !currentProvider)
       return
     setIsLoading(true)
     try {
@@ -356,7 +365,7 @@ const VarReferencePicker: FC<Props> = ({
   }
   useEffect(() => {
     handleFetchDynamicOptions()
-  }, [currentTool, currentProvider, schema])
+  }, [currentResource, currentProvider, schema])
 
   const schemaWithDynamicSelect = useMemo(() => {
     if (schema?.type !== FormTypeEnum.dynamicSelect)

@@ -1,0 +1,177 @@
+'use client'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiFileCopyLine,
+} from '@remixicon/react'
+import cn from '@/utils/classnames'
+import Toast from '@/app/components/base/toast'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
+import dayjs from 'dayjs'
+
+type Props = {
+  logs: TriggerLogEntity[]
+  className?: string
+}
+
+const LogViewer = ({ logs, className }: Props) => {
+  const { t } = useTranslation()
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
+
+  const toggleLogExpansion = (logId: string) => {
+    const newExpanded = new Set(expandedLogs)
+    if (newExpanded.has(logId))
+      newExpanded.delete(logId)
+    else
+      newExpanded.add(logId)
+
+    setExpandedLogs(newExpanded)
+  }
+
+  const parseRequestData = (data: any) => {
+    if (typeof data === 'string' && data.startsWith('payload=')) {
+      try {
+        const urlDecoded = decodeURIComponent(data.substring(8)) // Remove 'payload='
+        return JSON.parse(urlDecoded)
+      }
+      catch {
+        return data
+      }
+    }
+
+    if (typeof data === 'object')
+      return data
+
+    try {
+      return JSON.parse(data)
+    }
+    catch {
+      return data
+    }
+  }
+
+  const renderJsonContent = (data: any, title: string) => {
+    const parsedData = title === 'REQUEST' ? parseRequestData(data) : data
+    const isJsonObject = typeof parsedData === 'object'
+
+    if (isJsonObject) {
+      return (
+        <CodeEditor
+          readOnly
+          title={<div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>}
+          language={CodeLanguage.json}
+          value={parsedData}
+          isJSONStringifyBeauty
+          nodeId=""
+        />
+      )
+    }
+
+    return (
+      <div className='rounded-md bg-components-input-bg-normal'>
+        <div className='flex items-center justify-between px-2 py-1'>
+          <div className='system-xs-semibold-uppercase text-text-secondary'>
+            {title}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              navigator.clipboard.writeText(String(parsedData))
+              Toast.notify({
+                type: 'success',
+                message: t('common.actionMsg.copySuccessfully'),
+              })
+            }}
+            className='rounded-md p-0.5 hover:bg-components-panel-border'
+          >
+            <RiFileCopyLine className='h-4 w-4 text-text-tertiary' />
+          </button>
+        </div>
+        <div className='px-2 pb-2 pt-1'>
+          <pre className='code-xs-regular whitespace-pre-wrap break-all text-text-secondary'>
+            {String(parsedData)}
+          </pre>
+        </div>
+      </div>
+    )
+  }
+
+  if (!logs || logs.length === 0)
+    return null
+
+  return (
+    <div className={cn('flex flex-col gap-1', className)}>
+      {logs.map((log, index) => {
+        const logId = log.id || index.toString()
+        const isExpanded = expandedLogs.has(logId)
+        const isSuccess = log.response.status_code === 200
+        const isError = log.response.status_code >= 400
+
+        return (
+          <div
+            key={logId}
+            className={cn(
+              'relative rounded-lg border bg-components-panel-on-panel-item-bg shadow-sm hover:bg-components-panel-on-panel-item-bg-hover',
+              isError && 'border-state-destructive-border',
+              !isError && isExpanded && 'border-components-panel-border',
+              !isError && !isExpanded && 'border-components-panel-border-subtle',
+            )}
+          >
+            {isError && (
+              <div className='absolute -left-1 -top-4 h-16 w-16 opacity-10'>
+                <div className='h-full w-full rounded-full bg-text-destructive' />
+              </div>
+            )}
+
+            <button
+              onClick={() => toggleLogExpansion(logId)}
+              className={cn(
+                'flex w-full items-center justify-between px-2 py-1.5 text-left',
+                isExpanded ? 'pb-1 pt-2' : 'min-h-7',
+              )}
+            >
+              <div className='flex items-center gap-0'>
+                {isExpanded ? (
+                  <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
+                ) : (
+                  <RiArrowRightSLine className='h-4 w-4 text-text-tertiary' />
+                )}
+                <div className='system-xs-semibold-uppercase text-text-secondary'>
+                  REQUEST #{index + 1}
+                </div>
+              </div>
+
+              <div className='flex items-center gap-1'>
+                <div className='system-xs-regular text-text-tertiary'>
+                  {dayjs(log.created_at).format('HH:mm:ss')}
+                </div>
+                <div className='h-3.5 w-3.5'>
+                  {isSuccess ? (
+                    <RiCheckboxCircleFill className='h-full w-full text-text-success' />
+                  ) : (
+                    <RiErrorWarningFill className='h-full w-full text-text-destructive' />
+                  )}
+                </div>
+              </div>
+            </button>
+
+            {isExpanded && (
+              <div className='flex flex-col gap-1 px-1 pb-1'>
+                {renderJsonContent(log.request.data, 'REQUEST')}
+                {renderJsonContent(log.response.data, 'RESPONSE')}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default LogViewer

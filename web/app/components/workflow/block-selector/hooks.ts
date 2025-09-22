@@ -3,6 +3,10 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+<<<<<<< HEAD
+=======
+import { BLOCKS, START_BLOCKS } from './constants'
+>>>>>>> feat/trigger
 import {
   TabsEnum,
   ToolTypeEnum,
@@ -51,6 +55,7 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean, noTools?: boole
     if (noTools)
       return noBlocks ? TabsEnum.Sources : TabsEnum.Blocks
 
+<<<<<<< HEAD
     return TabsEnum.Blocks
   }, [noBlocks, noSources, noTools])
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -60,6 +65,41 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean, noTools?: boole
     activeTab,
     setActiveTab,
   }
+=======
+export const useStartBlocks = () => {
+  const { t } = useTranslation()
+
+  return START_BLOCKS.map((block) => {
+    return {
+      ...block,
+      title: t(`workflow.blocks.${block.type}`),
+    }
+  })
+}
+
+export const useTabs = (showStartTab = false) => {
+  const { t } = useTranslation()
+
+  const tabs = [
+    {
+      key: TabsEnum.Blocks,
+      name: t('workflow.tabs.blocks'),
+    },
+    {
+      key: TabsEnum.Tools,
+      name: t('workflow.tabs.tools'),
+    },
+  ]
+
+  if (showStartTab) {
+    tabs.push({
+      key: TabsEnum.Start,
+      name: t('workflow.tabs.start'),
+    })
+  }
+
+  return tabs
+>>>>>>> feat/trigger
 }
 
 export const useToolTabs = (isHideMCPTools?: boolean) => {

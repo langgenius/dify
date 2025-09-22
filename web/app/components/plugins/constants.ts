@@ -26,4 +26,5 @@ export const categoryKeys = [
   'agent-strategy',
   'extension',
   'bundle',
+  'trigger',
 ]

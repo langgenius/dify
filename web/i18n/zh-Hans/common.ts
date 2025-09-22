@@ -67,6 +67,7 @@ const translation = {
     more: '更多',
     selectAll: '全选',
     deSelectAll: '取消全选',
+    now: '现在',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

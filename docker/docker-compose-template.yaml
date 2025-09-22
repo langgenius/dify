@@ -29,14 +29,14 @@ services:
       - default
 
   # worker service
-  # The Celery worker for processing the queue.
+  # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     image: langgenius/dify-api:2.0.0-beta.2
     restart: always
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
-      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      # Startup mode, 'worker' starts the Celery worker for processing all queues.
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}

@@ -5,10 +5,12 @@ import cn from '@/utils/classnames'
 type ShortcutsNameProps = {
   keys: string[]
   className?: string
+  textColor?: 'default' | 'secondary'
 }
 const ShortcutsName = ({
   keys,
   className,
+  textColor = 'default',
 }: ShortcutsNameProps) => {
   return (
     <div className={cn(
@@ -19,7 +21,10 @@ const ShortcutsName = ({
         keys.map(key => (
           <div
             key={key}
-            className='system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray capitalize'
+            className={cn(
+              'system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray capitalize',
+              textColor === 'secondary' && 'text-text-tertiary',
+            )}
           >
             {getKeyboardKeyNameBySystem(key)}
           </div>

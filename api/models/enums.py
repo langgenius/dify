@@ -16,6 +16,9 @@ class WorkflowRunTriggeredFrom(StrEnum):
     APP_RUN = "app-run"
     RAG_PIPELINE_RUN = "rag-pipeline-run"
     RAG_PIPELINE_DEBUGGING = "rag-pipeline-debugging"
+    WEBHOOK = "webhook"
+    SCHEDULE = "schedule"
+    PLUGIN = "plugin"
 
 
 class DraftVariableType(StrEnum):

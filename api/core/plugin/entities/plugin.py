@@ -1,7 +1,7 @@
 import datetime
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, Optional
 
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -13,6 +13,7 @@ from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
+from core.trigger.entities.entities import TriggerProviderEntity
 
 
 class PluginInstallationSource(StrEnum):
@@ -27,54 +28,56 @@ class PluginResourceRequirements(BaseModel):
 
     class Permission(BaseModel):
         class Tool(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: Optional[bool] = Field(default=False)
 
         class Model(BaseModel):
-            enabled: bool | None = Field(default=False)
-            llm: bool | None = Field(default=False)
-            text_embedding: bool | None = Field(default=False)
-            rerank: bool | None = Field(default=False)
-            tts: bool | None = Field(default=False)
-            speech2text: bool | None = Field(default=False)
-            moderation: bool | None = Field(default=False)
+            enabled: Optional[bool] = Field(default=False)
+            llm: Optional[bool] = Field(default=False)
+            text_embedding: Optional[bool] = Field(default=False)
+            rerank: Optional[bool] = Field(default=False)
+            tts: Optional[bool] = Field(default=False)
+            speech2text: Optional[bool] = Field(default=False)
+            moderation: Optional[bool] = Field(default=False)
 
         class Node(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: Optional[bool] = Field(default=False)
 
         class Endpoint(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: Optional[bool] = Field(default=False)
 
         class Storage(BaseModel):
-            enabled: bool | None = Field(default=False)
+            enabled: Optional[bool] = Field(default=False)
             size: int = Field(ge=1024, le=1073741824, default=1048576)
 
-        tool: Tool | None = Field(default=None)
-        model: Model | None = Field(default=None)
-        node: Node | None = Field(default=None)
-        endpoint: Endpoint | None = Field(default=None)
-        storage: Storage | None = Field(default=None)
+        tool: Optional[Tool] = Field(default=None)
+        model: Optional[Model] = Field(default=None)
+        node: Optional[Node] = Field(default=None)
+        endpoint: Optional[Endpoint] = Field(default=None)
+        storage: Optional[Storage] = Field(default=None)
 
-    permission: Permission | None = Field(default=None)
+    permission: Optional[Permission] = Field(default=None)
 
 
 class PluginCategory(StrEnum):
     Tool = auto()
     Model = auto()
     Extension = auto()
-    AgentStrategy = "agent-strategy"
-    Datasource = "datasource"
+    AgentStrategy = auto()
+    Datasource = auto()
+    Trigger = auto()
 
 
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
-        tools: list[str] | None = Field(default_factory=list[str])
-        models: list[str] | None = Field(default_factory=list[str])
-        endpoints: list[str] | None = Field(default_factory=list[str])
+        tools: Optional[list[str]] = Field(default_factory=list[str])
+        models: Optional[list[str]] = Field(default_factory=list[str])
+        endpoints: Optional[list[str]] = Field(default_factory=list[str])
+        triggers: Optional[list[str]] = Field(default_factory=list[str])
         datasources: list[str] | None = Field(default_factory=list[str])
 
     class Meta(BaseModel):
-        minimum_dify_version: str | None = Field(default=None)
-        version: str | None = Field(default=None)
+        minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+        version: Optional[str] = Field(default=None)
 
         @field_validator("minimum_dify_version")
         @classmethod
@@ -87,25 +90,26 @@ class PluginDeclaration(BaseModel):
             except InvalidVersion as e:
                 raise ValueError(f"Invalid version format: {v}") from e
 
-    version: str = Field(...)
-    author: str | None = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
+    version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+    author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
     description: I18nObject
     icon: str
-    icon_dark: str | None = Field(default=None)
+    icon_dark: Optional[str] = Field(default=None)
     label: I18nObject
     category: PluginCategory
     created_at: datetime.datetime
     resource: PluginResourceRequirements
     plugins: Plugins
     tags: list[str] = Field(default_factory=list)
-    repo: str | None = Field(default=None)
+    repo: Optional[str] = Field(default=None)
     verified: bool = Field(default=False)
-    tool: ToolProviderEntity | None = None
-    model: ProviderEntity | None = None
-    endpoint: EndpointProviderDeclaration | None = None
-    agent_strategy: AgentStrategyProviderEntity | None = None
+    tool: Optional[ToolProviderEntity] = None
+    model: Optional[ProviderEntity] = None
+    endpoint: Optional[EndpointProviderDeclaration] = None
+    agent_strategy: Optional[AgentStrategyProviderEntity] = None
     datasource: DatasourceProviderEntity | None = None
+    trigger: Optional[TriggerProviderEntity] = None
     meta: Meta
 
     @field_validator("version")
@@ -119,7 +123,7 @@ class PluginDeclaration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_category(cls, values: dict):
+    def validate_category(cls, values: dict) -> dict:
         # auto detect category
         if values.get("tool"):
             values["category"] = PluginCategory.Tool
@@ -129,6 +133,8 @@ class PluginDeclaration(BaseModel):
             values["category"] = PluginCategory.Datasource
         elif values.get("agent_strategy"):
             values["category"] = PluginCategory.AgentStrategy
+        elif values.get("trigger"):
+            values["category"] = PluginCategory.Trigger
         else:
             values["category"] = PluginCategory.Extension
         return values
@@ -190,9 +196,9 @@ class PluginDependency(BaseModel):
 
     type: Type
     value: Github | Marketplace | Package
-    current_identifier: str | None = None
+    current_identifier: Optional[str] = None
 
 
 class MissingPluginDependency(BaseModel):
     plugin_unique_identifier: str
-    current_identifier: str | None = None
+    current_identifier: Optional[str] = None

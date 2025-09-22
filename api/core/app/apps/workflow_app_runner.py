@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -79,6 +79,7 @@ class WorkflowBasedAppRunner:
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
+        root_node_id: Optional[str] = None,
     ) -> Graph:
         """
         Init graph
@@ -112,7 +113,7 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -161,7 +162,7 @@ class WorkflowBasedAppRunner:
             edge
             for edge in graph_config.get("edges", [])
             if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
+               and (edge.get("target") is None or edge.get("target") in node_ids)
         ]
 
         graph_config["edges"] = edge_configs
@@ -276,7 +277,7 @@ class WorkflowBasedAppRunner:
             edge
             for edge in graph_config.get("edges", [])
             if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
+               and (edge.get("target") is None or edge.get("target") in node_ids)
         ]
 
         graph_config["edges"] = edge_configs

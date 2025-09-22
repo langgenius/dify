@@ -18,8 +18,7 @@ const translation = {
     },
     versionHistory: 'Zgodovina različic',
     published: 'Objavljeno',
-    run: 'Teči',
-    featuresDocLink: 'Nauči se več',
+    run: 'Testni tek',
     notRunning: 'Še ne teče',
     exportImage: 'Izvozi sliko',
     openInExplore: 'Odpri v Raziskovanju',
@@ -77,12 +76,10 @@ const translation = {
     fileUploadTip: 'Funkcije nalaganja slik so bile nadgrajene na nalaganje datotek.',
     backupCurrentDraft: 'Varnostno kopiraj trenutni osnutek',
     overwriteAndImport: 'Prepiši in uvozi',
-    features: 'Značilnosti',
     exportPNG: 'Izvozi kot PNG',
     chooseDSL: 'Izberi DSL datoteko',
     unpublished: 'Nepublikirano',
     pasteHere: 'Prilepite tukaj',
-    featuresDescription: 'Izboljšanje uporabniške izkušnje spletne aplikacije',
     exitVersions: 'Izhodne različice',
     editing: 'Urejanje',
     addFailureBranch: 'Dodaj neuspešno vejo',
@@ -115,6 +112,7 @@ const translation = {
     tagBound: 'Število aplikacij, ki uporabljajo to oznako',
     currentView: 'Trenutni pogled',
     currentWorkflow: 'Trenutni potek dela',
+    moreActions: 'Več dejanj',
   },
   env: {
     modal: {
@@ -324,7 +322,6 @@ const translation = {
     runThisStep: 'Izvedi ta korak',
     changeBlock: 'Spremeni vozlišče',
     addNextStep: 'Dodajte naslednji korak v ta delovni potek',
-    moveToThisNode: 'Premakni se na to vozlišče',
     checklistTip: 'Prepričajte se, da so vse težave rešene, preden objavite.',
     selectNextStep: 'Izberi naslednji korak',
     helpLink: 'Pomočna povezava',
@@ -335,6 +332,7 @@ const translation = {
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
     optional: '(neobvezno)',
+    scrollToSelectedNode: 'Pomaknite se do izbranega vozlišča',
   },
   nodes: {
     common: {

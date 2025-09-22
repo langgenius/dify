@@ -66,6 +66,7 @@ const translation = {
     more: 'もっと',
     selectAll: 'すべて選択',
     deSelectAll: 'すべて選択解除',
+    now: '今',
     config: 'コンフィグ',
   },
   errorMsg: {

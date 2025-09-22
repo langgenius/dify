@@ -5,10 +5,14 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
+<<<<<<< HEAD
 import type {
   DataSourceDefaultValue,
   ToolDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
+=======
+import type { PluginDefaultValue, ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+>>>>>>> feat/trigger
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -50,6 +54,9 @@ export enum BlockEnum {
   DataSource = 'datasource',
   DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
+  TriggerSchedule = 'trigger-schedule',
+  TriggerWebhook = 'trigger-webhook',
+  TriggerPlugin = 'trigger-plugin',
 }
 
 export enum ControlMode {
@@ -103,6 +110,7 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
   credential_id?: string
+  subscription_id?: string
   _dimmed?: boolean
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
   & Partial<Pick<DataSourceDefaultValue, 'plugin_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
@@ -341,7 +349,7 @@ export type NodeDefault<T = {}> = {
   }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue | ToolDefaultValue | DataSourceDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -499,4 +507,14 @@ export enum VersionHistoryContextMenuOptions {
 
 export type ChildNodeTypeCount = {
   [key: string]: number;
+}
+
+export const TRIGGER_NODE_TYPES = [
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
+
+export function isTriggerNode(nodeType: BlockEnum): boolean {
+  return TRIGGER_NODE_TYPES.includes(nodeType as any)
 }

@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { FC } from 'react'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
@@ -7,9 +7,12 @@ import ActionList from './action-list'
 import DatasourceActionList from './datasource-action-list'
 import ModelList from './model-list'
 import AgentStrategyList from './agent-strategy-list'
+import { SubscriptionList } from './subscription-list'
+import { TriggerEventsList } from './trigger-events-list'
 import Drawer from '@/app/components/base/drawer'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import { type PluginDetail, PluginType } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
+import { usePluginStore } from './store'
 
 type Props = {
   detail?: PluginDetail
@@ -27,6 +30,12 @@ const PluginDetailPanel: FC<Props> = ({
       onHide()
     onUpdate()
   }
+  const { setDetail } = usePluginStore()
+
+  useEffect(() => {
+    if (detail)
+      setDetail(detail)
+  }, [detail])
 
   if (!detail)
     return null
@@ -49,6 +58,12 @@ const PluginDetailPanel: FC<Props> = ({
             onUpdate={handleUpdate}
           />
           <div className='grow overflow-y-auto'>
+            {detail.declaration.category === PluginType.trigger && (
+              <>
+                <SubscriptionList />
+                <TriggerEventsList />
+              </>
+            )}
             {!!detail.declaration.tool && <ActionList detail={detail} />}
             {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
             {!!detail.declaration.endpoint && <EndpointList detail={detail} />}

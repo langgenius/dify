@@ -26,6 +26,10 @@ import {
 } from '../store'
 import { getParallelInfo } from '../utils'
 import {
+  getWorkflowEntryNode,
+  isWorkflowEntryNode,
+} from '../utils/workflow-entry'
+import {
   PARALLEL_DEPTH_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
@@ -41,6 +45,11 @@ import {
   fetchAllMCPTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
+<<<<<<< HEAD
+=======
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { CollectionType } from '@/app/components/tools/types'
+>>>>>>> feat/trigger
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
@@ -75,6 +84,10 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
+<<<<<<< HEAD
+=======
+    let startNode = getWorkflowEntryNode(nodes)
+>>>>>>> feat/trigger
     const currentNode = nodes.find(node => node.id === nodeId)
 
     let startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
@@ -244,6 +257,36 @@ export const useWorkflow = () => {
     return nodes.filter(node => node.parentId === nodeId)
   }, [store])
 
+<<<<<<< HEAD
+=======
+  const isFromStartNode = useCallback((nodeId: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
+
+    if (!currentNode)
+      return false
+
+    if (isWorkflowEntryNode(currentNode.data.type))
+      return true
+
+    const checkPreviousNodes = (node: Node) => {
+      const previousNodes = getBeforeNodeById(node.id)
+
+      for (const prevNode of previousNodes) {
+        if (isWorkflowEntryNode(prevNode.data.type))
+          return true
+        if (checkPreviousNodes(prevNode))
+          return true
+      }
+
+      return false
+    }
+
+    return checkPreviousNodes(currentNode)
+  }, [store, getBeforeNodeById])
+
+>>>>>>> feat/trigger
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const allNodes = getNodes()
@@ -445,7 +488,18 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
+<<<<<<< HEAD
   }, [store, checkParallelLimit, getAvailableBlocks])
+=======
+  }, [store, nodesExtraData, checkParallelLimit])
+
+  const getNode = useCallback((nodeId?: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+
+    return nodes.find(node => node.id === nodeId) || getWorkflowEntryNode(nodes)
+  }, [store])
+>>>>>>> feat/trigger
 
   return {
     getNodeById,
@@ -549,6 +603,41 @@ export const useNodesReadOnly = () => {
   }
 }
 
+<<<<<<< HEAD
+=======
+export const useToolIcon = (data: Node['data']) => {
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const { data: triggerPlugins } = useAllTriggerPlugins()
+
+  const toolIcon = useMemo(() => {
+    if (!data)
+      return ''
+
+    if (data.type === BlockEnum.TriggerPlugin) {
+      const targetTools = triggerPlugins || []
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
+    }
+
+    if (data.type === BlockEnum.Tool) {
+      let targetTools = workflowTools
+      if (data.provider_type === CollectionType.builtIn)
+        targetTools = buildInTools
+      else if (data.provider_type === CollectionType.custom)
+        targetTools = customTools
+      else if (data.provider_type === CollectionType.mcp)
+        targetTools = mcpTools
+
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
+    }
+  }, [data, buildInTools, customTools, mcpTools, triggerPlugins, workflowTools])
+
+  return toolIcon
+}
+
+>>>>>>> feat/trigger
 export const useIsNodeInIteration = (iterationId: string) => {
   const store = useStoreApi()
 

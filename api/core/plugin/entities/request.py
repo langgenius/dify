@@ -1,5 +1,7 @@
+from collections.abc import Mapping
 from typing import Any, Literal
 
+from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig
@@ -237,3 +239,33 @@ class RequestFetchAppInfo(BaseModel):
     """
 
     app_id: str
+
+
+class Event(BaseModel):
+    variables: Mapping[str, Any]
+
+
+class TriggerInvokeResponse(BaseModel):
+    event: Event
+
+
+class PluginTriggerDispatchResponse(BaseModel):
+    triggers: list[str]
+    raw_http_response: str
+
+
+class TriggerSubscriptionResponse(BaseModel):
+    subscription: dict[str, Any]
+
+
+class TriggerValidateProviderCredentialsResponse(BaseModel):
+    result: bool
+
+
+class TriggerDispatchResponse:
+    triggers: list[str]
+    response: Response
+
+    def __init__(self, triggers: list[str], response: Response):
+        self.triggers = triggers
+        self.response = response

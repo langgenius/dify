@@ -142,7 +142,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
-      if((res as any).code) // not current or current is the same as the template would return a code field
+      if ((res as any).code) // not current or current is the same as the template would return a code field
         res.modified = (res as any).code
 
       if (error) {

@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
 } from 'react'
 import {
@@ -9,6 +10,10 @@ import {
 import {
   useWorkflowInit,
 } from './hooks'
+import { useAppTriggers } from '@/service/use-tools'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   initialEdges,
   initialNodes,
@@ -32,7 +37,45 @@ const WorkflowAppWithAdditionalContext = () => {
     isLoading,
     fileUploadConfigResponse,
   } = useWorkflowInit()
+  const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+
+  // Initialize trigger status at application level
+  const { setTriggerStatuses } = useTriggerStatusStore()
+  const appDetail = useAppStore(s => s.appDetail)
+  const appId = appDetail?.id
+  const isWorkflowMode = appDetail?.mode === 'workflow'
+  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false,
+  })
+
+  // Sync trigger statuses to store when data loads
+  useEffect(() => {
+    if (triggersResponse?.data) {
+      // Map API status to EntryNodeStatus: 'enabled' stays 'enabled', all others become 'disabled'
+      const statusMap = triggersResponse.data.reduce((acc, trigger) => {
+        acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
+        return acc
+      }, {} as Record<string, 'enabled' | 'disabled'>)
+
+      setTriggerStatuses(statusMap)
+    }
+  }, [triggersResponse?.data, setTriggerStatuses])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Reset the loaded flag when component unmounts
+      workflowStore.setState({ isWorkflowDataLoaded: false })
+
+      // Cancel any pending debounced sync operations
+      const { debouncedSyncWorkflowDraft } = workflowStore.getState()
+      // The debounced function from lodash has a cancel method
+      if (debouncedSyncWorkflowDraft && 'cancel' in debouncedSyncWorkflowDraft)
+        (debouncedSyncWorkflowDraft as any).cancel()
+    }
+  }, [workflowStore])
 
   const nodesData = useMemo(() => {
     if (data)

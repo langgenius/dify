@@ -4,8 +4,9 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import type {
+  CommonEdgeType,
   CommonNodeType,
   Edge,
   Node,
@@ -136,20 +137,63 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             }
           }
         }
+<<<<<<< HEAD
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
+=======
+
+        // Start nodes and Trigger nodes should not show unConnected error if they have validation errors
+        // or if they are valid start nodes (even without incoming connections)
+        const isStartNode = node.data.type === BlockEnum.Start
+          || node.data.type === BlockEnum.TriggerSchedule
+          || node.data.type === BlockEnum.TriggerWebhook
+          || node.data.type === BlockEnum.TriggerPlugin
+
+        const isUnconnected = !validNodes.find(n => n.id === node.id)
+        const shouldShowError = errorMessage || (isUnconnected && !isStartNode)
+
+        if (shouldShowError) {
+>>>>>>> feat/trigger
           list.push({
             id: node.id,
             type: node.data.type,
             title: node.data.title,
             toolIcon,
-            unConnected: !validNodes.find(n => n.id === node.id),
+            unConnected: isUnconnected && !isStartNode,
             errorMessage,
           })
         }
       }
     }
 
+<<<<<<< HEAD
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
+=======
+    // Check for start nodes (including triggers)
+    const startNodes = nodes.filter(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
+
+    if (startNodes.length === 0) {
+      list.push({
+        id: 'start-node-required',
+        type: BlockEnum.Start,
+        title: t('workflow.panel.startNode'),
+        errorMessage: t('workflow.common.needStartNode'),
+      })
+    }
+
+    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
+      list.push({
+        id: 'answer-need-added',
+        type: BlockEnum.Answer,
+        title: t('workflow.blocks.answer'),
+        errorMessage: t('workflow.common.needAnswerNode'),
+      })
+    }
+>>>>>>> feat/trigger
 
     isRequiredNodesType.forEach((type: string) => {
       if (!filteredNodes.find(node => node.data.type === type)) {
@@ -308,7 +352,26 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
+<<<<<<< HEAD
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
+=======
+    const startNodes = nodes.filter(node =>
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.TriggerSchedule
+      || node.data.type === BlockEnum.TriggerWebhook
+      || node.data.type === BlockEnum.TriggerPlugin,
+    )
+
+    if (startNodes.length === 0) {
+      notify({ type: 'error', message: t('workflow.common.needStartNode') })
+      return false
+    }
+
+    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
+      notify({ type: 'error', message: t('workflow.common.needAnswerNode') })
+      return false
+    }
+>>>>>>> feat/trigger
 
     for (let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]
@@ -323,5 +386,26 @@ export const useChecklistBeforePublish = () => {
 
   return {
     handleCheckBeforePublish,
+  }
+}
+
+export const useWorkflowRunValidation = () => {
+  const { t } = useTranslation()
+  const nodes = useNodes<CommonNodeType>()
+  const edges = useEdges<CommonEdgeType>()
+  const needWarningNodes = useChecklist(nodes, edges)
+  const { notify } = useToastContext()
+
+  const validateBeforeRun = useCallback(() => {
+    if (needWarningNodes.length > 0) {
+      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      return false
+    }
+    return true
+  }, [needWarningNodes, notify, t])
+
+  return {
+    validateBeforeRun,
+    hasValidationErrors: needWarningNodes.length > 0,
   }
 }

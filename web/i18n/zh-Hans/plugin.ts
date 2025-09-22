@@ -17,6 +17,7 @@ const translation = {
     agent: 'Agent 策略',
     extension: '扩展',
     bundle: '插件集',
+    trigger: '触发器',
     datasource: '数据源',
   },
   search: '搜索',

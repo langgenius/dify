@@ -16,8 +16,12 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+<<<<<<< HEAD
   showManageInputField?: boolean
   onManageInputField?: () => void
+=======
+  extraParams?: Record<string, any>
+>>>>>>> feat/trigger
 }
 
 const ToolForm: FC<Props> = ({
@@ -29,8 +33,12 @@ const ToolForm: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+<<<<<<< HEAD
   showManageInputField,
   onManageInputField,
+=======
+  extraParams,
+>>>>>>> feat/trigger
 }) => {
   return (
     <div className='space-y-1'>
@@ -46,8 +54,13 @@ const ToolForm: FC<Props> = ({
             inPanel={inPanel}
             currentTool={currentTool}
             currentProvider={currentProvider}
+<<<<<<< HEAD
             showManageInputField={showManageInputField}
             onManageInputField={onManageInputField}
+=======
+            extraParams={extraParams}
+            providerType='tool'
+>>>>>>> feat/trigger
           />
         ))
       }

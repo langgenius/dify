@@ -1,14 +1,21 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
 import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
+<<<<<<< HEAD
 import type {
   BlockEnum,
   NodeDefault,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+=======
+import type { BlockEnum } from '../types'
+import { useTabs } from './hooks'
+import type { PluginDefaultValue } from './types'
+>>>>>>> feat/trigger
 import { TabsEnum } from './types'
 import Blocks from './blocks'
+import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
 import DataSources from './data-sources'
 import cn from '@/utils/classnames'
@@ -18,8 +25,12 @@ export type TabsProps = {
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
   tags: string[]
+<<<<<<< HEAD
   onTagsChange: Dispatch<SetStateAction<string[]>>
   onSelect: OnSelectBlock
+=======
+  onSelect: (type: BlockEnum, plugin?: PluginDefaultValue) => void
+>>>>>>> feat/trigger
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
   dataSources?: ToolWithProvider[]
@@ -29,7 +40,12 @@ export type TabsProps = {
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
+<<<<<<< HEAD
   noTools?: boolean
+=======
+  showStartTab?: boolean
+  forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
+>>>>>>> feat/trigger
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -44,8 +60,15 @@ const Tabs: FC<TabsProps> = ({
   tabs = [],
   filterElem,
   noBlocks,
+<<<<<<< HEAD
   noTools,
 }) => {
+=======
+  showStartTab = false,
+  forceShowStartContent = false,
+}) => {
+  const tabs = useTabs(showStartTab)
+>>>>>>> feat/trigger
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -76,6 +99,18 @@ const Tabs: FC<TabsProps> = ({
         )
       }
       {filterElem}
+      {
+        activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
+          <div className='border-t border-divider-subtle'>
+            <AllStartBlocks
+              searchText={searchText}
+              onSelect={onSelect}
+              availableBlocksTypes={availableBlocksTypes}
+              tags={tags}
+            />
+          </div>
+        )
+      }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
           <div className='border-t border-divider-subtle'>

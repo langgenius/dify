@@ -17,6 +17,7 @@ class OAuthProxyService(BasePluginClient):
         plugin_id: str,
         provider: str,
         credential_id: str | None = None,
+        extra_data: dict = {}
     ):
         """
         Create a proxy context for an OAuth 2.0 authorization request.
@@ -32,6 +33,7 @@ class OAuthProxyService(BasePluginClient):
         """
         context_id = str(uuid.uuid4())
         data = {
+            **extra_data,
             "user_id": user_id,
             "plugin_id": plugin_id,
             "tenant_id": tenant_id,

@@ -4,13 +4,14 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.plugin.entities.plugin_daemon import (
+    CredentialType,
     PluginBasicBooleanResponse,
     PluginToolProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.schemas.resolver import resolve_dify_schema_refs
-from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from models.provider_ids import GenericProviderID, ToolProviderID
 
 

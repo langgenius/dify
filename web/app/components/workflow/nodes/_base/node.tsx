@@ -5,6 +5,7 @@ import type {
 import {
   cloneElement,
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -20,6 +21,7 @@ import type { NodeProps } from '../../types'
 import {
   BlockEnum,
   NodeRunningStatus,
+  TRIGGER_NODE_TYPES,
 } from '../../types'
 import {
   useNodesReadOnly,
@@ -42,11 +44,14 @@ import NodeControl from './components/node-control'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
 import RetryOnNode from './components/retry/retry-on-node'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
+import EntryNodeContainer from './components/entry-node-container'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { ToolTypeEnum } from '../../block-selector/types'
+import { useTriggerStatusStore } from '../../store/trigger-status'
+import { isTriggerNode } from '../../types'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -62,6 +67,14 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
+
+  // Subscribe to trigger status for this specific node ID (reactive)
+  // Use useCallback to optimize selector and prevent unnecessary re-renders
+  const triggerStatusSelector = useCallback((state: any) =>
+    isTriggerNode(data.type) ? (state.triggerStatuses[id] || 'disabled') : 'enabled',
+  [id, data.type],
+  )
+  const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
@@ -136,7 +149,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     return null
   }, [data._loopIndex, data._runningStatus, t])
 
-  return (
+  const nodeContent = (
     <div
       className={cn(
         'relative flex rounded-2xl border',
@@ -292,13 +305,13 @@ const BaseNode: FC<BaseNodeProps> = ({
         </div>
         {
           data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            cloneElement(children, { id, data })
+            cloneElement(children, { id, data } as any)
           )
         }
         {
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
             <div className='grow pb-1 pl-1 pr-1'>
-              {cloneElement(children, { id, data })}
+              {cloneElement(children, { id, data } as any)}
             </div>
           )
         }
@@ -333,6 +346,24 @@ const BaseNode: FC<BaseNodeProps> = ({
       </div>
     </div>
   )
+
+  const isEntryNode = TRIGGER_NODE_TYPES.includes(data.type as any) || data.type === BlockEnum.Start
+  const isStartNode = data.type === BlockEnum.Start
+
+  // Determine node status dynamically
+  const nodeStatus = isStartNode
+    ? 'enabled' // Start nodes are always enabled (green)
+    : triggerStatus // Use reactive trigger status
+
+  return isEntryNode ? (
+    <EntryNodeContainer
+      status={nodeStatus}
+      showIndicator={!isStartNode}
+      nodeType={isStartNode ? 'start' : 'trigger'}
+    >
+      {nodeContent}
+    </EntryNodeContainer>
+  ) : nodeContent
 }
 
 export default memo(BaseNode)

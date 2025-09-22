@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
 import produce from 'immer'
 import type {
   NodeDragHandler,
@@ -63,14 +64,25 @@ import type { RAGPipelineVariables } from '@/models/pipeline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 
+// Entry node deletion restriction has been removed to allow empty workflows
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+<<<<<<< HEAD
   const { checkNestedParallelLimit, getAfterNodesInSameBranch } = useWorkflow()
+=======
+
+  const {
+    checkNestedParallelLimit,
+    getAfterNodesInSameBranch,
+  } = useWorkflow()
+>>>>>>> feat/trigger
   const { getNodesReadOnly } = useNodesReadOnly()
   const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleSetHelpline } = useHelpline()
@@ -86,9 +98,40 @@ export const useNodesInteractions = () => {
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
 
+<<<<<<< HEAD
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
       workflowStore.setState({ nodeAnimation: false })
+=======
+  // Unified error handler for start node missing scenarios
+  const handleStartNodeMissingError = useCallback((error: Error, operationKey: string): boolean => {
+    if (error.message === 'Start node not found') {
+      const operation = t(`workflow.error.operations.${operationKey}`) || operationKey
+      notify({
+        type: 'error',
+        message: t('workflow.error.startNodeRequired', { operation }) || `Please add a start node first before ${operation}`,
+      })
+      return true // Error handled
+    }
+    return false // Error not handled, should re-throw
+  }, [notify, t])
+
+  // Safe wrapper for checkNestedParallelLimit with error handling
+  const safeCheckParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string, operationKey = 'updatingWorkflow') => {
+    try {
+      return checkNestedParallelLimit(nodes, edges, parentNodeId)
+    }
+    catch (error: any) {
+      if (handleStartNodeMissingError(error, operationKey))
+        return false // Operation blocked but gracefully handled
+
+      throw error // Re-throw other errors
+    }
+  }, [checkNestedParallelLimit, handleStartNodeMissingError])
+
+  const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
+    workflowStore.setState({ nodeAnimation: false })
+>>>>>>> feat/trigger
 
       if (getNodesReadOnly()) return
 
@@ -323,6 +366,141 @@ export const useNodesInteractions = () => {
           else node.data.selected = false
         })
       })
+<<<<<<< HEAD
+=======
+    })
+    setEdges(newEdges)
+  }, [store, workflowStore, getNodesReadOnly])
+
+  const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean, initShowLastRunTab?: boolean) => {
+    if(initShowLastRunTab)
+      workflowStore.setState({ initShowLastRunTab: true })
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const selectedNode = nodes.find(node => node.data.selected)
+
+    if (!cancelSelection && selectedNode?.id === nodeId)
+      return
+
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (node.id === nodeId)
+          node.data.selected = !cancelSelection
+        else
+          node.data.selected = false
+      })
+    })
+    setNodes(newNodes)
+
+    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges).map(edge => edge.id)
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        if (connectedEdges.includes(edge.id)) {
+          edge.data = {
+            ...edge.data,
+            _connectedNodeIsSelected: !cancelSelection,
+          }
+        }
+        else {
+          edge.data = {
+            ...edge.data,
+            _connectedNodeIsSelected: false,
+          }
+        }
+      })
+    })
+    setEdges(newEdges)
+
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
+
+  const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
+    if (node.type === CUSTOM_ITERATION_START_NODE)
+      return
+    if (node.type === CUSTOM_LOOP_START_NODE)
+      return
+    handleNodeSelect(node.id)
+  }, [handleNodeSelect])
+
+  const handleNodeConnect = useCallback<OnConnect>(({
+    source,
+    sourceHandle,
+    target,
+    targetHandle,
+  }) => {
+    if (source === target)
+      return
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const nodes = getNodes()
+    const targetNode = nodes.find(node => node.id === target!)
+    const sourceNode = nodes.find(node => node.id === source!)
+
+    if (targetNode?.parentId !== sourceNode?.parentId)
+      return
+
+    if (sourceNode?.type === CUSTOM_NOTE_NODE || targetNode?.type === CUSTOM_NOTE_NODE)
+      return
+
+    if (edges.find(edge => edge.source === source && edge.sourceHandle === sourceHandle && edge.target === target && edge.targetHandle === targetHandle))
+      return
+
+    const parendNode = nodes.find(node => node.id === targetNode?.parentId)
+    const isInIteration = parendNode && parendNode.data.type === BlockEnum.Iteration
+    const isInLoop = !!parendNode && parendNode.data.type === BlockEnum.Loop
+
+    const newEdge = {
+      id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
+      type: CUSTOM_EDGE,
+      source: source!,
+      target: target!,
+      sourceHandle,
+      targetHandle,
+      data: {
+        sourceType: nodes.find(node => node.id === source)!.data.type,
+        targetType: nodes.find(node => node.id === target)!.data.type,
+        isInIteration,
+        iteration_id: isInIteration ? targetNode?.parentId : undefined,
+        isInLoop,
+        loop_id: isInLoop ? targetNode?.parentId : undefined,
+      },
+      zIndex: targetNode?.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+    }
+    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+      [
+        { type: 'add', edge: newEdge },
+      ],
+      nodes,
+    )
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+          node.data = {
+            ...node.data,
+            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+          }
+        }
+      })
+    })
+    const newEdges = produce(edges, (draft) => {
+      draft.push(newEdge)
+    })
+
+    if (safeCheckParallelLimit(newNodes, newEdges, targetNode?.parentId, 'connectingNodes')) {
+>>>>>>> feat/trigger
       setNodes(newNodes)
 
       const connectedEdges = getConnectedEdges(
@@ -561,9 +739,114 @@ export const useNodesInteractions = () => {
       }
       setConnectingNodePayload(undefined)
       setEnteringNodePayload(undefined)
+<<<<<<< HEAD
     },
     [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow],
   )
+=======
+    }
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, safeCheckParallelLimit])
+
+  const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
+    if (getNodesReadOnly())
+      return
+
+    if (nodeId && handleType) {
+      const { setConnectingNodePayload } = workflowStore.getState()
+      const { getNodes } = store.getState()
+      const node = getNodes().find(n => n.id === nodeId)!
+
+      if (node.type === CUSTOM_NOTE_NODE)
+        return
+
+      if (node.data.type === BlockEnum.VariableAggregator || node.data.type === BlockEnum.VariableAssigner) {
+        if (handleType === 'target')
+          return
+      }
+
+      setConnectingNodePayload({
+        nodeId,
+        nodeType: node.data.type,
+        handleType,
+        handleId,
+      })
+    }
+  }, [store, workflowStore, getNodesReadOnly])
+
+  const handleNodeConnectEnd = useCallback<OnConnectEnd>((e: any) => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      connectingNodePayload,
+      setConnectingNodePayload,
+      enteringNodePayload,
+      setEnteringNodePayload,
+    } = workflowStore.getState()
+    if (connectingNodePayload && enteringNodePayload) {
+      const {
+        setShowAssignVariablePopup,
+        hoveringAssignVariableGroupId,
+      } = workflowStore.getState()
+      const { screenToFlowPosition } = reactflow
+      const {
+        getNodes,
+        setNodes,
+      } = store.getState()
+      const nodes = getNodes()
+      const fromHandleType = connectingNodePayload.handleType
+      const fromHandleId = connectingNodePayload.handleId
+      const fromNode = nodes.find(n => n.id === connectingNodePayload.nodeId)!
+      const toNode = nodes.find(n => n.id === enteringNodePayload.nodeId)!
+      const toParentNode = nodes.find(n => n.id === toNode.parentId)
+
+      if (fromNode.parentId !== toNode.parentId)
+        return
+
+      const { x, y } = screenToFlowPosition({ x: e.x, y: e.y })
+
+      if (fromHandleType === 'source' && (toNode.data.type === BlockEnum.VariableAssigner || toNode.data.type === BlockEnum.VariableAggregator)) {
+        const groupEnabled = toNode.data.advanced_settings?.group_enabled
+        const firstGroupId = toNode.data.advanced_settings?.groups[0].groupId
+        let handleId = 'target'
+
+        if (groupEnabled) {
+          if (hoveringAssignVariableGroupId)
+            handleId = hoveringAssignVariableGroupId
+          else
+            handleId = firstGroupId
+        }
+        const newNodes = produce(nodes, (draft) => {
+          draft.forEach((node) => {
+            if (node.id === toNode.id) {
+              node.data._showAddVariablePopup = true
+              node.data._holdAddVariablePopup = true
+            }
+          })
+        })
+        setNodes(newNodes)
+        setShowAssignVariablePopup({
+          nodeId: fromNode.id,
+          nodeData: fromNode.data,
+          variableAssignerNodeId: toNode.id,
+          variableAssignerNodeData: toNode.data,
+          variableAssignerNodeHandleId: handleId,
+          parentNode: toParentNode,
+          x: x - toNode.positionAbsolute!.x,
+          y: y - toNode.positionAbsolute!.y,
+        })
+        handleNodeConnect({
+          source: fromNode.id,
+          sourceHandle: fromHandleId,
+          target: toNode.id,
+          targetHandle: 'target',
+        })
+      }
+    }
+    setConnectingNodePayload(undefined)
+    setEnteringNodePayload(undefined)
+  }, [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
+>>>>>>> feat/trigger
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
@@ -573,15 +856,242 @@ export const useNodesInteractions = () => {
 
       const { getNodes, setNodes, edges, setEdges } = store.getState()
 
+<<<<<<< HEAD
       const nodes = getNodes()
       const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
       const currentNode = nodes[currentNodeIndex]
+=======
+    const nodes = getNodes()
+
+    // Allow deleting any node including the last entry node
+
+    const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
+    const currentNode = nodes[currentNodeIndex]
+>>>>>>> feat/trigger
 
       if (!currentNode) return
 
+<<<<<<< HEAD
       if (
         nodesMetaDataMap?.[currentNode.data.type as BlockEnum]?.metaData
           .isUndeletable
+=======
+    deleteNodeInspectorVars(nodeId)
+
+    if (currentNode.data.type === BlockEnum.Iteration) {
+      const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
+
+      if (iterationChildren.length) {
+        if (currentNode.data._isBundled) {
+          iterationChildren.forEach((child) => {
+            handleNodeDelete(child.id)
+          })
+          return handleNodeDelete(nodeId)
+        }
+        else {
+          if (iterationChildren.length === 1) {
+            handleNodeDelete(iterationChildren[0].id)
+            handleNodeDelete(nodeId)
+
+            return
+          }
+          const { setShowConfirm, showConfirm } = workflowStore.getState()
+
+          if (!showConfirm) {
+            setShowConfirm({
+              title: t('workflow.nodes.iteration.deleteTitle'),
+              desc: t('workflow.nodes.iteration.deleteDesc') || '',
+              onConfirm: () => {
+                iterationChildren.forEach((child) => {
+                  handleNodeDelete(child.id)
+                })
+                handleNodeDelete(nodeId)
+                handleSyncWorkflowDraft()
+                setShowConfirm(undefined)
+              },
+            })
+            return
+          }
+        }
+      }
+    }
+
+    if (currentNode.data.type === BlockEnum.Loop) {
+      const loopChildren = nodes.filter(node => node.parentId === currentNode.id)
+
+      if (loopChildren.length) {
+        if (currentNode.data._isBundled) {
+          loopChildren.forEach((child) => {
+            handleNodeDelete(child.id)
+          })
+          return handleNodeDelete(nodeId)
+        }
+        else {
+          if (loopChildren.length === 1) {
+            handleNodeDelete(loopChildren[0].id)
+            handleNodeDelete(nodeId)
+
+            return
+          }
+          const { setShowConfirm, showConfirm } = workflowStore.getState()
+
+          if (!showConfirm) {
+            setShowConfirm({
+              title: t('workflow.nodes.loop.deleteTitle'),
+              desc: t('workflow.nodes.loop.deleteDesc') || '',
+              onConfirm: () => {
+                loopChildren.forEach((child) => {
+                  handleNodeDelete(child.id)
+                })
+                handleNodeDelete(nodeId)
+                handleSyncWorkflowDraft()
+                setShowConfirm(undefined)
+              },
+            })
+            return
+          }
+        }
+      }
+    }
+
+    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
+    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(connectedEdges.map(edge => ({ type: 'remove', edge })), nodes)
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+          node.data = {
+            ...node.data,
+            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+          }
+        }
+
+        if (node.id === currentNode.parentId)
+          node.data._children = node.data._children?.filter(child => child.nodeId !== nodeId)
+      })
+      draft.splice(currentNodeIndex, 1)
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
+    })
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+
+    if (currentNode.type === CUSTOM_NOTE_NODE)
+      saveStateToHistory(WorkflowHistoryEvent.NoteDelete)
+
+    else
+      saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
+  }, [getNodesReadOnly, store, deleteNodeInspectorVars, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
+
+  const handleNodeAdd = useCallback<OnNodeAdd>((
+    {
+      nodeType,
+      sourceHandle = 'source',
+      targetHandle = 'target',
+      toolDefaultValue,
+    },
+    {
+      prevNodeId,
+      prevNodeSourceHandle,
+      nextNodeId,
+      nextNodeTargetHandle,
+    },
+  ) => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const nodes = getNodes()
+    const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
+    const {
+      newNode,
+      newIterationStartNode,
+      newLoopStartNode,
+    } = generateNewNode({
+      type: getNodeCustomTypeByNodeDataType(nodeType),
+      data: {
+        ...NODES_INITIAL_DATA[nodeType],
+        title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+        ...(toolDefaultValue || {}),
+        selected: true,
+        _showAddVariablePopup: (nodeType === BlockEnum.VariableAssigner || nodeType === BlockEnum.VariableAggregator) && !!prevNodeId,
+        _holdAddVariablePopup: false,
+      },
+      position: {
+        x: 0,
+        y: 0,
+      },
+    })
+    if (prevNodeId && !nextNodeId) {
+      const prevNodeIndex = nodes.findIndex(node => node.id === prevNodeId)
+      const prevNode = nodes[prevNodeIndex]
+      const outgoers = getOutgoers(prevNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
+      const lastOutgoer = outgoers[outgoers.length - 1]
+
+      newNode.data._connectedTargetHandleIds = [targetHandle]
+      newNode.data._connectedSourceHandleIds = []
+      newNode.position = {
+        x: lastOutgoer ? lastOutgoer.position.x : prevNode.position.x + prevNode.width! + X_OFFSET,
+        y: lastOutgoer ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET : prevNode.position.y,
+      }
+      newNode.parentId = prevNode.parentId
+      newNode.extent = prevNode.extent
+
+      const parentNode = nodes.find(node => node.id === prevNode.parentId) || null
+      const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
+      const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
+
+      if (prevNode.parentId) {
+        newNode.data.isInIteration = isInIteration
+        newNode.data.isInLoop = isInLoop
+        if (isInIteration) {
+          newNode.data.iteration_id = parentNode.id
+          newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+        }
+        if (isInLoop) {
+          newNode.data.loop_id = parentNode.id
+          newNode.zIndex = LOOP_CHILDREN_Z_INDEX
+        }
+        if (isInIteration && (newNode.data.type === BlockEnum.Answer || newNode.data.type === BlockEnum.Tool || newNode.data.type === BlockEnum.Assigner)) {
+          const iterNodeData: IterationNodeType = parentNode.data
+          iterNodeData._isShowTips = true
+        }
+        if (isInLoop && (newNode.data.type === BlockEnum.Answer || newNode.data.type === BlockEnum.Tool || newNode.data.type === BlockEnum.Assigner)) {
+          const iterNodeData: IterationNodeType = parentNode.data
+          iterNodeData._isShowTips = true
+        }
+      }
+
+      const newEdge: Edge = {
+        id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
+        type: CUSTOM_EDGE,
+        source: prevNodeId,
+        sourceHandle: prevNodeSourceHandle,
+        target: newNode.id,
+        targetHandle,
+        data: {
+          sourceType: prevNode.data.type,
+          targetType: newNode.data.type,
+          isInIteration,
+          isInLoop,
+          iteration_id: isInIteration ? prevNode.parentId : undefined,
+          loop_id: isInLoop ? prevNode.parentId : undefined,
+          _connectedNodeIsSelected: true,
+        },
+        zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+      }
+      const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+        [
+          { type: 'add', edge: newEdge },
+        ],
+        nodes,
+>>>>>>> feat/trigger
       )
         return
 
@@ -715,10 +1225,16 @@ export const useNodesInteractions = () => {
       setEdges(newEdges)
       handleSyncWorkflowDraft()
 
+<<<<<<< HEAD
       if (currentNode.type === CUSTOM_NOTE_NODE) {
         saveStateToHistory(WorkflowHistoryEvent.NoteDelete, {
           nodeId: currentNode.id,
         })
+=======
+      if (safeCheckParallelLimit(newNodes, newEdges, prevNode.parentId, 'addingNodes')) {
+        setNodes(newNodes)
+        setEdges(newEdges)
+>>>>>>> feat/trigger
       }
       else {
         saveStateToHistory(WorkflowHistoryEvent.NodeDelete, {
@@ -934,7 +1450,11 @@ export const useNodesInteractions = () => {
           if (newEdge) draft.push(newEdge)
         })
 
+<<<<<<< HEAD
         if (checkNestedParallelLimit(newNodes, newEdges, prevNode)) {
+=======
+        if (safeCheckParallelLimit(newNodes, newEdges, nextNode.parentId, 'modifyingWorkflow')) {
+>>>>>>> feat/trigger
           setNodes(newNodes)
           setEdges(newEdges)
         }
@@ -942,6 +1462,7 @@ export const useNodesInteractions = () => {
           return false
         }
       }
+<<<<<<< HEAD
       if (!prevNodeId && nextNodeId) {
         const nextNodeIndex = nodes.findIndex(node => node.id === nextNodeId)
         const nextNode = nodes[nextNodeIndex]!
@@ -954,6 +1475,39 @@ export const useNodesInteractions = () => {
         newNode.position = {
           x: nextNode.position.x,
           y: nextNode.position.y,
+=======
+      else {
+        if (safeCheckParallelLimit(newNodes, edges, undefined, 'updatingWorkflow'))
+          setNodes(newNodes)
+
+        else
+          return false
+      }
+    }
+    if (prevNodeId && nextNodeId) {
+      const prevNode = nodes.find(node => node.id === prevNodeId)!
+      const nextNode = nodes.find(node => node.id === nextNodeId)!
+
+      newNode.data._connectedTargetHandleIds = [targetHandle]
+      newNode.data._connectedSourceHandleIds = [sourceHandle]
+      newNode.position = {
+        x: nextNode.position.x,
+        y: nextNode.position.y,
+      }
+      newNode.parentId = prevNode.parentId
+      newNode.extent = prevNode.extent
+
+      const parentNode = nodes.find(node => node.id === prevNode.parentId) || null
+      const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
+      const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
+
+      if (parentNode && prevNode.parentId) {
+        newNode.data.isInIteration = isInIteration
+        newNode.data.isInLoop = isInLoop
+        if (isInIteration) {
+          newNode.data.iteration_id = parentNode.id
+          newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+>>>>>>> feat/trigger
         }
         newNode.parentId = nextNode.parentId
         newNode.extent = nextNode.extent
@@ -1382,7 +1936,14 @@ export const useNodesInteractions = () => {
         return filtered
       })
       setEdges(newEdges)
+<<<<<<< HEAD
       handleSyncWorkflowDraft()
+=======
+    }
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
+  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, safeCheckParallelLimit])
+>>>>>>> feat/trigger
 
       saveStateToHistory(WorkflowHistoryEvent.NodeChange, {
         nodeId: currentNodeId,
@@ -1674,8 +2235,13 @@ export const useNodesInteractions = () => {
     const { getNodes, edges } = store.getState()
 
     const nodes = getNodes()
+<<<<<<< HEAD
     const bundledNodes = nodes.filter(
       node => node.data._isBundled && node.data.type !== BlockEnum.Start,
+=======
+    const bundledNodes = nodes.filter(node =>
+      node.data._isBundled,
+>>>>>>> feat/trigger
     )
 
     if (bundledNodes.length) {
@@ -1687,8 +2253,13 @@ export const useNodesInteractions = () => {
     const edgeSelected = edges.some(edge => edge.selected)
     if (edgeSelected) return
 
+<<<<<<< HEAD
     const selectedNode = nodes.find(
       node => node.data.selected && node.data.type !== BlockEnum.Start,
+=======
+    const selectedNode = nodes.find(node =>
+      node.data.selected,
+>>>>>>> feat/trigger
     )
 
     if (selectedNode) handleNodeDelete(selectedNode.id)

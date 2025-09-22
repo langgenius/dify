@@ -20,6 +20,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
@@ -35,6 +36,7 @@ from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
+from services.trigger_debug_service import TriggerDebugService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -1004,3 +1006,165 @@ class DraftWorkflowNodeLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("last run not found")
         return node_exec
+
+
+class DraftWorkflowTriggerNodeApi(Resource):
+    """
+    Single node debug - Polling API for trigger events
+    Path: /apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger
+    """
+
+    @api.doc("poll_draft_workflow_trigger_node")
+    @api.doc(description="Poll for trigger events and execute single node when event arrives")
+    @api.doc(params={
+        "app_id": "Application ID",
+        "node_id": "Node ID"
+    })
+    @api.expect(
+        api.model(
+            "DraftWorkflowTriggerNodeRequest",
+            {
+                "trigger_name": fields.String(required=True, description="Trigger name"),
+                "subscription_id": fields.String(required=True, description="Subscription ID"),
+            }
+        )
+    )
+    @api.response(200, "Trigger event received and node executed successfully")
+    @api.response(403, "Permission denied")
+    @api.response(500, "Internal server error")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        """
+        Poll for trigger events and execute single node when event arrives
+        """
+        if not isinstance(current_user, Account) or not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("trigger_name", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("subscription_id", type=str, required=True, location="json", nullable=False)
+        args = parser.parse_args()
+        trigger_name = args["trigger_name"]
+        subscription_id = args["subscription_id"]
+
+        event = TriggerDebugService.poll_event(
+            tenant_id=app_model.tenant_id,
+            user_id=current_user.id,
+            app_id=app_model.id,
+            subscription_id=subscription_id,
+            node_id=node_id,
+            trigger_name=trigger_name,
+        )
+        if not event:
+            return jsonable_encoder({"status": "waiting"})
+
+        try:
+            workflow_service = WorkflowService()
+            draft_workflow = workflow_service.get_draft_workflow(app_model)
+            if not draft_workflow:
+                raise ValueError("Workflow not found")
+
+            user_inputs = event.model_dump()
+            node_execution = workflow_service.run_draft_workflow_node(
+                app_model=app_model,
+                draft_workflow=draft_workflow,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                account=current_user,
+                query="",
+                files=[],
+            )
+            return jsonable_encoder(node_execution)
+        except Exception:
+            logger.exception("Error running draft workflow trigger node")
+            return jsonable_encoder(
+                {
+                    "status": "error",
+                }
+            ), 500
+
+
+class DraftWorkflowTriggerRunApi(Resource):
+    """
+    Full workflow debug - Polling API for trigger events
+    Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
+    """
+
+    @api.doc("poll_draft_workflow_trigger_run")
+    @api.doc(description="Poll for trigger events and execute full workflow when event arrives")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "DraftWorkflowTriggerRunRequest",
+            {
+                "node_id": fields.String(required=True, description="Node ID"),
+                "trigger_name": fields.String(required=True, description="Trigger name"),
+                "subscription_id": fields.String(required=True, description="Subscription ID"),
+            }
+        )
+    )
+    @api.response(200, "Trigger event received and workflow executed successfully")
+    @api.response(403, "Permission denied")
+    @api.response(500, "Internal server error")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Poll for trigger events and execute full workflow when event arrives
+        """
+        if not isinstance(current_user, Account) or not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("trigger_name", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("subscription_id", type=str, required=True, location="json", nullable=False)
+        args = parser.parse_args()
+        node_id = args["node_id"]
+        trigger_name = args["trigger_name"]
+        subscription_id = args["subscription_id"]
+
+        event = TriggerDebugService.poll_event(
+            tenant_id=app_model.tenant_id,
+            user_id=current_user.id,
+            app_id=app_model.id,
+            subscription_id=subscription_id,
+            node_id=node_id,
+            trigger_name=trigger_name,
+        )
+        if not event:
+            return jsonable_encoder({"status": "waiting"})
+
+        workflow_args = {
+            "inputs": event.model_dump(),
+            "query": "",
+            "files": [],
+        }
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            workflow_args["external_trace_id"] = external_trace_id
+
+        try:
+            response = AppGenerateService.generate(
+                app_model=app_model,
+                user=current_user,
+                args=workflow_args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+            )
+            return helper.compact_generate_response(response)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except Exception:
+            logger.exception("Error running draft workflow trigger run")
+            return jsonable_encoder(
+                {
+                    "status": "error",
+                }
+            ), 500
+

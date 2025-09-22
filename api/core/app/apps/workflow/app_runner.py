@@ -34,6 +34,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
+        root_node_id: str | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -43,6 +44,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
         self._sys_user_id = system_user_id
+        self._root_node_id = root_node_id
 
     def run(self):
         """
@@ -105,6 +107,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
+                root_node_id=self._root_node_id,
                 user_id=self.application_generate_entity.user_id,
             )
 

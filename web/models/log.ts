@@ -234,6 +234,7 @@ export type WorkflowRunDetail = {
   version: string
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
   error?: string
+  triggered_from?: string
   elapsed_time: number
   total_tokens: number
   total_price: number

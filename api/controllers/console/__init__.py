@@ -87,6 +87,7 @@ from .app import (
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
+    workflow_trigger,
 )
 
 # Import auth controllers
@@ -223,6 +224,21 @@ api.add_resource(
 
 api.add_namespace(console_ns)
 
+# Import workspace controllers
+from .workspace import (
+    account,
+    agent_providers,
+    endpoint,
+    load_balancing_config,
+    members,
+    model_providers,
+    models,
+    plugin,
+    tool_providers,
+    trigger_providers,
+    workspace,
+)
+
 __all__ = [
     "account",
     "activate",
@@ -288,6 +304,7 @@ __all__ = [
     "statistic",
     "tags",
     "tool_providers",
+    "trigger_providers",
     "version",
     "website",
     "workflow",

@@ -58,6 +58,18 @@ class NodeType(StrEnum):
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
+    TRIGGER_WEBHOOK = "trigger-webhook"
+    TRIGGER_SCHEDULE = "trigger-schedule"
+    TRIGGER_PLUGIN = "trigger-plugin"
+
+    @property
+    def is_start_node(self) -> bool:
+        return self in [
+            NodeType.START,
+            NodeType.TRIGGER_WEBHOOK,
+            NodeType.TRIGGER_SCHEDULE,
+            NodeType.TRIGGER_PLUGIN,
+        ]
 
 
 class NodeExecutionType(StrEnum):
@@ -122,6 +134,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
+    TRIGGER_INFO = "trigger_info"
 
 
 class WorkflowNodeExecutionStatus(StrEnum):
