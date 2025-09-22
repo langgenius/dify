@@ -61,8 +61,9 @@ check:
 	@echo "✅ Code check complete"
 
 lint:
-	@echo "🔧 Running ruff format and check with fixes..."
+	@echo "🔧 Running ruff format, check with fixes, and import linter..."
 	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@uv run --directory api --dev lint-imports
 	@echo "✅ Linting complete"
 
 type-check:
