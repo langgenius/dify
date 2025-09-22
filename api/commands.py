@@ -10,7 +10,7 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.languages import languages
@@ -65,28 +65,28 @@ def reset_password(email, new_password, password_confirm):
     with Session(db.engine, expire_on_commit=False) as session, session.begin():
         account = session.query(Account).where(Account.email == email).one_or_none()
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    try:
-        valid_password(new_password)
-    except:
-        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
-        return
+        try:
+            valid_password(new_password)
+        except:
+            click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
+            return
 
-    # generate password salt
-    salt = secrets.token_bytes(16)
-    base64_salt = base64.b64encode(salt).decode()
+        # generate password salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
 
-    # encrypt password with salt
-    password_hashed = hash_password(new_password, salt)
-    base64_password_hashed = base64.b64encode(password_hashed).decode()
-    account.password = base64_password_hashed
-    account.password_salt = base64_salt
-    db.session.commit()
-    AccountService.reset_login_error_rate_limit(email)
-    click.echo(click.style("Password reset successfully.", fg="green"))
+        # encrypt password with salt
+        password_hashed = hash_password(new_password, salt)
+        base64_password_hashed = base64.b64encode(password_hashed).decode()
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        session.commit()
+        AccountService.reset_login_error_rate_limit(email)
+        click.echo(click.style("Password reset successfully.", fg="green"))
 
 
 @click.command("reset-email", help="Reset the account email.")
@@ -101,22 +101,22 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
-    with Session(db.engine, expire_on_commit=False) as session, session.begin():
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         account = session.query(Account).where(Account.email == email).one_or_none()
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    try:
-        email_validate(new_email)
-    except:
-        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
-        return
+        try:
+            email_validate(new_email)
+        except:
+            click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
+            return
 
-    account.email = new_email
-    db.session.commit()
-    click.echo(click.style("Email updated successfully.", fg="green"))
+        account.email = new_email
+        session.commit()
+        click.echo(click.style("Email updated successfully.", fg="green"))
 
 
 @click.command(
@@ -140,25 +140,25 @@ def reset_encrypt_key_pair():
     if dify_config.EDITION != "SELF_HOSTED":
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
-    with Session(db.engine, expire_on_commit=False) as session, session.begin():
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         tenants = session.query(Tenant).all()
-    for tenant in tenants:
-        if not tenant:
-            click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
-            return
+        for tenant in tenants:
+            if not tenant:
+                click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
+                return
 
-        tenant.encrypt_public_key = generate_key_pair(tenant.id)
+            tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-        db.session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-        db.session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
-        db.session.commit()
+            session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
+            session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
+            session.commit()
 
-        click.echo(
-            click.style(
-                f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
-                fg="green",
+            click.echo(
+                click.style(
+                    f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
+                    fg="green",
+                )
             )
-        )
 
 
 @click.command("vdb-migrate", help="Migrate vector db.")
@@ -183,7 +183,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 apps = (
                     session.query(App)
                     .where(App.status == "normal")
@@ -205,26 +205,24 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                     app_annotation_setting = (
                         session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
                     )
 
-                if not app_annotation_setting:
-                    skipped_count = skipped_count + 1
-                    click.echo(f"App annotation setting disabled: {app.id}")
-                    continue
-                # get dataset_collection_binding info
-                with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                    if not app_annotation_setting:
+                        skipped_count = skipped_count + 1
+                        click.echo(f"App annotation setting disabled: {app.id}")
+                        continue
+                    # get dataset_collection_binding info
                     dataset_collection_binding = (
                         session.query(DatasetCollectionBinding)
                         .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
                         .first()
                     )
-                if not dataset_collection_binding:
-                    click.echo(f"App annotation collection binding not found: {app.id}")
-                    continue
-                with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                    if not dataset_collection_binding:
+                        click.echo(f"App annotation collection binding not found: {app.id}")
+                        continue
                     annotations = session.scalars(
                         select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
                     ).all()
