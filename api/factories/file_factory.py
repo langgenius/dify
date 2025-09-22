@@ -248,6 +248,19 @@ def _build_from_remote_url(
     )
 
 
+def _extract_filename(url_path: str, content_disposition: str | None) -> str | None:
+    filename = None
+    # Try to extract from Content-Disposition header first
+    if content_disposition:
+        _, params = parse_options_header(content_disposition)
+        # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
+        filename = params.get("filename*") or params.get("filename")
+    # Fallback to URL path if no filename from header
+    if not filename:
+        filename = os.path.basename(url_path)
+    return filename if filename else None
+
+
 def _get_remote_file_info(url: str):
     file_size = -1
     parsed_url = urllib.parse.urlparse(url)
@@ -261,15 +274,13 @@ def _get_remote_file_info(url: str):
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
-        if content_disposition := resp.headers.get("Content-Disposition"):
-            _, params = parse_options_header(content_disposition)
-            # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
-            filename_from_header = params.get("filename*") or params.get("filename")
-            if filename_from_header:
-                filename = filename_from_header
-                mime_type, _ = mimetypes.guess_type(filename)
-                if mime_type is None:
-                    mime_type = ""
+        content_disposition = resp.headers.get("Content-Disposition")
+        extracted_filename = _extract_filename(url_path, content_disposition)
+        if extracted_filename:
+            filename = extracted_filename
+            mime_type, _ = mimetypes.guess_type(filename)
+            if mime_type is None:
+                mime_type = ""
         file_size = int(resp.headers.get("Content-Length", file_size))
         # Fallback to Content-Type header if mime_type is still empty
         if not mime_type:
