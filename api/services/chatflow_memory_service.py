@@ -11,7 +11,6 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.entities import (
     MemoryBlock,
     MemoryBlockSpec,
-    MemoryBlockWithVisibility,
     MemoryScheduleMode,
     MemoryScope,
     MemoryTerm,
@@ -372,33 +371,6 @@ class ChatflowMemoryService:
                         app_id=chatflow_memory_variable.app_id,
                         conversation_id=chatflow_memory_variable.conversation_id,
                         node_id=chatflow_memory_variable.node_id
-                    )
-                )
-        return results
-
-    @staticmethod
-    def _with_visibility(
-        app: App,
-        raw_results: Sequence[ChatflowMemoryVariable]
-    ) -> Sequence[MemoryBlockWithVisibility]:
-        workflow = WorkflowService().get_published_workflow(app)
-        if not workflow:
-            return []
-        results = []
-        for chatflow_memory_variable in raw_results:
-            spec = next(
-                (spec for spec in workflow.memory_blocks if spec.id == chatflow_memory_variable.memory_id),
-                None
-            )
-            if spec:
-                results.append(
-                    MemoryBlockWithVisibility(
-                        id=chatflow_memory_variable.memory_id,
-                        name=chatflow_memory_variable.name,
-                        value=MemoryValueData.model_validate_json(chatflow_memory_variable.value).value,
-                        end_user_editable=spec.end_user_editable,
-                        end_user_visible=spec.end_user_visible,
-                        version=chatflow_memory_variable.version
                     )
                 )
         return results
