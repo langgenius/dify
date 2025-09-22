@@ -6,6 +6,7 @@ from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -26,6 +27,12 @@ from controllers.console.error import (
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
+from libs.token import (
+    set_access_token_to_cookie, 
+    set_refresh_token_to_cookie, 
+    clear_access_token_from_cookie, 
+    clear_refresh_token_from_cookie
+)
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
@@ -94,24 +101,8 @@ class LoginApi(Resource):
 
         # Set HTTP-only secure cookies for tokens
         # Max age is 30 days for refresh token
-        response.set_cookie(
-            "access_token",
-            value=token_pair.access_token,
-            httponly=True,
-            secure=request.is_secure,  # Use secure flag in production (HTTPS)
-            samesite="Lax",
-            max_age=60 * 60 * 24,  # 1 day for access token
-            path="/",
-        )
-        response.set_cookie(
-            "refresh_token",
-            value=token_pair.refresh_token,
-            httponly=True,
-            secure=request.is_secure,
-            samesite="Lax",
-            max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
-            path="/",
-        )
+        set_access_token_to_cookie(request, response, token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
 
         return response
 
@@ -128,8 +119,8 @@ class LogoutApi(Resource):
             response = make_response({"result": "success"})
 
         # Clear cookies on logout
-        response.set_cookie("access_token", "", expires=0, path="/", secure=True, httponly=True, samesite="Lax")
-        response.set_cookie("refresh_token", "", expires=0, path="/", secure=True, httponly=True, samesite="Lax")
+        clear_access_token_from_cookie(request, response)
+        clear_refresh_token_from_cookie(request, response)
 
         return response
 
@@ -252,25 +243,8 @@ class EmailCodeLoginApi(Resource):
         response = make_response({"result": "success"})
 
         # Set HTTP-only secure cookies for tokens
-        response.set_cookie(
-            "access_token",
-            value=token_pair.access_token,
-            httponly=True,
-            secure=request.is_secure,
-            samesite="Lax",
-            max_age=60 * 60 * 24,  # 1 day for access token
-            path="/",
-        )
-        response.set_cookie(
-            "refresh_token",
-            value=token_pair.refresh_token,
-            httponly=True,
-            secure=request.is_secure,
-            samesite="Lax",
-            max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
-            path="/",
-        )
-
+        set_access_token_to_cookie(request, response, token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
         return response
 
 
@@ -289,25 +263,8 @@ class RefreshTokenApi(Resource):
             response = make_response({"result": "success"})
 
             # Update cookies with new tokens
-            response.set_cookie(
-                "access_token",
-                value=new_token_pair.access_token,
-                httponly=True,
-                secure=request.is_secure,
-                samesite="Lax",
-                max_age=60 * 60 * 24,  # 1 day for access token
-                path="/",
-            )
-            response.set_cookie(
-                "refresh_token",
-                value=new_token_pair.refresh_token,
-                httponly=True,
-                secure=request.is_secure,
-                samesite="Lax",
-                max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
-                path="/",
-            )
-
+            set_access_token_to_cookie(request, response, new_token_pair.access_token)
+            set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
             return response
         except Exception as e:
             return {"result": "fail", "message": str(e)}, 401

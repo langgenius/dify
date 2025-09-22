@@ -94,7 +94,8 @@ export async function getAccessToken(isPublicAPI?: boolean) {
 
 const beforeRequestPublicAuthorization: BeforeRequestHook = async (request) => {
   const token = await getAccessToken(true)
-  request.headers.set('Authorization', `Bearer ${token}`)
+  if (token)
+    request.headers.set('Authorization', `Bearer ${token}`)
 }
 
 const beforeRequestAuthorization: BeforeRequestHook = async (request) => {

@@ -11,6 +11,7 @@ from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
+from libs.token import extract_access_token
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -34,7 +35,7 @@ class PassportResource(Resource):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
         user_id = request.args.get("user_id")
-        web_app_access_token = request.args.get("web_app_access_token")
+        web_app_access_token = extract_access_token(request)
 
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")

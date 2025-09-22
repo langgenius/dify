@@ -1,4 +1,5 @@
 from flask_restx import Resource, reqparse
+from flask import request, make_response
 from jwt import InvalidTokenError
 
 import services
@@ -11,10 +12,10 @@ from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
+from libs.token import set_access_token_to_cookie
 from libs.password import valid_password
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
-
 
 @web_ns.route("/login")
 class LoginApi(Resource):
@@ -50,7 +51,9 @@ class LoginApi(Resource):
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        return {"result": "success", "data": {"access_token": token}}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        set_access_token_to_cookie(request, response, token)
+        return response
 
 
 # class LogoutApi(Resource):
@@ -93,7 +96,9 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
 
-        return {"result": "success", "data": token}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        set_access_token_to_cookie(request, response, token)
+        return response
 
 
 @web_ns.route("/email-code-login/validity")
@@ -136,4 +141,6 @@ class EmailCodeLoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": {"access_token": token}}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        set_access_token_to_cookie(request, response, token)
+        return response
