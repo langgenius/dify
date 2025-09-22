@@ -1,7 +1,6 @@
 from typing import Literal
 
 from flask import request
-from libs.login import current_user
 from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
@@ -22,7 +21,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.file_fields import file_fields, upload_config_fields
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import Account
 from services.file_service import FileService
 

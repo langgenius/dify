@@ -1,11 +1,10 @@
-from libs.login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants import HIDDEN_VALUE
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models.account import Account
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
@@ -77,7 +76,6 @@ class APIBasedExtensionAPI(Resource):
         parser.add_argument("api_key", type=str, required=True, location="json")
         args = parser.parse_args()
         assert isinstance(current_user, Account)
-
 
         extension_data = APIBasedExtension(
             tenant_id=current_user.current_tenant_id,

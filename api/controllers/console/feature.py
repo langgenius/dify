@@ -1,7 +1,6 @@
-from libs.login import Account, current_user
 from flask_restx import Resource, fields
 
-from libs.login import login_required
+from libs.login import Account, current_user, login_required
 from services.feature_service import FeatureService
 
 from . import api, console_ns
