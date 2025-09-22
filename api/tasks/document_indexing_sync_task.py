@@ -2,9 +2,9 @@ import logging
 import time
 
 import click
+import sqlalchemy as sa
 from celery import shared_task
 from sqlalchemy import select
-import sqlalchemy as sa
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.extractor.notion_extractor import NotionExtractor

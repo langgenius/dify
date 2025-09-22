@@ -1,11 +1,11 @@
 from datetime import datetime
 
 import pytz  # pip install pytz
+import sqlalchemy as sa
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
-import sqlalchemy as sa
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
 

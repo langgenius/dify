@@ -4,11 +4,11 @@ from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from typing import Literal, cast
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
-import sqlalchemy as sa
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
