@@ -20,10 +20,11 @@ const RuleDetail = ({
 }: RuleDetailProps) => {
   const { t } = useTranslation()
 
+  // chunking rules are not available in pipeline mode
   const segmentationRuleMap = {
     mode: t('datasetDocuments.embedding.mode'),
-    segmentLength: t('datasetDocuments.embedding.segmentLength'),
-    textCleaning: t('datasetDocuments.embedding.textCleaning'),
+    // segmentLength: t('datasetDocuments.embedding.segmentLength'),
+    // textCleaning: t('datasetDocuments.embedding.textCleaning'),
   }
 
   const getRuleName = useCallback((key: string) => {
