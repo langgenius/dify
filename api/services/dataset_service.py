@@ -312,7 +312,6 @@ class DatasetService:
         db.session.commit()
         return dataset
 
-
     @staticmethod
     def get_dataset(dataset_id) -> Dataset | None:
         dataset: Dataset | None = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
