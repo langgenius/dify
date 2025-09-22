@@ -8,8 +8,6 @@ on:
       - "deploy/enterprise"
       - "build/**"
       - "release/e-*"
-      - "deploy/rag-dev"
-      - "feat/rag-2"
     tags:
       - "*"
 
