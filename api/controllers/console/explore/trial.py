@@ -7,7 +7,6 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.common import fields
 from controllers.common.fields import build_site_model
-from fields.app_fields import app_detail_fields_with_site
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -38,6 +37,7 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from fields.app_fields import app_detail_fields_with_site
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user
