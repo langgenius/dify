@@ -23,7 +23,7 @@ class UnstructuredWordExtractor(BaseExtractor):
         unstructured_version = tuple(int(x) for x in __unstructured_version__.split("."))
         # check the file extension
         try:
-            import magic  # noqa: F401  # pyright: ignore[reportUnusedImport]
+            import magic  # noqa: F401
 
             is_doc = detect_filetype(self._file_path) == FileType.DOC
         except ImportError:

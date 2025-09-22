@@ -76,6 +76,9 @@ const translation = {
     input: 'Please enter',
     select: 'Please select',
   },
+  label: {
+    optional: '(optional)',
+  },
   voice: {
     language: {
       zhHans: 'Chinese',
@@ -524,6 +527,7 @@ const translation = {
       selectModelCredential: 'Select a model credential',
       customModelCredentialsDeleteTip: 'Credential is in use and cannot be deleted',
     },
+    parametersInvalidRemoved: 'Some parameters are invalid and have been removed',
   },
   dataSource: {
     add: 'Add a data source',
@@ -622,6 +626,7 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
     noRelatedApp: 'No linked apps',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Speak now...',

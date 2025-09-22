@@ -16,7 +16,10 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from libs.login import login_required
+from models import App
+from services.workflow_service import WorkflowService
 
 
 @console_ns.route("/rule-generate")
@@ -205,9 +208,6 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args["current"] == code_template or args["current"] == "") and args["node_id"] != "":
-                from models import App, db
-                from services.workflow_service import WorkflowService
-
                 app = db.session.query(App).where(App.id == args["flow_id"]).first()
                 if not app:
                     return {"error": f"app {args['flow_id']} not found"}, 400
@@ -261,6 +261,7 @@ class InstructionGenerateApi(Resource):
                     instruction=args["instruction"],
                     model_config=args["model_config"],
                     ideal_output=args["ideal_output"],
+                    workflow_service=WorkflowService(),
                 )
             return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:

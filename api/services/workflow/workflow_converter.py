@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -65,7 +65,7 @@ class WorkflowConverter:
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
-        new_app.mode = AppMode.ADVANCED_CHAT.value if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
         new_app.icon_type = icon_type or app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
@@ -146,7 +146,7 @@ class WorkflowConverter:
             graph=graph,
             model_config=app_config.model,
             prompt_template=app_config.prompt_template,
-            file_upload=app_config.additional_features.file_upload,
+            file_upload=app_config.additional_features.file_upload if app_config.additional_features else None,
             external_data_variable_node_mapping=external_data_variable_node_mapping,
         )
 
@@ -203,7 +203,7 @@ class WorkflowConverter:
         app_mode_enum = AppMode.value_of(app_model.mode)
         app_config: EasyUIBasedAppConfig
         if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
-            app_model.mode = AppMode.AGENT_CHAT.value
+            app_model.mode = AppMode.AGENT_CHAT
             app_config = AgentChatAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config
             )
@@ -279,7 +279,7 @@ class WorkflowConverter:
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
                     "inputs": inputs,
-                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT.value else "",
+                    "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT else "",
                 },
             }
 
@@ -327,7 +327,7 @@ class WorkflowConverter:
 
     def _convert_to_knowledge_retrieval_node(
         self, new_app_mode: AppMode, dataset_config: DatasetEntity, model_config: ModelConfigEntity
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
@@ -383,7 +383,7 @@ class WorkflowConverter:
         graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: Optional[FileUploadConfig] = None,
+        file_upload: FileUploadConfig | None = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
     ):
         """
@@ -403,7 +403,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Optional[Any] = None
+        prompts: Any | None = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:
@@ -618,7 +618,7 @@ class WorkflowConverter:
         :param app_model: App instance
         :return: AppMode
         """
-        if app_model.mode == AppMode.COMPLETION.value:
+        if app_model.mode == AppMode.COMPLETION:
             return AppMode.WORKFLOW
         else:
             return AppMode.ADVANCED_CHAT
