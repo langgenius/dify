@@ -131,8 +131,8 @@ importers:
         specifier: ^5.60.5
         version: 5.83.0(@tanstack/react-query@5.83.0(react@19.1.1))(react@19.1.1)
       abcjs:
-        specifier: ^6.4.4
-        version: 6.5.1
+        specifier: ^6.5.2
+        version: 6.5.2
       ahooks:
         specifier: ^3.8.4
         version: 3.9.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -3849,8 +3849,8 @@ packages:
   abbrev@1.1.1:
     resolution: {integrity: sha512-nne9/IiQ/hzIhY6pdDnbBtz7DjPTKrY00P/zvPSm5pOFkl6xuGrGnXn/VtTNNfNtAfZ9/1RtehkszU9qcTii0Q==}
 
-  abcjs@6.5.1:
-    resolution: {integrity: sha512-kv/VEB8W0JyB1u9BmW4CXiQU225B/EeXXFhtTUtasHVJ+qDTvn3U6sEtnHzl8sRmrQiMRV/EgUTNUu7hXnm1pQ==}
+  abcjs@6.5.2:
+    resolution: {integrity: sha512-XLDZPy/4TZbOqPsLwuu0Umsl79NTAcObEkboPxdYZXI8/fU6PNh59SAnkZOnEPVbyT8EXfBUjgNoe/uKd3T0xQ==}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -12912,7 +12912,7 @@ snapshots:
   abbrev@1.1.1:
     optional: true
 
-  abcjs@6.5.1: {}
+  abcjs@6.5.2: {}
 
   abort-controller@3.0.0:
     dependencies:
