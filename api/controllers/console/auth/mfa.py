@@ -1,7 +1,7 @@
 from typing import cast
 
 import flask_login
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
