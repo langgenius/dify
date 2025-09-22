@@ -3,6 +3,8 @@ const translation = {
   chunkingMode: {
     general: '汎用',
     parentChild: '親子',
+    qa: 'Q&A',
+    graph: 'グラフ',
   },
   parentMode: {
     paragraph: '段落',
@@ -22,6 +24,10 @@ const translation = {
   externalAPIPanelDocumentation: '外部ナレッジベース連携 API の作成方法',
   localDocs: 'ローカルドキュメント',
   documentCount: ' ドキュメント',
+  docAllEnabled_one: '{{count}}ドキュメントが有効',
+  docAllEnabled_other: 'すべての{{count}}ドキュメントが有効',
+  partialEnabled_one: '合計{{count}}ドキュメント、{{num}}利用可能',
+  partialEnabled_other: '合計{{count}}ドキュメント、{{num}}利用可能',
   wordCount: ' k 単語',
   appCount: ' リンクされたアプリ',
   createDataset: 'ナレッジベースを作成',
@@ -117,12 +123,12 @@ const translation = {
       description: '全文検索とベクトル検索を同時に実行し、ユーザーのクエリに最適なマッチを選択するために Rerank 付けを行います。Rerank モデル API の設定が必要です。',
       recommend: '推奨',
     },
-    invertedIndex: {
-      title: '転置インデックス',
-      description: '効率的な検索に使用される構造です。各用語が含まれるドキュメントまたは Web ページを指すように、用語ごとに整理されています。',
-    },
     change: '変更',
     changeRetrievalMethod: '検索方法の変更',
+    keyword_search: {
+      title: '逆インデックス',
+      description: '逆インデックスは効率的な検索のために使用される構造です。用語によって整理されており、各用語はそれを含む文書やウェブページを指し示します。',
+    },
   },
   docsFailedNotice: 'ドキュメントのインデックス作成に失敗しました',
   retry: '再試行',
@@ -215,6 +221,20 @@ const translation = {
       startLabeling: 'ラベリングを開始',
       documentInformation: 'ドキュメント情報',
       technicalParameters: '技術パラメータ',
+    },
+  },
+  updated: '更新された',
+  createFromPipeline: '知識パイプラインから作成する',
+  externalKnowledgeBase: '外部知識ベース',
+  serviceApi: {
+    title: 'サービスAPI',
+    enabled: 'サービス中',
+    disabled: '無効',
+    card: {
+      title: 'バックエンドサービスAPI',
+      endpoint: 'サービスAPIエンドポイント',
+      apiKey: 'APIキー',
+      apiReference: 'APIリファレンス',
     },
   },
 }

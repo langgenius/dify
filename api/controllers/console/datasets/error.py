@@ -71,3 +71,9 @@ class ChildChunkDeleteIndexError(BaseHTTPException):
     error_code = "child_chunk_delete_index_error"
     description = "Delete child chunk index failed: {message}"
     code = 500
+
+
+class PipelineNotFoundError(BaseHTTPException):
+    error_code = "pipeline_not_found"
+    description = "Pipeline not found."
+    code = 404

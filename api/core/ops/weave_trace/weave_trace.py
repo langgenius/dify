@@ -23,8 +23,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -169,13 +168,13 @@ class WeaveDataTrace(BaseTraceInstance):
             if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             node_total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
             attributes = {str(k): v for k, v in execution_metadata.items()}
             attributes.update(
@@ -190,7 +189,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
             if process_data and process_data.get("model_mode") == "chat":
                 attributes.update(
                     {
@@ -418,7 +417,7 @@ class WeaveDataTrace(BaseTraceInstance):
             if not login_status:
                 raise ValueError("Weave login failed")
             else:
-                print("Weave login successful")
+                logger.info("Weave login successful")
                 return True
         except Exception as e:
             logger.debug("Weave API check failed: %s", str(e))

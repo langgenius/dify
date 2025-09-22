@@ -494,7 +494,17 @@ const translation = {
       configLoadBalancing: 'Конфигурация балансировки нагрузки',
       providerManagedTip: 'Текущая конфигурация размещена у провайдера.',
       specifyModelCredentialTip: 'Используйте конфигурированные учетные данные модели.',
+      removeModel: 'Удалить модель',
+      addModel: 'Добавить модель',
+      modelCredential: 'Удостоверение модели',
+      editModelCredential: 'Редактирование учетных данных модели',
+      selectModelCredential: 'Выбор учетных данных модели',
+      addNewModelCredential: 'Добавление новых учетных данных модели',
+      customModelCredentials: 'Учетные данные пользовательской модели',
+      manageCredentials: 'Управление учетными данными',
+      customModelCredentialsDeleteTip: 'Учетные данные используются и не могут быть удалены',
     },
+    parametersInvalidRemoved: 'Некоторые параметры недействительны и были удалены',
   },
   dataSource: {
     add: 'Добавить источник данных',
@@ -593,6 +603,7 @@ const translation = {
     viewDoc: 'Просмотреть документацию',
     relatedApp: 'связанные приложения',
     noRelatedApp: 'Нет связанных приложений',
+    pipeline: 'Трубопровод',
   },
   voiceInput: {
     speaking: 'Говорите сейчас...',
@@ -747,6 +758,9 @@ const translation = {
     content: 'Содержимое обратной связи',
     placeholder: 'Пожалуйста, опишите, что пошло не так или как мы можем улучшиться...',
     subtitle: 'Пожалуйста, сообщите нам, что пошло не так с этим ответом',
+  },
+  label: {
+    optional: '(необязательно)',
   },
 }
 

@@ -1,3 +1,4 @@
+import collections
 import json
 import logging
 import os
@@ -5,7 +6,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -30,17 +31,19 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from core.workflow.entities.workflow_execution import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
+if TYPE_CHECKING:
+    from core.workflow.entities import WorkflowExecution
+
 logger = logging.getLogger(__name__)
 
 
-class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
+class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
             case TracingProviderEnum.LANGFUSE:
@@ -121,7 +124,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
-provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
+provider_config_map = OpsTraceProviderConfigMap()
 
 
 class OpsTraceManager:
@@ -406,7 +409,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: str | None = None,
-        workflow_execution: WorkflowExecution | None = None,
+        workflow_execution: Optional["WorkflowExecution"] = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,
