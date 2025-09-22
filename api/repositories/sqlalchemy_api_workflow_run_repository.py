@@ -22,7 +22,6 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -46,7 +45,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         session_maker: SQLAlchemy sessionmaker instance for database connections
     """
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(self, session_maker: sessionmaker[Session]):
         """
         Initialize the repository with a sessionmaker.
 
@@ -61,7 +60,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         triggered_from: str,
         limit: int = 20,
-        last_id: Optional[str] = None,
+        last_id: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -107,7 +106,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         run_id: str,
-    ) -> Optional[WorkflowRun]:
+    ) -> WorkflowRun | None:
         """
         Get a specific workflow run by ID with tenant and app isolation.
         """

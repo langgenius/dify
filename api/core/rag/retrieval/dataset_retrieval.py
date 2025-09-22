@@ -4,7 +4,7 @@ import re
 import threading
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from flask import Flask, current_app
 from sqlalchemy import Float, and_, or_, select, text
@@ -85,9 +85,9 @@ class DatasetRetrieval:
         show_retrieve_source: bool,
         hit_callback: DatasetIndexToolCallbackHandler,
         message_id: str,
-        memory: Optional[TokenBufferMemory] = None,
-        inputs: Optional[Mapping[str, Any]] = None,
-    ) -> Optional[str]:
+        memory: TokenBufferMemory | None = None,
+        inputs: Mapping[str, Any] | None = None,
+    ) -> str | None:
         """
         Retrieve dataset.
         :param app_id: app_id
@@ -290,9 +290,9 @@ class DatasetRetrieval:
         model_instance: ModelInstance,
         model_config: ModelConfigWithCredentialsEntity,
         planning_strategy: PlanningStrategy,
-        message_id: Optional[str] = None,
-        metadata_filter_document_ids: Optional[dict[str, list[str]]] = None,
-        metadata_condition: Optional[MetadataCondition] = None,
+        message_id: str | None = None,
+        metadata_filter_document_ids: dict[str, list[str]] | None = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         tools = []
         for dataset in available_datasets:
@@ -410,12 +410,12 @@ class DatasetRetrieval:
         top_k: int,
         score_threshold: float,
         reranking_mode: str,
-        reranking_model: Optional[dict] = None,
-        weights: Optional[dict[str, Any]] = None,
+        reranking_model: dict | None = None,
+        weights: dict[str, Any] | None = None,
         reranking_enable: bool = True,
-        message_id: Optional[str] = None,
-        metadata_filter_document_ids: Optional[dict[str, list[str]]] = None,
-        metadata_condition: Optional[MetadataCondition] = None,
+        message_id: str | None = None,
+        metadata_filter_document_ids: dict[str, list[str]] | None = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         if not available_datasets:
             return []
@@ -505,9 +505,7 @@ class DatasetRetrieval:
 
         return all_documents
 
-    def _on_retrieval_end(
-        self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
-    ) -> None:
+    def _on_retrieval_end(self, documents: list[Document], message_id: str | None = None, timer: dict | None = None):
         """Handle retrieval end."""
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
@@ -560,7 +558,7 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
+    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
         """
         Handle query.
         """
@@ -588,8 +586,8 @@ class DatasetRetrieval:
         query: str,
         top_k: int,
         all_documents: list,
-        document_ids_filter: Optional[list[str]] = None,
-        metadata_condition: Optional[MetadataCondition] = None,
+        document_ids_filter: list[str] | None = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         with flask_app.app_context():
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
@@ -664,7 +662,7 @@ class DatasetRetrieval:
         hit_callback: DatasetIndexToolCallbackHandler,
         user_id: str,
         inputs: dict,
-    ) -> Optional[list[DatasetRetrieverBaseTool]]:
+    ) -> list[DatasetRetrieverBaseTool] | None:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param tenant_id: tenant id
@@ -853,9 +851,9 @@ class DatasetRetrieval:
         user_id: str,
         metadata_filtering_mode: str,
         metadata_model_config: ModelConfig,
-        metadata_filtering_conditions: Optional[MetadataFilteringCondition],
+        metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
-    ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
+    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
         document_query = db.session.query(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
@@ -950,7 +948,7 @@ class DatasetRetrieval:
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
-    ) -> Optional[list[dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | None:
         # get all metadata field
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = db.session.scalars(metadata_stmt).all()
@@ -1005,7 +1003,7 @@ class DatasetRetrieval:
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
+        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return

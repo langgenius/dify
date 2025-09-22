@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 
@@ -20,13 +20,13 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
     account: str
     account_password: str
     namespace: str = "dify"
-    namespace_password: Optional[str] = None
+    namespace_password: str | None = None
     metrics: str = "cosine"
     read_timeout: int = 60000
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ANALYTICDB_KEY_ID is required")
         if not values["access_key_secret"]:
@@ -65,7 +65,7 @@ class AnalyticdbVectorOpenAPI:
         self._client = Client(self._client_config)
         self._initialize()
 
-    def _initialize(self) -> None:
+    def _initialize(self):
         cache_key = f"vector_initialize_{self.config.instance_id}"
         lock_name = f"{cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):
@@ -76,7 +76,7 @@ class AnalyticdbVectorOpenAPI:
             self._create_namespace_if_not_exists()
             redis_client.set(database_exist_cache_key, 1, ex=3600)
 
-    def _initialize_vector_database(self) -> None:
+    def _initialize_vector_database(self):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models  # type: ignore
 
         request = gpdb_20160503_models.InitVectorDatabaseRequest(
@@ -87,7 +87,7 @@ class AnalyticdbVectorOpenAPI:
         )
         self._client.init_vector_database(request)
 
-    def _create_namespace_if_not_exists(self) -> None:
+    def _create_namespace_if_not_exists(self):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException  # type: ignore
 
@@ -200,7 +200,7 @@ class AnalyticdbVectorOpenAPI:
         response = self._client.query_collection_data(request)
         return len(response.body.matches.match) > 0
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         ids_str = ",".join(f"'{id}'" for id in ids)
@@ -216,7 +216,7 @@ class AnalyticdbVectorOpenAPI:
         )
         self._client.delete_collection_data(request)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         request = gpdb_20160503_models.DeleteCollectionDataRequest(
@@ -305,7 +305,7 @@ class AnalyticdbVectorOpenAPI:
         documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
-    def delete(self) -> None:
+    def delete(self):
         try:
             from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 

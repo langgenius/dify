@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from functools import wraps
 from typing import Union, cast
 
@@ -12,9 +13,13 @@ from models.model import EndUser
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
 current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
+from typing import ParamSpec, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
-def login_required(func):
+def login_required(func: Callable[P, R]):
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
@@ -49,17 +54,12 @@ def login_required(func):
     """
 
     @wraps(func)
-    def decorated_view(*args, **kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs):
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
-
-        # flask 1.x compatibility
-        # current_app.ensure_sync is only available in Flask >= 2.0
-        if callable(getattr(current_app, "ensure_sync", None)):
-            return current_app.ensure_sync(func)(*args, **kwargs)
-        return func(*args, **kwargs)
+        return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view
 

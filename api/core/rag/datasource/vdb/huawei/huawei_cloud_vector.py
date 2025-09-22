@@ -1,7 +1,7 @@
 import json
 import logging
 import ssl
-from typing import Any, Optional
+from typing import Any
 
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, model_validator
@@ -28,12 +28,12 @@ def create_ssl_context() -> ssl.SSLContext:
 
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
-    username: str | None
-    password: str | None
+    username: str | None = None
+    password: str | None = None
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["hosts"]:
             raise ValueError("config HOSTS is required")
         return values
@@ -78,20 +78,20 @@ class HuaweiCloudVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         return bool(self._client.exists(index=self._collection_name, id=id))
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
         results = self._client.search(index=self._collection_name, body=query_str)
         ids = [hit["_id"] for hit in results["hits"]["hits"]]
         if ids:
             self.delete_by_ids(ids)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -157,8 +157,8 @@ class HuaweiCloudVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict[Any, Any]]] = None,
-        index_params: Optional[dict] = None,
+        metadatas: list[dict[Any, Any]] | None = None,
+        index_params: dict | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

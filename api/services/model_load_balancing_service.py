@@ -1,9 +1,9 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import Optional, Union
+from typing import Union
 
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 class ModelLoadBalancingService:
-    def __init__(self) -> None:
+    def __init__(self):
         self.provider_manager = ProviderManager()
 
-    def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+    def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
         enable model load balancing.
 
@@ -49,7 +49,7 @@ class ModelLoadBalancingService:
         # Enable model load balancing
         provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
 
-    def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+    def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
         disable model load balancing.
 
@@ -165,7 +165,7 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials = json.loads(load_balancing_config.encrypted_config)
+                    credentials: dict[str, object] = json.loads(load_balancing_config.encrypted_config)
                 else:
                     credentials = {}
             except JSONDecodeError:
@@ -180,11 +180,13 @@ class ModelLoadBalancingService:
             for variable in credential_secret_variables:
                 if variable in credentials:
                     try:
-                        credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            credentials.get(variable),  # ty: ignore [invalid-argument-type]
-                            decoding_rsa_key,
-                            decoding_cipher_rsa,
-                        )
+                        token_value = credentials.get(variable)
+                        if isinstance(token_value, str):
+                            credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                token_value,
+                                decoding_rsa_key,
+                                decoding_cipher_rsa,
+                            )
                     except ValueError:
                         pass
 
@@ -209,7 +211,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_config(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get load balancing configuration.
         :param tenant_id: workspace id
@@ -295,7 +297,7 @@ class ModelLoadBalancingService:
 
     def update_load_balancing_configs(
         self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict], config_from: str
-    ) -> None:
+    ):
         """
         Update load balancing configurations.
         :param tenant_id: workspace id
@@ -320,16 +322,14 @@ class ModelLoadBalancingService:
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = (
-            db.session.query(LoadBalancingModelConfig)
-            .where(
+        current_load_balancing_configs = db.session.scalars(
+            select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                 LoadBalancingModelConfig.model_name == model,
             )
-            .all()
-        )
+        ).all()
 
         # id as key, config as value
         current_load_balancing_configs_dict = {config.id: config for config in current_load_balancing_configs}
@@ -345,8 +345,9 @@ class ModelLoadBalancingService:
             credential_id = config.get("credential_id")
             enabled = config.get("enabled")
 
+            credential_record: ProviderCredential | ProviderModelCredential | None = None
+
             if credential_id:
-                credential_record: ProviderCredential | ProviderModelCredential | None = None
                 if config_from == "predefined-model":
                     credential_record = (
                         db.session.query(ProviderCredential)
@@ -477,8 +478,8 @@ class ModelLoadBalancingService:
         model: str,
         model_type: str,
         credentials: dict,
-        config_id: Optional[str] = None,
-    ) -> None:
+        config_id: str | None = None,
+    ):
         """
         Validate load balancing credentials.
         :param tenant_id: workspace id
@@ -535,9 +536,9 @@ class ModelLoadBalancingService:
         model_type: ModelType,
         model: str,
         credentials: dict,
-        load_balancing_model_config: Optional[LoadBalancingModelConfig] = None,
+        load_balancing_model_config: LoadBalancingModelConfig | None = None,
         validate: bool = True,
-    ) -> dict:
+    ):
         """
         Validate custom credentials.
         :param tenant_id: workspace id
@@ -605,7 +606,7 @@ class ModelLoadBalancingService:
         else:
             raise ValueError("No credential schema found")
 
-    def _clear_credentials_cache(self, tenant_id: str, config_id: str) -> None:
+    def _clear_credentials_cache(self, tenant_id: str, config_id: str):
         """
         Clear credentials cache.
         :param tenant_id: workspace id

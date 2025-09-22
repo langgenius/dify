@@ -17,6 +17,7 @@ const translation = {
     design: '디자인',
     business: '사업',
     agent: '에이전트',
+    rag: '넝마',
   },
   allTags: '모든 태그',
   searchTags: '검색 태그',

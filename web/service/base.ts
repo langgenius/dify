@@ -24,8 +24,13 @@ import type {
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, baseOptions, getAccessToken } from './fetch'
+import { ContentType, base, getAccessToken, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
+import type {
+  DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
+  DataSourceNodeProcessingResponse,
+} from '@/types/pipeline'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -65,6 +70,10 @@ export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 export type IOnMemoryUpdate = (memory: MemoryUpdateResponse) => void
 
+export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
+export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
+export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
+
 export type IOtherOptions = {
   isPublicAPI?: boolean
   isMarketplaceAPI?: boolean
@@ -100,6 +109,11 @@ export type IOtherOptions = {
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
   onMemoryUpdate?: IOnMemoryUpdate
+
+  // Pipeline data source node run
+  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
+  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
+  onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
 function unicodeToChar(text: string) {
@@ -156,6 +170,9 @@ const handleStream = (
   onTextReplace?: IOnTextReplace,
   onAgentLog?: IOnAgentLog,
   onMemoryUpdate?: IOnMemoryUpdate,
+  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
+  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
+  onDataSourceNodeError?: IOnDataSourceNodeError,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -277,6 +294,18 @@ const handleStream = (
             else if (bufferObj.event === 'memory_update') {
               onMemoryUpdate?.(bufferObj as MemoryUpdateResponse)
             }
+            else if (bufferObj.event === 'datasource_processing') {
+              onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
+            }
+            else if (bufferObj.event === 'datasource_completed') {
+              onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
+            }
+            else if (bufferObj.event === 'datasource_error') {
+              onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
+            }
+            else {
+              console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -371,11 +400,15 @@ export const ssePost = async (
     onLoopNext,
     onLoopFinish,
     onMemoryUpdate,
+    onDataSourceNodeProcessing,
+    onDataSourceNodeCompleted,
+    onDataSourceNodeError,
   } = otherOptions
   const abortController = new AbortController()
 
   const token = localStorage.getItem('console_token')
 
+  const baseOptions = getBaseOptions()
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
@@ -440,40 +473,45 @@ export const ssePost = async (
         }
         return
       }
-      return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-        if (moreInfo.errorMessage) {
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
-          return
-        }
-        onData?.(str, isFirstMessage, moreInfo)
-      },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
-      onMemoryUpdate,
+      return handleStream(
+        res,
+        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+          if (moreInfo.errorMessage) {
+            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
+            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+            return
+          }
+          onData?.(str, isFirstMessage, moreInfo)
+        },
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
+        onMemoryUpdate,
+        onDataSourceNodeProcessing,
+        onDataSourceNodeCompleted,
+        onDataSourceNodeError,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
@@ -497,6 +535,8 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         globalThis.location.href = loginUrl
         return Promise.reject(err)
       }
+      if (/\/login/.test(url))
+        return Promise.reject(errRespData)
       // special code
       const { code, message } = errRespData
       // webapp sso

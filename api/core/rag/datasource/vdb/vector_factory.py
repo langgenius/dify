@@ -1,7 +1,7 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 
@@ -26,13 +26,13 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
         index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
         return index_struct_dict
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: Optional[list] = None):
+    def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
             attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self._dataset = dataset
@@ -180,7 +180,7 @@ class Vector:
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    def create(self, texts: Optional[list] = None, **kwargs):
+    def create(self, texts: list | None = None, **kwargs):
         if texts:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
@@ -207,10 +207,10 @@ class Vector:
     def text_exists(self, id: str) -> bool:
         return self._vector_processor.text_exists(id)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         self._vector_processor.delete_by_ids(ids)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         self._vector_processor.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
@@ -220,7 +220,7 @@ class Vector:
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 
-    def delete(self) -> None:
+    def delete(self):
         self._vector_processor.delete()
         # delete collection redis cache
         if self._vector_processor.collection_name:

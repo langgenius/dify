@@ -49,7 +49,7 @@ class ClickzettaConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         """
@@ -84,7 +84,7 @@ class ClickzettaConnectionPool:
         self._pool_locks: dict[str, threading.Lock] = {}
         self._max_pool_size = 5  # Maximum connections per configuration
         self._connection_timeout = 300  # 5 minutes timeout
-        self._cleanup_thread: Optional[threading.Thread] = None
+        self._cleanup_thread: threading.Thread | None = None
         self._shutdown = False
         self._start_cleanup_thread()
 
@@ -134,7 +134,7 @@ class ClickzettaConnectionPool:
 
         raise RuntimeError(f"Failed to create ClickZetta connection after {max_retries} attempts")
 
-    def _configure_connection(self, connection: "Connection") -> None:
+    def _configure_connection(self, connection: "Connection"):
         """Configure connection session settings."""
         try:
             with connection.cursor() as cursor:
@@ -221,7 +221,7 @@ class ClickzettaConnectionPool:
             # No valid connection found, create new one
             return self._create_connection(config)
 
-    def return_connection(self, config: ClickzettaConfig, connection: "Connection") -> None:
+    def return_connection(self, config: ClickzettaConfig, connection: "Connection"):
         """Return a connection to the pool."""
         config_key = self._get_config_key(config)
 
@@ -243,7 +243,7 @@ class ClickzettaConnectionPool:
                 with contextlib.suppress(Exception):
                     connection.close()
 
-    def _cleanup_expired_connections(self) -> None:
+    def _cleanup_expired_connections(self):
         """Clean up expired connections from all pools."""
         current_time = time.time()
 
@@ -265,7 +265,7 @@ class ClickzettaConnectionPool:
 
                     self._pools[config_key] = valid_connections
 
-    def _start_cleanup_thread(self) -> None:
+    def _start_cleanup_thread(self):
         """Start background thread for connection cleanup."""
 
         def cleanup_worker():
@@ -280,7 +280,7 @@ class ClickzettaConnectionPool:
         self._cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
         self._cleanup_thread.start()
 
-    def shutdown(self) -> None:
+    def shutdown(self):
         """Shutdown connection pool and close all connections."""
         self._shutdown = True
 
@@ -303,8 +303,8 @@ class ClickzettaVector(BaseVector):
     """
 
     # Class-level write queue and lock for serializing writes
-    _write_queue: Optional[queue.Queue] = None
-    _write_thread: Optional[threading.Thread] = None
+    _write_queue: queue.Queue | None = None
+    _write_thread: threading.Thread | None = None
     _write_lock = threading.Lock()
     _shutdown = False
 
@@ -319,7 +319,7 @@ class ClickzettaVector(BaseVector):
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
 
-    def _return_connection(self, connection: "Connection") -> None:
+    def _return_connection(self, connection: "Connection"):
         """Return a connection to the pool."""
         self._connection_pool.return_connection(self._config, connection)
 
@@ -328,7 +328,7 @@ class ClickzettaVector(BaseVector):
 
         def __init__(self, vector_instance: "ClickzettaVector"):
             self.vector = vector_instance
-            self.connection: Optional[Connection] = None
+            self.connection: Connection | None = None
 
         def __enter__(self) -> "Connection":
             self.connection = self.vector._get_connection()
@@ -342,7 +342,7 @@ class ClickzettaVector(BaseVector):
         """Get a connection context manager."""
         return self.ConnectionContext(self)
 
-    def _parse_metadata(self, raw_metadata: str, row_id: str) -> dict:
+    def _parse_metadata(self, raw_metadata: str, row_id: str):
         """
         Parse metadata from JSON string with proper error handling and fallback.
 
@@ -641,7 +641,7 @@ class ClickzettaVector(BaseVector):
 
         for doc, embedding in zip(batch_docs, batch_embeddings):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata if doc.metadata else {}
+            metadata = doc.metadata or {}
 
             if not isinstance(metadata, dict):
                 metadata = {}
@@ -723,7 +723,7 @@ class ClickzettaVector(BaseVector):
                 result = cursor.fetchone()
                 return result[0] > 0 if result else False
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """Delete documents by IDs."""
         if not ids:
             return
@@ -736,7 +736,7 @@ class ClickzettaVector(BaseVector):
         # Execute delete through write queue
         self._execute_write(self._delete_by_ids_impl, ids)
 
-    def _delete_by_ids_impl(self, ids: list[str]) -> None:
+    def _delete_by_ids_impl(self, ids: list[str]):
         """Implementation of delete by IDs (executed in write worker thread)."""
         safe_ids = [self._safe_doc_id(id) for id in ids]
 
@@ -748,7 +748,7 @@ class ClickzettaVector(BaseVector):
             with connection.cursor() as cursor:
                 cursor.execute(sql, binding_params=safe_ids)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         """Delete documents by metadata field."""
         # Check if table exists before attempting delete
         if not self._table_exists():
@@ -758,7 +758,7 @@ class ClickzettaVector(BaseVector):
         # Execute delete through write queue
         self._execute_write(self._delete_by_metadata_field_impl, key, value)
 
-    def _delete_by_metadata_field_impl(self, key: str, value: str) -> None:
+    def _delete_by_metadata_field_impl(self, key: str, value: str):
         """Implementation of delete by metadata field (executed in write worker thread)."""
         with self.get_connection_context() as connection:
             with connection.cursor() as cursor:
@@ -1027,7 +1027,7 @@ class ClickzettaVector(BaseVector):
 
         return documents
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete the entire collection."""
         with self.get_connection_context() as connection:
             with connection.cursor() as cursor:

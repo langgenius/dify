@@ -55,6 +55,7 @@ const translation = {
     passwordInvalid: 'Parola trebuie să conțină litere și cifre, iar lungimea trebuie să fie mai mare de 8 caractere',
     passwordLengthInValid: 'Parola trebuie să aibă cel puțin 8 caractere',
     registrationNotAllowed: 'Contul nu a fost găsit. Vă rugăm să contactați administratorul de sistem pentru a vă înregistra.',
+    invalidEmailOrPassword: 'Email sau parolă invalidă.',
   },
   license: {
     tip: 'Înainte de a începe Dify Community Edition, citește',
@@ -109,6 +110,15 @@ const translation = {
     noLoginMethodTip: 'Vă rugăm să contactați administratorul sistemului pentru a adăuga o metodă de autentificare.',
     disabled: 'Autentificarea webapp-ului este dezactivată. Vă rugăm să contactați administratorul sistemului pentru a o activa. Puteți încerca să folosiți aplicația direct.',
     login: 'Conectare',
+  },
+  signup: {
+    haveAccount: 'Ai deja un cont?',
+    signIn: 'Autentificare',
+    noAccount: 'Nu ai un cont?',
+    verifyMail: 'Continuați cu codul de verificare',
+    signUp: 'Înscriere',
+    createAccount: 'Creează-ți contul',
+    welcome: '👋 Buna! Te rugăm să completezi detaliile pentru a începe.',
   },
 }
 

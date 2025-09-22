@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -14,7 +13,7 @@ from services.dataset_service import DatasetService
 
 class DatasetConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[DatasetEntity]:
+    def convert(cls, config: dict) -> DatasetEntity | None:
         """
         Convert model config to model config
 
@@ -158,7 +157,7 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict) -> dict:
+    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
         """
         Extract dataset config for legacy compatibility
 

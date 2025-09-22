@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 import requests
@@ -24,18 +24,18 @@ logger = logging.getLogger(__name__)
 
 class ElasticSearchConfig(BaseModel):
     # Regular Elasticsearch config
-    host: Optional[str] = None
-    port: Optional[int] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
+    host: str | None = None
+    port: int | None = None
+    username: str | None = None
+    password: str | None = None
 
     # Elastic Cloud specific config
-    cloud_url: Optional[str] = None  # Cloud URL for Elasticsearch Cloud
-    api_key: Optional[str] = None
+    cloud_url: str | None = None  # Cloud URL for Elasticsearch Cloud
+    api_key: str | None = None
 
     # Common config
     use_cloud: bool = False
-    ca_certs: Optional[str] = None
+    ca_certs: str | None = None
     verify_certs: bool = False
     request_timeout: int = 100000
     retry_on_timeout: bool = True
@@ -43,7 +43,7 @@ class ElasticSearchConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         use_cloud = values.get("use_cloud", False)
         cloud_url = values.get("cloud_url")
 
@@ -174,20 +174,20 @@ class ElasticSearchVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         return bool(self._client.exists(index=self._collection_name, id=id))
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
         results = self._client.search(index=self._collection_name, body=query_str)
         ids = [hit["_id"] for hit in results["hits"]["hits"]]
         if ids:
             self.delete_by_ids(ids)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -256,8 +256,8 @@ class ElasticSearchVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict[Any, Any]]] = None,
-        index_params: Optional[dict] = None,
+        metadatas: list[dict[Any, Any]] | None = None,
+        index_params: dict | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

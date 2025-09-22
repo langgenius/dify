@@ -1,4 +1,3 @@
-from flask_login import current_user
 from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
@@ -10,6 +9,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
+from libs.login import current_user
+from models import Account
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
@@ -35,6 +36,8 @@ class ConversationListApi(InstalledAppResource):
             pinned = args["pinned"] == "true"
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             with Session(db.engine) as session:
                 return WebConversationService.pagination_by_last_id(
                     session=session,
@@ -58,6 +61,8 @@ class ConversationApi(InstalledAppResource):
 
         conversation_id = str(c_id)
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -81,6 +86,8 @@ class ConversationRenameApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             return ConversationService.rename(
                 app_model, conversation_id, current_user, args["name"], args["auto_generate"]
             )
@@ -98,6 +105,8 @@ class ConversationPinApi(InstalledAppResource):
         conversation_id = str(c_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             WebConversationService.pin(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -113,6 +122,8 @@ class ConversationUnPinApi(InstalledAppResource):
             raise NotChatAppError()
 
         conversation_id = str(c_id)
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}

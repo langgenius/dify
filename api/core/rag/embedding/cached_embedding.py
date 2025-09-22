@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 from sqlalchemy.exc import IntegrityError
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance, user: Optional[str] = None) -> None:
+    def __init__(self, model_instance: ModelInstance, user: str | None = None):
         self._model_instance = model_instance
         self._user = user
 

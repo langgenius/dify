@@ -16,7 +16,7 @@ def http_status_message(code):
     return HTTP_STATUS_CODES.get(code, "")
 
 
-def register_external_error_handlers(api: Api) -> None:
+def register_external_error_handlers(api: Api):
     @api.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
@@ -69,12 +69,16 @@ def register_external_error_handlers(api: Api) -> None:
                 headers["WWW-Authenticate"] = 'Bearer realm="api"'
             return data, status_code, headers
 
+    _ = handle_http_exception
+
     @api.errorhandler(ValueError)
     def handle_value_error(e: ValueError):
         got_request_exception.send(current_app, exception=e)
         status_code = 400
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
         return data, status_code
+
+    _ = handle_value_error
 
     @api.errorhandler(AppInvokeQuotaExceededError)
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
@@ -83,15 +87,17 @@ def register_external_error_handlers(api: Api) -> None:
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
         return data, status_code
 
+    _ = handle_quota_exceeded
+
     @api.errorhandler(Exception)
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
 
         status_code = 500
-        data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
+        data = getattr(e, "data", {"message": http_status_message(status_code)})
 
         # 🔒 Normalize non-mapping data (e.g., if someone set e.data = Response)
-        if not isinstance(data, Mapping):
+        if not isinstance(data, dict):
             data = {"message": str(e)}
 
         data.setdefault("code", "unknown")
@@ -101,9 +107,11 @@ def register_external_error_handlers(api: Api) -> None:
         exc_info: Any = sys.exc_info()
         if exc_info[1] is None:
             exc_info = None
-        current_app.log_exception(exc_info)  # ty: ignore [invalid-argument-type]
+        current_app.log_exception(exc_info)
 
         return data, status_code
+
+    _ = handle_general_exception
 
 
 class ExternalApi(Api):

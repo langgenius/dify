@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from flask import current_app
 from sqlalchemy import select
@@ -230,9 +230,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: dict,
-        doc_form: Optional[str] = None,
+        doc_form: str | None = None,
         doc_language: str = "English",
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
         indexing_technique: str = "economy",
     ) -> IndexingEstimate:
         """
@@ -358,6 +358,7 @@ class IndexingRunner:
             extract_setting = ExtractSetting(
                 datasource_type=DatasourceType.NOTION.value,
                 notion_info={
+                    "credential_id": data_source_info["credential_id"],
                     "notion_workspace_id": data_source_info["notion_workspace_id"],
                     "notion_obj_id": data_source_info["notion_page_id"],
                     "notion_page_type": data_source_info["type"],
@@ -421,7 +422,7 @@ class IndexingRunner:
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -512,7 +513,7 @@ class IndexingRunner:
         dataset: Dataset,
         dataset_document: DatasetDocument,
         documents: list[Document],
-    ) -> None:
+    ):
         """
         insert index and update document/segment status to completed
         """
@@ -529,6 +530,7 @@ class IndexingRunner:
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
+        create_keyword_thread = None
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             create_keyword_thread = threading.Thread(
@@ -567,7 +569,11 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+        if (
+            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"
+            and create_keyword_thread is not None
+        ):
             create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
@@ -650,8 +656,8 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
-    ) -> None:
+        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
+    ):
         """
         Update the document indexing status.
         """
@@ -670,7 +676,7 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict) -> None:
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
         """
         Update the document segment by document id.
         """

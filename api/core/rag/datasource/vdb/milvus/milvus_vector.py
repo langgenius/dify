@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -26,17 +26,17 @@ class MilvusConfig(BaseModel):
     """
 
     uri: str  # Milvus server URI
-    token: Optional[str] = None  # Optional token for authentication
-    user: Optional[str] = None  # Username for authentication
-    password: Optional[str] = None  # Password for authentication
+    token: str | None = None  # Optional token for authentication
+    user: str | None = None  # Username for authentication
+    password: str | None = None  # Password for authentication
     batch_size: int = 100  # Batch size for operations
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
-    analyzer_params: Optional[str] = None  # Analyzer params
+    analyzer_params: str | None = None  # Analyzer params
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.
@@ -79,7 +79,7 @@ class MilvusVector(BaseVector):
             self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
 
-    def _load_collection_fields(self, fields: Optional[list[str]] = None) -> None:
+    def _load_collection_fields(self, fields: list[str] | None = None):
         if fields is None:
             # Load collection fields from remote server
             collection_info = self._client.describe_collection(self._collection_name)
@@ -171,7 +171,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """
         Delete documents by their IDs.
         """
@@ -183,7 +183,7 @@ class MilvusVector(BaseVector):
                 ids = [item["id"] for item in result]
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete(self) -> None:
+    def delete(self):
         """
         Delete the entire collection.
         """
@@ -292,7 +292,7 @@ class MilvusVector(BaseVector):
         )
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):
         """
         Create a new collection in Milvus with the specified schema and index parameters.

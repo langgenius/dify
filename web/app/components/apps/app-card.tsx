@@ -159,9 +159,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${app.name}.yml`
       a.click()
+      URL.revokeObjectURL(url)
     }
     catch {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -279,12 +281,21 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </>
         )}
         {
-          (isGettingUserCanAccessApp || !userCanAccessApp?.result) ? null : <>
-            <Divider className="my-1" />
-            <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
-              <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
-            </button>
-          </>
+          (!systemFeatures.webapp_auth.enabled)
+            ? <>
+              <Divider className="my-1" />
+              <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+                <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+              </button>
+            </>
+            : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
+              <>
+                <Divider className="my-1" />
+                <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+                  <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+                </button>
+              </>
+            )
         }
         <Divider className="my-1" />
         {

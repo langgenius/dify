@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
@@ -26,7 +25,7 @@ class ModelProviderService:
     Model Provider Service
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.provider_manager = ProviderManager()
 
     def _get_provider_configuration(self, tenant_id: str, provider: str):
@@ -52,7 +51,7 @@ class ModelProviderService:
 
         return provider_configuration
 
-    def get_provider_list(self, tenant_id: str, model_type: Optional[str] = None) -> list[ProviderResponse]:
+    def get_provider_list(self, tenant_id: str, model_type: str | None = None) -> list[ProviderResponse]:
         """
         get provider list.
 
@@ -128,9 +127,7 @@ class ModelProviderService:
             for model in provider_configurations.get_models(provider=provider)
         ]
 
-    def get_provider_credential(
-        self, tenant_id: str, provider: str, credential_id: Optional[str] = None
-    ) -> Optional[dict]:
+    def get_provider_credential(self, tenant_id: str, provider: str, credential_id: str | None = None) -> dict | None:
         """
         get provider credentials.
 
@@ -142,7 +139,7 @@ class ModelProviderService:
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         return provider_configuration.get_provider_credential(credential_id=credential_id)  # type: ignore
 
-    def validate_provider_credentials(self, tenant_id: str, provider: str, credentials: dict) -> None:
+    def validate_provider_credentials(self, tenant_id: str, provider: str, credentials: dict):
         """
         validate provider credentials before saving.
 
@@ -193,7 +190,7 @@ class ModelProviderService:
             credential_name=credential_name,
         )
 
-    def remove_provider_credential(self, tenant_id: str, provider: str, credential_id: str) -> None:
+    def remove_provider_credential(self, tenant_id: str, provider: str, credential_id: str):
         """
         remove a saved provider credential (by credential_id).
         :param tenant_id: workspace id
@@ -204,7 +201,7 @@ class ModelProviderService:
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.delete_provider_credential(credential_id=credential_id)
 
-    def switch_active_provider_credential(self, tenant_id: str, provider: str, credential_id: str) -> None:
+    def switch_active_provider_credential(self, tenant_id: str, provider: str, credential_id: str):
         """
         :param tenant_id: workspace id
         :param provider: provider name
@@ -216,7 +213,7 @@ class ModelProviderService:
 
     def get_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str | None
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Retrieve model-specific credentials.
 
@@ -232,9 +229,7 @@ class ModelProviderService:
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
-    def validate_model_credentials(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict
-    ) -> None:
+    def validate_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict):
         """
         validate model credentials.
 
@@ -303,9 +298,7 @@ class ModelProviderService:
             credential_name=credential_name,
         )
 
-    def remove_model_credential(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
-    ) -> None:
+    def remove_model_credential(self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str):
         """
         remove model credentials.
 
@@ -323,7 +316,7 @@ class ModelProviderService:
 
     def switch_active_custom_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
-    ) -> None:
+    ):
         """
         switch model credentials.
 
@@ -341,7 +334,7 @@ class ModelProviderService:
 
     def add_model_credential_to_model_list(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
-    ) -> None:
+    ):
         """
         add model credentials to model list.
 
@@ -357,7 +350,7 @@ class ModelProviderService:
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
-    def remove_model(self, tenant_id: str, provider: str, model_type: str, model: str) -> None:
+    def remove_model(self, tenant_id: str, provider: str, model_type: str, model: str):
         """
         remove model credentials.
 
@@ -453,7 +446,7 @@ class ModelProviderService:
 
         return model_schema.parameter_rules if model_schema else []
 
-    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelResponse]:
+    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> DefaultModelResponse | None:
         """
         get default model of model type.
 
@@ -485,7 +478,7 @@ class ModelProviderService:
             logger.debug("get_default_model_of_model_type error: %s", e)
             return None
 
-    def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
+    def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str):
         """
         update default model of model type.
 
@@ -502,7 +495,7 @@ class ModelProviderService:
 
     def get_model_provider_icon(
         self, tenant_id: str, provider: str, icon_type: str, lang: str
-    ) -> tuple[Optional[bytes], Optional[str]]:
+    ) -> tuple[bytes | None, str | None]:
         """
         get model provider icon.
 
@@ -517,7 +510,7 @@ class ModelProviderService:
 
         return byte_data, mime_type
 
-    def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
+    def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str):
         """
         switch preferred provider.
 
@@ -534,7 +527,7 @@ class ModelProviderService:
         # Switch preferred provider type
         provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)
 
-    def enable_model(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+    def enable_model(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
         enable model.
 
@@ -547,7 +540,7 @@ class ModelProviderService:
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.enable_model(model=model, model_type=ModelType.value_of(model_type))
 
-    def disable_model(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+    def disable_model(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
         disable model.
 

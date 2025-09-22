@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from flask import Response
 from flask_restx import Resource, reqparse
@@ -73,7 +73,7 @@ class MCPAppApi(Resource):
             ValidationError: Invalid request format or parameters
         """
         args = mcp_request_parser.parse_args()
-        request_id: Optional[Union[int, str]] = args.get("id")
+        request_id: Union[int, str] | None = args.get("id")
         mcp_request = self._parse_mcp_request(args)
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -99,7 +99,7 @@ class MCPAppApi(Resource):
 
         return mcp_server, app
 
-    def _validate_server_status(self, mcp_server: AppMCPServer) -> None:
+    def _validate_server_status(self, mcp_server: AppMCPServer):
         """Validate MCP server status"""
         if mcp_server.status != AppMCPServerStatus.ACTIVE:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Server is not active")
@@ -107,7 +107,7 @@ class MCPAppApi(Resource):
     def _process_mcp_message(
         self,
         mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification,
-        request_id: Optional[Union[int, str]],
+        request_id: Union[int, str] | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -130,7 +130,7 @@ class MCPAppApi(Resource):
     def _handle_request(
         self,
         mcp_request: mcp_types.ClientRequest,
-        request_id: Optional[Union[int, str]],
+        request_id: Union[int, str] | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -150,7 +150,7 @@ class MCPAppApi(Resource):
     def _get_user_input_form(self, app: App) -> list[VariableEntity]:
         """Get and convert user input form"""
         # Get raw user input form based on app mode
-        if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             if not app.workflow:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
             raw_user_input_form = app.workflow.user_input_form(to_old_structure=True)

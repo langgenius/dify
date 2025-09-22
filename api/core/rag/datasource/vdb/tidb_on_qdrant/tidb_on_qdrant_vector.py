@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import qdrant_client
 import requests
@@ -45,9 +45,9 @@ if TYPE_CHECKING:
 
 class TidbOnQdrantConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     timeout: float = 20
-    root_path: Optional[str] = None
+    root_path: str | None = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
     replication_factor: int = 1
@@ -90,7 +90,7 @@ class TidbOnQdrantVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.TIDB_ON_QDRANT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -180,10 +180,10 @@ class TidbOnQdrantVector(BaseVector):
         self,
         texts: Iterable[str],
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict]] = None,
-        ids: Optional[Sequence[str]] = None,
+        metadatas: list[dict] | None = None,
+        ids: Sequence[str] | None = None,
         batch_size: int = 64,
-        group_id: Optional[str] = None,
+        group_id: str | None = None,
     ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
 
@@ -225,7 +225,7 @@ class TidbOnQdrantVector(BaseVector):
     def _build_payloads(
         cls,
         texts: Iterable[str],
-        metadatas: Optional[list[dict]],
+        metadatas: list[dict] | None,
         content_payload_key: str,
         metadata_payload_key: str,
         group_id: str,
@@ -284,7 +284,7 @@ class TidbOnQdrantVector(BaseVector):
             else:
                 raise e
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 

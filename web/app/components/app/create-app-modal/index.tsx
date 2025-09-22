@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
@@ -35,14 +35,15 @@ type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
+  defaultAppMode?: AppMode
 }
 
-function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps) {
+function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
   const { notify } = useContext(ToastContext)
 
-  const [appMode, setAppMode] = useState<AppMode>('advanced-chat')
+  const [appMode, setAppMode] = useState<AppMode>(defaultAppMode || 'advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
@@ -54,6 +55,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
+
+  useEffect(() => {
+    if (appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion')
+      setIsAppTypeExpanded(true)
+  }, [appMode])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
@@ -264,7 +270,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
 type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
-const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate }: CreateAppDialogProps) => {
+const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppDialogProps) => {
   return (
     <FullScreenModal
       overflowVisible
@@ -272,7 +278,7 @@ const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate }: Crea
       open={show}
       onClose={onClose}
     >
-      <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} />
+      <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} defaultAppMode={defaultAppMode} />
     </FullScreenModal>
   )
 }
