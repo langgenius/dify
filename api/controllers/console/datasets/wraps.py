@@ -4,7 +4,7 @@ from functools import wraps
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.dataset import Pipeline
 
 

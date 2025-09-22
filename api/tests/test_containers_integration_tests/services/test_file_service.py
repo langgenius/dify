@@ -8,7 +8,7 @@ from sqlalchemy import Engine
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError

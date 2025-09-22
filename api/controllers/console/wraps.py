@@ -13,7 +13,7 @@ from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
-from models.account import Account, AccountStatus
+from models import Account, AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus

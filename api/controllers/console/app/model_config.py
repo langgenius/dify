@@ -15,7 +15,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.login import login_required
-from models.account import Account
+from models import Account
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 

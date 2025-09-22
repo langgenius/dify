@@ -7,7 +7,7 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from services.account_service import TenantService
 
 

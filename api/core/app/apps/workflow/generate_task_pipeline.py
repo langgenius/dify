@@ -61,7 +61,7 @@ from core.workflow.repositories.workflow_node_execution_repository import Workfl
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
 from models.workflow import (

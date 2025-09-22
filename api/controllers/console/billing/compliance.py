@@ -4,7 +4,7 @@ from flask_restx import Resource, reqparse
 
 from libs.helper import extract_remote_ip
 from libs.login import login_required
-from models.account import Account
+from models import Account
 from services.billing_service import BillingService
 
 from .. import api

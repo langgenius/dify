@@ -14,7 +14,7 @@ from faker import Faker
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task

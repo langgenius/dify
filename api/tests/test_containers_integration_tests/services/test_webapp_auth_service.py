@@ -7,7 +7,7 @@ from faker import Faker
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from libs.password import hash_password
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, Site
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType

@@ -29,7 +29,7 @@ from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models import App
-from models.account import Account
+from models import Account
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService

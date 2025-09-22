@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 from werkzeug.exceptions import NotFound
 
-from models.account import Account
+from models import Account
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService

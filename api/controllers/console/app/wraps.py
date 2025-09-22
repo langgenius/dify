@@ -6,7 +6,7 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
 from models import App, AppMode
-from models.account import Account
+from models import Account
 
 P = ParamSpec("P")
 R = TypeVar("R")

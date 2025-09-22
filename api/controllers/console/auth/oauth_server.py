@@ -10,7 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
-from models.account import Account
+from models import Account
 from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 

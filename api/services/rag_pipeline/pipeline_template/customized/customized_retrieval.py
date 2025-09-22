@@ -2,7 +2,7 @@ import yaml
 
 from extensions.ext_database import db
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType

@@ -5,7 +5,7 @@ from faker import Faker
 
 from core.entities.model_entities import ModelStatus
 from core.model_runtime.entities.model_entities import FetchFrom, ModelType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
 

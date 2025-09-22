@@ -10,7 +10,7 @@ from configs import dify_config
 from controllers.console import api, console_ns
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
-from models.account import Account
+from models import Account
 
 from ..wraps import account_initialization_required, setup_required
 
