@@ -32,6 +32,7 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
+
 class ChatflowMemoryService:
     @staticmethod
     def get_persistent_memories(
@@ -186,9 +187,9 @@ class ChatflowMemoryService:
                     ChatflowMemoryVariable.memory_id == spec.id,
                     ChatflowMemoryVariable.tenant_id == tenant_id,
                     ChatflowMemoryVariable.app_id == app_id,
-                    ChatflowMemoryVariable.node_id == \
+                    ChatflowMemoryVariable.node_id == 
                         (node_id if spec.scope == MemoryScope.NODE else None),
-                    ChatflowMemoryVariable.conversation_id == \
+                    ChatflowMemoryVariable.conversation_id == 
                         (conversation_id if spec.term == MemoryTerm.SESSION else None),
                 )
             ).order_by(ChatflowMemoryVariable.version.desc()).limit(1)
@@ -516,6 +517,7 @@ class ChatflowMemoryService:
         for message in messages:
             result.append((str(message.role.value), message.get_text_content()))
         return result
+
 
 def _get_memory_sync_lock_key(app_id: str, conversation_id: str) -> str:
     """Generate Redis lock key for memory sync updates

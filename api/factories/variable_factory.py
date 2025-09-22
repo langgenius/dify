@@ -20,7 +20,9 @@ from core.variables.segments import (
     NoneSegment,
     ObjectSegment,
     Segment,
-    StringSegment, VersionedMemorySegment, VersionedMemoryValue,
+    StringSegment,
+    VersionedMemorySegment,
+    VersionedMemoryValue,
 )
 from core.variables.types import SegmentType
 from core.variables.variables import (
@@ -38,7 +40,8 @@ from core.variables.variables import (
     ObjectVariable,
     SecretVariable,
     StringVariable,
-    Variable, VersionedMemoryVariable,
+    Variable,
+    VersionedMemoryVariable,
 )
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,

@@ -1055,6 +1055,7 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
     else:
         raise Exception("unreachable")
 
+
 def _fetch_memory_blocks(workflow: Workflow, conversation_id: str, is_draft: bool) -> Mapping[str, str]:
     memory_blocks = {}
     memory_block_specs = workflow.memory_blocks

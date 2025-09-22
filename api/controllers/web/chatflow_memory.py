@@ -1,14 +1,9 @@
 from flask_restx import reqparse
-from sqlalchemy.orm.session import Session
-from sympy import false
 
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from core.memory.entities import MemoryBlock
 from core.workflow.entities.variable_pool import VariablePool
-from libs.helper import uuid_value
-from models import db
-from models.chatflow_memory import ChatflowMemoryVariable
 from services.chatflow_memory_service import ChatflowMemoryService
 from services.workflow_service import WorkflowService
 
@@ -31,6 +26,7 @@ class MemoryListApi(WebApiResource):
             result = [it for it in result if it.memory_id == memory_id]
         return [it for it in result if it.end_user_visible]
 
+
 class MemoryEditApi(WebApiResource):
     def put(self, app_model):
         parser = reqparse.RequestParser()
@@ -43,6 +39,8 @@ class MemoryEditApi(WebApiResource):
         update = args.get("update")
         conversation_id = args.get("conversation_id")
         node_id = args.get("node_id")
+        if not isinstance(update, str):
+            return {'error': 'Update must be a string'}, 400
         if not workflow:
             return {'error': 'Workflow not found'}, 404
         memory_spec = next((it for it in workflow.memory_blocks if it.id == args['id']), None)
@@ -63,6 +61,7 @@ class MemoryEditApi(WebApiResource):
             is_draft=False
         )
         return '', 204
+
 
 api.add_resource(MemoryListApi, '/memories')
 api.add_resource(MemoryEditApi, '/memory-edit')

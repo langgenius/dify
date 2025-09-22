@@ -28,7 +28,7 @@ from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
-from core.workflow.graph_engine.entities.event import GraphRunSucceededEvent
+from core.workflow.graph_events import GraphRunSucceededEvent
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -222,6 +222,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             assistant_message = workflow_outputs.get('answer')
             if not assistant_message:
                 logger.warning("Chatflow output does not contain 'answer'.")
+                return
+            if not isinstance(assistant_message, str):
+                logger.warning("Chatflow output 'answer' is not a string.")
                 return
             try:
                 self._sync_conversation_to_chatflow_tables(assistant_message)

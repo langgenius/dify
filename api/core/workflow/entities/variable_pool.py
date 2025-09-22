@@ -83,7 +83,6 @@ class VariablePool(BaseModel):
         for memory_id, memory_value in self.memory_blocks.items():
             self.add([CONVERSATION_VARIABLE_NODE_ID, memory_id], memory_value)
 
-
     def add(self, selector: Sequence[str], value: Any, /):
         """
         Add a variable to the variable pool.

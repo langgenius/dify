@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 from uuid import uuid4
 
@@ -7,23 +7,23 @@ from pydantic import BaseModel, Field
 from core.app.app_config.entities import ModelConfig
 
 
-class MemoryScope(str, Enum):
+class MemoryScope(StrEnum):
     """Memory scope determined by node_id field"""
     APP = "app"  # node_id is None
     NODE = "node"  # node_id is not None
 
 
-class MemoryTerm(str, Enum):
+class MemoryTerm(StrEnum):
     """Memory term determined by conversation_id field"""
     SESSION = "session"  # conversation_id is not None
     PERSISTENT = "persistent"  # conversation_id is None
 
 
-class MemoryStrategy(str, Enum):
+class MemoryStrategy(StrEnum):
     ON_TURNS = "on_turns"
 
 
-class MemoryScheduleMode(str, Enum):
+class MemoryScheduleMode(StrEnum):
     SYNC = "sync"
     ASYNC = "async"
 
@@ -68,6 +68,7 @@ class MemoryBlock(BaseModel):
     app_id: str
     conversation_id: Optional[str] = None
     node_id: Optional[str] = None
+
 
 class MemoryBlockWithVisibility(BaseModel):
     id: str

@@ -202,9 +202,10 @@ class ArrayFileSegment(ArraySegment):
     def text(self) -> str:
         return ""
 
+
 class VersionedMemoryValue(BaseModel):
     current_value: str = None  # type: ignore
-    versions: Mapping[str, str] = dict()
+    versions: Mapping[str, str] = {}
 
     model_config = ConfigDict(frozen=True)
 
@@ -215,7 +216,7 @@ class VersionedMemoryValue(BaseModel):
     ) -> "VersionedMemoryValue":
         if version_name is None:
             version_name = str(len(self.versions) + 1)
-        if version_name in self.versions.keys():
+        if version_name in self.versions:
             raise ValueError(f"Version '{version_name}' already exists.")
         self.current_value = new_value
         return VersionedMemoryValue(
@@ -225,6 +226,7 @@ class VersionedMemoryValue(BaseModel):
                 **self.versions,
             }
         )
+
 
 class VersionedMemorySegment(Segment):
     value_type: SegmentType = SegmentType.VERSIONED_MEMORY

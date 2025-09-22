@@ -1235,7 +1235,7 @@ class LLMNode(Node):
         memory_blocks = workflow.memory_blocks
 
         for block_id in block_ids:
-            memory_block_spec = next((block for block in memory_blocks if block.id == block_id),None)
+            memory_block_spec = next((block for block in memory_blocks if block.id == block_id), None)
 
             if memory_block_spec and memory_block_spec.scope == MemoryScope.NODE:
                 is_draft = (self.invoke_from == InvokeFrom.DEBUGGER)

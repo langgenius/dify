@@ -22,7 +22,8 @@ from .segments import (
     ObjectSegment,
     Segment,
     StringSegment,
-    get_segment_discriminator, VersionedMemorySegment,
+    VersionedMemorySegment,
+    get_segment_discriminator,
 )
 from .types import SegmentType
 
@@ -105,8 +106,10 @@ class BooleanVariable(BooleanSegment, Variable):
 class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
     pass
 
+
 class VersionedMemoryVariable(VersionedMemorySegment, Variable):
     pass
+
 
 class ArrayBooleanVariable(ArrayBooleanSegment, ArrayVariable):
     pass
