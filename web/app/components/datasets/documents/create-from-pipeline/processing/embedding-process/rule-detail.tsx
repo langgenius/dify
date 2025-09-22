@@ -20,11 +20,6 @@ const RuleDetail = ({
 }: RuleDetailProps) => {
   const { t } = useTranslation()
 
-  // chunking rules are not available in pipeline mode, so we only show the mode
-  const segmentationRuleMap = {
-    mode: t('datasetDocuments.embedding.mode'),
-  }
-
   const getValue = useCallback((field: string) => {
     let value = '-'
     switch (field) {
@@ -45,13 +40,10 @@ const RuleDetail = ({
 
   return (
     <div className='flex flex-col gap-1'>
-      {Object.keys(segmentationRuleMap).map((field) => {
-        return <FieldInfo
-          key={field}
-          label={segmentationRuleMap[field as keyof typeof segmentationRuleMap]}
-          displayedValue={String(getValue(field))}
-        />
-      })}
+      <FieldInfo
+        label={t('datasetDocuments.embedding.mode')}
+        displayedValue={getValue('mode')}
+      />
       <FieldInfo
         label={t('datasetCreation.stepTwo.indexMode')}
         displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
