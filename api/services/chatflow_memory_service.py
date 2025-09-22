@@ -111,7 +111,10 @@ class ChatflowMemoryService:
                     node_id=memory.node_id,
                     conversation_id=memory.conversation_id,
                     name=memory.spec.name,
-                    value=MemoryValueData(value=memory.value).model_dump_json(),
+                    value=MemoryValueData(
+                        value=memory.value,
+                        edited_by_user=memory.edited_by_user
+                    ).model_dump_json(),
                     term=memory.spec.term,
                     scope=memory.spec.scope,
                     version=new_version,
@@ -195,13 +198,15 @@ class ChatflowMemoryService:
             ).order_by(ChatflowMemoryVariable.version.desc()).limit(1)
             result = session.execute(stmt).scalar()
             if result:
+                memory_value_data = MemoryValueData.model_validate_json(result.value)
                 return MemoryBlock(
-                    value=MemoryValueData.model_validate_json(result.value).value,
+                    value=memory_value_data.value,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     conversation_id=conversation_id,
                     node_id=node_id,
-                    spec=spec
+                    spec=spec,
+                    edited_by_user=memory_value_data.edited_by_user
                 )
             return MemoryBlock(
                 tenant_id=tenant_id,
@@ -363,14 +368,16 @@ class ChatflowMemoryService:
                 None
             )
             if spec and chatflow_memory_variable.app_id:
+                memory_value_data = MemoryValueData.model_validate_json(chatflow_memory_variable.value)
                 results.append(
                     MemoryBlock(
                         spec=spec,
                         tenant_id=chatflow_memory_variable.tenant_id,
-                        value=MemoryValueData.model_validate_json(chatflow_memory_variable.value).value,
+                        value=memory_value_data.value,
                         app_id=chatflow_memory_variable.app_id,
                         conversation_id=chatflow_memory_variable.conversation_id,
-                        node_id=chatflow_memory_variable.node_id
+                        node_id=chatflow_memory_variable.node_id,
+                        edited_by_user=memory_value_data.edited_by_user
                     )
                 )
         return results
@@ -507,7 +514,8 @@ class ChatflowMemoryService:
             spec=memory_block.spec,
             app_id=memory_block.app_id,
             conversation_id=memory_block.conversation_id,
-            node_id=memory_block.node_id
+            node_id=memory_block.node_id,
+            edited_by_user=False
         )
         ChatflowMemoryService.save_memory(updated_memory, variable_pool, is_draft)
 

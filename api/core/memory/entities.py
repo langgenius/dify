@@ -68,10 +68,12 @@ class MemoryBlock(BaseModel):
     app_id: str
     conversation_id: Optional[str] = None
     node_id: Optional[str] = None
+    edited_by_user: bool = False
 
 
 class MemoryValueData(BaseModel):
     value: str
+    edited_by_user: bool = False
 
 
 class ChatflowConversationMetadata(BaseModel):

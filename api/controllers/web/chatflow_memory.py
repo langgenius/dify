@@ -56,6 +56,7 @@ class MemoryEditApi(WebApiResource):
                 conversation_id=conversation_id,
                 node_id=node_id,
                 app_id=app_model.id,
+                edited_by_user=True
             ),
             variable_pool=VariablePool(),
             is_draft=False
