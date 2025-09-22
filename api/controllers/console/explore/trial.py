@@ -6,7 +6,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common import fields
-from controllers.common.fields import build_app_detail_fields_with_site, build_site_model
+from controllers.common.fields import build_site_model
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -37,6 +37,7 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from fields.app_fields import app_detail_fields_with_site
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user
@@ -343,7 +344,7 @@ class TrialAppParameterApi(Resource):
 class AppApi(Resource):
     @trial_feature_enable
     @get_app_model
-    @service_api_ns.marshal_with(build_app_detail_fields_with_site(service_api_ns))
+    @marshal_with(app_detail_fields_with_site)
     def get(self, app_model):
         """Get app detail"""
 
