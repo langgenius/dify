@@ -57,10 +57,16 @@ const MemorySystem = ({
                     triggerClassName='w-4 h-4'
                   />
                   {collapseIcon}
-                  <Divider type='vertical' className='!ml-1.5 !mr-1 h-3 !w-px bg-divider-regular' />
-                  <div onClick={e => e.stopPropagation()}>
-                    <MemoryCreateButton />
-                  </div>
+                  {
+                    memoryType === 'block' && (
+                      <>
+                        <Divider type='vertical' className='!ml-1.5 !mr-1 h-3 !w-px bg-divider-regular' />
+                        <div onClick={e => e.stopPropagation()}>
+                          <MemoryCreateButton />
+                        </div>
+                      </>
+                    )
+                  }
                 </div>
                 <MemorySelector
                   value={memoryType}

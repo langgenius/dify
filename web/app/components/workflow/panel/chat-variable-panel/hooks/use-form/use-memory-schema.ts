@@ -1,15 +1,18 @@
+import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 export const useMemorySchema = () => {
+  const { t } = useTranslation()
+
   return [
     {
       name: 'template',
-      label: 'Memory Template',
+      label: t('workflow.chatVariable.modal.memoryTemplate'),
       type: FormTypeEnum.promptInput,
       tooltip: 'template',
-      placeholder: 'Enter template for AI memory (e.g., user profile, preferences, context)...',
+      placeholder: t('workflow.chatVariable.modal.memoryTemplatePlaceholder'),
       show_on: [
         {
           variable: 'value_type',
@@ -22,7 +25,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'instruction',
-      label: 'Update Instructions',
+      label: t('workflow.chatVariable.modal.updateInstructions'),
       type: FormTypeEnum.promptInput,
       show_on: [
         {
@@ -32,23 +35,23 @@ export const useMemorySchema = () => {
       ],
       selfFormProps: {
         enablePromptGenerator: true,
-        placeholder: 'How should the AI update this memory...',
+        placeholder: t('workflow.chatVariable.modal.updateInstructionsPlaceholder'),
       },
     },
     {
       name: 'strategy',
-      label: 'Update trigger',
+      label: t('workflow.chatVariable.modal.updateTrigger'),
       type: FormTypeEnum.radio,
       default: 'on_turns',
       fieldClassName: 'flex justify-between',
       inputClassName: 'w-[102px]',
       options: [
         {
-          label: 'Every N turns',
+          label: t('workflow.chatVariable.modal.everyNTurns'),
           value: 'on_turns',
         },
         {
-          label: 'Auto',
+          label: t('workflow.chatVariable.modal.auto'),
           value: 'on_auto',
         },
       ],
@@ -64,7 +67,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'update_turns',
-      label: 'Update every',
+      label: t('workflow.chatVariable.modal.updateEvery'),
       type: FormTypeEnum.textNumber,
       fieldClassName: 'flex justify-between',
       show_on: [
@@ -88,7 +91,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'scope',
-      label: 'Scope',
+      label: t('workflow.chatVariable.modal.scope'),
       type: FormTypeEnum.radio,
       default: 'app',
       fieldClassName: 'flex justify-between',
@@ -132,7 +135,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'term',
-      label: 'Term',
+      label: t('workflow.chatVariable.modal.term'),
       type: FormTypeEnum.radio,
       default: 'session',
       fieldClassName: 'flex justify-between',
@@ -159,7 +162,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'more',
-      label: 'MoreSettings',
+      label: t('workflow.chatVariable.modal.moreSettings'),
       type: FormTypeEnum.collapse,
       show_on: [
         {
@@ -170,7 +173,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'model',
-      label: 'Memory model',
+      label: t('workflow.chatVariable.modal.memoryModel'),
       type: FormTypeEnum.modelSelector,
       show_on: [
         {
@@ -185,7 +188,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'schedule_mode',
-      label: 'Update method',
+      label: t('workflow.chatVariable.modal.updateMethod'),
       type: FormTypeEnum.radio,
       options: [
         {
@@ -210,7 +213,7 @@ export const useMemorySchema = () => {
     },
     {
       name: 'end_user_editable',
-      label: 'Editable in web app',
+      label: t('workflow.chatVariable.modal.editableInWebApp'),
       type: FormTypeEnum.switch,
       fieldClassName: 'flex justify-between',
       show_on: [
