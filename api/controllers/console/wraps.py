@@ -7,13 +7,13 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import abort, request
-from flask_login import current_user
+from libs.login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.account import AccountStatus
+from models.account import Account, AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
@@ -24,13 +24,16 @@ from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogo
 P = ParamSpec("P")
 R = TypeVar("R")
 
+def ass():
+    assert isinstance(current_user, Account)
+    assert current_user.current_tenant_id
 
 def account_initialization_required(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         # check account initialization
         account = current_user
-
+        assert isinstance(account, Account)
         if account.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
@@ -75,6 +78,8 @@ def only_edition_self_hosted(view: Callable[P, R]):
 def cloud_edition_billing_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         features = FeatureService.get_features(current_user.current_tenant_id)
         if not features.billing.enabled:
             abort(403, "Billing feature is not enabled.")
@@ -87,6 +92,8 @@ def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id
             features = FeatureService.get_features(current_user.current_tenant_id)
             if features.billing.enabled:
                 members = features.members
@@ -128,6 +135,8 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id
             features = FeatureService.get_features(current_user.current_tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
@@ -151,6 +160,8 @@ def cloud_edition_billing_rate_limit_check(resource: str):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             if resource == "knowledge":
+                assert isinstance(current_user, Account)
+                assert current_user.current_tenant_id
                 knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_user.current_tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
@@ -185,6 +196,8 @@ def cloud_utm_record(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id
             features = FeatureService.get_features(current_user.current_tenant_id)
 
             if features.billing.enabled:
@@ -271,6 +284,8 @@ def enable_change_email(view: Callable[P, R]):
 def is_allow_transfer_owner(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         features = FeatureService.get_features(current_user.current_tenant_id)
         if features.is_allow_transfer_workspace:
             return view(*args, **kwargs)
@@ -281,9 +296,11 @@ def is_allow_transfer_owner(view: Callable[P, R]):
     return decorated
 
 
-def knowledge_pipeline_publish_enabled(view):
+def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         features = FeatureService.get_features(current_user.current_tenant_id)
         if features.knowledge_pipeline.publish_enabled:
             return view(*args, **kwargs)

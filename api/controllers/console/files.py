@@ -1,7 +1,7 @@
 from typing import Literal
 
 from flask import request
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
@@ -62,7 +62,7 @@ class FileApi(Resource):
 
         if not file.filename:
             raise FilenameNotExistsError
-
+        assert isinstance(current_user, Account)
         if source == "datasets" and not current_user.is_dataset_editor:
             raise Forbidden()
 

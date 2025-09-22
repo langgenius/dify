@@ -1,12 +1,13 @@
 import copy
 import logging
 
-from flask_login import current_user
+from libs.login import current_user
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
+from models.account import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -23,7 +24,8 @@ class MetadataService:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         # check if metadata name already exists
         if (
             db.session.query(DatasetMetadata)
@@ -53,6 +55,8 @@ class MetadataService:
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         if (
             db.session.query(DatasetMetadata)
             .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name)
@@ -220,6 +224,8 @@ class MetadataService:
                 db.session.commit()
                 # deal metadata binding
                 db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+                assert isinstance(current_user, Account)
+                assert current_user.current_tenant_id
                 for metadata_value in operation.metadata_list:
                     dataset_metadata_binding = DatasetMetadataBinding(
                         tenant_id=current_user.current_tenant_id,

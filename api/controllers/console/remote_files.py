@@ -2,7 +2,7 @@ import urllib.parse
 from typing import cast
 
 import httpx
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 
 import services
