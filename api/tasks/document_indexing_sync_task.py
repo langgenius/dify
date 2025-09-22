@@ -4,6 +4,7 @@ import time
 import click
 from celery import shared_task
 from sqlalchemy import select
+import sqlalchemy as sa
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.extractor.notion_extractor import NotionExtractor
@@ -51,7 +52,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         data_source_binding = (
             db.session.query(DataSourceOauthBinding)
             .where(
-                db.and_(
+                sa.and_(
                     DataSourceOauthBinding.tenant_id == document.tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.disabled == False,

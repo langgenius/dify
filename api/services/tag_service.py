@@ -3,7 +3,7 @@ import uuid
 from flask_login import current_user
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
-
+import sqlalchemy as sa
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
@@ -18,7 +18,7 @@ class TagService:
             .where(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
         )
         if keyword:
-            query = query.where(db.and_(Tag.name.ilike(f"%{keyword}%")))
+            query = query.where(sa.and_(Tag.name.ilike(f"%{keyword}%")))
         query = query.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
         results: list = query.order_by(Tag.created_at.desc()).all()
         return results

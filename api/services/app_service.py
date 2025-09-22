@@ -3,7 +3,7 @@ import logging
 from typing import TypedDict, cast
 
 from flask_sqlalchemy.pagination import Pagination
-
+import sqlalchemy as sa
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
@@ -65,7 +65,7 @@ class AppService:
                 return None
 
         app_models = db.paginate(
-            db.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(App.created_at.desc()),
             page=args["page"],
             per_page=args["limit"],
             error_out=False,
