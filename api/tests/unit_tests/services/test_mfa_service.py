@@ -1,3 +1,4 @@
+import hashlib
 import json
 import unittest
 from datetime import datetime
@@ -16,6 +17,7 @@ class TestMFAService(unittest.TestCase):
         self.account.email = "test@example.com"
         self.account.password = "hashed_password"
         self.account.password_salt = "salt"
+        self.account.current_tenant_id = "test-tenant-id"
 
         self.mfa_settings = Mock(spec=AccountMFASettings)
         self.mfa_settings.account_id = self.account.id
@@ -92,20 +94,26 @@ class TestMFAService(unittest.TestCase):
     @patch("services.mfa_service.db.session")
     def test_verify_backup_code_valid(self, mock_session):
         """Test backup code verification with valid code."""
-        self.mfa_settings.backup_codes = json.dumps(["ABCD1234", "EFGH5678"])
+        # Store hashed codes
+        hash1 = hashlib.sha256("ABCD1234".encode()).hexdigest()
+        hash2 = hashlib.sha256("EFGH5678".encode()).hexdigest()
+        self.mfa_settings.backup_codes = json.dumps([hash1, hash2])
 
         result = MFAService.verify_backup_code(self.mfa_settings, "abcd1234")  # Test case insensitive
 
         assert result
-        # Check that the code was removed
+        # Check that the code was removed (comparing hashes)
         remaining_codes = json.loads(self.mfa_settings.backup_codes)
-        assert "ABCD1234" not in remaining_codes
-        assert "EFGH5678" in remaining_codes
+        assert hash1 not in remaining_codes
+        assert hash2 in remaining_codes
         mock_session.commit.assert_called_once()
 
     def test_verify_backup_code_invalid(self):
         """Test backup code verification with invalid code."""
-        self.mfa_settings.backup_codes = json.dumps(["ABCD1234", "EFGH5678"])
+        # Store hashed codes
+        hash1 = hashlib.sha256("ABCD1234".encode()).hexdigest()
+        hash2 = hashlib.sha256("EFGH5678".encode()).hexdigest()
+        self.mfa_settings.backup_codes = json.dumps([hash1, hash2])
 
         result = MFAService.verify_backup_code(self.mfa_settings, "INVALID")
 
@@ -133,7 +141,10 @@ class TestMFAService(unittest.TestCase):
         result = MFAService.setup_mfa(self.account, "123456")
 
         assert self.mfa_settings.enabled
-        assert self.mfa_settings.backup_codes == json.dumps(["CODE1", "CODE2"])
+        # Backup codes are now hashed
+        hash1 = hashlib.sha256("CODE1".encode()).hexdigest()
+        hash2 = hashlib.sha256("CODE2".encode()).hexdigest()
+        assert self.mfa_settings.backup_codes == json.dumps([hash1, hash2])
         assert self.mfa_settings.setup_at is not None
         assert result["backup_codes"] == ["CODE1", "CODE2"]
 
@@ -213,7 +224,7 @@ class TestMFAService(unittest.TestCase):
         result = MFAService.authenticate_with_mfa(self.account, "123456")
 
         assert result
-        mock_verify_totp.assert_called_once_with("test_secret", "123456")
+        mock_verify_totp.assert_called_once_with("test_secret", "123456", "test-tenant-id")
         mock_verify_backup.assert_not_called()
 
     @patch("services.mfa_service.db.session")
@@ -230,7 +241,7 @@ class TestMFAService(unittest.TestCase):
         result = MFAService.authenticate_with_mfa(self.account, "BACKUP123")
 
         assert result
-        mock_verify_totp.assert_called_once_with("test_secret", "BACKUP123")
+        mock_verify_totp.assert_called_once_with("test_secret", "BACKUP123", "test-tenant-id")
         mock_verify_backup.assert_called_once_with(self.mfa_settings, "BACKUP123")
 
     @patch("services.mfa_service.db.session")
@@ -325,21 +336,24 @@ class TestMFAService(unittest.TestCase):
 
         assert result  # Already disabled
 
+    @patch("services.mfa_service.encrypter")
     @patch("services.mfa_service.MFAService.get_or_create_mfa_settings")
     @patch("services.mfa_service.MFAService.generate_secret")
     @patch("services.mfa_service.MFAService.generate_qr_code")
     @patch("services.mfa_service.db.session")
-    def test_generate_mfa_setup_data_success(self, mock_session, mock_gen_qr, mock_gen_secret, mock_get_settings):
+    def test_generate_mfa_setup_data_success(self, mock_session, mock_gen_qr, mock_gen_secret, mock_get_settings, mock_encrypter):
         """Test successful MFA setup data generation."""
         mock_get_settings.return_value = self.mfa_settings
         mock_gen_secret.return_value = "NEWSECRET123"
         mock_gen_qr.return_value = "data:image/png;base64,qrdata"
+        mock_encrypter.encrypt_token.return_value = "ENCRYPTED_SECRET"
 
         result = MFAService.generate_mfa_setup_data(self.account)
 
         assert result["secret"] == "NEWSECRET123"
         assert result["qr_code"] == "data:image/png;base64,qrdata"
-        assert self.mfa_settings.secret == "NEWSECRET123"
+        assert self.mfa_settings.secret == "ENCRYPTED_SECRET"
+        mock_encrypter.encrypt_token.assert_called_once_with("test-tenant-id", "NEWSECRET123")
         mock_session.commit.assert_called_once()
 
     @patch("services.mfa_service.MFAService.get_or_create_mfa_settings")

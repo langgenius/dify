@@ -1,7 +1,7 @@
 """add account mfa settings table
 
 Revision ID: c699fb438ab7
-Revises: 58eb7bdb93fe
+Revises: 68519ad5cd18
 Create Date: 2025-09-22 13:50:00.000000
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'c699fb438ab7'
-down_revision = '58eb7bdb93fe'
+down_revision = '68519ad5cd18'
 branch_labels = None
 depends_on = None
 
@@ -23,7 +23,7 @@ def upgrade():
     sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
     sa.Column('account_id', models.types.StringUUID(), nullable=False),
     sa.Column('enabled', sa.Boolean(), server_default=sa.text('false'), nullable=False),
-    sa.Column('secret', sa.String(length=255), nullable=True),
+    sa.Column('secret', sa.Text(), nullable=True),
     sa.Column('backup_codes', sa.Text(), nullable=True),
     sa.Column('setup_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),

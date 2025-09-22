@@ -80,8 +80,6 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
       }
     }
     catch (error: any) {
-      console.error('MFA authentication error:', error)
-
       // Handle different types of errors
       let errorMessage = t('mfa.invalidToken')
       if (error?.response?.status === 401)

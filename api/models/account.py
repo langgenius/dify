@@ -374,7 +374,7 @@ class AccountMFASettings(Base):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     account_id: Mapped[str] = mapped_column(StringUUID, sa.ForeignKey("accounts.id"), nullable=False)
     enabled = sa.Column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    secret = sa.Column(sa.String(255), nullable=True)
+    secret = sa.Column(sa.Text, nullable=True)
     backup_codes = sa.Column(sa.Text, nullable=True)
     setup_at = sa.Column(DateTime, nullable=True)
     created_at = sa.Column(DateTime, nullable=False, server_default=func.current_timestamp())

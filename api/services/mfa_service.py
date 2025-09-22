@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import io
 import json
 import secrets
@@ -7,6 +8,7 @@ from datetime import UTC, datetime
 import pyotp
 import qrcode
 
+from core.helper import encrypter
 from models.account import Account, AccountMFASettings
 from models.engine import db
 
@@ -53,11 +55,14 @@ class MFAService:
         return f"data:image/png;base64,{img_str}"
 
     @staticmethod
-    def verify_totp(secret: str, token: str) -> bool:
+    def verify_totp(secret: str, token: str, tenant_id: str = None) -> bool:
         """Verify TOTP token."""
         if not secret:
             return False
         try:
+            # Decrypt secret if tenant_id provided
+            if tenant_id:
+                secret = encrypter.decrypt_token(tenant_id, secret)
             totp = pyotp.TOTP(secret)
             return totp.verify(token, valid_window=1)
         except (ValueError, TypeError) as e:
@@ -76,17 +81,27 @@ class MFAService:
         return mfa_settings
 
     @staticmethod
+    def _hash_backup_code(code: str) -> str:
+        """Hash a backup code for storage."""
+        return hashlib.sha256(code.upper().encode()).hexdigest()
+
+    @staticmethod
     def verify_backup_code(mfa_settings: AccountMFASettings, code: str) -> bool:
         """Verify and consume backup code."""
         if not mfa_settings.backup_codes:
             return False
 
         try:
-            backup_codes = json.loads(mfa_settings.backup_codes)
-            if code.upper() in backup_codes:
+            # Hash the provided code
+            hashed_code = MFAService._hash_backup_code(code)
+
+            # Load stored hashed codes
+            backup_codes_hashed = json.loads(mfa_settings.backup_codes)
+
+            if hashed_code in backup_codes_hashed:
                 # Remove used backup code
-                backup_codes.remove(code.upper())
-                mfa_settings.backup_codes = json.dumps(backup_codes)
+                backup_codes_hashed.remove(hashed_code)
+                mfa_settings.backup_codes = json.dumps(backup_codes_hashed)
                 db.session.commit()
                 return True
         except json.JSONDecodeError:
@@ -105,20 +120,36 @@ class MFAService:
         if not mfa_settings.secret:
             raise ValueError("MFA secret not generated")
 
-        # Verify TOTP token
-        if not MFAService.verify_totp(mfa_settings.secret, totp_token):
+        # Get tenant ID from account - try multiple sources
+        tenant_id = account.current_tenant_id
+        if not tenant_id:
+            # Try to get from TenantAccountJoin
+            from models.account import TenantAccountJoin
+            tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+            if tenant_join:
+                tenant_id = tenant_join.tenant_id
+
+        if not tenant_id:
+            raise ValueError("No tenant associated with account")
+
+        # Verify TOTP token with decryption
+        if not MFAService.verify_totp(mfa_settings.secret, totp_token, tenant_id):
             raise ValueError("Invalid TOTP token")
 
         # Generate backup codes
         backup_codes = MFAService.generate_backup_codes()
 
+        # Hash backup codes for storage
+        backup_codes_hashed = [MFAService._hash_backup_code(code) for code in backup_codes]
+
         # Enable MFA
         mfa_settings.enabled = True
-        mfa_settings.backup_codes = json.dumps(backup_codes)
+        mfa_settings.backup_codes = json.dumps(backup_codes_hashed)
         mfa_settings.setup_at = datetime.now(UTC)
 
         db.session.commit()
 
+        # Return the plain backup codes (user must save them)
         return {"backup_codes": backup_codes, "setup_at": mfa_settings.setup_at}
 
     @staticmethod
@@ -151,14 +182,23 @@ class MFAService:
         if mfa_settings.enabled:
             raise ValueError("MFA is already enabled for this account")
 
+        # Get tenant ID from account
+        tenant_id = account.current_tenant_id
+        if not tenant_id:
+            raise ValueError("No tenant associated with account")
+
         # Generate new secret
         secret = MFAService.generate_secret()
-        mfa_settings.secret = secret
+
+        # Encrypt secret for storage
+        encrypted_secret = encrypter.encrypt_token(tenant_id, secret)
+        mfa_settings.secret = encrypted_secret
         db.session.commit()
 
-        # Generate QR code
+        # Generate QR code with plain secret
         qr_code = MFAService.generate_qr_code(account, secret)
 
+        # Return plain secret for user display (only shown once)
         return {"secret": secret, "qr_code": qr_code}
 
     @staticmethod
@@ -175,11 +215,20 @@ class MFAService:
         if not mfa_settings or not mfa_settings.enabled:
             return True
 
-        # Try TOTP first
-        if MFAService.verify_totp(mfa_settings.secret, token):
+        # Get tenant ID from account - try multiple sources
+        tenant_id = account.current_tenant_id
+        if not tenant_id:
+            # Try to get from TenantAccountJoin
+            from models.account import TenantAccountJoin
+            tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+            if tenant_join:
+                tenant_id = tenant_join.tenant_id
+
+        # Try TOTP first with decryption
+        if MFAService.verify_totp(mfa_settings.secret, token, tenant_id):
             return True
 
-        # Try backup code
+        # Try backup code (already hashed)
         if MFAService.verify_backup_code(mfa_settings, token):
             return True
 
