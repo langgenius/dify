@@ -416,8 +416,6 @@ x-shared-env: &shared-api-worker-env
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   HTTP_REQUEST_NODE_SSL_VERIFY: ${HTTP_REQUEST_NODE_SSL_VERIFY:-True}
   RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-false}
-  SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
-  SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
   LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
   MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
   MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
@@ -433,8 +431,6 @@ x-shared-env: &shared-api-worker-env
   SANDBOX_GIN_MODE: ${SANDBOX_GIN_MODE:-release}
   SANDBOX_WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
   SANDBOX_ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
-  SANDBOX_HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
-  SANDBOX_HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
   SANDBOX_PORT: ${SANDBOX_PORT:-8194}
   WEAVIATE_PERSISTENCE_DATA_PATH: ${WEAVIATE_PERSISTENCE_DATA_PATH:-/var/lib/weaviate}
   WEAVIATE_QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT:-25}
@@ -473,32 +469,6 @@ x-shared-env: &shared-api-worker-env
   OPENSEARCH_MEMLOCK_HARD: ${OPENSEARCH_MEMLOCK_HARD:--1}
   OPENSEARCH_NOFILE_SOFT: ${OPENSEARCH_NOFILE_SOFT:-65536}
   OPENSEARCH_NOFILE_HARD: ${OPENSEARCH_NOFILE_HARD:-65536}
-  NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
-  NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
-  NGINX_PORT: ${NGINX_PORT:-80}
-  NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
-  NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
-  NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
-  NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
-  NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
-  NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
-  NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
-  NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
-  NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
-  NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
-  CERTBOT_EMAIL: ${CERTBOT_EMAIL:-your_email@example.com}
-  CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-your_domain.com}
-  CERTBOT_OPTIONS: ${CERTBOT_OPTIONS:-}
-  SSRF_HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
-  SSRF_COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-  SSRF_REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
-  SSRF_SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
-  SSRF_DEFAULT_TIME_OUT: ${SSRF_DEFAULT_TIME_OUT:-5}
-  SSRF_DEFAULT_CONNECT_TIME_OUT: ${SSRF_DEFAULT_CONNECT_TIME_OUT:-5}
-  SSRF_DEFAULT_READ_TIME_OUT: ${SSRF_DEFAULT_READ_TIME_OUT:-5}
-  SSRF_DEFAULT_WRITE_TIME_OUT: ${SSRF_DEFAULT_WRITE_TIME_OUT:-5}
-  EXPOSE_NGINX_PORT: ${EXPOSE_NGINX_PORT:-80}
-  EXPOSE_NGINX_SSL_PORT: ${EXPOSE_NGINX_SSL_PORT:-443}
   POSITION_TOOL_PINS: ${POSITION_TOOL_PINS:-}
   POSITION_TOOL_INCLUDES: ${POSITION_TOOL_INCLUDES:-}
   POSITION_TOOL_EXCLUDES: ${POSITION_TOOL_EXCLUDES:-}
@@ -615,9 +585,21 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
-    networks:
-      - ssrf_proxy_network
-      - default
+    labels:
+      - "traefik.enable=true"
+      # API routes
+      - "traefik.http.routers.dify-api.rule=Host(`dify.ilova.app`) && (PathPrefix(`/api`) || PathPrefix(`/console/api`) || PathPrefix(`/v1`) || PathPrefix(`/files`))"
+      - "traefik.http.routers.dify-api.entrypoints=websecure"
+      - "traefik.http.routers.dify-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dify-api.service=dify-api-service"
+      - "traefik.http.routers.dify-api.middlewares=dify-cors"
+      # Service definition
+      - "traefik.http.services.dify-api-service.loadbalancer.server.port=5001"
+      # CORS Middleware
+      - "traefik.http.middlewares.dify-cors.headers.accesscontrolalloworigin=https://dify.ilova.app"
+      - "traefik.http.middlewares.dify-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.dify-cors.headers.accesscontrolallowheaders=Content-Type,Authorization,X-Requested-With"
+      - "traefik.http.middlewares.dify-cors.headers.accesscontrolallowcredentials=true"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -642,9 +624,6 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
-    networks:
-      - ssrf_proxy_network
-      - default
 
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
@@ -661,9 +640,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    networks:
-      - ssrf_proxy_network
-      - default
 
   # Frontend web application.
   web:
@@ -691,6 +667,16 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
+    labels:
+      - "traefik.enable=true"
+      # Web routes (main application)
+      - "traefik.http.routers.dify-web.rule=Host(`dify.ilova.app`)"
+      - "traefik.http.routers.dify-web.entrypoints=websecure"
+      - "traefik.http.routers.dify-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dify-web.service=dify-web-service"
+      - "traefik.http.routers.dify-web.middlewares=dify-cors"
+      # Service definition
+      - "traefik.http.services.dify-web-service.loadbalancer.server.port=3000"
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -754,8 +740,6 @@ services:
       GIN_MODE: ${SANDBOX_GIN_MODE:-release}
       WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
       ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
-      HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
-      HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
       PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
     volumes:
@@ -763,8 +747,6 @@ services:
       - ./volumes/sandbox/conf:/conf
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
-    networks:
-      - ssrf_proxy_network
 
   # plugin daemon
   plugin_daemon:
@@ -826,97 +808,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
-  # ssrf_proxy server
-  # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
-  ssrf_proxy:
-    image: ubuntu/squid:latest
-    restart: always
-    volumes:
-      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
-      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
-    environment:
-      # pls clearly modify the squid env vars to fit your network environment.
-      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
-      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-      REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
-      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
-      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
-    networks:
-      - ssrf_proxy_network
-      - default
-
-  # Certbot service
-  # use `docker-compose --profile certbot up` to start the certbot service.
-  certbot:
-    image: certbot/certbot
-    profiles:
-      - certbot
-    volumes:
-      - ./volumes/certbot/conf:/etc/letsencrypt
-      - ./volumes/certbot/www:/var/www/html
-      - ./volumes/certbot/logs:/var/log/letsencrypt
-      - ./volumes/certbot/conf/live:/etc/letsencrypt/live
-      - ./certbot/update-cert.template.txt:/update-cert.template.txt
-      - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
-    environment:
-      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
-      - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
-      - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
-    entrypoint: ["/docker-entrypoint.sh"]
-    command: ["tail", "-f", "/dev/null"]
-
-  # The nginx reverse proxy.
-  # used for reverse proxying the API service and Web service.
-  nginx:
-    image: nginx:latest
-    restart: always
-    volumes:
-      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
-      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
-      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
-      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
-      - ./volumes/certbot/conf:/etc/letsencrypt
-      - ./volumes/certbot/www:/var/www/html
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
-    environment:
-      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
-      NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
-      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
-      NGINX_PORT: ${NGINX_PORT:-80}
-      # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
-      # and modify the env vars below in .env if HTTPS_ENABLED is true.
-      NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
-      NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
-      NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
-      NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
-      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
-      NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
-      NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
-      NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
-      NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
-      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
-    depends_on:
-      - api
-      - web
-    ports:
-      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
-      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:
@@ -1354,9 +1245,6 @@ services:
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
-  ssrf_proxy_network:
-    driver: bridge
-    internal: true
   milvus:
     driver: bridge
   opensearch-net:
