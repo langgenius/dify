@@ -231,10 +231,10 @@ importers:
         version: 1.0.0
       next:
         specifier: 15.5.0
-        version: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
+        version: 15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
       next-pwa:
         specifier: ^5.6.0
-        version: 5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+        version: 5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       next-themes:
         specifier: ^0.4.3
         version: 0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -416,6 +416,9 @@ importers:
       '@next/mdx':
         specifier: 15.5.0
         version: 15.5.0(@mdx-js/loader@3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)))(@mdx-js/react@3.1.0(@types/react@19.1.11)(react@19.1.1))
+      '@playwright/test':
+        specifier: ^1.55.0
+        version: 1.55.0
       '@rgrove/parse-xml':
         specifier: ^4.1.0
         version: 4.2.0
@@ -439,7 +442,7 @@ importers:
         version: 8.5.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(storybook@8.5.0)
       '@storybook/nextjs':
         specifier: 8.5.0
-        version: 8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+        version: 8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       '@storybook/react':
         specifier: 8.5.0
         version: 8.5.0(@storybook/test@8.5.0(storybook@8.5.0))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(storybook@8.5.0)(typescript@5.8.3)
@@ -2526,6 +2529,11 @@ packages:
   '@pkgr/core@0.2.7':
     resolution: {integrity: sha512-YLT9Zo3oNPJoBjBc4q8G2mjU4tqIbf5CEOORbUUr48dCD9q3umJ3IPlVqOqDakPfd2HuwccBaqlGhN4Gmr5OWg==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
+
+  '@playwright/test@1.55.0':
+    resolution: {integrity: sha512-04IXzPwHrW69XusN/SIdDdKZBzMfOT9UNT/YiJit/xpy2VuAoB8NHc8Aplb96zsWDddLnbkPL3TsmrS04ZU2xQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@pmmmwh/react-refresh-webpack-plugin@0.5.17':
     resolution: {integrity: sha512-tXDyE1/jzFsHXjhRZQ3hMl0IVhYe5qula43LDWIhVfjp9G/nT5OQY5AORVOrkEGAUltBJOfOWeETbmhm6kHhuQ==}
@@ -5653,6 +5661,11 @@ packages:
   fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
 
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -7259,6 +7272,16 @@ packages:
 
   pkg-types@2.3.0:
     resolution: {integrity: sha512-SIqCzDRg0s9npO5XQ3tNZioRY1uK06lA41ynBC1YmFTmnY6FjUjVt6s4LoADmwoig1qqD0oK8h1p/8mlMx8Oig==}
+
+  playwright-core@1.55.0:
+    resolution: {integrity: sha512-GvZs4vU3U5ro2nZpeiwyb0zuFaqb9sUiAJuyrWpcGouD8y9/HLgGbNRjIph7zU9D3hnPaisMl9zG9CgFi/biIg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright@1.55.0:
+    resolution: {integrity: sha512-sdCWStblvV1YU909Xqx0DhOjPZE4/5lJsIS84IfN9dAZfcl/CIZ5O8l3o0j7hPMjDvqoTF8ZUcc+i/GL5erstA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   pluralize@8.0.0:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
@@ -11272,6 +11295,10 @@ snapshots:
 
   '@pkgr/core@0.2.7': {}
 
+  '@playwright/test@1.55.0':
+    dependencies:
+      playwright: 1.55.0
+
   '@pmmmwh/react-refresh-webpack-plugin@0.5.17(react-refresh@0.14.2)(type-fest@2.19.0)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))':
     dependencies:
       ansi-html: 0.0.9
@@ -11877,7 +11904,7 @@ snapshots:
     dependencies:
       storybook: 8.5.0
 
-  '@storybook/nextjs@8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))':
+  '@storybook/nextjs@8.5.0(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)(storybook@8.5.0)(type-fest@2.19.0)(typescript@5.8.3)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))':
     dependencies:
       '@babel/core': 7.28.3
       '@babel/plugin-syntax-bigint': 7.8.3(@babel/core@7.28.3)
@@ -11903,7 +11930,7 @@ snapshots:
       find-up: 5.0.0
       image-size: 1.2.1
       loader-utils: 3.3.1
-      next: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
+      next: 15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
       node-polyfill-webpack-plugin: 2.0.1(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       pnp-webpack-plugin: 1.7.0(typescript@5.8.3)
       postcss: 8.5.6
@@ -15020,6 +15047,9 @@ snapshots:
 
   fs.realpath@1.0.0: {}
 
+  fsevents@2.3.2:
+    optional: true
+
   fsevents@2.3.3:
     optional: true
 
@@ -16831,12 +16861,12 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-pwa@5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
+  next-pwa@5.6.0(@babel/core@7.28.3)(@types/babel__core@7.20.5)(esbuild@0.25.0)(next@15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
       babel-loader: 8.4.1(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       clean-webpack-plugin: 4.0.0(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       globby: 11.1.0
-      next: 15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
+      next: 15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
       terser-webpack-plugin: 5.3.14(esbuild@0.25.0)(uglify-js@3.19.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       workbox-webpack-plugin: 6.6.0(@types/babel__core@7.20.5)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       workbox-window: 6.6.0
@@ -16854,7 +16884,7 @@ snapshots:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  next@15.5.0(@babel/core@7.28.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1):
+  next@15.5.0(@babel/core@7.28.3)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1):
     dependencies:
       '@next/env': 15.5.0
       '@swc/helpers': 0.5.15
@@ -16872,6 +16902,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 15.5.0
       '@next/swc-win32-arm64-msvc': 15.5.0
       '@next/swc-win32-x64-msvc': 15.5.0
+      '@playwright/test': 1.55.0
       sass: 1.92.1
       sharp: 0.34.3
     transitivePeerDependencies:
@@ -17195,6 +17226,14 @@ snapshots:
       confbox: 0.2.2
       exsolve: 1.0.7
       pathe: 2.0.3
+
+  playwright-core@1.55.0: {}
+
+  playwright@1.55.0:
+    dependencies:
+      playwright-core: 1.55.0
+    optionalDependencies:
+      fsevents: 2.3.2
 
   pluralize@8.0.0: {}
 
@@ -18074,7 +18113,7 @@ snapshots:
   sharp@0.34.3:
     dependencies:
       color: 4.2.3
-      detect-libc: 2.0.4
+      detect-libc: 2.1.0
       semver: 7.7.2
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.3
