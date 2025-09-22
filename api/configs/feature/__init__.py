@@ -797,12 +797,12 @@ class MailConfig(BaseSettings):
     )
 
     # Microsoft OAuth 2.0 configuration for SMTP
-    MICROSOFT_OAUTH2_CLIENT_ID: Optional[str] = Field(
+    MICROSOFT_OAUTH2_CLIENT_ID: str | None = Field(
         description="Microsoft OAuth 2.0 client ID for SMTP authentication",
         default=None,
     )
 
-    MICROSOFT_OAUTH2_CLIENT_SECRET: Optional[str] = Field(
+    MICROSOFT_OAUTH2_CLIENT_SECRET: str | None = Field(
         description="Microsoft OAuth 2.0 client secret for SMTP authentication",
         default=None,
     )
@@ -812,7 +812,7 @@ class MailConfig(BaseSettings):
         default="common",
     )
 
-    MICROSOFT_OAUTH2_ACCESS_TOKEN: Optional[str] = Field(
+    MICROSOFT_OAUTH2_ACCESS_TOKEN: str | None = Field(
         description="Microsoft OAuth 2.0 access token for SMTP authentication",
         default=None,
     )

@@ -83,7 +83,7 @@ class Mail:
             case _:
                 raise ValueError(f"Unsupported mail type {mail_type}")
 
-    def _get_oauth_token(self) -> Optional[str]:
+    def _get_oauth_token(self) -> str | None:
         """Get OAuth access token using client credentials flow"""
         try:
             from libs.mail.oauth_email import MicrosoftEmailOAuth
@@ -110,7 +110,7 @@ class Mail:
             logging.warning("Failed to obtain OAuth 2.0 access token: %s", str(e))
             return None
 
-    def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
+    def send(self, to: str, subject: str, html: str, from_: str | None = None):
         if not self._client:
             raise ValueError("Mail client is not initialized")
 

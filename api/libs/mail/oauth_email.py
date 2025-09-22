@@ -23,7 +23,7 @@ class EmailOAuth:
         client_id: str,
         client_secret: str,
         redirect_uri: str,
-        http_client: Optional[OAuthHTTPClientProtocol] = None,
+        http_client: OAuthHTTPClientProtocol | None = None,
     ):
         self.client_id = client_id
         self.client_secret = client_secret
@@ -67,12 +67,12 @@ class MicrosoftEmailOAuth(EmailOAuth):
         client_secret: str,
         redirect_uri: str,
         tenant_id: str = "common",
-        http_client: Optional[OAuthHTTPClientProtocol] = None,
+        http_client: OAuthHTTPClientProtocol | None = None,
     ):
         super().__init__(client_id, client_secret, redirect_uri, http_client)
         self.tenant_id = tenant_id
 
-    def get_authorization_url(self, invite_token: Optional[str] = None) -> str:
+    def get_authorization_url(self, invite_token: str | None = None) -> str:
         """Generate OAuth authorization URL"""
         params = {
             "client_id": self.client_id,

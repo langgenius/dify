@@ -36,7 +36,7 @@ class MockHTTPClient(OAuthHTTPClientProtocol):
         self.get_responses.append(json_data)
 
     def post(
-        self, url: str, data: dict[str, Union[str, int]], headers: Optional[dict[str, str]] = None
+        self, url: str, data: dict[str, Union[str, int]], headers: dict[str, str] | None = None
     ) -> dict[str, Union[str, int, dict, list]]:
         """Mock POST request"""
         self.post_calls.append({"url": url, "data": data, "headers": headers})
@@ -54,7 +54,7 @@ class MockHTTPClient(OAuthHTTPClientProtocol):
             "headers": {},
         }
 
-    def get(self, url: str, headers: Optional[dict[str, str]] = None) -> dict[str, Union[str, int, dict, list]]:
+    def get(self, url: str, headers: dict[str, str] | None = None) -> dict[str, Union[str, int, dict, list]]:
         """Mock GET request"""
         self.get_calls.append({"url": url, "headers": headers})
 

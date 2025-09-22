@@ -11,13 +11,13 @@ class OAuthHTTPClientProtocol(ABC):
 
     @abstractmethod
     def post(
-        self, url: str, data: dict[str, Union[str, int]], headers: Optional[dict[str, str]] = None
+        self, url: str, data: dict[str, Union[str, int]], headers: dict[str, str] | None = None
     ) -> dict[str, Union[str, int, dict, list]]:
         """Make a POST request"""
         pass
 
     @abstractmethod
-    def get(self, url: str, headers: Optional[dict[str, str]] = None) -> dict[str, Union[str, int, dict, list]]:
+    def get(self, url: str, headers: dict[str, str] | None = None) -> dict[str, Union[str, int, dict, list]]:
         """Make a GET request"""
         pass
 
@@ -26,7 +26,7 @@ class OAuthHTTPClient(OAuthHTTPClientProtocol):
     """Default implementation using requests library"""
 
     def post(
-        self, url: str, data: dict[str, Union[str, int]], headers: Optional[dict[str, str]] = None
+        self, url: str, data: dict[str, Union[str, int]], headers: dict[str, str] | None = None
     ) -> dict[str, Union[str, int, dict, list]]:
         """Make a POST request"""
         response = requests.post(url, data=data, headers=headers or {})
@@ -37,7 +37,7 @@ class OAuthHTTPClient(OAuthHTTPClientProtocol):
             "headers": dict(response.headers),
         }
 
-    def get(self, url: str, headers: Optional[dict[str, str]] = None) -> dict[str, Union[str, int, dict, list]]:
+    def get(self, url: str, headers: dict[str, str] | None = None) -> dict[str, Union[str, int, dict, list]]:
         """Make a GET request"""
         response = requests.get(url, headers=headers or {})
         response.raise_for_status()

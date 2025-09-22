@@ -83,12 +83,12 @@ class SMTPClient:
         from_addr: str,
         use_tls: bool = False,
         opportunistic_tls: bool = False,
-        oauth_access_token: Optional[str] = None,
+        oauth_access_token: str | None = None,
         auth_type: str = "basic",
-        connection_factory: Optional[SMTPConnectionFactory] = None,
-        ssl_connection_factory: Optional[SMTPConnectionFactory] = None,
-        authenticator: Optional[SMTPAuthenticator] = None,
-        message_builder: Optional[SMTPMessageBuilder] = None,
+        connection_factory: SMTPConnectionFactory | None = None,
+        ssl_connection_factory: SMTPConnectionFactory | None = None,
+        authenticator: SMTPAuthenticator | None = None,
+        message_builder: SMTPMessageBuilder | None = None,
     ):
         self.server = server
         self.port = port
