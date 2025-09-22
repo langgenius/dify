@@ -1,4 +1,3 @@
-from libs.login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -9,7 +8,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import Account, Site
 
 

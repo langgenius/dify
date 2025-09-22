@@ -4,7 +4,6 @@ from decimal import Decimal
 import pytz
 import sqlalchemy as sa
 from flask import jsonify
-from libs.login import current_user
 from flask_restx import Resource, reqparse
 
 from controllers.console import api, console_ns
@@ -12,7 +11,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.helper import DatetimeString
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode

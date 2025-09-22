@@ -28,8 +28,7 @@ from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
-from models import App
-from models import Account
+from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService

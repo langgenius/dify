@@ -2,7 +2,6 @@ import json
 from typing import cast
 
 from flask import request
-from libs.login import current_user
 from flask_restx import Resource, fields
 from werkzeug.exceptions import Forbidden
 
@@ -14,7 +13,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import Account
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService

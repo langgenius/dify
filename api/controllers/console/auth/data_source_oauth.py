@@ -2,13 +2,12 @@ import logging
 
 import httpx
 from flask import current_app, redirect, request
-from libs.login import current_user
 from flask_restx import Resource, fields
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api, console_ns
-from libs.login import login_required
+from libs.login import current_user, login_required
 from libs.oauth_data_source import NotionOAuth
 from models import Account
 
