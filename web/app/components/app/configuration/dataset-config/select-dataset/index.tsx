@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
-import { useGetState, useInfiniteScroll } from 'ahooks'
+import { useGetState, useInfiniteScroll, useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import TypeIcon from '../type-icon'
+import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -34,6 +35,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const [hasInitialized, setHasInitialized] = React.useState(false)
   const [searchKeyword, setSearchKeyword] = React.useState('')
+  const [debouncedSearchKeyword, setDebouncedSearchKeyword] = React.useState('')
   const hasNoData = !datasets || datasets?.length === 0
   const canSelectMulti = true
 
@@ -42,19 +44,27 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [isNoMore, setIsNoMore] = useState(false)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
+  // Debounced search function to prevent excessive API calls
+  const { run: debouncedSearch } = useDebounceFn(
+    (keyword: string) => {
+      setDebouncedSearchKeyword(keyword)
+      resetData()
+    },
+    { wait: 300 }
+  )
+
   // Reset data when search keyword changes
   const resetData = () => {
     setDataSets(null)
     setLoaded(false)
     setPage(1)
     setIsNoMore(false)
-    setHasInitialized(false)
   }
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
     setSearchKeyword(value)
-    resetData()
+    debouncedSearch(value)
   }
 
   useInfiniteScroll(
@@ -64,7 +74,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           url: '/datasets', 
           params: { 
             page,
-            ...(searchKeyword && { keyword: searchKeyword })
+            ...(debouncedSearchKeyword && { keyword: debouncedSearchKeyword })
           } 
         })
         setPage(getPage() + 1)
@@ -74,7 +84,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         setLoaded(true)
 
         // Initialize selected datasets based on selectedIds and available datasets
-        if (!hasInitialized) {
+        if (!hasInitialized && selected.length === 0) {
           if (selectedIds.length > 0) {
             const validSelectedDatasets = selectedIds
               .map((id: string) => newList.find((item: DataSet) => item.id === id))
@@ -91,7 +101,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       isNoMore: () => {
         return isNoMore
       },
-      reloadDeps: [isNoMore, searchKeyword],
+      reloadDeps: [isNoMore, debouncedSearchKeyword],
     },
   )
 
@@ -123,6 +133,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           value={searchKeyword}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
           placeholder={t('common.operation.search')}
+          aria-label={t('common.operation.search')}
           showLeftIcon={true}
           showClearIcon={true}
           onClear={() => handleSearchChange('')}
@@ -167,7 +178,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
               >
                 <div className='mr-1 flex items-center overflow-hidden'>
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                    <TypeIcon type="upload_file" size='md' />
+                    <AppIcon
+                      size='tiny'
+                      iconType={item.icon_info?.icon_type}
+                      icon={item.icon_info?.icon}
+                      background={item.icon_info?.icon_type === 'image' ? undefined : item.icon_info?.icon_background}
+                      imageUrl={item.icon_info?.icon_type === 'image' ? item.icon_info?.icon_url : undefined}
+                    />
                   </div>
                   <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
