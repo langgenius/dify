@@ -15,6 +15,7 @@ from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
@@ -124,6 +125,13 @@ class DebugLoggingLayer(GraphEngineLayer):
 
         elif isinstance(event, GraphRunSucceededEvent):
             self.logger.info("✅ Graph run succeeded")
+            if self.include_outputs and event.outputs:
+                self.logger.info("  Final outputs: %s", self._format_dict(event.outputs))
+
+        elif isinstance(event, GraphRunPartialSucceededEvent):
+            self.logger.warning("⚠️ Graph run partially succeeded")
+            if event.exceptions_count > 0:
+                self.logger.warning("  Total exceptions: %s", event.exceptions_count)
             if self.include_outputs and event.outputs:
                 self.logger.info("  Final outputs: %s", self._format_dict(event.outputs))
 
