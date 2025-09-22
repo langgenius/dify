@@ -72,7 +72,7 @@
     "@tanstack/react-form": "^1.3.3",
     "@tanstack/react-query": "^5.60.5",
     "@tanstack/react-query-devtools": "^5.60.5",
-    "abcjs": "^6.4.4",
+    "abcjs": "^6.5.2",
     "ahooks": "^3.8.4",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
