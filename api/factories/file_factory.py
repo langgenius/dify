@@ -258,7 +258,7 @@ def _extract_filename(url_path: str, content_disposition: str | None) -> str | N
     # Fallback to URL path if no filename from header
     if not filename:
         filename = os.path.basename(url_path)
-    return filename if filename else None
+    return filename or None
 
 
 def _get_remote_file_info(url: str):
