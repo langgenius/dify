@@ -80,6 +80,7 @@ const translation = {
     noAppsFound: 'Nenhum aplicativo encontrado',
     advancedShortDescription: 'Fluxo aprimorado para conversas de múltiplos turnos',
     dropDSLToCreateApp: 'Cole o arquivo DSL aqui para criar o aplicativo',
+    import: 'Importação',
   },
   editApp: 'Editar Informações',
   editAppTitle: 'Editar Informações do Aplicativo',
@@ -316,6 +317,10 @@ const translation = {
     noMatchingCommands: 'Nenhum comando correspondente encontrado',
     tryDifferentSearch: 'Tente um termo de pesquisa diferente',
     slashHint: 'Digite / para ver todos os comandos disponíveis',
+    tips: 'Pressione ↑↓ para navegar',
+    selectToNavigate: 'Selecione para navegar',
+    pressEscToClose: 'Pressione ESC para fechar',
+    startTyping: 'Comece a digitar para pesquisar',
   },
 }
 

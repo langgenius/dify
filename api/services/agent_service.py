@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 from sqlalchemy import select
@@ -31,9 +31,14 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Optional[Message] = db.session.scalars(
-            select(Message).where(Message.id == message_id, Message.conversation_id == conversation_id).limit(1)
-        ).first()
+        message: Message | None = (
+            db.session.query(Message)
+            .where(
+                Message.id == message_id,
+                Message.conversation_id == conversation_id,
+            )
+            .first()
+        )
 
         if not message:
             raise ValueError(f"Message not found: {message_id}")

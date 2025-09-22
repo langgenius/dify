@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form: str, file_ids: list[str]):
+def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form: str | None, file_ids: list[str]):
     """
     Clean document when document deleted.
     :param document_ids: document ids
@@ -30,7 +30,9 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
+        if not doc_form:
+            raise ValueError("doc_form is required")
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
 
         if not dataset:
             raise Exception("Document has no dataset")

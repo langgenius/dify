@@ -1,11 +1,12 @@
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 import httpx
 from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 
@@ -74,8 +75,8 @@ class BillingService:
     def is_tenant_owner_or_admin(current_user: Account):
         tenant_id = current_user.current_tenant_id
 
-        join: Optional[TenantAccountJoin] = db.session.scalars(
-            select(TenantAccountJoin)
+        join: TenantAccountJoin | None = (
+            db.session.query(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .limit(1)
         ).first()
@@ -174,3 +175,7 @@ class BillingService:
         res = cls._send_request("POST", "/compliance/download", json=json)
         cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
         return res
+
+    @classmethod
+    def clean_billing_info_cache(cls, tenant_id: str):
+        redis_client.delete(f"tenant:{tenant_id}:billing_info")

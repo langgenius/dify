@@ -10,28 +10,8 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import { fetchModelParameterRules } from '@/service/common'
-import { TONE_LIST } from '@/config'
+import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import cn from '@/utils/classnames'
-
-const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
-const stopParameterRule: ModelParameterRule = {
-  default: [],
-  help: {
-    en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
-    zh_Hans: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
-  },
-  label: {
-    en_US: 'Stop sequences',
-    zh_Hans: '停止序列',
-  },
-  name: 'stop',
-  required: false,
-  type: 'tag',
-  tagPlaceholder: {
-    en_US: 'Enter sequence and press Tab',
-    zh_Hans: '输入序列并按 Tab 键',
-  },
-}
 
 type Props = {
   isAdvancedMode: boolean
@@ -108,7 +88,7 @@ const LLMParamsPanel = ({
       {!!parameterRules.length && (
         [
           ...parameterRules,
-          ...(isAdvancedMode ? [stopParameterRule] : []),
+          ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
         ].map(parameter => (
           <ParameterItem
             key={`${modelId}-${parameter.name}`}

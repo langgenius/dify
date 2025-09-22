@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -9,22 +7,22 @@ class TableStoreConfig(BaseSettings):
     Configuration settings for TableStore.
     """
 
-    TABLESTORE_ENDPOINT: Optional[str] = Field(
+    TABLESTORE_ENDPOINT: str | None = Field(
         description="Endpoint address of the TableStore server (e.g. 'https://instance-name.cn-hangzhou.ots.aliyuncs.com')",
         default=None,
     )
 
-    TABLESTORE_INSTANCE_NAME: Optional[str] = Field(
+    TABLESTORE_INSTANCE_NAME: str | None = Field(
         description="Instance name to access TableStore server (eg. 'instance-name')",
         default=None,
     )
 
-    TABLESTORE_ACCESS_KEY_ID: Optional[str] = Field(
+    TABLESTORE_ACCESS_KEY_ID: str | None = Field(
         description="AccessKey id for the instance name",
         default=None,
     )
 
-    TABLESTORE_ACCESS_KEY_SECRET: Optional[str] = Field(
+    TABLESTORE_ACCESS_KEY_SECRET: str | None = Field(
         description="AccessKey secret for the instance name",
         default=None,
     )

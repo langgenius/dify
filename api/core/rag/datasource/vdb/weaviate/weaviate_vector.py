@@ -1,6 +1,6 @@
 import datetime
 import json
-from typing import Any, Optional
+from typing import Any
 
 import requests
 import weaviate  # type: ignore
@@ -19,7 +19,7 @@ from models.dataset import Dataset
 
 class WeaviateConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     batch_size: int = 100
 
     @model_validator(mode="before")

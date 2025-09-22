@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from langfuse import Langfuse  # type: ignore
 from sqlalchemy import select
@@ -30,7 +29,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
@@ -146,13 +145,13 @@ class LangFuseDataTrace(BaseTraceInstance):
             if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
@@ -165,7 +164,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     "status": status,
                 }
             )
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
             model_provider = process_data.get("model_provider", None)
             model_name = process_data.get("model_name", None)
             if model_provider is not None and model_name is not None:
@@ -400,7 +399,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         self.add_span(langfuse_span_data=name_generation_span_data)
 
-    def add_trace(self, langfuse_trace_data: Optional[LangfuseTrace] = None):
+    def add_trace(self, langfuse_trace_data: LangfuseTrace | None = None):
         format_trace_data = filter_none_values(langfuse_trace_data.model_dump()) if langfuse_trace_data else {}
         try:
             self.langfuse_client.trace(**format_trace_data)
@@ -408,7 +407,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
 
-    def add_span(self, langfuse_span_data: Optional[LangfuseSpan] = None):
+    def add_span(self, langfuse_span_data: LangfuseSpan | None = None):
         format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
         try:
             self.langfuse_client.span(**format_span_data)
@@ -416,12 +415,12 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create span: {str(e)}")
 
-    def update_span(self, span, langfuse_span_data: Optional[LangfuseSpan] = None):
+    def update_span(self, span, langfuse_span_data: LangfuseSpan | None = None):
         format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
 
         span.end(**format_span_data)
 
-    def add_generation(self, langfuse_generation_data: Optional[LangfuseGeneration] = None):
+    def add_generation(self, langfuse_generation_data: LangfuseGeneration | None = None):
         format_generation_data = (
             filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
         )
@@ -431,7 +430,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
 
-    def update_generation(self, generation, langfuse_generation_data: Optional[LangfuseGeneration] = None):
+    def update_generation(self, generation, langfuse_generation_data: LangfuseGeneration | None = None):
         format_generation_data = (
             filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
         )
