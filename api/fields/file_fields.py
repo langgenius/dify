@@ -32,7 +32,7 @@ file_fields = {
     "mime_type": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
-    "preview_url": fields.String,
+    "preview_url": fields.String(attribute="source_url"),
 }
 
 
