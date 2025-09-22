@@ -372,43 +372,16 @@ class IterationNode(Node):
         variable_mapping: dict[str, Sequence[str]] = {
             f"{node_id}.input_selector": typed_node_data.iterator_selector,
         }
+        iteration_node_ids = set()
 
-        # init graph
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.graph import Graph
-        from core.workflow.nodes.node_factory import DifyNodeFactory
-
-        # Create minimal GraphInitParams for static analysis
-        graph_init_params = GraphInitParams(
-            tenant_id="",
-            app_id="",
-            workflow_id="",
-            graph_config=graph_config,
-            user_id="",
-            user_from="",
-            invoke_from="",
-            call_depth=0,
-        )
-
-        # Create minimal GraphRuntimeState for static analysis
-        from core.workflow.entities import VariablePool
-
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(),
-            start_at=0,
-        )
-
-        # Create node factory for static analysis
-        node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
-
-        iteration_graph = Graph.init(
-            graph_config=graph_config,
-            node_factory=node_factory,
-            root_node_id=typed_node_data.start_node_id,
-        )
-
-        if not iteration_graph:
-            raise IterationGraphNotFoundError("iteration graph not found")
+        # Find all nodes that belong to this loop
+        nodes = graph_config.get("nodes", [])
+        for node in nodes:
+            node_data = node.get("data", {})
+            if node_data.get("iteration_id") == node_id:
+                in_iteration_node_id = node.get("id")
+                if in_iteration_node_id:
+                    iteration_node_ids.add(in_iteration_node_id)
 
         # Get node configs from graph_config instead of non-existent node_id_config_mapping
         node_configs = {node["id"]: node for node in graph_config.get("nodes", []) if "id" in node}
@@ -444,9 +417,7 @@ class IterationNode(Node):
             variable_mapping.update(sub_node_variable_mapping)
 
         # remove variable out from iteration
-        variable_mapping = {
-            key: value for key, value in variable_mapping.items() if value[0] not in iteration_graph.node_ids
-        }
+        variable_mapping = {key: value for key, value in variable_mapping.items() if value[0] not in iteration_node_ids}
 
         return variable_mapping
 
