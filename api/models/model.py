@@ -1044,7 +1044,7 @@ class Message(Base):
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1055,7 +1055,7 @@ class Message(Base):
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             elif "image-preview" in url:
                 # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
