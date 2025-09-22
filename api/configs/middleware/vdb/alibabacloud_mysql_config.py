@@ -43,7 +43,8 @@ class AlibabaCloudMySQLConfig(BaseSettings):
     )
 
     ALIBABACLOUD_MYSQL_DISTANCE_FUNCTION: str = Field(
-        description="Distance function used for vector similarity search in AlibabaCloud MySQL (e.g., 'cosine', 'euclidean')",
+        description="Distance function used for vector similarity search in AlibabaCloud MySQL "
+                    "(e.g., 'cosine', 'euclidean')",
         default="cosine",
     )
 
