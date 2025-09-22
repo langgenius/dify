@@ -15,6 +15,7 @@ from core.memory.entities import (
     MemoryScheduleMode,
     MemoryScope,
     MemoryTerm,
+    MemoryValueData,
 )
 from core.memory.errors import MemorySyncTimeoutError
 from core.model_runtime.entities.message_entities import PromptMessage
@@ -111,7 +112,7 @@ class ChatflowMemoryService:
                     node_id=memory.node_id,
                     conversation_id=memory.conversation_id,
                     name=memory.spec.name,
-                    value=memory.value,
+                    value=MemoryValueData(value=memory.value).model_dump_json(),
                     term=memory.spec.term,
                     scope=memory.spec.scope,
                     version=new_version,
@@ -187,16 +188,16 @@ class ChatflowMemoryService:
                     ChatflowMemoryVariable.memory_id == spec.id,
                     ChatflowMemoryVariable.tenant_id == tenant_id,
                     ChatflowMemoryVariable.app_id == app_id,
-                    ChatflowMemoryVariable.node_id == 
+                    ChatflowMemoryVariable.node_id ==
                         (node_id if spec.scope == MemoryScope.NODE else None),
-                    ChatflowMemoryVariable.conversation_id == 
+                    ChatflowMemoryVariable.conversation_id ==
                         (conversation_id if spec.term == MemoryTerm.SESSION else None),
                 )
             ).order_by(ChatflowMemoryVariable.version.desc()).limit(1)
             result = session.execute(stmt).scalar()
             if result:
                 return MemoryBlock(
-                    value=result.value,
+                    value=MemoryValueData.model_validate_json(result.value).value,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     conversation_id=conversation_id,
@@ -367,7 +368,7 @@ class ChatflowMemoryService:
                     MemoryBlockWithVisibility(
                         id=chatflow_memory_variable.memory_id,
                         name=chatflow_memory_variable.name,
-                        value=chatflow_memory_variable.value,
+                        value=MemoryValueData.model_validate_json(chatflow_memory_variable.value).value,
                         end_user_editable=spec.end_user_editable,
                         end_user_visible=spec.end_user_visible,
                         version=chatflow_memory_variable.version

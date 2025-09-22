@@ -79,6 +79,10 @@ class MemoryBlockWithVisibility(BaseModel):
     end_user_editable: bool
 
 
+class MemoryValueData(BaseModel):
+    value: str
+
+
 class ChatflowConversationMetadata(BaseModel):
     """Metadata for chatflow conversation with visible message count"""
     type: str = "mutable_visible_window"
