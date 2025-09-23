@@ -63,7 +63,7 @@ const CommentsPanel = () => {
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className='flex items-center justify-between p-4 pb-2'>
-        <div className='system-xl-semibold text-text-primary'>Comments</div>
+        <div className='system-xl-semibold font-semibold leading-6 text-text-primary'>Comments</div>
         <div className='relative flex items-center gap-2'>
           <button
             className='flex h-8 w-8 items-center justify-center rounded-md bg-white hover:bg-state-base-hover'
@@ -130,7 +130,11 @@ const CommentsPanel = () => {
                     ) : (
                       <RiCheckboxCircleLine
                         className='h-4 w-4 cursor-pointer text-text-tertiary hover:text-text-secondary'
-                        onClick={() => handleResolve(c)}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleResolve(c)
+                        }}
                       />
                     )}
                   </div>
@@ -147,11 +151,13 @@ const CommentsPanel = () => {
                 {/* Content */}
                 <div className='system-sm-regular mt-1 line-clamp-3 break-words text-text-secondary'>{c.content}</div>
                 {/* Footer */}
-                <div className='mt-2 flex items-center justify-between'>
-                  <div className='system-2xs-regular text-text-tertiary'>
-                    {c.reply_count} replies
+                {c.reply_count > 0 && (
+                  <div className='mt-2 flex items-center justify-between'>
+                    <div className='system-2xs-regular text-text-tertiary'>
+                      {c.reply_count} replies
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )
