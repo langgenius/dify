@@ -136,6 +136,9 @@ class MetricsSnapshot:
     event_rate: float
     overall_conn_rate: float
     overall_event_rate: float
+    data_rate_mb: float
+    overall_data_rate_mb: float
+    total_bytes: int
     ttfe_avg: float
     ttfe_min: float
     ttfe_max: float
@@ -159,6 +162,7 @@ class MetricsTracker:
         self.active_connections = 0
         self.total_connections = 0
         self.total_events = 0
+        self.total_bytes = 0
         self.start_time = time.time()
 
         # Enhanced metrics with memory limits
@@ -169,6 +173,7 @@ class MetricsTracker:
         # For rate calculations - no maxlen to avoid artificial limits
         self.connection_times: deque[float] = deque()
         self.event_times: deque[float] = deque()
+        self.byte_times: deque[tuple[float, int]] = deque()
         self.last_stats_time = time.time()
         self.last_total_connections = 0
         self.last_total_events = 0
@@ -198,6 +203,11 @@ class MetricsTracker:
             self.total_events += 1
             self.event_times.append(time.time())
 
+    def record_bytes(self, num_bytes: int) -> None:
+        with self.lock:
+            self.total_bytes += num_bytes
+            self.byte_times.append((time.time(), num_bytes))
+
     def record_ttfe(self, ttfe_ms: float) -> None:
         with self.lock:
             self.ttfe_samples.append(ttfe_ms)  # deque handles maxlen
@@ -222,6 +232,8 @@ class MetricsTracker:
                 self.connection_times.popleft()
             while self.event_times and self.event_times[0] < cutoff_time:
                 self.event_times.popleft()
+            while self.byte_times and self.byte_times[0][0] < cutoff_time:
+                self.byte_times.popleft()
 
             # Calculate rates based on actual window or elapsed time
             window_duration = min(time_window, current_time - self.start_time)
@@ -231,6 +243,10 @@ class MetricsTracker:
             else:
                 conn_rate = 0
                 event_rate = 0
+
+            # Calculate data throughput (MB/s) over the window and overall
+            window_bytes = sum(b for (t, b) in self.byte_times)
+            data_rate_mb = (window_bytes / window_duration / 1_000_000) if window_duration > 0 else 0
 
             # Calculate TTFE statistics
             if self.ttfe_samples:
@@ -284,6 +300,7 @@ class MetricsTracker:
             total_elapsed = current_time - self.start_time
             overall_conn_rate = self.total_connections / total_elapsed if total_elapsed > 0 else 0
             overall_event_rate = self.total_events / total_elapsed if total_elapsed > 0 else 0
+            overall_data_rate_mb = (self.total_bytes / total_elapsed / 1_000_000) if total_elapsed > 0 else 0
 
             return MetricsSnapshot(
                 active_connections=self.active_connections,
@@ -293,6 +310,9 @@ class MetricsTracker:
                 event_rate=event_rate,
                 overall_conn_rate=overall_conn_rate,
                 overall_event_rate=overall_event_rate,
+                data_rate_mb=data_rate_mb,
+                overall_data_rate_mb=overall_data_rate_mb,
+                total_bytes=self.total_bytes,
                 ttfe_avg=avg_ttfe,
                 ttfe_min=min_ttfe,
                 ttfe_max=max_ttfe,
@@ -466,7 +486,9 @@ class DifyWorkflowUser(HttpUser):
                         break
 
                     if line is not None:
-                        bytes_received += len(line.encode("utf-8"))
+                        line_bytes = len(line.encode("utf-8"))
+                        bytes_received += line_bytes
+                        metrics.record_bytes(line_bytes)
 
                     # Parse SSE line
                     event = parser.parse_line(line if line is not None else "")
@@ -600,6 +622,11 @@ def on_test_start(environment: object, **kwargs: object) -> None:
                         f"{'Event Throughput':<25} {'-':>15} {stats.event_rate:>13.2f}/s {stats.overall_event_rate:>13.2f}/s {stats.total_events:>12,d}"
                     )
 
+                    # Data Throughput (MB)
+                    logger.info(
+                        f"{'Data Throughput':<25} {'-':>15} {stats.data_rate_mb:>13.2f} MB/s {stats.overall_data_rate_mb:>11.2f} MB/s {stats.total_bytes/1_000_000:>10.2f} MB"
+                    )
+
                     logger.info("-" * 80)
                     logger.info(
                         f"{'TIME TO FIRST EVENT':<25} {'AVG':>15} {'P50':>10} {'P95':>10} {'MIN':>10} {'MAX':>10}"
@@ -673,6 +700,12 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
     logger.info(f"  {'Total Events Received:':<30} {stats.total_events:>10,d}")
     logger.info(f"  {'Average Throughput:':<30} {stats.overall_event_rate:>10.2f} events/s")
     logger.info(f"  {'Final Rate (10s window):':<30} {stats.event_rate:>10.2f} events/s")
+
+    logger.info("")
+    logger.info("DATA THROUGHPUT")
+    logger.info(f"  {'Total Data:':<30} {stats.total_bytes/1_000_000:>10.2f} MB")
+    logger.info(f"  {'Average Throughput:':<30} {stats.overall_data_rate_mb:>10.2f} MB/s")
+    logger.info(f"  {'Final Rate (10s window):':<30} {stats.data_rate_mb:>10.2f} MB/s")
 
     logger.info("")
     logger.info("STREAM METRICS")
