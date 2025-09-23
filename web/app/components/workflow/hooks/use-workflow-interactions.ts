@@ -70,9 +70,18 @@ export const useWorkflowMoveMode = () => {
     handleSelectionCancel()
   }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
 
+  const handleModeComment = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    setControlMode(ControlMode.Comment)
+    handleSelectionCancel()
+  }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
+
   return {
     handleModePointer,
     handleModeHand,
+    handleModeComment,
   }
 }
 
