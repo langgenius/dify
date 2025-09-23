@@ -103,6 +103,10 @@ class WorkflowTool(Tool):
             for file in files:
                 yield self.create_file_message(file)  # type: ignore
 
+        # traverse `outputs` field and create variable messages
+        for key, value in outputs.items():
+            yield self.create_variable_message(variable_name=key, variable_value=value)
+
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs)
 
