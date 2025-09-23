@@ -36,7 +36,6 @@ type TimeMessages = typeof import('../i18n/en-US/time').default
 type ToolsMessages = typeof import('../i18n/en-US/tools').default
 type WorkflowMessages = typeof import('../i18n/en-US/workflow').default
 
-
 // Complete type structure that matches i18next-config.ts camelCase conversion
 export type Messages = {
   appAnnotation: AppAnnotationMessages;
@@ -71,18 +70,16 @@ export type Messages = {
   workflow: WorkflowMessages;
 }
 
-
 // Utility type to flatten nested object keys into dot notation
-type FlattenKeys<T> = T extends object 
+type FlattenKeys<T> = T extends object
   ? {
-      [K in keyof T]: T[K] extends object 
-        ? `${K & string}.${FlattenKeys<T[K]> & string}`
-        : `${K & string}`
-    }[keyof T]
+    [K in keyof T]: T[K] extends object
+      ? `${K & string}.${FlattenKeys<T[K]> & string}`
+      : `${K & string}`
+  }[keyof T]
   : never
 
 export type ValidTranslationKeys = FlattenKeys<Messages>
-
 
 // Extend react-i18next with Dify's type structure
 declare module 'react-i18next' {
