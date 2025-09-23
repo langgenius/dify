@@ -26,7 +26,7 @@ const mfaService = {
     }>('/account/mfa/setup', { body: {} })
   },
 
-  completeSetup: async (totpToken: string, password: string) => {
+  completeSetup: async (totpToken: string) => {
     return post<{
       message: string
       backup_codes: string[]
@@ -76,8 +76,8 @@ export default function MFAPage() {
   })
 
   const completeSetupMutation = useMutation({
-    mutationFn: ({ totpToken, password }: { totpToken: string; password: string }) =>
-      mfaService.completeSetup(totpToken, password),
+    mutationFn: ({ totpToken }: { totpToken: string }) =>
+      mfaService.completeSetup(totpToken),
     onSuccess: (data) => {
       setBackupCodes(data.backup_codes)
       setSetupStep('backup')
@@ -109,7 +109,7 @@ export default function MFAPage() {
       Toast.notify({ type: 'error', message: t('mfa.tokenLength') })
       return
     }
-    completeSetupMutation.mutate({ totpToken, password: '' })
+    completeSetupMutation.mutate({ totpToken })
   }
 
   const handleDisable = () => {
