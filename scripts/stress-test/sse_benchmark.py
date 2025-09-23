@@ -624,7 +624,7 @@ def on_test_start(environment: object, **kwargs: object) -> None:
 
                     # Data Throughput (MB)
                     logger.info(
-                        f"{'Data Throughput':<25} {'-':>15} {stats.data_rate_mb:>13.2f} MB/s {stats.overall_data_rate_mb:>11.2f} MB/s {stats.total_bytes/1_000_000:>10.2f} MB"
+                        f"{'Data Throughput':<25} {'-':>15} {stats.data_rate_mb:>13.2f} MB/s {stats.overall_data_rate_mb:>11.2f} MB/s {stats.total_bytes / 1_000_000:>10.2f} MB"
                     )
 
                     logger.info("-" * 80)
@@ -703,7 +703,7 @@ def on_test_stop(environment: object, **kwargs: object) -> None:
 
     logger.info("")
     logger.info("DATA THROUGHPUT")
-    logger.info(f"  {'Total Data:':<30} {stats.total_bytes/1_000_000:>10.2f} MB")
+    logger.info(f"  {'Total Data:':<30} {stats.total_bytes / 1_000_000:>10.2f} MB")
     logger.info(f"  {'Average Throughput:':<30} {stats.overall_data_rate_mb:>10.2f} MB/s")
     logger.info(f"  {'Final Rate (10s window):':<30} {stats.data_rate_mb:>10.2f} MB/s")
 
