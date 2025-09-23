@@ -11,7 +11,7 @@ def is_db_command():
 
 
 # create app
-asgi_app: Optional[WsgiToAsgi] = None
+asgi_app: WsgiToAsgi | None = None
 
 if is_db_command():
     from app_factory import create_migrations_app
