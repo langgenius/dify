@@ -53,7 +53,7 @@ const SearchInput: FC<SearchInputProps> = ({
         }}
         onCompositionEnd={(e) => {
           isComposing.current = false
-          onChange((e.target as HTMLInputElement).value)
+          onChange(e.currentTarget.value)
         }}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
