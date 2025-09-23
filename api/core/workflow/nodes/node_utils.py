@@ -3,7 +3,7 @@ from typing import Any, Optional
 from core.workflow.enums import NodeType
 
 
-def get_node_type(node: Any) -> Optional[NodeType | str]:
+def get_node_type(node: Any) -> NodeType | str | None:
     if not node or not hasattr(node, "get"):
         return None
     else:
