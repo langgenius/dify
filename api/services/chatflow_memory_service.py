@@ -11,6 +11,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.entities import (
     MemoryBlock,
     MemoryBlockSpec,
+    MemoryCreatedBy,
     MemoryScheduleMode,
     MemoryScope,
     MemoryTerm,
@@ -23,7 +24,7 @@ from core.workflow.constants import MEMORY_BLOCK_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import App
+from models import App, CreatorUserRole
 from models.chatflow_memory import ChatflowMemoryVariable
 from models.workflow import Workflow, WorkflowDraftVariable
 from services.chatflow_history_service import ChatflowHistoryService
@@ -37,15 +38,24 @@ class ChatflowMemoryService:
     @staticmethod
     def get_persistent_memories(
         app: App,
+        created_by: MemoryCreatedBy,
         version: int | None = None
     ) -> Sequence[MemoryBlock]:
+        if created_by.account_id:
+            created_by_role = CreatorUserRole.ACCOUNT
+            created_by_id = created_by.account_id
+        else:
+            created_by_role = CreatorUserRole.END_USER
+            created_by_id = created_by.id
         if version is None:
             # If version not specified, get the latest version
             stmt = select(ChatflowMemoryVariable).distinct(ChatflowMemoryVariable.memory_id).where(
                 and_(
                     ChatflowMemoryVariable.tenant_id == app.tenant_id,
                     ChatflowMemoryVariable.app_id == app.id,
-                    ChatflowMemoryVariable.conversation_id == None
+                    ChatflowMemoryVariable.conversation_id == None,
+                    ChatflowMemoryVariable.created_by_role == created_by_role,
+                    ChatflowMemoryVariable.created_by == created_by_id,
                 )
             ).order_by(ChatflowMemoryVariable.version.desc())
         else:
@@ -54,16 +64,19 @@ class ChatflowMemoryService:
                     ChatflowMemoryVariable.tenant_id == app.tenant_id,
                     ChatflowMemoryVariable.app_id == app.id,
                     ChatflowMemoryVariable.conversation_id == None,
+                    ChatflowMemoryVariable.created_by_role == created_by_role,
+                    ChatflowMemoryVariable.created_by == created_by_id,
                     ChatflowMemoryVariable.version == version
                 )
             )
         with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
-        return ChatflowMemoryService._convert_to_memory_blocks(app, [result[0] for result in db_results])
+        return ChatflowMemoryService._convert_to_memory_blocks(app, created_by, [result[0] for result in db_results])
 
     @staticmethod
     def get_session_memories(
         app: App,
+        created_by: MemoryCreatedBy,
         conversation_id: str,
         version: int | None = None
     ) -> Sequence[MemoryBlock]:
@@ -87,12 +100,18 @@ class ChatflowMemoryService:
             )
         with Session(db.engine) as session:
             db_results = session.execute(stmt).all()
-        return ChatflowMemoryService._convert_to_memory_blocks(app, [result[0] for result in db_results])
+        return ChatflowMemoryService._convert_to_memory_blocks(app, created_by, [result[0] for result in db_results])
 
     @staticmethod
     def save_memory(memory: MemoryBlock, variable_pool: VariablePool, is_draft: bool) -> None:
         key = f"{memory.node_id}.{memory.spec.id}" if memory.node_id else memory.spec.id
         variable_pool.add([MEMORY_BLOCK_VARIABLE_NODE_ID, key], memory.value)
+        if memory.created_by.account_id:
+            created_by_role = CreatorUserRole.ACCOUNT
+            created_by = memory.created_by.account_id
+        else:
+            created_by_role = CreatorUserRole.END_USER
+            created_by = memory.created_by.id
 
         with Session(db.engine) as session:
             existing = session.query(ChatflowMemoryVariable).filter_by(
@@ -100,7 +119,9 @@ class ChatflowMemoryService:
                 tenant_id=memory.tenant_id,
                 app_id=memory.app_id,
                 node_id=memory.node_id,
-                conversation_id=memory.conversation_id
+                conversation_id=memory.conversation_id,
+                created_by_role=created_by_role,
+                created_by=created_by,
             ).order_by(ChatflowMemoryVariable.version.desc()).first()
             new_version = 1 if not existing else existing.version + 1
             session.add(
@@ -118,6 +139,8 @@ class ChatflowMemoryService:
                     term=memory.spec.term,
                     scope=memory.spec.scope,
                     version=new_version,
+                    created_by_role=created_by_role,
+                    created_by=created_by,
                 )
             )
             session.commit()
@@ -149,12 +172,13 @@ class ChatflowMemoryService:
     def get_memories_by_specs(
         memory_block_specs: Sequence[MemoryBlockSpec],
         tenant_id: str, app_id: str,
+        created_by: MemoryCreatedBy,
         conversation_id: Optional[str],
         node_id: Optional[str],
         is_draft: bool
     ) -> Sequence[MemoryBlock]:
         return [ChatflowMemoryService.get_memory_by_spec(
-            spec, tenant_id, app_id, conversation_id, node_id, is_draft
+            spec, tenant_id, app_id, created_by, conversation_id, node_id, is_draft
         ) for spec in memory_block_specs]
 
     @staticmethod
@@ -162,6 +186,7 @@ class ChatflowMemoryService:
         spec: MemoryBlockSpec,
         tenant_id: str,
         app_id: str,
+        created_by: MemoryCreatedBy,
         conversation_id: Optional[str],
         node_id: Optional[str],
         is_draft: bool
@@ -183,7 +208,8 @@ class ChatflowMemoryService:
                         app_id=app_id,
                         conversation_id=conversation_id,
                         node_id=node_id,
-                        spec=spec
+                        spec=spec,
+                        created_by=created_by,
                     )
             stmt = select(ChatflowMemoryVariable).where(
                 and_(
@@ -206,7 +232,8 @@ class ChatflowMemoryService:
                     conversation_id=conversation_id,
                     node_id=node_id,
                     spec=spec,
-                    edited_by_user=memory_value_data.edited_by_user
+                    edited_by_user=memory_value_data.edited_by_user,
+                    created_by=created_by,
                 )
             return MemoryBlock(
                 tenant_id=tenant_id,
@@ -214,7 +241,8 @@ class ChatflowMemoryService:
                 app_id=app_id,
                 conversation_id=conversation_id,
                 node_id=node_id,
-                spec=spec
+                spec=spec,
+                created_by=created_by,
             )
 
     @staticmethod
@@ -222,6 +250,7 @@ class ChatflowMemoryService:
         workflow: Workflow,
         conversation_id: str,
         variable_pool: VariablePool,
+        created_by: MemoryCreatedBy,
         is_draft: bool
     ):
         visible_messages = ChatflowHistoryService.get_visible_chat_history(
@@ -240,7 +269,8 @@ class ChatflowMemoryService:
                     app_id=workflow.app_id,
                     conversation_id=conversation_id,
                     node_id=None,
-                    is_draft=is_draft
+                    is_draft=is_draft,
+                    created_by=created_by,
                 )
                 if ChatflowMemoryService._should_update_memory(memory, visible_messages):
                     if memory.spec.schedule_mode == MemoryScheduleMode.SYNC:
@@ -276,6 +306,7 @@ class ChatflowMemoryService:
         tenant_id: str,
         app_id: str,
         node_id: str,
+        created_by: MemoryCreatedBy,
         conversation_id: str,
         memory_block_spec: MemoryBlockSpec,
         variable_pool: VariablePool,
@@ -293,7 +324,8 @@ class ChatflowMemoryService:
             app_id=app_id,
             conversation_id=conversation_id,
             node_id=node_id,
-            is_draft=is_draft
+            is_draft=is_draft,
+            created_by=created_by,
         )
         if not ChatflowMemoryService._should_update_memory(
             memory_block=memory_block,
@@ -356,6 +388,7 @@ class ChatflowMemoryService:
     @staticmethod
     def _convert_to_memory_blocks(
         app: App,
+        created_by: MemoryCreatedBy,
         raw_results: Sequence[ChatflowMemoryVariable]
     ) -> Sequence[MemoryBlock]:
         workflow = WorkflowService().get_published_workflow(app)
@@ -377,7 +410,8 @@ class ChatflowMemoryService:
                         app_id=chatflow_memory_variable.app_id,
                         conversation_id=chatflow_memory_variable.conversation_id,
                         node_id=chatflow_memory_variable.node_id,
-                        edited_by_user=memory_value_data.edited_by_user
+                        edited_by_user=memory_value_data.edited_by_user,
+                        created_by=created_by,
                     )
                 )
         return results
@@ -515,7 +549,8 @@ class ChatflowMemoryService:
             app_id=memory_block.app_id,
             conversation_id=memory_block.conversation_id,
             node_id=memory_block.node_id,
-            edited_by_user=False
+            edited_by_user=False,
+            created_by=memory_block.created_by,
         )
         ChatflowMemoryService.save_memory(updated_memory, variable_pool, is_draft)
 

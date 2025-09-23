@@ -2,33 +2,46 @@ from flask_restx import reqparse
 
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
-from core.memory.entities import MemoryBlock
+from core.memory.entities import MemoryBlock, MemoryCreatedBy
 from core.workflow.entities.variable_pool import VariablePool
+from models import App, EndUser
 from services.chatflow_memory_service import ChatflowMemoryService
 from services.workflow_service import WorkflowService
 
 
 class MemoryListApi(WebApiResource):
-    def get(self, app_model):
+    def get(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=False, type=str | None, default=None)
         parser.add_argument("memory_id", required=False, type=str | None, default=None)
         parser.add_argument("version", required=False, type=int | None, default=None)
         args = parser.parse_args()
-        conversation_id = args.get("conversation_id")
+        conversation_id: str | None = args.get("conversation_id")
         memory_id = args.get("memory_id")
         version = args.get("version")
 
-        result = ChatflowMemoryService.get_persistent_memories(app_model, version)
+        result = ChatflowMemoryService.get_persistent_memories(
+            app_model,
+            MemoryCreatedBy(end_user_id=end_user.id),
+            version
+        )
         if conversation_id:
-            result = [*result, *ChatflowMemoryService.get_session_memories(app_model, conversation_id, version)]
+            result = [
+                *result,
+                *ChatflowMemoryService.get_session_memories(
+                    app_model,
+                    MemoryCreatedBy(end_user_id=end_user.id),
+                    conversation_id,
+                    version
+                )
+            ]
         if memory_id:
             result = [it for it in result if it.spec.id == memory_id]
         return [it for it in result if it.spec.end_user_visible]
 
 
 class MemoryEditApi(WebApiResource):
-    def put(self, app_model):
+    def put(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
         parser.add_argument('id', type=str, required=True)
         parser.add_argument("conversation_id", type=str | None, required=False, default=None)
@@ -56,7 +69,8 @@ class MemoryEditApi(WebApiResource):
                 conversation_id=conversation_id,
                 node_id=node_id,
                 app_id=app_model.id,
-                edited_by_user=True
+                edited_by_user=True,
+                created_by=MemoryCreatedBy(end_user_id=end_user.id)
             ),
             variable_pool=VariablePool(),
             is_draft=False

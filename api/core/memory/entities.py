@@ -49,6 +49,11 @@ class MemoryBlockSpec(BaseModel):
     end_user_editable: bool = Field(default=False, description="Whether memory is editable by end users")
 
 
+class MemoryCreatedBy(BaseModel):
+    end_user_id: str | None = None
+    account_id: str | None = None
+
+
 class MemoryBlock(BaseModel):
     """Runtime memory block instance
 
@@ -69,6 +74,7 @@ class MemoryBlock(BaseModel):
     conversation_id: Optional[str] = None
     node_id: Optional[str] = None
     edited_by_user: bool = False
+    created_by: MemoryCreatedBy
 
 
 class MemoryValueData(BaseModel):

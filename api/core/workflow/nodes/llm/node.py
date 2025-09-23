@@ -14,7 +14,7 @@ from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.memory.entities import MemoryScope
+from core.memory.entities import MemoryCreatedBy, MemoryScope
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
@@ -74,7 +74,8 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from models import Workflow, db
+from models import UserFrom, Workflow
+from models.engine import db
 from services.chatflow_memory_service import ChatflowMemoryService
 
 from . import llm_utils
@@ -1242,12 +1243,19 @@ class LLMNode(Node):
                 ChatflowMemoryService.update_node_memory_if_needed(
                     tenant_id=self.tenant_id,
                     app_id=self.app_id,
-                    node_id=self.node_id,
+                    node_id=self.id,
                     conversation_id=conversation_id,
                     memory_block_spec=memory_block_spec,
                     variable_pool=variable_pool,
-                    is_draft=is_draft
+                    is_draft=is_draft,
+                    created_by=self._get_user_from_context()
                 )
+
+    def _get_user_from_context(self) -> MemoryCreatedBy:
+        if self.user_from == UserFrom.ACCOUNT:
+            return MemoryCreatedBy(account_id=self.user_id)
+        else:
+            return MemoryCreatedBy(end_user_id=self.user_id)
 
 
 def _combine_message_content_with_role(

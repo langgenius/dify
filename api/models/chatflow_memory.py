@@ -26,6 +26,8 @@ class ChatflowMemoryVariable(Base):
     scope: Mapped[str] = mapped_column(sa.String(10), nullable=False)  # 'app' or 'node'
     term: Mapped[str] = mapped_column(sa.String(20), nullable=False)  # 'session' or 'persistent'
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=1)
+    created_by_role: Mapped[str] = mapped_column(sa.String(20))  # 'end_user' or 'account`
+    created_by: Mapped[str] = mapped_column(StringUUID)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(

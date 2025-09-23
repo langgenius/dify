@@ -21,7 +21,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.memory.entities import MemoryScope
+from core.memory.entities import MemoryCreatedBy, MemoryScope
 from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
@@ -443,7 +443,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             app_id=self._workflow.app_id,
             node_id=None,
             conversation_id=conversation_id,
-            is_draft=is_draft
+            is_draft=is_draft,
+            created_by=self._get_created_by(),
         )
 
         # Build memory_id -> value mapping
@@ -482,5 +483,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             workflow=self._workflow,
             conversation_id=self.conversation.id,
             variable_pool=variable_pool,
-            is_draft=is_draft
+            is_draft=is_draft,
+            created_by=self._get_created_by()
         )
+
+    def _get_created_by(self) -> MemoryCreatedBy:
+        if self.application_generate_entity.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE}:
+            return MemoryCreatedBy(account_id=self.application_generate_entity.user_id)
+        else:
+            return MemoryCreatedBy(end_user_id=self.application_generate_entity.user_id)

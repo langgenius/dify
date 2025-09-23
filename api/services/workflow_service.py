@@ -11,7 +11,7 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.memory.entities import MemoryScope
+from core.memory.entities import MemoryCreatedBy, MemoryScope
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
@@ -1008,7 +1008,6 @@ def _setup_variable_pool(
             system_variable.dialogue_count = 1
     else:
         system_variable = SystemVariable.empty()
-
     # init variable pool
     variable_pool = VariablePool(
         system_variables=system_variable,
@@ -1017,7 +1016,12 @@ def _setup_variable_pool(
         # Based on the definition of `VariableUnion`,
         # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
         conversation_variables=cast(list[VariableUnion], conversation_variables),  #
-        memory_blocks=_fetch_memory_blocks(workflow, conversation_id, is_draft=is_draft),
+        memory_blocks=_fetch_memory_blocks(
+            workflow,
+            MemoryCreatedBy(account_id=user_id),
+            conversation_id,
+            is_draft=is_draft
+        ),
     )
 
     return variable_pool
@@ -1056,7 +1060,12 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
         raise Exception("unreachable")
 
 
-def _fetch_memory_blocks(workflow: Workflow, conversation_id: str, is_draft: bool) -> Mapping[str, str]:
+def _fetch_memory_blocks(
+    workflow: Workflow,
+    created_by: MemoryCreatedBy,
+    conversation_id: str,
+    is_draft: bool
+) -> Mapping[str, str]:
     memory_blocks = {}
     memory_block_specs = workflow.memory_blocks
     memories = ChatflowMemoryService.get_memories_by_specs(
@@ -1066,6 +1075,7 @@ def _fetch_memory_blocks(workflow: Workflow, conversation_id: str, is_draft: boo
         node_id=None,
         conversation_id=conversation_id,
         is_draft=is_draft,
+        created_by=created_by,
     )
     for memory in memories:
         if memory.spec.scope == MemoryScope.APP:
