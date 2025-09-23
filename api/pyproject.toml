@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.9.0"
+version = "2.0.0-beta2"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -20,7 +20,7 @@ dependencies = [
     "flask-migrate~=4.0.7",
     "flask-orjson~=2.0.0",
     "flask-sqlalchemy~=3.1.1",
-    "gevent~=25.9.1",
+    "gevent~=24.11.1",
     "gmpy2~=2.2.1",
     "google-api-core==2.18.0",
     "google-api-python-client==2.90.0",
@@ -68,10 +68,12 @@ dependencies = [
     "pydantic-extra-types~=2.10.3",
     "pydantic-settings~=2.9.1",
     "pyjwt~=2.10.1",
+    "pyotp~=2.9.0",
     "pypdfium2==4.30.0",
     "python-docx~=1.1.0",
     "python-dotenv==1.0.1",
     "pyyaml~=6.0.1",
+    "qrcode~=7.4.2",
     "readabilipy~=0.3.0",
     "redis[hiredis]~=6.1.0",
     "resend~=2.9.0",
@@ -169,7 +171,7 @@ dev = [
     "types-redis>=4.6.0.20241004",
     "celery-types>=0.23.0",
     "mypy~=1.17.1",
-    # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
+    "locust>=2.40.4",
     "sseclient-py>=1.8.0",
 ]
 
@@ -223,3 +225,6 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
+
+[tool.ruff]
+lint.ignore = ["SIM118"]

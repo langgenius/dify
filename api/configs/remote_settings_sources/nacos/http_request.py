@@ -5,7 +5,7 @@ import logging
 import os
 import time
 
-import httpx
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,10 @@ class NacosHttpClient:
             params = {}
         try:
             self._inject_auth_info(headers, params)
-            response = httpx.request(method, url="http://" + self.server + url, headers=headers, params=params)
+            response = requests.request(method, url="http://" + self.server + url, headers=headers, params=params)
             response.raise_for_status()
             return response.text
-        except httpx.RequestError as e:
+        except requests.RequestException as e:
             return f"Request to Nacos failed: {e}"
 
     def _inject_auth_info(self, headers: dict[str, str], params: dict[str, str], module: str = "config") -> None:
@@ -78,7 +78,7 @@ class NacosHttpClient:
         params = {"username": self.username, "password": self.password}
         url = "http://" + self.server + "/nacos/v1/auth/login"
         try:
-            resp = httpx.request("POST", url, headers=None, params=params)
+            resp = requests.request("POST", url, headers=None, params=params)
             resp.raise_for_status()
             response_data = resp.json()
             self.token = response_data.get("accessToken")

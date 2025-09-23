@@ -32,6 +32,7 @@ from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.mfa_service import MFAService
 
 
 class LoginApi(Resource):
@@ -46,6 +47,8 @@ class LoginApi(Resource):
         parser.add_argument("password", type=str, required=True, location="json")
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
         parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
+        parser.add_argument("mfa_code", type=str, required=False, default=None, location="json")
+        parser.add_argument("is_backup_code", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
@@ -73,6 +76,15 @@ class LoginApi(Resource):
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
             raise AuthenticationFailedError()
+
+        # Check MFA requirement
+        if MFAService.is_mfa_required(account):
+            if not args["mfa_code"]:
+                return {"result": "fail", "code": "mfa_required"}
+
+            if not MFAService.authenticate_with_mfa(account, args["mfa_code"]):
+                return {"result": "fail", "code": "mfa_token_invalid", "data": "The MFA token is invalid or expired."}
+
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:

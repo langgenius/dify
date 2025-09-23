@@ -1,6 +1,6 @@
 import logging
 
-import httpx
+import requests
 from flask import current_app, redirect, request
 from flask_restx import Resource
 from sqlalchemy import select
@@ -101,10 +101,8 @@ class OAuthCallback(Resource):
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
-        except httpx.RequestError as e:
-            error_text = str(e)
-            if isinstance(e, httpx.HTTPStatusError):
-                error_text = e.response.text
+        except requests.RequestException as e:
+            error_text = e.response.text if e.response else str(e)
             logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
 

@@ -40,7 +40,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: ./web/package.json
+          cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'

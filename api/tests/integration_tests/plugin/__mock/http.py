@@ -1,8 +1,8 @@
 import os
 from typing import Literal
 
-import httpx
 import pytest
+import requests
 
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
 from core.tools.entities.common_entities import I18nObject
@@ -27,11 +27,13 @@ class MockedHttp:
     @classmethod
     def requests_request(
         cls, method: Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"], url: str, **kwargs
-    ) -> httpx.Response:
+    ) -> requests.Response:
         """
-        Mocked httpx.request
+        Mocked requests.request
         """
-        request = httpx.Request(method, url)
+        request = requests.PreparedRequest()
+        request.method = method
+        request.url = url
         if url.endswith("/tools"):
             content = PluginDaemonBasicResponse[list[ToolProviderEntity]](
                 code=0, message="success", data=cls.list_tools()
@@ -39,7 +41,8 @@ class MockedHttp:
         else:
             raise ValueError("")
 
-        response = httpx.Response(status_code=200)
+        response = requests.Response()
+        response.status_code = 200
         response.request = request
         response._content = content.encode("utf-8")
         return response
@@ -51,7 +54,7 @@ MOCK_SWITCH = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_http_mock(request, monkeypatch: pytest.MonkeyPatch):
     if MOCK_SWITCH:
-        monkeypatch.setattr(httpx, "request", MockedHttp.requests_request)
+        monkeypatch.setattr(requests, "request", MockedHttp.requests_request)
 
         def unpatch():
             monkeypatch.undo()

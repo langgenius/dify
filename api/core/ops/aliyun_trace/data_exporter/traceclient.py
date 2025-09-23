@@ -8,7 +8,7 @@ from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
 
-import httpx
+import requests
 from opentelemetry import trace as trace_api
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -65,13 +65,13 @@ class TraceClient:
 
     def api_check(self):
         try:
-            response = httpx.head(self.endpoint, timeout=5)
+            response = requests.head(self.endpoint, timeout=5)
             if response.status_code == 405:
                 return True
             else:
                 logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
-        except httpx.RequestError as e:
+        except requests.RequestException as e:
             logger.debug("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 

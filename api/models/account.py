@@ -6,7 +6,7 @@ from typing import Any, Optional
 import sqlalchemy as sa
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column, reconstructor
+from sqlalchemy.orm import Mapped, Session, backref, mapped_column, reconstructor, relationship
 from typing_extensions import deprecated
 
 from models.base import Base
@@ -361,3 +361,24 @@ class TenantPluginAutoUpgradeStrategy(Base):
     include_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class AccountMFASettings(Base):
+    __tablename__ = "account_mfa_settings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="account_mfa_settings_pkey"),
+        sa.UniqueConstraint("account_id", name="unique_account_mfa_settings"),
+        sa.Index("account_mfa_settings_account_id_idx", "account_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    account_id: Mapped[str] = mapped_column(StringUUID, sa.ForeignKey("accounts.id"), nullable=False)
+    enabled = sa.Column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    secret = sa.Column(sa.Text, nullable=True)
+    backup_codes = sa.Column(sa.Text, nullable=True)
+    setup_at = sa.Column(DateTime, nullable=True)
+    created_at = sa.Column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = sa.Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # Relationship
+    account = relationship("Account", backref=backref("mfa_settings", uselist=False, cascade="all, delete-orphan"))

@@ -124,7 +124,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const handleAddGroup = useCallback(() => {
     let maxInGroupName = 1
     inputs.advanced_settings.groups.forEach((item) => {
-      const match = /(\d+)$/.exec(item.group_name)
+      const match = item.group_name.match(/(\d+)$/)
       if (match) {
         const num = Number.parseInt(match[1], 10)
         if (num > maxInGroupName)

@@ -125,7 +125,9 @@ export default function AppSelector() {
                     <MenuItem>
                       <div className={cn(itemClassName,
                         'data-[active]:bg-state-base-hover',
-                      )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
+                      )} onClick={() => {
+                        setShowAccountSettingModal({ payload: 'members' })
+                      }}>
                         <RiSettings3Line className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.settings')}</div>
                       </div>
