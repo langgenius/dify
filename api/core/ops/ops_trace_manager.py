@@ -917,5 +917,4 @@ class TraceQueueManager:
                     "file_id": file_id,
                     "app_id": task.app_id,
                 }
-                result = process_trace_tasks.delay(file_info)
-                result.get()  # wait for the result for debugging
+                process_trace_tasks.delay(file_info)

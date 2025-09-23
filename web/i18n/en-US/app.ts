@@ -193,7 +193,7 @@ const translation = {
     },
     inUse: 'In use',
     configProvider: {
-      title: 'Configure ',
+      title: 'Config ',
       placeholder: 'Enter your {{key}}',
       project: 'Project',
       trackingUri: 'Tracking URI',
