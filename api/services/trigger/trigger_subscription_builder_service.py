@@ -169,9 +169,7 @@ class TriggerSubscriptionBuilderService:
             expires_at=-1,
         )
         cache_key = cls.encode_cache_key(subscription_id)
-        redis_client.setex(
-            cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder.model_dump_json()
-        )
+        redis_client.setex(cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder.model_dump_json())
         return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder)
 
     @classmethod

@@ -49,7 +49,7 @@ class TriggerProviderApiEntity(BaseModel):
 
     supported_creation_methods: list[TriggerCreationMethod] = Field(
         default_factory=list,
-        description="Supported creation methods for the trigger provider. Possible values: 'OAUTH', 'APIKEY', 'MANUAL'."
+        description="Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'.",
     )
 
     credentials_schema: list[ProviderConfig] = Field(description="The credentials schema of the trigger provider")

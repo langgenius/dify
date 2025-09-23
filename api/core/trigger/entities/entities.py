@@ -269,11 +269,6 @@ class TriggerInputs(BaseModel):
     trigger_name: str
     subscription_id: str
 
-    @classmethod
-    def from_trigger_entity(cls, request_id: str, subscription_id: str, trigger: TriggerEntity) -> "TriggerInputs":
-        """Create from trigger entity (for production)."""
-        return cls(request_id=request_id, trigger_name=trigger.identity.name, subscription_id=subscription_id)
-
     def to_workflow_args(self) -> dict[str, Any]:
         """Convert to workflow arguments format."""
         return {"inputs": self.model_dump(), "files": []}
@@ -282,10 +277,12 @@ class TriggerInputs(BaseModel):
         """Convert to dict (alias for model_dump)."""
         return self.model_dump()
 
+
 class TriggerCreationMethod(StrEnum):
     OAUTH = "OAUTH"
     APIKEY = "APIKEY"
     MANUAL = "MANUAL"
+
 
 # Export all entities
 __all__ = [

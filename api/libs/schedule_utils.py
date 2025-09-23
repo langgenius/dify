@@ -33,7 +33,7 @@ def calculate_next_run_at(
     parts = cron_expression.strip().split()
 
     # Support both 5-field format and predefined expressions (matching frontend)
-    if len(parts) != 5 and not cron_expression.startswith('@'):
+    if len(parts) != 5 and not cron_expression.startswith("@"):
         raise ValueError(
             f"Cron expression must have exactly 5 fields or be a predefined expression "
             f"(@daily, @weekly, etc.). Got {len(parts)} fields: '{cron_expression}'"

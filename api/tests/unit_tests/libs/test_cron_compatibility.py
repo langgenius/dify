@@ -4,6 +4,7 @@ Enhanced cron syntax compatibility tests for croniter backend.
 This test suite mirrors the frontend cron-parser tests to ensure
 complete compatibility between frontend and backend cron processing.
 """
+
 import unittest
 from datetime import UTC, datetime, timedelta
 
@@ -24,15 +25,15 @@ class TestCronCompatibility(unittest.TestCase):
     def test_enhanced_dayofweek_syntax(self):
         """Test enhanced day-of-week syntax compatibility."""
         test_cases = [
-            ("0 9 * * 7", 0),       # Sunday as 7
-            ("0 9 * * 0", 0),       # Sunday as 0
-            ("0 9 * * MON", 1),     # Monday abbreviation
-            ("0 9 * * TUE", 2),     # Tuesday abbreviation
-            ("0 9 * * WED", 3),     # Wednesday abbreviation
-            ("0 9 * * THU", 4),     # Thursday abbreviation
-            ("0 9 * * FRI", 5),     # Friday abbreviation
-            ("0 9 * * SAT", 6),     # Saturday abbreviation
-            ("0 9 * * SUN", 0),     # Sunday abbreviation
+            ("0 9 * * 7", 0),  # Sunday as 7
+            ("0 9 * * 0", 0),  # Sunday as 0
+            ("0 9 * * MON", 1),  # Monday abbreviation
+            ("0 9 * * TUE", 2),  # Tuesday abbreviation
+            ("0 9 * * WED", 3),  # Wednesday abbreviation
+            ("0 9 * * THU", 4),  # Thursday abbreviation
+            ("0 9 * * FRI", 5),  # Friday abbreviation
+            ("0 9 * * SAT", 6),  # Saturday abbreviation
+            ("0 9 * * SUN", 0),  # Sunday abbreviation
         ]
 
         for expr, expected_weekday in test_cases:
@@ -46,18 +47,18 @@ class TestCronCompatibility(unittest.TestCase):
     def test_enhanced_month_syntax(self):
         """Test enhanced month syntax compatibility."""
         test_cases = [
-            ("0 9 1 JAN *", 1),     # January abbreviation
-            ("0 9 1 FEB *", 2),     # February abbreviation
-            ("0 9 1 MAR *", 3),     # March abbreviation
-            ("0 9 1 APR *", 4),     # April abbreviation
-            ("0 9 1 MAY *", 5),     # May abbreviation
-            ("0 9 1 JUN *", 6),     # June abbreviation
-            ("0 9 1 JUL *", 7),     # July abbreviation
-            ("0 9 1 AUG *", 8),     # August abbreviation
-            ("0 9 1 SEP *", 9),     # September abbreviation
-            ("0 9 1 OCT *", 10),    # October abbreviation
-            ("0 9 1 NOV *", 11),    # November abbreviation
-            ("0 9 1 DEC *", 12),    # December abbreviation
+            ("0 9 1 JAN *", 1),  # January abbreviation
+            ("0 9 1 FEB *", 2),  # February abbreviation
+            ("0 9 1 MAR *", 3),  # March abbreviation
+            ("0 9 1 APR *", 4),  # April abbreviation
+            ("0 9 1 MAY *", 5),  # May abbreviation
+            ("0 9 1 JUN *", 6),  # June abbreviation
+            ("0 9 1 JUL *", 7),  # July abbreviation
+            ("0 9 1 AUG *", 8),  # August abbreviation
+            ("0 9 1 SEP *", 9),  # September abbreviation
+            ("0 9 1 OCT *", 10),  # October abbreviation
+            ("0 9 1 NOV *", 11),  # November abbreviation
+            ("0 9 1 DEC *", 12),  # December abbreviation
         ]
 
         for expr, expected_month in test_cases:
@@ -89,9 +90,9 @@ class TestCronCompatibility(unittest.TestCase):
     def test_special_characters(self):
         """Test special characters in cron expressions."""
         test_cases = [
-            "0 9 ? * 1",        # ? wildcard
-            "0 12 * * 7",       # Sunday as 7
-            "0 15 L * *",       # Last day of month
+            "0 9 ? * 1",  # ? wildcard
+            "0 12 * * 7",  # Sunday as 7
+            "0 15 L * *",  # Last day of month
         ]
 
         for expr in test_cases:
@@ -106,8 +107,8 @@ class TestCronCompatibility(unittest.TestCase):
     def test_range_and_list_syntax(self):
         """Test range and list syntax with abbreviations."""
         test_cases = [
-            "0 9 * * MON-FRI",      # Weekday range with abbreviations
-            "0 9 * JAN-MAR *",      # Month range with abbreviations
+            "0 9 * * MON-FRI",  # Weekday range with abbreviations
+            "0 9 * JAN-MAR *",  # Month range with abbreviations
             "0 9 * * SUN,WED,FRI",  # Weekday list with abbreviations
             "0 9 1 JAN,JUN,DEC *",  # Month list with abbreviations
         ]
@@ -124,13 +125,13 @@ class TestCronCompatibility(unittest.TestCase):
     def test_invalid_enhanced_syntax(self):
         """Test that invalid enhanced syntax is properly rejected."""
         invalid_expressions = [
-            "0 12 * JANUARY *",     # Full month name (not supported)
-            "0 12 * * MONDAY",      # Full day name (not supported)
-            "0 12 32 JAN *",        # Invalid day with valid month
-            "15 10 1 * 8",          # Invalid day of week
-            "15 10 1 INVALID *",    # Invalid month abbreviation
-            "15 10 1 * INVALID",    # Invalid day abbreviation
-            "@invalid",             # Invalid predefined expression
+            "0 12 * JANUARY *",  # Full month name (not supported)
+            "0 12 * * MONDAY",  # Full day name (not supported)
+            "0 12 32 JAN *",  # Invalid day with valid month
+            "15 10 1 * 8",  # Invalid day of week
+            "15 10 1 INVALID *",  # Invalid month abbreviation
+            "15 10 1 * INVALID",  # Invalid day abbreviation
+            "@invalid",  # Invalid predefined expression
         ]
 
         for expr in invalid_expressions:
@@ -221,7 +222,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
     def test_half_hour_timezones(self):
         """Test timezones with half-hour offsets."""
         timezones_with_offsets = [
-            ("Asia/Kolkata", 17, 30),    # UTC+5:30 -> 12:00 UTC = 17:30 IST
+            ("Asia/Kolkata", 17, 30),  # UTC+5:30 -> 12:00 UTC = 17:30 IST
             ("Australia/Adelaide", 22, 30),  # UTC+10:30 -> 12:00 UTC = 22:30 ACDT (summer time)
         ]
 
@@ -262,7 +263,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         # This mirrors the exact usage from execution-time-calculator.ts:47
         test_data = {
             "cron_expression": "30 14 * * 1-5",  # 2:30 PM weekdays
-            "timezone": "America/New_York"
+            "timezone": "America/New_York",
         }
 
         # Get next 5 execution times (like the frontend does)
@@ -270,11 +271,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         current_base = self.base_time
 
         for _ in range(5):
-            next_time = calculate_next_run_at(
-                test_data["cron_expression"],
-                test_data["timezone"],
-                current_base
-            )
+            next_time = calculate_next_run_at(test_data["cron_expression"], test_data["timezone"], current_base)
             assert next_time is not None
             execution_times.append(next_time)
             current_base = next_time + timedelta(seconds=1)  # Move slightly forward
@@ -306,22 +303,19 @@ class TestFrontendBackendIntegration(unittest.TestCase):
             {
                 "frequency": "monthly",
                 "config": VisualConfig(time="9:00 AM", monthly_days=[1]),
-                "expected_cron": "0 9 1 * *"
+                "expected_cron": "0 9 1 * *",
             },
             # Test with weekday abbreviations
             {
                 "frequency": "weekly",
                 "config": VisualConfig(time="2:30 PM", weekdays=["mon", "wed", "fri"]),
-                "expected_cron": "30 14 * * 1,3,5"
-            }
+                "expected_cron": "30 14 * * 1,3,5",
+            },
         ]
 
         for test_case in visual_configs:
             with self.subTest(frequency=test_case["frequency"]):
-                cron_expr = ScheduleService.visual_to_cron(
-                    test_case["frequency"],
-                    test_case["config"]
-                )
+                cron_expr = ScheduleService.visual_to_cron(test_case["frequency"], test_case["config"])
                 assert cron_expr == test_case["expected_cron"]
 
                 # Verify the generated cron expression is valid
@@ -331,14 +325,14 @@ class TestFrontendBackendIntegration(unittest.TestCase):
     def test_error_handling_consistency(self):
         """Test that error handling matches frontend expectations."""
         invalid_expressions = [
-            "60 10 1 * *",         # Invalid minute
-            "15 25 1 * *",         # Invalid hour
-            "15 10 32 * *",        # Invalid day
-            "15 10 1 13 *",        # Invalid month
-            "15 10 1",             # Too few fields
-            "15 10 1 * * *",       # 6 fields (not supported in frontend)
-            "0 15 10 1 * * *",     # 7 fields (not supported in frontend)
-            "invalid expression",   # Completely invalid
+            "60 10 1 * *",  # Invalid minute
+            "15 25 1 * *",  # Invalid hour
+            "15 10 32 * *",  # Invalid day
+            "15 10 1 13 *",  # Invalid month
+            "15 10 1",  # Too few fields
+            "15 10 1 * * *",  # 6 fields (not supported in frontend)
+            "0 15 10 1 * * *",  # 7 fields (not supported in frontend)
+            "invalid expression",  # Completely invalid
         ]
 
         for expr in invalid_expressions:
@@ -354,12 +348,12 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         import time
 
         complex_expressions = [
-            "*/5 9-17 * * 1-5",         # Every 5 minutes, weekdays, business hours
-            "0 */2 1,15 * *",           # Every 2 hours on 1st and 15th
-            "30 14 * * 1,3,5",          # Mon, Wed, Fri at 14:30
-            "15,45 8-18 * * 1-5",       # 15 and 45 minutes past hour, weekdays
-            "0 9 * JAN-MAR MON-FRI",    # Enhanced syntax: Q1 weekdays at 9 AM
-            "0 12 ? * SUN",             # Enhanced syntax: Sundays at noon with ?
+            "*/5 9-17 * * 1-5",  # Every 5 minutes, weekdays, business hours
+            "0 */2 1,15 * *",  # Every 2 hours on 1st and 15th
+            "30 14 * * 1,3,5",  # Mon, Wed, Fri at 14:30
+            "15,45 8-18 * * 1-5",  # 15 and 45 minutes past hour, weekdays
+            "0 9 * JAN-MAR MON-FRI",  # Enhanced syntax: Q1 weekdays at 9 AM
+            "0 12 ? * SUN",  # Enhanced syntax: Sundays at noon with ?
         ]
 
         start_time = time.time()
@@ -383,4 +377,5 @@ class TestFrontendBackendIntegration(unittest.TestCase):
 if __name__ == "__main__":
     # Import timedelta for the test
     from datetime import timedelta
+
     unittest.main()

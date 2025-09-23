@@ -43,9 +43,7 @@ def dispatch_triggered_workflows_async(
     Returns:
         dict: Execution result with status and dispatched trigger count
     """
-    dispatch_params: PluginTriggerDispatchData = PluginTriggerDispatchData.model_validate(
-        dispatch_data
-    )
+    dispatch_params: PluginTriggerDispatchData = PluginTriggerDispatchData.model_validate(dispatch_data)
     endpoint_id = dispatch_params.endpoint_id
     provider_id = dispatch_params.provider_id
     subscription_id = dispatch_params.subscription_id

@@ -12,7 +12,8 @@ from flask import Request
 import contexts
 from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.entities.request import TriggerInvokeResponse
+from core.plugin.entities.request import Event, TriggerInvokeResponse
+from core.plugin.impl.exc import PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
     Subscription,
@@ -168,7 +169,14 @@ class TriggerManager:
         trigger = provider.get_trigger(trigger_name)
         if not trigger:
             raise ValueError(f"Trigger {trigger_name} not found in provider {provider_id}")
-        return provider.invoke_trigger(user_id, trigger_name, parameters, credentials, credential_type, request)
+        try:
+            return provider.invoke_trigger(user_id, trigger_name, parameters, credentials, credential_type, request)
+        except PluginInvokeError as e:
+            if e.get_error_type() == "TriggerIgnoreEventError":
+                return TriggerInvokeResponse(event=Event(variables={}), cancelled=True)
+            else:
+                logger.exception("Failed to invoke trigger")
+            raise
 
     @classmethod
     def subscribe_trigger(

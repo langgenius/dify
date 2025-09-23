@@ -247,6 +247,7 @@ class Event(BaseModel):
 
 class TriggerInvokeResponse(BaseModel):
     event: Event
+    cancelled: Optional[bool] = False
 
 
 class PluginTriggerDispatchResponse(BaseModel):
