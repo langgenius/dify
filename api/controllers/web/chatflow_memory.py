@@ -61,20 +61,32 @@ class MemoryEditApi(WebApiResource):
             return {'error': 'Memory not found'}, 404
         if not memory_spec.end_user_editable:
             return {'error': 'Memory not editable'}, 403
-        ChatflowMemoryService.save_memory(
-            MemoryBlock(
-                spec=memory_spec,
-                tenant_id=app_model.tenant_id,
-                value=update,
-                conversation_id=conversation_id,
-                node_id=node_id,
-                app_id=app_model.id,
-                edited_by_user=True,
-                created_by=MemoryCreatedBy(end_user_id=end_user.id)
-            ),
-            variable_pool=VariablePool(),
+
+        # First get existing memory
+        existing_memory = ChatflowMemoryService.get_memory_by_spec(
+            spec=memory_spec,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            created_by=MemoryCreatedBy(end_user_id=end_user.id),
+            conversation_id=conversation_id,
+            node_id=node_id,
             is_draft=False
         )
+
+        # Create updated memory instance
+        updated_memory = MemoryBlock(
+            spec=existing_memory.spec,
+            tenant_id=existing_memory.tenant_id,
+            app_id=existing_memory.app_id,
+            conversation_id=existing_memory.conversation_id,
+            node_id=existing_memory.node_id,
+            value=update,  # New value
+            version=existing_memory.version,  # Keep current version (save_memory will handle version increment)
+            edited_by_user=True,
+            created_by=existing_memory.created_by,
+        )
+
+        ChatflowMemoryService.save_memory(updated_memory, VariablePool(), False)
         return '', 204
 
 

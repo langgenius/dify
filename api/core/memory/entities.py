@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 from enum import StrEnum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from core.app.app_config.entities import ModelConfig
+if TYPE_CHECKING:
+    from core.app.app_config.entities import ModelConfig
 
 
 class MemoryScope(StrEnum):
@@ -75,6 +78,7 @@ class MemoryBlock(BaseModel):
     node_id: Optional[str] = None
     edited_by_user: bool = False
     created_by: MemoryCreatedBy
+    version: int = Field(description="Memory block version number")
 
 
 class MemoryValueData(BaseModel):

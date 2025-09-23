@@ -210,6 +210,7 @@ class ChatflowMemoryService:
                         node_id=node_id,
                         spec=spec,
                         created_by=created_by,
+                        version=1,
                     )
             stmt = select(ChatflowMemoryVariable).where(
                 and_(
@@ -234,6 +235,7 @@ class ChatflowMemoryService:
                     spec=spec,
                     edited_by_user=memory_value_data.edited_by_user,
                     created_by=created_by,
+                    version=result.version,
                 )
             return MemoryBlock(
                 tenant_id=tenant_id,
@@ -243,6 +245,7 @@ class ChatflowMemoryService:
                 node_id=node_id,
                 spec=spec,
                 created_by=created_by,
+                version=1,
             )
 
     @staticmethod
@@ -412,6 +415,7 @@ class ChatflowMemoryService:
                         node_id=chatflow_memory_variable.node_id,
                         edited_by_user=memory_value_data.edited_by_user,
                         created_by=created_by,
+                        version=chatflow_memory_variable.version,
                     )
                 )
         return results
@@ -551,6 +555,7 @@ class ChatflowMemoryService:
             node_id=memory_block.node_id,
             edited_by_user=False,
             created_by=memory_block.created_by,
+            version=memory_block.version,
         )
         ChatflowMemoryService.save_memory(updated_memory, variable_pool, is_draft)
 
