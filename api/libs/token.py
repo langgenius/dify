@@ -1,7 +1,7 @@
 from flask import Request, Response
 
 from configs import dify_config
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN, COOKIE_NAME_APP_TOKEN
 
 
 def _try_extract_from_header(request: Request) -> str | None:
@@ -34,12 +34,6 @@ def _try_extract_webapp_token_from_url(request: Request) -> str | None:
     """
     return request.args.get("web_app_access_token")
 
-
-def _try_extract_webapp_token_from_cookie(request: Request) -> str | None:
-    """
-    Try to extract app token from cookie
-    """
-    return request.cookies.get(COOKIE_NAME_APP_TOKEN)
 
 def _try_extract_webapp_token_from_cookie(request: Request) -> str | None:
     """
