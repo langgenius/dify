@@ -11,6 +11,7 @@ import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
+import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -28,12 +29,17 @@ type CommentThreadProps = {
 }
 
 const ThreadMessage: FC<{
+  authorId: string
   authorName: string
   avatarUrl?: string | null
   createdAt: number
   content: string
-}> = ({ authorName, avatarUrl, createdAt, content }) => {
+}> = ({ authorId, authorName, avatarUrl, createdAt, content }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const { userProfile } = useAppContext()
+  const currentUserId = userProfile?.id
+  const isCurrentUser = authorId === currentUserId
+  const userColor = isCurrentUser ? undefined : getUserColor(authorId)
 
   return (
     <div className={cn('flex gap-3 pt-1')}>
@@ -43,6 +49,7 @@ const ThreadMessage: FC<{
           avatar={avatarUrl || null}
           size={24}
           className={cn('h-8 w-8 rounded-full')}
+          backgroundColor={userColor}
         />
       </div>
       <div className='min-w-0 flex-1 pb-4 text-text-primary last:pb-0'>
@@ -183,6 +190,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         </div>
         <div className='relative mt-2 flex-1 overflow-y-auto px-4'>
           <ThreadMessage
+            authorId={comment.created_by_account?.id || ''}
             authorName={comment.created_by_account?.name || 'User'}
             avatarUrl={comment.created_by_account?.avatar_url || null}
             createdAt={comment.created_at}
@@ -248,6 +256,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                       </div>
                     ) : (
                       <ThreadMessage
+                        authorId={reply.created_by_account?.id || ''}
                         authorName={reply.created_by_account?.name || 'User'}
                         avatarUrl={reply.created_by_account?.avatar_url || null}
                         createdAt={reply.created_at}
