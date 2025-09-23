@@ -1381,8 +1381,8 @@ class RagPipelineService:
         datasource_nodes = workflow.graph_dict.get("nodes", [])
         datasource_plugins = []
         for datasource_node in datasource_nodes:
-            if datasource_node.get("type") == "datasource":
-                datasource_node_data = datasource_node.get("data", {})
+            if datasource_node.get("data", {}).get("type") == "datasource":
+                datasource_node_data = datasource_node["data"]
                 if not datasource_node_data:
                     continue
 
