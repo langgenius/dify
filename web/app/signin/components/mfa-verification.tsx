@@ -124,8 +124,7 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
             if (useBackupCode) {
               // For backup codes, allow alphanumeric characters
               setMfaCode(value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())
-            }
- else {
+            } else {
               // For TOTP codes, allow only digits
               setMfaCode(value.replace(/\D/g, ''))
             }

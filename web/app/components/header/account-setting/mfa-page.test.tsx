@@ -140,7 +140,8 @@ describe('MFAPage Component', () => {
           secret: 'TEST_SECRET',
           qr_code: 'data:image/png;base64,test',
         })
-      } else if (url.includes('/setup/complete')) {
+      }
+      else if (url.includes('/setup/complete')) {
         return Promise.resolve({
           message: 'MFA setup successfully',
           backup_codes: ['CODE1', 'CODE2', 'CODE3', 'CODE4', 'CODE5', 'CODE6', 'CODE7', 'CODE8'],
@@ -207,7 +208,8 @@ describe('MFAPage Component', () => {
           secret: 'TEST_SECRET',
           qr_code: 'data:image/png;base64,test',
         })
-      } else if (url.includes('/setup/complete')) {
+      }
+      else if (url.includes('/setup/complete')) {
         return Promise.reject(new Error('Invalid TOTP token'))
       }
     })
@@ -355,7 +357,8 @@ describe('MFAPage Component', () => {
           secret: 'TEST_SECRET',
           qr_code: 'data:image/png;base64,test',
         })
-      } else if (url.includes('/setup/complete')) {
+      }
+      else if (url.includes('/setup/complete')) {
         return Promise.resolve({
           message: 'MFA setup successfully',
           backup_codes: ['ABCD1234', 'EFGH5678', 'IJKL9012', 'MNOP3456', 'QRST7890', 'UVWX1234', 'YZAB5678', 'CDEF9012'],

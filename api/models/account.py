@@ -373,12 +373,12 @@ class AccountMFASettings(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     account_id: Mapped[str] = mapped_column(StringUUID, sa.ForeignKey("accounts.id"), nullable=False)
-    enabled = sa.Column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    secret = sa.Column(sa.Text, nullable=True)
-    backup_codes = sa.Column(sa.Text, nullable=True)
-    setup_at = sa.Column(DateTime, nullable=True)
-    created_at = sa.Column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = sa.Column(DateTime, nullable=False, server_default=func.current_timestamp())
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    secret: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    backup_codes: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    setup_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # Relationship
     account = relationship("Account", backref=backref("mfa_settings", uselist=False, cascade="all, delete-orphan"))
