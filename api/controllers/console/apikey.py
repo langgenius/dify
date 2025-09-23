@@ -22,6 +22,34 @@ API_TOKEN_RESOURCE_FIELD_MAP = {
     # Dataset API keys are managed by tenant_id in a separate implementation
 }
 
+
+class ApiTokenResourceFieldMixin:
+    """Mixin class providing safe field mapping for ApiToken resources."""
+    
+    resource_id_field: str | None = None
+
+    def _get_resource_field(self):
+        """
+        Get the ApiToken field for the current resource type.
+        
+        Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
+        
+        Returns:
+            The ApiToken field for querying
+            
+        Raises:
+            ValueError: If resource_id_field is not supported
+        """
+        if self.resource_id_field is None:
+            raise ValueError("resource_id_field must be set")
+            
+        if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
+            raise ValueError(f"Unsupported resource_id_field: {self.resource_id_field}. "
+                           f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}")
+        
+        return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
+
+
 api_key_fields = {
     "id": fields.String,
     "type": fields.String,
@@ -51,7 +79,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
     return resource
 
 
-class BaseApiKeyListResource(Resource):
+class BaseApiKeyListResource(Resource, ApiTokenResourceFieldMixin):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
@@ -59,29 +87,6 @@ class BaseApiKeyListResource(Resource):
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
-
-    def _get_resource_field(self):
-        """
-        Get the ApiToken field for the current resource type.
-
-        Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
-
-        Returns:
-            The ApiToken field for querying
-
-        Raises:
-            ValueError: If resource_id_field is not supported
-        """
-        if self.resource_id_field is None:
-            raise ValueError("resource_id_field must be set")
-
-        if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
-            raise ValueError(
-                f"Unsupported resource_id_field: {self.resource_id_field}. "
-                f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}"
-            )
-
-        return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
 
     @marshal_with(api_key_list)
     def get(self, resource_id):
@@ -116,9 +121,9 @@ class BaseApiKeyListResource(Resource):
 
         key = ApiToken.generate_api_key(self.token_prefix or "", 24)
         api_token = ApiToken()
-
+        
         # Use safe field mapping instead of setattr reflection
-        resource_field = self._get_resource_field()
+        # resource_field already validated in _get_resource_field() call above
         if self.resource_id_field == "app_id":
             api_token.app_id = resource_id
         else:
@@ -133,35 +138,12 @@ class BaseApiKeyListResource(Resource):
         return api_token, 201
 
 
-class BaseApiKeyResource(Resource):
+class BaseApiKeyResource(Resource, ApiTokenResourceFieldMixin):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
     resource_model: type | None = None
     resource_id_field: str | None = None
-
-    def _get_resource_field(self):
-        """
-        Get the ApiToken field for the current resource type.
-
-        Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
-
-        Returns:
-            The ApiToken field for querying
-
-        Raises:
-            ValueError: If resource_id_field is not supported
-        """
-        if self.resource_id_field is None:
-            raise ValueError("resource_id_field must be set")
-
-        if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
-            raise ValueError(
-                f"Unsupported resource_id_field: {self.resource_id_field}. "
-                f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}"
-            )
-
-        return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
 
     def delete(self, resource_id, api_key_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"

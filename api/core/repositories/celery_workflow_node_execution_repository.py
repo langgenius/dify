@@ -7,6 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Union
 
 from sqlalchemy.engine import Engine
@@ -26,13 +27,13 @@ from tasks.workflow_node_execution_tasks import (
 
 # Safe field getter mapping for WorkflowNodeExecution to avoid getattr reflection
 WORKFLOW_NODE_EXECUTION_FIELD_GETTERS = {
-    "id": lambda x: x.id,
-    "index": lambda x: x.index,
-    "created_at": lambda x: x.created_at,
-    "finished_at": lambda x: x.finished_at,
-    "node_id": lambda x: x.node_id,
-    "status": lambda x: x.status,
-    "elapsed_time": lambda x: x.elapsed_time,
+    "id": lambda x: x.id or "",
+    "index": lambda x: x.index or 0,
+    "created_at": lambda x: x.created_at or datetime.min,
+    "finished_at": lambda x: x.finished_at or datetime.min,
+    "node_id": lambda x: x.node_id or "",
+    "status": lambda x: x.status or "",
+    "elapsed_time": lambda x: x.elapsed_time or 0.0,
 }
 
 logger = logging.getLogger(__name__)
@@ -201,7 +202,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                         continue
 
                     field_getter = WORKFLOW_NODE_EXECUTION_FIELD_GETTERS[field_name]
-                    result.sort(key=lambda x: field_getter(x) or 0, reverse=reverse)
+                    result.sort(key=field_getter, reverse=reverse)
 
             logger.debug("Retrieved %d workflow node executions for run %s from cache", len(result), workflow_run_id)
             return result
