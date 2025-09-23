@@ -2,7 +2,7 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import httpx
 from pydantic import BaseModel
@@ -52,10 +52,20 @@ class BasePluginClient:
         """
         url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
+        request_kwargs: dict[str, Any] = {
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "params": params,
+            "files": files,
+        }
+        if isinstance(prepared_data, dict):
+            request_kwargs["data"] = prepared_data
+        elif prepared_data is not None:
+            request_kwargs["content"] = prepared_data
+
         try:
-            response = httpx.request(
-                method=method, url=url, headers=headers, data=prepared_data, params=params, files=files
-            )
+            response = httpx.request(**request_kwargs)
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -94,21 +104,26 @@ class BasePluginClient:
         headers: dict | None = None,
         data: bytes | dict | None = None,
         files: dict | None = None,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[str, None, None]:
         """
         Make a stream request to the plugin daemon inner API
         """
         url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
+        stream_kwargs: dict[str, Any] = {
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "params": params,
+            "files": files,
+        }
+        if isinstance(prepared_data, dict):
+            stream_kwargs["data"] = prepared_data
+        elif prepared_data is not None:
+            stream_kwargs["content"] = prepared_data
+
         try:
-            with httpx.stream(
-                method=method,
-                url=url,
-                headers=headers,
-                data=prepared_data,
-                params=params,
-                files=files,
-            ) as response:
+            with httpx.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
                     if raw_line is None:
                         continue

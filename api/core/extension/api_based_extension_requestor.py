@@ -27,22 +27,20 @@ class APIBasedExtensionRequestor:
         url = self.api_endpoint
 
         try:
-            # proxy support for security
-            proxies = None
+            mounts: dict[str, httpx.BaseTransport] | None = None
             if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
-                proxies = {
-                    "http": dify_config.SSRF_PROXY_HTTP_URL,
-                    "https": dify_config.SSRF_PROXY_HTTPS_URL,
+                mounts = {
+                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
+                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
                 }
 
-            response = httpx.request(
-                method="POST",
-                url=url,
-                json={"point": point.value, "params": params},
-                headers=headers,
-                timeout=self.timeout,
-                proxies=proxies,
-            )
+            with httpx.Client(mounts=mounts, timeout=self.timeout) as client:
+                response = client.request(
+                    method="POST",
+                    url=url,
+                    json={"point": point.value, "params": params},
+                    headers=headers,
+                )
         except httpx.TimeoutException:
             raise ValueError("request timeout")
         except httpx.RequestError:
