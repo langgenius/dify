@@ -79,6 +79,7 @@ class LoginApi(Resource):
             # This ensures similar response time regardless of authentication failure
             if args.get("mfa_code"):
                 import time
+
                 time.sleep(0.05)  # Simulate MFA verification delay
             raise AuthenticationFailedError()
 
