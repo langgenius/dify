@@ -146,6 +146,12 @@ class DebugLoggingLayer(GraphEngineLayer):
                 self.logger.info("  Partial outputs: %s", self._format_dict(event.outputs))
 
         # Node-level events
+        # Retry before Started because Retry subclasses Started;
+        elif isinstance(event, NodeRunRetryEvent):
+            self.retry_count += 1
+            self.logger.warning("🔄 Node retry: %s (attempt %s)", event.node_id, event.retry_index)
+            self.logger.warning("  Previous error: %s", event.error)
+
         elif isinstance(event, NodeRunStartedEvent):
             self.node_count += 1
             self.logger.info('▶️ Node started: %s - "%s" (type: %s)', event.node_id, event.node_title, event.node_type)
@@ -174,11 +180,6 @@ class DebugLoggingLayer(GraphEngineLayer):
         elif isinstance(event, NodeRunExceptionEvent):
             self.logger.warning("⚠️ Node exception handled: %s", event.node_id)
             self.logger.warning("  Error: %s", event.error)
-
-        elif isinstance(event, NodeRunRetryEvent):
-            self.retry_count += 1
-            self.logger.warning("🔄 Node retry: %s (attempt %s)", event.node_id, event.retry_index)
-            self.logger.warning("  Previous error: %s", event.error)
 
         elif isinstance(event, NodeRunStreamChunkEvent):
             # Log stream chunks at debug level to avoid spam
