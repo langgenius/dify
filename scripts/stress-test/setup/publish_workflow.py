@@ -98,7 +98,7 @@ def publish_workflow() -> None:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
     except Exception as e:
-        log.error("An error occurred: %s", e)
+        log.error(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
