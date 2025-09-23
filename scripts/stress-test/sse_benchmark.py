@@ -448,7 +448,7 @@ class DifyWorkflowUser(HttpUser):
 
                 content_type = response.headers.get("Content-Type", "")
                 if "text/event-stream" not in content_type and "application/json" not in content_type:
-                    logger.error(f"Expected text/event-stream, got: {content_type}")
+                    logger.error("Expected text/event-stream, got: %s", content_type)
                     metrics.record_error("invalid_response")
                     response.failure(f"Invalid content type: {content_type}")
                     return
@@ -506,7 +506,7 @@ class DifyWorkflowUser(HttpUser):
                                     metrics.record_error("invalid_json")
 
                         except Exception as e:
-                            logger.error(f"Error processing event: {e}")
+                            logger.error("Error processing event: %s", e)
 
                 # Mark success only if terminal condition was met or events were received
                 if request_success:
@@ -747,4 +747,4 @@ def export_json_report(stats: MetricsSnapshot, duration: float, environment: obj
     with open(report_file, "w") as f:
         json.dump(report_data, f, indent=2)
 
-    logger.info(f"Exported metrics to {report_file}")
+    logger.info("Exported metrics to %s", report_file)

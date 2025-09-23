@@ -28,7 +28,7 @@ def import_workflow_app() -> None:
     dsl_path = Path(__file__).parent / "dsl" / "workflow_llm.yml"
 
     if not dsl_path.exists():
-        log.error(f"DSL file not found: {dsl_path}")
+        log.error("DSL file not found: %s", dsl_path)
         return
 
     with open(dsl_path) as f:
@@ -121,7 +121,7 @@ def import_workflow_app() -> None:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
     except Exception as e:
-        log.error(f"An error occurred: {e}")
+        log.error("An error occurred: %s", e)
 
 
 if __name__ == "__main__":

@@ -148,7 +148,7 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
     except httpx.TimeoutException:
         log.error("Request timed out")
     except Exception as e:
-        log.error(f"An error occurred: {e}")
+        log.error("An error occurred: %s", e)
 
 
 if __name__ == "__main__":

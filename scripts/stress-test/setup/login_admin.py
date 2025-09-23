@@ -55,7 +55,7 @@ def login_admin() -> None:
 
                 # Check if login was successful
                 if response_data.get("result") != "success":
-                    log.error(f"Login failed: {response_data}")
+                    log.error("Login failed: %s", response_data)
                     return
 
                 # Extract tokens from data field
@@ -94,7 +94,7 @@ def login_admin() -> None:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
     except Exception as e:
-        log.error(f"An error occurred: {e}")
+        log.error("An error occurred: %s", e)
 
 
 if __name__ == "__main__":

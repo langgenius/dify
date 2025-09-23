@@ -53,7 +53,9 @@ class BasePluginClient:
         url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
         try:
-            response = httpx.request(method=method, url=url, headers=headers, data=prepared_data, params=params, files=files)
+            response = httpx.request(
+                method=method, url=url, headers=headers, data=prepared_data, params=params, files=files
+            )
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -73,7 +75,9 @@ class BasePluginClient:
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
 
-        prepared_data: bytes | dict | str | None = data if isinstance(data, (bytes, str, dict)) or data is None else None
+        prepared_data: bytes | dict | str | None = (
+            data if isinstance(data, (bytes, str, dict)) or data is None else None
+        )
         if isinstance(data, dict):
             if prepared_headers.get("Content-Type") == "application/json":
                 prepared_data = json.dumps(data)

@@ -128,7 +128,7 @@ def main() -> None:
     log.separator()
 
     if failed_step:
-        log.error(f"Setup failed at: {failed_step}")
+        log.error("Setup failed at: %s", failed_step)
         log.separator()
         log.info("Troubleshooting:")
         log.list_item("Check if the Dify API server is running (./dev/start-api)")

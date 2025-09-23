@@ -78,10 +78,10 @@ def cleanup() -> None:
         log.list_item("python setup/run_workflow.py")
 
     except PermissionError as e:
-        log.error(f"Permission denied: {e}")
+        log.error("Permission denied: %s", e)
         log.info("Try running with appropriate permissions.")
     except Exception as e:
-        log.error(f"An error occurred during cleanup: {e}")
+        log.error("An error occurred during cleanup: %s", e)
 
 
 if __name__ == "__main__":
