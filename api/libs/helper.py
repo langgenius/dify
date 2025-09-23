@@ -199,7 +199,9 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def _async_iterator_to_sync_stream(async_iterable: AsyncIterator[Any] | AsyncGenerator[Any, None]) -> Generator[Any, None, None]:
+def _async_iterator_to_sync_stream(
+    async_iterable: AsyncIterator[Any] | AsyncGenerator[Any, None],
+) -> Generator[Any, None, None]:
     """Bridge async iterables into a sync generator for WSGI streaming."""
 
     iterator = async_iterable.__aiter__()
@@ -222,7 +224,7 @@ def _ensure_streamable_generator(
         RateLimitGenerator,
         AsyncIterator[Any],
         AsyncGenerator[Any, None],
-    ]
+    ],
 ) -> Union[Mapping[str, Any], BaseModel, Generator[Any, None, None], RateLimitGenerator]:
     if isinstance(response, Mapping):
         return cast(Mapping[str, Any], response)
@@ -244,7 +246,7 @@ def compact_generate_response(
         RateLimitGenerator,
         AsyncIterator[Any],
         AsyncGenerator[Any, None],
-    ]
+    ],
 ) -> Response:
     normalized = _ensure_streamable_generator(response)
 
