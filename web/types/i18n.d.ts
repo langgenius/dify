@@ -83,6 +83,7 @@ export type ValidTranslationKeys = FlattenKeys<Messages>
 
 // Extend react-i18next with Dify's type structure
 declare module 'react-i18next' {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface CustomTypeOptions {
     defaultNS: 'translation';
     resources: {
@@ -93,6 +94,7 @@ declare module 'react-i18next' {
 
 // Extend i18next for complete type safety
 declare module 'i18next' {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface CustomTypeOptions {
     defaultNS: 'translation';
     resources: {
