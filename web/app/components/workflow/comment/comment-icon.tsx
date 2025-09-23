@@ -48,7 +48,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => 
         className={'relative h-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full'}
         style={{ width: dynamicWidth }}
       >
-        <div className="absolute inset-1 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
+        <div className="absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
           <div className="flex h-full w-full items-center justify-center px-1">
             <UserAvatarList
               users={comment.participants}
