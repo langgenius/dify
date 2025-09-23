@@ -1,7 +1,7 @@
 from flask import request
+from flask_accepts import accepts, responds  # pyright: ignore[reportMissingTypeStubs]
 from flask_restx import Resource
 from marshmallow import Schema, fields, validate
-from flask_accepts import accepts, responds  # pyright: ignore[reportMissingTypeStubs]
 
 from configs import dify_config
 from libs.helper import StrLen, email, extract_remote_ip
@@ -19,10 +19,12 @@ class SetupStatusResponse(Schema):
     step = fields.String(required=True, validate=validate.OneOf(["not_started", "finished"]))
     setup_at = fields.String(required=False, metadata={"description": "ISO datetime"})
 
+
 class SetupRequest(Schema):
     email = fields.String(required=True, validate=email, metadata={"description": "Admin email address"})
     name = fields.String(required=True, validate=StrLen(30), metadata={"description": "Admin name (max 30 characters)"})
     password = fields.String(required=True, validate=valid_password, metadata={"description": "Admin password"})
+
 
 class SetupResponse(Schema):
     result = fields.String(required=True)
