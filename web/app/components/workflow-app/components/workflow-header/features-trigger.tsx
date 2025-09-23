@@ -52,6 +52,10 @@ const FeaturesTrigger = () => {
   const startVariables = useReactflowStore(
     s => s.getNodes().find(node => node.data.type === BlockEnum.Start)?.data.variables,
   )
+  // TODO image files type ?
+  const endVariables = useReactflowStore(
+    s => s.getNodes().find(node => node.data.type === BlockEnum.End)?.data.outputs,
+  )
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -158,6 +162,7 @@ const FeaturesTrigger = () => {
           disabled: nodesReadOnly,
           toolPublished,
           inputs: variables,
+          outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
           onToggle: onPublisherToggle,

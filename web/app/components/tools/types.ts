@@ -1,4 +1,5 @@
 import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
+import type { VarType } from '../workflow/types'
 
 export enum LOC {
   tools = 'tools',
@@ -155,11 +156,26 @@ export type WorkflowToolProviderParameter = {
   type?: string
 }
 
+export type WorkflowToolProviderOutputParameter = {
+  name: string
+  description: string
+  type?: VarType
+}
+
+export type WorkflowToolProviderOutputSchema = {
+  type: string
+  properties: Record<string, {
+    type: string
+    description: string
+  }>
+}
+
 export type WorkflowToolProviderRequest = {
   name: string
   icon: Emoji
   description: string
   parameters: WorkflowToolProviderParameter[]
+  output_schema: WorkflowToolProviderOutputSchema
   labels: string[]
   privacy_policy: string
 }
@@ -179,6 +195,7 @@ export type WorkflowToolProviderResponse = {
     description: TypeWithI18N
     labels: string[]
     parameters: ParamItem[]
+    output_schema: WorkflowToolProviderOutputSchema
   }
   privacy_policy: string
 }

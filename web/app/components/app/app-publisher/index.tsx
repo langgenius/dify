@@ -39,7 +39,7 @@ import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
@@ -63,6 +63,7 @@ export type AppPublisherProps = {
   crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
+  outputs?: Variable[]
   onRefreshData?: () => void
 }
 
@@ -81,6 +82,7 @@ const AppPublisher = ({
   crossAxisOffset = 0,
   toolPublished,
   inputs,
+  outputs,
   onRefreshData,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
@@ -376,6 +378,7 @@ const AppPublisher = ({
                       name={appDetail?.name}
                       description={appDetail?.description}
                       inputs={inputs}
+                      outputs={outputs}
                       handlePublish={handlePublish}
                       onRefreshData={onRefreshData}
                     />
