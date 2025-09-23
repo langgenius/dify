@@ -73,7 +73,7 @@ class MemoryEditApi(WebApiResource):
             is_draft=False
         )
 
-        # Create updated memory instance
+        # Create updated memory instance with incremented version
         updated_memory = MemoryBlock(
             spec=existing_memory.spec,
             tenant_id=existing_memory.tenant_id,
@@ -81,7 +81,7 @@ class MemoryEditApi(WebApiResource):
             conversation_id=existing_memory.conversation_id,
             node_id=existing_memory.node_id,
             value=update,  # New value
-            version=existing_memory.version,  # Keep current version (save_memory will handle version increment)
+            version=existing_memory.version + 1,  # Increment version for update
             edited_by_user=True,
             created_by=existing_memory.created_by,
         )

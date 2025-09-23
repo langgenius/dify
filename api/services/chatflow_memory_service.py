@@ -114,16 +114,6 @@ class ChatflowMemoryService:
             created_by = memory.created_by.id
 
         with Session(db.engine) as session:
-            existing = session.query(ChatflowMemoryVariable).filter_by(
-                memory_id=memory.spec.id,
-                tenant_id=memory.tenant_id,
-                app_id=memory.app_id,
-                node_id=memory.node_id,
-                conversation_id=memory.conversation_id,
-                created_by_role=created_by_role,
-                created_by=created_by,
-            ).order_by(ChatflowMemoryVariable.version.desc()).first()
-            new_version = 1 if not existing else existing.version + 1
             session.add(
                 ChatflowMemoryVariable(
                     memory_id=memory.spec.id,
@@ -138,7 +128,7 @@ class ChatflowMemoryService:
                     ).model_dump_json(),
                     term=memory.spec.term,
                     scope=memory.spec.scope,
-                    version=new_version,
+                    version=memory.version,  # Use version from MemoryBlock directly
                     created_by_role=created_by_role,
                     created_by=created_by,
                 )
@@ -555,7 +545,7 @@ class ChatflowMemoryService:
             node_id=memory_block.node_id,
             edited_by_user=False,
             created_by=memory_block.created_by,
-            version=memory_block.version,
+            version=memory_block.version + 1,  # Increment version for business logic update
         )
         ChatflowMemoryService.save_memory(updated_memory, variable_pool, is_draft)
 
