@@ -35,7 +35,7 @@ class DatasourceProvider(Base):
     plugin_id: Mapped[str] = db.Column(db.String(255), nullable=False)
     auth_type: Mapped[str] = db.Column(db.String(255), nullable=False)
     encrypted_credentials: Mapped[dict] = db.Column(JSONB, nullable=False)
-    avatar_url: Mapped[str] = db.Column(db.String(255), nullable=True, default="default")
+    avatar_url: Mapped[str] = db.Column(db.Text, nullable=True, default="default")
     is_default: Mapped[bool] = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     expires_at: Mapped[int] = db.Column(db.Integer, nullable=False, server_default="-1")
 
