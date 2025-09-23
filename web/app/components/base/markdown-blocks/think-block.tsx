@@ -63,7 +63,7 @@ const useThinkTimer = (children: any) => {
   return { elapsedTime, isComplete }
 }
 
-export const ThinkBlock = ({ children, ...props }: any) => {
+const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
