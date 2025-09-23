@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from flask import request
@@ -88,7 +89,7 @@ class CompletionApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Create a completion for the given prompt.
 
         This endpoint generates a completion based on the provided inputs and query.
@@ -107,12 +108,13 @@ class CompletionApi(Resource):
         args["auto_generate_name"] = False
 
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args=args,
-                invoke_from=InvokeFrom.SERVICE_API,
-                streaming=streaming,
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                end_user,
+                args,
+                InvokeFrom.SERVICE_API,
+                streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -177,7 +179,7 @@ class ChatApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Send a message in a chat conversation.
 
         This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
@@ -196,8 +198,13 @@ class ChatApi(Resource):
         streaming = args["response_mode"] == "streaming"
 
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                end_user,
+                args,
+                InvokeFrom.SERVICE_API,
+                streaming,
             )
 
             return helper.compact_generate_response(response)

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from flask_restx import fields, marshal_with, reqparse
@@ -187,7 +188,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id):
+    async def get(self, app_model, end_user, message_id):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -202,12 +203,13 @@ class MessageMoreLikeThisApi(WebApiResource):
         streaming = args["response_mode"] == "streaming"
 
         try:
-            response = AppGenerateService.generate_more_like_this(
-                app_model=app_model,
-                user=end_user,
-                message_id=message_id,
-                invoke_from=InvokeFrom.WEB_APP,
-                streaming=streaming,
+            response = await asyncio.to_thread(
+                AppGenerateService.generate_more_like_this,
+                app_model,
+                end_user,
+                message_id,
+                InvokeFrom.WEB_APP,
+                streaming,
             )
 
             return helper.compact_generate_response(response)
