@@ -13,7 +13,7 @@ from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
 from libs.password import valid_password
-from libs.token import set_access_token_to_cookie, clear_access_token_from_cookie, clear_webapp_token_from_cookie
+from libs.token import clear_access_token_from_cookie, clear_webapp_token_from_cookie, set_access_token_to_cookie
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
 
@@ -55,6 +55,7 @@ class LoginApi(Resource):
         response = make_response({"result": "success", "data": {"access_token": token}})
         set_access_token_to_cookie(request, response, token)
         return response
+
 
 @web_ns.route("/logout")
 class LogoutApi(Resource):
