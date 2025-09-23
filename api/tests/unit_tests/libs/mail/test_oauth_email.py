@@ -1,7 +1,7 @@
 """Comprehensive tests for email OAuth implementation"""
 
 import base64
-from typing import Optional, Union
+from typing import Union
 
 import pytest
 

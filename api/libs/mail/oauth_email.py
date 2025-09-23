@@ -3,7 +3,7 @@
 import base64
 import urllib.parse
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Union
 
 from .oauth_http_client import OAuthHTTPClient, OAuthHTTPClientProtocol
 

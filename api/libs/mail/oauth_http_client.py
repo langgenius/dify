@@ -1,7 +1,7 @@
 """HTTP client abstraction for OAuth requests"""
 
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Union
 
 import requests
 
