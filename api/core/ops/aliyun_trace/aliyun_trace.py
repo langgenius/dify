@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
     TraceClient,
+    build_endpoint,
     convert_datetime_to_nanoseconds,
     convert_to_span_id,
     convert_to_trace_id,
     create_link,
     generate_span_id,
-    build_endpoint,
 )
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
 from core.ops.aliyun_trace.entities.semconv import (
@@ -69,7 +69,7 @@ class AliyunDataTrace(BaseTraceInstance):
     ):
         super().__init__(aliyun_config)
         endpoint = build_endpoint(aliyun_config.endpoint, aliyun_config.license_key)
-        self.trace_client = TraceClient(service_name=aliyun_config.app_name,endpoint=endpoint)
+        self.trace_client = TraceClient(service_name=aliyun_config.app_name, endpoint=endpoint)
 
     def trace(self, trace_info: BaseTraceInfo):
         if isinstance(trace_info, WorkflowTraceInfo):

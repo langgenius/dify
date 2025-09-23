@@ -216,7 +216,8 @@ def convert_datetime_to_nanoseconds(start_time_a: datetime | None) -> int | None
     timestamp_in_nanoseconds = int(timestamp_in_seconds * 1e9)
     return timestamp_in_nanoseconds
 
-def build_endpoint(base_url:str,license_key:str) -> str:
+
+def build_endpoint(base_url: str, license_key: str) -> str:
     if "log.aliyuncs.com" in base_url:  # cms2.0 endpoint
         return f"{base_url}/adapt_{license_key}/api/v1/traces"
     else:   # xtrace endpoint
