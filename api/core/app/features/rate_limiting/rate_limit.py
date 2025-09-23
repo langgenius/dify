@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 import uuid
@@ -121,6 +122,15 @@ class RateLimitGenerator:
         except Exception:
             self.close()
             raise
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return await asyncio.to_thread(self.__next__)
+        except StopIteration:
+            raise StopAsyncIteration from None
 
     def close(self):
         if not self.closed:

@@ -7,12 +7,13 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import AsyncGenerator, AsyncIterator, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
+from asgiref.sync import async_to_sync
 from flask import Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel
@@ -198,18 +199,69 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(jsonable_encoder(response)), status=200, mimetype="application/json")
+def _async_iterator_to_sync_stream(async_iterable: AsyncIterator[Any] | AsyncGenerator[Any, None]) -> Generator[Any, None, None]:
+    """Bridge async iterables into a sync generator for WSGI streaming."""
+
+    iterator = async_iterable.__aiter__()
+
+    def _generator() -> Generator[Any, None, None]:
+        while True:
+            try:
+                yield async_to_sync(iterator.__anext__)()
+            except StopAsyncIteration:
+                break
+
+    return _generator()
+
+
+def _ensure_streamable_generator(
+    response: Union[
+        Mapping[str, Any],
+        BaseModel,
+        Generator[Any, None, None],
+        RateLimitGenerator,
+        AsyncIterator[Any],
+        AsyncGenerator[Any, None],
+    ]
+) -> Union[Mapping[str, Any], BaseModel, Generator[Any, None, None], RateLimitGenerator]:
+    if isinstance(response, Mapping):
+        return cast(Mapping[str, Any], response)
+    if isinstance(response, BaseModel):
+        return response
+    if isinstance(response, RateLimitGenerator):
+        return response
+    if isinstance(response, Generator):
+        return response
+    if isinstance(response, (AsyncIterator, AsyncGenerator)):
+        return _async_iterator_to_sync_stream(response)
+    raise TypeError(f"Unsupported response type: {type(response)!r}")
+
+
+def compact_generate_response(
+    response: Union[
+        Mapping[str, Any],
+        Generator[Any, None, None],
+        RateLimitGenerator,
+        AsyncIterator[Any],
+        AsyncGenerator[Any, None],
+    ]
+) -> Response:
+    normalized = _ensure_streamable_generator(response)
+
+    if isinstance(normalized, Mapping):
+        return Response(response=json.dumps(jsonable_encoder(normalized)), status=200, mimetype="application/json")
     else:
 
         def generate() -> Generator:
-            yield from response
+            yield from normalized
 
         return Response(stream_with_context(generate()), status=200, mimetype="text/event-stream")
 
 
-def length_prefixed_response(magic_number: int, response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
+def length_prefixed_response(
+    magic_number: int,
+    response: Union[Mapping, Generator, RateLimitGenerator, AsyncIterator[Any], AsyncGenerator[Any, None], BaseModel],
+) -> Response:
     """
     This function is used to return a response with a length prefix.
     Magic number is a one byte number that indicates the type of the response.
@@ -240,21 +292,23 @@ def length_prefixed_response(magic_number: int, response: Union[Mapping, Generat
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, dict):
+    normalized = _ensure_streamable_generator(response)
+
+    if isinstance(normalized, Mapping):
         return Response(
-            response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
+            response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(normalized)).encode("utf-8")),
             status=200,
             mimetype="application/json",
         )
-    elif isinstance(response, BaseModel):
+    elif isinstance(normalized, BaseModel):
         return Response(
-            response=pack_response_with_length_prefix(response.model_dump_json().encode("utf-8")),
+            response=pack_response_with_length_prefix(normalized.model_dump_json().encode("utf-8")),
             status=200,
             mimetype="application/json",
         )
 
     def generate() -> Generator:
-        for chunk in response:
+        for chunk in normalized:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
             else:
