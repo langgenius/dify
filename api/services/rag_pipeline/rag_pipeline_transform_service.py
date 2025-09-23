@@ -93,56 +93,42 @@ class RagPipelineTransformService:
         }
 
     def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None):
-        pipeline_yaml = {}
-        if doc_form == "text_model":
-            match datasource_type:
-                case "upload_file":
-                    if indexing_technique == "high_quality":
-                        # get graph from transform.file-general-high-quality.yml
-                        with open(f"{Path(__file__).parent}/transform/file-general-high-quality.yml") as f:
-                            pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
-                        # get graph from transform.file-general-economy.yml
-                        with open(f"{Path(__file__).parent}/transform/file-general-economy.yml") as f:
-                            pipeline_yaml = yaml.safe_load(f)
-                case "notion_import":
-                    if indexing_technique == "high_quality":
-                        # get graph from transform.notion-general-high-quality.yml
-                        with open(f"{Path(__file__).parent}/transform/notion-general-high-quality.yml") as f:
-                            pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
-                        # get graph from transform.notion-general-economy.yml
-                        with open(f"{Path(__file__).parent}/transform/notion-general-economy.yml") as f:
-                            pipeline_yaml = yaml.safe_load(f)
-                case "website_crawl":
-                    if indexing_technique == "high_quality":
-                        # get graph from transform.website-crawl-general-high-quality.yml
-                        with open(f"{Path(__file__).parent}/transform/website-crawl-general-high-quality.yml") as f:
-                            pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
-                        # get graph from transform.website-crawl-general-economy.yml
-                        with open(f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml") as f:
-                            pipeline_yaml = yaml.safe_load(f)
-                case _:
-                    raise ValueError("Unsupported datasource type")
-        elif doc_form == "hierarchical_model":
-            match datasource_type:
-                case "upload_file":
-                    # get graph from transform.file-parentchild.yml
-                    with open(f"{Path(__file__).parent}/transform/file-parentchild.yml") as f:
-                        pipeline_yaml = yaml.safe_load(f)
-                case "notion_import":
-                    # get graph from transform.notion-parentchild.yml
-                    with open(f"{Path(__file__).parent}/transform/notion-parentchild.yml") as f:
-                        pipeline_yaml = yaml.safe_load(f)
-                case "website_crawl":
-                    # get graph from transform.website-crawl-parentchild.yml
-                    with open(f"{Path(__file__).parent}/transform/website-crawl-parentchild.yml") as f:
-                        pipeline_yaml = yaml.safe_load(f)
-                case _:
-                    raise ValueError("Unsupported datasource type")
-        else:
-            raise ValueError("Unsupported doc form")
+        base_path = Path(__file__).parent / "transform"
+        yaml_map = {
+            "text_model": {
+                "upload_file": {
+                    "high_quality": "file-general-high-quality.yml",
+                    "economy": "file-general-economy.yml",
+                },
+                "notion_import": {
+                    "high_quality": "notion-general-high-quality.yml",
+                    "economy": "notion-general-economy.yml",
+                },
+                "website_crawl": {
+                    "high_quality": "website-crawl-general-high-quality.yml",
+                    "economy": "website-crawl-general-economy.yml",
+                },
+            },
+            "hierarchical_model": {
+                "upload_file": "file-parentchild.yml",
+                "notion_import": "notion-parentchild.yml",
+                "website_crawl": "website-crawl-parentchild.yml",
+            },
+        }
+        try:
+            if doc_form == "text_model":
+                file_name = yaml_map[doc_form][datasource_type][indexing_technique]
+            elif doc_form == "hierarchical_model":
+                file_name = yaml_map[doc_form][datasource_type]
+            else:
+                raise ValueError(f"Unsupported doc form {doc_form} with {datasource_type}")
+        except KeyError:
+            raise ValueError(
+                f"Unsupported datasource type {datasource_type} or indexing technique {indexing_technique or ''}"
+            )
+        file_path = base_path / file_name
+        with open(file_path) as f:
+            pipeline_yaml = yaml.safe_load(f)
         return pipeline_yaml
 
     def _deal_file_extensions(self, node: dict):
