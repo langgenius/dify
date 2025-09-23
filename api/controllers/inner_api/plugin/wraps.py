@@ -32,11 +32,19 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
 
             if is_anonymous:
                 user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
-            else:
                 user_model = (
                     session.query(EndUser)
                     .where(
                         EndUser.session_id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .first()
+                )
+            else:
+                user_model = (
+                    session.query(EndUser)
+                    .where(
+                        EndUser.id == user_id,
                         EndUser.tenant_id == tenant_id,
                     )
                     .first()
