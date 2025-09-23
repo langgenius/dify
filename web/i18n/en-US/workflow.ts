@@ -528,6 +528,7 @@ const translation = {
         addButton: 'Add Memory',
         currentNodeLabel: 'Current Node scope',
         conversationScopeLabel: 'Conversation scope',
+        emptyState: 'Create memory variables to enable Memory Block',
         createButton: 'Create memory variable',
       },
     },

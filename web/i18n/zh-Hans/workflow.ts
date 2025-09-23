@@ -528,6 +528,7 @@ const translation = {
         addButton: '添加记忆',
         currentNodeLabel: '当前节点范围',
         conversationScopeLabel: '会话范围',
+        emptyState: '创建记忆变量以启用记忆块',
         createButton: '创建记忆变量',
       },
     },

@@ -16,6 +16,10 @@ import {
   useFloating,
 } from '@floating-ui/react'
 import {
+  RiAddLine,
+} from '@remixicon/react'
+import { Memory } from '@/app/components/base/icons/src/vender/line/others'
+import {
   $getSelection,
   $isRangeSelection,
 } from 'lexical'
@@ -231,7 +235,20 @@ export default function MemoryPopupPlugin({
               </div>
             </>
           )}
-          <div>{t('workflow.nodes.llm.memory.createButton')}</div>
+          {!memoryVarInNode.length && !memoryVarInApp.length && (
+            <div className='p-2'>
+              <div className='flex flex-col gap-2 rounded-[10px] bg-workflow-process-bg p-4'>
+                <div className='flex h-10 w-10 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm'>
+                  <Memory className='h-5 w-5 text-util-colors-teal-teal-700' />
+                </div>
+                <div className='system-sm-medium text-text-secondary'>{t('workflow.nodes.llm.memory.emptyState')}</div>
+              </div>
+            </div>
+          )}
+          <div className='system-xs-medium flex items-center gap-1 border-t border-divider-subtle px-4 py-2 text-text-accent-light-mode-only'>
+            <RiAddLine className='h-4 w-4' />
+            <div>{t('workflow.nodes.llm.memory.createButton')}</div>
+          </div>
         </div>
       </div>
     </div>,
