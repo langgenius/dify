@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react'
 import {
+  RiCheckLine,
   RiZoomInLine,
   RiZoomOutLine,
 } from '@remixicon/react'
@@ -38,9 +39,18 @@ enum ZoomType {
   zoomTo75 = 'zoomTo75',
   zoomTo100 = 'zoomTo100',
   zoomTo200 = 'zoomTo200',
+  toggleMiniMap = 'toggleMiniMap',
 }
 
-const ZoomInOut: FC = () => {
+type ZoomInOutProps = {
+  showMiniMap?: boolean
+  onToggleMiniMap?: () => void
+}
+
+const ZoomInOut: FC<ZoomInOutProps> = ({
+  showMiniMap = true,
+  onToggleMiniMap,
+}) => {
   const { t } = useTranslation()
   const {
     zoomIn,
@@ -78,11 +88,15 @@ const ZoomInOut: FC = () => {
         key: ZoomType.zoomTo25,
         text: '25%',
       },
-    ],
-    [
       {
         key: ZoomType.zoomToFit,
         text: t('workflow.operator.zoomToFit'),
+      },
+    ],
+    [
+      {
+        key: ZoomType.toggleMiniMap,
+        text: t('workflow.operator.showMiniMap'),
       },
     ],
   ]
@@ -108,6 +122,11 @@ const ZoomInOut: FC = () => {
 
     if (type === ZoomType.zoomTo200)
       zoomTo(2)
+
+    if (type === ZoomType.toggleMiniMap) {
+      onToggleMiniMap?.()
+      return
+    }
 
     handleSyncWorkflowDraft()
   }
@@ -178,7 +197,7 @@ const ZoomInOut: FC = () => {
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='w-[145px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
+        <div className='w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (
               <Fragment key={i}>
@@ -195,7 +214,15 @@ const ZoomInOut: FC = () => {
                         className='system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover'
                         onClick={() => handleZoom(option.key)}
                       >
-                        <span>{option.text}</span>
+                        <div className='flex items-center space-x-2'>
+                          {option.key === ZoomType.toggleMiniMap && showMiniMap && (
+                            <RiCheckLine className='h-4 w-4 text-text-primary' />
+                          )}
+                          {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
+                            <div className='h-4 w-4' />
+                          )}
+                          <span>{option.text}</span>
+                        </div>
                         <div className='flex items-center space-x-0.5'>
                           {
                             option.key === ZoomType.zoomToFit && (

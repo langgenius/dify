@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
 import ZoomInOut from './zoom-in-out'
@@ -13,6 +13,12 @@ export type OperatorProps = {
 
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
+  const [showMiniMap, setShowMiniMap] = useState(true)
+
+  const handleToggleMiniMap = useCallback(() => {
+    setShowMiniMap(prev => !prev)
+  }, [])
+
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
   const setBottomPanelWidth = useStore(s => s.setBottomPanelWidth)
@@ -57,18 +63,23 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
         </div>
         <VariableTrigger />
         <div className='relative'>
-          <MiniMap
-            pannable
-            zoomable
-            style={{
-              width: 102,
-              height: 72,
-            }}
-            maskColor='var(--color-workflow-minimap-bg)'
-            className='!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
-            !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
+          {showMiniMap && (
+            <MiniMap
+              pannable
+              zoomable
+              style={{
+                width: 102,
+                height: 72,
+              }}
+              maskColor='var(--color-workflow-minimap-bg)'
+              className='!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
+              !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
+            />
+          )}
+          <ZoomInOut
+            showMiniMap={showMiniMap}
+            onToggleMiniMap={handleToggleMiniMap}
           />
-          <ZoomInOut />
         </div>
       </div>
       <VariableInspectPanel />
