@@ -10,11 +10,18 @@ import time
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from core.workflow.enums import ErrorStrategy
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import GraphRunStartedEvent, GraphRunSucceededEvent
+from core.workflow.graph_events import (
+    GraphRunPartialSucceededEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+)
+from core.workflow.nodes.base.entities import DefaultValue, DefaultValueType
 
 # Import the test framework from the new module
+from .test_mock_config import MockConfigBuilder
 from .test_table_runner import TableTestRunner, WorkflowRunner, WorkflowTestCase
 
 
@@ -721,3 +728,39 @@ def test_event_sequence_validation_with_table_tests():
         else:
             assert result.event_sequence_match is True
         assert result.success, f"Test {i + 1} failed: {result.event_mismatch_details or result.error}"
+
+
+def test_graph_run_emits_partial_success_when_node_failure_recovered():
+    runner = TableTestRunner()
+
+    fixture_data = runner.workflow_runner.load_fixture("basic_chatflow")
+    mock_config = MockConfigBuilder().with_node_error("llm", "mock llm failure").build()
+
+    graph, graph_runtime_state = runner.workflow_runner.create_graph_from_fixture(
+        fixture_data=fixture_data,
+        query="hello",
+        use_mock_factory=True,
+        mock_config=mock_config,
+    )
+
+    llm_node = graph.nodes["llm"]
+    base_node_data = llm_node.get_base_node_data()
+    base_node_data.error_strategy = ErrorStrategy.DEFAULT_VALUE
+    base_node_data.default_value = [DefaultValue(key="text", value="fallback response", type=DefaultValueType.STRING)]
+
+    engine = GraphEngine(
+        workflow_id="test_workflow",
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        command_channel=InMemoryChannel(),
+    )
+
+    events = list(engine.run())
+
+    assert isinstance(events[-1], GraphRunPartialSucceededEvent)
+
+    partial_event = next(event for event in events if isinstance(event, GraphRunPartialSucceededEvent))
+    assert partial_event.exceptions_count == 1
+    assert partial_event.outputs.get("answer") == "fallback response"
+
+    assert not any(isinstance(event, GraphRunSucceededEvent) for event in events)
