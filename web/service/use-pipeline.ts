@@ -65,6 +65,7 @@ export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, ena
       })
     },
     enabled,
+    staleTime: 0,
   })
 }
 
