@@ -66,7 +66,7 @@ CREATE INDEX idx_{index_hash}_meta ON {table_name}
 """
 
 SQL_CREATE_FULLTEXT_INDEX = """
-CREATE FULLTEXT INDEX idx_{index_hash}_text ON {table_name} (text);
+CREATE FULLTEXT INDEX idx_{index_hash}_text ON {table_name} (text) WITH PARSER ngram;
 """
 
 
@@ -294,7 +294,6 @@ class AlibabaCloudMySQLVector(BaseVector):
         with self._get_cursor() as cur:
             # Build query parameters: query (twice for MATCH clauses), document_ids_filter (if any), top_k
             query_params = [query, query] + params + [top_k]
-
             cur.execute(
                 f"""SELECT meta, text,
                     MATCH(text) AGAINST(%s IN NATURAL LANGUAGE MODE) AS score
@@ -305,13 +304,13 @@ class AlibabaCloudMySQLVector(BaseVector):
                     LIMIT %s""",
                 query_params,
             )
-
             docs = []
             for record in cur:
                 metadata = record["meta"]
+                if isinstance(metadata, str):
+                    metadata = json.loads(metadata)
                 metadata["score"] = float(record["score"])
                 docs.append(Document(page_content=record["text"], metadata=metadata))
-
         return docs
 
     def delete(self):
