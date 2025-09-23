@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
@@ -34,12 +34,76 @@ const ThreadMessage: FC<{
   avatarUrl?: string | null
   createdAt: number
   content: string
-}> = ({ authorId, authorName, avatarUrl, createdAt, content }) => {
+  mentionedNames?: string[]
+}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { userProfile } = useAppContext()
   const currentUserId = userProfile?.id
   const isCurrentUser = authorId === currentUserId
   const userColor = isCurrentUser ? undefined : getUserColor(authorId)
+
+  const highlightedContent = useMemo<ReactNode>(() => {
+    if (!content)
+      return ''
+
+    const normalizedNames = Array.from(new Set((mentionedNames || [])
+      .map(name => name.trim())
+      .filter(Boolean)))
+
+    if (normalizedNames.length === 0)
+      return content
+
+    const segments: ReactNode[] = []
+    let hasMention = false
+    let cursor = 0
+
+    while (cursor < content.length) {
+      let nextMatchStart = -1
+      let matchedName = ''
+
+      for (const name of normalizedNames) {
+        const searchStart = content.indexOf(`@${name}`, cursor)
+        if (searchStart === -1)
+          continue
+
+        const previousChar = searchStart > 0 ? content[searchStart - 1] : ''
+        if (searchStart > 0 && !/\s/.test(previousChar))
+          continue
+
+        if (
+          nextMatchStart === -1
+          || searchStart < nextMatchStart
+          || (searchStart === nextMatchStart && name.length > matchedName.length)
+        ) {
+          nextMatchStart = searchStart
+          matchedName = name
+        }
+      }
+
+      if (nextMatchStart === -1)
+        break
+
+      if (nextMatchStart > cursor)
+        segments.push(<span key={`text-${cursor}`}>{content.slice(cursor, nextMatchStart)}</span>)
+
+      const mentionEnd = nextMatchStart + matchedName.length + 1
+      segments.push(
+        <span key={`mention-${nextMatchStart}`} className='text-primary-600'>
+          {content.slice(nextMatchStart, mentionEnd)}
+        </span>,
+      )
+      hasMention = true
+      cursor = mentionEnd
+    }
+
+    if (!hasMention)
+      return content
+
+    if (cursor < content.length)
+      segments.push(<span key={`text-${cursor}`}>{content.slice(cursor)}</span>)
+
+    return segments
+  }, [content, mentionedNames])
 
   return (
     <div className={cn('flex gap-3 pt-1')}>
@@ -58,7 +122,7 @@ const ThreadMessage: FC<{
           <span className='system-2xs-regular text-text-tertiary'>{formatTimeFromNow(createdAt * 1000)}</span>
         </div>
         <div className='system-sm-regular mt-1 whitespace-pre-wrap break-words text-text-secondary'>
-          {content}
+          {highlightedContent}
         </div>
       </div>
     </div>
@@ -127,6 +191,24 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
+  const mentionsByTarget = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const mention of comment.mentions || []) {
+      const name = mention.mentioned_user_account?.name?.trim()
+      if (!name)
+        continue
+      const key = mention.reply_id ?? 'root'
+      const existing = map.get(key)
+      if (existing) {
+        if (!existing.includes(name))
+          existing.push(name)
+      }
+      else {
+        map.set(key, [name])
+      }
+    }
+    return map
+  }, [comment.mentions])
 
   return (
     <div
@@ -195,6 +277,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             avatarUrl={comment.created_by_account?.avatar_url || null}
             createdAt={comment.created_at}
             content={comment.content}
+            mentionedNames={mentionsByTarget.get('root')}
           />
           {replies.length > 0 && (
             <div className='mt-2 space-y-3 pt-3'>
@@ -261,6 +344,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         avatarUrl={reply.created_by_account?.avatar_url || null}
                         createdAt={reply.created_at}
                         content={reply.content}
+                        mentionedNames={mentionsByTarget.get(reply.id)}
                       />
                     )}
                   </div>
