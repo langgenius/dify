@@ -7,6 +7,7 @@ import {
 } from 'react'
 import {
   RiCheckLine,
+  RiFullscreenLine,
   RiZoomInLine,
   RiZoomOutLine,
 } from '@remixicon/react'
@@ -267,6 +268,15 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                             <RiCheckLine className='h-4 w-4 text-text-primary' />
                           )}
                           {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
+                            <div className='h-4 w-4' />
+                          )}
+                          {option.key === ZoomType.zoomToFit && (
+                            <RiFullscreenLine className='h-4 w-4 text-text-tertiary' />
+                          )}
+                          {option.key !== ZoomType.toggleUserComments
+                           && option.key !== ZoomType.toggleUserCursors
+                           && option.key !== ZoomType.toggleMiniMap
+                           && option.key !== ZoomType.zoomToFit && (
                             <div className='h-4 w-4' />
                           )}
                           <span>{option.text}</span>
