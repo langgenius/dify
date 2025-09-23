@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
@@ -46,6 +46,76 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const [mentionPosition, setMentionPosition] = useState(0)
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
+
+  const mentionNameList = useMemo(() => {
+    const names = mentionUsers
+      .map(user => user.name?.trim())
+      .filter((name): name is string => Boolean(name))
+
+    const uniqueNames = Array.from(new Set(names))
+    uniqueNames.sort((a, b) => b.length - a.length)
+    return uniqueNames
+  }, [mentionUsers])
+
+  const highlightedValue = useMemo<ReactNode>(() => {
+    if (!value)
+      return ''
+
+    if (mentionNameList.length === 0)
+      return value
+
+    const segments: ReactNode[] = []
+    let cursor = 0
+    let hasMention = false
+
+    while (cursor < value.length) {
+      let nextMatchStart = -1
+      let matchedName = ''
+
+      for (const name of mentionNameList) {
+        const searchStart = value.indexOf(`@${name}`, cursor)
+        if (searchStart === -1)
+          continue
+
+        const previousChar = searchStart > 0 ? value[searchStart - 1] : ''
+        if (searchStart > 0 && !/\s/.test(previousChar))
+          continue
+
+        if (
+          nextMatchStart === -1
+          || searchStart < nextMatchStart
+          || (searchStart === nextMatchStart && name.length > matchedName.length)
+        ) {
+          nextMatchStart = searchStart
+          matchedName = name
+        }
+      }
+
+      if (nextMatchStart === -1)
+        break
+
+      if (nextMatchStart > cursor)
+        segments.push(<span key={`text-${cursor}`}>{value.slice(cursor, nextMatchStart)}</span>)
+
+      const mentionEnd = nextMatchStart + matchedName.length + 1
+      segments.push(
+        <span key={`mention-${nextMatchStart}`} className='text-primary-600'>
+          {value.slice(nextMatchStart, mentionEnd)}
+        </span>,
+      )
+
+      hasMention = true
+      cursor = mentionEnd
+    }
+
+    if (!hasMention)
+      return value
+
+    if (cursor < value.length)
+      segments.push(<span key={`text-${cursor}`}>{value.slice(cursor)}</span>)
+
+    return segments
+  }, [value, mentionNameList])
 
   const loadMentionableUsers = useCallback(async () => {
     if (!appId) return
@@ -220,10 +290,21 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   return (
     <>
       <div className={cn('relative flex items-center', className)}>
+        <div
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre-wrap break-words p-1 leading-6',
+            'body-lg-regular text-text-primary',
+          )}
+        >
+          {highlightedValue}
+          {'​'}
+        </div>
         <Textarea
           ref={textareaRef}
           className={cn(
-            'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary caret-primary-500 outline-none',
+            'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none',
+            'placeholder:text-text-tertiary',
           )}
           placeholder={placeholder}
           autoFocus={autoFocus}
