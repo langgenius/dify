@@ -9,9 +9,9 @@ import {
   RiCursorLine,
   RiFunctionAddLine,
   RiHand,
-  RiMessage3Line,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
+import { Comment } from '@/app/components/base/icons/src/public/other'
 import {
   useNodesReadOnly,
   useWorkflowCanvasMaximize,
@@ -106,7 +106,7 @@ const Control = () => {
           )}
           onClick={addComment}
         >
-          <RiMessage3Line className='h-4 w-4' />
+          <Comment className='h-4 w-4' />
         </div>
       </TipPopup>
       <Divider className='my-1 w-3.5' />
