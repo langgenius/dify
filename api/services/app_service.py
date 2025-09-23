@@ -14,7 +14,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.enums import NodeType
-from core.workflow.nodes.node_utils import is_node_type
+from core.workflow.nodes.node_utils import match_node_type
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -368,7 +368,7 @@ class AppService:
             nodes = graph.get("nodes", [])
             tools = []
             for node in nodes:
-                if is_node_type(node, NodeType.TOOL):
+                if match_node_type(node, NodeType.TOOL):
                     node_data = node.get("data", {})
                     tools.append(
                         {

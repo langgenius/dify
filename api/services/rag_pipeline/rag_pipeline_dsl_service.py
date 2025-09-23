@@ -27,7 +27,7 @@ from core.workflow.enums import NodeType
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
-from core.workflow.nodes.node_utils import get_node_type, is_node_type
+from core.workflow.nodes.node_utils import get_node_type, match_node_type
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.tool.entities import ToolNodeData
@@ -288,7 +288,7 @@ class RagPipelineDslService:
             nodes = graph.get("nodes", [])
             dataset_id = None
             for node in nodes:
-                if is_node_type(node, NodeType.KNOWLEDGE_INDEX):
+                if match_node_type(node, NodeType.KNOWLEDGE_INDEX):
                     knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
                     if (
                         dataset
@@ -426,7 +426,7 @@ class RagPipelineDslService:
             nodes = graph.get("nodes", [])
             dataset_id = None
             for node in nodes:
-                if is_node_type(node, NodeType.KNOWLEDGE_INDEX):
+                if match_node_type(node, NodeType.KNOWLEDGE_INDEX):
                     knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
                     if not dataset:
                         dataset = Dataset(
