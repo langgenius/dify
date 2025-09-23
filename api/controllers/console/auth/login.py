@@ -6,7 +6,6 @@ from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -28,10 +27,10 @@ from controllers.console.wraps import email_password_login_enabled, setup_requir
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
 from libs.token import (
-    set_access_token_to_cookie, 
-    set_refresh_token_to_cookie, 
-    clear_access_token_from_cookie, 
-    clear_refresh_token_from_cookie
+    clear_access_token_from_cookie,
+    clear_refresh_token_from_cookie,
+    set_access_token_to_cookie,
+    set_refresh_token_to_cookie,
 )
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService

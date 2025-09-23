@@ -12,11 +12,11 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
+from libs.token import extract_webapp_token
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
-from libs.token import extract_webapp_token
 
 P = ParamSpec("P")
 R = TypeVar("R")

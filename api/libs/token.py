@@ -1,8 +1,7 @@
-
 from flask import Request, Response
-from configs import dify_config
 
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_APP_TOKEN, COOKIE_NAME_REFRESH_TOKEN
+from configs import dify_config
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 
 
 def _try_extract_from_header(request: Request) -> str | None:
@@ -28,11 +27,19 @@ def _try_extract_from_cookie(request: Request) -> str | None:
     """
     return request.cookies.get(COOKIE_NAME_ACCESS_TOKEN)
 
+
 def _try_extract_webapp_token_from_url(request: Request) -> str | None:
     """
     Try to extract app token from cookie
     """
-    return request.args.get('web_app_access_token')
+    return request.args.get("web_app_access_token")
+
+
+def _try_extract_webapp_token_from_cookie(request: Request) -> str | None:
+    """
+    Try to extract app token from cookie
+    """
+    return request.cookies.get(COOKIE_NAME_APP_TOKEN)
 
 def _try_extract_webapp_token_from_cookie(request: Request) -> str | None:
     """
@@ -50,7 +57,7 @@ def _try_extract_from_query(request: Request) -> str | None:
 def extract_access_token(request: Request) -> str | None:
     """
     Try to extract access token from cookie, header or params.
-    
+
     Access token is either for console session or webapp passport exchange.
     """
     ret = (
@@ -91,6 +98,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str)
         path="/",
     )
 
+
 def set_refresh_token_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
         COOKIE_NAME_REFRESH_TOKEN,
@@ -124,6 +132,7 @@ def clear_webapp_token_from_cookie(request: Request, response: Response):
         samesite="Lax",
     )
 
+
 def clear_access_token_from_cookie(request: Request, response: Response):
     response.set_cookie(
         COOKIE_NAME_ACCESS_TOKEN,
@@ -134,6 +143,7 @@ def clear_access_token_from_cookie(request: Request, response: Response):
         httponly=True,
         samesite="Lax",
     )
+
 
 def clear_refresh_token_from_cookie(request: Request, response: Response):
     response.set_cookie(

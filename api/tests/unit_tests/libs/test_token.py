@@ -9,7 +9,6 @@ class MockRequest:
 
 
 def test_extract_access_token():
-        
     def _mock_request(headers: dict[str, str], cookies: dict[str, str]):
         return MockRequest(headers, cookies)
 

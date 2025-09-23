@@ -1,5 +1,5 @@
+from flask import make_response, request
 from flask_restx import Resource, reqparse
-from flask import request, make_response
 from jwt import InvalidTokenError
 
 import services
@@ -12,10 +12,11 @@ from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
-from libs.token import set_access_token_to_cookie, clear_access_token_from_cookie, clear_webapp_token_from_cookie
 from libs.password import valid_password
+from libs.token import set_access_token_to_cookie, clear_access_token_from_cookie, clear_webapp_token_from_cookie
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
+
 
 @web_ns.route("/login")
 class LoginApi(Resource):
