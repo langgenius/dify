@@ -12,7 +12,7 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from libs.token import extract_webapp_token
+from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
@@ -40,7 +40,7 @@ def decode_jwt_token():
     system_features = FeatureService.get_system_features()
     app_code = str(request.headers.get("X-App-Code"))
     try:
-        tk = extract_webapp_token(request)
+        tk = extract_webapp_passport(request)
         if not tk:
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)

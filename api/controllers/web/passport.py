@@ -35,13 +35,13 @@ class PassportResource(Resource):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
         user_id = request.args.get("user_id")
-        web_app_access_token = extract_access_token(request)
+        access_token = extract_access_token(request)
 
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
         # exchange token for enterprise logined web user
-        enterprise_user_decoded = decode_enterprise_webapp_user_id(web_app_access_token)
+        enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
         if enterprise_user_decoded:
             # a web user has already logged in, exchange a token for this app without redirecting to the login page
             return exchange_token_for_existing_web_user(

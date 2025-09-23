@@ -42,4 +42,4 @@ DOCUMENT_EXTENSIONS = _doc_extensions + [ext.upper() for ext in _doc_extensions]
 
 COOKIE_NAME_ACCESS_TOKEN = "access_token"
 COOKIE_NAME_REFRESH_TOKEN = "refresh_token"
-COOKIE_NAME_APP_TOKEN = "webapp_access_token"
+COOKIE_NAME_PASSPORT = "passport"
