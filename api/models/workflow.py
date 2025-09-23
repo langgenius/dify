@@ -354,7 +354,7 @@ class Workflow(Base):
         if not tenant_id:
             return []
 
-        environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
+        environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables or "{}")
         results = [
             variable_factory.build_environment_variable_from_mapping(v) for v in environment_variables_dict.values()
         ]
