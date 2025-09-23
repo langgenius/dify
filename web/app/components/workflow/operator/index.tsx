@@ -5,6 +5,7 @@ import ZoomInOut from './zoom-in-out'
 import VariableTrigger from '../variable-inspect/trigger'
 import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
+import { useUserCursorsState } from '@/app/components/workflow-app/components/user-cursors-state'
 
 export type OperatorProps = {
   handleUndo: () => void
@@ -14,6 +15,7 @@ export type OperatorProps = {
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
   const [showMiniMap, setShowMiniMap] = useState(true)
+  const { showUserCursors, toggleUserCursors } = useUserCursorsState()
 
   const handleToggleMiniMap = useCallback(() => {
     setShowMiniMap(prev => !prev)
@@ -79,6 +81,8 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
           <ZoomInOut
             showMiniMap={showMiniMap}
             onToggleMiniMap={handleToggleMiniMap}
+            showUserCursors={showUserCursors}
+            onToggleUserCursors={toggleUserCursors}
           />
         </div>
       </div>

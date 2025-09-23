@@ -13,6 +13,7 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import UserCursors from '@/app/components/workflow/collaboration/components/user-cursors'
+import { useUserCursorsState } from './user-cursors-state'
 
 import {
   useAvailableNodesMetaData,
@@ -46,8 +47,9 @@ const WorkflowMain = ({
   const reactFlow = useReactFlow()
 
   const store = useStoreApi()
-  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId, store)
+  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId || '', store)
   const [myUserId, setMyUserId] = useState<string | null>(null)
+  const { showUserCursors } = useUserCursorsState()
 
   useEffect(() => {
     if (isConnected)
@@ -300,7 +302,7 @@ const WorkflowMain = ({
       >
         <WorkflowChildren />
       </WorkflowWithInnerContext>
-      <UserCursors cursors={filteredCursors} myUserId={myUserId} onlineUsers={onlineUsers} />
+      <UserCursors cursors={showUserCursors ? filteredCursors : {}} myUserId={myUserId} onlineUsers={onlineUsers} />
     </div>
   )
 }

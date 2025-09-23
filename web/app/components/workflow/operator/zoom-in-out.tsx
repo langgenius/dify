@@ -39,17 +39,22 @@ enum ZoomType {
   zoomTo75 = 'zoomTo75',
   zoomTo100 = 'zoomTo100',
   zoomTo200 = 'zoomTo200',
+  toggleUserCursors = 'toggleUserCursors',
   toggleMiniMap = 'toggleMiniMap',
 }
 
 type ZoomInOutProps = {
   showMiniMap?: boolean
   onToggleMiniMap?: () => void
+  showUserCursors?: boolean
+  onToggleUserCursors?: () => void
 }
 
 const ZoomInOut: FC<ZoomInOutProps> = ({
   showMiniMap = true,
   onToggleMiniMap,
+  showUserCursors = true,
+  onToggleUserCursors,
 }) => {
   const { t } = useTranslation()
   const {
@@ -95,6 +100,10 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     ],
     [
       {
+        key: ZoomType.toggleUserCursors,
+        text: t('workflow.operator.showUserCursors'),
+      },
+      {
         key: ZoomType.toggleMiniMap,
         text: t('workflow.operator.showMiniMap'),
       },
@@ -122,6 +131,11 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
 
     if (type === ZoomType.zoomTo200)
       zoomTo(2)
+
+    if (type === ZoomType.toggleUserCursors) {
+      onToggleUserCursors?.()
+      return
+    }
 
     if (type === ZoomType.toggleMiniMap) {
       onToggleMiniMap?.()
@@ -211,10 +225,16 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                     options.map(option => (
                       <div
                         key={option.key}
-                        className='system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover'
+                        className='system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover'
                         onClick={() => handleZoom(option.key)}
                       >
                         <div className='flex items-center space-x-2'>
+                          {option.key === ZoomType.toggleUserCursors && showUserCursors && (
+                            <RiCheckLine className='h-4 w-4 text-text-primary' />
+                          )}
+                          {option.key === ZoomType.toggleUserCursors && !showUserCursors && (
+                            <div className='h-4 w-4' />
+                          )}
                           {option.key === ZoomType.toggleMiniMap && showMiniMap && (
                             <RiCheckLine className='h-4 w-4 text-text-primary' />
                           )}
