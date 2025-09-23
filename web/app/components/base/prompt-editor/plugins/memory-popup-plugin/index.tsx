@@ -25,7 +25,7 @@ import {
 } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from '@/app/components/workflow/nodes/_base/components/prompt/add-memory-button'
+import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER, MEMORY_VAR_CREATED_BY_MODAL_BY_EVENT_EMITTER, MEMORY_VAR_MODAL_SHOW_BY_EVENT_EMITTER } from '@/app/components/workflow/nodes/_base/components/prompt/type'
 import Divider from '@/app/components/base/divider'
 import VariableIcon from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
 import type {
@@ -135,15 +135,25 @@ export default function MemoryPopupPlugin({
     setOpen(false)
   }, [setOpen])
 
+  const handleSelectVariable = useCallback((variable: string[]) => {
+    editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variable)
+    closePortal()
+  }, [editor, closePortal])
+
+  const handleCreate = useCallback(() => {
+    eventEmitter?.emit({ type: MEMORY_VAR_MODAL_SHOW_BY_EVENT_EMITTER, instanceId } as any)
+    closePortal()
+  }, [eventEmitter, instanceId, closePortal])
+
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === MEMORY_POPUP_SHOW_BY_EVENT_EMITTER && v.instanceId === instanceId)
       openPortal()
   })
 
-  const handleSelectVariable = useCallback((variable: string[]) => {
-    editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variable)
-    closePortal()
-  }, [editor, closePortal])
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === MEMORY_VAR_CREATED_BY_MODAL_BY_EVENT_EMITTER && v.instanceId === instanceId)
+      handleSelectVariable(v.variable)
+  })
 
   useEffect(() => {
     return editor.registerUpdateListener(({ editorState }) => {
@@ -245,7 +255,7 @@ export default function MemoryPopupPlugin({
               </div>
             </div>
           )}
-          <div className='system-xs-medium flex items-center gap-1 border-t border-divider-subtle px-4 py-2 text-text-accent-light-mode-only'>
+          <div className='system-xs-medium flex cursor-pointer items-center gap-1 border-t border-divider-subtle px-4 py-2 text-text-accent-light-mode-only' onClick={handleCreate}>
             <RiAddLine className='h-4 w-4' />
             <div>{t('workflow.nodes.llm.memory.createButton')}</div>
           </div>

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
+import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -11,8 +12,23 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { useStore } from '@/app/components/workflow/store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { MEMORY_VAR_CREATED_BY_MODAL_BY_EVENT_EMITTER, MEMORY_VAR_MODAL_SHOW_BY_EVENT_EMITTER } from '@/app/components/workflow/nodes/_base/components/prompt/type'
 
-const MemoryCreateButton = () => {
+type Props = {
+  placement?: Placement
+  offset?: number | OffsetOptions
+  hideTrigger?: boolean
+  instanceId?: string
+}
+
+const MemoryCreateButton = ({
+  placement,
+  offset,
+  hideTrigger,
+  instanceId,
+}: Props) => {
+  const { eventEmitter } = useEventEmitterContextContext()
   const [open, setOpen] = useState(false)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
@@ -34,19 +50,30 @@ const MemoryCreateButton = () => {
     updateChatVarList(newList)
     handleVarChanged()
     setOpen(false)
-  }, [varList, updateChatVarList, handleVarChanged, setOpen])
+    if (instanceId)
+      eventEmitter?.emit({ type: MEMORY_VAR_CREATED_BY_MODAL_BY_EVENT_EMITTER, instanceId, variable: ['conversation', newChatVar.name] } as any)
+  }, [varList, updateChatVarList, handleVarChanged, setOpen, eventEmitter, instanceId])
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === MEMORY_VAR_MODAL_SHOW_BY_EVENT_EMITTER && v.instanceId === instanceId)
+      setOpen(true)
+  })
 
   return (
     <>
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
-        placement='left'
+        placement={placement || 'left'}
+        offset={offset}
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-          <ActionButton className='shrink-0'>
-            <RiAddLine className='h-4 w-4' />
-          </ActionButton>
+          {hideTrigger && <div></div>}
+          {!hideTrigger && (
+            <ActionButton className='shrink-0'>
+              <RiAddLine className='h-4 w-4' />
+            </ActionButton>
+          )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[11]'>
           <VariableModal

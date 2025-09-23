@@ -2,9 +2,6 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { Memory } from '@/app/components/base/icons/src/vender/line/others'
 
-export const MEMORY_POPUP_SHOW_BY_EVENT_EMITTER = 'MEMORY_POPUP_SHOW_BY_EVENT_EMITTER'
-export const PROMPT_EDITOR_INSERT_QUICKLY = 'PROMPT_EDITOR_INSERT_QUICKLY'
-
 type Props = {
   onAddMemory: () => void
 }
