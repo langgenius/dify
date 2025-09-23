@@ -18,6 +18,7 @@ web_ns = Namespace("web", description="Web application API operations", path="/"
 from . import (
     app,
     audio,
+    chatflow_memory,
     completion,
     conversation,
     feature,
@@ -39,6 +40,7 @@ __all__ = [
     "app",
     "audio",
     "bp",
+    "chatflow_memory",
     "completion",
     "conversation",
     "feature",
