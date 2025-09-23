@@ -91,6 +91,11 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  turbopack: {
+    rules: codeInspectorPlugin({
+      bundler: 'turbopack'
+    })
+  },
   webpack: (config, { dev, isServer }) => {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
 
@@ -118,6 +123,10 @@ const nextConfig = {
     })),
   },
   experimental: {
+    optimizePackageImports: [
+      '@remixicon/react',
+      '@heroicons/react'
+    ],
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
