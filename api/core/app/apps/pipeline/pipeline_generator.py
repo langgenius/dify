@@ -427,6 +427,9 @@ class PipelineGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
             workflow_execution_id=str(uuid.uuid4()),
+            single_iteration_run=RagPipelineGenerateEntity.SingleIterationRunEntity(
+                node_id=node_id, inputs=args["inputs"]
+            ),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -465,6 +468,7 @@ class PipelineGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             variable_loader=var_loader,
+            context=contextvars.copy_context(),
         )
 
     def single_loop_generate(
@@ -559,6 +563,7 @@ class PipelineGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             variable_loader=var_loader,
+            context=contextvars.copy_context(),
         )
 
     def _generate_worker(
