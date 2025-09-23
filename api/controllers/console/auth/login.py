@@ -75,6 +75,11 @@ class LoginApi(Resource):
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
+            # Perform dummy MFA check to prevent timing attacks
+            # This ensures similar response time regardless of authentication failure
+            if args.get("mfa_code"):
+                import time
+                time.sleep(0.05)  # Simulate MFA verification delay
             raise AuthenticationFailedError()
 
         # Check MFA requirement

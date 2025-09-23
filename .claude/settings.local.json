@@ -18,7 +18,9 @@
       "Bash(pnpm lint:*)",
       "Bash(pnpm list:*)",
       "Bash(rm:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Read(//c/Users/kbrah/Pictures/Screenshots/**)",
+      "Bash(python -m pytest tests/unit_tests/services/test_mfa_service.py -v)"
     ],
     "deny": []
   }
