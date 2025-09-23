@@ -1,7 +1,6 @@
 import json
 import logging
 from collections.abc import Sequence
-from urllib.parse import urljoin
 
 from opentelemetry.trace import Link, Status, StatusCode
 from sqlalchemy import select
@@ -14,6 +13,7 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
     convert_to_trace_id,
     create_link,
     generate_span_id,
+    build_endpoint,
 )
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
 from core.ops.aliyun_trace.entities.semconv import (
@@ -68,9 +68,8 @@ class AliyunDataTrace(BaseTraceInstance):
         aliyun_config: AliyunConfig,
     ):
         super().__init__(aliyun_config)
-        base_url = aliyun_config.endpoint.rstrip("/")
-        endpoint = urljoin(base_url, f"adapt_{aliyun_config.license_key}/api/otlp/traces")
-        self.trace_client = TraceClient(service_name=aliyun_config.app_name, endpoint=endpoint)
+        endpoint = build_endpoint(aliyun_config.endpoint, aliyun_config.license_key)
+        self.trace_client = TraceClient(service_name=aliyun_config.app_name,endpoint=endpoint)
 
     def trace(self, trace_info: BaseTraceInfo):
         if isinstance(trace_info, WorkflowTraceInfo):

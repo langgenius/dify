@@ -7,6 +7,7 @@ import uuid
 from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
+from urllib.parse import urljoin
 
 import httpx
 from opentelemetry import trace as trace_api
@@ -214,3 +215,9 @@ def convert_datetime_to_nanoseconds(start_time_a: datetime | None) -> int | None
     timestamp_in_seconds = start_time_a.timestamp()
     timestamp_in_nanoseconds = int(timestamp_in_seconds * 1e9)
     return timestamp_in_nanoseconds
+
+def build_endpoint(base_url:str,license_key:str) -> str:
+    if "log.aliyuncs.com" in base_url:  # cms2.0 endpoint
+        return f"{base_url}/adapt_{license_key}/api/v1/traces"
+    else:   # xtrace endpoint
+        return urljoin(base_url, f"adapt_{license_key}/api/otlp/traces")
