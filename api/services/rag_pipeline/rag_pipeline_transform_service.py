@@ -93,7 +93,6 @@ class RagPipelineTransformService:
         }
 
     def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None) -> dict:
-        base_path = Path(__file__).parent / "transform"
         yaml_map = {
             "text_model": {
                 "upload_file": {
@@ -126,7 +125,7 @@ class RagPipelineTransformService:
             raise ValueError(
                 f"Unsupported datasource type {datasource_type} or indexing technique {indexing_technique or ''}"
             )
-        file_path = base_path / file_name
+        file_path = Path(__file__).parent / "transform" / file_name
         with open(file_path) as f:
             pipeline_yaml = yaml.safe_load(f)
         return pipeline_yaml
