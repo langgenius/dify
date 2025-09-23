@@ -25,28 +25,30 @@ API_TOKEN_RESOURCE_FIELD_MAP = {
 
 class ApiTokenResourceFieldMixin:
     """Mixin class providing safe field mapping for ApiToken resources."""
-    
+
     resource_id_field: str | None = None
 
     def _get_resource_field(self):
         """
         Get the ApiToken field for the current resource type.
-        
+
         Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
-        
+
         Returns:
             The ApiToken field for querying
-            
+
         Raises:
             ValueError: If resource_id_field is not supported
         """
         if self.resource_id_field is None:
             raise ValueError("resource_id_field must be set")
-            
+
         if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
-            raise ValueError(f"Unsupported resource_id_field: {self.resource_id_field}. "
-                           f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}")
-        
+            raise ValueError(
+                f"Unsupported resource_id_field: {self.resource_id_field}. "
+                f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}"
+            )
+
         return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
 
 
@@ -121,7 +123,7 @@ class BaseApiKeyListResource(Resource, ApiTokenResourceFieldMixin):
 
         key = ApiToken.generate_api_key(self.token_prefix or "", 24)
         api_token = ApiToken()
-        
+
         # Use safe field mapping instead of setattr reflection
         # resource_field already validated in _get_resource_field() call above
         if self.resource_id_field == "app_id":
