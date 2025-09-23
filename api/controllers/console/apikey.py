@@ -15,6 +15,13 @@ from models.model import ApiToken, App
 from . import api, console_ns
 from .wraps import account_initialization_required, setup_required
 
+# Field mapping for ApiToken attributes to avoid getattr reflection
+API_TOKEN_RESOURCE_FIELD_MAP = {
+    "app_id": ApiToken.app_id,
+    # Note: ApiToken model does not have dataset_id field
+    # Dataset API keys are managed by tenant_id in a separate implementation
+}
+
 api_key_fields = {
     "id": fields.String,
     "type": fields.String,
@@ -53,15 +60,37 @@ class BaseApiKeyListResource(Resource):
     token_prefix: str | None = None
     max_keys = 10
 
+    def _get_resource_field(self):
+        """
+        Get the ApiToken field for the current resource type.
+
+        Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
+
+        Returns:
+            The ApiToken field for querying
+
+        Raises:
+            ValueError: If resource_id_field is not supported
+        """
+        if self.resource_id_field is None:
+            raise ValueError("resource_id_field must be set")
+
+        if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
+            raise ValueError(
+                f"Unsupported resource_id_field: {self.resource_id_field}. "
+                f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}"
+            )
+
+        return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
+
     @marshal_with(api_key_list)
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
+        resource_field = self._get_resource_field()
         keys = db.session.scalars(
-            select(ApiToken).where(
-                ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
-            )
+            select(ApiToken).where(ApiToken.type == self.resource_type, resource_field == resource_id)
         ).all()
         return {"items": keys}
 
@@ -73,10 +102,9 @@ class BaseApiKeyListResource(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
+        resource_field = self._get_resource_field()
         current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .count()
+            db.session.query(ApiToken).where(ApiToken.type == self.resource_type, resource_field == resource_id).count()
         )
 
         if current_key_count >= self.max_keys:
@@ -88,7 +116,15 @@ class BaseApiKeyListResource(Resource):
 
         key = ApiToken.generate_api_key(self.token_prefix or "", 24)
         api_token = ApiToken()
-        setattr(api_token, self.resource_id_field, resource_id)
+
+        # Use safe field mapping instead of setattr reflection
+        resource_field = self._get_resource_field()
+        if self.resource_id_field == "app_id":
+            api_token.app_id = resource_id
+        else:
+            # This should not happen due to validation in _get_resource_field
+            raise ValueError(f"Unsupported resource_id_field for setattr: {self.resource_id_field}")
+
         api_token.tenant_id = current_user.current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
@@ -104,6 +140,29 @@ class BaseApiKeyResource(Resource):
     resource_model: type | None = None
     resource_id_field: str | None = None
 
+    def _get_resource_field(self):
+        """
+        Get the ApiToken field for the current resource type.
+
+        Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
+
+        Returns:
+            The ApiToken field for querying
+
+        Raises:
+            ValueError: If resource_id_field is not supported
+        """
+        if self.resource_id_field is None:
+            raise ValueError("resource_id_field must be set")
+
+        if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
+            raise ValueError(
+                f"Unsupported resource_id_field: {self.resource_id_field}. "
+                f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}"
+            )
+
+        return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
+
     def delete(self, resource_id, api_key_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
@@ -114,10 +173,11 @@ class BaseApiKeyResource(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
+        resource_field = self._get_resource_field()
         key = (
             db.session.query(ApiToken)
             .where(
-                getattr(ApiToken, self.resource_id_field) == resource_id,
+                resource_field == resource_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
@@ -183,6 +243,9 @@ class AppApiKeyResource(BaseApiKeyResource):
     resource_id_field = "app_id"
 
 
+# NOTE: This endpoint is currently broken because ApiToken model does not have dataset_id field.
+# Dataset API keys are handled by /datasets/api-keys endpoint in datasets.py using tenant_id.
+# TODO: Either fix this implementation or remove it entirely.
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(BaseApiKeyListResource):
     @api.doc("get_dataset_api_keys")
@@ -209,10 +272,13 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
 
     resource_type = "dataset"
     resource_model = Dataset
-    resource_id_field = "dataset_id"
+    resource_id_field = "dataset_id"  # WARNING: This field does not exist in ApiToken model!
     token_prefix = "ds-"
 
 
+# NOTE: This endpoint is currently broken because ApiToken model does not have dataset_id field.
+# Dataset API keys are handled by /datasets/api-keys endpoint in datasets.py using tenant_id.
+# TODO: Either fix this implementation or remove it entirely.
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class DatasetApiKeyResource(BaseApiKeyResource):
     @api.doc("delete_dataset_api_key")
@@ -230,4 +296,4 @@ class DatasetApiKeyResource(BaseApiKeyResource):
 
     resource_type = "dataset"
     resource_model = Dataset
-    resource_id_field = "dataset_id"
+    resource_id_field = "dataset_id"  # WARNING: This field does not exist in ApiToken model!

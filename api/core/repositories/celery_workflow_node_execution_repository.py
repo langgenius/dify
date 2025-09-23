@@ -24,6 +24,17 @@ from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
 )
 
+# Safe field getter mapping for WorkflowNodeExecution to avoid getattr reflection
+WORKFLOW_NODE_EXECUTION_FIELD_GETTERS = {
+    "id": lambda x: x.id,
+    "index": lambda x: x.index,
+    "created_at": lambda x: x.created_at,
+    "finished_at": lambda x: x.finished_at,
+    "node_id": lambda x: x.node_id,
+    "status": lambda x: x.status,
+    "elapsed_time": lambda x: x.elapsed_time,
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,7 +191,17 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
                 # Sort by multiple fields if specified
                 for field_name in reversed(order_config.order_by):
-                    result.sort(key=lambda x: getattr(x, field_name, 0), reverse=reverse)
+                    # Use safe field getter instead of getattr reflection
+                    if field_name not in WORKFLOW_NODE_EXECUTION_FIELD_GETTERS:
+                        logger.warning(
+                            "Unsupported order field: %s. Supported fields: %s",
+                            field_name,
+                            list(WORKFLOW_NODE_EXECUTION_FIELD_GETTERS.keys()),
+                        )
+                        continue
+
+                    field_getter = WORKFLOW_NODE_EXECUTION_FIELD_GETTERS[field_name]
+                    result.sort(key=lambda x: field_getter(x) or 0, reverse=reverse)
 
             logger.debug("Retrieved %d workflow node executions for run %s from cache", len(result), workflow_run_id)
             return result

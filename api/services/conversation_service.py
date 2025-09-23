@@ -23,6 +23,22 @@ from services.errors.conversation import (
     ConversationVariableTypeMismatchError,
     LastConversationNotExistsError,
 )
+
+# Safe field mapping for Conversation model to avoid getattr reflection
+CONVERSATION_SORT_FIELDS = {
+    "created_at": Conversation.created_at,
+    "updated_at": Conversation.updated_at,
+    "name": Conversation.name,
+    "dialogue_count": Conversation.dialogue_count,
+}
+
+# Safe field getter mapping for Conversation instances to avoid getattr reflection
+CONVERSATION_FIELD_GETTERS = {
+    "created_at": lambda x: x.created_at,
+    "updated_at": lambda x: x.updated_at,
+    "name": lambda x: x.name,
+    "dialogue_count": lambda x: x.dialogue_count,
+}
 from services.errors.message import MessageNotExistsError
 from tasks.delete_conversation_task import delete_conversation_related_data
 
@@ -81,7 +97,9 @@ class ConversationService:
                 reference_conversation=last_conversation,
             )
             stmt = stmt.where(filter_condition)
-        query_stmt = stmt.order_by(sort_direction(getattr(Conversation, sort_field))).limit(limit)
+        # Use safe field mapping instead of getattr reflection
+        sort_column = CONVERSATION_SORT_FIELDS[sort_field]
+        query_stmt = stmt.order_by(sort_direction(sort_column)).limit(limit)
         conversations = session.scalars(query_stmt).all()
 
         has_more = False
@@ -101,17 +119,53 @@ class ConversationService:
 
     @classmethod
     def _get_sort_params(cls, sort_by: str):
+        """
+        Parse sort_by parameter and validate field exists.
+
+        Args:
+            sort_by: Sort specification like "updated_at" or "-created_at"
+
+        Returns:
+            Tuple of (field_name, sort_direction)
+
+        Raises:
+            ValueError: If field is not supported for sorting
+        """
         if sort_by.startswith("-"):
-            return sort_by[1:], desc
-        return sort_by, asc
+            field_name = sort_by[1:]
+            sort_direction = desc
+        else:
+            field_name = sort_by
+            sort_direction = asc
+
+        if field_name not in CONVERSATION_SORT_FIELDS:
+            raise ValueError(
+                f"Unsupported sort field: {field_name}. Supported fields: {list(CONVERSATION_SORT_FIELDS.keys())}"
+            )
+
+        return field_name, sort_direction
 
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
-        field_value = getattr(reference_conversation, sort_field)
-        if sort_direction is desc:
-            return getattr(Conversation, sort_field) < field_value
+        """
+        Build filter condition for pagination using safe field mapping.
 
-        return getattr(Conversation, sort_field) > field_value
+        Args:
+            sort_field: Field name for sorting (must be in CONVERSATION_SORT_FIELDS)
+            sort_direction: SQLAlchemy sort direction (asc/desc)
+            reference_conversation: Conversation object to compare against
+
+        Returns:
+            SQLAlchemy filter condition
+        """
+        # Use safe field mapping instead of getattr reflection
+        sort_column = CONVERSATION_SORT_FIELDS[sort_field]
+        field_getter = CONVERSATION_FIELD_GETTERS[sort_field]
+        field_value = field_getter(reference_conversation)
+
+        if sort_direction is desc:
+            return sort_column < field_value
+        return sort_column > field_value
 
     @classmethod
     def rename(
