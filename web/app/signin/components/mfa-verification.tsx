@@ -84,7 +84,7 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
       let errorMessage = t('mfa.invalidToken')
       if (error?.response?.status === 401)
         errorMessage = t('mfa.invalidToken')
-       else if (error?.message)
+      else if (error?.message)
         errorMessage = error.message
 
       Toast.notify({

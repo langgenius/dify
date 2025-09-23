@@ -162,7 +162,7 @@ export default function MFAPage() {
               onClick={() => {
                 if (mfaStatus?.enabled)
                   setIsDisableModalOpen(true)
-                 else
+                else
                   handleSetupStart()
               }}
               loading={initSetupMutation.isPending}
