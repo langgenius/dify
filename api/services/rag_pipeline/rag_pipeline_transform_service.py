@@ -92,7 +92,7 @@ class RagPipelineTransformService:
             "status": "success",
         }
 
-    def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None):
+    def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None) -> dict:
         base_path = Path(__file__).parent / "transform"
         yaml_map = {
             "text_model": {
