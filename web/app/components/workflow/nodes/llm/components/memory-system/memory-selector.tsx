@@ -13,6 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
+import { MemoryMode } from '@/app/components/workflow/types'
 
 type MemorySelectorProps = {
   value?: string
@@ -28,17 +29,17 @@ const MemorySelector = ({
   const [open, setOpen] = useState(false)
   const options = [
     {
-      value: 'disabled',
+      value: MemoryMode.disabled,
       label: t('workflow.nodes.common.memory.disabled.title'),
       description: t('workflow.nodes.common.memory.disabled.desc'),
     },
     {
-      value: 'linear',
+      value: MemoryMode.linear,
       label: t('workflow.nodes.common.memory.linear.title'),
       description: t('workflow.nodes.common.memory.linear.desc'),
     },
     {
-      value: 'block',
+      value: MemoryMode.block,
       label: t('workflow.nodes.common.memory.block.title'),
       description: t('workflow.nodes.common.memory.block.desc'),
     },

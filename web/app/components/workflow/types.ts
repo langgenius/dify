@@ -273,6 +273,12 @@ export type RolePrefix = {
   assistant: string
 }
 
+export enum MemoryMode {
+  linear = 'linear',
+  block = 'block',
+  disabled = 'disabled',
+}
+
 export type Memory = {
   enabled?: boolean
   role_prefix?: RolePrefix
@@ -282,7 +288,7 @@ export type Memory = {
   }
   query_prompt_template: string
   block_id?: string[]
-  mode?: 'linear' | 'block'
+  mode?: MemoryMode
 }
 
 export enum VarType {

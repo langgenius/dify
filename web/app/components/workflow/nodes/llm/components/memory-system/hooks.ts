@@ -9,6 +9,7 @@ import {
   MEMORY_DEFAULT,
 } from './linear-memory'
 import type { Memory } from '@/app/components/workflow/types'
+import { MemoryMode } from '@/app/components/workflow/types'
 
 export const useMemory = (
   id: string,
@@ -31,7 +32,7 @@ export const useMemory = (
     const nodeData = getNodeData()
     const { memory: memoryData = {} } = nodeData as any
 
-    if (value === 'disabled') {
+    if (value === MemoryMode.disabled) {
       setCollapsed(true)
       handleNodeDataUpdate({
         memory: {
@@ -41,25 +42,25 @@ export const useMemory = (
         },
       })
     }
-    if (value === 'linear') {
+    if (value === MemoryMode.linear) {
       setCollapsed(false)
       handleNodeDataUpdate({
         memory: {
           ...memoryData,
           enabled: true,
-          mode: 'linear',
+          mode: MemoryMode.linear,
           window: memoryData?.window || MEMORY_DEFAULT.window,
           query_prompt_template: memoryData?.query_prompt_template || MEMORY_DEFAULT.query_prompt_template,
         },
       })
     }
-    if (value === 'block') {
+    if (value === MemoryMode.block) {
       setCollapsed(false)
       handleNodeDataUpdate({
         memory: {
           ...memoryData,
           enabled: true,
-          mode: 'block',
+          mode: MemoryMode.block,
           block_id: memoryData?.block_id || [],
           query_prompt_template: memoryData?.query_prompt_template || MEMORY_DEFAULT.query_prompt_template,
         },
@@ -75,19 +76,19 @@ export const useMemory = (
 
   const memoryType = useMemo(() => {
     if (!memory)
-      return 'disabled'
+      return MemoryMode.disabled
 
     if (!('enabled' in memory))
-      return 'linear'
+      return MemoryMode.linear
 
     if (memory.enabled) {
-      if (memory.mode === 'linear')
-        return 'linear'
-      if (memory.mode === 'block')
-        return 'block'
+      if (memory.mode === MemoryMode.linear)
+        return MemoryMode.linear
+      if (memory.mode === MemoryMode.block)
+        return MemoryMode.block
     }
     else {
-      return 'disabled'
+      return MemoryMode.disabled
     }
   }, [memory])
 

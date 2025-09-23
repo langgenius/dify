@@ -22,6 +22,8 @@ import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
 import MemorySystem from './components/memory-system'
+import { useMemory } from './components/memory-system/hooks'
+import { MemoryMode } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -64,6 +66,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleReasoningFormatChange,
     memoryVarSortFn,
   } = useConfig(id, data)
+  const { memoryType } = useMemory(id, data)
 
   const model = inputs.model
 
@@ -177,7 +180,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
 
         {/* Memory put place examples. */}
-        {isChatMode && isChatModel && !!inputs.memory?.enabled && (
+        {isChatMode && isChatModel && (memoryType === MemoryMode.linear || memoryType === MemoryMode.block) && (
           <div className='mt-4'>
             <div className='flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2'>
               <div className='flex items-center space-x-1'>
@@ -201,7 +204,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                     triggerClassName='w-4 h-4'
                   />
                 </div>}
-                value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
+                value={inputs.memory?.query_prompt_template || '{{#sys.query#}}'}
                 onChange={handleSyeQueryChange}
                 readOnly={readOnly}
                 isShowContext={false}
@@ -214,7 +217,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 instanceId={`${id}-chat-workflow-llm-prompt-editor-user`}
               />
 
-              {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
+              {inputs.memory?.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
                 <div className='text-xs font-normal leading-[18px] text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
               )}
             </div>

@@ -15,6 +15,7 @@ import type { Memory } from '@/app/components/workflow/types'
 import type { LLMNodeType } from '../../types'
 import { useMemory } from './hooks'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { MemoryMode } from '@/app/components/workflow/types'
 
 type MemoryProps = Pick<Node, 'id' | 'data'> & {
   readonly?: boolean
@@ -58,7 +59,7 @@ const MemorySystem = ({
                   />
                   {collapseIcon}
                   {
-                    memoryType === 'block' && (
+                    memoryType === MemoryMode.block && (
                       <>
                         <Divider type='vertical' className='!ml-1.5 !mr-1 h-3 !w-px bg-divider-regular' />
                         <div onClick={e => e.stopPropagation()}>
@@ -78,7 +79,7 @@ const MemorySystem = ({
         >
           <>
             {
-              memoryType === 'linear' && !collapsed && (
+              memoryType === MemoryMode.linear && !collapsed && (
                 <LinearMemory
                   className='mt-2'
                   payload={memory as Memory}
