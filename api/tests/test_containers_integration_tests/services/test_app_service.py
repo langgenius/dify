@@ -2,6 +2,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from constants.model_template import default_app_templates
 from models.account import Account
@@ -739,7 +740,7 @@ class TestAppService:
         # Verify app was deleted from database
         from extensions.ext_database import db
 
-        deleted_app = db.session.query(App).filter_by(id=app_id).first()
+        deleted_app = db.session.scalars(select(App).filter_by(id=app_id).limit(1)).first()
         assert deleted_app is None
 
     def test_delete_app_with_related_data(self, db_session_with_containers, mock_external_service_dependencies):
@@ -797,7 +798,7 @@ class TestAppService:
         # Verify app was deleted from database
         from extensions.ext_database import db
 
-        deleted_app = db.session.query(App).filter_by(id=app_id).first()
+        deleted_app = db.session.scalars(select(App).filter_by(id=app_id).limit(1)).first()
         assert deleted_app is None
 
     def test_get_app_meta_success(self, db_session_with_containers, mock_external_service_dependencies):
