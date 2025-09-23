@@ -1,5 +1,7 @@
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask_restx import Resource
+from marshmallow import Schema, fields, validate
+from flask_accepts import accepts, responds  # pyright: ignore[reportMissingTypeStubs]
 
 from configs import dify_config
 from libs.helper import StrLen, email, extract_remote_ip
@@ -7,32 +9,32 @@ from libs.password import valid_password
 from models.model import DifySetup, db
 from services.account_service import RegisterService, TenantService
 
-from . import api, console_ns
+from . import console_ns
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
 
 
+class SetupStatusResponse(Schema):
+    step = fields.String(required=True, validate=validate.OneOf(["not_started", "finished"]))
+    setup_at = fields.String(required=False, metadata={"description": "ISO datetime"})
+
+class SetupRequest(Schema):
+    email = fields.String(required=True, validate=email, metadata={"description": "Admin email address"})
+    name = fields.String(required=True, validate=StrLen(30), metadata={"description": "Admin name (max 30 characters)"})
+    password = fields.String(required=True, validate=valid_password, metadata={"description": "Admin password"})
+
+class SetupResponse(Schema):
+    result = fields.String(required=True)
+
+
 @console_ns.route("/setup")
 class SetupApi(Resource):
-    @api.doc("get_setup_status")
-    @api.doc(description="Get system setup status")
-    @api.response(
-        200,
-        "Success",
-        api.model(
-            "SetupStatusResponse",
-            {
-                "step": fields.String(description="Setup step status", enum=["not_started", "finished"]),
-                "setup_at": fields.String(description="Setup completion time (ISO format)", required=False),
-            },
-        ),
-    )
+    @responds(schema=SetupStatusResponse, api=console_ns, status_code=200)
     def get(self):
         """Get system setup status"""
         if dify_config.EDITION == "SELF_HOSTED":
             setup_status = get_setup_status()
-            # Check if setup_status is a DifySetup object rather than a bool
             if setup_status and not isinstance(setup_status, bool):
                 return {"step": "finished", "setup_at": setup_status.setup_at.isoformat()}
             elif setup_status:
@@ -40,21 +42,9 @@ class SetupApi(Resource):
             return {"step": "not_started"}
         return {"step": "finished"}
 
-    @api.doc("setup_system")
-    @api.doc(description="Initialize system setup with admin account")
-    @api.expect(
-        api.model(
-            "SetupRequest",
-            {
-                "email": fields.String(required=True, description="Admin email address"),
-                "name": fields.String(required=True, description="Admin name (max 30 characters)"),
-                "password": fields.String(required=True, description="Admin password"),
-            },
-        )
-    )
-    @api.response(201, "Success", api.model("SetupResponse", {"result": fields.String(description="Setup result")}))
-    @api.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
+    @accepts(schema=SetupRequest, api=console_ns)
+    @responds(schema=SetupResponse, api=console_ns, status_code=201)
     def post(self):
         """Initialize system setup with admin account"""
         # is set up
@@ -69,17 +59,14 @@ class SetupApi(Resource):
         if not get_init_validate_status():
             raise NotInitValidateError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, location="json")
-        parser.add_argument("password", type=valid_password, required=True, location="json")
-        args = parser.parse_args()
+        payload = request.parsed_obj
 
-        # setup
         RegisterService.setup(
-            email=args["email"], name=args["name"], password=args["password"], ip_address=extract_remote_ip(request)
+            email=payload["email"],
+            name=payload["name"],
+            password=payload["password"],
+            ip_address=extract_remote_ip(request),
         )
-
         return {"result": "success"}, 201
 
 

@@ -15,6 +15,7 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
+from marshmallow import ValidationError
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -98,7 +99,7 @@ def email(email):
         return email
 
     error = f"{email} is not a valid email."
-    raise ValueError(error)
+    raise ValidationError(error)
 
 
 def uuid_value(value):
