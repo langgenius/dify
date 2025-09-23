@@ -35,6 +35,7 @@ class WorkflowToolManageService:
         icon: dict,
         description: str,
         parameters: list[Mapping[str, Any]],
+        output_schema: dict,
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ):
@@ -72,6 +73,7 @@ class WorkflowToolManageService:
             icon=json.dumps(icon),
             description=description,
             parameter_configuration=json.dumps(parameters),
+            output_schema=json.dumps(output_schema),
             privacy_policy=privacy_policy,
             version=workflow.version,
         )
@@ -101,6 +103,7 @@ class WorkflowToolManageService:
         icon: dict,
         description: str,
         parameters: list[Mapping[str, Any]],
+        output_schema: dict,
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ):
@@ -114,6 +117,7 @@ class WorkflowToolManageService:
         :param icon: icon
         :param description: description
         :param parameters: parameters
+        :param output_schema: output schema
         :param privacy_policy: privacy policy
         :param labels: labels
         :return: the updated tool
@@ -159,6 +163,8 @@ class WorkflowToolManageService:
         workflow_tool_provider.icon = json.dumps(icon)
         workflow_tool_provider.description = description
         workflow_tool_provider.parameter_configuration = json.dumps(parameters)
+        if output_schema is not None:
+            workflow_tool_provider.output_schema = json.dumps(output_schema)
         workflow_tool_provider.privacy_policy = privacy_policy
         workflow_tool_provider.version = workflow.version
         workflow_tool_provider.updated_at = datetime.now()
@@ -292,6 +298,14 @@ class WorkflowToolManageService:
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {db_tool.id} not found")
 
+        # Parse output_schema from database
+        output_schema = {}
+        if db_tool.output_schema:
+            try:
+                output_schema = json.loads(db_tool.output_schema)
+            except (json.JSONDecodeError, TypeError):
+                output_schema = {}
+
         return {
             "name": db_tool.name,
             "label": db_tool.label,
@@ -300,6 +314,7 @@ class WorkflowToolManageService:
             "icon": json.loads(db_tool.icon),
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
+            "output_schema": output_schema,
             "tool": ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(db_tool.tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool),

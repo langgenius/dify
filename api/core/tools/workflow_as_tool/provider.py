@@ -1,3 +1,4 @@
+import json
 from collections.abc import Mapping
 
 from pydantic import Field
@@ -148,6 +149,14 @@ class WorkflowToolProviderController(ToolProviderController):
             else:
                 raise ValueError("variable not found")
 
+        # Parse output_schema from database
+        output_schema = {}
+        if db_provider.output_schema:
+            try:
+                output_schema = json.loads(db_provider.output_schema)
+            except (json.JSONDecodeError, TypeError):
+                output_schema = {}
+
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
@@ -163,6 +172,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     llm=db_provider.description,
                 ),
                 parameters=workflow_tool_parameters,
+                output_schema=output_schema,
             ),
             runtime=ToolRuntime(
                 tenant_id=db_provider.tenant_id,
