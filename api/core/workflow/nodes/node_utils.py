@@ -8,10 +8,7 @@ def get_node_type(node: Any) -> Optional[NodeType | str]:
         return None
     else:
         data = node.get("data")
-        if not data:
-            return None
-        else:
-            return data.get("type")
+        return data.get("type") if data and hasattr(data, "get") else None
 
 
 def is_node_type(node: Any, node_type: NodeType | str) -> bool:
