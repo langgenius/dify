@@ -19,6 +19,7 @@ from core.workflow.enums import (
 from core.workflow.graph_events import (
     GraphNodeEventBase,
     GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
 )
 from core.workflow.node_events import (
@@ -456,7 +457,7 @@ class IterationNode(Node):
             if isinstance(event, GraphNodeEventBase):
                 self._append_iteration_info_to_event(event=event, iter_run_index=current_index)
                 yield event
-            elif isinstance(event, GraphRunSucceededEvent):
+            elif isinstance(event, (GraphRunSucceededEvent, GraphRunPartialSucceededEvent)):
                 result = variable_pool.get(self._node_data.output_selector)
                 if result is None:
                     outputs.append(None)
