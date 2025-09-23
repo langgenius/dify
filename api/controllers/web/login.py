@@ -12,7 +12,7 @@ from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
-from libs.token import set_access_token_to_cookie
+from libs.token import set_access_token_to_cookie, clear_access_token_from_cookie, clear_webapp_token_from_cookie
 from libs.password import valid_password
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
@@ -55,15 +55,21 @@ class LoginApi(Resource):
         set_access_token_to_cookie(request, response, token)
         return response
 
-
-# class LogoutApi(Resource):
-#     @setup_required
-#     def get(self):
-#         account = cast(Account, flask_login.current_user)
-#         if isinstance(account, flask_login.AnonymousUserMixin):
-#             return {"result": "success"}
-#         flask_login.logout_user()
-#         return {"result": "success"}
+@web_ns.route("/logout")
+class LogoutApi(Resource):
+    @setup_required
+    @web_ns.doc("web_app_logout")
+    @web_ns.doc(description="Logout user from web application")
+    @web_ns.doc(
+        responses={
+            200: "Logout successful",
+        }
+    )
+    def get(self):
+        response = make_response({"result": "success"})
+        clear_access_token_from_cookie(request, response)
+        clear_webapp_token_from_cookie(request, response)
+        return response
 
 
 @web_ns.route("/email-code-login")

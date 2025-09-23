@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
+from flask import request, make_response
 from flask_restx import Resource
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -11,7 +11,7 @@ from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from libs.token import extract_access_token
+from libs.token import extract_access_token, set_webapp_token_to_cookie
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -100,9 +100,11 @@ class PassportResource(Resource):
 
         tk = PassportService().issue(payload)
 
-        return {
+        response = make_response({
             "access_token": tk,
-        }
+        })
+        set_webapp_token_to_cookie(request, response, tk)
+        return response
 
 
 def decode_enterprise_webapp_user_id(jwt_token: str | None):

@@ -34,6 +34,12 @@ def _try_extract_webapp_token_from_url(request: Request) -> str | None:
     """
     return request.args.get('web_app_access_token')
 
+def _try_extract_webapp_token_from_cookie(request: Request) -> str | None:
+    """
+    Try to extract app token from cookie
+    """
+    return request.cookies.get(COOKIE_NAME_APP_TOKEN)
+
 def _try_extract_from_query(request: Request) -> str | None:
     """
     Try to extract access token from query parameter
@@ -47,7 +53,13 @@ def extract_access_token(request: Request) -> str | None:
     
     Access token is either for console session or webapp passport exchange.
     """
-    ret = _try_extract_from_cookie(request) or _try_extract_from_header(request) or _try_extract_from_query(request)
+    ret = (
+        _try_extract_from_cookie(request) 
+        or 
+        _try_extract_from_header(request) 
+        or 
+        _try_extract_from_query(request) 
+    )
     return ret
 
 
@@ -57,7 +69,13 @@ def extract_webapp_token(request: Request) -> str | None:
 
     Webapp access token (part of passport) is only used for webapp session.
     """
-    ret = _try_extract_from_header(request) or _try_extract_webapp_token_from_url(request)
+    ret = (
+        _try_extract_from_header(request) 
+        or 
+        _try_extract_webapp_token_from_url(request) 
+        or 
+        _try_extract_webapp_token_from_cookie(request)
+    )
     return ret
 
 
@@ -82,6 +100,28 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         samesite="Lax",
         max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
         path="/",
+    )
+
+def set_webapp_token_to_cookie(request: Request, response: Response, token: str):
+    response.set_cookie(
+        COOKIE_NAME_APP_TOKEN,
+        value=token,
+        httponly=True,
+        secure=request.is_secure,
+        samesite="Lax",
+        max_age=60 * 60 * 24,
+        path="/",
+    )
+
+def clear_webapp_token_from_cookie(request: Request, response: Response):
+    response.set_cookie(
+        COOKIE_NAME_APP_TOKEN,
+        "",
+        expires=0,
+        path="/",
+        secure=request.is_secure,
+        httponly=True,
+        samesite="Lax",
     )
 
 def clear_access_token_from_cookie(request: Request, response: Response):
