@@ -49,7 +49,8 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput):
   }
 }
 
-export const checkKey = (key: string, canBeEmpty?: boolean) => {
+// eslint-disable-next-line unused-imports/no-unused-vars
+export const checkKey = (key: string, canBeEmpty?: boolean, keys?: string[]) => {
   if (key.length === 0 && !canBeEmpty)
     return 'canNoBeEmpty'
 
