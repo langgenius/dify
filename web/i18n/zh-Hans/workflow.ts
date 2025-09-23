@@ -526,6 +526,9 @@ const translation = {
       promptEditorPlaceholder2: '输入 \'/\' 插入变量',
       memory: {
         addButton: '添加记忆',
+        currentNodeLabel: '当前节点范围',
+        conversationScopeLabel: '会话范围',
+        createButton: '创建记忆变量',
       },
     },
     knowledgeRetrieval: {

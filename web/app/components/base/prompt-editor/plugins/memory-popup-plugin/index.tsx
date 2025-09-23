@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import {
   autoUpdate,
   flip,
@@ -21,6 +22,12 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from '@/app/components/workflow/nodes/_base/components/prompt/add-memory-button'
+import Divider from '@/app/components/base/divider'
+import VariableIcon from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
+import type {
+  ConversationVariable,
+} from '@/app/components/workflow/types'
+import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 
 import cn from '@/utils/classnames'
 
@@ -28,13 +35,18 @@ export type MemoryPopupProps = {
   className?: string
   container?: Element | null
   instanceId?: string
+  memoryVarInNode: ConversationVariable[]
+  memoryVarInApp: ConversationVariable[]
 }
 
 export default function MemoryPopupPlugin({
   className,
   container,
   instanceId,
+  memoryVarInNode,
+  memoryVarInApp,
 }: MemoryPopupProps) {
+  const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -124,6 +136,11 @@ export default function MemoryPopupPlugin({
       openPortal()
   })
 
+  const handleSelectVariable = useCallback((variable: string[]) => {
+    editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variable)
+    closePortal()
+  }, [editor, closePortal])
+
   useEffect(() => {
     return editor.registerUpdateListener(({ editorState }) => {
       editorState.read(() => {
@@ -155,22 +172,68 @@ export default function MemoryPopupPlugin({
     return null
 
   return createPortal(
-    <div
-      ref={(node) => {
-        portalRef.current = node
-        refs.setFloating(node)
-      }}
-      className={cn(
-        useContainer ? '' : 'z-[999999]',
-        'absolute rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm',
-        className,
-      )}
-      style={{
-        ...floatingStyles,
-        visibility: isPositioned ? 'visible' : 'hidden',
-      }}
-    >
-      Memory Popup
+    <div className='h-0 w-0'>
+      <div
+        ref={(node) => {
+          portalRef.current = node
+          refs.setFloating(node)
+        }}
+        className={cn(
+          useContainer ? '' : 'z-[999999]',
+          'absolute rounded-xl shadow-lg backdrop-blur-sm',
+          className,
+        )}
+        style={{
+          ...floatingStyles,
+          visibility: isPositioned ? 'visible' : 'hidden',
+        }}
+      >
+        <div className='w-[261px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur'>
+          {memoryVarInNode.length > 0 && (
+            <>
+              <div className='flex items-center gap-1 pb-1 pt-2.5'>
+                <Divider className='!h-px !w-3 bg-divider-subtle' />
+                <div className='system-2xs-medium-uppercase shrink-0 text-text-tertiary'>{t('workflow.nodes.llm.memory.currentNodeLabel')}</div>
+                <Divider className='!h-px grow bg-divider-subtle' />
+              </div>
+              <div className='p-1'>
+                {memoryVarInNode.map(variable => (
+                  <div key={variable.id} className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover' onClick={() => handleSelectVariable(['conversation', variable.name])}>
+                    <VariableIcon
+                      isMemoryVariable
+                      variables={['conversation', variable.name]}
+                      className='text-util-colors-teal-teal-700'
+                    />
+                    <div title={variable.name} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.name}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {memoryVarInApp.length > 0 && (
+            <>
+              <div className='flex items-center gap-1 pb-1 pt-2.5'>
+                <Divider className='!h-px !w-3 bg-divider-subtle' />
+                <div className='system-2xs-medium-uppercase shrink-0 text-text-tertiary'>{t('workflow.nodes.llm.memory.conversationScopeLabel')}</div>
+                <Divider className='!h-px grow bg-divider-subtle' />
+              </div>
+              <div className='p-1'>
+                {memoryVarInApp.map(variable => (
+                  <div key={variable.id} className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover' onClick={() => handleSelectVariable(['conversation', variable.name])}>
+                    <VariableIcon
+                      isMemoryVariable
+                      variables={['conversation', variable.name]}
+                      className='text-util-colors-teal-teal-700'
+                    />
+                    <div title={variable.name} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.name}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <div>{t('workflow.nodes.llm.memory.createButton')}</div>
+        </div>
+      </div>
     </div>,
     containerEl,
   )

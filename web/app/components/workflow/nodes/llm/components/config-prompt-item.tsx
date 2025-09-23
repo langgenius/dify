@@ -9,6 +9,9 @@ import Editor from '@/app/components/workflow/nodes/_base/components/prompt/edit
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import Tooltip from '@/app/components/base/tooltip'
 import { PromptRole } from '@/models/debug'
+import type {
+  ConversationVariable,
+} from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -39,6 +42,8 @@ type Props = {
   varList: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig?: ModelConfig
+  memoryVarInNode?: ConversationVariable[]
+  memoryVarInApp?: ConversationVariable[]
 }
 
 const roleOptions = [
@@ -81,6 +86,8 @@ const ConfigPromptItem: FC<Props> = ({
   varList,
   handleAddVariable,
   modelConfig,
+  memoryVarInNode = [],
+  memoryVarInApp = [],
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -157,6 +164,8 @@ const ConfigPromptItem: FC<Props> = ({
         </>
       }
       isMemorySupported
+      memoryVarInNode={memoryVarInNode}
+      memoryVarInApp={memoryVarInApp}
     />
   )
 }

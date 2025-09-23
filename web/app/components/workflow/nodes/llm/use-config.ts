@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import produce from 'immer'
 import { EditionType, VarType } from '../../types'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
@@ -18,10 +18,12 @@ import {
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
+  const conversationVariables = useStore(s => s.conversationVariables)
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
@@ -342,6 +344,20 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return a.localeCompare(b)
   }, [inputs.memory?.block_id])
 
+  const memoryVarInNode = useMemo(() => {
+    const idsInNode = inputs.memory?.block_id || []
+    return conversationVariables
+      .filter(varItem => varItem.value_type === ChatVarType.Memory)
+      .filter(varItem => idsInNode.includes(varItem.id))
+  }, [inputs.memory?.block_id, conversationVariables])
+
+  const memoryVarInApp = useMemo(() => {
+    const idsInApp = inputs.memory?.block_id || []
+    return conversationVariables
+      .filter(varItem => varItem.value_type === ChatVarType.Memory)
+      .filter(varItem => !idsInApp.includes(varItem.id))
+  }, [inputs.memory?.block_id, conversationVariables])
+
   return {
     readOnly,
     isChatMode,
@@ -376,6 +392,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterJinja2InputVar,
     handleReasoningFormatChange,
     memoryVarSortFn,
+    memoryVarInNode,
+    memoryVarInApp,
   }
 }
 

@@ -37,6 +37,9 @@ import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import { useStore } from '@/app/components/workflow/store'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import AddMemoryButton, { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from './add-memory-button'
+import type {
+  ConversationVariable,
+} from '@/app/components/workflow/types'
 
 type Props = {
   className?: string
@@ -81,6 +84,8 @@ type Props = {
   titleClassName?: string
   required?: boolean
   isMemorySupported?: boolean
+  memoryVarInNode?: ConversationVariable[]
+  memoryVarInApp?: ConversationVariable[]
 }
 
 const Editor: FC<Props> = ({
@@ -121,6 +126,8 @@ const Editor: FC<Props> = ({
   editorContainerClassName,
   required,
   isMemorySupported,
+  memoryVarInNode = [],
+  memoryVarInApp = [],
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -301,6 +308,8 @@ const Editor: FC<Props> = ({
                       editable={!readOnly}
                       isSupportFileVar={isSupportFileVar}
                       isMemorySupported
+                      memoryVarInNode={memoryVarInNode}
+                      memoryVarInApp={memoryVarInApp}
                     />
                     {/* to patch Editor not support dynamic change editable status */}
                     {readOnly && <div className='absolute inset-0 z-10'></div>}

@@ -80,6 +80,9 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import type {
+  ConversationVariable,
+} from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 export type PromptEditorProps = {
@@ -106,6 +109,8 @@ export type PromptEditorProps = {
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
   isMemorySupported?: boolean
+  memoryVarInNode?: ConversationVariable[]
+  memoryVarInApp?: ConversationVariable[]
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -132,6 +137,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   lastRunBlock,
   isSupportFileVar,
   isMemorySupported,
+  memoryVarInNode = [],
+  memoryVarInApp = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -203,7 +210,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
           ErrorBoundary={LexicalErrorBoundary}
         />
         {isMemorySupported && (
-          <MemoryPopupPlugin instanceId={instanceId} />
+          <MemoryPopupPlugin
+            instanceId={instanceId}
+            memoryVarInNode={memoryVarInNode}
+            memoryVarInApp={memoryVarInApp}
+          />
         )}
         <ComponentPickerBlock
           triggerString='/'

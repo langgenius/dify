@@ -526,6 +526,9 @@ const translation = {
       promptEditorPlaceholder2: 'Type \'/\' to insert variable',
       memory: {
         addButton: 'Add Memory',
+        currentNodeLabel: 'Current Node scope',
+        conversationScopeLabel: 'Conversation scope',
+        createButton: 'Create memory variable',
       },
     },
     knowledgeRetrieval: {
