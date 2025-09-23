@@ -76,6 +76,7 @@ import LimitTips from './limit-tips'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import UserCursors from './collaboration/components/user-cursors'
 import {
   useStore,
   useWorkflowStore,
@@ -119,6 +120,9 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: any) => void
+  cursors?: Record<string, any>
+  myUserId?: string | null
+  onlineUsers?: any[]
 }
 export const Workflow: FC<WorkflowProps> = memo(({
   nodes: originalNodes,
@@ -126,6 +130,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
   viewport,
   children,
   onWorkflowDataUpdate,
+  cursors,
+  myUserId,
+  onlineUsers,
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
@@ -193,6 +200,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
   } = useWorkflowComment()
+  const showUserComments = useStore(s => s.showUserComments)
+  const showUserCursors = useStore(s => s.showUserCursors)
   const mousePosition = useStore(s => s.mousePosition)
 
   eventEmitter?.useSubscription((v: any) => {
@@ -463,13 +472,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
           )
         }
 
-        return (
+        return (showUserComments || controlMode === ControlMode.Comment) ? (
           <CommentIcon
             key={comment.id}
             comment={comment}
             onClick={() => handleCommentIconClick(comment)}
           />
-        )
+        ) : null
       })}
       {children}
       <ReactFlow
@@ -523,6 +532,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
           className="bg-workflow-canvas-workflow-bg"
           color='var(--color-workflow-canvas-workflow-dot-color)'
         />
+        {showUserCursors && cursors && (
+          <UserCursors
+            cursors={cursors}
+            myUserId={myUserId || null}
+            onlineUsers={onlineUsers || []}
+          />
+        )}
       </ReactFlow>
     </div>
   )
@@ -530,14 +546,25 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
 type WorkflowWithInnerContextProps = WorkflowProps & {
   hooksStore?: Partial<HooksStoreShape>
+  cursors?: Record<string, any>
+  myUserId?: string | null
+  onlineUsers?: any[]
 }
 export const WorkflowWithInnerContext = memo(({
   hooksStore,
+  cursors,
+  myUserId,
+  onlineUsers,
   ...restProps
 }: WorkflowWithInnerContextProps) => {
   return (
     <HooksStoreContextProvider {...hooksStore}>
-      <Workflow {...restProps} />
+      <Workflow
+        {...restProps}
+        cursors={cursors}
+        myUserId={myUserId}
+        onlineUsers={onlineUsers}
+      />
     </HooksStoreContextProvider>
   )
 })

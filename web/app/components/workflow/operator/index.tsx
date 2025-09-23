@@ -5,7 +5,7 @@ import ZoomInOut from './zoom-in-out'
 import VariableTrigger from '../variable-inspect/trigger'
 import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
-import { useUserCursorsState } from '@/app/components/workflow-app/components/user-cursors-state'
+import { ControlMode } from '../types'
 
 export type OperatorProps = {
   handleUndo: () => void
@@ -15,11 +15,24 @@ export type OperatorProps = {
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
   const [showMiniMap, setShowMiniMap] = useState(true)
-  const { showUserCursors, toggleUserCursors } = useUserCursorsState()
+  const showUserCursors = useStore(s => s.showUserCursors)
+  const setShowUserCursors = useStore(s => s.setShowUserCursors)
+  const showUserComments = useStore(s => s.showUserComments)
+  const setShowUserComments = useStore(s => s.setShowUserComments)
+  const controlMode = useStore(s => s.controlMode)
+  const isCommentMode = controlMode === ControlMode.Comment
 
   const handleToggleMiniMap = useCallback(() => {
     setShowMiniMap(prev => !prev)
   }, [])
+
+  const handleToggleUserCursors = useCallback(() => {
+    setShowUserCursors(!showUserCursors)
+  }, [showUserCursors, setShowUserCursors])
+
+  const handleToggleUserComments = useCallback(() => {
+    setShowUserComments(!showUserComments)
+  }, [showUserComments, setShowUserComments])
 
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
@@ -82,7 +95,10 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
             showMiniMap={showMiniMap}
             onToggleMiniMap={handleToggleMiniMap}
             showUserCursors={showUserCursors}
-            onToggleUserCursors={toggleUserCursors}
+            onToggleUserCursors={handleToggleUserCursors}
+            showUserComments={showUserComments}
+            onToggleUserComments={handleToggleUserComments}
+            isCommentMode={isCommentMode}
           />
         </div>
       </div>

@@ -12,6 +12,10 @@ export type PanelSliceShape = {
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
   showCommentsPanel: boolean
   setShowCommentsPanel: (showCommentsPanel: boolean) => void
+  showUserComments: boolean
+  setShowUserComments: (showUserComments: boolean) => void
+  showUserCursors: boolean
+  setShowUserCursors: (showUserCursors: boolean) => void
   panelMenu?: {
     top: number
     left: number
@@ -42,6 +46,10 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
   showCommentsPanel: false,
   setShowCommentsPanel: showCommentsPanel => set(() => ({ showCommentsPanel })),
+  showUserComments: true,
+  setShowUserComments: showUserComments => set(() => ({ showUserComments })),
+  showUserCursors: true,
+  setShowUserCursors: showUserCursors => set(() => ({ showUserCursors })),
   panelMenu: undefined,
   setPanelMenu: panelMenu => set(() => ({ panelMenu })),
   selectionMenu: undefined,
