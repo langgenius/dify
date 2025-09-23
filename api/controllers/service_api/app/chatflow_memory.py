@@ -78,5 +78,29 @@ class MemoryEditApi(Resource):
         return '', 204
 
 
+class MemoryDeleteApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def delete(self, app_model: App, end_user: EndUser):
+        parser = reqparse.RequestParser()
+        parser.add_argument('id', type=str, required=False, default=None)
+        args = parser.parse_args()
+        memory_id = args.get('id')
+
+        if memory_id:
+            ChatflowMemoryService.delete_memory(
+                app_model,
+                memory_id,
+                MemoryCreatedBy(end_user_id=end_user.id)
+            )
+            return '', 204
+        else:
+            ChatflowMemoryService.delete_all_user_memories(
+                app_model,
+                MemoryCreatedBy(end_user_id=end_user.id)
+            )
+            return '', 200
+
+
 api.add_resource(MemoryListApi, '/memories')
 api.add_resource(MemoryEditApi, '/memory-edit')
+api.add_resource(MemoryDeleteApi, '/memories')
