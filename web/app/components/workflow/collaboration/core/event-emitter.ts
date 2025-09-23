@@ -18,7 +18,7 @@ export class EventEmitter {
     const handlers = this.events.get(event)!
     if (handler)
       handlers.delete(handler)
-     else
+    else
       handlers.clear()
 
     if (handlers.size === 0)
@@ -33,7 +33,7 @@ export class EventEmitter {
       try {
         handler(data)
       }
- catch (error) {
+      catch (error) {
         console.error(`Error in event handler for ${event}:`, error)
       }
     })
