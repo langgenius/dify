@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request, make_response
+from flask import make_response, request
 from flask_restx import Resource
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -100,9 +100,11 @@ class PassportResource(Resource):
 
         tk = PassportService().issue(payload)
 
-        response = make_response({
-            "access_token": tk,
-        })
+        response = make_response(
+            {
+                "access_token": tk,
+            }
+        )
         set_webapp_token_to_cookie(request, response, tk)
         return response
 

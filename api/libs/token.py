@@ -1,7 +1,7 @@
 from flask import Request, Response
 
 from configs import dify_config
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN, COOKIE_NAME_PASSPORT
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_PASSPORT, COOKIE_NAME_REFRESH_TOKEN
 
 
 def _try_extract_from_header(request: Request) -> str | None:
@@ -27,18 +27,14 @@ def extract_access_token(request: Request) -> str | None:
 
     Access token is either for console session or webapp passport exchange.
     """
+
     def _try_extract_from_cookie(request: Request) -> str | None:
         return request.cookies.get(COOKIE_NAME_ACCESS_TOKEN)
 
     def _try_extract_from_query(request: Request) -> str | None:
         return request.args.get("_token")
-    ret = (
-        _try_extract_from_cookie(request) 
-        or 
-        _try_extract_from_header(request) 
-        or 
-        _try_extract_from_query(request) 
-    )
+
+    ret = _try_extract_from_cookie(request) or _try_extract_from_header(request) or _try_extract_from_query(request)
     return ret
 
 
@@ -48,6 +44,7 @@ def extract_webapp_passport(request: Request) -> str | None:
 
     Webapp access token (part of passport) is only used for webapp session.
     """
+
     def _try_extract_passport_token_from_query(request: Request) -> str | None:
         # This is unsafe, leave it for backward compatibility
         return request.args.get("web_app_access_token")
@@ -57,10 +54,8 @@ def extract_webapp_passport(request: Request) -> str | None:
 
     ret = (
         _try_extract_passport_token_from_cookie(request)
-        or
-        _try_extract_from_header(request) 
-        or 
-        _try_extract_passport_token_from_query(request) 
+        or _try_extract_from_header(request)
+        or _try_extract_passport_token_from_query(request)
     )
     return ret
 
@@ -89,6 +84,7 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         path="/",
     )
 
+
 def set_webapp_token_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
         COOKIE_NAME_PASSPORT,
@@ -99,6 +95,7 @@ def set_webapp_token_to_cookie(request: Request, response: Response, token: str)
         max_age=60 * 60 * 24,
         path="/",
     )
+
 
 def clear_webapp_token_from_cookie(request: Request, response: Response):
     response.set_cookie(
