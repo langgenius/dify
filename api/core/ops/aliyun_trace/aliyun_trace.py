@@ -1,7 +1,6 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any
 
 from opentelemetry.trace import Link, Status, StatusCode
 from sqlalchemy.orm import sessionmaker
@@ -21,8 +20,6 @@ from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_FRAMEWORK,
     GEN_AI_MODEL_NAME,
     GEN_AI_PROMPT,
-    GEN_AI_PROMPT_TEMPLATE_TEMPLATE,
-    GEN_AI_PROMPT_TEMPLATE_VARIABLE,
     GEN_AI_RESPONSE_FINISH_REASON,
     GEN_AI_SESSION_ID,
     GEN_AI_SPAN_KIND,
@@ -40,6 +37,15 @@ from core.ops.aliyun_trace.entities.semconv import (
     TOOL_PARAMETERS,
     GenAISpanKind,
 )
+from core.ops.aliyun_trace.utils import (
+    create_common_span_attributes,
+    create_links_from_trace_id,
+    create_llm_span_data,
+    create_status_from_error,
+    extract_retrieval_documents,
+    get_user_id_from_message_data,
+    serialize_json_data,
+)
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import AliyunConfig
 from core.ops.entities.trace_entity import (
@@ -52,17 +58,13 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.rag.models.document import Document
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from extensions.ext_database import db
-from models import EndUser, WorkflowNodeExecutionTriggeredFrom
+from models import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_JSON_ENSURE_ASCII = False
-DEFAULT_FRAMEWORK_NAME = "dify"
 
 
 class AliyunDataTrace(BaseTraceInstance):
@@ -119,12 +121,12 @@ class AliyunDataTrace(BaseTraceInstance):
             return
 
         message_id = trace_info.message_id
-        user_id = self._get_user_id(message_data)
-        status = self._get_status_from_error(trace_info.error)
+        user_id = get_user_id_from_message_data(message_data)
+        status = create_status_from_error(trace_info.error)
         trace_id = convert_to_trace_id(message_id)
-        links = self._create_links(trace_info.trace_id)
+        links = create_links_from_trace_id(trace_info.trace_id)
 
-        inputs_json = json.dumps(trace_info.inputs, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
+        inputs_json = serialize_json_data(trace_info.inputs)
         outputs_str = str(trace_info.outputs)
 
         message_span_id = convert_to_span_id(message_id, "message")
@@ -135,20 +137,19 @@ class AliyunDataTrace(BaseTraceInstance):
             name="message",
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
-                GEN_AI_USER_ID: str(user_id),
-                GEN_AI_SPAN_KIND: GenAISpanKind.CHAIN.value,
-                GEN_AI_FRAMEWORK: DEFAULT_FRAMEWORK_NAME,
-                INPUT_VALUE: inputs_json,
-                OUTPUT_VALUE: outputs_str,
-            },
+            attributes=create_common_span_attributes(
+                session_id=trace_info.metadata.get("conversation_id") or "",
+                user_id=str(user_id),
+                span_kind=GenAISpanKind.CHAIN.value,
+                inputs=inputs_json,
+                outputs=outputs_str,
+            ),
             status=status,
             links=links,
         )
         self.trace_client.add_span(message_span)
 
-        llm_span = self._create_llm_span(
+        llm_span = create_llm_span_data(
             trace_id, message_span_id, message_id, trace_info, user_id, status,
             inputs_json, outputs_str
         )
@@ -160,10 +161,10 @@ class AliyunDataTrace(BaseTraceInstance):
 
         message_id = trace_info.message_id
         trace_id = convert_to_trace_id(message_id)
-        links = self._create_links(trace_info.trace_id)
+        links = create_links_from_trace_id(trace_info.trace_id)
 
         documents_data = extract_retrieval_documents(trace_info.documents)
-        documents_json = json.dumps(documents_data, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
+        documents_json = serialize_json_data(documents_data)
         inputs_str = str(trace_info.inputs)
 
         dataset_retrieval_span = SpanData(
@@ -174,12 +175,13 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
             attributes={
-                GEN_AI_SPAN_KIND: GenAISpanKind.RETRIEVER.value,
-                GEN_AI_FRAMEWORK: DEFAULT_FRAMEWORK_NAME,
+                **create_common_span_attributes(
+                    span_kind=GenAISpanKind.RETRIEVER.value,
+                    inputs=inputs_str,
+                    outputs=documents_json,
+                ),
                 RETRIEVAL_QUERY: inputs_str,
                 RETRIEVAL_DOCUMENT: documents_json,
-                INPUT_VALUE: inputs_str,
-                OUTPUT_VALUE: documents_json,
             },
             links=links,
         )
@@ -190,13 +192,13 @@ class AliyunDataTrace(BaseTraceInstance):
             return
 
         message_id = trace_info.message_id
-        status = self._get_status_from_error(trace_info.error)
+        status = create_status_from_error(trace_info.error)
         trace_id = convert_to_trace_id(message_id)
-        links = self._create_links(trace_info.trace_id)
+        links = create_links_from_trace_id(trace_info.trace_id)
 
-        tool_config_json = json.dumps(trace_info.tool_config, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
-        tool_inputs_json = json.dumps(trace_info.tool_inputs, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
-        inputs_json = json.dumps(trace_info.inputs, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
+        tool_config_json = serialize_json_data(trace_info.tool_config)
+        tool_inputs_json = serialize_json_data(trace_info.tool_inputs)
+        inputs_json = serialize_json_data(trace_info.inputs)
 
         tool_span = SpanData(
             trace_id=trace_id,
@@ -206,13 +208,14 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
             attributes={
-                GEN_AI_SPAN_KIND: GenAISpanKind.TOOL.value,
-                GEN_AI_FRAMEWORK: DEFAULT_FRAMEWORK_NAME,
+                **create_common_span_attributes(
+                    span_kind=GenAISpanKind.TOOL.value,
+                    inputs=inputs_json,
+                    outputs=str(trace_info.tool_outputs),
+                ),
                 TOOL_NAME: trace_info.tool_name,
                 TOOL_DESCRIPTION: tool_config_json,
                 TOOL_PARAMETERS: tool_inputs_json,
-                INPUT_VALUE: inputs_json,
-                OUTPUT_VALUE: str(trace_info.tool_outputs),
             },
             status=status,
             links=links,
@@ -419,12 +422,12 @@ class AliyunDataTrace(BaseTraceInstance):
 
     def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
         message_id = trace_info.message_id
-        status = self._get_status_from_error(trace_info.error)
+        status = create_status_from_error(trace_info.error)
         trace_id = convert_to_trace_id(message_id)
-        links = self._create_links(trace_info.trace_id)
+        links = create_links_from_trace_id(trace_info.trace_id)
 
-        inputs_json = json.dumps(trace_info.inputs, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
-        suggested_question_json = json.dumps(trace_info.suggested_question, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII)
+        inputs_json = serialize_json_data(trace_info.inputs)
+        suggested_question_json = serialize_json_data(trace_info.suggested_question)
 
         suggested_question_span = SpanData(
             trace_id=trace_id,
@@ -434,95 +437,18 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
             attributes={
-                GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
-                GEN_AI_FRAMEWORK: DEFAULT_FRAMEWORK_NAME,
+                **create_common_span_attributes(
+                    span_kind=GenAISpanKind.LLM.value,
+                    inputs=inputs_json,
+                    outputs=suggested_question_json,
+                ),
                 GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
                 GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_PROMPT: inputs_json,
                 GEN_AI_COMPLETION: suggested_question_json,
-                INPUT_VALUE: inputs_json,
-                OUTPUT_VALUE: suggested_question_json,
             },
             status=status,
             links=links,
         )
         self.trace_client.add_span(suggested_question_span)
 
-    # Helper methods
-    def _get_user_id(self, message_data) -> str:
-        """Extract user ID from message data with optimized database query."""
-        user_id = message_data.from_account_id
-        if message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
-            if end_user_data is not None:
-                user_id = end_user_data.session_id
-        return user_id
-
-    def _get_status_from_error(self, error: str | None) -> Status:
-        """Create status from error information."""
-        if error:
-            return Status(StatusCode.ERROR, error)
-        return Status(StatusCode.OK)
-
-    def _create_links(self, trace_id: str | None) -> list[Link]:
-        """Create links from trace ID."""
-        links = []
-        if trace_id:
-            links.append(create_link(trace_id_str=trace_id))
-        return links
-
-    def _create_llm_span(
-        self, trace_id: int, parent_span_id: int, message_id: str,
-        trace_info: MessageTraceInfo, user_id: str, status: Status,
-        inputs_json: str, outputs_str: str
-    ) -> SpanData:
-        """Create LLM span with optimized attribute building."""
-        app_model_config = getattr(trace_info.message_data, "app_model_config", {})
-        pre_prompt = getattr(app_model_config, "pre_prompt", "")
-        inputs_data = getattr(trace_info.message_data, "inputs", {})
-
-        return SpanData(
-            trace_id=trace_id,
-            parent_span_id=parent_span_id,
-            span_id=convert_to_span_id(message_id, "llm"),
-            name="llm",
-            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
-            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
-                GEN_AI_USER_ID: str(user_id),
-                GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
-                GEN_AI_FRAMEWORK: DEFAULT_FRAMEWORK_NAME,
-                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
-                GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
-                GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
-                GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
-                GEN_AI_PROMPT_TEMPLATE_VARIABLE: json.dumps(inputs_data, ensure_ascii=DEFAULT_JSON_ENSURE_ASCII),
-                GEN_AI_PROMPT_TEMPLATE_TEMPLATE: pre_prompt,
-                GEN_AI_PROMPT: inputs_json,
-                GEN_AI_COMPLETION: outputs_str,
-                INPUT_VALUE: inputs_json,
-                OUTPUT_VALUE: outputs_str,
-            },
-            status=status,
-        )
-
-
-def extract_retrieval_documents(documents: list[Document]) -> list[dict[str, Any]]:
-    """Extract retrieval documents data with improved type hints."""
-    documents_data = []
-    for document in documents:
-        document_data = {
-            "content": document.page_content,
-            "metadata": {
-                "dataset_id": document.metadata.get("dataset_id"),
-                "doc_id": document.metadata.get("doc_id"),
-                "document_id": document.metadata.get("document_id"),
-            },
-            "score": document.metadata.get("score"),
-        }
-        documents_data.append(document_data)
-    return documents_data
