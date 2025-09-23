@@ -10,11 +10,12 @@ from flask_login import current_user
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
 from core.workflow.enums import NodeType
+from core.workflow.nodes.node_utils import get_node_type
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.model import UploadFile
-from models.workflow import Workflow, WorkflowType, get_node_type
+from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
