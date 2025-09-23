@@ -21,7 +21,7 @@
     "flask_login",
     "opentelemetry.instrumentation.celery",
     "opentelemetry.instrumentation.flask",
-    "opentelemetry.instrumentation.requests",
+    "opentelemetry.instrumentation.httpx",
     "opentelemetry.instrumentation.sqlalchemy",
     "opentelemetry.instrumentation.redis"
   ],

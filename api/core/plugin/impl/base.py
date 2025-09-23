@@ -4,9 +4,8 @@ import logging
 from collections.abc import Callable, Generator
 from typing import TypeVar
 
-import requests
+import httpx
 from pydantic import BaseModel
-from requests.exceptions import HTTPError
 from yarl import URL
 
 from configs import dify_config
@@ -47,28 +46,41 @@ class BasePluginClient:
         data: bytes | dict | str | None = None,
         params: dict | None = None,
         files: dict | None = None,
-        stream: bool = False,
-    ) -> requests.Response:
+    ) -> httpx.Response:
         """
         Make a request to the plugin daemon inner API.
         """
-        url = plugin_daemon_inner_api_baseurl / path
-        headers = headers or {}
-        headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
-        headers["Accept-Encoding"] = "gzip, deflate, br"
-
-        if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
-            data = json.dumps(data)
+        url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
         try:
-            response = requests.request(
-                method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
-            )
-        except requests.ConnectionError:
+            response = httpx.request(method=method, url=url, headers=headers, data=prepared_data, params=params, files=files)
+        except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
         return response
+
+    def _prepare_request(
+        self,
+        path: str,
+        headers: dict | None,
+        data: bytes | dict | str | None,
+        params: dict | None,
+        files: dict | None,
+    ) -> tuple[str, dict, bytes | dict | str | None, dict | None, dict | None]:
+        url = plugin_daemon_inner_api_baseurl / path
+        prepared_headers = dict(headers or {})
+        prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
+        prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
+
+        prepared_data: bytes | dict | str | None = data if isinstance(data, (bytes, str, dict)) or data is None else None
+        if isinstance(data, dict):
+            if prepared_headers.get("Content-Type") == "application/json":
+                prepared_data = json.dumps(data)
+            else:
+                prepared_data = data
+
+        return str(url), prepared_headers, prepared_data, params, files
 
     def _stream_request(
         self,
@@ -82,13 +94,29 @@ class BasePluginClient:
         """
         Make a stream request to the plugin daemon inner API
         """
-        response = self._request(method, path, headers, data, params, files, stream=True)
-        for line in response.iter_lines(chunk_size=1024 * 8):
-            line = line.decode("utf-8").strip()
-            if line.startswith("data:"):
-                line = line[5:].strip()
-            if line:
-                yield line
+        url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
+
+        try:
+            with httpx.stream(
+                method=method,
+                url=url,
+                headers=headers,
+                data=prepared_data,
+                params=params,
+                files=files,
+            ) as response:
+                for raw_line in response.iter_lines():
+                    if raw_line is None:
+                        continue
+                    line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
+                    line = line.strip()
+                    if line.startswith("data:"):
+                        line = line[5:].strip()
+                    if line:
+                        yield line
+        except httpx.RequestError:
+            logger.exception("Stream request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
     def _stream_request_with_model(
         self,
@@ -139,7 +167,7 @@ class BasePluginClient:
         try:
             response = self._request(method, path, headers, data, params, files)
             response.raise_for_status()
-        except HTTPError as e:
+        except httpx.HTTPStatusError as e:
             msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
             logger.exception(msg)
             raise e

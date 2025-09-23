@@ -1,6 +1,6 @@
 import os
 
-import requests
+import httpx
 
 
 class BaseRequest:
@@ -16,7 +16,7 @@ class BaseRequest:
     def send_request(cls, method, endpoint, json=None, params=None):
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers, proxies=cls.proxies)
+        response = httpx.request(method, url, json=json, params=params, headers=headers, proxies=cls.proxies)
         return response.json()
 
 

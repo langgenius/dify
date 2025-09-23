@@ -3,8 +3,8 @@ from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
 
+import httpx
 from flask import request
-from requests import get
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
@@ -330,14 +330,17 @@ class ApiBasedToolSchemaParser:
             raise ToolNotSupportedError("Only openapi is supported now.")
 
         # get openapi yaml
-        response = get(api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5)
+        response = httpx.get(api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5)
 
-        if response.status_code != 200:
-            raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
+        try:
+            if response.status_code != 200:
+                raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
 
-        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
-            response.text, extra_info=extra_info, warning=warning
-        )
+            return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
+                response.text, extra_info=extra_info, warning=warning
+            )
+        finally:
+            response.close()
 
     @staticmethod
     def auto_parse_to_tool_bundle(
