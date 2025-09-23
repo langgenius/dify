@@ -4,6 +4,7 @@ import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { RiArrowUpLine, RiAtLine } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
 import Button from '@/app/components/base/button'
@@ -29,7 +30,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   onChange,
   onSubmit,
   onCancel,
-  placeholder = 'Add a comment',
+  placeholder,
   disabled = false,
   loading = false,
   className,
@@ -37,6 +38,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   autoFocus = false,
 }) => {
   const params = useParams()
+  const { t } = useTranslation()
   const appId = params.appId as string
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -46,6 +48,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const [mentionPosition, setMentionPosition] = useState(0)
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
+  const resolvedPlaceholder = placeholder ?? t('workflow.comments.placeholder.add')
 
   const mentionNameList = useMemo(() => {
     const names = mentionUsers
@@ -306,7 +309,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
             'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none',
             'placeholder:text-text-tertiary',
           )}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           autoFocus={autoFocus}
           minRows={isEditing ? 4 : 1}
           maxRows={4}
@@ -345,7 +348,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
             </div>
             <div className='flex items-center gap-2'>
               <Button variant='secondary' size='small' onClick={onCancel} disabled={loading}>
-                Cancel
+                {t('common.operation.cancel')}
               </Button>
               <Button
                 variant='primary'
@@ -353,7 +356,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
                 disabled={loading || !value.trim()}
                 onClick={() => handleSubmit()}
               >
-                Save
+                {t('common.operation.save')}
               </Button>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
+import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
@@ -146,6 +147,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
+  const { t } = useTranslation()
   const [replyContent, setReplyContent] = useState('')
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
   const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
@@ -221,14 +223,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     >
       <div className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
         <div className='flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3'>
-          <div className=' font-semibold uppercase text-text-primary'>Comment</div>
+          <div className='font-semibold uppercase text-text-primary'>{t('workflow.comments.panelTitle')}</div>
           <div className='flex items-center gap-1'>
             <button
               type='button'
               disabled={loading}
               className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onDelete}
-              aria-label='Delete comment'
+              aria-label={t('workflow.comments.aria.deleteComment')}
             >
               <RiDeleteBinLine className='h-4 w-4' />
             </button>
@@ -237,7 +239,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               disabled={comment.resolved || loading}
               className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onResolve}
-              aria-label='Resolve comment'
+              aria-label={t('workflow.comments.aria.resolveComment')}
             >
               {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
             </button>
@@ -247,7 +249,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               disabled={!canGoPrev || loading}
               className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onPrev}
-              aria-label='Previous comment'
+              aria-label={t('workflow.comments.aria.previousComment')}
             >
               <RiArrowUpSLine className='h-4 w-4' />
             </button>
@@ -256,7 +258,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               disabled={!canGoNext || loading}
               className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
               onClick={onNext}
-              aria-label='Next comment'
+              aria-label={t('workflow.comments.aria.nextComment')}
             >
               <RiArrowDownSLine className='h-4 w-4' />
             </button>
@@ -264,7 +266,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               type='button'
               className='flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
               onClick={onClose}
-              aria-label='Close comment'
+              aria-label={t('workflow.comments.aria.closeComment')}
             >
               <RiCloseLine className='h-4 w-4' />
             </button>
@@ -273,7 +275,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         <div className='relative mt-2 flex-1 overflow-y-auto px-4'>
           <ThreadMessage
             authorId={comment.created_by_account?.id || ''}
-            authorName={comment.created_by_account?.name || 'User'}
+            authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
             avatarUrl={comment.created_by_account?.avatar_url || null}
             createdAt={comment.created_at}
             content={comment.content}
@@ -297,7 +299,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                             e.stopPropagation()
                             setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
                           }}
-                          aria-label='Reply actions'
+                          aria-label={t('workflow.comments.aria.replyActions')}
                         >
                           <RiMoreFill className='h-4 w-4' />
                         </button>
@@ -307,7 +309,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
                               onClick={() => handleStartEdit(reply)}
                             >
-                              Edit reply
+                              {t('workflow.comments.actions.editReply')}
                             </button>
                             <button
                               className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm hover:bg-state-base-hover'
@@ -316,7 +318,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                                 onReplyDelete?.(reply.id)
                               }}
                             >
-                              Delete reply
+                              {t('workflow.comments.actions.deleteReply')}
                             </button>
                           </div>
                         )}
@@ -329,7 +331,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
                           onSubmit={handleEditSubmit}
                           onCancel={handleCancelEdit}
-                          placeholder="Edit reply"
+                          placeholder={t('workflow.comments.placeholder.editReply')}
                           disabled={loading}
                           loading={loading}
                           isEditing={true}
@@ -340,7 +342,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     ) : (
                       <ThreadMessage
                         authorId={reply.created_by_account?.id || ''}
-                        authorName={reply.created_by_account?.name || 'User'}
+                        authorName={reply.created_by_account?.name || t('workflow.comments.fallback.user')}
                         avatarUrl={reply.created_by_account?.avatar_url || null}
                         createdAt={reply.created_at}
                         content={reply.content}
@@ -355,7 +357,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         </div>
         {loading && (
           <div className='bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary'>
-            Loading…
+            {t('workflow.comments.loading')}
           </div>
         )}
         {onReply && (
@@ -363,7 +365,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <div className='flex items-center gap-3'>
               <Avatar
                 avatar={userProfile?.avatar_url || null}
-                name={userProfile?.name || 'You'}
+                name={userProfile?.name || t('common.you')}
                 size={24}
                 className='h-8 w-8'
               />
@@ -372,7 +374,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   value={replyContent}
                   onChange={setReplyContent}
                   onSubmit={handleReplySubmit}
-                  placeholder='Reply'
+                  placeholder={t('workflow.comments.placeholder.reply')}
                   disabled={loading}
                   loading={loading}
                   className='px-2'

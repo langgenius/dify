@@ -198,6 +198,30 @@ const translation = {
     noteDelete: 'Note deleted',
     edgeDelete: 'Node disconnected',
   },
+  comments: {
+    panelTitle: 'Comment',
+    loading: 'Loading…',
+    placeholder: {
+      add: 'Add a comment',
+      reply: 'Reply',
+      editReply: 'Edit reply',
+    },
+    aria: {
+      deleteComment: 'Delete comment',
+      resolveComment: 'Resolve comment',
+      previousComment: 'Previous comment',
+      nextComment: 'Next comment',
+      closeComment: 'Close comment',
+      replyActions: 'Reply actions',
+    },
+    actions: {
+      editReply: 'Edit reply',
+      deleteReply: 'Delete reply',
+    },
+    fallback: {
+      user: 'User',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} is required',
     rerankModelRequired: 'A configured Rerank Model is required',

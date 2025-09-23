@@ -196,6 +196,30 @@ const translation = {
     noteDelete: '注釈が削除されました',
     edgeDelete: 'ブロックの接続が解除されました',
   },
+  comments: {
+    panelTitle: 'コメント',
+    loading: '読み込み中…',
+    placeholder: {
+      add: 'コメントを追加',
+      reply: '返信',
+      editReply: '返信を編集',
+    },
+    aria: {
+      deleteComment: 'コメントを削除',
+      resolveComment: 'コメントを解決',
+      previousComment: '前のコメント',
+      nextComment: '次のコメント',
+      closeComment: 'コメントを閉じる',
+      replyActions: '返信アクション',
+    },
+    actions: {
+      editReply: '返信を編集',
+      deleteReply: '返信を削除',
+    },
+    fallback: {
+      user: 'ユーザー',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} は必須です',
     rerankModelRequired: 'Rerank モデルが設定されていません',

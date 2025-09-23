@@ -195,6 +195,30 @@ const translation = {
     nodePaste: 'नोड चिपका हुआ',
     nodeDescriptionChange: 'नोड का वर्णन बदल गया',
   },
+  comments: {
+    panelTitle: 'टिप्पणी',
+    loading: 'लोड हो रहा है…',
+    placeholder: {
+      add: 'टिप्पणी जोड़ें',
+      reply: 'जवाब दें',
+      editReply: 'जवाब संपादित करें',
+    },
+    aria: {
+      deleteComment: 'टिप्पणी हटाएं',
+      resolveComment: 'टिप्पणी समाधान करें',
+      previousComment: 'पिछली टिप्पणी',
+      nextComment: 'अगली टिप्पणी',
+      closeComment: 'टिप्पणी बंद करें',
+      replyActions: 'जवाब क्रियाएं',
+    },
+    actions: {
+      editReply: 'जवाब संपादित करें',
+      deleteReply: 'जवाब हटाएं',
+    },
+    fallback: {
+      user: 'उपयोगकर्ता',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
     authRequired: 'प्राधिकरण आवश्यक है',

@@ -186,6 +186,30 @@ const translation = {
     edgeDelete: 'Node terputus',
     nodeChange: 'Node diubah',
   },
+  comments: {
+    panelTitle: 'Komentar',
+    loading: 'Memuat…',
+    placeholder: {
+      add: 'Tambahkan komentar',
+      reply: 'Balas',
+      editReply: 'Edit balasan',
+    },
+    aria: {
+      deleteComment: 'Hapus komentar',
+      resolveComment: 'Selesaikan komentar',
+      previousComment: 'Komentar sebelumnya',
+      nextComment: 'Komentar berikutnya',
+      closeComment: 'Tutup komentar',
+      replyActions: 'Aksi balasan',
+    },
+    actions: {
+      editReply: 'Edit balasan',
+      deleteReply: 'Hapus balasan',
+    },
+    fallback: {
+      user: 'Pengguna',
+    },
+  },
   errorMsg: {
     fields: {
       variable: 'Nama Variabel',

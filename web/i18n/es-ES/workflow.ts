@@ -192,6 +192,30 @@ const translation = {
     nodeDescriptionChange: 'Descripción del nodo cambiada',
     nodeResize: 'Nodo redimensionado',
   },
+  comments: {
+    panelTitle: 'Comentario',
+    loading: 'Cargando…',
+    placeholder: {
+      add: 'Añadir un comentario',
+      reply: 'Responder',
+      editReply: 'Editar respuesta',
+    },
+    aria: {
+      deleteComment: 'Eliminar comentario',
+      resolveComment: 'Resolver comentario',
+      previousComment: 'Comentario anterior',
+      nextComment: 'Comentario siguiente',
+      closeComment: 'Cerrar comentario',
+      replyActions: 'Acciones de respuesta',
+    },
+    actions: {
+      editReply: 'Editar respuesta',
+      deleteReply: 'Eliminar respuesta',
+    },
+    fallback: {
+      user: 'Usuario',
+    },
+  },
   errorMsg: {
     fieldRequired: 'Se requiere {{field}}',
     authRequired: 'Se requiere autorización',

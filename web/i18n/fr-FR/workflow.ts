@@ -192,6 +192,30 @@ const translation = {
     nodeAdd: 'Nœud ajouté',
     nodeDescriptionChange: 'La description du nœud a changé',
   },
+  comments: {
+    panelTitle: 'Commentaire',
+    loading: 'Chargement…',
+    placeholder: {
+      add: 'Ajouter un commentaire',
+      reply: 'Répondre',
+      editReply: 'Modifier la réponse',
+    },
+    aria: {
+      deleteComment: 'Supprimer le commentaire',
+      resolveComment: 'Résoudre le commentaire',
+      previousComment: 'Commentaire précédent',
+      nextComment: 'Commentaire suivant',
+      closeComment: 'Fermer le commentaire',
+      replyActions: 'Actions de réponse',
+    },
+    actions: {
+      editReply: 'Modifier la réponse',
+      deleteReply: 'Supprimer la réponse',
+    },
+    fallback: {
+      user: 'Utilisateur',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} est requis',
     authRequired: 'Autorisation requise',

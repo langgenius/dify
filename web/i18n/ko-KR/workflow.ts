@@ -200,6 +200,30 @@ const translation = {
     edgeDelete: '노드가 연결이 끊어졌습니다.',
     nodeTitleChange: '노드 제목이 변경됨',
   },
+  comments: {
+    panelTitle: '댓글',
+    loading: '불러오는 중…',
+    placeholder: {
+      add: '댓글 추가',
+      reply: '답글',
+      editReply: '답글 편집',
+    },
+    aria: {
+      deleteComment: '댓글 삭제',
+      resolveComment: '댓글 해결',
+      previousComment: '이전 댓글',
+      nextComment: '다음 댓글',
+      closeComment: '댓글 닫기',
+      replyActions: '답글 작업',
+    },
+    actions: {
+      editReply: '답글 편집',
+      deleteReply: '답글 삭제',
+    },
+    fallback: {
+      user: '사용자',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}}가 필요합니다',
     authRequired: '인증이 필요합니다',

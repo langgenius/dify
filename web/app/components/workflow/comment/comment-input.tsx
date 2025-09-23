@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
@@ -13,6 +14,7 @@ type CommentInputProps = {
 
 export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, onCancel }) => {
   const [content, setContent] = useState('')
+  const { t } = useTranslation()
   const { userProfile } = useAppContext()
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
               value={content}
               onChange={setContent}
               onSubmit={handleMentionSubmit}
-              placeholder="Add a comment"
+              placeholder={t('workflow.comments.placeholder.add')}
               autoFocus
               className="relative"
             />
