@@ -24,14 +24,14 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     NOTE: user_id is not trusted, it could be maliciously set to any value.
     As a result, it could only be considered as an end user id.
     """
-
-    is_anonymous = not user_id
+    if not user_id:
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
+    is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
     try:
         with Session(db.engine) as session:
             user_model = None
 
             if is_anonymous:
-                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
                 user_model = (
                     session.query(EndUser)
                     .where(
