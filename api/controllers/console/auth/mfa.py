@@ -18,7 +18,7 @@ class MFASetupInitApi(Resource):
 
     @login_required
     @account_initialization_required
-    def post(self):
+    def post(self):  # type: ignore
         """Initialize MFA setup - generate secret and QR code."""
         account = cast(Account, flask_login.current_user)
 

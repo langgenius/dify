@@ -4,6 +4,7 @@ import io
 import json
 import secrets
 from datetime import UTC, datetime
+from typing import cast
 
 import pyotp
 import qrcode
@@ -55,7 +56,7 @@ class MFAService:
         return f"data:image/png;base64,{img_str}"
 
     @staticmethod
-    def verify_totp(secret: str, token: str, tenant_id: str = None) -> bool:
+    def verify_totp(secret: str, token: str, tenant_id: str | None = None) -> bool:
         """Verify TOTP token."""
         if not secret:
             return False
@@ -67,7 +68,8 @@ class MFAService:
             return totp.verify(token, valid_window=1)
         except (ValueError, TypeError) as e:
             import logging
-            logging.error(f"TOTP verification failed: {e}")
+
+            logging.exception("TOTP verification failed")
             return False
 
     @staticmethod
@@ -88,7 +90,7 @@ class MFAService:
     @staticmethod
     def verify_backup_code(mfa_settings: AccountMFASettings, code: str) -> bool:
         """Verify and consume backup code."""
-        if not mfa_settings.backup_codes:
+        if mfa_settings.backup_codes is None:  # type: ignore
             return False
 
         try:
@@ -96,7 +98,8 @@ class MFAService:
             hashed_code = MFAService._hash_backup_code(code)
 
             # Load stored hashed codes
-            backup_codes_hashed = json.loads(mfa_settings.backup_codes)
+            assert mfa_settings.backup_codes is not None
+            backup_codes_hashed = json.loads(cast(str, mfa_settings.backup_codes))
 
             if hashed_code in backup_codes_hashed:
                 # Remove used backup code
@@ -114,10 +117,10 @@ class MFAService:
         """Setup MFA for account with TOTP verification."""
         mfa_settings = MFAService.get_or_create_mfa_settings(account)
 
-        if mfa_settings.enabled:
+        if mfa_settings.enabled is True:
             raise ValueError("MFA is already enabled for this account")
 
-        if not mfa_settings.secret:
+        if mfa_settings.secret is None:
             raise ValueError("MFA secret not generated")
 
         # Get tenant ID from account - try multiple sources
@@ -125,6 +128,7 @@ class MFAService:
         if not tenant_id:
             # Try to get from TenantAccountJoin
             from models.account import TenantAccountJoin
+
             tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
             if tenant_join:
                 tenant_id = tenant_join.tenant_id
@@ -133,7 +137,8 @@ class MFAService:
             raise ValueError("No tenant associated with account")
 
         # Verify TOTP token with decryption
-        if not MFAService.verify_totp(mfa_settings.secret, totp_token, tenant_id):
+        assert mfa_settings.secret is not None
+        if not MFAService.verify_totp(cast(str, mfa_settings.secret), totp_token, tenant_id):
             raise ValueError("Invalid TOTP token")
 
         # Generate backup codes
@@ -220,12 +225,14 @@ class MFAService:
         if not tenant_id:
             # Try to get from TenantAccountJoin
             from models.account import TenantAccountJoin
+
             tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
             if tenant_join:
                 tenant_id = tenant_join.tenant_id
 
         # Try TOTP first with decryption
-        if MFAService.verify_totp(mfa_settings.secret, token, tenant_id):
+        assert mfa_settings.secret is not None
+        if MFAService.verify_totp(cast(str, mfa_settings.secret), token, tenant_id):
             return True
 
         # Try backup code (already hashed)
@@ -244,6 +251,6 @@ class MFAService:
 
         return {
             "enabled": mfa_settings.enabled,
-            "setup_at": mfa_settings.setup_at.isoformat() if mfa_settings.setup_at else None,
+            "setup_at": mfa_settings.setup_at.isoformat() if mfa_settings.setup_at is not None else None,
             "has_backup_codes": mfa_settings.backup_codes is not None,
         }

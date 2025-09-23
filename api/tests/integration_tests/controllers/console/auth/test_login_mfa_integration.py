@@ -1,5 +1,4 @@
 import json
-import sys
 from unittest.mock import Mock, patch
 
 from flask import Flask
@@ -58,7 +57,6 @@ class TestLoginMFAIntegration:
             response = test_client.post(
                 "/console/api/login", json={"email": setup_account.email, "password": "TestPassword123"}
             )
-
 
             assert response.status_code == 200
             data = json.loads(response.data)

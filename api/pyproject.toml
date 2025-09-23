@@ -225,3 +225,6 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
+
+[tool.ruff]
+lint.ignore = ["SIM118"]

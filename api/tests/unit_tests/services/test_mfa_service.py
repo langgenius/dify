@@ -95,8 +95,8 @@ class TestMFAService(unittest.TestCase):
     def test_verify_backup_code_valid(self, mock_session):
         """Test backup code verification with valid code."""
         # Store hashed codes
-        hash1 = hashlib.sha256("ABCD1234".encode()).hexdigest()
-        hash2 = hashlib.sha256("EFGH5678".encode()).hexdigest()
+        hash1 = hashlib.sha256(b"ABCD1234").hexdigest()
+        hash2 = hashlib.sha256(b"EFGH5678").hexdigest()
         self.mfa_settings.backup_codes = json.dumps([hash1, hash2])
 
         result = MFAService.verify_backup_code(self.mfa_settings, "abcd1234")  # Test case insensitive
@@ -111,8 +111,8 @@ class TestMFAService(unittest.TestCase):
     def test_verify_backup_code_invalid(self):
         """Test backup code verification with invalid code."""
         # Store hashed codes
-        hash1 = hashlib.sha256("ABCD1234".encode()).hexdigest()
-        hash2 = hashlib.sha256("EFGH5678".encode()).hexdigest()
+        hash1 = hashlib.sha256(b"ABCD1234").hexdigest()
+        hash2 = hashlib.sha256(b"EFGH5678").hexdigest()
         self.mfa_settings.backup_codes = json.dumps([hash1, hash2])
 
         result = MFAService.verify_backup_code(self.mfa_settings, "INVALID")
@@ -142,8 +142,8 @@ class TestMFAService(unittest.TestCase):
 
         assert self.mfa_settings.enabled
         # Backup codes are now hashed
-        hash1 = hashlib.sha256("CODE1".encode()).hexdigest()
-        hash2 = hashlib.sha256("CODE2".encode()).hexdigest()
+        hash1 = hashlib.sha256(b"CODE1").hexdigest()
+        hash2 = hashlib.sha256(b"CODE2").hexdigest()
         assert self.mfa_settings.backup_codes == json.dumps([hash1, hash2])
         assert self.mfa_settings.setup_at is not None
         assert result["backup_codes"] == ["CODE1", "CODE2"]
@@ -341,7 +341,9 @@ class TestMFAService(unittest.TestCase):
     @patch("services.mfa_service.MFAService.generate_secret")
     @patch("services.mfa_service.MFAService.generate_qr_code")
     @patch("services.mfa_service.db.session")
-    def test_generate_mfa_setup_data_success(self, mock_session, mock_gen_qr, mock_gen_secret, mock_get_settings, mock_encrypter):
+    def test_generate_mfa_setup_data_success(
+        self, mock_session, mock_gen_qr, mock_gen_secret, mock_get_settings, mock_encrypter
+    ):
         """Test successful MFA setup data generation."""
         mock_get_settings.return_value = self.mfa_settings
         mock_gen_secret.return_value = "NEWSECRET123"
