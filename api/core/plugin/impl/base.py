@@ -140,19 +140,18 @@ class BasePluginClient:
             response = self._request(method, path, headers, data, params, files)
             response.raise_for_status()
         except HTTPError as e:
-            msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
-            logger.exception(msg)
+            logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
             raise e
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
-            logger.exception(msg)
+            logger.exception("Failed to request plugin daemon, url: %s", path)
             raise ValueError(msg) from e
 
         try:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response) # type: ignore
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
