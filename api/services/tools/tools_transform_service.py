@@ -387,6 +387,7 @@ class ToolTransformService:
                 labels=labels or [],
             )
         else:
+            assert tool.operation_id
             return ToolApiEntity(
                 author=tool.author,
                 name=tool.operation_id or "",

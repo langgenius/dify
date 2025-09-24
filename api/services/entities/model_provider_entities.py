@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Sequence
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -71,7 +72,7 @@ class ProviderResponse(BaseModel):
     icon_large: I18nObject | None = None
     background: str | None = None
     help: ProviderHelpEntity | None = None
-    supported_model_types: list[ModelType]
+    supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
     provider_credential_schema: ProviderCredentialSchema | None = None
     model_credential_schema: ModelCredentialSchema | None = None
