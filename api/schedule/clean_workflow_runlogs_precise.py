@@ -65,7 +65,7 @@ def clean_workflow_runlogs_precise():
 
                 batch_count += 1
 
-                success = _delete_batch_with_retry(session, workflow_run_ids, failed_batches)
+                success = _delete_batch(session, workflow_run_ids, failed_batches)
 
                 if success:
                     total_deleted += len(workflow_run_ids)
@@ -93,8 +93,8 @@ def clean_workflow_runlogs_precise():
     click.echo(click.style(f"Cleaned workflow run logs from db success latency: {execution_time:.2f}s", fg="green"))
 
 
-def _delete_batch_with_retry(session: Session, workflow_run_ids: Sequence[str], attempt_count: int) -> bool:
-    """Delete a single batch with a retry mechanism and complete cascading deletion"""
+def _delete_batch(session: Session, workflow_run_ids: Sequence[str], attempt_count: int) -> bool:
+    """Delete a single batch of workflow runs and all related data within a nested transaction."""
     try:
         with session.begin_nested():
             message_data = (
