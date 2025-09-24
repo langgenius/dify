@@ -18,6 +18,8 @@ from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_MODEL_NAME,
     GEN_AI_PROMPT,
+    GEN_AI_PROMPT_TEMPLATE_TEMPLATE,
+    GEN_AI_PROMPT_TEMPLATE_VARIABLE,
     GEN_AI_RESPONSE_FINISH_REASON,
     GEN_AI_SYSTEM,
     GEN_AI_USAGE_INPUT_TOKENS,
@@ -33,7 +35,6 @@ from core.ops.aliyun_trace.entities.semconv import (
 from core.ops.aliyun_trace.utils import (
     create_common_span_attributes,
     create_links_from_trace_id,
-    create_llm_span_data,
     create_status_from_error,
     extract_retrieval_documents,
     get_user_id_from_message_data,
@@ -129,35 +130,69 @@ class AliyunDataTrace(BaseTraceInstance):
         message_id = trace_info.message_id
         user_id = get_user_id_from_message_data(message_data)
         status = create_status_from_error(trace_info.error)
-        trace_id = convert_to_trace_id(message_id)
-        links = create_links_from_trace_id(trace_info.trace_id)
+
+        trace_metadata = TraceMetadata(
+            trace_id=convert_to_trace_id(message_id),
+            workflow_span_id=0,
+            session_id=trace_info.metadata.get("conversation_id") or "",
+            user_id=str(user_id),
+            links=create_links_from_trace_id(trace_info.trace_id)
+        )
 
         inputs_json = serialize_json_data(trace_info.inputs)
         outputs_str = str(trace_info.outputs)
 
         message_span_id = convert_to_span_id(message_id, "message")
         message_span = SpanData(
-            trace_id=trace_id,
+            trace_id=trace_metadata.trace_id,
             parent_span_id=None,
             span_id=message_span_id,
             name="message",
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
             attributes=create_common_span_attributes(
-                session_id=trace_info.metadata.get("conversation_id") or "",
-                user_id=str(user_id),
+                session_id=trace_metadata.session_id,
+                user_id=trace_metadata.user_id,
                 span_kind=GenAISpanKind.CHAIN,
                 inputs=inputs_json,
                 outputs=outputs_str,
             ),
             status=status,
-            links=links,
+            links=trace_metadata.links,
         )
         self.trace_client.add_span(message_span)
 
-        llm_span = create_llm_span_data(
-            trace_id, message_span_id, message_id, trace_info, user_id, status,
-            inputs_json, outputs_str
+        app_model_config = getattr(message_data, "app_model_config", {})
+        pre_prompt = getattr(app_model_config, "pre_prompt", "")
+        inputs_data = getattr(message_data, "inputs", {})
+
+        llm_span = SpanData(
+            trace_id=trace_metadata.trace_id,
+            parent_span_id=message_span_id,
+            span_id=convert_to_span_id(message_id, "llm"),
+            name="llm",
+            start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
+            end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
+            attributes={
+                **create_common_span_attributes(
+                    session_id=trace_metadata.session_id,
+                    user_id=trace_metadata.user_id,
+                    span_kind=GenAISpanKind.LLM,
+                    inputs=inputs_json,
+                    outputs=outputs_str,
+                ),
+                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
+                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
+                GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
+                GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
+                GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
+                GEN_AI_PROMPT_TEMPLATE_VARIABLE: serialize_json_data(inputs_data),
+                GEN_AI_PROMPT_TEMPLATE_TEMPLATE: pre_prompt,
+                GEN_AI_PROMPT: inputs_json,
+                GEN_AI_COMPLETION: outputs_str,
+            },
+            status=status,
+            links=trace_metadata.links,
         )
         self.trace_client.add_span(llm_span)
 
