@@ -1,11 +1,16 @@
 import {
-  getPublic as get,
+  get,
 } from './base'
 import type {
-  AppData,
+  SiteInfo,
 } from '@/models/share'
 
-// would use trial-apps after api is ok
-export const fetchTryAppInfo = async () => {
-  return get('/site') as Promise<AppData>
+type TryAppInfo = {
+  name: string
+  mode: 'chat' | 'text-generation' | 'workflow'
+  site: SiteInfo
+}
+
+export const fetchTryAppInfo = async (appId: string) => {
+  return get(`/trial-apps/${appId}`) as Promise<TryAppInfo>
 }

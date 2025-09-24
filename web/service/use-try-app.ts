@@ -4,11 +4,11 @@ import { AppSourceType, fetchAppParams } from './share'
 
 const NAME_SPACE = 'try-app'
 
-export const useGetTryAppInfo = () => {
+export const useGetTryAppInfo = (appId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'appInfo'],
     queryFn: () => {
-      return fetchTryAppInfo()
+      return fetchTryAppInfo(appId)
     },
   })
 }
