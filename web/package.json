@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "2.0.0-beta2",
+  "version": "1.9.0",
   "private": true,
   "packageManager": "pnpm@10.16.0",
   "engines": {
@@ -19,7 +19,7 @@
     "and_qq >= 14.9"
   ],
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
+    "dev": "cross-env NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
@@ -203,7 +203,7 @@
     "autoprefixer": "^10.4.20",
     "babel-loader": "^10.0.0",
     "bing-translate-api": "^4.0.2",
-    "code-inspector-plugin": "^0.18.1",
+    "code-inspector-plugin": "1.2.9",
     "cross-env": "^7.0.3",
     "eslint": "^9.35.0",
     "eslint-config-next": "15.5.0",

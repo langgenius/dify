@@ -86,29 +86,12 @@ class PipelineRunner(WorkflowBasedAppRunner):
         db.session.close()
 
         # if only single iteration run is requested
-        if self.application_generate_entity.single_iteration_run:
-            graph_runtime_state = GraphRuntimeState(
-                variable_pool=VariablePool.empty(),
-                start_at=time.time(),
-            )
-            # if only single iteration run is requested
-            graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
+        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+            # Handle single iteration or single loop run
+            graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=workflow,
-                node_id=self.application_generate_entity.single_iteration_run.node_id,
-                user_inputs=self.application_generate_entity.single_iteration_run.inputs,
-                graph_runtime_state=graph_runtime_state,
-            )
-        elif self.application_generate_entity.single_loop_run:
-            graph_runtime_state = GraphRuntimeState(
-                variable_pool=VariablePool.empty(),
-                start_at=time.time(),
-            )
-            # if only single loop run is requested
-            graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
-                workflow=workflow,
-                node_id=self.application_generate_entity.single_loop_run.node_id,
-                user_inputs=self.application_generate_entity.single_loop_run.inputs,
-                graph_runtime_state=graph_runtime_state,
+                single_iteration_run=self.application_generate_entity.single_iteration_run,
+                single_loop_run=self.application_generate_entity.single_loop_run,
             )
         else:
             inputs = self.application_generate_entity.inputs

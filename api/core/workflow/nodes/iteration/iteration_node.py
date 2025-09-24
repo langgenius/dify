@@ -1,9 +1,11 @@
+import contextvars
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NewType, cast
 
+from flask import Flask, current_app
 from typing_extensions import TypeIs
 
 from core.variables import IntegerVariable, NoneSegment
@@ -19,6 +21,7 @@ from core.workflow.enums import (
 from core.workflow.graph_events import (
     GraphNodeEventBase,
     GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
 )
 from core.workflow.node_events import (
@@ -34,6 +37,7 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from libs.datetime_utils import naive_utc_now
+from libs.flask_utils import preserve_flask_contexts
 
 from .exc import (
     InvalidIteratorValueError,
@@ -238,6 +242,8 @@ class IterationNode(Node):
                     self._execute_single_iteration_parallel,
                     index=index,
                     item=item,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    context_vars=contextvars.copy_context(),
                 )
                 future_to_index[future] = index
 
@@ -280,26 +286,29 @@ class IterationNode(Node):
         self,
         index: int,
         item: object,
+        flask_app: Flask,
+        context_vars: contextvars.Context,
     ) -> tuple[datetime, list[GraphNodeEventBase], object | None, int]:
         """Execute a single iteration in parallel mode and return results."""
-        iter_start_at = datetime.now(UTC).replace(tzinfo=None)
-        events: list[GraphNodeEventBase] = []
-        outputs_temp: list[object] = []
+        with preserve_flask_contexts(flask_app=flask_app, context_vars=context_vars):
+            iter_start_at = datetime.now(UTC).replace(tzinfo=None)
+            events: list[GraphNodeEventBase] = []
+            outputs_temp: list[object] = []
 
-        graph_engine = self._create_graph_engine(index, item)
+            graph_engine = self._create_graph_engine(index, item)
 
-        # Collect events instead of yielding them directly
-        for event in self._run_single_iter(
-            variable_pool=graph_engine.graph_runtime_state.variable_pool,
-            outputs=outputs_temp,
-            graph_engine=graph_engine,
-        ):
-            events.append(event)
+            # Collect events instead of yielding them directly
+            for event in self._run_single_iter(
+                variable_pool=graph_engine.graph_runtime_state.variable_pool,
+                outputs=outputs_temp,
+                graph_engine=graph_engine,
+            ):
+                events.append(event)
 
-        # Get the output value from the temporary outputs list
-        output_value = outputs_temp[0] if outputs_temp else None
+            # Get the output value from the temporary outputs list
+            output_value = outputs_temp[0] if outputs_temp else None
 
-        return iter_start_at, events, output_value, graph_engine.graph_runtime_state.total_tokens
+            return iter_start_at, events, output_value, graph_engine.graph_runtime_state.total_tokens
 
     def _handle_iteration_success(
         self,
@@ -372,43 +381,16 @@ class IterationNode(Node):
         variable_mapping: dict[str, Sequence[str]] = {
             f"{node_id}.input_selector": typed_node_data.iterator_selector,
         }
+        iteration_node_ids = set()
 
-        # init graph
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.graph import Graph
-        from core.workflow.nodes.node_factory import DifyNodeFactory
-
-        # Create minimal GraphInitParams for static analysis
-        graph_init_params = GraphInitParams(
-            tenant_id="",
-            app_id="",
-            workflow_id="",
-            graph_config=graph_config,
-            user_id="",
-            user_from="",
-            invoke_from="",
-            call_depth=0,
-        )
-
-        # Create minimal GraphRuntimeState for static analysis
-        from core.workflow.entities import VariablePool
-
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(),
-            start_at=0,
-        )
-
-        # Create node factory for static analysis
-        node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
-
-        iteration_graph = Graph.init(
-            graph_config=graph_config,
-            node_factory=node_factory,
-            root_node_id=typed_node_data.start_node_id,
-        )
-
-        if not iteration_graph:
-            raise IterationGraphNotFoundError("iteration graph not found")
+        # Find all nodes that belong to this loop
+        nodes = graph_config.get("nodes", [])
+        for node in nodes:
+            node_data = node.get("data", {})
+            if node_data.get("iteration_id") == node_id:
+                in_iteration_node_id = node.get("id")
+                if in_iteration_node_id:
+                    iteration_node_ids.add(in_iteration_node_id)
 
         # Get node configs from graph_config instead of non-existent node_id_config_mapping
         node_configs = {node["id"]: node for node in graph_config.get("nodes", []) if "id" in node}
@@ -444,9 +426,7 @@ class IterationNode(Node):
             variable_mapping.update(sub_node_variable_mapping)
 
         # remove variable out from iteration
-        variable_mapping = {
-            key: value for key, value in variable_mapping.items() if value[0] not in iteration_graph.node_ids
-        }
+        variable_mapping = {key: value for key, value in variable_mapping.items() if value[0] not in iteration_node_ids}
 
         return variable_mapping
 
@@ -485,7 +465,7 @@ class IterationNode(Node):
             if isinstance(event, GraphNodeEventBase):
                 self._append_iteration_info_to_event(event=event, iter_run_index=current_index)
                 yield event
-            elif isinstance(event, GraphRunSucceededEvent):
+            elif isinstance(event, (GraphRunSucceededEvent, GraphRunPartialSucceededEvent)):
                 result = variable_pool.get(self._node_data.output_selector)
                 if result is None:
                     outputs.append(None)
