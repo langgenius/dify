@@ -81,6 +81,7 @@ class ProviderResponse(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
     @model_validator(mode="after")
     def _(self):
         url_prefix = (
@@ -110,9 +111,9 @@ class ProviderWithModelsResponse(BaseModel):
     icon_large: I18nObject | None = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
+
     @model_validator(mode="after")
     def _(self):
-
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -134,9 +135,9 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     """
 
     tenant_id: str
+
     @model_validator(mode="after")
     def _(self):
-
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )

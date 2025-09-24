@@ -72,9 +72,9 @@ class ProviderConfiguration(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
     @model_validator(mode="after")
     def _(self):
-
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
             for configurate_method in self.provider.configurate_methods:

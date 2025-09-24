@@ -8,6 +8,7 @@ class I18nObject(BaseModel):
 
     zh_Hans: str | None = None
     en_US: str
+
     @model_validator(mode="after")
     def _(self):
         if not self.zh_Hans:

@@ -45,6 +45,7 @@ class FormOption(BaseModel):
     label: I18nObject
     value: str
     show_on: list[FormShowOnObject] = []
+
     @model_validator(mode="after")
     def _(self):
         if not self.label:

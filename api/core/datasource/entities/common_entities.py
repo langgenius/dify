@@ -10,6 +10,7 @@ class I18nObject(BaseModel):
     zh_Hans: str | None = Field(default=None)
     pt_BR: str | None = Field(default=None)
     ja_JP: str | None = Field(default=None)
+
     @model_validator(mode="after")
     def _(self):
         self.zh_Hans = self.zh_Hans or self.en_US
