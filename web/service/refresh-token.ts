@@ -59,9 +59,6 @@ async function getNewAccessToken(timeout: number): Promise<void> {
       else {
         if (ret.status === 401)
           return Promise.reject(ret)
-
-        // Cookies are set by the backend automatically
-        // No need to store tokens in localStorage
       }
     }
   }

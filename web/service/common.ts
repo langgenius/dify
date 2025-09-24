@@ -56,10 +56,6 @@ export const webAppLogin: Fetcher<LoginResponse, { url: string; body: Record<str
   return post(url, { body }, { isPublicAPI: true }) as Promise<LoginResponse>
 }
 
-export const fetchNewToken: Fetcher<CommonResponse & { data: { } }, { body: Record<string, any> }> = ({ body }) => {
-  return post('/refresh-token', { body }) as Promise<CommonResponse & { data: { } }>
-}
-
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
 }
