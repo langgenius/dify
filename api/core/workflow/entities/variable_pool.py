@@ -184,8 +184,19 @@ class VariablePool(BaseModel):
         """Extract the actual value from an ObjectSegment."""
         return obj.value if isinstance(obj, ObjectSegment) else obj
 
-    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str):
-        """Get a nested attribute from a dictionary-like object."""
+    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str) -> tuple[bool, Any]:
+        """
+        Get a nested attribute from a dictionary-like object.
+
+        Args:
+            obj: The dictionary-like object to search.
+            attr: The key to look up.
+
+        Returns:
+            tuple:
+                - A boolean indicating whether the attribute exists in the object.
+                - The value of the attribute if found, otherwise None.
+        """
         if not isinstance(obj, dict):
             return False, None
         return attr in obj, obj.get(attr)
