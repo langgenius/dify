@@ -41,9 +41,11 @@ def create_status_from_error(error: str | None) -> Status:
 
 
 def get_workflow_node_status(node_execution: WorkflowNodeExecution) -> Status:
-    error_statuses = [WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION]
-    error_message = str(node_execution.error) if node_execution.status in error_statuses else None
-    return create_status_from_error(error_message)
+    if node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+        return Status(StatusCode.OK)
+    if node_execution.status in [WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION]:
+        return Status(StatusCode.ERROR, str(node_execution.error))
+    return Status(StatusCode.UNSET)
 
 
 def create_links_from_trace_id(trace_id: str | None) -> list[Link]:

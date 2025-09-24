@@ -124,7 +124,7 @@ class AliyunDataTrace(BaseTraceInstance):
             trace_id=convert_to_trace_id(message_id),
             workflow_span_id=0,
             session_id=trace_info.metadata.get("conversation_id") or "",
-            user_id=str(user_id),
+            user_id=user_id,
             links=create_links_from_trace_id(trace_info.trace_id)
         )
 

@@ -82,7 +82,6 @@ class TraceClient:
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
     def get_project_url(self) -> str:
-        """Get the project URL for Aliyun trace dashboard."""
         return "https://arms.console.aliyun.com/#/llm"
 
     def add_span(self, span_data: SpanData | None) -> None:
@@ -232,6 +231,6 @@ def convert_datetime_to_nanoseconds(start_time_a: datetime | None) -> int | None
 
 def build_endpoint(base_url: str, license_key: str) -> str:
     if "log.aliyuncs.com" in base_url:  # cms2.0 endpoint
-        return f"{base_url}/adapt_{license_key}/api/v1/traces"
+        return urljoin(base_url, f"adapt_{license_key}/api/v1/traces")
     else:   # xtrace endpoint
         return urljoin(base_url, f"adapt_{license_key}/api/otlp/traces")
