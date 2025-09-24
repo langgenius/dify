@@ -54,7 +54,10 @@ def clean_workflow_runlogs_precise():
         while True:
             with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 workflow_run_ids = session.scalars(
-                    select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).order_by(WorkflowRun.created_at, WorkflowRun.id).limit(BATCH_SIZE)
+                    select(WorkflowRun.id)
+                    .where(WorkflowRun.created_at < cutoff_date)
+                    .order_by(WorkflowRun.created_at, WorkflowRun.id)
+                    .limit(BATCH_SIZE)
                 ).all()
 
                 if not workflow_run_ids:
@@ -102,29 +105,16 @@ def _delete_batch_with_retry(session: Session, workflow_run_ids: Sequence[str], 
             message_id_list = [msg.id for msg in message_data]
             conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
             if message_id_list:
-                session.query(AppAnnotationHitHistory).where(
-                    AppAnnotationHitHistory.message_id.in_(message_id_list)
-                ).delete(synchronize_session=False)
-
-                session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(message_id_list)).delete(
-                    synchronize_session=False
-                )
-
-                session.query(MessageChain).where(MessageChain.message_id.in_(message_id_list)).delete(
-                    synchronize_session=False
-                )
-
-                session.query(MessageFile).where(MessageFile.message_id.in_(message_id_list)).delete(
-                    synchronize_session=False
-                )
-
-                session.query(MessageAnnotation).where(MessageAnnotation.message_id.in_(message_id_list)).delete(
-                    synchronize_session=False
-                )
-
-                session.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_id_list)).delete(
-                    synchronize_session=False
-                )
+                message_related_models = [
+                    AppAnnotationHitHistory,
+                    MessageAgentThought,
+                    MessageChain,
+                    MessageFile,
+                    MessageAnnotation,
+                    MessageFeedback,
+                ]
+                for model in message_related_models:
+                    session.query(model).where(model.message_id.in_(message_id_list)).delete(synchronize_session=False)
 
                 session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(
                     synchronize_session=False
