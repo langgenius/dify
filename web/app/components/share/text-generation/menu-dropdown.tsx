@@ -20,6 +20,7 @@ import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
 import { AccessMode } from '@/models/access-control'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useWebAppLogout } from '@/service/use-common'
 
 type Props = {
   data?: SiteInfo
@@ -47,9 +48,9 @@ const MenuDropdown: FC<Props> = ({
     setOpen(!openRef.current)
   }, [setOpen])
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('webapp_access_token')
+  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const handleLogout = useCallback(async () => {
+    await webAppLogout()
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }, [router, pathname])
 

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
+import { useWebAppLogout } from '@/service/use-common'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -24,10 +25,12 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
-  const backToHome = useCallback(() => {
+  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const backToHome = useCallback(async () => {
+    await webAppLogout()
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router])
+  }, [getSigninUrl, router, webAppLogout])
 
   useEffect(() => {
     (async () => {

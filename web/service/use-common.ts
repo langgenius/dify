@@ -110,6 +110,20 @@ export const useSchemaTypeDefinitions = () => {
 export const useIsLogin = () => {
   return useQuery<SchemaTypeDefinition[]>({
     queryKey: [NAME_SPACE, 'is-login'],
-    queryFn: () => get<SchemaTypeDefinition[]>('/login-check'), // wait for api
+    queryFn: () => get<SchemaTypeDefinition[]>('/login/status'), // wait for api
+  })
+}
+
+export const useLogout = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'logout'],
+    mutationFn: () => post('/logout'),
+  })
+}
+
+export const useWebAppLogout = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'webapp-logout'],
+    mutationFn: () => post('/webapp-logout'),
   })
 }

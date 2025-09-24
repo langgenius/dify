@@ -9,6 +9,7 @@ import NormalForm from './normalForm'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useWebAppLogout } from '@/service/use-common'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -25,10 +26,12 @@ const WebSSOForm: FC = () => {
     return `/webapp-signin?${params.toString()}`
   }, [redirectUrl])
 
-  const backToHome = useCallback(() => {
+  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const backToHome = useCallback(async () => {
+    await webAppLogout()
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router])
+  }, [getSigninUrl, router, webAppLogout])
 
   if (!redirectUrl) {
     return <div className='flex h-full items-center justify-center'>
