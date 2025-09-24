@@ -311,8 +311,6 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        if not isinstance(current_user, EndUser):
-            raise ValueError("Invalid user account")
         if not current_user:
             raise ValueError("current_user is required")
         upload_file = FileService(db.engine).upload_file(
@@ -405,9 +403,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
             if not current_user:
                 raise ValueError("current_user is required")
-
-            if not isinstance(current_user, EndUser):
-                raise ValueError("Invalid user account")
 
             try:
                 upload_file = FileService(db.engine).upload_file(
