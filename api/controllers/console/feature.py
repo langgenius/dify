@@ -23,7 +23,7 @@ class FeatureApi(Resource):
     def get(self):
         """Get feature configuration for current tenant"""
         assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id
+        assert current_user.current_tenant_id, "Current user does not have a valid tenant ID."
         return FeatureService.get_features(tenant_id=current_user.current_tenant_id).model_dump()
 
 
