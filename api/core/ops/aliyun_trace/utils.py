@@ -93,3 +93,51 @@ def create_common_span_attributes(
         INPUT_VALUE: inputs,
         OUTPUT_VALUE: outputs,
     }
+
+
+def transform_to_semantic_retrieval_format(retrieval_documents: list) -> list:
+    """
+    Current format: [{"metadata": {...}, "title": "...", "content": "..."}]
+    Target format: [{"document": {"content": "...", "metadata": {...}, "score": ..., "id": "..."}}]
+    """
+    semantic_documents = []
+
+    for doc in retrieval_documents:
+        if not isinstance(doc, dict):
+            continue
+
+        metadata = doc.get("metadata", {})
+        content = doc.get("content", "")
+        title = doc.get("title", "")
+        score = metadata.get("score", 0.0)
+        document_id = metadata.get("document_id", "")
+
+        semantic_metadata = {}
+        if title:
+            semantic_metadata["title"] = title
+        if metadata.get("source"):
+            semantic_metadata["source"] = metadata["source"]
+        elif metadata.get("_source"):
+            semantic_metadata["source"] = metadata["_source"]
+
+        if metadata.get("author"):
+            semantic_metadata["author"] = metadata["author"]
+        if metadata.get("language"):
+            semantic_metadata["language"] = metadata["language"]
+        if metadata.get("doc_metadata"):
+            doc_metadata = metadata["doc_metadata"]
+            if isinstance(doc_metadata, dict):
+                semantic_metadata.update(doc_metadata)
+
+        semantic_doc = {
+            "document": {
+                "content": content,
+                "metadata": semantic_metadata,
+                "score": score,
+                "id": document_id
+            }
+        }
+
+        semantic_documents.append(semantic_doc)
+
+    return semantic_documents

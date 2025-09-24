@@ -38,6 +38,7 @@ from core.ops.aliyun_trace.utils import (
     get_user_id_from_message_data,
     get_workflow_node_status,
     serialize_json_data,
+    transform_to_semantic_retrieval_format,
 )
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import AliyunConfig
@@ -364,6 +365,10 @@ class AliyunDataTrace(BaseTraceInstance):
         input_value = str(node_execution.inputs.get("query", "")) if node_execution.inputs else ""
         output_value = serialize_json_data(node_execution.outputs.get("result", [])) if node_execution.outputs else ""
 
+        retrieval_documents = node_execution.outputs.get("result", []) if node_execution.outputs else []
+        semantic_retrieval_documents = transform_to_semantic_retrieval_format(retrieval_documents)
+        semantic_retrieval_documents_json = serialize_json_data(semantic_retrieval_documents)
+
         return SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=trace_metadata.workflow_span_id,
@@ -380,7 +385,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     outputs=output_value,
                 ),
                 RETRIEVAL_QUERY: input_value,
-                RETRIEVAL_DOCUMENT: output_value,
+                RETRIEVAL_DOCUMENT: semantic_retrieval_documents_json,
             },
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
