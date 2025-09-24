@@ -38,9 +38,10 @@ def clean_workflow_runlogs_precise():
 
     retention_days = dify_config.WORKFLOW_LOG_RETENTION_DAYS
     cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
+    Sess = sessionmaker(db.engine, expire_on_commit=False)
 
     try:
-        with sessionmaker(db.engine).begin() as session:
+        with Sess.begin() as session:
             total_workflow_runs = session.query(WorkflowRun).where(WorkflowRun.created_at < cutoff_date).count()
             if total_workflow_runs == 0:
                 logger.info("No expired workflow run logs found")
@@ -50,9 +51,8 @@ def clean_workflow_runlogs_precise():
         total_deleted = 0
         failed_batches = 0
         batch_count = 0
-        S = sessionmaker(db.engine, expire_on_commit=False)
         while True:
-            with S.begin() as session:
+            with Sess.begin() as session:
                 workflow_run_ids = session.scalars(
                     select(WorkflowRun.id)
                     .where(WorkflowRun.created_at < cutoff_date)
