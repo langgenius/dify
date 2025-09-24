@@ -34,7 +34,7 @@ class GraphRuntimeState(BaseModel):
         **kwargs: object,
     ):
         """Initialize the GraphRuntimeState with validation."""
-        super().model_validate(kwargs)
+        super().__init__(**kwargs)
 
         # Initialize private attributes with validation
         self._variable_pool = variable_pool
