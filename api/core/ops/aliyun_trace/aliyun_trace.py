@@ -101,7 +101,7 @@ class AliyunDataTrace(BaseTraceInstance):
             workflow_span_id=convert_to_span_id(trace_info.workflow_run_id, "workflow"),
             session_id=trace_info.metadata.get("conversation_id") or "",
             user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id)
+            links=create_links_from_trace_id(trace_info.trace_id),
         )
 
         self.add_workflow_span(trace_info, trace_metadata)
@@ -125,7 +125,7 @@ class AliyunDataTrace(BaseTraceInstance):
             workflow_span_id=0,
             session_id=trace_info.metadata.get("conversation_id") or "",
             user_id=user_id,
-            links=create_links_from_trace_id(trace_info.trace_id)
+            links=create_links_from_trace_id(trace_info.trace_id),
         )
 
         inputs_json = serialize_json_data(trace_info.inputs)
@@ -196,7 +196,7 @@ class AliyunDataTrace(BaseTraceInstance):
             workflow_span_id=0,
             session_id=trace_info.metadata.get("conversation_id") or "",
             user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id)
+            links=create_links_from_trace_id(trace_info.trace_id),
         )
 
         documents_data = extract_retrieval_documents(trace_info.documents)
@@ -237,7 +237,7 @@ class AliyunDataTrace(BaseTraceInstance):
             workflow_span_id=0,
             session_id=trace_info.metadata.get("conversation_id") or "",
             user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id)
+            links=create_links_from_trace_id(trace_info.trace_id),
         )
 
         tool_config_json = serialize_json_data(trace_info.tool_config)
@@ -283,9 +283,7 @@ class AliyunDataTrace(BaseTraceInstance):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        return workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
-        )
+        return workflow_node_execution_repository.get_by_workflow_run(workflow_run_id=trace_info.workflow_run_id)
 
     def build_workflow_node_span(
         self, node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo, trace_metadata: TraceMetadata
@@ -483,7 +481,7 @@ class AliyunDataTrace(BaseTraceInstance):
             workflow_span_id=0,
             session_id=trace_info.metadata.get("conversation_id") or "",
             user_id=str(trace_info.metadata.get("user_id") or ""),
-            links=create_links_from_trace_id(trace_info.trace_id)
+            links=create_links_from_trace_id(trace_info.trace_id),
         )
 
         inputs_json = serialize_json_data(trace_info.inputs)

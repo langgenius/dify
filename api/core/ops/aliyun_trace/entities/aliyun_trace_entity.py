@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 @dataclass
 class TraceMetadata:
     """Metadata for trace operations, containing common attributes for all spans in a trace."""
+
     trace_id: int
     workflow_span_id: int
     session_id: str
@@ -19,7 +20,7 @@ class TraceMetadata:
 
 class SpanData(BaseModel):
     """Data model for span information in Aliyun trace system."""
-    
+
     model_config = {"arbitrary_types_allowed": True}
 
     trace_id: int = Field(..., description="The unique identifier for the trace.")
