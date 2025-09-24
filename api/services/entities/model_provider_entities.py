@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from enum import Enum
-from typing import Sequence
 
 from pydantic import BaseModel, ConfigDict, model_validator
 

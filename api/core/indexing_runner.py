@@ -357,14 +357,16 @@ class IndexingRunner:
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
                 datasource_type=DatasourceType.NOTION.value,
-                notion_info=NotionInfo.model_validate({
-                    "credential_id": data_source_info["credential_id"],
-                    "notion_workspace_id": data_source_info["notion_workspace_id"],
-                    "notion_obj_id": data_source_info["notion_page_id"],
-                    "notion_page_type": data_source_info["type"],
-                    "document": dataset_document,
-                    "tenant_id": dataset_document.tenant_id,
-                }),
+                notion_info=NotionInfo.model_validate(
+                    {
+                        "credential_id": data_source_info["credential_id"],
+                        "notion_workspace_id": data_source_info["notion_workspace_id"],
+                        "notion_obj_id": data_source_info["notion_page_id"],
+                        "notion_page_type": data_source_info["type"],
+                        "document": dataset_document,
+                        "tenant_id": dataset_document.tenant_id,
+                    }
+                ),
                 document_model=dataset_document.doc_form,
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
@@ -378,14 +380,16 @@ class IndexingRunner:
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
                 datasource_type=DatasourceType.WEBSITE.value,
-                website_info=WebsiteInfo.model_validate({
-                    "provider": data_source_info["provider"],
-                    "job_id": data_source_info["job_id"],
-                    "tenant_id": dataset_document.tenant_id,
-                    "url": data_source_info["url"],
-                    "mode": data_source_info["mode"],
-                    "only_main_content": data_source_info["only_main_content"],
-                }),
+                website_info=WebsiteInfo.model_validate(
+                    {
+                        "provider": data_source_info["provider"],
+                        "job_id": data_source_info["job_id"],
+                        "tenant_id": dataset_document.tenant_id,
+                        "url": data_source_info["url"],
+                        "mode": data_source_info["mode"],
+                        "only_main_content": data_source_info["only_main_content"],
+                    }
+                ),
                 document_model=dataset_document.doc_form,
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
