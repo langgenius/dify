@@ -66,7 +66,7 @@ const CommentsPanel = () => {
         <div className='system-xl-semibold font-semibold leading-6 text-text-primary'>Comments</div>
         <div className='relative flex items-center gap-2'>
           <button
-            className='flex h-8 w-8 items-center justify-center rounded-md bg-white hover:bg-state-base-hover'
+            className='flex h-8 w-8 items-center justify-center rounded-md bg-components-panel-on-panel-item-bg hover:bg-state-base-hover'
             aria-label='Filter comments'
             onClick={() => setShowFilter(v => !v)}
           >
@@ -78,21 +78,21 @@ const CommentsPanel = () => {
                 className={cn('flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'all' && 'bg-components-panel-on-panel-item-bg')}
                 onClick={() => handleFilterChange('all')}
               >
-                <span>All</span>
+                <span className='text-text-secondary'>All</span>
                 {filter === 'all' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
               </button>
               <button
                 className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'unresolved' && 'bg-components-panel-on-panel-item-bg')}
                 onClick={() => handleFilterChange('unresolved')}
               >
-                <span>Unresolved</span>
+                <span className='text-text-secondary'>Unresolved</span>
                 {filter === 'unresolved' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
               </button>
               <button
                 className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'mine' && 'bg-components-panel-on-panel-item-bg')}
                 onClick={() => handleFilterChange('mine')}
               >
-                <span>Only your threads</span>
+                <span className='text-text-secondary'>Only your threads</span>
                 {filter === 'mine' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
               </button>
             </div>

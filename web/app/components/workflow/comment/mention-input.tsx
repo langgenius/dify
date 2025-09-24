@@ -322,10 +322,10 @@ export const MentionInput: FC<MentionInputProps> = memo(({
         {!isEditing && (
           <div className="absolute bottom-0 right-1 z-20 flex items-end gap-1">
             <div
-              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
+              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4" />
+              <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
             </div>
             <Button
               className='z-20 ml-2 w-8 px-0'
@@ -333,7 +333,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
               disabled={!value.trim() || disabled || loading}
               onClick={handleSubmit}
             >
-              <RiArrowUpLine className='h-4 w-4' />
+              <RiArrowUpLine className='h-4 w-4 text-components-button-primary-text' />
             </Button>
           </div>
         )}
@@ -341,10 +341,10 @@ export const MentionInput: FC<MentionInputProps> = memo(({
         {isEditing && (
           <div className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between">
             <div
-              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
+              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4" />
+              <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
             </div>
             <div className='flex items-center gap-2'>
               <Button variant='secondary' size='small' onClick={onCancel} disabled={loading}>
@@ -365,7 +365,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-white shadow-lg"
+          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg"
           style={{
             left: dropdownPosition.x,
             top: dropdownPosition.y,

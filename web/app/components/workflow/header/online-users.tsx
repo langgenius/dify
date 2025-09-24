@@ -83,7 +83,7 @@ const OnlineUsers = () => {
   }
 
   return (
-    <div className="flex items-center rounded-full bg-white px-1 py-1">
+    <div className="flex items-center rounded-full border border-components-panel-border bg-components-panel-bg px-1 py-1">
       <div className="flex items-center">
         <div className="flex items-center -space-x-2">
           {visibleUsers.map((user, index) => {
@@ -114,7 +114,7 @@ const OnlineUsers = () => {
                     name={user.username || 'User'}
                     avatar={getAvatarUrl(user)}
                     size={28}
-                    className="ring-2 ring-white"
+                    className="ring-2 ring-components-panel-bg"
                     backgroundColor={userColor}
                   />
                 </div>
@@ -138,7 +138,7 @@ const OnlineUsers = () => {
                       'flex h-7 w-7 items-center justify-center',
                       'cursor-pointer rounded-full bg-gray-300',
                       'text-xs font-medium text-gray-700',
-                      'ring-2 ring-white',
+                      'ring-2 ring-components-panel-bg',
                     )}
                   >
                     +{remainingCount}

@@ -253,19 +253,19 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                       >
                         <div className='flex items-center space-x-2'>
                           {option.key === ZoomType.toggleUserComments && showUserComments && (
-                            <RiCheckLine className='h-4 w-4 text-text-primary' />
+                            <RiCheckLine className='h-4 w-4 text-text-accent' />
                           )}
                           {option.key === ZoomType.toggleUserComments && !showUserComments && (
                             <div className='h-4 w-4' />
                           )}
                           {option.key === ZoomType.toggleUserCursors && showUserCursors && (
-                            <RiCheckLine className='h-4 w-4 text-text-primary' />
+                            <RiCheckLine className='h-4 w-4 text-text-accent' />
                           )}
                           {option.key === ZoomType.toggleUserCursors && !showUserCursors && (
                             <div className='h-4 w-4' />
                           )}
                           {option.key === ZoomType.toggleMiniMap && showMiniMap && (
-                            <RiCheckLine className='h-4 w-4 text-text-primary' />
+                            <RiCheckLine className='h-4 w-4 text-text-accent' />
                           )}
                           {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
                             <div className='h-4 w-4' />

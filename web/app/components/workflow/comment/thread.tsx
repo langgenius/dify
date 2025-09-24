@@ -312,7 +312,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               {t('workflow.comments.actions.editReply')}
                             </button>
                             <button
-                              className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm hover:bg-state-base-hover'
+                              className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
                               onClick={() => {
                                 setActiveReplyMenuId(null)
                                 onReplyDelete?.(reply.id)

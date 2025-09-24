@@ -23,7 +23,7 @@ export const CommentCursor: FC<CommentCursorProps> = memo(({ mousePosition }) =>
         transform: 'translate(-50%, -50%)',
       }}
     >
-      <Comment />
+      <Comment className="text-text-primary" />
     </div>
   )
 })
