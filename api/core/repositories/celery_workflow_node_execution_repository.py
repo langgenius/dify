@@ -27,13 +27,13 @@ from tasks.workflow_node_execution_tasks import (
 
 # Safe field getter mapping for WorkflowNodeExecution to avoid getattr reflection
 WORKFLOW_NODE_EXECUTION_FIELD_GETTERS = {
-    "id": lambda x: x.id or "",
-    "index": lambda x: x.index or 0,
-    "created_at": lambda x: x.created_at or datetime.min,
+    "id": lambda x: x.id,
+    "index": lambda x: x.index,
+    "created_at": lambda x: x.created_at,
     "finished_at": lambda x: x.finished_at or datetime.min,
-    "node_id": lambda x: x.node_id or "",
-    "status": lambda x: x.status or "",
-    "elapsed_time": lambda x: x.elapsed_time or 0.0,
+    "node_id": lambda x: x.node_id,
+    "status": lambda x: x.status,
+    "elapsed_time": lambda x: x.elapsed_time,
 }
 
 logger = logging.getLogger(__name__)
