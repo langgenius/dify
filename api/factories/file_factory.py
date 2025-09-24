@@ -286,7 +286,6 @@ def _get_remote_file_info(url: str):
         if not mime_type:
             mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
 
-
     if not filename:
         extension = mimetypes.guess_extension(mime_type) or ".bin"
         filename = f"{uuid.uuid4().hex}{extension}"
