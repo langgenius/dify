@@ -248,13 +248,15 @@ class DataSourceNotionApi(Resource):
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
-                    notion_info=NotionInfo.model_validate({
-                        "credential_id": credential_id,
-                        "notion_workspace_id": workspace_id,
-                        "notion_obj_id": page["page_id"],
-                        "notion_page_type": page["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    }),
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": credential_id,
+                            "notion_workspace_id": workspace_id,
+                            "notion_obj_id": page["page_id"],
+                            "notion_page_type": page["type"],
+                            "tenant_id": current_user.current_tenant_id,
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)

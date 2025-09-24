@@ -544,13 +544,15 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     continue
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
-                    notion_info=NotionInfo.model_validate({
-                        "credential_id": data_source_info["credential_id"],
-                        "notion_workspace_id": data_source_info["notion_workspace_id"],
-                        "notion_obj_id": data_source_info["notion_page_id"],
-                        "notion_page_type": data_source_info["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    }),
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": data_source_info["credential_id"],
+                            "notion_workspace_id": data_source_info["notion_workspace_id"],
+                            "notion_obj_id": data_source_info["notion_page_id"],
+                            "notion_page_type": data_source_info["type"],
+                            "tenant_id": current_user.current_tenant_id,
+                        }
+                    ),
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
@@ -559,14 +561,16 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     continue
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE.value,
-                    website_info=WebsiteInfo.model_validate({
-                        "provider": data_source_info["provider"],
-                        "job_id": data_source_info["job_id"],
-                        "url": data_source_info["url"],
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": data_source_info["mode"],
-                        "only_main_content": data_source_info["only_main_content"],
-                    }),
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": data_source_info["provider"],
+                            "job_id": data_source_info["job_id"],
+                            "url": data_source_info["url"],
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": data_source_info["mode"],
+                            "only_main_content": data_source_info["only_main_content"],
+                        }
+                    ),
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)

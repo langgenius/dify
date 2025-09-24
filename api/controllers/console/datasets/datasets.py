@@ -516,13 +516,15 @@ class DatasetIndexingEstimateApi(Resource):
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.NOTION.value,
-                        notion_info=NotionInfo.model_validate({
-                            "credential_id": credential_id,
-                            "notion_workspace_id": workspace_id,
-                            "notion_obj_id": page["page_id"],
-                            "notion_page_type": page["type"],
-                            "tenant_id": current_user.current_tenant_id,
-                        }),
+                        notion_info=NotionInfo.model_validate(
+                            {
+                                "credential_id": credential_id,
+                                "notion_workspace_id": workspace_id,
+                                "notion_obj_id": page["page_id"],
+                                "notion_page_type": page["type"],
+                                "tenant_id": current_user.current_tenant_id,
+                            }
+                        ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
@@ -531,14 +533,16 @@ class DatasetIndexingEstimateApi(Resource):
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE.value,
-                    website_info=WebsiteInfo.model_validate({
-                        "provider": website_info_list["provider"],
-                        "job_id": website_info_list["job_id"],
-                        "url": url,
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": "crawl",
-                        "only_main_content": website_info_list["only_main_content"],
-                    }),
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": website_info_list["provider"],
+                            "job_id": website_info_list["job_id"],
+                            "url": url,
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": "crawl",
+                            "only_main_content": website_info_list["only_main_content"],
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
