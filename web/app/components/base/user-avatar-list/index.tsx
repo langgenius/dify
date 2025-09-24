@@ -60,7 +60,7 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
       )}
       {shouldShowCount && remainingCount > 0 && (
         <div
-          className={'flex items-center justify-center rounded-full bg-components-panel-on-panel-item-bg text-[10px] leading-none text-text-secondary ring-2 ring-components-panel-bg'}
+          className={'flex items-center justify-center rounded-full bg-gray-500 text-[10px] leading-none text-white ring-2 ring-components-panel-bg'}
           style={{
             zIndex: 0,
             width: size,

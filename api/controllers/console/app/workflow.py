@@ -1044,7 +1044,7 @@ class WorkflowOnlineUsersApi(Resource):
 
         workflow_ids = [id.strip() for id in args["workflow_ids"].split(",")]
 
-        results = {}
+        results = []
         for workflow_id in workflow_ids:
             users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
 
@@ -1054,7 +1054,7 @@ class WorkflowOnlineUsersApi(Resource):
                     users.append(json.loads(user_info_json))
                 except Exception:
                     continue
-            results[workflow_id] = users
+            results.append({"workflow_id": workflow_id, "users": users})
 
         return {"data": results}
 
