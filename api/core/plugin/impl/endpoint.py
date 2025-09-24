@@ -75,10 +75,7 @@ class PluginEndpointClient(BasePluginClient):
             "POST",
             f"plugin/{tenant_id}/endpoint/remove",
             bool,
-            data={
-                "endpoint_id": endpoint_id,
-                "user_id": user_id
-            },
+            data={"endpoint_id": endpoint_id, "user_id": user_id},
             headers={
                 "Content-Type": "application/json",
             },
