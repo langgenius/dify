@@ -454,21 +454,29 @@ export const Workflow: FC<WorkflowProps> = memo(({
           const canGoPrev = index > 0
           const canGoNext = index < comments.length - 1
           return (
-            <CommentThread
-              key={comment.id}
-              comment={activeComment}
-              loading={activeCommentLoading}
-              onClose={handleActiveCommentClose}
-              onResolve={() => handleCommentResolve(comment.id)}
-              onDelete={() => setPendingDeleteCommentId(comment.id)}
-              onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
-              onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
-              onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
-              onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
-              onReplyDelete={replyId => setPendingDeleteReply({ commentId: comment.id, replyId })}
-              canGoPrev={canGoPrev}
-              canGoNext={canGoNext}
-            />
+            <>
+              <CommentIcon
+                key={`${comment.id}-icon`}
+                comment={comment}
+                onClick={() => handleCommentIconClick(comment)}
+                isActive={true}
+              />
+              <CommentThread
+                key={`${comment.id}-thread`}
+                comment={activeComment}
+                loading={activeCommentLoading}
+                onClose={handleActiveCommentClose}
+                onResolve={() => handleCommentResolve(comment.id)}
+                onDelete={() => setPendingDeleteCommentId(comment.id)}
+                onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
+                onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
+                onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
+                onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
+                onReplyDelete={replyId => setPendingDeleteReply({ commentId: comment.id, replyId })}
+                canGoPrev={canGoPrev}
+                canGoNext={canGoNext}
+              />
+            </>
           )
         }
 

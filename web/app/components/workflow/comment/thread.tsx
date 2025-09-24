@@ -216,9 +216,9 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     <div
       className='absolute z-50 w-[360px] max-w-[360px]'
       style={{
-        left: screenPosition.x,
+        left: screenPosition.x + 40,
         top: screenPosition.y,
-        transform: 'translate(-50%, -100%) translateY(-24px)',
+        transform: 'translateY(-20%)',
       }}
     >
       <div className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>

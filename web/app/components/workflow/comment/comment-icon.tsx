@@ -1,19 +1,27 @@
 'use client'
 
 import type { FC } from 'react'
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import CommentPreview from './comment-preview'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 
 type CommentIconProps = {
   comment: WorkflowCommentList
   onClick: () => void
+  isActive?: boolean
 }
 
-export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => {
+export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isActive = false }) => {
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
+  const [showPreview, setShowPreview] = useState(false)
+
+  const handlePreviewClick = () => {
+    setShowPreview(false)
+    onClick()
+  }
 
   const screenPosition = useMemo(() => {
     return flowToScreenPosition({
@@ -35,30 +43,58 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => 
   )
 
   return (
-    <div
-      className="absolute z-10 cursor-pointer"
-      style={{
-        left: screenPosition.x,
-        top: screenPosition.y,
-        transform: 'translate(-50%, -50%)',
-      }}
-      onClick={onClick}
-    >
+    <>
       <div
-        className={'relative h-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full'}
-        style={{ width: dynamicWidth }}
+        className="absolute z-10"
+        style={{
+          left: screenPosition.x,
+          top: screenPosition.y,
+          transform: 'translate(-50%, -50%)',
+        }}
       >
-        <div className="absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full border border-components-panel-border bg-components-panel-bg">
-          <div className="flex h-full w-full items-center justify-center px-1">
-            <UserAvatarList
-              users={comment.participants}
-              maxVisible={3}
-              size={24}
-            />
+        <div
+          className={isActive ? '' : 'cursor-pointer'}
+          onClick={isActive ? undefined : onClick}
+          onMouseEnter={isActive ? undefined : () => setShowPreview(true)}
+          onMouseLeave={isActive ? undefined : () => setShowPreview(false)}
+        >
+          <div
+            className={'relative h-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full'}
+            style={{ width: dynamicWidth }}
+          >
+            <div className={`absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full border ${
+              isActive
+                ? 'border-2 border-primary-500 bg-components-panel-bg'
+                : 'border-components-panel-border bg-components-panel-bg'
+            }`}>
+              <div className="flex h-full w-full items-center justify-center px-1">
+                <UserAvatarList
+                  users={comment.participants}
+                  maxVisible={3}
+                  size={24}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Preview panel */}
+      {showPreview && !isActive && (
+        <div
+          className="absolute z-20"
+          style={{
+            left: screenPosition.x - dynamicWidth / 2,
+            top: screenPosition.y + 20,
+            transform: 'translateY(-100%)',
+          }}
+          onMouseEnter={() => setShowPreview(true)}
+          onMouseLeave={() => setShowPreview(false)}
+        >
+          <CommentPreview comment={comment} onClick={handlePreviewClick} />
+        </div>
+      )}
+    </>
   )
 }, (prevProps, nextProps) => {
   return (
@@ -66,6 +102,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick }) => 
     && prevProps.comment.position_x === nextProps.comment.position_x
     && prevProps.comment.position_y === nextProps.comment.position_y
     && prevProps.onClick === nextProps.onClick
+    && prevProps.isActive === nextProps.isActive
   )
 })
 
