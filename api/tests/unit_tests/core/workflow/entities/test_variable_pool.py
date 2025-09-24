@@ -1,4 +1,4 @@
-from api.core.workflow.entities import VariablePool
+from core.workflow.entities.variable_pool import VariablePool
 
 
 class TestVariablePoolGetAndNestedAttribute:
