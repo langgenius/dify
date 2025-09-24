@@ -1,9 +1,9 @@
+from typing import Any
+
 import flask_restx
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
-from typing import Any
-
 from sqlalchemy import select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 from werkzeug.exceptions import Forbidden
