@@ -1,9 +1,20 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from opentelemetry import trace as trace_api
 from opentelemetry.sdk.trace import Event, Status, StatusCode
 from pydantic import BaseModel, Field
+
+
+@dataclass
+class TraceMetadata:
+    """Metadata for trace operations, containing common attributes for all spans in a trace."""
+    trace_id: int
+    workflow_span_id: int
+    session_id: str
+    user_id: str
+    links: list[trace_api.Link]
 
 
 class SpanData(BaseModel):

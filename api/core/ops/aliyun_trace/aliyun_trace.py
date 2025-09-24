@@ -1,8 +1,7 @@
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
 
-from opentelemetry.trace import Link, Status
+from opentelemetry.trace import Status
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
@@ -13,7 +12,7 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
     convert_to_trace_id,
     generate_span_id,
 )
-from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
+from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_MODEL_NAME,
@@ -59,15 +58,6 @@ from extensions.ext_database import db
 from models import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class TraceMetadata:
-    trace_id: int
-    workflow_span_id: int
-    session_id: str
-    user_id: str
-    links: list[Link]
 
 
 class AliyunDataTrace(BaseTraceInstance):
