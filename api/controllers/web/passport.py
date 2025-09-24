@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
+from flask import make_response, request
 from flask_restx import Resource
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -11,6 +11,7 @@ from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
+from libs.token import extract_access_token, set_webapp_token_to_cookie
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -34,13 +35,13 @@ class PassportResource(Resource):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
         user_id = request.args.get("user_id")
-        web_app_access_token = request.args.get("web_app_access_token")
+        access_token = extract_access_token(request)
 
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
         # exchange token for enterprise logined web user
-        enterprise_user_decoded = decode_enterprise_webapp_user_id(web_app_access_token)
+        enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
         if enterprise_user_decoded:
             # a web user has already logged in, exchange a token for this app without redirecting to the login page
             return exchange_token_for_existing_web_user(
@@ -99,9 +100,13 @@ class PassportResource(Resource):
 
         tk = PassportService().issue(payload)
 
-        return {
-            "access_token": tk,
-        }
+        response = make_response(
+            {
+                "access_token": tk,
+            }
+        )
+        set_webapp_token_to_cookie(request, response, tk)
+        return response
 
 
 def decode_enterprise_webapp_user_id(jwt_token: str | None):

@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
+from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
@@ -39,18 +40,9 @@ def decode_jwt_token():
     system_features = FeatureService.get_system_features()
     app_code = str(request.headers.get("X-App-Code"))
     try:
-        auth_header = request.headers.get("Authorization")
-        if auth_header is None:
-            raise Unauthorized("Authorization header is missing.")
-
-        if " " not in auth_header:
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-        auth_scheme, tk = auth_header.split(None, 1)
-        auth_scheme = auth_scheme.lower()
-
-        if auth_scheme != "bearer":
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+        tk = extract_webapp_passport(request)
+        if not tk:
+            raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")

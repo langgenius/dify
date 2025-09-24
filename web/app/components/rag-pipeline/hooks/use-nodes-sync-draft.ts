@@ -77,7 +77,7 @@ export const useNodesSyncDraft = () => {
 
     if (postParams) {
       navigator.sendBeacon(
-        `${API_PREFIX}${postParams.url}?_token=${localStorage.getItem('console_token')}`,
+        `${API_PREFIX}${postParams.url}`,
         JSON.stringify(postParams.params),
       )
     }

@@ -28,8 +28,7 @@ export default function FeedBack(props: DeleteAccountProps) {
         url: '/logout',
         params: {},
       })
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('console_token')
+      // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
       Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
     }

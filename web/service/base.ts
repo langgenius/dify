@@ -23,7 +23,7 @@ import type {
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, getAccessToken, getBaseOptions } from './fetch'
+import { ContentType, base, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
 import type {
   DataSourceNodeCompletedResponse,
@@ -324,13 +324,10 @@ const baseFetch = base
 
 export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const token = await getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: {},
     data: {},
   }
   options = {
@@ -398,15 +395,13 @@ export const ssePost = async (
   } = otherOptions
   const abortController = new AbortController()
 
-  const token = localStorage.getItem('console_token')
+  // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
-    headers: new Headers({
-      Authorization: `Bearer ${token}`,
-    }),
+    headers: new Headers({}),
   } as RequestInit, fetchOptions)
 
   const contentType = (options.headers as Headers).get('Content-Type')
@@ -423,9 +418,6 @@ export const ssePost = async (
   const { body } = options
   if (body)
     options.body = JSON.stringify(body)
-
-  const accessToken = await getAccessToken(isPublicAPI)
-    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
@@ -541,8 +533,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'unauthorized_and_force_logout') {
-        localStorage.removeItem('console_token')
-        localStorage.removeItem('refresh_token')
+        // Cookies will be cleared by the backend
         globalThis.location.reload()
         return Promise.reject(err)
       }

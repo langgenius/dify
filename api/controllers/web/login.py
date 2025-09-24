@@ -1,3 +1,4 @@
+from flask import make_response, request
 from flask_restx import Resource, reqparse
 from jwt import InvalidTokenError
 
@@ -12,6 +13,7 @@ from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
 from libs.password import valid_password
+from libs.token import clear_access_token_from_cookie, clear_webapp_token_from_cookie, set_access_token_to_cookie
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
 
@@ -50,17 +52,26 @@ class LoginApi(Resource):
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        return {"result": "success", "data": {"access_token": token}}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        set_access_token_to_cookie(request, response, token)
+        return response
 
 
-# class LogoutApi(Resource):
-#     @setup_required
-#     def get(self):
-#         account = cast(Account, flask_login.current_user)
-#         if isinstance(account, flask_login.AnonymousUserMixin):
-#             return {"result": "success"}
-#         flask_login.logout_user()
-#         return {"result": "success"}
+@web_ns.route("/logout")
+class LogoutApi(Resource):
+    @setup_required
+    @web_ns.doc("web_app_logout")
+    @web_ns.doc(description="Logout user from web application")
+    @web_ns.doc(
+        responses={
+            200: "Logout successful",
+        }
+    )
+    def get(self):
+        response = make_response({"result": "success"})
+        clear_access_token_from_cookie(request, response)
+        clear_webapp_token_from_cookie(request, response)
+        return response
 
 
 @web_ns.route("/email-code-login")
@@ -93,7 +104,9 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
 
-        return {"result": "success", "data": token}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        set_access_token_to_cookie(request, response, token)
+        return response
 
 
 @web_ns.route("/email-code-login/validity")
@@ -136,4 +149,6 @@ class EmailCodeLoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": {"access_token": token}}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        set_access_token_to_cookie(request, response, token)
+        return response
