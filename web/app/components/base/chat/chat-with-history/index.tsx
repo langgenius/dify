@@ -18,7 +18,6 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -196,32 +195,15 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
 }) => {
-  const [initialized, setInitialized] = useState(false)
   const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
   const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
 
   useAsyncEffect(async () => {
-    if (!initialized) {
-      if (!installedAppInfo) {
-        try {
-          await checkOrSetAccessToken()
-        }
-        catch (e: any) {
-          if (e.status === 404) {
-            setAppUnavailable(true)
-          }
-          else {
-            setIsUnknownReason(true)
-            setAppUnavailable(true)
-          }
-        }
-      }
-      setInitialized(true)
+    if (!installedAppInfo) {
+      setIsUnknownReason(true)
+      setAppUnavailable(true)
     }
   }, [])
-
-  if (!initialized)
-    return null
 
   if (appUnavailable)
     return <AppUnavailable isUnknownReason={isUnknownReason} />

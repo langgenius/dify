@@ -21,7 +21,6 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
 import { ContentType, base, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
@@ -429,15 +428,11 @@ export const ssePost = async (
                 if (data.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required') {
-                  removeAccessToken()
+                if (data.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
-                }
 
-                if (data.code === 'unauthorized') {
-                  removeAccessToken()
+                if (data.code === 'unauthorized')
                   requiredWebSSOLogin()
-                }
               }
             })
           }
@@ -528,7 +523,6 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'web_sso_auth_required') {
-        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
@@ -542,7 +536,6 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         silent,
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
-        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }

@@ -3,7 +3,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { removeAccessToken } from '@/app/components/share/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import NormalForm from './normalForm'
@@ -27,7 +26,6 @@ const WebSSOForm: FC = () => {
   }, [redirectUrl])
 
   const backToHome = useCallback(() => {
-    removeAccessToken()
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router])

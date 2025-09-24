@@ -50,7 +50,7 @@ export const useMailValidity = () => {
   })
 }
 
-export type MailRegisterResponse = { result: string, data: { access_token: string, refresh_token: string } }
+export type MailRegisterResponse = { result: string, data: {} }
 
 export const useMailRegister = () => {
   return useMutation({

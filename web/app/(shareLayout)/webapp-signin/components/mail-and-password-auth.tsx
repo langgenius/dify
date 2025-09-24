@@ -11,8 +11,6 @@ import { webAppLogin } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
-import { setAccessToken } from '@/app/components/share/utils'
-import { fetchAccessToken } from '@/service/share'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -88,9 +86,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
-        localStorage.setItem('webapp_access_token', res.data.access_token)
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: res.data.access_token })
-        await setAccessToken(appCode, tokenResp.access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {

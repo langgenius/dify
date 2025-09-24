@@ -2,7 +2,6 @@
 
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { removeAccessToken } from '@/app/components/share/utils'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
@@ -42,7 +41,6 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   }, [searchParams, pathname])
 
   const backToHome = useCallback(() => {
-    removeAccessToken()
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router])
