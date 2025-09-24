@@ -71,8 +71,9 @@ class TestGetRemoteFileInfo:
                 "Content-Type": "image/jpeg",
             },
         )
-        _, filename, _ = _get_remote_file_info("http://example.com/ignored")
+        mime_type, filename, _ = _get_remote_file_info("http://example.com/ignored")
         assert filename == "file name.jpg"
+        assert mime_type == "image/jpeg"
 
     def test_attachment_filename_star_chinese(self, monkeypatch: pytest.MonkeyPatch):
         _mock_head(
@@ -82,8 +83,9 @@ class TestGetRemoteFileInfo:
                 "Content-Type": "image/jpeg",
             },
         )
-        _, filename, _ = _get_remote_file_info("http://example.com/ignored")
+        mime_type, filename, _ = _get_remote_file_info("http://example.com/ignored")
         assert filename == "测试文件.jpg"
+        assert mime_type == "image/jpeg"
 
     def test_filename_from_url_when_no_header(self, monkeypatch: pytest.MonkeyPatch):
         _mock_head(
