@@ -2,7 +2,7 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import Type, TypeVar
+from typing import TypeVar
 
 import requests
 from pydantic import BaseModel
@@ -126,7 +126,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type_: Type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
