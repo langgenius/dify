@@ -224,4 +224,3 @@ class AppApiKeyResource(BaseApiKeyResource):
     resource_type = "app"
     resource_model = App
     resource_id_field = "app_id"
-
