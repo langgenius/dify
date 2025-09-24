@@ -92,66 +92,64 @@ def clean_workflow_runlogs_precise():
 def _delete_batch_with_retry(workflow_run_ids: Sequence[str], attempt_count: int) -> bool:
     """Delete a single batch with a retry mechanism and complete cascading deletion"""
     try:
-        with db.session.begin_nested():
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             message_data = (
-                db.session.query(Message.id, Message.conversation_id)
+                session.query(Message.id, Message.conversation_id)
                 .where(Message.workflow_run_id.in_(workflow_run_ids))
                 .all()
             )
             message_id_list = [msg.id for msg in message_data]
             conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
             if message_id_list:
-                db.session.query(AppAnnotationHitHistory).where(
+                session.query(AppAnnotationHitHistory).where(
                     AppAnnotationHitHistory.message_id.in_(message_id_list)
                 ).delete(synchronize_session=False)
 
-                db.session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(message_id_list)).delete(
+                session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageChain).where(MessageChain.message_id.in_(message_id_list)).delete(
+                session.query(MessageChain).where(MessageChain.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageFile).where(MessageFile.message_id.in_(message_id_list)).delete(
+                session.query(MessageFile).where(MessageFile.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageAnnotation).where(MessageAnnotation.message_id.in_(message_id_list)).delete(
+                session.query(MessageAnnotation).where(MessageAnnotation.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_id_list)).delete(
+                session.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_id_list)).delete(
                     synchronize_session=False
                 )
 
-                db.session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(
+                session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(
                     synchronize_session=False
                 )
 
-            db.session.query(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(workflow_run_ids)).delete(
+            session.query(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(workflow_run_ids)).delete(
                 synchronize_session=False
             )
 
-            db.session.query(WorkflowNodeExecutionModel).where(
+            session.query(WorkflowNodeExecutionModel).where(
                 WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids)
             ).delete(synchronize_session=False)
 
             if conversation_id_list:
-                db.session.query(ConversationVariable).where(
+                session.query(ConversationVariable).where(
                     ConversationVariable.conversation_id.in_(conversation_id_list)
                 ).delete(synchronize_session=False)
 
-                db.session.query(Conversation).where(Conversation.id.in_(conversation_id_list)).delete(
+                session.query(Conversation).where(Conversation.id.in_(conversation_id_list)).delete(
                     synchronize_session=False
                 )
 
-            db.session.query(WorkflowRun).where(WorkflowRun.id.in_(workflow_run_ids)).delete(synchronize_session=False)
+            session.query(WorkflowRun).where(WorkflowRun.id.in_(workflow_run_ids)).delete(synchronize_session=False)
 
-        db.session.commit()
         return True
 
     except Exception:
-        db.session.rollback()
         logger.exception("Batch deletion failed (attempt %s)", attempt_count + 1)
         return False
