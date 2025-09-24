@@ -13,6 +13,8 @@ from core.ops.aliyun_trace.entities.semconv import (
     GenAISpanKind,
 )
 from core.rag.models.document import Document
+from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from extensions.ext_database import db
 from models import EndUser
 
@@ -36,6 +38,13 @@ def create_status_from_error(error: str | None) -> Status:
     if error:
         return Status(StatusCode.ERROR, error)
     return Status(StatusCode.OK)
+
+
+def get_workflow_node_status(node_execution: WorkflowNodeExecution) -> Status:
+    """Convert workflow node execution status to OpenTelemetry Status."""
+    error_statuses = [WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION]
+    error_message = str(node_execution.error) if node_execution.status in error_statuses else None
+    return create_status_from_error(error_message)
 
 
 def create_links_from_trace_id(trace_id: str | None) -> list[Link]:

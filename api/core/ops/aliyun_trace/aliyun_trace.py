@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Sequence
 
-from opentelemetry.trace import Status
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
@@ -37,6 +36,7 @@ from core.ops.aliyun_trace.utils import (
     create_status_from_error,
     extract_retrieval_documents,
     get_user_id_from_message_data,
+    get_workflow_node_status,
     serialize_json_data,
 )
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -92,8 +92,8 @@ class AliyunDataTrace(BaseTraceInstance):
         try:
             return self.trace_client.get_project_url()
         except Exception as e:
-            logger.info("Aliyun get run url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Aliyun get run url failed: {str(e)}")
+            logger.info("Aliyun get project url failed: %s", str(e), exc_info=True)
+            raise ValueError(f"Aliyun get project url failed: {str(e)}")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_metadata = TraceMetadata(
@@ -109,8 +109,7 @@ class AliyunDataTrace(BaseTraceInstance):
         workflow_node_executions = self.get_workflow_node_executions(trace_info)
         for node_execution in workflow_node_executions:
             node_span = self.build_workflow_node_span(node_execution, trace_info, trace_metadata)
-            if node_span:
-                self.trace_client.add_span(node_span)
+            self.trace_client.add_span(node_span)
 
     def message_trace(self, trace_info: MessageTraceInfo):
         message_data = trace_info.message_data
@@ -305,10 +304,6 @@ class AliyunDataTrace(BaseTraceInstance):
             logger.debug("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
             return None
 
-    def get_workflow_node_status(self, node_execution: WorkflowNodeExecution) -> Status:
-        error_statuses = [WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION]
-        error_message = str(node_execution.error) if node_execution.status in error_statuses else None
-        return create_status_from_error(error_message)
 
     def build_workflow_task_span(
         self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
@@ -329,7 +324,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 inputs=inputs_json,
                 outputs=outputs_json,
             ),
-            status=self.get_workflow_node_status(node_execution),
+            status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
         )
 
@@ -362,7 +357,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 TOOL_DESCRIPTION: serialize_json_data(tool_des),
                 TOOL_PARAMETERS: inputs_json,
             },
-            status=self.get_workflow_node_status(node_execution),
+            status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
         )
 
@@ -390,7 +385,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 RETRIEVAL_QUERY: input_value,
                 RETRIEVAL_DOCUMENT: output_value,
             },
-            status=self.get_workflow_node_status(node_execution),
+            status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
         )
 
@@ -428,7 +423,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_COMPLETION: text_output,
                 GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason") or "",
             },
-            status=self.get_workflow_node_status(node_execution),
+            status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
         )
 
