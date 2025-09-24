@@ -1,4 +1,3 @@
-import pytest
 from api.core.workflow.entities import VariablePool
 
 
