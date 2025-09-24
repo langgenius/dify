@@ -1,10 +1,3 @@
-"""
-Utility functions for Aliyun trace operations.
-
-This module contains helper functions and utilities used across the aliyun_trace package
-to improve code organization and reusability.
-"""
-
 import json
 from typing import Any
 
@@ -41,15 +34,6 @@ DEFAULT_FRAMEWORK_NAME = "dify"
 
 
 def get_user_id_from_message_data(message_data) -> str:
-    """
-    Extract user ID from message data with optimized database query.
-
-    Args:
-        message_data: The message data object containing user information
-
-    Returns:
-        str: The user ID (account ID or end user session ID)
-    """
     user_id = message_data.from_account_id
     if message_data.from_end_user_id:
         end_user_data: EndUser | None = (
@@ -61,30 +45,12 @@ def get_user_id_from_message_data(message_data) -> str:
 
 
 def create_status_from_error(error: str | None) -> Status:
-    """
-    Create OpenTelemetry Status from error information.
-
-    Args:
-        error: Error message string, None if no error
-
-    Returns:
-        Status: OpenTelemetry Status object
-    """
     if error:
         return Status(StatusCode.ERROR, error)
     return Status(StatusCode.OK)
 
 
 def create_links_from_trace_id(trace_id: str | None) -> list[Link]:
-    """
-    Create OpenTelemetry Links from trace ID.
-
-    Args:
-        trace_id: Trace ID string, None if no parent trace
-
-    Returns:
-        list[Link]: List of OpenTelemetry Link objects
-    """
     from core.ops.aliyun_trace.data_exporter.traceclient import create_link
 
     links = []
@@ -103,22 +69,6 @@ def create_llm_span_data(
     inputs_json: str,
     outputs_str: str,
 ) -> SpanData:
-    """
-    Create LLM span data with optimized attribute building.
-
-    Args:
-        trace_id: The trace ID
-        parent_span_id: The parent span ID
-        message_id: The message ID
-        trace_info: The message trace info
-        user_id: The user ID
-        status: The span status
-        inputs_json: Pre-serialized inputs JSON
-        outputs_str: String representation of outputs
-
-    Returns:
-        SpanData: The created span data object
-    """
     app_model_config = getattr(trace_info.message_data, "app_model_config", {})
     pre_prompt = getattr(app_model_config, "pre_prompt", "")
     inputs_data = getattr(trace_info.message_data, "inputs", {})
@@ -133,7 +83,7 @@ def create_llm_span_data(
         attributes={
             GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
             GEN_AI_USER_ID: str(user_id),
-            GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
+            GEN_AI_SPAN_KIND: GenAISpanKind.LLM,
             GEN_AI_FRAMEWORK: DEFAULT_FRAMEWORK_NAME,
             GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
             GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
@@ -152,15 +102,6 @@ def create_llm_span_data(
 
 
 def extract_retrieval_documents(documents: list[Document]) -> list[dict[str, Any]]:
-    """
-    Extract retrieval documents data with improved type hints.
-
-    Args:
-        documents: List of Document objects
-
-    Returns:
-        list[dict[str, Any]]: List of document data dictionaries
-    """
     documents_data = []
     for document in documents:
         document_data = {
@@ -177,41 +118,17 @@ def extract_retrieval_documents(documents: list[Document]) -> list[dict[str, Any
 
 
 def serialize_json_data(data: Any, ensure_ascii: bool = DEFAULT_JSON_ENSURE_ASCII) -> str:
-    """
-    Serialize data to JSON string with consistent settings.
-
-    Args:
-        data: Data to serialize
-        ensure_ascii: Whether to ensure ASCII encoding
-
-    Returns:
-        str: JSON string representation
-    """
     return json.dumps(data, ensure_ascii=ensure_ascii)
 
 
 def create_common_span_attributes(
     session_id: str = "",
     user_id: str = "",
-    span_kind: str = GenAISpanKind.CHAIN.value,
+    span_kind: str = GenAISpanKind.CHAIN,
     framework: str = DEFAULT_FRAMEWORK_NAME,
     inputs: str = "",
     outputs: str = "",
 ) -> dict[str, Any]:
-    """
-    Create common span attributes for consistency.
-
-    Args:
-        session_id: Session ID
-        user_id: User ID
-        span_kind: Span kind
-        framework: Framework name
-        inputs: Input data
-        outputs: Output data
-
-    Returns:
-        dict[str, Any]: Common attributes dictionary
-    """
     return {
         GEN_AI_SESSION_ID: session_id,
         GEN_AI_USER_ID: user_id,
