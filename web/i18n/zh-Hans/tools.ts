@@ -117,6 +117,12 @@ const translation = {
       description: '描述',
       descriptionPlaceholder: '参数意义的描述',
     },
+    toolOutput: {
+      title: '工具出参',
+      name: '名称',
+      description: '描述',
+      descriptionPlaceholder: '参数意义的描述',
+    },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',
     confirmTitle: '确认保存？',

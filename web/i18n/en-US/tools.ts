@@ -117,6 +117,12 @@ const translation = {
       description: 'Description',
       descriptionPlaceholder: 'Description of the parameter\'s meaning',
     },
+    toolOutput: {
+      title: 'Tool Output',
+      name: 'Name',
+      description: 'Description',
+      descriptionPlaceholder: 'Description of the parameter\'s meaning',
+    },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
     confirmTitle: 'Confirm to save ?',
