@@ -9,7 +9,6 @@ from configs import dify_config
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
-from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -47,7 +46,8 @@ class PineconeVector(BaseVector):
             self._pc = Pinecone(api_key=config.api_key)
 
         # Normalize index name: lowercase, only a-z0-9- and <=45 chars
-        import re, hashlib
+        import hashlib
+        import re
         base_name = collection_name.lower()
         base_name = re.sub(r'[^a-z0-9-]+', '-', base_name)  # replace invalid chars with '-'
         base_name = re.sub(r'-+', '-', base_name).strip('-')
@@ -55,7 +55,7 @@ class PineconeVector(BaseVector):
         suffix_len = 24  # 24 hex digits (96-bit entropy)
         if len(base_name) > 45:
             hash_suffix = hashlib.sha256(base_name.encode()).hexdigest()[:suffix_len]
-            truncated_name = base_name[:45-(suffix_len+1)].rstrip('-')
+            truncated_name = base_name[:45 - (suffix_len + 1)].rstrip('-')
             self._index_name = f"{truncated_name}-{hash_suffix}"
         else:
             self._index_name = base_name
@@ -162,9 +162,13 @@ class PineconeVector(BaseVector):
                 safe_meta: dict[str, Any] = {}
                 # lift common identifiers to top-level fields for filtering
                 for k, v in raw_meta.items():
-                    if isinstance(v, (str, int, float, bool)):
-                        safe_meta[k] = v
-                    elif isinstance(v, list) and all(isinstance(x, str) for x in v):
+                    if (
+                        isinstance(v, (str, int, float, bool))
+                        or (
+                            isinstance(v, list)
+                            and all(isinstance(x, str) for x in v)
+                        )
+                    ):
                         safe_meta[k] = v
                     else:
                         safe_meta[k] = json.dumps(v, ensure_ascii=False)

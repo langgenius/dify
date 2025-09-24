@@ -1,5 +1,4 @@
 from core.rag.datasource.vdb.pinecone.pinecone_vector import PineconeConfig, PineconeVector
-from core.rag.models.document import Document
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
     setup_mock_redis,
@@ -25,6 +24,5 @@ class PineconeVectorTest(AbstractVectorTest):
 
 
 def test_pinecone_vector():
-
 
     PineconeVectorTest().run_all_tests()
