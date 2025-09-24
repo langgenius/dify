@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useRef,
+  useEffect,
 } from 'react'
 import {
   create,
@@ -18,13 +19,11 @@ type Shape = {
 
 export const createFileStore = (
   value: FileEntity[] = [],
-  onChange?: (files: FileEntity[]) => void,
 ) => {
   return create<Shape>(set => ({
     files: value ? [...value] : [],
     setFiles: (files) => {
       set({ files })
-      onChange?.(files)
     },
   }))
 }
@@ -55,9 +54,38 @@ export const FileContextProvider = ({
   onChange,
 }: FileProviderProps) => {
   const storeRef = useRef<FileStore | undefined>(undefined)
+  const onChangeRef = useRef<FileProviderProps['onChange']>(onChange)
+  const isSyncingRef = useRef(false)
 
   if (!storeRef.current)
-    storeRef.current = createFileStore(value, onChange)
+    storeRef.current = createFileStore(value)
+
+  // keep latest onChange
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  // subscribe to store changes and call latest onChange
+  useEffect(() => {
+    const store = storeRef.current!
+    const unsubscribe = (store as any).subscribe((state: Shape) => {
+      if (isSyncingRef.current) return
+      onChangeRef.current?.(state.files)
+    })
+    return unsubscribe
+  }, [])
+
+  // sync external value into internal store when value changes
+  useEffect(() => {
+    const store = storeRef.current!
+    const nextFiles = value ? [...value] : []
+    isSyncingRef.current = true
+    ;(store as any).setState({ files: nextFiles })
+    // release the syncing flag in next tick to avoid triggering onChange for external sync
+    setTimeout(() => {
+      isSyncingRef.current = false
+    }, 0)
+  }, [value])
 
   return (
     <FileContext.Provider value={storeRef.current}>
