@@ -152,7 +152,7 @@ class BasePluginClient:
             if transformer:
                 json_response = transformer(json_response)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
-            rep = PluginDaemonBasicResponse[type_].model_validate(json_response) # type: ignore
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
