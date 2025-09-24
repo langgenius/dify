@@ -9,17 +9,17 @@ class PineconeConfig(BaseSettings):
     Configuration settings for Pinecone vector database
     """
 
-    PINECONE_API_KEY: Optional[str] = Field(
+    PINECONE_API_KEY: str | None = Field(
         description="API key for authenticating with Pinecone service",
         default=None,
     )
 
-    PINECONE_ENVIRONMENT: Optional[str] = Field(
+    PINECONE_ENVIRONMENT: str | None = Field(
         description="Pinecone environment (e.g., 'us-west1-gcp', 'us-east-1-aws')",
         default=None,
     )
 
-    PINECONE_INDEX_NAME: Optional[str] = Field(
+    PINECONE_INDEX_NAME: str | None = Field(
         description="Default Pinecone index name",
         default=None,
     )
