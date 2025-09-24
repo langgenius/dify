@@ -3,6 +3,8 @@ import logging
 import time
 
 import click
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 import app
 from configs import dify_config
@@ -37,48 +39,48 @@ def clean_workflow_runlogs_precise():
     cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
 
     try:
-        total_workflow_runs = db.session.query(WorkflowRun).where(WorkflowRun.created_at < cutoff_date).count()
-        if total_workflow_runs == 0:
-            logger.info("No expired workflow run logs found")
-            return
-        logger.info("Found %s expired workflow run logs to clean", total_workflow_runs)
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            total_workflow_runs = session.query(WorkflowRun).where(WorkflowRun.created_at < cutoff_date).count()
+            if total_workflow_runs == 0:
+                logger.info("No expired workflow run logs found")
+                return
+            logger.info("Found %s expired workflow run logs to clean", total_workflow_runs)
 
-        total_deleted = 0
-        failed_batches = 0
-        batch_count = 0
+            total_deleted = 0
+            failed_batches = 0
+            batch_count = 0
 
-        while True:
-            workflow_runs = (
-                db.session.query(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE).all()
-            )
+            while True:
+                workflow_runs = (
+                    session.scalars(select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE)).all()
+                )
 
-            if not workflow_runs:
-                break
-
-            workflow_run_ids = [run.id for run in workflow_runs]
-            batch_count += 1
-
-            success = _delete_batch_with_retry(workflow_run_ids, failed_batches)
-
-            if success:
-                total_deleted += len(workflow_run_ids)
-                failed_batches = 0
-            else:
-                failed_batches += 1
-                if failed_batches >= MAX_RETRIES:
-                    logger.error("Failed to delete batch after %s retries, aborting cleanup for today", MAX_RETRIES)
+                if not workflow_runs:
                     break
-                else:
-                    # Calculate incremental delay times: 5, 10, 15 minutes
-                    retry_delay_minutes = failed_batches * 5
-                    logger.warning("Batch deletion failed, retrying in %s minutes...", retry_delay_minutes)
-                    time.sleep(retry_delay_minutes * 60)
-                    continue
 
-        logger.info("Cleanup completed: %s expired workflow run logs deleted", total_deleted)
+                workflow_run_ids = [run for run in workflow_runs]
+                batch_count += 1
+
+                success = _delete_batch_with_retry(workflow_run_ids, failed_batches)
+
+                if success:
+                    total_deleted += len(workflow_run_ids)
+                    failed_batches = 0
+                else:
+                    failed_batches += 1
+                    if failed_batches >= MAX_RETRIES:
+                        logger.error("Failed to delete batch after %s retries, aborting cleanup for today", MAX_RETRIES)
+                        break
+                    else:
+                        # Calculate incremental delay times: 5, 10, 15 minutes
+                        retry_delay_minutes = failed_batches * 5
+                        logger.warning("Batch deletion failed, retrying in %s minutes...", retry_delay_minutes)
+                        time.sleep(retry_delay_minutes * 60)
+                        continue
+
+            logger.info("Cleanup completed: %s expired workflow run logs deleted", total_deleted)
 
     except Exception:
-        db.session.rollback()
         logger.exception("Unexpected error in workflow log cleanup")
         raise
 
