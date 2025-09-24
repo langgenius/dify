@@ -177,4 +177,4 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
     def __init__(self, tenant_id: str, model: ModelWithProviderEntity):
         dump_model = model.model_dump()
         dump_model["provider"]["tenant_id"] = tenant_id
-        super().model_validate(dump_model)
+        super().__init__(**dump_model)
