@@ -213,7 +213,6 @@ class AliyunDataTrace(BaseTraceInstance):
         self.trace_client.add_span(tool_span)
 
     def get_workflow_node_executions(self, trace_info: WorkflowTraceInfo) -> Sequence[WorkflowNodeExecution]:
-        """Get workflow node executions using the base class method for account resolution."""
         app_id = trace_info.metadata.get("app_id")
         if not app_id:
             raise ValueError("No app_id found in trace_info metadata")
