@@ -50,7 +50,7 @@ class WeaviateVector(BaseVector):
 
         grpc_host = host
         grpc_secure = http_secure
-        grpc_port = p.port or (443 if grpc_secure else 50051)
+        grpc_port = 443 if grpc_secure else 50051
 
         client = weaviate.connect_to_custom(
             http_host=host,
@@ -140,13 +140,13 @@ class WeaviateVector(BaseVector):
                 print(f"Warning: Could not add property {prop.name}: {e}")
 
     def _get_uuids(self, documents: list[Document]) -> list[str]:
-        import hashlib
+
+        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
         
         uuids = []
         for doc in documents:
-            content_hash = hashlib.md5(doc.page_content.encode()).hexdigest()
-            uuid_str = content_hash[:8]
-            uuids.append(uuid_str)
+            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
+            uuids.append(str(uuid_val))
         
         return uuids
 
@@ -181,13 +181,6 @@ class WeaviateVector(BaseVector):
                 )
             )
 
-
-        # batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
-        # for start in range(0, len(objs), batch_size):
-        #     chunk = objs[start:start + batch_size]
-        #     if not chunk:
-        #         continue
-        #     col.data.insert_many(chunk)
         
         
         batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
@@ -288,7 +281,7 @@ class WeaviateVector(BaseVector):
             return []
 
         col = self._client.collections.use(self._collection_name)
-        props = list(self._attributes) + [Field.TEXT_KEY.value]
+        props = list({*self._attributes, Field.TEXT_KEY.value})
 
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
