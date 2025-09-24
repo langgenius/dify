@@ -10,10 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, TypeVar, Union
 
 import psycopg2.errors
-from sqlalchemy import Column, UnaryExpression, asc, desc, select
+from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
@@ -39,7 +39,7 @@ from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
 # Safe field mapping for WorkflowNodeExecutionModel to avoid getattr reflection
-WORKFLOW_NODE_EXECUTION_ORDER_FIELDS: dict[str, Column] = {
+WORKFLOW_NODE_EXECUTION_ORDER_FIELDS: dict[str, InstrumentedAttribute[Any]] = {
     "id": WorkflowNodeExecutionModel.id,
     "index": WorkflowNodeExecutionModel.index,
     "created_at": WorkflowNodeExecutionModel.created_at,

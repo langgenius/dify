@@ -3,8 +3,8 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Union
 
-from sqlalchemy import Column, asc, desc, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
@@ -25,7 +25,7 @@ from services.errors.conversation import (
 )
 
 # Safe field mapping for Conversation model to avoid getattr reflection
-CONVERSATION_SORT_FIELDS: dict[str, Column] = {
+CONVERSATION_SORT_FIELDS: dict[str, InstrumentedAttribute[Any]] = {
     "created_at": Conversation.created_at,
     "updated_at": Conversation.updated_at,
     "name": Conversation.name,

@@ -2,8 +2,10 @@ import flask_restx
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
-from sqlalchemy import Column, select
-from sqlalchemy.orm import Session
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.orm import InstrumentedAttribute, Session
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -15,7 +17,7 @@ from . import api, console_ns
 from .wraps import account_initialization_required, setup_required
 
 # Field mapping for ApiToken attributes to avoid getattr reflection
-API_TOKEN_RESOURCE_FIELD_MAP: dict[str, Column] = {
+API_TOKEN_RESOURCE_FIELD_MAP: dict[str, InstrumentedAttribute[Any]] = {
     "app_id": ApiToken.app_id,
     # Note: ApiToken model does not have dataset_id field
     # Dataset API keys are managed by tenant_id in a separate implementation
