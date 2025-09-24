@@ -115,12 +115,12 @@ class DatasetService:
                     # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                     if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
                         query = query.where(
-                            db.or_(
+                            sa.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                db.and_(
+                                sa.and_(
                                     Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
                                 ),
-                                db.and_(
+                                sa.and_(
                                     Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
                                     Dataset.id.in_(permitted_dataset_ids),
                                 ),
@@ -128,9 +128,9 @@ class DatasetService:
                         )
                     else:
                         query = query.where(
-                            db.or_(
+                            sa.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                db.and_(
+                                sa.and_(
                                     Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
                                 ),
                             )
@@ -1879,7 +1879,7 @@ class DocumentService:
     #                 for notion_info in notion_info_list:
     #                     workspace_id = notion_info.workspace_id
     #                     data_source_binding = DataSourceOauthBinding.query.filter(
-    #                         db.and_(
+    #                         sa.and_(
     #                             DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
     #                             DataSourceOauthBinding.provider == "notion",
     #                             DataSourceOauthBinding.disabled == False,

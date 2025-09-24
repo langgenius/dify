@@ -471,7 +471,7 @@ class PluginMigration:
         total_failed_tenant = 0
         while True:
             # paginate
-            tenants = db.paginate(db.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
+            tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
             if tenants.items is None or len(tenants.items) == 0:
                 break
 
