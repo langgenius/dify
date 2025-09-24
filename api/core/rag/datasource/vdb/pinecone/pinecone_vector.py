@@ -51,15 +51,17 @@ class PineconeVector(BaseVector):
         base_name = collection_name.lower()
         base_name = re.sub(r'[^a-z0-9-]+', '-', base_name)  # replace invalid chars with '-'
         base_name = re.sub(r'-+', '-', base_name).strip('-')
+        # Use longer secure suffix to reduce collision risk
+        suffix_len = 24  # 24 hex digits (96-bit entropy)
         if len(base_name) > 45:
-            hash_suffix = hashlib.md5(base_name.encode()).hexdigest()[:8]
-            truncated_name = base_name[:45-9].rstrip('-')
+            hash_suffix = hashlib.sha256(base_name.encode()).hexdigest()[:suffix_len]
+            truncated_name = base_name[:45-(suffix_len+1)].rstrip('-')
             self._index_name = f"{truncated_name}-{hash_suffix}"
         else:
             self._index_name = base_name
         # Guard empty name
         if not self._index_name:
-            self._index_name = f"index-{hashlib.md5(collection_name.encode()).hexdigest()[:8]}"
+            self._index_name = f"index-{hashlib.sha256(collection_name.encode()).hexdigest()[:suffix_len]}"
         self._index = None
         
     def get_type(self) -> str:
