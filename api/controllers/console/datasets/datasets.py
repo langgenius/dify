@@ -23,7 +23,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
@@ -516,13 +516,13 @@ class DatasetIndexingEstimateApi(Resource):
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.NOTION.value,
-                        notion_info={
+                        notion_info=NotionInfo.model_validate({
                             "credential_id": credential_id,
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
                             "notion_page_type": page["type"],
                             "tenant_id": current_user.current_tenant_id,
-                        },
+                        }),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
@@ -531,14 +531,14 @@ class DatasetIndexingEstimateApi(Resource):
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE.value,
-                    website_info={
+                    website_info=WebsiteInfo.model_validate({
                         "provider": website_info_list["provider"],
                         "job_id": website_info_list["job_id"],
                         "url": url,
                         "tenant_id": current_user.current_tenant_id,
                         "mode": "crawl",
                         "only_main_content": website_info_list["only_main_content"],
-                    },
+                    }),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)

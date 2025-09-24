@@ -126,7 +126,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -152,10 +152,10 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type].model_validate(json_response)
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)
         except Exception:
             msg = (
-                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
+                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
                 f" url: {path}"
             )
             logger.exception(msg)

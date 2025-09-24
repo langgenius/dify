@@ -43,7 +43,7 @@ def process_trace_tasks(file_info):
             with current_app.app_context():
                 trace_type = trace_info_info_map.get(trace_info_type)
                 if trace_type:
-                    trace_info = trace_type.model_validate(trace_info)
+                    trace_info = trace_type(**trace_info)
                 trace_instance.trace(trace_info)
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except Exception as e:
