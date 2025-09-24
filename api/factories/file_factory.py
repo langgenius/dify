@@ -261,6 +261,12 @@ def _extract_filename(url_path: str, content_disposition: str | None) -> str | N
     return filename or None
 
 
+def _guess_mime_type(filename: str) -> str:
+    """Guess MIME type from filename, returning empty string if None."""
+    guessed_mime, _ = mimetypes.guess_type(filename)
+    return guessed_mime or ""
+
+
 def _get_remote_file_info(url: str):
     file_size = -1
     parsed_url = urllib.parse.urlparse(url)
@@ -268,9 +274,7 @@ def _get_remote_file_info(url: str):
     filename = os.path.basename(url_path)
 
     # Initialize mime_type from filename as fallback
-    mime_type, _ = mimetypes.guess_type(filename)
-    if mime_type is None:
-        mime_type = ""
+    mime_type = _guess_mime_type(filename)
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
@@ -278,9 +282,7 @@ def _get_remote_file_info(url: str):
         extracted_filename = _extract_filename(url_path, content_disposition)
         if extracted_filename:
             filename = extracted_filename
-            mime_type, _ = mimetypes.guess_type(filename)
-            if mime_type is None:
-                mime_type = ""
+            mime_type = _guess_mime_type(filename)
         file_size = int(resp.headers.get("Content-Length", file_size))
         # Fallback to Content-Type header if mime_type is still empty
         if not mime_type:
@@ -290,9 +292,7 @@ def _get_remote_file_info(url: str):
         extension = mimetypes.guess_extension(mime_type) or ".bin"
         filename = f"{uuid.uuid4().hex}{extension}"
         if not mime_type:
-            mime_type, _ = mimetypes.guess_type(filename)
-            if mime_type is None:
-                mime_type = ""
+            mime_type = _guess_mime_type(filename)
 
     return mime_type, filename, file_size
 
