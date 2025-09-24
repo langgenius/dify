@@ -271,7 +271,6 @@ const WorkflowToolAsModal: FC<Props> = ({
                 />
               </div>
               {/* Tool Input  */}
-              {JSON.stringify(parameters)}
               <div>
                 <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.toolInput.title')}</div>
                 <div className='w-full overflow-x-auto rounded-lg border border-divider-regular'>
