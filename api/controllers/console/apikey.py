@@ -9,7 +9,6 @@ from werkzeug.exceptions import Forbidden
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
-from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api, console_ns
@@ -224,58 +223,3 @@ class AppApiKeyResource(BaseApiKeyResource):
     resource_model = App
     resource_id_field = "app_id"
 
-
-# NOTE: This endpoint is currently broken because ApiToken model does not have dataset_id field.
-# Dataset API keys are handled by /datasets/api-keys endpoint in datasets.py using tenant_id.
-# TODO: Either fix this implementation or remove it entirely.
-@console_ns.route("/datasets/<uuid:resource_id>/api-keys")
-class DatasetApiKeyListResource(BaseApiKeyListResource):
-    @api.doc("get_dataset_api_keys")
-    @api.doc(description="Get all API keys for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(200, "Success", api_key_list)
-    def get(self, resource_id):
-        """Get all API keys for a dataset"""
-        return super().get(resource_id)
-
-    @api.doc("create_dataset_api_key")
-    @api.doc(description="Create a new API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
-    @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):
-        """Create a new API key for a dataset"""
-        return super().post(resource_id)
-
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
-    resource_type = "dataset"
-    resource_model = Dataset
-    resource_id_field = "dataset_id"  # WARNING: This field does not exist in ApiToken model!
-    token_prefix = "ds-"
-
-
-# NOTE: This endpoint is currently broken because ApiToken model does not have dataset_id field.
-# Dataset API keys are handled by /datasets/api-keys endpoint in datasets.py using tenant_id.
-# TODO: Either fix this implementation or remove it entirely.
-@console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
-class DatasetApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_dataset_api_key")
-    @api.doc(description="Delete an API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
-    def delete(self, resource_id, api_key_id):
-        """Delete an API key for a dataset"""
-        return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
-    resource_type = "dataset"
-    resource_model = Dataset
-    resource_id_field = "dataset_id"  # WARNING: This field does not exist in ApiToken model!
