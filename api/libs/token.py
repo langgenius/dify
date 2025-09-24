@@ -1,4 +1,5 @@
-from flask import Request, Response
+from flask import Request
+from werkzeug.wrappers import Response
 
 from configs import dify_config
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_PASSPORT, COOKIE_NAME_REFRESH_TOKEN
