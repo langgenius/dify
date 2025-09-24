@@ -53,7 +53,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import WorkflowNodeExecutionTriggeredFrom
 
@@ -304,7 +304,6 @@ class AliyunDataTrace(BaseTraceInstance):
             logger.debug("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
             return None
 
-
     def build_workflow_task_span(
         self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
     ) -> SpanData:
@@ -514,4 +513,3 @@ class AliyunDataTrace(BaseTraceInstance):
             links=trace_metadata.links,
         )
         self.trace_client.add_span(suggested_question_span)
-

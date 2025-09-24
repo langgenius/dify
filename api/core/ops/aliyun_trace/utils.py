@@ -41,7 +41,6 @@ def create_status_from_error(error: str | None) -> Status:
 
 
 def get_workflow_node_status(node_execution: WorkflowNodeExecution) -> Status:
-    """Convert workflow node execution status to OpenTelemetry Status."""
     error_statuses = [WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION]
     error_message = str(node_execution.error) if node_execution.status in error_statuses else None
     return create_status_from_error(error_message)
