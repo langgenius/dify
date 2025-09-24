@@ -53,7 +53,7 @@ def clean_workflow_runlogs_precise():
 
             while True:
                 workflow_run_ids = session.scalars(
-                    select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE)
+                    select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).order_by(WorkflowRun.created_at, WorkflowRun.id).limit(BATCH_SIZE)
                 ).all()
 
                 if not workflow_run_ids:
