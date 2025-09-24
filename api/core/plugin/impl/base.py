@@ -2,7 +2,7 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import TypeVar
+from typing import Type, TypeVar
 
 import requests
 from pydantic import BaseModel
@@ -94,7 +94,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -104,13 +104,13 @@ class BasePluginClient:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            yield type(**json.loads(line))  # type: ignore
+            yield type_(**json.loads(line))  # type: ignore
 
     def _request_with_model(
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | None = None,
         params: dict | None = None,
@@ -120,13 +120,13 @@ class BasePluginClient:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type(**response.json())  # type: ignore
+        return type_(**response.json())  # type: ignore
 
     def _request_with_plugin_daemon_response(
         self,
         method: str,
         path: str,
-        type_: type[T],
+        type_: Type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -151,7 +151,7 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
@@ -177,7 +177,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -188,7 +188,7 @@ class BasePluginClient:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type].model_validate_json(line)  # type: ignore
+                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:
