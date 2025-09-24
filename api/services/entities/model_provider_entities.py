@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from configs import dify_config
 from core.entities.model_entities import (
@@ -81,10 +81,8 @@ class ProviderResponse(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
-
-    def __init__(self, **data):
-        super().model_validate(data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -97,6 +95,7 @@ class ProviderResponse(BaseModel):
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
+        return self
 
 
 class ProviderWithModelsResponse(BaseModel):
@@ -111,9 +110,8 @@ class ProviderWithModelsResponse(BaseModel):
     icon_large: I18nObject | None = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
-
-    def __init__(self, **data):
-        super().model_validate(data)
+    @model_validator(mode="after")
+    def _(self):
 
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
@@ -127,6 +125,7 @@ class ProviderWithModelsResponse(BaseModel):
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
+        return self
 
 
 class SimpleProviderEntityResponse(SimpleProviderEntity):
@@ -135,9 +134,8 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     """
 
     tenant_id: str
-
-    def __init__(self, **data):
-        super().model_validate(data)
+    @model_validator(mode="after")
+    def _(self):
 
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
@@ -151,6 +149,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
+        return self
 
 
 class DefaultModelResponse(BaseModel):

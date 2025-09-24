@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -72,9 +72,8 @@ class ProviderConfiguration(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
-
-    def __init__(self, **data):
-        super().model_validate(data)
+    @model_validator(mode="after")
+    def _(self):
 
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
@@ -90,6 +89,7 @@ class ProviderConfiguration(BaseModel):
                 and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
             ):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
+        return self
 
     def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
         """
