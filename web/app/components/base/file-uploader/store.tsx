@@ -68,7 +68,7 @@ export const FileContextProvider = ({
   // subscribe to store changes and call latest onChange
   useEffect(() => {
     const store = storeRef.current!
-    const unsubscribe = (store as any).subscribe((state: Shape) => {
+    const unsubscribe = store.subscribe((state: Shape) => {
       if (isSyncingRef.current) return
       onChangeRef.current?.(state.files)
     })
@@ -80,11 +80,8 @@ export const FileContextProvider = ({
     const store = storeRef.current!
     const nextFiles = value ? [...value] : []
     isSyncingRef.current = true
-    ;(store as any).setState({ files: nextFiles })
-    // release the syncing flag in next tick to avoid triggering onChange for external sync
-    setTimeout(() => {
-      isSyncingRef.current = false
-    }, 0)
+    store.setState({ files: nextFiles })
+    isSyncingRef.current = false
   }, [value])
 
   return (
