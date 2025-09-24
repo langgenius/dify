@@ -151,7 +151,7 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type_].model_validate(json_response) # type: ignore
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
