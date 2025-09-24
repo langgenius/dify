@@ -5,7 +5,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { textToEditorState } from '../utils'
 import { CustomTextNode } from './custom-text/node'
 import { CLEAR_HIDE_MENU_TIMEOUT } from './workflow-variable-block'
-import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from '../../../workflow/nodes/_base/components/prompt/add-memory-button'
+import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from '@/app/components/workflow/nodes/_base/components/prompt/type'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER = 'PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER'
