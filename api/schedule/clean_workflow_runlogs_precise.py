@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from collections.abc import Sequence
 
 import click
 from sqlalchemy import select
@@ -51,14 +52,13 @@ def clean_workflow_runlogs_precise():
             batch_count = 0
 
             while True:
-                workflow_runs = (
-                    session.scalars(select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE)).all()
-                )
+                workflow_run_ids = session.scalars(
+                    select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).limit(BATCH_SIZE)
+                ).all()
 
-                if not workflow_runs:
+                if not workflow_run_ids:
                     break
 
-                workflow_run_ids = [run for run in workflow_runs]
                 batch_count += 1
 
                 success = _delete_batch_with_retry(workflow_run_ids, failed_batches)
@@ -89,7 +89,7 @@ def clean_workflow_runlogs_precise():
     click.echo(click.style(f"Cleaned workflow run logs from db success latency: {execution_time:.2f}s", fg="green"))
 
 
-def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) -> bool:
+def _delete_batch_with_retry(workflow_run_ids: Sequence[str], attempt_count: int) -> bool:
     """Delete a single batch with a retry mechanism and complete cascading deletion"""
     try:
         with db.session.begin_nested():
