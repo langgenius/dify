@@ -26,13 +26,12 @@ from controllers.console.error import (
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
-from libs.passport import PassportService
 from libs.token import (
     clear_access_token_from_cookie,
     clear_refresh_token_from_cookie,
+    extract_access_token,
     set_access_token_to_cookie,
     set_refresh_token_to_cookie,
-    extract_access_token,
 )
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
