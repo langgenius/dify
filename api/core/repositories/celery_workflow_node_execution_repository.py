@@ -6,9 +6,9 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Union
+from typing import Any, Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -26,7 +26,7 @@ from tasks.workflow_node_execution_tasks import (
 )
 
 # Safe field getter mapping for WorkflowNodeExecution to avoid getattr reflection
-WORKFLOW_NODE_EXECUTION_FIELD_GETTERS = {
+WORKFLOW_NODE_EXECUTION_FIELD_GETTERS: dict[str, Callable[[WorkflowNodeExecution], Any]] = {
     "id": lambda x: x.id or "",
     "index": lambda x: x.index or 0,
     "created_at": lambda x: x.created_at or datetime.min,

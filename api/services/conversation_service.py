@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Union
 
-from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy import Column, asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -25,7 +25,7 @@ from services.errors.conversation import (
 )
 
 # Safe field mapping for Conversation model to avoid getattr reflection
-CONVERSATION_SORT_FIELDS = {
+CONVERSATION_SORT_FIELDS: dict[str, Column] = {
     "created_at": Conversation.created_at,
     "updated_at": Conversation.updated_at,
     "name": Conversation.name,
@@ -33,7 +33,7 @@ CONVERSATION_SORT_FIELDS = {
 }
 
 # Safe field getter mapping for Conversation instances to avoid getattr reflection
-CONVERSATION_FIELD_GETTERS = {
+CONVERSATION_FIELD_GETTERS: dict[str, Callable[[Conversation], Any]] = {
     "created_at": lambda x: x.created_at,
     "updated_at": lambda x: x.updated_at,
     "name": lambda x: x.name,
