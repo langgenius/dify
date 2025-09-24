@@ -3,8 +3,6 @@ import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
 import { API_PREFIX, APP_VERSION, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
-import { getInitialTokenV2, isTokenV1 } from '@/app/components/share/utils'
-import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 
 const TIME_OUT = 100000
 
@@ -67,43 +65,6 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
       Toast.notify({ type: 'error', message: error.message })
     return error
   }
-}
-
-export async function getAccessToken(isPublicAPI?: boolean) {
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const userId = (await getProcessedSystemVariablesFromUrlParams()).user_id
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ version: 2 })
-    let accessTokenJson: Record<string, any> = { version: 2 }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-      if (isTokenV1(accessTokenJson))
-        accessTokenJson = getInitialTokenV2()
-    }
-    catch {
-
-    }
-    return accessTokenJson[sharedToken]?.[userId || 'DEFAULT']
-  }
-  else {
-    // For console authentication, cookies will be sent automatically
-    // Return empty string to maintain backward compatibility
-    return ''
-  }
-}
-
-const beforeRequestPublicAuthorization: BeforeRequestHook = async (request) => {
-  const token = await getAccessToken(true)
-  if (token)
-    request.headers.set('Authorization', `Bearer ${token}`)
-}
-
-const beforeRequestAuthorization: BeforeRequestHook = async (request) => {
-  // For console requests, cookies will be sent automatically
-  // Only set Authorization header if we have a token (for backward compatibility)
-  const accessToken = await getAccessToken()
-  if (accessToken)
-    request.headers.set('Authorization', `Bearer ${accessToken}`)
 }
 
 const baseHooks: Hooks = {
@@ -171,8 +132,6 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
       ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
-        isPublicAPI && beforeRequestPublicAuthorization,
-        !isPublicAPI && !isMarketplaceAPI && beforeRequestAuthorization,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         ...baseHooks.afterResponse || [],

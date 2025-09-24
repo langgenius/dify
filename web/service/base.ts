@@ -23,7 +23,7 @@ import type {
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, getAccessToken, getBaseOptions } from './fetch'
+import { ContentType, base, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
 import type {
   DataSourceNodeCompletedResponse,
@@ -324,13 +324,10 @@ const baseFetch = base
 
 export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const token = await getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
-    headers: token ? {
-      Authorization: `Bearer ${token}`,
-    } : {},
+    headers: {},
     data: {},
   }
   options = {
@@ -421,11 +418,6 @@ export const ssePost = async (
   const { body } = options
   if (body)
     options.body = JSON.stringify(body)
-
-  const accessToken = await getAccessToken(isPublicAPI)
-  // Only set Authorization header for public API or if token exists
-  if (accessToken)
-    (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
