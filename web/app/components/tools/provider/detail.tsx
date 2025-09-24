@@ -244,9 +244,8 @@ const ProviderDetail = ({
               <div className="flex h-5 items-center">
                 <Title title={collection.label[language]} />
               </div>
-              <div className='mb-1 flex h-4 items-center justify-between'>
+              <div className='mb-1 mt-0.5 flex h-4 items-center justify-between'>
                 <OrgInfo
-                  className="mt-0.5"
                   packageNameClassName='w-auto'
                   orgName={collection.author}
                   packageName={collection.name}

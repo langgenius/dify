@@ -113,6 +113,21 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=10.0,
     )
 
+    CODE_EXECUTION_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the code execution HTTP client",
+        default=100,
+    )
+
+    CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the code execution HTTP client",
+        default=20,
+    )
+
+    CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle connections (set to None to disable)",
+        default=5.0,
+    )
+
     CODE_MAX_NUMBER: PositiveInt = Field(
         description="Maximum allowed numeric value in code execution",
         default=9223372036854775807,
@@ -151,6 +166,11 @@ class CodeExecutionSandboxConfig(BaseSettings):
     CODE_MAX_NUMBER_ARRAY_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for numeric arrays in code execution",
         default=1000,
+    )
+
+    CODE_EXECUTION_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for code execution requests",
+        default=True,
     )
 
 
@@ -402,6 +422,21 @@ class HttpConfig(BaseSettings):
     SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
         description="The default write timeout period used for network requests (SSRF)",
         default=5,
+    )
+
+    SSRF_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the SSRF HTTP client",
+        default=100,
+    )
+
+    SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the SSRF HTTP client",
+        default=20,
+    )
+
+    SSRF_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle SSRF connections (set to None to disable)",
+        default=5.0,
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
