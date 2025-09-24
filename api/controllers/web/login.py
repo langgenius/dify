@@ -67,7 +67,7 @@ class LogoutApi(Resource):
             200: "Logout successful",
         }
     )
-    def get(self):
+    def post(self):
         response = make_response({"result": "success"})
         clear_access_token_from_cookie(request, response)
         clear_webapp_token_from_cookie(request, response)

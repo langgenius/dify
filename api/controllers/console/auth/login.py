@@ -109,7 +109,7 @@ class LoginApi(Resource):
 
 class LogoutApi(Resource):
     @setup_required
-    def get(self):
+    def post(self):
         account = cast(Account, flask_login.current_user)
         if isinstance(account, flask_login.AnonymousUserMixin):
             response = make_response({"result": "success"})
