@@ -40,18 +40,19 @@ def clean_workflow_runlogs_precise():
     cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
 
     try:
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with sessionmaker(db.engine).begin() as session:
             total_workflow_runs = session.query(WorkflowRun).where(WorkflowRun.created_at < cutoff_date).count()
             if total_workflow_runs == 0:
                 logger.info("No expired workflow run logs found")
                 return
             logger.info("Found %s expired workflow run logs to clean", total_workflow_runs)
 
-            total_deleted = 0
-            failed_batches = 0
-            batch_count = 0
+        total_deleted = 0
+        failed_batches = 0
+        batch_count = 0
 
-            while True:
+        while True:
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 workflow_run_ids = session.scalars(
                     select(WorkflowRun.id).where(WorkflowRun.created_at < cutoff_date).order_by(WorkflowRun.created_at, WorkflowRun.id).limit(BATCH_SIZE)
                 ).all()
