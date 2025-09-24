@@ -26,11 +26,13 @@ from controllers.console.error import (
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
+from libs.passport import PassportService
 from libs.token import (
     clear_access_token_from_cookie,
     clear_refresh_token_from_cookie,
     set_access_token_to_cookie,
     set_refresh_token_to_cookie,
+    extract_access_token,
 )
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
@@ -269,7 +271,18 @@ class RefreshTokenApi(Resource):
             return {"result": "fail", "message": str(e)}, 401
 
 
+class LoginStatus(Resource):
+    def get(self):
+        token = extract_access_token(request)
+        if token:
+            # checking existance is sufficient for now.
+            return {"logged_in": True}
+        else:
+            return {"logged_in": False}
+
+
 api.add_resource(LoginApi, "/login")
+api.add_resource(LoginStatus, "/login/status")
 api.add_resource(LogoutApi, "/logout")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
