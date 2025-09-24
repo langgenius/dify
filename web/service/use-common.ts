@@ -106,3 +106,10 @@ export const useSchemaTypeDefinitions = () => {
     queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
   })
 }
+
+export const useIsLogin = () => {
+  return useQuery<SchemaTypeDefinition[]>({
+    queryKey: [NAME_SPACE, 'is-login'],
+    queryFn: () => get<SchemaTypeDefinition[]>('/login-check'), // wait for api
+  })
+}
