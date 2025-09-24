@@ -83,7 +83,7 @@ class ProviderResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
 
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
@@ -113,7 +113,7 @@ class ProviderWithModelsResponse(BaseModel):
     models: list[ProviderModelWithStatusEntity]
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
 
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
@@ -137,7 +137,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     tenant_id: str
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
 
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
@@ -176,4 +176,4 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
     def __init__(self, tenant_id: str, model: ModelWithProviderEntity):
         dump_model = model.model_dump()
         dump_model["provider"]["tenant_id"] = tenant_id
-        super().__init__(**dump_model)
+        super().model_validate(dump_model)

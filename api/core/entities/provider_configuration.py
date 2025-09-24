@@ -74,7 +74,7 @@ class ProviderConfiguration(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
 
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []

@@ -18,7 +18,7 @@ class NotionInfo(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
 
 
 class WebsiteInfo(BaseModel):
@@ -49,4 +49,4 @@ class ExtractSetting(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().__init__.model_validate(data)

@@ -132,7 +132,7 @@ class RetrievalService:
         if not dataset:
             return []
         metadata_condition = (
-            MetadataCondition(**metadata_filtering_conditions) if metadata_filtering_conditions else None
+            MetadataCondition.model_validate(metadata_filtering_conditions) if metadata_filtering_conditions else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
             dataset.tenant_id,

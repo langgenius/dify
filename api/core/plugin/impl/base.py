@@ -152,7 +152,7 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type](**json_response)  # type: ignore
+            rep = PluginDaemonBasicResponse[type].model_validate(json_response)
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
@@ -163,7 +163,7 @@ class BasePluginClient:
 
         if rep.code != 0:
             try:
-                error = PluginDaemonError(**json.loads(rep.message))
+                error = PluginDaemonError.model_validate(json.loads(rep.message))
             except Exception:
                 raise ValueError(f"{rep.message}, code: {rep.code}")
 
@@ -204,7 +204,7 @@ class BasePluginClient:
             if rep.code != 0:
                 if rep.code == -500:
                     try:
-                        error = PluginDaemonError(**json.loads(rep.message))
+                        error = PluginDaemonError.model_validate(json.loads(rep.message))
                     except Exception:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
 

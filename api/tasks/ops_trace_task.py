@@ -36,14 +36,14 @@ def process_trace_tasks(file_info):
     if trace_info.get("workflow_data"):
         trace_info["workflow_data"] = WorkflowRun.from_dict(data=trace_info["workflow_data"])
     if trace_info.get("documents"):
-        trace_info["documents"] = [Document(**doc) for doc in trace_info["documents"]]
+        trace_info["documents"] = [Document.model_validate(doc) for doc in trace_info["documents"]]
 
     try:
         if trace_instance:
             with current_app.app_context():
                 trace_type = trace_info_info_map.get(trace_info_type)
                 if trace_type:
-                    trace_info = trace_type(**trace_info)
+                    trace_info = trace_type.model_validate(trace_info)
                 trace_instance.trace(trace_info)
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except Exception as e:

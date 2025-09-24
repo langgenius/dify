@@ -12,7 +12,7 @@ class I18nObject(BaseModel):
     ja_JP: str | None = Field(default=None)
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
         self.zh_Hans = self.zh_Hans or self.en_US
         self.pt_BR = self.pt_BR or self.en_US
         self.ja_JP = self.ja_JP or self.en_US

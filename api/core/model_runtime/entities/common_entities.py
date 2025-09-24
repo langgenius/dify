@@ -10,6 +10,6 @@ class I18nObject(BaseModel):
     en_US: str
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
         if not self.zh_Hans:
             self.zh_Hans = self.en_US

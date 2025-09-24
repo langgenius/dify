@@ -47,7 +47,7 @@ class FormOption(BaseModel):
     show_on: list[FormShowOnObject] = []
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().model_validate(data)
         if not self.label:
             self.label = I18nObject(en_US=self.value)
 

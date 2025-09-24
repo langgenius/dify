@@ -47,7 +47,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError("No process rule found.")
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
-        rules = Rule(**process_rule.get("rules"))
+        rules = Rule.model_validate(process_rule.get("rules"))
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
             max_tokens=rules.segmentation.max_tokens if rules.segmentation else 0,
@@ -168,7 +168,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         return docs
 
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
-        qa_chunks = QAStructureChunk(**chunks)
+        qa_chunks = QAStructureChunk.model_validate(chunks)
         documents = []
         for qa_chunk in qa_chunks.qa_chunks:
             metadata = {
@@ -191,7 +191,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 raise ValueError("Indexing technique must be high quality.")
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
-        qa_chunks = QAStructureChunk(**chunks)
+        qa_chunks = QAStructureChunk.model_validate(chunks)
         preview = []
         for qa_chunk in qa_chunks.qa_chunks:
             preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
