@@ -25,7 +25,6 @@ import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Avatar from '@/app/components/base/avatar'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -33,6 +32,7 @@ import { IS_CLOUD_EDITION } from '@/config'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
+import { useLogout } from '@/service/use-common'
 
 export default function AppSelector() {
   const itemClassName = `
@@ -49,11 +49,9 @@ export default function AppSelector() {
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
+  const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
+    await logout()
 
     localStorage.removeItem('setup_status')
     // Tokens are now stored in cookies and cleared by backend
