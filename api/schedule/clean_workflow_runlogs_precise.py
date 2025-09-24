@@ -50,9 +50,9 @@ def clean_workflow_runlogs_precise():
         total_deleted = 0
         failed_batches = 0
         batch_count = 0
-
+        S = sessionmaker(db.engine, expire_on_commit=False)
         while True:
-            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            with S.begin() as session:
                 workflow_run_ids = session.scalars(
                     select(WorkflowRun.id)
                     .where(WorkflowRun.created_at < cutoff_date)
@@ -82,7 +82,7 @@ def clean_workflow_runlogs_precise():
                         time.sleep(retry_delay_minutes * 60)
                         continue
 
-            logger.info("Cleanup completed: %s expired workflow run logs deleted", total_deleted)
+        logger.info("Cleanup completed: %s expired workflow run logs deleted", total_deleted)
 
     except Exception:
         logger.exception("Unexpected error in workflow log cleanup")
