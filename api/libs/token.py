@@ -86,7 +86,7 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
     )
 
 
-def set_webapp_token_to_cookie(request: Request, response: Response, token: str):
+def set_passport_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
         COOKIE_NAME_PASSPORT,
         value=token,

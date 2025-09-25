@@ -11,7 +11,7 @@ from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from libs.token import extract_access_token, set_webapp_token_to_cookie
+from libs.token import extract_access_token, set_passport_to_cookie
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -105,7 +105,7 @@ class PassportResource(Resource):
                 "access_token": tk,
             }
         )
-        set_webapp_token_to_cookie(request, response, tk)
+        set_passport_to_cookie(request, response, tk)
         return response
 
 
@@ -189,9 +189,11 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         "exp": exp,
     }
     token: str = PassportService().issue(payload)
-    return {
+    resp = make_response({
         "access_token": token,
-    }
+    })
+    set_passport_to_cookie(request, resp, token)
+    return resp
 
 
 def _exchange_for_public_app_token(app_model, site, token_decoded):
