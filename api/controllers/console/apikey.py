@@ -1,14 +1,16 @@
 import flask_restx
-from flask_login import current_user
+from libs.login import current_user
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+import sqlalchemy as sa
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
+from models import Account
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
@@ -57,6 +59,7 @@ class BaseApiKeyListResource(Resource):
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
+        assert isinstance(current_user, Account)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         keys = db.session.scalars(
             select(ApiToken).where(
@@ -69,32 +72,32 @@ class BaseApiKeyListResource(Resource):
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
+        assert isinstance(current_user, Account)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
-
-        current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .count()
-        )
-
-        if current_key_count >= self.max_keys:
-            flask_restx.abort(
-                HTTPStatus.BAD_REQUEST,
-                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                custom="max_keys_exceeded",
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            current_key_count = (
+                session.query(ApiToken)
+                .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
+                .count()
             )
 
-        key = ApiToken.generate_api_key(self.token_prefix or "", 24)
-        api_token = ApiToken()
-        setattr(api_token, self.resource_id_field, resource_id)
-        api_token.tenant_id = current_user.current_tenant_id
-        api_token.token = key
-        api_token.type = self.resource_type
-        db.session.add(api_token)
-        db.session.commit()
-        return api_token, 201
+            if current_key_count >= self.max_keys:
+                flask_restx.abort(
+                    HTTPStatus.BAD_REQUEST,
+                    message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
+                    custom="max_keys_exceeded",
+                )
+
+            key = ApiToken.generate_api_key(self.token_prefix or "", 24)
+            api_token = ApiToken()
+            setattr(api_token, self.resource_id_field, resource_id)
+            api_token.tenant_id = current_user.current_tenant_id
+            api_token.token = key
+            api_token.type = self.resource_type
+            session.add(api_token)
+            return api_token, 201
 
 
 class BaseApiKeyResource(Resource):
@@ -108,29 +111,29 @@ class BaseApiKeyResource(Resource):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
+        assert isinstance(current_user, Account)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
-        key = (
-            db.session.query(ApiToken)
-            .where(
-                getattr(ApiToken, self.resource_id_field) == resource_id,
-                ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id,
+        with sessionmaker(db.engine,expire_on_commit=False).begin() as session:
+            key = (
+                session.scalars(select(ApiToken)
+                .where(
+                    getattr(ApiToken, self.resource_id_field) == resource_id,
+                    ApiToken.type == self.resource_type,
+                    ApiToken.id == api_key_id,
+                ))
+                .first()
             )
-            .first()
-        )
 
-        if key is None:
-            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+            if key is None:
+                flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
-        db.session.commit()
+            session.execute(sa.delete(ApiToken).where(ApiToken.id == api_key_id))
 
-        return {"result": "success"}, 204
+            return {"result": "success"}, 204
 
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")
