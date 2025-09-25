@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any, Union, cast
 from uuid import uuid4
 
+import yaml
 from flask_login import current_user
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -60,6 +61,7 @@ from models.dataset import (  # type: ignore
     Document,
     DocumentPipelineExecutionLog,
     Pipeline,
+    PipelineBuiltInTemplate,
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
@@ -76,6 +78,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
+    PipelineBuiltInTemplateEntity,
     PipelineTemplateInfoEntity,
 )
 from services.errors.app import WorkflowHashNotEqualError
@@ -1454,3 +1457,140 @@ class RagPipelineService:
         if not pipeline:
             raise ValueError("Pipeline not found")
         return pipeline
+
+    def install_built_in_pipeline_template(
+        self, args: PipelineBuiltInTemplateEntity, file_content: str, auth_token: str
+    ) -> None:
+        """
+        Install built-in pipeline template
+        
+        Args:
+            args: Pipeline built-in template entity with template metadata
+            file_content: YAML content of the pipeline template
+            auth_token: Authentication token for authorization
+            
+        Raises:
+            ValueError: If validation fails or template processing errors occur
+        """
+        # Validate authentication
+        self._validate_auth_token(auth_token)
+        
+        # Parse and validate template content
+        pipeline_template_dsl = self._parse_template_content(file_content)
+        
+        # Extract template metadata
+        icon = self._extract_icon_metadata(pipeline_template_dsl)
+        chunk_structure = self._extract_chunk_structure(pipeline_template_dsl)
+        
+        # Prepare template data
+        template_data = {
+            "name": args.name,
+            "description": args.description,
+            "chunk_structure": chunk_structure,
+            "icon": icon,
+            "language": args.language,
+            "yaml_content": file_content,
+        }
+        
+        # Use transaction for database operations
+        try:
+            if args.template_id:
+                self._update_existing_template(args.template_id, template_data)
+            else:
+                self._create_new_template(template_data)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            raise ValueError(f"Failed to install pipeline template: {str(e)}")
+    
+    def _validate_auth_token(self, auth_token: str) -> None:
+        """Validate the authentication token"""
+        config_auth_token = dify_config.UPLOAD_KNOWLEDGE_PIPELINE_TEMPLATE_TOKEN
+        if not config_auth_token:
+            raise ValueError("Auth token configuration is required")
+        if config_auth_token != auth_token:
+            raise ValueError("Auth token is incorrect")
+    
+    def _parse_template_content(self, file_content: str) -> dict:
+        """Parse and validate YAML template content"""
+        try:
+            pipeline_template_dsl = yaml.safe_load(file_content)
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML content: {str(e)}")
+        
+        if not pipeline_template_dsl:
+            raise ValueError("Pipeline template DSL is required")
+        
+        return pipeline_template_dsl
+    
+    def _extract_icon_metadata(self, pipeline_template_dsl: dict) -> dict:
+        """Extract icon metadata from template DSL"""
+        rag_pipeline_info = pipeline_template_dsl.get("rag_pipeline", {})
+        
+        return {
+            "icon": rag_pipeline_info.get("icon", "📙"),
+            "icon_type": rag_pipeline_info.get("icon_type", "emoji"),
+            "icon_background": rag_pipeline_info.get("icon_background", "#FFEAD5"),
+            "icon_url": rag_pipeline_info.get("icon_url"),
+        }
+    
+    def _extract_chunk_structure(self, pipeline_template_dsl: dict) -> str:
+        """Extract chunk structure from template DSL"""
+        nodes = pipeline_template_dsl.get("workflow", {}).get("graph", {}).get("nodes", [])
+        
+        # Use generator expression for efficiency
+        chunk_structure = next(
+            (
+                node.get("data", {}).get("chunk_structure")
+                for node in nodes
+                if node.get("data", {}).get("type") == NodeType.KNOWLEDGE_INDEX.value
+            ),
+            None
+        )
+        
+        if not chunk_structure:
+            raise ValueError("Chunk structure is required in template")
+        
+        return chunk_structure
+    
+    def _update_existing_template(self, template_id: str, template_data: dict) -> None:
+        """Update an existing pipeline template"""
+        pipeline_built_in_template = (
+            db.session.query(PipelineBuiltInTemplate)
+            .filter(PipelineBuiltInTemplate.id == template_id)
+            .first()
+        )
+        
+        if not pipeline_built_in_template:
+            raise ValueError(f"Pipeline built-in template not found: {template_id}")
+        
+        # Update template fields
+        for key, value in template_data.items():
+            setattr(pipeline_built_in_template, key, value)
+        
+        db.session.add(pipeline_built_in_template)
+    
+    def _create_new_template(self, template_data: dict) -> None:
+        """Create a new pipeline template"""
+        # Get the next available position
+        position = self._get_next_position(template_data["language"])
+        
+        # Add additional fields for new template
+        template_data.update({
+            "position": position,
+            "install_count": 0,
+            "copyright": dify_config.KNOWLEDGE_PIPELINE_TEMPLATE_COPYRIGHT,
+            "privacy_policy": dify_config.KNOWLEDGE_PIPELINE_TEMPLATE_PRIVACY_POLICY,
+        })
+        
+        new_template = PipelineBuiltInTemplate(**template_data)
+        db.session.add(new_template)
+    
+    def _get_next_position(self, language: str) -> int:
+        """Get the next available position for a template in the specified language"""
+        max_position = (
+            db.session.query(func.max(PipelineBuiltInTemplate.position))
+            .filter(PipelineBuiltInTemplate.language == language)
+            .scalar()
+        )
+        return (max_position or 0) + 1

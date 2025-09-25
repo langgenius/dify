@@ -1239,15 +1239,6 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     language = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    created_by = db.Column(StringUUID, nullable=False)
-    updated_by = db.Column(StringUUID, nullable=True)
-
-    @property
-    def created_user_name(self):
-        account = db.session.query(Account).where(Account.id == self.created_by).first()
-        if account:
-            return account.name
-        return ""
 
 
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
