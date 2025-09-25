@@ -10,7 +10,8 @@ function getNamespacesFromConfig() {
   const configContent = fs.readFileSync(configPath, 'utf8')
   
   // Extract NAMESPACES array using regex
-  const namespacesMatch = configContent.match(/const NAMESPACES = \[([\s\S]*?)\]/)
+  const namespacesRegex = /const NAMESPACES = \[([\s\S]*?)\]/
+  const namespacesMatch = namespacesRegex.exec(configContent)
   if (!namespacesMatch) {
     throw new Error('Could not find NAMESPACES array in i18next-config.ts')
   }
@@ -36,7 +37,8 @@ function getNamespacesFromTypes() {
   const typesContent = fs.readFileSync(typesPath, 'utf8')
   
   // Extract namespaces from Messages type
-  const messagesMatch = typesContent.match(/export type Messages = \{([\s\S]*?)\}/)
+  const messagesRegex = /export type Messages = \{([\s\S]*?)\}/
+  const messagesMatch = messagesRegex.exec(typesContent)
   if (!messagesMatch) {
     return null
   }
