@@ -36,6 +36,9 @@ from .dataset import (
 )
 from .workspace import models
 
+# Register MethodView classes with the blueprint
+bp.add_url_rule("/", view_func=index.IndexApi.as_view("index_api"), methods=["GET"])
+
 __all__ = [
     "annotation",
     "app",
@@ -56,4 +59,5 @@ __all__ = [
     "workflow",
 ]
 
-api.add_namespace(service_api_ns)
+# Temporarily disable namespace registration to test MethodView
+# api.add_namespace(service_api_ns)
