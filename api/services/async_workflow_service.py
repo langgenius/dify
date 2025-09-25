@@ -131,7 +131,7 @@ class AsyncWorkflowService:
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            tenant_owner_tz = rate_limiter._get_tenant_owner_timezone(trigger_data.tenant_id)
+            tenant_owner_tz = rate_limiter.get_tenant_owner_timezone(trigger_data.tenant_id)
 
             remaining = rate_limiter.get_remaining_quota(trigger_data.tenant_id, dispatcher.get_daily_limit())
 

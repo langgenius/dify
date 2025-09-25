@@ -3,7 +3,7 @@ SQLAlchemy implementation of WorkflowTriggerLogRepository.
 """
 
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, delete, func, select, update
@@ -98,7 +98,7 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         self, tenant_id: str, app_id: str, hours: int = 24, limit: int = 100, offset: int = 0
     ) -> Sequence[WorkflowTriggerLog]:
         """Get recent trigger logs within specified hours."""
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
 
         query = (
             select(WorkflowTriggerLog)
@@ -189,7 +189,7 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
             update_data["error"] = error_message
 
         if new_status in [WorkflowTriggerStatus.SUCCEEDED, WorkflowTriggerStatus.FAILED]:
-            update_data["finished_at"] = datetime.utcnow()
+            update_data["finished_at"] = datetime.now(UTC)
 
         result = self.session.execute(
             update(WorkflowTriggerLog).where(WorkflowTriggerLog.id.in_(trigger_log_ids)).values(**update_data)

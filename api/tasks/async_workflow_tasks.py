@@ -7,6 +7,7 @@ with appropriate retry policies and error handling.
 
 import json
 from datetime import UTC, datetime
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -27,14 +28,19 @@ from services.workflow.entities import AsyncTriggerExecutionResult, AsyncTrigger
 # Determine queue names based on edition
 if dify_config.EDITION == "CLOUD":
     # Cloud edition: separate queues for different tiers
-    PROFESSIONAL_QUEUE = "workflow_professional"
-    TEAM_QUEUE = "workflow_team"
-    SANDBOX_QUEUE = "workflow_sandbox"
+    _professional_queue = "workflow_professional"
+    _team_queue = "workflow_team"
+    _sandbox_queue = "workflow_sandbox"
 else:
     # Community edition: single workflow queue (not dataset)
-    PROFESSIONAL_QUEUE = "workflow"
-    TEAM_QUEUE = "workflow"
-    SANDBOX_QUEUE = "workflow"
+    _professional_queue = "workflow"
+    _team_queue = "workflow"
+    _sandbox_queue = "workflow"
+
+# Define constants
+PROFESSIONAL_QUEUE = _professional_queue
+TEAM_QUEUE = _team_queue
+SANDBOX_QUEUE = _sandbox_queue
 
 
 @shared_task(queue=PROFESSIONAL_QUEUE)
@@ -112,11 +118,11 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
             generator = WorkflowAppGenerator()
 
             # Prepare args matching AppGenerateService.generate format
-            args = {"inputs": dict(trigger_data.inputs), "files": list(trigger_data.files)}
+            args: dict[str, Any] = {"inputs": dict(trigger_data.inputs), "files": list(trigger_data.files)}
 
             # If workflow_id was specified, add it to args
             if trigger_data.workflow_id:
-                args["workflow_id"] = trigger_data.workflow_id
+                args["workflow_id"] = str(trigger_data.workflow_id)
 
             # Execute the workflow with the trigger type
             result = generator.generate(
@@ -127,7 +133,6 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
                 call_depth=0,
-                workflow_thread_pool_id=None,
                 triggered_from=trigger_data.trigger_type,
                 root_node_id=trigger_data.root_node_id,
             )

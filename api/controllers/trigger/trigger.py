@@ -26,6 +26,7 @@ def trigger_endpoint(endpoint_id: str):
         TriggerService.process_endpoint,
         TriggerSubscriptionBuilderService.process_builder_validation_endpoint,
     ]
+    response = None
     try:
         for handler in handling_chain:
             response = handler(endpoint_id, request)

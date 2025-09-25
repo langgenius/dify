@@ -85,15 +85,14 @@ class PluginParameterService:
                     credential_type = db_record.credential_type
             case "trigger":
                 provider_controller = TriggerManager.get_trigger_provider(tenant_id, TriggerProviderID(provider))
+                subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
-                    subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None = (
+                    subscription = (
                         TriggerSubscriptionBuilderService.get_subscription_builder(credential_id)
                         or TriggerProviderService.get_subscription_by_id(tenant_id, credential_id)
                     )
                 else:
-                    subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None = (
-                        TriggerProviderService.get_subscription_by_id(tenant_id)
-                    )
+                    subscription = TriggerProviderService.get_subscription_by_id(tenant_id)
 
                 if subscription is None:
                     raise ValueError(f"Subscription {credential_id} not found")

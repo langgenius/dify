@@ -30,7 +30,7 @@ class TenantDailyRateLimiter:
     def __init__(self, redis_client: Union[Redis, RedisClientWrapper]):
         self.redis = redis_client
 
-    def _get_tenant_owner_timezone(self, tenant_id: str) -> str:
+    def get_tenant_owner_timezone(self, tenant_id: str) -> str:
         """
         Get timezone of tenant owner
 
@@ -62,7 +62,7 @@ class TenantDailyRateLimiter:
         Returns:
             Redis key for the current UTC day
         """
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now(UTC)
         date_str = utc_now.strftime("%Y-%m-%d")
         return f"workflow:daily_limit:{tenant_id}:{date_str}"
 
@@ -73,7 +73,7 @@ class TenantDailyRateLimiter:
         Returns:
             Number of seconds until UTC midnight
         """
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now(UTC)
 
         # Get next midnight in UTC
         next_midnight = datetime.combine(utc_now.date() + timedelta(days=1), time.min)

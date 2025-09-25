@@ -86,10 +86,14 @@ def deserialize_request(raw_data: bytes) -> Request:
     }
 
     if "Content-Type" in headers:
-        environ["CONTENT_TYPE"] = headers.get("Content-Type")
+        content_type = headers.get("Content-Type")
+        if content_type is not None:
+            environ["CONTENT_TYPE"] = content_type
 
     if "Content-Length" in headers:
-        environ["CONTENT_LENGTH"] = headers.get("Content-Length")
+        content_length = headers.get("Content-Length")
+        if content_length is not None:
+            environ["CONTENT_LENGTH"] = content_length
     elif body:
         environ["CONTENT_LENGTH"] = str(len(body))
 
