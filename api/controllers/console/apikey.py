@@ -1,15 +1,14 @@
 import flask_restx
-from libs.login import current_user
+import sqlalchemy as sa
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
-import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Dataset
 from models.model import ApiToken, App
@@ -117,16 +116,14 @@ class BaseApiKeyResource(Resource):
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        with sessionmaker(db.engine,expire_on_commit=False).begin() as session:
-            key = (
-                session.scalars(select(ApiToken)
-                .where(
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            key = session.scalars(
+                select(ApiToken).where(
                     getattr(ApiToken, self.resource_id_field) == resource_id,
                     ApiToken.type == self.resource_type,
                     ApiToken.id == api_key_id,
-                ))
-                .first()
-            )
+                )
+            ).first()
 
             if key is None:
                 flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
