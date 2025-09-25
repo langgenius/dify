@@ -123,7 +123,7 @@ class BaseApiKeyResource(Resource):
                     ApiToken.type == self.resource_type,
                     ApiToken.id == api_key_id,
                 )
-            ).first()
+            ).one_or_none()
 
             if key is None:
                 flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
