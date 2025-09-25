@@ -145,6 +145,5 @@ class AppTriggerEnableApi(Resource):
 
 
 api.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
-api.add_resource(PluginTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/plugin")
 api.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
 api.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")
