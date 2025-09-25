@@ -110,6 +110,7 @@ export const useSchemaTypeDefinitions = () => {
 type isLogin = {
   logged_in: boolean
 }
+
 export const useIsLogin = () => {
   return useQuery<isLogin>({
     queryKey: [NAME_SPACE, 'is-login'],
@@ -126,13 +127,16 @@ export const useLogout = () => {
   })
 }
 
-export const useIsWebAppLogin = (enabled: boolean) => {
-  return useQuery<isLogin>({
+type isWebAppLogin = {
+  app_logged_in: boolean
+}
+export const useIsWebAppLogin = (enabled: boolean, appId: string) => {
+  return useQuery<isWebAppLogin>({
     queryKey: [NAME_SPACE, 'is-webapp-login'],
     enabled,
     staleTime: 0,
     gcTime: 0,
-    queryFn: () => getPublic<isLogin>('/login/status'),
+    queryFn: () => getPublic<isWebAppLogin>(`/login/status?app_id=${appId}`),
   })
 }
 

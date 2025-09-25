@@ -13,6 +13,7 @@ import { fetchAccessToken } from '@/service/share'
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   const shareCode = useWebAppStore(s => s.shareCode)
+  const appId = shareCode || ''
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -34,8 +35,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   }, [getSigninUrl, router, webAppLogout])
 
   const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
-  const { data: isWebAppLoginData, isLoading: isWebAppLoginLoading } = useIsWebAppLogin(needCheckIsLogin)
-  const isLoggedIn = isWebAppLoginData?.logged_in
+  const { data: isWebAppLoginData, isLoading: isWebAppLoginLoading } = useIsWebAppLogin(needCheckIsLogin, appId)
+  const isLoggedIn = isWebAppLoginData?.app_logged_in
   useEffect(() => {
     if(needCheckIsLogin && isWebAppLoginLoading)
       return
