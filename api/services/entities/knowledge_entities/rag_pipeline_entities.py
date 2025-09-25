@@ -83,7 +83,7 @@ class RetrievalSetting(BaseModel):
     Retrieval Setting.
     """
 
-    search_method: Literal["semantic_search", "fulltext_search", "keyword_search", "hybrid_search"]
+    search_method: Literal["semantic_search", "full_text_search", "keyword_search", "hybrid_search"]
     top_k: int
     score_threshold: float | None = 0.5
     score_threshold_enabled: bool = False
