@@ -138,8 +138,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
-  const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null)
-  const [pendingDeleteReply, setPendingDeleteReply] = useState<{ commentId: string; replyId: string } | null>(null)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -242,6 +240,33 @@ export const Workflow: FC<WorkflowProps> = memo(({
     else if (document.visibilityState === 'visible')
       setTimeout(() => handleRefreshWorkflowDraft(), 500)
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
+
+  // Optimized comment deletion using showConfirm
+  const handleCommentDeleteClick = useCallback((commentId: string) => {
+    if (!showConfirm) {
+      setShowConfirm({
+        title: 'Delete this thread?',
+        desc: 'This action will permanently delete the thread and all its replies. This cannot be undone.',
+        onConfirm: async () => {
+          await handleCommentDelete(commentId)
+          setShowConfirm(undefined)
+        },
+      })
+    }
+  }, [showConfirm, setShowConfirm, handleCommentDelete])
+
+  const handleCommentReplyDeleteClick = useCallback((commentId: string, replyId: string) => {
+    if (!showConfirm) {
+      setShowConfirm({
+        title: 'Delete this reply?',
+        desc: 'This reply will be removed permanently.',
+        onConfirm: async () => {
+          await handleCommentReplyDelete(commentId, replyId)
+          setShowConfirm(undefined)
+        },
+      })
+    }
+  }, [showConfirm, setShowConfirm, handleCommentReplyDelete])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
@@ -412,30 +437,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
           content={showConfirm.desc}
         />
       )}
-      {pendingDeleteCommentId && (
-        <Confirm
-          isShow
-          title='Delete this thread?'
-          content='This action will permanently delete the thread and all its replies. This cannot be undone.'
-          onCancel={() => setPendingDeleteCommentId(null)}
-          onConfirm={async () => {
-            await handleCommentDelete(pendingDeleteCommentId)
-            setPendingDeleteCommentId(null)
-          }}
-        />
-      )}
-      {pendingDeleteReply && (
-        <Confirm
-          isShow
-          title='Delete this reply?'
-          content='This reply will be removed permanently.'
-          onCancel={() => setPendingDeleteReply(null)}
-          onConfirm={async () => {
-            await handleCommentReplyDelete(pendingDeleteReply.commentId, pendingDeleteReply.replyId)
-            setPendingDeleteReply(null)
-          }}
-        />
-      )}
       <LimitTips />
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
         <CommentCursor mousePosition={mousePosition} />
@@ -467,12 +468,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 loading={activeCommentLoading}
                 onClose={handleActiveCommentClose}
                 onResolve={() => handleCommentResolve(comment.id)}
-                onDelete={() => setPendingDeleteCommentId(comment.id)}
+                onDelete={() => handleCommentDeleteClick(comment.id)}
                 onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
                 onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
                 onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
                 onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
-                onReplyDelete={replyId => setPendingDeleteReply({ commentId: comment.id, replyId })}
+                onReplyDelete={replyId => handleCommentReplyDeleteClick(comment.id, replyId)}
                 canGoPrev={canGoPrev}
                 canGoNext={canGoNext}
               />
