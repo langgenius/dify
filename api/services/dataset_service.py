@@ -90,6 +90,7 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 logger = logging.getLogger(__name__)
 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
+
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
@@ -3237,7 +3238,6 @@ class SegmentService:
     ):
         assert isinstance(current_user, Account)
         with session_factory.begin() as session:
-
             query = (
                 select(ChildChunk)
                 .filter_by(
@@ -3338,7 +3338,8 @@ class DatasetCollectionBindingService:
             dataset_collection_binding = (
                 session.query(DatasetCollectionBinding)
                 .where(
-                    DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
+                    DatasetCollectionBinding.id == collection_binding_id,
+                    DatasetCollectionBinding.type == collection_type,
                 )
                 .order_by(DatasetCollectionBinding.created_at)
                 .first()
@@ -3375,7 +3376,7 @@ class DatasetPermissionService:
                 permissions.append(permission)
 
             session.add_all(permissions)
-   
+
     @classmethod
     def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
