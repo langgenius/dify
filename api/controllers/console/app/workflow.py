@@ -1041,7 +1041,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         """
         Poll for trigger events and execute single node when event arrives
         """
-        if not isinstance(current_user, Account) or not current_user.is_editor:
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -1119,7 +1119,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
-        if not isinstance(current_user, Account) or not current_user.is_editor:
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()

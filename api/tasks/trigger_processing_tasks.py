@@ -112,6 +112,7 @@ def dispatch_triggered_workflows_async(
                     continue
 
             # Dispatch to debug sessions after processing all triggers
+            debug_dispatched = 0
             try:
                 debug_dispatched = TriggerDebugService.dispatch_debug_event(
                     tenant_id=subscription.tenant_id,

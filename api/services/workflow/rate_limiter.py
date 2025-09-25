@@ -4,7 +4,7 @@ Day-based rate limiter for workflow executions.
 Implements UTC-based daily quotas that reset at midnight UTC for consistent rate limiting.
 """
 
-from datetime import datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Union
 
 import pytz
@@ -173,7 +173,7 @@ class TenantDailyRateLimiter:
             Datetime when quota resets (next UTC midnight in tenant's timezone)
         """
         tz = pytz.timezone(timezone_str)
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now(UTC)
 
         # Get next midnight in UTC, then convert to tenant's timezone
         next_utc_midnight = datetime.combine(utc_now.date() + timedelta(days=1), time.min)

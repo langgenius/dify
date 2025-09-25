@@ -110,7 +110,7 @@ class AppTriggerEnableApi(Resource):
 
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         trigger_id = args["trigger_id"]
