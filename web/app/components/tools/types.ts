@@ -160,6 +160,7 @@ export type WorkflowToolProviderOutputParameter = {
   name: string
   description: string
   type?: VarType
+  reserved?: boolean
 }
 
 export type WorkflowToolProviderOutputSchema = {

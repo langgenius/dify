@@ -120,6 +120,8 @@ const translation = {
     toolOutput: {
       title: 'Tool Output',
       name: 'Name',
+      reserved: 'Reserved',
+      reservedParameterDuplicateTip: 'Custom output variables name cannot be the same as reserved parameters',
       description: 'Description',
       descriptionPlaceholder: 'Description of the parameter\'s meaning',
     },

@@ -48,6 +48,26 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
   const [outputParameters, setOutputParameters] = useState<WorkflowToolProviderOutputParameter[]>(payload.outputParameters)
 
+  const reservedOutputParameters: WorkflowToolProviderOutputParameter[] = [
+    {
+      name: 'text',
+      description: t('workflow.nodes.tool.outputVars.text'),
+      type: VarType.string,
+      reserved: true,
+    },
+    {
+      name: 'files',
+      description: t('workflow.nodes.tool.outputVars.files.title'),
+      type: VarType.arrayFile,
+      reserved: true,
+    },
+    {
+      name: 'json',
+      description: t('workflow.nodes.tool.outputVars.json'),
+      type: VarType.arrayObject,
+      reserved: true,
+    },
+  ]
   const handleInputParameterChange = <K extends keyof WorkflowToolProviderParameter>(
     key: K,
     value: WorkflowToolProviderParameter[K],
@@ -96,6 +116,10 @@ const WorkflowToolAsModal: FC<Props> = ({
     return /^\w+$/.test(name)
   }
 
+  const isOutputParameterReserved = (name: string) => {
+    return ['text', 'files', 'json'].includes(name)
+  }
+
   const onConfirm = () => {
     let errorMessage = ''
     if (!label)
@@ -106,6 +130,9 @@ const WorkflowToolAsModal: FC<Props> = ({
 
     if (!isNameValid(name))
       errorMessage = t('tools.createTool.nameForToolCall') + t('tools.createTool.nameForToolCallTip')
+
+    if (outputParameters.some(item => isOutputParameterReserved(item.name)))
+      errorMessage = t('tools.createTool.toolOutput.reservedParameterDuplicateTip')
 
     if (errorMessage) {
       Toast.notify({
@@ -151,8 +178,8 @@ const WorkflowToolAsModal: FC<Props> = ({
               acc[item.name].type = 'object'
               break
             case VarType.file:
-              // TODO unknown
-              // acc[item.name].type = 'object'
+              // `file` is not standard json schema type, but here use to display
+              acc[item.name].type = 'file'
               break
             case VarType.array:
             case VarType.arrayString:
@@ -181,10 +208,10 @@ const WorkflowToolAsModal: FC<Props> = ({
               break
             case VarType.arrayFile:
               acc[item.name].type = 'array'
-              // TODO unknown
-              // acc[item.name].items = {
-              //   type: 'file',
-              // }
+              // `file` is not standard json schema type, but here use to display
+              acc[item.name].items = {
+                type: 'file',
+              }
               break
             case VarType.any:
               acc[item.name].type = 'string'
@@ -335,23 +362,28 @@ const WorkflowToolAsModal: FC<Props> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {outputParameters?.map((item, index) => (
+                      {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
                         <tr key={index} className='border-b border-divider-regular last:border-0'>
                           <td className="max-w-[156px] p-2 pl-3">
                             <div className='text-[13px] leading-[18px]'>
                               <div title={item.name} className='flex'>
                                 <span className='truncate font-medium text-text-primary'>{item.name}</span>
+                                <span className='shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]'>{item.reserved ? t('tools.createTool.toolOutput.reserved') : ''}</span>
                               </div>
                               <div className='text-text-tertiary'>{item.type}</div>
                             </div>
                           </td>
                           <td className="w-[236px] p-2 pl-3 text-text-tertiary">
                             <input
+                              disabled={item.reserved}
                               type='text'
                               className='w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary'
                               placeholder={t('tools.createTool.toolOutput.descriptionPlaceholder')!}
                               value={item.description}
-                              onChange={e => handleParameterChange('output', 'description', e.target.value, index)}
+                              onChange={item.reserved
+                                ? undefined
+                                : e => handleParameterChange('output', 'description', e.target.value, index - reservedOutputParameters.length)
+                              }
                             />
                           </td>
                         </tr>

@@ -120,6 +120,8 @@ const translation = {
     toolOutput: {
       title: '工具出参',
       name: '名称',
+      reserved: '预留',
+      reservedParameterDuplicateTip: '自定义输出变量不能与预留属性重名',
       description: '描述',
       descriptionPlaceholder: '参数意义的描述',
     },
