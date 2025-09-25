@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mimetypes
 import os
 import urllib.parse
@@ -19,7 +21,7 @@ from models import MessageFile, ToolFile, UploadFile
 
 def build_from_message_files(
     *,
-    message_files: Sequence["MessageFile"],
+    message_files: Sequence[MessageFile],
     tenant_id: str,
     config: FileUploadConfig,
 ) -> Sequence[File]:
@@ -33,7 +35,7 @@ def build_from_message_files(
 
 def build_from_message_file(
     *,
-    message_file: "MessageFile",
+    message_file: MessageFile,
     tenant_id: str,
     config: FileUploadConfig,
 ):

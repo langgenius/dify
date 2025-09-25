@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Mapping
 from datetime import datetime
@@ -143,13 +145,13 @@ class ApiToolProvider(Base):
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def schema_type(self) -> "ApiProviderSchemaType":
+    def schema_type(self) -> ApiProviderSchemaType:
         from core.tools.entities.tool_entities import ApiProviderSchemaType
 
         return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
-    def tools(self) -> list["ApiToolBundle"]:
+    def tools(self) -> list[ApiToolBundle]:
         from core.tools.entities.tool_bundle import ApiToolBundle
 
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
@@ -239,7 +241,7 @@ class WorkflowToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def parameter_configurations(self) -> list["WorkflowToolParameterConfiguration"]:
+    def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
         from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
         return [WorkflowToolParameterConfiguration(**config) for config in json.loads(self.parameter_configuration)]
@@ -309,7 +311,7 @@ class MCPToolProvider(Base):
             return {}
 
     @property
-    def mcp_tools(self) -> list["MCPTool"]:
+    def mcp_tools(self) -> list[MCPTool]:
         from core.mcp.types import Tool as MCPTool
 
         return [MCPTool(**tool) for tool in json.loads(self.tools)]

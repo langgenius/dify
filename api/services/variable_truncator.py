@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 from collections.abc import Mapping
 from typing import Any, Generic, TypeAlias, TypeVar, overload
@@ -94,7 +96,7 @@ class VariableTruncator:
         self._max_size_bytes = max_size_bytes
 
     @classmethod
-    def default(cls) -> "VariableTruncator":
+    def default(cls) -> VariableTruncator:
         return VariableTruncator(
             max_size_bytes=dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE,
             array_element_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH,
