@@ -9,6 +9,8 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.workflow.enums import NodeType
+from core.workflow.nodes.node_utils import get_node_type
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
@@ -56,13 +58,14 @@ class RagPipelineTransformService:
         new_nodes = []
 
         for node in nodes:
-            if (
-                node.get("data", {}).get("type") == "datasource"
-                and node.get("data", {}).get("provider_type") == "local_file"
-            ):
-                node = self._deal_file_extensions(node)
-            if node.get("data", {}).get("type") == "knowledge-index":
-                node = self._deal_knowledge_index(dataset, doc_form, indexing_technique, retrieval_model, node)
+            match get_node_type(node):
+                case NodeType.DATASOURCE:
+                    if node.get("data", {}).get("provider_type") == "local_file":
+                        node = self._deal_file_extensions(node)
+                case NodeType.KNOWLEDGE_INDEX:
+                    node = self._deal_knowledge_index(dataset, doc_form, indexing_technique, retrieval_model, node)
+                case _:
+                    pass
             new_nodes.append(node)
         if new_nodes:
             graph["nodes"] = new_nodes

@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.node_utils import match_node_type
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
@@ -52,9 +53,7 @@ def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:
     nodes = graph.get("nodes", [])
 
     # fetch all knowledge retrieval nodes
-    knowledge_retrieval_nodes = [
-        node for node in nodes if node.get("data", {}).get("type") == NodeType.KNOWLEDGE_RETRIEVAL.value
-    ]
+    knowledge_retrieval_nodes = [node for node in nodes if match_node_type(node, NodeType.KNOWLEDGE_RETRIEVAL)]
 
     if not knowledge_retrieval_nodes:
         return dataset_ids
