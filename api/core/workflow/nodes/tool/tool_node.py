@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -182,7 +184,7 @@ class ToolNode(Node):
         self,
         *,
         tool_parameters: Sequence[ToolParameter],
-        variable_pool: "VariablePool",
+        variable_pool: VariablePool,
         node_data: ToolNodeData,
         for_log: bool = False,
     ) -> dict[str, Any]:
@@ -223,7 +225,7 @@ class ToolNode(Node):
 
         return result
 
-    def _fetch_files(self, variable_pool: "VariablePool") -> list[File]:
+    def _fetch_files(self, variable_pool: VariablePool) -> list[File]:
         variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []

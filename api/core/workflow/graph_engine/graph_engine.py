@@ -5,6 +5,8 @@ This engine uses a modular architecture with separated packages following
 Domain-Driven Design principles for improved maintainability and testability.
 """
 
+from __future__ import annotations
+
 import contextvars
 import logging
 import queue
@@ -221,7 +223,7 @@ class GraphEngine:
             if id(node.graph_runtime_state) != expected_state_id:
                 raise ValueError(f"GraphRuntimeState consistency violation: Node '{node.id}' has a different instance")
 
-    def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
+    def layer(self, layer: GraphEngineLayer) -> GraphEngine:
         """Add a layer for extending functionality."""
         self._layers.append(layer)
         return self

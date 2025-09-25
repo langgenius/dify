@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
@@ -50,15 +52,15 @@ logger = logging.getLogger(__name__)
 
 
 class Node:
-    node_type: ClassVar["NodeType"]
+    node_type: ClassVar[NodeType]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
 
     def __init__(
         self,
         id: str,
         config: Mapping[str, Any],
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
