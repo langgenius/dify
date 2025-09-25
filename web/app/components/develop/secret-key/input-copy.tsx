@@ -6,9 +6,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 
 type IInputCopyProps = {
-  value?: string
-  className?: string
-  children?: React.ReactNode
+  readonly value?: string
+  readonly className?: string
+  readonly children?: React.ReactNode
 }
 
 const InputCopy = ({

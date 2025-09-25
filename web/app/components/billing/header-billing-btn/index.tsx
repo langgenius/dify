@@ -7,8 +7,8 @@ import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
-  onClick?: () => void
-  isDisplayOnly?: boolean
+  readonly onClick?: () => void
+  readonly isDisplayOnly?: boolean
 }
 
 const HeaderBillingBtn: FC<Props> = ({

@@ -6,8 +6,8 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 
 type ApiServerProps = {
-  apiBaseUrl: string
-  appId?: string
+  readonly apiBaseUrl: string
+  readonly appId?: string
 }
 const ApiServer: FC<ApiServerProps> = ({
   apiBaseUrl,

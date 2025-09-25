@@ -7,7 +7,7 @@ import UsageInfo from '../usage-info'
 import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
-  className?: string
+  readonly className?: string
 }
 
 const Usage: FC<Props> = ({

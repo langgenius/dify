@@ -24,7 +24,7 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
 
 type Props = {
-  loc: string
+  readonly loc: string
 }
 
 const PlanComp: FC<Props> = ({

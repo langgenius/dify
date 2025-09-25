@@ -1,5 +1,5 @@
 type SelfHostedProps = {
-  isActive: boolean
+  readonly isActive: boolean
 }
 
 const SelfHosted = ({

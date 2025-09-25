@@ -3,8 +3,8 @@ import { SelectionMod } from '../base/icons/src/public/knowledge'
 import type { QA } from '@/models/datasets'
 
 export type ChunkLabelProps = {
-  label: string
-  characterCount: number
+  readonly label: string
+  readonly characterCount: number
 }
 
 export const ChunkLabel: FC<ChunkLabelProps> = (props) => {

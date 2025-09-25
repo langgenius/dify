@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine } from '@remixicon/react'
 
 type FooterProps = {
-  pricingPageURL: string
+  readonly pricingPageURL: string
 }
 
 const Footer = ({
