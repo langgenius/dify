@@ -8,21 +8,21 @@ class TestVariablePoolGetAndNestedAttribute:
     def test__get_nested_attribute_existing_key(self):
         pool = VariablePool.empty()
         obj = {"a": 123}
-        exists, value = pool._get_nested_attribute(obj, "a")
+        value, exists = pool._get_nested_attribute(obj, "a")
         assert exists is True
         assert value == 123
 
     def test__get_nested_attribute_missing_key(self):
         pool = VariablePool.empty()
         obj = {"a": 123}
-        exists, value = pool._get_nested_attribute(obj, "b")
+        value, exists = pool._get_nested_attribute(obj, "b")
         assert exists is False
         assert value is None
 
     def test__get_nested_attribute_non_dict(self):
         pool = VariablePool.empty()
         obj = ["not", "a", "dict"]
-        exists, value = pool._get_nested_attribute(obj, "a")
+        value, exists = pool._get_nested_attribute(obj, "a")
         assert exists is False
         assert value is None
 
