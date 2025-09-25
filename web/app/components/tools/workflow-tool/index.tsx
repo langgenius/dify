@@ -120,6 +120,24 @@ const WorkflowToolAsModal: FC<Props> = ({
     return ['text', 'files', 'json'].includes(name)
   }
 
+  const typeMap: Record<string, { type: string; items?: { type: string } }> = {
+    [VarType.string]: { type: 'string' },
+    [VarType.number]: { type: 'number' },
+    [VarType.integer]: { type: 'number' },
+    [VarType.secret]: { type: 'string' },
+    [VarType.boolean]: { type: 'boolean' },
+    [VarType.object]: { type: 'object' },
+    [VarType.file]: { type: 'file' }, // `file` is not standard json schema type, but here use to display
+    [VarType.array]: { type: 'array', items: { type: 'string' } },
+    [VarType.arrayString]: { type: 'array', items: { type: 'string' } },
+    [VarType.arrayNumber]: { type: 'array', items: { type: 'number' } },
+    [VarType.arrayObject]: { type: 'array', items: { type: 'object' } },
+    [VarType.arrayBoolean]: { type: 'array', items: { type: 'boolean' } },
+    [VarType.arrayFile]: { type: 'array', items: { type: 'file' } }, // `file` is not standard json schema type, but here use to display
+    [VarType.any]: { type: 'string' },
+    [VarType.arrayAny]: { type: 'array' },
+  }
+
   const onConfirm = () => {
     let errorMessage = ''
     if (!label)
@@ -155,70 +173,15 @@ const WorkflowToolAsModal: FC<Props> = ({
       output_schema: {
         type: 'object',
         properties: outputParameters.reduce((acc: Record<string, any>, item) => {
-          acc[item.name] = {
-            description: item.description,
-          }
-          switch (item.type) {
-            case VarType.string:
-              acc[item.name].type = 'string'
-              break
-            case VarType.number:
-              acc[item.name].type = 'number'
-              break
-            case VarType.integer:
-              acc[item.name].type = 'number'
-              break
-            case VarType.secret:
-              acc[item.name].type = 'string'
-              break
-            case VarType.boolean:
-              acc[item.name].type = 'boolean'
-              break
-            case VarType.object:
-              acc[item.name].type = 'object'
-              break
-            case VarType.file:
-              // `file` is not standard json schema type, but here use to display
-              acc[item.name].type = 'file'
-              break
-            case VarType.array:
-            case VarType.arrayString:
-              acc[item.name].type = 'array'
-              acc[item.name].items = {
-                type: 'string',
-              }
-              break
-            case VarType.arrayNumber:
-              acc[item.name].type = 'array'
-              acc[item.name].items = {
-                type: 'number',
-              }
-              break
-            case VarType.arrayObject:
-              acc[item.name].type = 'array'
-              acc[item.name].items = {
-                type: 'object',
-              }
-              break
-            case VarType.arrayBoolean:
-              acc[item.name].type = 'array'
-              acc[item.name].items = {
-                type: 'boolean',
-              }
-              break
-            case VarType.arrayFile:
-              acc[item.name].type = 'array'
-              // `file` is not standard json schema type, but here use to display
-              acc[item.name].items = {
-                type: 'file',
-              }
-              break
-            case VarType.any:
-              acc[item.name].type = 'string'
-              break
-            case VarType.arrayAny:
-              acc[item.name].type = 'array'
-              break
+          if (!item.type)
+            return acc
+
+          const schemaInfo = typeMap[item.type]
+          if (schemaInfo) {
+            acc[item.name] = {
+              description: item.description,
+              ...schemaInfo,
+            }
           }
           return acc
         }, {}),
