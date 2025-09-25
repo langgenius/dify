@@ -62,7 +62,7 @@ class WorkflowCycleManager:
         # These caches avoid redundant repository calls during a single workflow execution
         self._workflow_execution_cache: dict[str, WorkflowExecution] = {}
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
-        
+
         # Initialize separate cache locks for greenlet-safe access
         self._workflow_cache_lock = Lock()
         self._node_cache_lock = Lock()
