@@ -1,4 +1,4 @@
-import { get, post, postPublic } from './base'
+import { get, getPublic, post, postPublic } from './base'
 import type {
   FileUploadConfigResponse,
   Member,
@@ -113,6 +113,8 @@ type isLogin = {
 export const useIsLogin = () => {
   return useQuery<isLogin>({
     queryKey: [NAME_SPACE, 'is-login'],
+    staleTime: 0,
+    gcTime: 0,
     queryFn: () => get<isLogin>('/login/status'),
   })
 }
@@ -121,6 +123,16 @@ export const useLogout = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
+  })
+}
+
+export const useIsWebAppLogin = (enabled: boolean) => {
+  return useQuery<isLogin>({
+    queryKey: [NAME_SPACE, 'is-webapp-login'],
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: () => getPublic<isLogin>('/login/status'),
   })
 }
 

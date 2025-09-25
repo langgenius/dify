@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
-import { useWebAppLogout } from '@/service/use-common'
+import { useIsWebAppLogin, useWebAppLogout } from '@/service/use-common'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -32,18 +32,24 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     router.replace(url)
   }, [getSigninUrl, router, webAppLogout])
 
+  const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
+  const { data: isWebAppLoginData, isLoading: isWebAppLoginLoading } = useIsWebAppLogin(needCheckIsLogin)
+  const isLoggedIn = isWebAppLoginData?.logged_in
   useEffect(() => {
+    if(needCheckIsLogin && isWebAppLoginLoading)
+      return
+
     (async () => {
       if (message)
         return
-      if (shareCode && redirectUrl) {
+      if (needCheckIsLogin && isLoggedIn && shareCode && redirectUrl) {
         router.replace(decodeURIComponent(redirectUrl))
         return
       }
       if (webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
         router.replace(decodeURIComponent(redirectUrl))
     })()
-  }, [shareCode, redirectUrl, router, message, webAppAccessMode])
+  }, [shareCode, redirectUrl, router, message, webAppAccessMode, needCheckIsLogin, isWebAppLoginLoading, isLoggedIn])
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
