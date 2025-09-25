@@ -3,9 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import {
-  useStoreApi,
-} from 'reactflow'
 import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
@@ -25,15 +22,15 @@ import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { updateConversationVariables } from '@/service/workflow'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
-  const appId = useStore(s => s.appId)
+  const appId = useStore(s => s.appId) as string
   const {
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
@@ -44,27 +41,27 @@ const ChatVariablePanel = () => {
 
   const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<ConversationVariable>()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const getEffectedNodes = useCallback((chatVar: ConversationVariable) => {
-    const { getNodes } = store.getState()
-    const allNodes = getNodes()
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
     return findUsedVarNodes(
       ['conversation', chatVar.name],
       allNodes,
     )
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const removeUsedVarInNodes = useCallback((chatVar: ConversationVariable) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const effectedNodes = getEffectedNodes(chatVar)
-    const newNodes = getNodes().map((node) => {
+    const newNodes = nodes.map((node) => {
       if (effectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['conversation', chatVar.name], [])
 
       return node
     })
     setNodes(newNodes)
-  }, [getEffectedNodes, store])
+  }, [getEffectedNodes, collaborativeWorkflow])
 
   const handleEdit = (chatVar: ConversationVariable) => {
     setCurrentVar(chatVar)
@@ -151,9 +148,9 @@ const ChatVariablePanel = () => {
 
     // side effects of rename conversation variable
     if (currentVar.name !== chatVar.name) {
-      const { getNodes, setNodes } = store.getState()
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
       const effectedNodes = getEffectedNodes(currentVar)
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, ['conversation', currentVar.name], ['conversation', chatVar.name])
 
@@ -183,7 +180,7 @@ const ChatVariablePanel = () => {
       // Revert local state on error
       updateChatVarList(varList)
     }
-  }, [currentVar, getEffectedNodes, store, updateChatVarList, varList, appId, invalidateConversationVarValues])
+  }, [currentVar, getEffectedNodes, collaborativeWorkflow, updateChatVarList, varList, appId, invalidateConversationVarValues])
 
   return (
     <div

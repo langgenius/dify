@@ -1,7 +1,7 @@
 import {
   useCallback,
 } from 'react'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow } from 'reactflow'
 import produce from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
@@ -28,6 +28,7 @@ import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-withou
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
@@ -87,23 +88,22 @@ export const useWorkflowMoveMode = () => {
 
 export const useWorkflowOrganize = () => {
   const workflowStore = useWorkflowStore()
-  const store = useStoreApi()
   const reactflow = useReactFlow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const handleLayout = useCallback(async () => {
     if (getNodesReadOnly())
       return
     workflowStore.setState({ nodeAnimation: true })
     const {
-      getNodes,
+      nodes,
       edges,
       setNodes,
-    } = store.getState()
+    } = collaborativeWorkflow.getState()
     const { setViewport } = reactflow
-    const nodes = getNodes()
 
     const loopAndIterationNodes = nodes.filter(
       node => (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
@@ -248,7 +248,7 @@ export const useWorkflowOrganize = () => {
     setTimeout(() => {
       handleSyncWorkflowDraft()
     })
-  }, [getNodesReadOnly, store, reactflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, reactflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   return {
     handleLayout,
