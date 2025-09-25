@@ -200,6 +200,12 @@ const translation = {
       reply: 'پاسخ',
       editReply: 'ویرایش پاسخ',
     },
+    confirm: {
+      deleteThreadTitle: 'این گفتگو حذف شود؟',
+      deleteThreadDesc: 'این عملیات گفتگو و تمام پاسخ‌های آن را برای همیشه حذف می‌کند و قابل بازگردانی نیست.',
+      deleteReplyTitle: 'این پاسخ حذف شود؟',
+      deleteReplyDesc: 'این پاسخ برای همیشه حذف خواهد شد.',
+    },
     aria: {
       deleteComment: 'حذف دیدگاه',
       resolveComment: 'حل‌کردن دیدگاه',

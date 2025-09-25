@@ -194,6 +194,12 @@ const translation = {
       reply: 'Balas',
       editReply: 'Edit balasan',
     },
+    confirm: {
+      deleteThreadTitle: 'Hapus percakapan ini?',
+      deleteThreadDesc: 'Tindakan ini akan menghapus percakapan dan semua balasannya secara permanen. Tidak dapat dibatalkan.',
+      deleteReplyTitle: 'Hapus balasan ini?',
+      deleteReplyDesc: 'Balasan ini akan dihapus secara permanen.',
+    },
     aria: {
       deleteComment: 'Hapus komentar',
       resolveComment: 'Selesaikan komentar',

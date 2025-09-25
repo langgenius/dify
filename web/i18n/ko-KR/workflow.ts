@@ -208,6 +208,12 @@ const translation = {
       reply: '답글',
       editReply: '답글 편집',
     },
+    confirm: {
+      deleteThreadTitle: '이 스레드를 삭제하시겠습니까?',
+      deleteThreadDesc: '이 작업을 수행하면 스레드와 모든 답글이 영구적으로 삭제되며 되돌릴 수 없습니다.',
+      deleteReplyTitle: '이 답글을 삭제하시겠습니까?',
+      deleteReplyDesc: '이 답글은 영구적으로 삭제됩니다.',
+    },
     aria: {
       deleteComment: '댓글 삭제',
       resolveComment: '댓글 해결',

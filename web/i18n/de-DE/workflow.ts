@@ -200,6 +200,12 @@ const translation = {
       reply: 'Antworten',
       editReply: 'Antwort bearbeiten',
     },
+    confirm: {
+      deleteThreadTitle: 'Diesen Thread löschen?',
+      deleteThreadDesc: 'Dadurch werden der Thread und alle Antworten dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.',
+      deleteReplyTitle: 'Diese Antwort löschen?',
+      deleteReplyDesc: 'Diese Antwort wird dauerhaft entfernt.',
+    },
     aria: {
       deleteComment: 'Kommentar löschen',
       resolveComment: 'Kommentar abschließen',

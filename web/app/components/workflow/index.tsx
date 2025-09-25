@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { setAutoFreeze } from 'immer'
 import {
   useEventListener,
@@ -201,6 +202,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
   const mousePosition = useStore(s => s.mousePosition)
+  const { t } = useTranslation()
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
@@ -245,28 +247,28 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const handleCommentDeleteClick = useCallback((commentId: string) => {
     if (!showConfirm) {
       setShowConfirm({
-        title: 'Delete this thread?',
-        desc: 'This action will permanently delete the thread and all its replies. This cannot be undone.',
+        title: t('workflow.comments.confirm.deleteThreadTitle'),
+        desc: t('workflow.comments.confirm.deleteThreadDesc'),
         onConfirm: async () => {
           await handleCommentDelete(commentId)
           setShowConfirm(undefined)
         },
       })
     }
-  }, [showConfirm, setShowConfirm, handleCommentDelete])
+  }, [showConfirm, setShowConfirm, handleCommentDelete, t])
 
   const handleCommentReplyDeleteClick = useCallback((commentId: string, replyId: string) => {
     if (!showConfirm) {
       setShowConfirm({
-        title: 'Delete this reply?',
-        desc: 'This reply will be removed permanently.',
+        title: t('workflow.comments.confirm.deleteReplyTitle'),
+        desc: t('workflow.comments.confirm.deleteReplyDesc'),
         onConfirm: async () => {
           await handleCommentReplyDelete(commentId, replyId)
           setShowConfirm(undefined)
         },
       })
     }
-  }, [showConfirm, setShowConfirm, handleCommentReplyDelete])
+  }, [showConfirm, setShowConfirm, handleCommentReplyDelete, t])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)

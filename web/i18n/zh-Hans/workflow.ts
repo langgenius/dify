@@ -206,6 +206,12 @@ const translation = {
       reply: '回复',
       editReply: '编辑回复',
     },
+    confirm: {
+      deleteThreadTitle: '删除此讨论？',
+      deleteThreadDesc: '此操作会永久删除该讨论及其所有回复，且无法恢复。',
+      deleteReplyTitle: '删除此回复？',
+      deleteReplyDesc: '此回复将被永久删除。',
+    },
     aria: {
       deleteComment: '删除评论',
       resolveComment: '解决评论',

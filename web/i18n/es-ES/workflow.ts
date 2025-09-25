@@ -200,6 +200,12 @@ const translation = {
       reply: 'Responder',
       editReply: 'Editar respuesta',
     },
+    confirm: {
+      deleteThreadTitle: '¿Eliminar esta conversación?',
+      deleteThreadDesc: 'Esta acción eliminará permanentemente la conversación y todas sus respuestas. No se puede deshacer.',
+      deleteReplyTitle: '¿Eliminar esta respuesta?',
+      deleteReplyDesc: 'Esta respuesta se eliminará de forma permanente.',
+    },
     aria: {
       deleteComment: 'Eliminar comentario',
       resolveComment: 'Resolver comentario',

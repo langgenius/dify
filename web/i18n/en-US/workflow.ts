@@ -206,6 +206,12 @@ const translation = {
       reply: 'Reply',
       editReply: 'Edit reply',
     },
+    confirm: {
+      deleteThreadTitle: 'Delete this thread?',
+      deleteThreadDesc: 'This action will permanently delete the thread and all its replies. This cannot be undone.',
+      deleteReplyTitle: 'Delete this reply?',
+      deleteReplyDesc: 'This reply will be removed permanently.',
+    },
     aria: {
       deleteComment: 'Delete comment',
       resolveComment: 'Resolve comment',

@@ -203,6 +203,12 @@ const translation = {
       reply: 'जवाब दें',
       editReply: 'जवाब संपादित करें',
     },
+    confirm: {
+      deleteThreadTitle: 'इस थ्रेड को हटाएं?',
+      deleteThreadDesc: 'यह क्रिया थ्रेड और उसकी सभी प्रतिक्रियाओं को स्थायी रूप से हटा देगी। इसे पूर्ववत नहीं किया जा सकता।',
+      deleteReplyTitle: 'इस जवाब को हटाएं?',
+      deleteReplyDesc: 'यह जवाब हमेशा के लिए हटा दिया जाएगा।',
+    },
     aria: {
       deleteComment: 'टिप्पणी हटाएं',
       resolveComment: 'टिप्पणी समाधान करें',

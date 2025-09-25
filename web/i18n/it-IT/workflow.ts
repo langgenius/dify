@@ -205,6 +205,12 @@ const translation = {
       reply: 'Rispondi',
       editReply: 'Modifica risposta',
     },
+    confirm: {
+      deleteThreadTitle: 'Eliminare questa conversazione?',
+      deleteThreadDesc: 'Questa azione eliminerà in modo permanente la conversazione e tutte le risposte. Non sarà possibile annullare.',
+      deleteReplyTitle: 'Eliminare questa risposta?',
+      deleteReplyDesc: 'Questa risposta verrà rimossa definitivamente.',
+    },
     aria: {
       deleteComment: 'Elimina commento',
       resolveComment: 'Risolvi commento',

@@ -204,6 +204,12 @@ const translation = {
       reply: '返信',
       editReply: '返信を編集',
     },
+    confirm: {
+      deleteThreadTitle: 'このスレッドを削除しますか？',
+      deleteThreadDesc: 'この操作によりスレッドとその返信がすべて完全に削除され、元に戻せません。',
+      deleteReplyTitle: 'この返信を削除しますか？',
+      deleteReplyDesc: 'この返信は完全に削除されます。',
+    },
     aria: {
       deleteComment: 'コメントを削除',
       resolveComment: 'コメントを解決',

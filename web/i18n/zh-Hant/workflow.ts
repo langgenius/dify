@@ -200,6 +200,12 @@ const translation = {
       reply: '回覆',
       editReply: '編輯回覆',
     },
+    confirm: {
+      deleteThreadTitle: '刪除此討論串？',
+      deleteThreadDesc: '此操作會永久刪除該討論串及其所有回覆，且無法復原。',
+      deleteReplyTitle: '刪除此回覆？',
+      deleteReplyDesc: '此回覆將被永久刪除。',
+    },
     aria: {
       deleteComment: '刪除評論',
       resolveComment: '解決評論',
