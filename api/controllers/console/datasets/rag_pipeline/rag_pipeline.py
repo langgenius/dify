@@ -339,3 +339,7 @@ api.add_resource(
     PublishCustomizedPipelineTemplateApi,
     "/rag/pipelines/<string:pipeline_id>/customized/publish",
 )
+api.add_resource(
+    PipelineTemplateInstallApi,
+    "/rag/pipeline/built-in/templates/install",
+)
