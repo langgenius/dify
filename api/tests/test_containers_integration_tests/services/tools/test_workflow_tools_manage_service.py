@@ -151,58 +151,16 @@ class TestWorkflowToolManageService:
         return {
             "type": "object",
             "properties": {
-                "str_val": {
-                    "description": "",
-                    "type": "string"
-                },
-                "num_val": {
-                    "description": "",
-                    "type": "number"
-                },
-                "bool_val": {
-                    "description": "",
-                    "type": "boolean"
-                },
-                "arr_num_val": {
-                    "description": "",
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                },
-                "arr_str_val": {
-                    "description": "",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "arr_bool_val": {
-                    "description": "",
-                    "type": "array",
-                    "items": {
-                        "type": "boolean"
-                    }
-                },
-                "arr_obj_val": {
-                    "description": "",
-                    "type": "array",
-                    "items": {
-                        "type": "object"
-                    }
-                },
-                "obj_val": {
-                    "description": "",
-                    "type": "object"
-                },
-                "file": {
-                    "description": "",
-                    "type": "array",
-                    "items": {
-                        "type": "file"
-                    }
-                }
-            }
+                "str_val": {"description": "", "type": "string"},
+                "num_val": {"description": "", "type": "number"},
+                "bool_val": {"description": "", "type": "boolean"},
+                "arr_num_val": {"description": "", "type": "array", "items": {"type": "number"}},
+                "arr_str_val": {"description": "", "type": "array", "items": {"type": "string"}},
+                "arr_bool_val": {"description": "", "type": "array", "items": {"type": "boolean"}},
+                "arr_obj_val": {"description": "", "type": "array", "items": {"type": "object"}},
+                "obj_val": {"description": "", "type": "object"},
+                "file": {"description": "", "type": "array", "items": {"type": "file"}},
+            },
         }
 
     def test_create_workflow_tool_success(self, db_session_with_containers, mock_external_service_dependencies):
