@@ -1,23 +1,20 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
+import { genNodeMetaData } from '../../utils'
 import type { PluginTriggerNodeType } from './types'
-import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+
+const metaData = genNodeMetaData({
+  sort: 1,
+  type: BlockEnum.TriggerPlugin,
+})
 
 const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
+  metaData,
   defaultValue: {
     plugin_id: '',
     trigger_name: '',
-    event_type: '',
+    // event_type: '',
     config: {},
-  },
-  getAvailablePrevNodes(_isChatMode: boolean) {
-    return []
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? []
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(_payload: PluginTriggerNodeType, _t: any) {
     return {

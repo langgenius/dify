@@ -14,10 +14,10 @@ import {
 import {
   useAvailableBlocks,
   useIsChatMode,
+  useNodesMetaData,
   useNodesReadOnly,
   usePanelInteractions,
 } from '../hooks'
-import { NODES_INITIAL_DATA } from '../constants'
 import { useWorkflowStore } from '../store'
 import TipPopup from './tip-popup'
 import cn from '@/utils/classnames'
@@ -45,6 +45,7 @@ const AddBlock = ({
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const [open, setOpen] = useState(false)
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
+  const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const handleOpenChange = useCallback((open: boolean) => {
     setOpen(open)
@@ -58,12 +59,15 @@ const AddBlock = ({
     } = store.getState()
     const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
+    const {
+      defaultValue,
+    } = nodesMetaDataMap![type]
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {
-        ...NODES_INITIAL_DATA[type],
-        title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${type}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${type}`),
-        ...(toolDefaultValue || {}),
+        ...(defaultValue as any),
+        title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
+        ...toolDefaultValue,
         _isCandidate: true,
       },
       position: {
@@ -74,7 +78,7 @@ const AddBlock = ({
     workflowStore.setState({
       candidateNode: newNode,
     })
-  }, [store, workflowStore, t])
+  }, [store, workflowStore, nodesMetaDataMap])
 
   const renderTriggerElement = useCallback((open: boolean) => {
     return (

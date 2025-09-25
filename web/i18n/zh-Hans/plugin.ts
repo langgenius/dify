@@ -9,6 +9,7 @@ const translation = {
     agents: 'Agent 策略',
     extensions: '扩展',
     bundles: '插件集',
+    datasources: '数据源',
   },
   categorySingle: {
     model: '模型',
@@ -16,6 +17,7 @@ const translation = {
     agent: 'Agent 策略',
     extension: '扩展',
     bundle: '插件集',
+    datasource: '数据源',
     trigger: '触发器',
   },
   search: '搜索',
@@ -299,8 +301,11 @@ const translation = {
     clientInfo: '由于未找到此工具提供者的系统客户端密钥，因此需要手动设置，对于 redirect_uri，请使用',
     oauthClient: 'OAuth 客户端',
     credentialUnavailable: '自定义凭据当前不可用，请联系管理员。',
+    credentialUnavailableInButton: '凭据不可用',
     customCredentialUnavailable: '自定义凭据当前不可用',
     unavailable: '不可用',
+    connectedWorkspace: '已连接的工作区',
+    emptyAuth: '请配置凭据',
   },
 }
 

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
@@ -27,20 +28,20 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
+    const nodes = getNodes()
     const [x, y, zoom] = transform
     const {
       appId,
       conversationVariables,
       environmentVariables,
       syncWorkflowDraftHash,
-      isWorkflowDataLoaded,
+      // isWorkflowDataLoaded,
     } = workflowStore.getState()
 
-    if (appId) {
-      const nodes = getNodes()
+    if (appId && !!nodes.length) {
+      const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
-      // Prevent sync if workflow data hasn't been loaded yet
-      if (!isWorkflowDataLoaded)
+      if (!hasStartNode)
         return null
 
       const features = featuresStore!.getState().features
@@ -52,7 +53,7 @@ export const useNodesSyncDraft = () => {
           })
         })
       })
-      const producedEdges = produce(edges, (draft) => {
+      const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
         draft.forEach((edge) => {
           Object.keys(edge.data).forEach((key) => {
             if (key.startsWith('_'))

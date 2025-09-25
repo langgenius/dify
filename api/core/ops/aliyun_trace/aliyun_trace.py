@@ -1,10 +1,10 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Optional
 from urllib.parse import urljoin
 
 from opentelemetry.trace import Link, Status, StatusCode
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
@@ -54,13 +54,10 @@ from core.ops.entities.trace_entity import (
 )
 from core.rag.models.document import Document
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from core.workflow.nodes import NodeType
-from models import Account, App, EndUser, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom, db
+from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from extensions.ext_database import db
+from models import Account, App, EndUser, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +119,7 @@ class AliyunDataTrace(BaseTraceInstance):
 
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -263,15 +260,15 @@ class AliyunDataTrace(BaseTraceInstance):
             app_id = trace_info.metadata.get("app_id")
             if not app_id:
                 raise ValueError("No app_id found in trace_info metadata")
-
-            app = session.query(App).where(App.id == app_id).first()
+            app_stmt = select(App).where(App.id == app_id)
+            app = session.scalar(app_stmt)
             if not app:
                 raise ValueError(f"App with id {app_id} not found")
 
             if not app.created_by:
                 raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
-
-            service_account = session.query(Account).where(Account.id == app.created_by).first()
+            account_stmt = select(Account).where(Account.id == app.created_by)
+            service_account = session.scalar(account_stmt)
             if not service_account:
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
             current_tenant = (
@@ -283,7 +280,7 @@ class AliyunDataTrace(BaseTraceInstance):
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
             user=service_account,
-            app_id=trace_info.metadata.get("app_id"),
+            app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
         # Get all executions for this workflow run
@@ -355,8 +352,8 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_FRAMEWORK: "dify",
                 TOOL_NAME: node_execution.title,
                 TOOL_DESCRIPTION: json.dumps(tool_des, ensure_ascii=False),
-                TOOL_PARAMETERS: json.dumps(node_execution.inputs if node_execution.inputs else {}, ensure_ascii=False),
-                INPUT_VALUE: json.dumps(node_execution.inputs if node_execution.inputs else {}, ensure_ascii=False),
+                TOOL_PARAMETERS: json.dumps(node_execution.inputs or {}, ensure_ascii=False),
+                INPUT_VALUE: json.dumps(node_execution.inputs or {}, ensure_ascii=False),
                 OUTPUT_VALUE: json.dumps(node_execution.outputs, ensure_ascii=False),
             },
             status=self.get_workflow_node_status(node_execution),

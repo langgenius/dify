@@ -489,7 +489,17 @@ const translation = {
       authorizationError: 'ข้อผิดพลาดในการอนุญาต',
       specifyModelCredentialTip: 'ใช้ข้อมูลรับรองโมเดลที่กำหนดไว้',
       providerManagedTip: 'การกำหนดค่าปัจจุบันถูกโฮสต์โดยผู้ให้บริการ.',
+      customModelCredentialsDeleteTip: 'ข้อมูลรับรองกำลังถูกใช้งานและไม่สามารถลบได้',
+      addModel: 'เพิ่มรุ่น',
+      removeModel: 'ลบโมเดล',
+      manageCredentials: 'จัดการข้อมูลประจําตัว',
+      modelCredential: 'ข้อมูลประจําตัวของรุ่น',
+      editModelCredential: 'แก้ไขข้อมูลประจําตัวของโมเดล',
+      selectModelCredential: 'เลือกข้อมูลประจําตัวของโมเดล',
+      customModelCredentials: 'ข้อมูลประจําตัวของโมเดลแบบกําหนดเอง',
+      addNewModelCredential: 'เพิ่มข้อมูลประจําตัวของโมเดลใหม่',
     },
+    parametersInvalidRemoved: 'บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก',
   },
   dataSource: {
     add: 'เพิ่มแหล่งข้อมูล',
@@ -588,6 +598,7 @@ const translation = {
     viewDoc: 'ดูเอกสารประกอบ',
     relatedApp: 'แอปที่เชื่อมโยง',
     noRelatedApp: 'ไม่มีแอปที่เชื่อมโยง',
+    pipeline: 'ท่อ',
   },
   voiceInput: {
     speaking: 'พูดเดี๋ยวนี้...',
@@ -736,6 +747,15 @@ const translation = {
   avatar: {
     deleteTitle: 'ลบอวตาร',
     deleteDescription: 'คุณแน่ใจหรือไม่ว่าต้องการลบรูปโปรไฟล์ของคุณ? บัญชีของคุณจะใช้รูปโปรไฟล์เริ่มต้นตามค่าเริ่มต้น.',
+  },
+  feedback: {
+    content: 'เนื้อหาข้อเสนอแนะ',
+    title: 'ให้ข้อเสนอแนะ',
+    placeholder: 'กรุณาบรรยายสิ่งที่ผิดพลาดหรือวิธีที่เราสามารถปรับปรุงได้...',
+    subtitle: 'กรุณาบอกเราว่าเกิดอะไรขึ้นผิดพลาดกับการตอบนี้',
+  },
+  label: {
+    optional: '(ไม่บังคับ)',
   },
 }
 

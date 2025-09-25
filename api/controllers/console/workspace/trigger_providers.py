@@ -481,7 +481,7 @@ class TriggerOAuthClientManageApi(Resource):
                     "custom_configured": bool(custom_params),
                     "custom_enabled": is_custom_enabled,
                     "redirect_uri": redirect_uri,
-                    "params": custom_params if custom_params else {},
+                    "params": custom_params or {},
                 }
             )
 

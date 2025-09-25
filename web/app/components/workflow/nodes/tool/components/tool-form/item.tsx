@@ -24,6 +24,8 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  showManageInputField?: boolean
+  onManageInputField?: () => void
   extraParams?: Record<string, any>
   providerType?: 'tool' | 'trigger'
 }
@@ -37,6 +39,8 @@ const ToolFormItem: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+  showManageInputField,
+  onManageInputField,
   extraParams,
   providerType = 'tool',
 }) => {
@@ -91,8 +95,10 @@ const ToolFormItem: FC<Props> = ({
         value={value}
         onChange={onChange}
         inPanel={inPanel}
-        currentResource={currentTool}
+        currentTool={currentTool}
         currentProvider={currentProvider}
+        showManageInputField={showManageInputField}
+        onManageInputField={onManageInputField}
         extraParams={extraParams}
         providerType={providerType}
       />

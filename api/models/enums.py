@@ -14,6 +14,8 @@ class UserFrom(StrEnum):
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
     APP_RUN = "app-run"  # webapp / service api
+    RAG_PIPELINE_RUN = "rag-pipeline-run"
+    RAG_PIPELINE_DEBUGGING = "rag-pipeline-debugging"
     WEBHOOK = "webhook"
     SCHEDULE = "schedule"
     PLUGIN = "plugin"
@@ -33,3 +35,9 @@ class MessageStatus(StrEnum):
 
     NORMAL = "normal"
     ERROR = "error"
+
+
+class ExecutionOffLoadType(StrEnum):
+    INPUTS = "inputs"
+    PROCESS_DATA = "process_data"
+    OUTPUTS = "outputs"

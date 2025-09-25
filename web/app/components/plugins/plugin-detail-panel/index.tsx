@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
 import ActionList from './action-list'
+import DatasourceActionList from './datasource-action-list'
 import ModelList from './model-list'
 import AgentStrategyList from './agent-strategy-list'
 import { SubscriptionList } from './subscription-list'
@@ -67,6 +68,7 @@ const PluginDetailPanel: FC<Props> = ({
             {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
             {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
             {!!detail.declaration.model && <ModelList detail={detail} />}
+            {!!detail.declaration.datasource && <DatasourceActionList detail={detail} />}
           </div>
         </>
       )}

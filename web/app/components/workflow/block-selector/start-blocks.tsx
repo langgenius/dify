@@ -9,10 +9,11 @@ import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import type { BlockEnum, CommonNodeType } from '../types'
 import { BlockEnum as BlockEnumValues } from '../types'
-import { useNodesExtraData } from '../hooks'
+// import { useNodeMetaData } from '../hooks'
 import { START_BLOCKS } from './constants'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
+import { useAvailableNodesMetaData } from '../../workflow-app/hooks'
 
 type StartBlocksProps = {
   searchText: string
@@ -29,7 +30,8 @@ const StartBlocks = ({
 }: StartBlocksProps) => {
   const { t } = useTranslation()
   const nodes = useNodes()
-  const nodesExtraData = useNodesExtraData()
+  // const nodeMetaData = useNodeMetaData()
+  const availableNodesMetaData = useAvailableNodesMetaData()
 
   const filteredBlocks = useMemo(() => {
     // Check if Start node already exists in workflow
@@ -74,7 +76,7 @@ const StartBlocks = ({
               : t(`workflow.blocks.${block.type}`)
             }
           </div>
-          <div className='system-xs-regular text-text-secondary'>{nodesExtraData[block.type].about}</div>
+          {/* <div className='system-xs-regular text-text-secondary'>{availableNodesMetaData.nodesMap?.[block.type]?.description}</div> */}
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>
               {t('tools.author')} {t('workflow.difyTeam')}
@@ -99,7 +101,7 @@ const StartBlocks = ({
         </div>
       </div>
     </Tooltip>
-  ), [nodesExtraData, onSelect, t])
+  ), [availableNodesMetaData, onSelect, t])
 
   if (isEmpty)
     return null

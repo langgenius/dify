@@ -1,5 +1,6 @@
 export const tagKeys = [
   'agent',
+  'rag',
   'search',
   'image',
   'videos',
@@ -21,6 +22,7 @@ export const tagKeys = [
 export const categoryKeys = [
   'model',
   'tool',
+  'datasource',
   'agent-strategy',
   'extension',
   'bundle',

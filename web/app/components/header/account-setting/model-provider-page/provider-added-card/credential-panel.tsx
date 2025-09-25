@@ -111,7 +111,6 @@ const CredentialPanel = ({
             <div className='flex items-center gap-0.5'>
               <ConfigProvider
                 provider={provider}
-                configurationMethod={ConfigurationMethodEnum.predefinedModel}
               />
               {
                 systemConfig.enabled && isCustomConfigured && (

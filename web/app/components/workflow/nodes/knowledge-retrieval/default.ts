@@ -1,13 +1,18 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { checkoutRerankModelConfigedInRetrievalSettings } from './utils'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  sort: 2,
+  type: BlockEnum.KnowledgeRetrieval,
+})
 const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
+  metaData,
   defaultValue: {
     query_variable_selector: [],
     dataset_ids: [],
@@ -17,16 +22,6 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
       score_threshold: undefined,
       reranking_enable: false,
     },
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: KnowledgeRetrievalNodeType, t: any) {
     let errorMessages = ''

@@ -1,6 +1,5 @@
 import math
 from collections import Counter
-from typing import Optional
 
 import numpy as np
 
@@ -14,7 +13,7 @@ from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
 class WeightRerankRunner(BaseRerankRunner):
-    def __init__(self, tenant_id: str, weights: Weights) -> None:
+    def __init__(self, tenant_id: str, weights: Weights):
         self.tenant_id = tenant_id
         self.weights = weights
 
@@ -22,9 +21,9 @@ class WeightRerankRunner(BaseRerankRunner):
         self,
         query: str,
         documents: list[Document],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> list[Document]:
         """
         Run rerank model

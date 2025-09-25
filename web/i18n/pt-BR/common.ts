@@ -490,7 +490,17 @@ const translation = {
       addModelCredential: 'Adicionar credenciais do modelo',
       configLoadBalancing: 'Configuração de Balanceamento de Carga',
       specifyModelCredentialTip: 'Use uma credencial de modelo configurada.',
+      modelCredential: 'Credencial de modelo',
+      editModelCredential: 'Editar credencial do modelo',
+      manageCredentials: 'Gerenciar credenciais',
+      customModelCredentials: 'Credenciais de modelo personalizado',
+      addModel: 'Adicionar modelo',
+      removeModel: 'Remover modelo',
+      selectModelCredential: 'Selecione uma credencial de modelo',
+      customModelCredentialsDeleteTip: 'A credencial está em uso e não pode ser excluída',
+      addNewModelCredential: 'Adicionar nova credencial de modelo',
     },
+    parametersInvalidRemoved: 'Alguns parâmetros são inválidos e foram removidos',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',
@@ -589,6 +599,7 @@ const translation = {
     viewDoc: 'Ver documentação',
     relatedApp: 'aplicativos relacionados',
     noRelatedApp: 'Nenhum aplicativo vinculado',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Fale agora...',
@@ -741,6 +752,15 @@ const translation = {
   avatar: {
     deleteTitle: 'Remover Avatar',
     deleteDescription: 'Você tem certeza de que deseja remover sua foto de perfil? Sua conta usará o avatar padrão inicial.',
+  },
+  feedback: {
+    title: 'Fornecer feedback',
+    content: 'Conteúdo do feedback',
+    subtitle: 'Por favor, nos diga o que deu errado com esta resposta',
+    placeholder: 'Por favor, descreva o que deu errado ou como podemos melhorar...',
+  },
+  label: {
+    optional: '(opcional)',
   },
 }
 

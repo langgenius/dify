@@ -26,6 +26,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import login_required
+# from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -865,6 +866,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument(
             "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
         )
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
         args = parser.parse_args()
         user = current_user
         if not is_valid_url(args["server_url"]):
@@ -881,6 +883,7 @@ class ToolProviderMCPApi(Resource):
                 server_identifier=args["server_identifier"],
                 timeout=args["timeout"],
                 sse_read_timeout=args["sse_read_timeout"],
+                headers=args["headers"],
             )
         )
 
@@ -898,6 +901,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
         parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
         parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -915,6 +919,7 @@ class ToolProviderMCPApi(Resource):
             server_identifier=args["server_identifier"],
             timeout=args.get("timeout"),
             sse_read_timeout=args.get("sse_read_timeout"),
+            headers=args.get("headers"),
         )
         return {"result": "success"}
 
@@ -951,6 +956,9 @@ class ToolMCPAuthApi(Resource):
                 authed=False,
                 authorization_code=args["authorization_code"],
                 for_list=True,
+                headers=provider.decrypted_headers,
+                timeout=provider.timeout,
+                sse_read_timeout=provider.sse_read_timeout,
             ):
                 MCPToolManageService.update_mcp_provider_credentials(
                     mcp_provider=provider,

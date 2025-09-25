@@ -1,10 +1,11 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ScheduleTriggerNodeType } from './types'
-import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
 import { getDefaultScheduleConfig } from './constants'
+import { genNodeMetaData } from '../../utils'
+
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
   if (!timeRegex.test(time)) return false
@@ -103,21 +104,18 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
   }
 }
 
+const metaData = genNodeMetaData({
+  sort: 2,
+  type: BlockEnum.TriggerSchedule,
+})
+
 const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
+  metaData,
   defaultValue: {
     ...getDefaultScheduleConfig(),
     cron_expression: '',
     timezone: 'UTC',
   } as ScheduleTriggerNodeType,
-  getAvailablePrevNodes(_isChatMode: boolean) {
-    return []
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? []
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes.filter(type => type !== BlockEnum.Start)
-  },
   checkValid(payload: ScheduleTriggerNodeType, t: any) {
     const i18nPrefix = 'workflow.errorMsg'
     let errorMessages = ''

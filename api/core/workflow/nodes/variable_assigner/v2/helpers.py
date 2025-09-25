@@ -25,8 +25,6 @@ def is_operation_supported(*, variable_type: SegmentType, operation: Operation):
             # Only array variable can be appended or extended
             # Only array variable can have elements removed
             return variable_type.is_array_type()
-        case _:
-            return False
 
 
 def is_variable_input_supported(*, operation: Operation):

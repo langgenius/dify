@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
 } from 'react'
-import useSWR from 'swr'
 import {
   SupportUploadFileTypes,
 } from '@/app/components/workflow/types'
@@ -23,12 +22,12 @@ import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { fetchFileUploadConfig } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
 
@@ -36,10 +35,10 @@ const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
+    fileUploadConfigResponse,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
@@ -145,7 +144,7 @@ const WorkflowAppWithAdditionalContext = () => {
 const WorkflowAppWrapper = () => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice}
+      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
     >
       <WorkflowAppWithAdditionalContext />
     </WorkflowContextProvider>

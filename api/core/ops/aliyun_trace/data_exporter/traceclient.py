@@ -7,9 +7,8 @@ import uuid
 from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional
 
-import requests
+import httpx
 from opentelemetry import trace as trace_api
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -66,13 +65,13 @@ class TraceClient:
 
     def api_check(self):
         try:
-            response = requests.head(self.endpoint, timeout=5)
+            response = httpx.head(self.endpoint, timeout=5)
             if response.status_code == 405:
                 return True
             else:
                 logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
-        except requests.exceptions.RequestException as e:
+        except httpx.RequestError as e:
             logger.debug("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
@@ -184,7 +183,7 @@ def generate_span_id() -> int:
     return span_id
 
 
-def convert_to_trace_id(uuid_v4: Optional[str]) -> int:
+def convert_to_trace_id(uuid_v4: str | None) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
         return uuid_obj.int
@@ -192,7 +191,7 @@ def convert_to_trace_id(uuid_v4: Optional[str]) -> int:
         raise ValueError(f"Invalid UUID input: {e}")
 
 
-def convert_string_to_id(string: Optional[str]) -> int:
+def convert_string_to_id(string: str | None) -> int:
     if not string:
         return generate_span_id()
     hash_bytes = hashlib.sha256(string.encode("utf-8")).digest()
@@ -200,7 +199,7 @@ def convert_string_to_id(string: Optional[str]) -> int:
     return id
 
 
-def convert_to_span_id(uuid_v4: Optional[str], span_type: str) -> int:
+def convert_to_span_id(uuid_v4: str | None, span_type: str) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
     except Exception as e:
@@ -209,7 +208,7 @@ def convert_to_span_id(uuid_v4: Optional[str], span_type: str) -> int:
     return convert_string_to_id(combined_key)
 
 
-def convert_datetime_to_nanoseconds(start_time_a: Optional[datetime]) -> Optional[int]:
+def convert_datetime_to_nanoseconds(start_time_a: datetime | None) -> int | None:
     if start_time_a is None:
         return None
     timestamp_in_seconds = start_time_a.timestamp()

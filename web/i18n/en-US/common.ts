@@ -77,6 +77,9 @@ const translation = {
     input: 'Please enter',
     select: 'Please select',
   },
+  label: {
+    optional: '(optional)',
+  },
   voice: {
     language: {
       zhHans: 'Chinese',
@@ -320,6 +323,12 @@ const translation = {
       transfer: 'Transfer workspace ownership',
     },
   },
+  feedback: {
+    title: 'Provide Feedback',
+    subtitle: 'Please tell us what went wrong with this response',
+    content: 'Feedback Content',
+    placeholder: 'Please describe what went wrong or how we can improve...',
+  },
   integrations: {
     connected: 'Connected',
     google: 'Google',
@@ -493,10 +502,13 @@ const translation = {
       authRemoved: 'Auth removed',
       apiKeys: 'API Keys',
       addApiKey: 'Add API Key',
+      addModel: 'Add model',
       addNewModel: 'Add new model',
       addCredential: 'Add credential',
       addModelCredential: 'Add model credential',
+      editModelCredential: 'Edit model credential',
       modelCredentials: 'Model credentials',
+      modelCredential: 'Model credential',
       configModel: 'Config model',
       configLoadBalancing: 'Config Load Balancing',
       authorizationError: 'Authorization error',
@@ -509,7 +521,14 @@ const translation = {
         desc: 'After configuring credentials, all members within the workspace can use this model when orchestrating applications.',
         addModel: 'Add model',
       },
+      manageCredentials: 'Manage Credentials',
+      customModelCredentials: 'Custom Model Credentials',
+      addNewModelCredential: 'Add new model credential',
+      removeModel: 'Remove Model',
+      selectModelCredential: 'Select a model credential',
+      customModelCredentialsDeleteTip: 'Credential is in use and cannot be deleted',
     },
+    parametersInvalidRemoved: 'Some parameters are invalid and have been removed',
   },
   dataSource: {
     add: 'Add a data source',
@@ -608,6 +627,7 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
     noRelatedApp: 'No linked apps',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Speak now...',

@@ -45,6 +45,7 @@ const translation = {
     setVarValuePlaceholder: '変数値を設定',
     needConnectTip: '接続されていないステップがあります',
     maxTreeDepth: '1 ブランチあたりの最大ノード数：{{depth}}',
+    needAdd: '{{node}}ノードを追加する必要があります',
     needEndNode: '終了ブロックを追加する必要があります',
     needStartNode: '少なくとも1つのスタートノードを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',
@@ -93,7 +94,6 @@ const translation = {
     importWarning: '注意事項',
     importWarningDetails: 'DSL バージョンの違いにより機能に影響が出る可能性があります',
     importSuccess: 'インポート成功',
-    parallelRun: '並列実行',
     parallelTip: {
       click: {
         title: 'クリック',
@@ -140,6 +140,10 @@ const translation = {
       ignore: 'DSL をエクスポート',
       export: 'シークレット値付きでエクスポート',
     },
+  },
+  sidebar: {
+    exportWarning: '現在保存されているバージョンをエクスポート',
+    exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',
   },
   chatVariable: {
     panelTitle: '会話変数',
@@ -229,6 +233,8 @@ const translation = {
     back: '戻る',
     iteration: 'イテレーション',
     loop: 'ループ',
+    reRun: '再実行',
+    preparingDataSource: 'データソースの準備',
   },
   tabs: {
     'searchBlock': 'ブロック検索',
@@ -250,6 +256,8 @@ const translation = {
     'agent': 'エージェント戦略',
     'addAll': 'すべてを追加する',
     'allAdded': 'すべて追加されました',
+    'searchDataSource': 'データソースを検索',
+    'sources': 'ソース',
     'start': '始める',
   },
   blocks: {
@@ -276,6 +284,8 @@ const translation = {
     'loop-start': 'ループ開始',
     'loop': 'ループ',
     'loop-end': 'ループ完了',
+    'knowledge-index': '知識ベース',
+    'datasource': 'データソース',
     'trigger-plugin': 'プラグイントリガー',
     'trigger-webhook': 'Webhook トリガー',
     'trigger-schedule': 'スケジュールトリガー',
@@ -302,6 +312,8 @@ const translation = {
     'document-extractor': 'アップロード文書を LLM 処理用に最適化されたテキストに変換します。',
     'list-operator': '配列のフィルタリングやソート処理を行います。',
     'agent': '大規模言語モデルを活用した質問応答や自然言語処理を実行します。',
+    'knowledge-index': '知識ベースについて',
+    'datasource': 'データソースについて',
     'trigger-schedule': 'スケジュールに基づいてワークフローを開始する時間ベースのトリガー',
     'trigger-webhook': 'Webhook トリガーは第三者システムからの HTTP プッシュを受信してワークフローを自動的に開始します。',
     'trigger-plugin': 'サードパーティ統合トリガー、外部プラットフォームのイベントによってワークフローを開始します',
@@ -415,6 +427,7 @@ const translation = {
         input: '入力値',
         variable: '変数を使用する',
       },
+      inputVars: '入力変数',
     },
     start: {
       required: '必須',
@@ -502,6 +515,12 @@ const translation = {
         warningTips: {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
+      },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
       },
     },
     knowledgeRetrieval: {
@@ -943,6 +962,27 @@ const translation = {
       parameterSchema: 'パラメータスキーマ',
       clickToViewParameterSchema: 'パラメータースキーマを見るにはクリックしてください',
     },
+    dataSource: {
+      add: 'データソースを追加',
+      supportedFileFormats: 'サポートされているファイル形式',
+      supportedFileFormatsPlaceholder: 'ファイル拡張子、例：doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        title: 'チャンク構造を選択してください',
+        learnMore: 'もっと学ぶ',
+        message: 'Difyナレッジベースは、一般的な、親子関係、Q&Aの3つのチャンク構造をサポートしています。各ナレッジベースには一つの構造のみが持てます。前のノードからの出力は、選択されたチャンク構造と一致する必要があります。チャンク構造の選択が利用可能なインデックス方式に影響を与えることに注意してください。',
+      },
+      aboutRetrieval: '取得方法について。',
+      chooseChunkStructure: 'チャンク構造を選択する',
+      chunkStructure: 'チャンク構造',
+      chunkIsRequired: 'チャンク構造が必要です',
+      retrievalSettingIsRequired: 'リトリーバル設定が必要です',
+      changeChunkStructure: 'チャンク構造を変更する',
+      indexMethodIsRequired: 'インデックスメソッドが必要です',
+      chunksInput: 'チャンク',
+      chunksInputTip: '知識ベースノードの入力変数はチャンクです。変数のタイプは、選択されたチャンク構造と一貫性のある特定のJSONスキーマを持つオブジェクトです。',
+    },
     triggerSchedule: {
       frequency: {
         label: '頻度',
@@ -1134,6 +1174,10 @@ const translation = {
       title: '変数検査',
       envNode: '環境',
       emptyTip: 'キャンバス上でノードをステップ実行するか、ノードを一歩ずつ実行した後、変数インスペクトでノード変数の現在の値を確認できます。',
+      export: '輸出',
+      largeDataNoExport: '大規模データ - 一部プレビューのみ',
+      exportToolTip: '変数をファイルとしてエクスポートする',
+      largeData: '大きなデータ、読み取り専用のプレビュー。すべてを表示するにはエクスポートしてください。',
     },
     settingsTab: '設定',
     lastRunTab: '最後の実行',

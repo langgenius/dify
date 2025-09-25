@@ -1,8 +1,8 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 from flask import Flask, current_app
+from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
@@ -38,11 +38,11 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float] = 0.0,
-        reranking_model: Optional[dict] = None,
+        score_threshold: float | None = 0.0,
+        reranking_model: dict | None = None,
         reranking_mode: str = "reranking_model",
-        weights: Optional[dict] = None,
-        document_ids_filter: Optional[list[str]] = None,
+        weights: dict | None = None,
+        document_ids_filter: list[str] | None = None,
     ):
         if not query:
             return []
@@ -124,10 +124,11 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: Optional[dict] = None,
-        metadata_filtering_conditions: Optional[dict] = None,
+        external_retrieval_model: dict | None = None,
+        metadata_filtering_conditions: dict | None = None,
     ):
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        stmt = select(Dataset).where(Dataset.id == dataset_id)
+        dataset = db.session.scalar(stmt)
         if not dataset:
             return []
         metadata_condition = (
@@ -143,7 +144,7 @@ class RetrievalService:
         return all_documents
 
     @classmethod
-    def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
+    def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
             return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
@@ -156,7 +157,7 @@ class RetrievalService:
         top_k: int,
         all_documents: list,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -180,12 +181,12 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
+        score_threshold: float | None,
+        reranking_model: dict | None,
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -233,12 +234,12 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
+        score_threshold: float | None,
+        reranking_model: dict | None,
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -316,10 +317,8 @@ class RetrievalService:
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # Handle parent-child documents
                     child_index_node_id = document.metadata.get("doc_id")
-
-                    child_chunk = (
-                        db.session.query(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id).first()
-                    )
+                    child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
+                    child_chunk = db.session.scalar(child_chunk_stmt)
 
                     if not child_chunk:
                         continue
@@ -378,17 +377,13 @@ class RetrievalService:
                     index_node_id = document.metadata.get("doc_id")
                     if not index_node_id:
                         continue
-
-                    segment = (
-                        db.session.query(DocumentSegment)
-                        .where(
-                            DocumentSegment.dataset_id == dataset_document.dataset_id,
-                            DocumentSegment.enabled == True,
-                            DocumentSegment.status == "completed",
-                            DocumentSegment.index_node_id == index_node_id,
-                        )
-                        .first()
+                    document_segment_stmt = select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.index_node_id == index_node_id,
                     )
+                    segment = db.session.scalar(document_segment_stmt)
 
                     if not segment:
                         continue

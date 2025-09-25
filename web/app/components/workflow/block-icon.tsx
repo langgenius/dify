@@ -6,12 +6,14 @@ import {
   Answer,
   Assigner,
   Code,
+  Datasource,
   DocsExtractor,
   End,
   Home,
   Http,
   IfElse,
   Iteration,
+  KnowledgeBase,
   KnowledgeRetrieval,
   ListFilter,
   Llm,
@@ -25,6 +27,7 @@ import {
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
+import cn from '@/utils/classnames'
 
 type BlockIconProps = {
   type: BlockEnum
@@ -62,6 +65,9 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
     [BlockEnum.ListFilter]: <ListFilter className={className} />,
     [BlockEnum.Agent]: <Agent className={className} />,
+    [BlockEnum.KnowledgeBase]: <KnowledgeBase className={className} />,
+    [BlockEnum.DataSource]: <Datasource className={className} />,
+    [BlockEnum.DataSourceEmpty]: <></>,
     [BlockEnum.TriggerSchedule]: <Schedule className={className} />,
     [BlockEnum.TriggerWebhook]: <WebhookLine className={className} />,
     [BlockEnum.TriggerPlugin]: null,
@@ -83,11 +89,14 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.TemplateTransform]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAggregator]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.Tool]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
   [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
+  [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
+  [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
   [BlockEnum.TriggerSchedule]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.TriggerWebhook]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.TriggerPlugin]: 'bg-util-colors-white-white-500',
@@ -98,17 +107,21 @@ const BlockIcon: FC<BlockIconProps> = ({
   className,
   toolIcon,
 }) => {
+  const isToolOrDataSourceOrTriggerPlugin = type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
+  const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
+
   return (
-    <div className={`
-      flex items-center justify-center border-[0.5px] border-white/2 text-white
-      ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]}
-      ${ICON_CONTAINER_BG_COLOR_MAP[type]}
-      ${toolIcon && '!shadow-none'}
-      ${className}
-    `}
+    <div className={
+      cn(
+        'flex items-center justify-center border-[0.5px] border-white/2 text-white',
+        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+        showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
+        toolIcon && '!shadow-none',
+        className,
+      )}
     >
       {
-        type !== BlockEnum.Tool && type !== BlockEnum.TriggerPlugin && (
+        showDefaultIcon && (
           getIcon(type,
             (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
               ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
@@ -117,7 +130,7 @@ const BlockIcon: FC<BlockIconProps> = ({
         )
       }
       {
-        (type === BlockEnum.Tool || type === BlockEnum.TriggerPlugin) && toolIcon && (
+        !showDefaultIcon && (
           <>
             {
               typeof toolIcon === 'string'

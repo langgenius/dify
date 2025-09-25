@@ -1,11 +1,12 @@
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta, SupportedCreationMethods } from '../../plugins/types'
 import type { Collection, Trigger } from '../../tools/types'
-import type { TypeWithI18N } from '../../base/form/types'
 
 export enum TabsEnum {
   Start = 'start',
   Blocks = 'blocks',
   Tools = 'tools',
+  Sources = 'sources',
 }
 
 export enum ToolTypeEnum {
@@ -57,6 +58,16 @@ export type ToolDefaultValue = PluginDefaultValue & {
   meta?: PluginMeta
 }
 
+export type DataSourceDefaultValue = {
+  plugin_id: string
+  provider_type: string
+  provider_name: string
+  datasource_name: string
+  datasource_label: string
+  title: string
+  fileExtensions?: string[]
+}
+
 export type ToolValue = {
   provider_name: string
   provider_show_name?: string
@@ -68,6 +79,40 @@ export type ToolValue = {
   enabled?: boolean
   extra?: Record<string, any>
   credential_id?: string
+}
+
+export type DataSourceItem = {
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
+  declaration: {
+    credentials_schema: any[]
+    provider_type: string
+    identity: {
+      author: string
+      description: TypeWithI18N
+      icon: string | { background: string; content: string }
+      label: TypeWithI18N
+      name: string
+      tags: string[]
+    }
+    datasources: {
+      description: TypeWithI18N
+      identity: {
+        author: string
+        icon?: string | { background: string; content: string }
+        label: TypeWithI18N
+        name: string
+        provider: string
+      }
+      parameters: any[]
+      output_schema?: {
+        type: string
+        properties: Record<string, any>
+      }
+    }[]
+  }
+  is_authorized: boolean
 }
 
 // Backend API types - exact match with Python definitions

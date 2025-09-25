@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.extractor.notion_extractor import NotionExtractor
@@ -46,6 +47,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
+
         data_source_binding = (
             db.session.query(DataSourceOauthBinding)
             .where(
@@ -85,7 +87,9 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 index_type = document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-                segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                ).all()
                 index_node_ids = [segment.index_node_id for segment in segments]
 
                 # delete from vector index

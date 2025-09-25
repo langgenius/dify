@@ -2,10 +2,17 @@ import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
 import { type ListFilterNodeType, OrderBy } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Utilities,
+  sort: 2,
+  type: BlockEnum.ListFilter,
+})
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
+  metaData,
   defaultValue: {
     variable: [],
     filter_by: {
@@ -26,16 +33,6 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       size: 10,
     },
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
-  },
   checkValid(payload: ListFilterNodeType, t: any) {
     let errorMessages = ''
     const { variable, var_type, filter_by, item_var_type } = payload
@@ -51,7 +48,7 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       if (!errorMessages && !filter_by.conditions[0]?.comparison_operator)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonOperator') })
 
-      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && (item_var_type === VarType.boolean ? !filter_by.conditions[0]?.value === undefined : !filter_by.conditions[0]?.value))
+      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && (item_var_type === VarType.boolean ? filter_by.conditions[0]?.value === undefined : !filter_by.conditions[0]?.value))
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonValue') })
     }
 

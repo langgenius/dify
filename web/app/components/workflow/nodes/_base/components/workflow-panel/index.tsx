@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import {
+import React, {
   cloneElement,
   memo,
   useCallback,
@@ -35,6 +35,7 @@ import {
   useAvailableBlocks,
   useNodeDataUpdate,
   useNodesInteractions,
+  useNodesMetaData,
   useNodesReadOnly,
   useToolIcon,
   useWorkflowHistory,
@@ -43,6 +44,7 @@ import {
   canRunBySingle,
   hasErrorHandleNode,
   hasRetryNode,
+  isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
@@ -55,17 +57,36 @@ import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import BeforeRunForm from '../before-run-form'
 import { debounce } from 'lodash-es'
-import { NODES_EXTRA_DATA } from '@/app/components/workflow/constants'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { FlowType } from '@/types/common'
 import {
+  AuthorizedInDataSourceNode,
+  AuthorizedInNode,
   PluginAuth,
+  PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
+import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
+import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
+import { useModalContext } from '@/context/modal-context'
+import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import NodeAuth from './node-auth-factory'
+
+const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
+  const nodeType = params.payload.type
+  switch (nodeType) {
+    case BlockEnum.DataSource:
+      return <DataSourceBeforeRunForm {...params} />
+    default:
+      return <div>Custom Run Form: {nodeType} not found</div>
+  }
+}
 
 type BasePanelProps = {
   children: ReactNode
@@ -143,7 +164,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const { handleNodeSelect } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const { saveStateToHistory } = useWorkflowHistory()
@@ -155,11 +176,11 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const handleTitleBlur = useCallback((title: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { title } })
-    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
   const handleDescriptionChange = useCallback((desc: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { desc } })
-    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
+    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange, { nodeId: id })
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
@@ -170,11 +191,11 @@ const BasePanel: FC<BasePanelProps> = ({
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
-    if(data._singleRunningStatus === NodeRunningStatus.Running) {
+    if (data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
       setIsPaused(false)
     }
-    else if(data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
+    else if (data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
@@ -191,10 +212,13 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdate, id, data])
 
   useEffect(() => {
-    // console.log(`id changed: ${id}, hasClickRunning: ${hasClickRunning.current}`)
     hasClickRunning.current = false
   }, [id])
+  const {
+    nodesMap,
+  } = useNodesMetaData()
 
+  const configsMap = useHooksStore(s => s.configsMap)
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -202,11 +226,14 @@ const BasePanel: FC<BasePanelProps> = ({
     runInputData,
     runInputDataRef,
     runResult,
+    setRunResult,
     getInputVars,
     toVarInputs,
     tabType,
     isRunAfterSingleRun,
+    setIsRunAfterSingleRun,
     setTabType,
+    handleAfterCustomSingleRun,
     singleRunParams,
     nodeInfo,
     setRunInputData,
@@ -216,8 +243,10 @@ const BasePanel: FC<BasePanelProps> = ({
     getFilteredExistVarForms,
   } = useLastRun<typeof data>({
     id,
+    flowId: configsMap?.flowId || '',
+    flowType: configsMap?.flowType || FlowType.appFlow,
     data,
-    defaultRunInputData: NODES_EXTRA_DATA[data.type]?.defaultRunInputData || {},
+    defaultRunInputData: nodesMap?.[data.type]?.defaultRunInputData || {},
     isPaused,
   })
 
@@ -271,6 +300,11 @@ const BasePanel: FC<BasePanelProps> = ({
     return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
   }, [data.type, currCollection?.allow_delete])
 
+  const dataSourceList = useStore(s => s.dataSourceList)
+  const currentDataSource = useMemo(() => {
+    if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
+      return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
+  }, [dataSourceList, data.plugin_id, data.type, data.provider_type])
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
       id,
@@ -279,6 +313,14 @@ const BasePanel: FC<BasePanelProps> = ({
       },
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
+  const { setShowAccountSettingModal } = useModalContext()
+  const handleJumpToDataSourcePage = useCallback(() => {
+    setShowAccountSettingModal({ payload: 'data-source' })
+  }, [setShowAccountSettingModal])
+
+  const {
+    appendNodeInspectVars,
+  } = useInspectVarsCrud()
 
   const handleSubscriptionChange = useCallback((subscription_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -289,7 +331,7 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
-  if(logParams.showSpecialResultPanel) {
+  if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
         'relative mr-1  h-full',
@@ -315,6 +357,20 @@ const BasePanel: FC<BasePanelProps> = ({
   }
 
   if (isShowSingleRun) {
+    const form = getCustomRunForm({
+      nodeId: id,
+      flowId: configsMap?.flowId || '',
+      flowType: configsMap?.flowType || FlowType.appFlow,
+      payload: data,
+      setRunResult,
+      setIsRunAfterSingleRun,
+      isPaused,
+      isRunAfterSingleRun,
+      onSuccess: handleAfterCustomSingleRun,
+      onCancel: hideSingleRun,
+      appendNodeInspectVars,
+    })
+
     return (
       <div className={cn(
         'relative mr-1  h-full',
@@ -326,26 +382,36 @@ const BasePanel: FC<BasePanelProps> = ({
             width: `${nodePanelWidth}px`,
           }}
         >
-          <BeforeRunForm
-            nodeName={data.title}
-            nodeType={data.type}
-            onHide={hideSingleRun}
-            onRun={handleRunWithParams}
-            {...singleRunParams!}
-            {...passedLogParams}
-            existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-            filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-          />
+          {isSupportCustomRunForm(data.type) ? (
+            form
+          ) : (
+            <BeforeRunForm
+              nodeName={data.title}
+              nodeType={data.type}
+              onHide={hideSingleRun}
+              onRun={handleRunWithParams}
+              {...singleRunParams!}
+              {...passedLogParams}
+              existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
+              filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+            />
+          )}
+
         </div>
       </div>
     )
   }
 
   return (
-    <div className={cn(
-      'relative mr-1  h-full',
-      showMessageLogModal && '!absolute -top-[5px] right-[416px] z-0 !mr-0 w-[384px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
-    )}>
+    <div
+      className={cn(
+        'relative mr-1 h-full',
+        showMessageLogModal && 'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+      )}
+      style={{
+        right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+      }}
+    >
       <div
         ref={triggerRef}
         className='absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center'>
@@ -353,7 +419,7 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${nodePanelWidth}px`,
         }}
@@ -381,7 +447,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
                       onClick={() => {
-                        if(isSingleRunning) {
+                        if (isSingleRunning) {
                           handleNodeDataUpdate({
                             id,
                             data: {
@@ -434,13 +500,40 @@ const BasePanel: FC<BasePanelProps> = ({
                     value={tabType}
                     onChange={setTabType}
                   />
-                  <NodeAuth
+                  <AuthorizedInNode
+                    pluginPayload={{
+                      provider: currCollection?.name || '',
+                      category: AuthCategory.tool,
+                    }}
+                    onAuthorizationItemClick={handleAuthorizationItemClick}
+                    credentialId={data.credential_id}
+                  />
+                  {/* <NodeAuth
                     data={data}
                     onAuthorizationChange={handleAuthorizationItemClick}
                     onSubscriptionChange={handleSubscriptionChange}
-                  />
+                  /> */}
                 </div>
               </PluginAuth>
+            )
+          }
+          {
+            !!currentDataSource && (
+              <PluginAuthInDataSourceNode
+                onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                isAuthorized={currentDataSource.is_authorized}
+              >
+                <div className='flex items-center justify-between pl-4 pr-3'>
+                  <Tab
+                    value={tabType}
+                    onChange={setTabType}
+                  />
+                  <AuthorizedInDataSourceNode
+                    onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                    authorizationsNum={3}
+                  />
+                </div>
+              </PluginAuthInDataSourceNode>
             )
           }
           {
@@ -467,7 +560,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            !needsToolAuth && data.type !== BlockEnum.TriggerPlugin && (
+            !needsToolAuth && !currentDataSource && data.type !== BlockEnum.TriggerPlugin && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}

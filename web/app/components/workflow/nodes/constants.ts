@@ -38,6 +38,10 @@ import ListFilterNode from './list-operator/node'
 import ListFilterPanel from './list-operator/panel'
 import AgentNode from './agent/node'
 import AgentPanel from './agent/panel'
+import DataSourceNode from './data-source/node'
+import DataSourcePanel from './data-source/panel'
+import KnowledgeBaseNode from './knowledge-base/node'
+import KnowledgeBasePanel from './knowledge-base/panel'
 import TriggerScheduleNode from './trigger-schedule/node'
 import TriggerSchedulePanel from './trigger-schedule/panel'
 import TriggerWebhookNode from './trigger-webhook/node'
@@ -67,6 +71,8 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
   [BlockEnum.Agent]: AgentNode,
+  [BlockEnum.DataSource]: DataSourceNode,
+  [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
@@ -93,6 +99,8 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
   [BlockEnum.Agent]: AgentPanel,
+  [BlockEnum.DataSource]: DataSourcePanel,
+  [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,

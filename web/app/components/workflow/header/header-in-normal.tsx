@@ -13,10 +13,12 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import Divider from '../../base/divider'
+import type { RunAndHistoryProps } from './run-and-history'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import VersionHistoryButton from './version-history-button'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 
 export type HeaderInNormalProps = {
@@ -24,9 +26,11 @@ export type HeaderInNormalProps = {
     left?: React.ReactNode
     middle?: React.ReactNode
   }
+  runAndHistoryProps?: RunAndHistoryProps
 }
 const HeaderInNormal = ({
   components,
+  runAndHistoryProps,
 }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
@@ -39,6 +43,7 @@ const HeaderInNormal = ({
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const onStartRestoring = useCallback(() => {
     workflowStore.setState({ isRestoring: true })
@@ -51,6 +56,7 @@ const HeaderInNormal = ({
     setShowDebugAndPreviewPanel(false)
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
+    closeAllInputFieldPanels()
   }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel])
 
   return (
@@ -65,7 +71,7 @@ const HeaderInNormal = ({
         {components?.left}
         <EnvButton disabled={nodesReadOnly} />
         <Divider type='vertical' className='mx-auto h-3.5' />
-        <RunAndHistory />
+        <RunAndHistory {...runAndHistoryProps} />
         {components?.middle}
         <VersionHistoryButton onClick={onStartRestoring} />
       </div>

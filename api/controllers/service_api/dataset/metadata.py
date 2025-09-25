@@ -133,7 +133,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route("/datasets/metadata/built-in")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
     @service_api_ns.doc("get_built_in_fields")
     @service_api_ns.doc(description="Get all built-in metadata fields")
@@ -143,7 +143,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    def get(self, tenant_id):
+    def get(self, tenant_id, dataset_id):
         """Get all built-in metadata fields."""
         built_in_fields = MetadataService.get_built_in_fields()
         return {"fields": built_in_fields}, 200
@@ -174,7 +174,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             MetadataService.enable_built_in_field(dataset)
         elif action == "disable":
             MetadataService.disable_built_in_field(dataset)
-        return 200
+        return {"result": "success"}, 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
@@ -204,4 +204,4 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
-        return 200
+        return {"result": "success"}, 200

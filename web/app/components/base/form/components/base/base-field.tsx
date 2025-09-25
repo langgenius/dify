@@ -14,17 +14,18 @@ import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 
-const getInputType = (type: FormTypeEnum) => {
+const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
     case FormTypeEnum.secretInput:
-      return 'password'
+      return { type: 'password', autoComplete: 'new-password' }
     case FormTypeEnum.textNumber:
-      return 'number'
+      return { type: 'number' }
     default:
-      return 'text'
+      return { type: 'text' }
   }
 }
 
@@ -36,6 +37,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
+  onChange?: (field: string, value: any) => void
 }
 
 const BaseField = ({
@@ -46,6 +48,7 @@ const BaseField = ({
   formSchema,
   field,
   disabled: propsDisabled,
+  onChange,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -54,9 +57,7 @@ const BaseField = ({
     placeholder,
     options,
     labelClassName: formLabelClassName,
-    show_on = [],
     disabled: formSchemaDisabled,
-    showRadioUI,
     type: formItemType,
     dynamicSelectParams,
   } = formSchema
@@ -86,11 +87,8 @@ const BaseField = ({
         variables.add(condition.variable)
     }
 
-    for (const condition of show_on || [])
-      variables.add(condition.variable)
-
     return Array.from(variables)
-  }, [options, show_on])
+  }, [options])
 
   const watchedValues = useStore(field.form.store, (s) => {
     const result: Record<string, any> = {}
@@ -138,20 +136,10 @@ const BaseField = ({
     }))
   }, [dynamicOptionsData, renderI18nObject])
 
-  const show = useMemo(() => {
-    return show_on.every((condition) => {
-      return watchedValues[condition.variable] === condition.value
-    })
-  }, [watchedValues, show_on])
-
-  const booleanRadioValue = useMemo(() => {
-    if (value === null || value === undefined)
-      return undefined
-    return value ? 1 : 0
-  }, [value])
-
-  if (!show)
-    return null
+  const handleChange = useCallback((value: any) => {
+    field.handleChange(value)
+    onChange?.(field.name, value)
+  }, [field, onChange])
 
   return (
     <div className={cn(fieldClassName)}>
@@ -171,11 +159,13 @@ const BaseField = ({
               name={field.name}
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={(e) => {
+                handleChange(e.target.value)
+              }}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
-              type={getInputType(formItemType)}
+              {...getExtraProps(formItemType)}
             />
           )
         }
@@ -183,11 +173,14 @@ const BaseField = ({
           formItemType === FormTypeEnum.select && (
             <PureSelect
               value={value}
-              onChange={v => field.handleChange(v)}
+              onChange={v => handleChange(v)}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
               options={memorizedOptions}
               triggerPopupSameWidth
+              popupProps={{
+                className: 'max-h-[320px] overflow-y-auto',
+              }}
             />
           )
         }
@@ -222,9 +215,16 @@ const BaseField = ({
                       disabled && 'cursor-not-allowed opacity-50',
                       inputClassName,
                     )}
-                    onClick={() => !disabled && field.handleChange(option.value)}
+                    onClick={() => !disabled && handleChange(option.value)}
                   >
-                    {showRadioUI && <RadioE isChecked={value === option.value} />}
+                    {
+                      formSchema.showRadioUI && (
+                        <RadioE
+                          className='mr-2'
+                          isChecked={value === option.value}
+                        />
+                      )
+                    }
                     {option.label}
                   </div>
                 ))
@@ -235,12 +235,12 @@ const BaseField = ({
         {
           formItemType === FormTypeEnum.boolean && (
             <Radio.Group
-              className='flex w-fit items-center gap-1'
-              value={booleanRadioValue}
-              onChange={val => field.handleChange(val === 1)}
+              className='flex w-fit items-center'
+              value={value}
+              onChange={v => field.handleChange(v)}
             >
-              <Radio value={1}>True</Radio>
-              <Radio value={0}>False</Radio>
+              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={false}>False</Radio>
             </Radio.Group>
           )
         }

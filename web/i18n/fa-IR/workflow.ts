@@ -87,7 +87,6 @@ const translation = {
     },
     disconnect: 'قطع',
     jumpToNode: 'پرش به این گره',
-    parallelRun: 'اجرای موازی',
     addParallelNode: 'افزودن گره موازی',
     parallel: 'موازی',
     branch: 'شاخه',
@@ -216,6 +215,8 @@ const translation = {
     back: 'بازگشت',
     iteration: 'تکرار',
     loop: 'حلقه',
+    reRun: 'دوباره اجرا کنید',
+    preparingDataSource: 'آماده سازی منبع داده',
   },
   tabs: {
     'tools': 'ابزارها',
@@ -234,6 +235,8 @@ const translation = {
     'searchBlock': 'گره جستجو',
     'addAll': 'همه را اضافه کنید',
     'allAdded': 'همه اضافه شده است',
+    'sources': 'منابع',
+    'searchDataSource': 'منبع داده جستجو',
   },
   blocks: {
     'start': 'شروع',
@@ -258,6 +261,8 @@ const translation = {
     'loop-start': 'شروع حلقه',
     'loop-end': 'خروج از حلقه',
     'loop': 'حلقه',
+    'datasource': 'منبع داده',
+    'knowledge-index': 'پایگاه دانش',
   },
   blocksAbout: {
     'start': 'پارامترهای اولیه برای راه‌اندازی جریان کار را تعریف کنید',
@@ -280,6 +285,8 @@ const translation = {
     'agent': 'فراخوانی مدل های زبان بزرگ برای پاسخ به سوالات یا پردازش زبان طبیعی',
     'loop-end': 'معادل "شکستن". این گره هیچ مورد پیکربندی ندارد. هنگامی که بدنه حلقه به این گره می‌رسد، حلقه متوقف می‌شود.',
     'loop': 'یک حلقه منطقی را اجرا کنید تا زمانی که شرایط خاتمه برآورده شود یا حداکثر تعداد حلقه به پایان برسد.',
+    'knowledge-index': 'پایگاه دانش درباره',
+    'datasource': 'منبع داده درباره',
   },
   operator: {
     zoomIn: 'بزرگ‌نمایی',
@@ -380,6 +387,7 @@ const translation = {
         input: 'مقدار ورودی',
         variable: 'از متغیر استفاده کن',
       },
+      inputVars: 'متغیرهای ورودی',
     },
     start: {
       required: 'الزامی',
@@ -467,6 +475,12 @@ const translation = {
         promptPlaceholder: 'اسکیمای JSON خود را توصیف کنید...',
         fieldNamePlaceholder: 'نام میدان',
         generationTip: 'شما می‌توانید از زبان طبیعی برای ایجاد سریع یک طرح‌واره JSON استفاده کنید.',
+      },
+      reasoningFormat: {
+        separated: 'تگ‌های تفکر جداگانه',
+        title: 'فعال‌سازی جداسازی برچسب‌های استدلال',
+        tagged: 'به فکر برچسب‌ها باشید',
+        tooltip: 'محتوا را از تگ‌های تفکر استخراج کرده و در فیلد reasoning_content ذخیره کنید.',
       },
     },
     knowledgeRetrieval: {
@@ -908,6 +922,27 @@ const translation = {
       breakCondition: 'شرط خاتمه حلقه',
       breakConditionTip: 'فقط متغیرهای داخل حلقه‌ها با شرایط خاتمه و متغیرهای گفتگو می‌توانند مورد ارجاع قرار گیرند.',
     },
+    dataSource: {
+      supportedFileFormatsPlaceholder: 'پسوند فایل، e.g. doc',
+      add: 'منبع داده را اضافه کنید',
+      supportedFileFormats: 'فرمت های فایل پشتیبانی شده',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'بیشتر بدانید',
+        title: 'لطفا یک ساختار تکه ای را انتخاب کنید',
+        message: 'پایگاه دانش Dify از سه ساختار تکه ای پشتیبانی می کند: عمومی، والد-فرزند و پرسش و پاسخ. هر پایگاه دانش فقط می تواند یک ساختار داشته باشد. خروجی گره قبلی باید با ساختار تکه انتخاب شده هماهنگ باشد. توجه داشته باشید که انتخاب ساختار تکه بندی بر روش های شاخص موجود تأثیر می گذارد.',
+      },
+      chunkStructure: 'ساختار تکه',
+      retrievalSettingIsRequired: 'تنظیمات بازیابی مورد نیاز است',
+      indexMethodIsRequired: 'روش شاخص مورد نیاز است',
+      changeChunkStructure: 'تغییر ساختار تکه',
+      aboutRetrieval: 'درباره روش بازیابی.',
+      chunkIsRequired: 'ساختار تکه ای مورد نیاز است',
+      chooseChunkStructure: 'یک ساختار تکه ای را انتخاب کنید',
+      chunksInput: 'تکه‌ها',
+      chunksInputTip: 'متغیر ورودی گره پایگاه دانش چانک‌ها است. نوع متغیر یک شیء با یک طرح JSON خاص است که باید با ساختار چانک انتخاب شده سازگار باشد.',
+    },
   },
   tracing: {
     stopBy: 'متوقف شده توسط {{user}}',
@@ -978,6 +1013,10 @@ const translation = {
       clearNode: 'کش متغیر کش شده را پاک کنید',
       emptyTip: 'پس از عبور از یک گره روی بوم یا اجرای گره به صورت مرحله‌ای، می‌توانید مقدار فعلی متغیر گره را در بازرسی متغیر مشاهده کنید.',
       resetConversationVar: 'متغیر گفتگو را به مقدار پیش‌فرض بازنشانی کنید',
+      export: 'صادرات',
+      exportToolTip: 'اکسپورت متغیر به عنوان فایل',
+      largeData: 'داده های بزرگ، پیش نمایش فقط خواندنی صادرات برای مشاهده همه.',
+      largeDataNoExport: 'داده های بزرگ - فقط پیش نمایش جزئی',
     },
     settingsTab: 'تنظیمات',
     lastRunTab: 'آخرین اجرا',
@@ -995,6 +1034,10 @@ const translation = {
     noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
     copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
     lastOutput: 'آخرین خروجی',
+  },
+  sidebar: {
+    exportWarning: 'صادرات نسخه ذخیره شده فعلی',
+    exportWarningDesc: 'این نسخه فعلی ذخیره شده از کار خود را صادر خواهد کرد. اگر تغییرات غیرذخیره شده‌ای در ویرایشگر دارید، لطفاً ابتدا از گزینه صادرات در بوم کار برای ذخیره آنها استفاده کنید.',
   },
 }
 

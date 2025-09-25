@@ -1,8 +1,7 @@
 import threading
-from typing import Optional
+from typing import Any
 
 import pytz
-from flask_login import current_user
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
@@ -10,13 +9,14 @@ from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
+from libs.login import current_user
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 
 
 class AgentService:
     @classmethod
-    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str) -> dict:
+    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str):
         """
         Service to get agent logs
         """
@@ -35,7 +35,7 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Optional[Message] = (
+        message: Message | None = (
             db.session.query(Message)
             .where(
                 Message.id == message_id,
@@ -61,14 +61,15 @@ class AgentService:
             executor = executor.name
         else:
             executor = "Unknown"
-
+        assert isinstance(current_user, Account)
+        assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)
 
         app_model_config = app_model.app_model_config
         if not app_model_config:
             raise ValueError("App model config not found")
 
-        result = {
+        result: dict[str, Any] = {
             "meta": {
                 "status": "success",
                 "executor": executor,

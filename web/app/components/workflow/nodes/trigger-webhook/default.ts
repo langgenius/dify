@@ -1,10 +1,16 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
+import { genNodeMetaData } from '../../utils'
 import type { WebhookTriggerNodeType } from './types'
 import { isValidParameterType } from './utils/parameter-type-utils'
-import { ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+
+const metaData = genNodeMetaData({
+  sort: 3,
+  type: BlockEnum.TriggerWebhook,
+})
 
 const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
+  metaData,
   defaultValue: {
     webhook_url: '',
     method: 'POST',
@@ -15,15 +21,6 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     async_mode: true,
     status_code: 200,
     response_body: '',
-  },
-  getAvailablePrevNodes(_isChatMode: boolean) {
-    return []
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? []
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes.filter(type => type !== BlockEnum.Start)
   },
   checkValid(payload: WebhookTriggerNodeType, t: any) {
     // Validate parameter types for params and body

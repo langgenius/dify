@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
-import { type BaseResource, type BaseResourceProvider, type ResourceVarInputs, VarKindType } from '../types'
+import { type ResourceVarInputs, VarKindType } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -9,12 +9,13 @@ import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Tool } from '@/app/components/tools/types'
 import FormInputTypeSwitch from './form-input-type-switch'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import MixedVariableTextInput from './mixed-variable-text-input'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import FormInputBoolean from './form-input-boolean'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
@@ -32,8 +33,10 @@ type Props = {
   value: ResourceVarInputs
   onChange: (value: any) => void
   inPanel?: boolean
-  currentResource?: BaseResource
-  currentProvider?: BaseResourceProvider
+  currentTool?: Tool
+  currentProvider?: ToolWithProvider
+  showManageInputField?: boolean
+  onManageInputField?: () => void
   extraParams?: Record<string, any>
   providerType?: string
 }
@@ -45,8 +48,10 @@ const FormInputItem: FC<Props> = ({
   value,
   onChange,
   inPanel,
-  currentResource,
+  currentTool,
   currentProvider,
+  showManageInputField,
+  onManageInputField,
   extraParams,
   providerType,
 }) => {
@@ -75,7 +80,7 @@ const FormInputItem: FC<Props> = ({
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray
+  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
   const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
@@ -96,14 +101,14 @@ const FormInputItem: FC<Props> = ({
       return VarType.arrayFile
     else if (type === FormTypeEnum.file)
       return VarType.file
-    // else if (isSelect)
-    //   return VarType.select
+    else if (isSelect)
+      return VarType.string
     // else if (isAppSelector)
     //   return VarType.appSelector
     // else if (isModelSelector)
     //   return VarType.modelSelector
-    // else if (isBoolean)
-    //   return VarType.boolean
+    else if (isBoolean)
+      return VarType.boolean
     else if (isObject)
       return VarType.object
     else if (isArray)
@@ -141,7 +146,7 @@ const FormInputItem: FC<Props> = ({
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
     currentProvider?.plugin_id || '',
     currentProvider?.name || '',
-    currentResource?.name || '',
+    currentTool?.name || '',
     variable || '',
     providerType,
     extraParams,
@@ -151,10 +156,11 @@ const FormInputItem: FC<Props> = ({
   const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useTriggerPluginDynamicOptions({
     plugin_id: currentProvider?.plugin_id || '',
     provider: currentProvider?.name || '',
-    action: currentResource?.name || '',
+    action: currentTool?.name || '',
     parameter: variable || '',
     extra: extraParams,
-  }, isDynamicSelect && providerType === 'trigger' && !!currentResource && !!currentProvider)
+    credential_id: currentProvider?.credential_id || '',
+  }, isDynamicSelect && providerType === 'trigger' && !!currentTool && !!currentProvider)
 
   // Computed values for dynamic options (unified for triggers and tools)
   const dynamicOptions = providerType === 'trigger' ? triggerDynamicOptions?.options || [] : toolsOptions
@@ -163,7 +169,7 @@ const FormInputItem: FC<Props> = ({
   // Fetch dynamic options for tools only (triggers use hook directly)
   useEffect(() => {
     const fetchToolOptions = async () => {
-      if (isDynamicSelect && currentResource && currentProvider && providerType === 'tool') {
+      if (isDynamicSelect && currentTool && currentProvider && providerType === 'tool') {
         setIsLoadingToolsOptions(true)
         try {
           const data = await fetchDynamicOptions()
@@ -182,7 +188,7 @@ const FormInputItem: FC<Props> = ({
     fetchToolOptions()
   }, [
     isDynamicSelect,
-    currentResource?.name,
+    currentTool?.name,
     currentProvider?.name,
     variable,
     extraParams,
@@ -266,7 +272,7 @@ const FormInputItem: FC<Props> = ({
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
-        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
+        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange} />
       )}
       {isString && (
         <MixedVariableTextInput
@@ -275,6 +281,8 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
+          showManageInputField={showManageInputField}
+          onManageInputField={onManageInputField}
         />
       )}
       {isNumber && isConstant && (
@@ -286,13 +294,13 @@ const FormInputItem: FC<Props> = ({
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
       )}
-      {isBoolean && (
+      {isBoolean && isConstant && (
         <FormInputBoolean
           value={varInput?.value as boolean}
           onChange={handleValueChange}
         />
       )}
-      {isSelect && !isMultipleSelect && (
+      {isSelect && isConstant && !isMultipleSelect && (
         <SimpleSelect
           wrapperClassName='h-8 grow'
           disabled={readOnly}
@@ -319,7 +327,7 @@ const FormInputItem: FC<Props> = ({
           ) : undefined}
         />
       )}
-      {isSelect && isMultipleSelect && (
+      {isSelect && isConstant && isMultipleSelect && (
         <Listbox
           multiple
           value={varInput?.value || []}
@@ -516,8 +524,9 @@ const FormInputItem: FC<Props> = ({
           filterVar={getFilterVar()}
           schema={schema}
           valueTypePlaceHolder={targetVarType()}
-          currentResource={currentResource}
+          currentTool={currentTool}
           currentProvider={currentProvider}
+          isFilterFileVar={isBoolean}
         />
       )}
     </div>

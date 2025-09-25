@@ -18,7 +18,7 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
-import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
 import Toast from '../../base/toast'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import Divider from '../../base/divider'
@@ -66,7 +66,7 @@ export type AppPublisherProps = {
   onRefreshData?: () => void
 }
 
-const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
 const AppPublisher = ({
   disabled = false,
@@ -250,7 +250,7 @@ const AppPublisher = ({
                             <div className='flex gap-0.5'>
                               {PUBLISH_SHORTCUT.map(key => (
                                 <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
-                                  {key}
+                                  {getKeyboardKeyNameBySystem(key)}
                                 </span>
                               ))}
                             </div>

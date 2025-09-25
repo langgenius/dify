@@ -1,13 +1,17 @@
-import type { FC } from 'react'
+import type { Dispatch, FC, SetStateAction } from 'react'
 import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
-import type { BlockEnum } from '../types'
-import { useTabs } from './hooks'
-import type { PluginDefaultValue } from './types'
+import type {
+  BlockEnum,
+  NodeDefault,
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
+import DataSources from './data-sources'
 import cn from '@/utils/classnames'
 
 export type TabsProps = {
@@ -15,26 +19,36 @@ export type TabsProps = {
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
   tags: string[]
-  onSelect: (type: BlockEnum, plugin?: PluginDefaultValue) => void
+  onTagsChange: Dispatch<SetStateAction<string[]>>
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
+  blocks: NodeDefault[]
+  dataSources?: ToolWithProvider[]
+  tabs: Array<{
+    key: TabsEnum
+    name: string
+  }>
   filterElem: React.ReactNode
   noBlocks?: boolean
-  showStartTab?: boolean
+  noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
   onActiveTabChange,
   tags,
+  onTagsChange,
   searchText,
   onSelect,
   availableBlocksTypes,
+  blocks,
+  dataSources = [],
+  tabs = [],
   filterElem,
   noBlocks,
-  showStartTab = false,
+  noTools,
   forceShowStartContent = false,
 }) => {
-  const tabs = useTabs(showStartTab)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -84,12 +98,24 @@ const Tabs: FC<TabsProps> = ({
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
+              blocks={blocks}
             />
           </div>
         )
       }
       {
-        activeTab === TabsEnum.Tools && (
+        activeTab === TabsEnum.Sources && !!dataSources.length && (
+          <div className='border-t border-divider-subtle'>
+            <DataSources
+              searchText={searchText}
+              onSelect={onSelect}
+              dataSources={dataSources}
+            />
+          </div>
+        )
+      }
+      {
+        activeTab === TabsEnum.Tools && !noTools && (
           <AllTools
             searchText={searchText}
             onSelect={onSelect}
@@ -100,6 +126,8 @@ const Tabs: FC<TabsProps> = ({
             workflowTools={workflowTools || []}
             mcpTools={mcpTools || []}
             canChooseMCPTool
+            onTagsChange={onTagsChange}
+            isInRAGPipeline={dataSources.length > 0}
           />
         )
       }

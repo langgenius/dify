@@ -34,10 +34,10 @@ if [[ "${MODE}" == "worker" ]]; then
   if [[ -z "${CELERY_QUEUES}" ]]; then
     if [[ "${EDITION}" == "CLOUD" ]]; then
       # Cloud edition: separate queues for dataset and trigger tasks
-      DEFAULT_QUEUES="dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor"
+      DEFAULT_QUEUES="dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor"
     else
-      # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-      DEFAULT_QUEUES="dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor"
+      # Community edition (SELF_HOSTED): dataset, pipeline and workflow have separate queues
+      DEFAULT_QUEUES="dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
@@ -48,22 +48,22 @@ if [[ "${MODE}" == "worker" ]]; then
   # - CELERY_WORKER_QUEUES: Comma-separated list of queues (overrides CELERY_QUEUES)
   # - CELERY_WORKER_CONCURRENCY: Number of worker processes (overrides CELERY_WORKER_AMOUNT)
   # - CELERY_WORKER_POOL: Pool implementation (overrides CELERY_WORKER_CLASS)
-  
+
   if [[ -n "${CELERY_WORKER_QUEUES}" ]]; then
     DEFAULT_QUEUES="${CELERY_WORKER_QUEUES}"
     echo "Using CELERY_WORKER_QUEUES: ${DEFAULT_QUEUES}"
   fi
-  
+
   if [[ -n "${CELERY_WORKER_CONCURRENCY}" ]]; then
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_CONCURRENCY}"
     echo "Using CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY}"
   fi
-  
+
   WORKER_POOL="${CELERY_WORKER_POOL:-${CELERY_WORKER_CLASS:-gevent}}"
   echo "Starting Celery worker with queues: ${DEFAULT_QUEUES}"
 
   exec celery -A app.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
-    --max-tasks-per-child ${MAX_TASK_PRE_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
+    --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
     -Q ${DEFAULT_QUEUES}
 
 elif [[ "${MODE}" == "beat" ]]; then
