@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import json
 from datetime import datetime
@@ -35,19 +37,19 @@ class TenantAccountRole(enum.StrEnum):
         }
 
     @staticmethod
-    def is_privileged_role(role: Optional["TenantAccountRole"]) -> bool:
+    def is_privileged_role(role: Optional[TenantAccountRole]) -> bool:
         if not role:
             return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
 
     @staticmethod
-    def is_admin_role(role: Optional["TenantAccountRole"]) -> bool:
+    def is_admin_role(role: Optional[TenantAccountRole]) -> bool:
         if not role:
             return False
         return role == TenantAccountRole.ADMIN
 
     @staticmethod
-    def is_non_owner_role(role: Optional["TenantAccountRole"]) -> bool:
+    def is_non_owner_role(role: Optional[TenantAccountRole]) -> bool:
         if not role:
             return False
         return role in {
@@ -58,13 +60,13 @@ class TenantAccountRole(enum.StrEnum):
         }
 
     @staticmethod
-    def is_editing_role(role: Optional["TenantAccountRole"]) -> bool:
+    def is_editing_role(role: Optional[TenantAccountRole]) -> bool:
         if not role:
             return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
-    def is_dataset_edit_role(role: Optional["TenantAccountRole"]) -> bool:
+    def is_dataset_edit_role(role: Optional[TenantAccountRole]) -> bool:
         if not role:
             return False
         return role in {
@@ -118,7 +120,7 @@ class Account(UserMixin, Base):
         return self._current_tenant
 
     @current_tenant.setter
-    def current_tenant(self, tenant: "Tenant"):
+    def current_tenant(self, tenant: Tenant):
         with Session(db.engine, expire_on_commit=False) as session:
             tenant_join_query = select(TenantAccountJoin).where(
                 TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id

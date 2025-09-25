@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 import uuid
@@ -49,7 +51,7 @@ class AppMode(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "AppMode":
+    def value_of(cls, value: str) -> AppMode:
         """
         Get value of given mode.
 
@@ -109,19 +111,19 @@ class App(Base):
                 return ""
 
     @property
-    def site(self) -> Optional["Site"]:
+    def site(self) -> Optional[Site]:
         site = db.session.query(Site).where(Site.app_id == self.id).first()
         return site
 
     @property
-    def app_model_config(self) -> Optional["AppModelConfig"]:
+    def app_model_config(self) -> Optional[AppModelConfig]:
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
         return None
 
     @property
-    def workflow(self) -> Optional["Workflow"]:
+    def workflow(self) -> Optional[Workflow]:
         if self.workflow_id:
             from .workflow import Workflow
 
@@ -276,7 +278,7 @@ class App(Base):
         return deleted_tools
 
     @property
-    def tags(self) -> list["Tag"]:
+    def tags(self) -> list[Tag]:
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -645,9 +647,9 @@ class Conversation(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
-    messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
+    messages = db.relationship(Message, backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
-        "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
+        MessageAnnotation, backref="conversation", lazy="select", passive_deletes="all"
     )
 
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
@@ -1131,7 +1133,7 @@ class Message(Base):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
-    def agent_thoughts(self) -> list["MessageAgentThought"]:
+    def agent_thoughts(self) -> list[MessageAgentThought]:
         return (
             db.session.query(MessageAgentThought)
             .where(MessageAgentThought.message_id == self.id)
@@ -1240,7 +1242,7 @@ class Message(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Message":
+    def from_dict(cls, data: dict[str, Any]) -> Message:
         return cls(
             id=data["id"],
             app_id=data["app_id"],
