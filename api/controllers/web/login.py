@@ -12,12 +12,14 @@ from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
+from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
     clear_access_token_from_cookie,
     clear_webapp_token_from_cookie,
     set_access_token_to_cookie,
     extract_access_token,
+    extract_webapp_passport
 )
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
@@ -75,7 +77,19 @@ class LoginStatusApi(Resource):
     )
     def get(self):
         token = extract_access_token(request)
-        return {"logged_in": bool(token)}
+        passport = extract_webapp_passport(request)
+        app_code = request.args.get("app_code")
+        try:
+            verified = PassportService().verify(passport)
+            return {
+                "logged_in": bool(token),
+                "app_logged_in": bool(app_code) and verified.get("app_code") == app_code,
+            }
+        except Exception:
+            return {
+                "logged_in": bool(token),
+                "app_logged_in": False,
+            }
 
 @web_ns.route("/logout")
 class LogoutApi(Resource):
