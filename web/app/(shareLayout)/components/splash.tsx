@@ -8,6 +8,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { useIsWebAppLogin, useWebAppLogout } from '@/service/use-common'
+import { fetchAccessToken } from '@/service/share'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -43,6 +44,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       if (message)
         return
       if (needCheckIsLogin && isLoggedIn && shareCode && redirectUrl) {
+        await fetchAccessToken({ appCode: shareCode })
         router.replace(decodeURIComponent(redirectUrl))
         return
       }

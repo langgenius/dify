@@ -286,6 +286,15 @@ export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { c
   return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
 }
 
+export const fetchAccessToken = async ({ appCode, userId }: { appCode: string, userId?: string }) => {
+  const headers = new Headers()
+  headers.append('X-App-Code', appCode)
+  const params = new URLSearchParams()
+  userId && params.append('user_id', userId)
+  const url = `/passport?${params.toString()}`
+  return get(url, { headers }) as Promise<{ access_token: string }>
+}
+
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
   if (isInstalledApp)
     return consoleGet<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)

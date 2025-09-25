@@ -10,6 +10,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
+import { fetchAccessToken } from '@/service/share'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -59,8 +60,10 @@ export default function CheckCode() {
       }
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code, token })
-      if (ret.result === 'success')
+      if (ret.result === 'success') {
+        await fetchAccessToken({ appCode })
         router.replace(decodeURIComponent(redirectUrl))
+      }
     }
     catch (error) { console.error(error) }
     finally {

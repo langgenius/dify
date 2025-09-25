@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
@@ -12,6 +12,7 @@ import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import type { ResponseError } from '@/service/fetch'
+import { fetchAccessToken } from '@/service/share'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -32,7 +33,21 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
+  const redirectUrl = searchParams.get('redirect_url')
+
+  const getAppCodeFromRedirectUrl = useCallback(() => {
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
+    if (!appCode)
+      return null
+
+    return appCode
+  }, [redirectUrl])
   const handleEmailPasswordLogin = async () => {
+    const appCode = getAppCodeFromRedirectUrl()
+
     if (!email) {
       Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
       return
@@ -46,6 +61,13 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     }
     if (!password?.trim()) {
       Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
+      return
+    }
+    if (!redirectUrl || !appCode) {
+      Toast.notify({
+        type: 'error',
+        message: t('login.error.redirectUrlMissing'),
+      })
       return
     }
 
@@ -64,6 +86,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
+        await fetchAccessToken({ appCode })
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
