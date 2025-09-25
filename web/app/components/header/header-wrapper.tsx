@@ -6,7 +6,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import classNames from '@/utils/classnames'
 
 type HeaderWrapperProps = {
-  children: React.ReactNode
+  readonly children: React.ReactNode
 }
 
 const HeaderWrapper = ({

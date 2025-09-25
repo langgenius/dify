@@ -26,7 +26,7 @@ enum DocName {
 }
 
 type UpgradeOrDownloadProps = {
-  doc_name: DocName
+  readonly doc_name: DocName
 }
 const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   const { t } = useTranslation()

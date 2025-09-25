@@ -9,10 +9,10 @@ import PremiumBadge from '../../base/premium-badge'
 import { Plan } from '../../billing/type'
 
 type PlanBadgeProps = {
-  plan: Plan
-  allowHover?: boolean
-  sandboxAsUpgrade?: boolean
-  onClick?: () => void
+  readonly plan: Plan
+  readonly allowHover?: boolean
+  readonly sandboxAsUpgrade?: boolean
+  readonly onClick?: () => void
 }
 
 const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = false, onClick }) => {

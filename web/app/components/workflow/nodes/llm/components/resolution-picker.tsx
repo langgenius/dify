@@ -8,8 +8,8 @@ import { Resolution } from '@/types/app'
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
-  value: Resolution
-  onChange: (value: Resolution) => void
+  readonly value: Resolution
+  readonly onChange: (value: Resolution) => void
 }
 
 const ResolutionPicker: FC<Props> = ({
