@@ -107,10 +107,13 @@ export const useSchemaTypeDefinitions = () => {
   })
 }
 
+type isLogin = {
+  logged_in: boolean
+}
 export const useIsLogin = () => {
-  return useQuery<SchemaTypeDefinition[]>({
+  return useQuery<isLogin>({
     queryKey: [NAME_SPACE, 'is-login'],
-    queryFn: () => get<SchemaTypeDefinition[]>('/login/status'), // wait for api
+    queryFn: () => get<isLogin>('/login/status'),
   })
 }
 

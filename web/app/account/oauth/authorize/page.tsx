@@ -79,7 +79,8 @@ export default function OAuthAuthorize() {
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
 
-  const { isLoading: isIsLoginLoading, data: isLoggedIn } = useIsLogin()
+  const { isLoading: isIsLoginLoading, data: loginData } = useIsLogin()
+  const isLoggedIn = loginData?.logged_in
   const isLoading = isOAuthLoading || isIsLoginLoading
   const onLoginSwitchClick = () => {
     try {

@@ -11,7 +11,8 @@ import Loading from '@/app/components/base/loading'
 export default function SignInLayout({ children }: any) {
   const { systemFeatures } = useGlobalPublicStore()
   useDocumentTitle('')
-  const { isLoading, data: isLoggedIn } = useIsLogin()
+  const { isLoading, data: loginData } = useIsLogin()
+  const isLoggedIn = loginData?.logged_in
 
   if(isLoading) {
     return (
