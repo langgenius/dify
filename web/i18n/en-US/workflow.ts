@@ -198,6 +198,36 @@ const translation = {
     noteDelete: 'Note deleted',
     edgeDelete: 'Node disconnected',
   },
+  comments: {
+    panelTitle: 'Comment',
+    loading: 'Loading…',
+    placeholder: {
+      add: 'Add a comment',
+      reply: 'Reply',
+      editReply: 'Edit reply',
+    },
+    confirm: {
+      deleteThreadTitle: 'Delete this thread?',
+      deleteThreadDesc: 'This action will permanently delete the thread and all its replies. This cannot be undone.',
+      deleteReplyTitle: 'Delete this reply?',
+      deleteReplyDesc: 'This reply will be removed permanently.',
+    },
+    aria: {
+      deleteComment: 'Delete comment',
+      resolveComment: 'Resolve comment',
+      previousComment: 'Previous comment',
+      nextComment: 'Next comment',
+      closeComment: 'Close comment',
+      replyActions: 'Reply actions',
+    },
+    actions: {
+      editReply: 'Edit reply',
+      deleteReply: 'Delete reply',
+    },
+    fallback: {
+      user: 'User',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} is required',
     rerankModelRequired: 'A configured Rerank Model is required',
@@ -302,6 +332,9 @@ const translation = {
     zoomTo50: 'Zoom to 50%',
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
+    showUserComments: 'Comments',
+    showUserCursors: 'Collaborator cursors',
+    showMiniMap: 'Minimap',
     alignNodes: 'Align Nodes',
     alignLeft: 'Left',
     alignCenter: 'Center',

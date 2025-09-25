@@ -192,6 +192,36 @@ const translation = {
     nodeDescriptionChange: 'شرح نود تغییر کرد',
     nodeChange: 'نود تغییر کرد',
   },
+  comments: {
+    panelTitle: 'دیدگاه',
+    loading: 'در حال بارگذاری…',
+    placeholder: {
+      add: 'افزودن دیدگاه',
+      reply: 'پاسخ',
+      editReply: 'ویرایش پاسخ',
+    },
+    confirm: {
+      deleteThreadTitle: 'این گفتگو حذف شود؟',
+      deleteThreadDesc: 'این عملیات گفتگو و تمام پاسخ‌های آن را برای همیشه حذف می‌کند و قابل بازگردانی نیست.',
+      deleteReplyTitle: 'این پاسخ حذف شود؟',
+      deleteReplyDesc: 'این پاسخ برای همیشه حذف خواهد شد.',
+    },
+    aria: {
+      deleteComment: 'حذف دیدگاه',
+      resolveComment: 'حل‌کردن دیدگاه',
+      previousComment: 'دیدگاه قبلی',
+      nextComment: 'دیدگاه بعدی',
+      closeComment: 'بستن دیدگاه',
+      replyActions: 'عملیات پاسخ',
+    },
+    actions: {
+      editReply: 'ویرایش پاسخ',
+      deleteReply: 'حذف پاسخ',
+    },
+    fallback: {
+      user: 'کاربر',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
     authRequired: 'احراز هویت ضروری است',

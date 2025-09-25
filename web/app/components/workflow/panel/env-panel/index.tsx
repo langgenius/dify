@@ -3,9 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import {
-  useStoreApi,
-} from 'reactflow'
 import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
@@ -20,16 +17,17 @@ import cn from '@/utils/classnames'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { updateEnvironmentVariables } from '@/service/workflow'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 
 const EnvPanel = () => {
   const { t } = useTranslation()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
   const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
   const envSecrets = useStore(s => s.envSecrets)
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
   const setEnvSecrets = useStore(s => s.setEnvSecrets)
-  const appId = useWorkflowStore(s => s.appId)
+  const appId = useWorkflowStore(s => s.appId) as string
 
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
@@ -42,25 +40,24 @@ const EnvPanel = () => {
   }
 
   const getEffectedNodes = useCallback((env: EnvironmentVariable) => {
-    const { getNodes } = store.getState()
-    const allNodes = getNodes()
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
     return findUsedVarNodes(
       ['env', env.name],
       allNodes,
     )
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const removeUsedVarInNodes = useCallback((env: EnvironmentVariable) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const effectedNodes = getEffectedNodes(env)
-    const newNodes = getNodes().map((node) => {
+    const newNodes = nodes.map((node) => {
       if (effectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['env', env.name], [])
 
       return node
     })
     setNodes(newNodes)
-  }, [getEffectedNodes, store])
+  }, [getEffectedNodes, collaborativeWorkflow])
 
   const handleEdit = (env: EnvironmentVariable) => {
     setCurrentVar(env)
@@ -185,9 +182,9 @@ const EnvPanel = () => {
 
     // side effects of rename env
     if (currentVar.name !== env.name) {
-      const { getNodes, setNodes } = store.getState()
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
       const effectedNodes = getEffectedNodes(currentVar)
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, ['env', currentVar.name], ['env', env.name])
 
@@ -218,7 +215,7 @@ const EnvPanel = () => {
       // Revert local state on error
       updateEnvList(envList)
     }
-  }, [currentVar, envList, envSecrets, getEffectedNodes, setEnvSecrets, store, updateEnvList, appId])
+  }, [currentVar, envList, envSecrets, getEffectedNodes, setEnvSecrets, collaborativeWorkflow, updateEnvList, appId])
 
   return (
     <div

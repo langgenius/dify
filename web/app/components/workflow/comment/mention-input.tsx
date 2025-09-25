@@ -1,9 +1,10 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { RiArrowUpLine, RiAtLine } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
 import Button from '@/app/components/base/button'
@@ -29,7 +30,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   onChange,
   onSubmit,
   onCancel,
-  placeholder = 'Add a comment',
+  placeholder,
   disabled = false,
   loading = false,
   className,
@@ -37,6 +38,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   autoFocus = false,
 }) => {
   const params = useParams()
+  const { t } = useTranslation()
   const appId = params.appId as string
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -46,6 +48,77 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const [mentionPosition, setMentionPosition] = useState(0)
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
+  const resolvedPlaceholder = placeholder ?? t('workflow.comments.placeholder.add')
+
+  const mentionNameList = useMemo(() => {
+    const names = mentionUsers
+      .map(user => user.name?.trim())
+      .filter((name): name is string => Boolean(name))
+
+    const uniqueNames = Array.from(new Set(names))
+    uniqueNames.sort((a, b) => b.length - a.length)
+    return uniqueNames
+  }, [mentionUsers])
+
+  const highlightedValue = useMemo<ReactNode>(() => {
+    if (!value)
+      return ''
+
+    if (mentionNameList.length === 0)
+      return value
+
+    const segments: ReactNode[] = []
+    let cursor = 0
+    let hasMention = false
+
+    while (cursor < value.length) {
+      let nextMatchStart = -1
+      let matchedName = ''
+
+      for (const name of mentionNameList) {
+        const searchStart = value.indexOf(`@${name}`, cursor)
+        if (searchStart === -1)
+          continue
+
+        const previousChar = searchStart > 0 ? value[searchStart - 1] : ''
+        if (searchStart > 0 && !/\s/.test(previousChar))
+          continue
+
+        if (
+          nextMatchStart === -1
+          || searchStart < nextMatchStart
+          || (searchStart === nextMatchStart && name.length > matchedName.length)
+        ) {
+          nextMatchStart = searchStart
+          matchedName = name
+        }
+      }
+
+      if (nextMatchStart === -1)
+        break
+
+      if (nextMatchStart > cursor)
+        segments.push(<span key={`text-${cursor}`}>{value.slice(cursor, nextMatchStart)}</span>)
+
+      const mentionEnd = nextMatchStart + matchedName.length + 1
+      segments.push(
+        <span key={`mention-${nextMatchStart}`} className='text-primary-600'>
+          {value.slice(nextMatchStart, mentionEnd)}
+        </span>,
+      )
+
+      hasMention = true
+      cursor = mentionEnd
+    }
+
+    if (!hasMention)
+      return value
+
+    if (cursor < value.length)
+      segments.push(<span key={`text-${cursor}`}>{value.slice(cursor)}</span>)
+
+    return segments
+  }, [value, mentionNameList])
 
   const loadMentionableUsers = useCallback(async () => {
     if (!appId) return
@@ -220,12 +293,23 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   return (
     <>
       <div className={cn('relative flex items-center', className)}>
+        <div
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre-wrap break-words p-1 leading-6',
+            'body-lg-regular text-text-primary',
+          )}
+        >
+          {highlightedValue}
+          {'​'}
+        </div>
         <Textarea
           ref={textareaRef}
           className={cn(
-            'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary caret-primary-500 outline-none',
+            'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none',
+            'placeholder:text-text-tertiary',
           )}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           autoFocus={autoFocus}
           minRows={isEditing ? 4 : 1}
           maxRows={4}
@@ -238,10 +322,10 @@ export const MentionInput: FC<MentionInputProps> = memo(({
         {!isEditing && (
           <div className="absolute bottom-0 right-1 z-20 flex items-end gap-1">
             <div
-              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
+              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4" />
+              <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
             </div>
             <Button
               className='z-20 ml-2 w-8 px-0'
@@ -249,7 +333,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
               disabled={!value.trim() || disabled || loading}
               onClick={handleSubmit}
             >
-              <RiArrowUpLine className='h-4 w-4' />
+              <RiArrowUpLine className='h-4 w-4 text-components-button-primary-text' />
             </Button>
           </div>
         )}
@@ -257,14 +341,14 @@ export const MentionInput: FC<MentionInputProps> = memo(({
         {isEditing && (
           <div className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between">
             <div
-              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg hover:bg-state-base-hover"
+              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4" />
+              <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
             </div>
             <div className='flex items-center gap-2'>
               <Button variant='secondary' size='small' onClick={onCancel} disabled={loading}>
-                Cancel
+                {t('common.operation.cancel')}
               </Button>
               <Button
                 variant='primary'
@@ -272,7 +356,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
                 disabled={loading || !value.trim()}
                 onClick={() => handleSubmit()}
               >
-                Save
+                {t('common.operation.save')}
               </Button>
             </div>
           </div>
@@ -281,7 +365,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-white shadow-lg"
+          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg"
           style={{
             left: dropdownPosition.x,
             top: dropdownPosition.y,

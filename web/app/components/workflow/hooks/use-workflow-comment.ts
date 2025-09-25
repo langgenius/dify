@@ -113,19 +113,16 @@ export const useWorkflowComment = () => {
 
       await loadComments()
       setPendingComment(null)
-      setControlMode(ControlMode.Pointer)
     }
     catch (error) {
       console.error('Failed to create comment:', error)
       setPendingComment(null)
-      setControlMode(ControlMode.Pointer)
     }
-  }, [appId, pendingComment, setControlMode, setPendingComment, loadComments, reactflow])
+  }, [appId, pendingComment, setPendingComment, loadComments, reactflow])
 
   const handleCommentCancel = useCallback(() => {
     setPendingComment(null)
-    setControlMode(ControlMode.Pointer)
-  }, [setControlMode, setPendingComment])
+  }, [setPendingComment])
 
   const handleCommentIconClick = useCallback(async (comment: WorkflowCommentList) => {
     setPendingComment(null)

@@ -37,7 +37,7 @@ const UserCursors: FC<UserCursorsProps> = ({
         return (
           <div
             key={userId}
-            className="pointer-events-none absolute z-[10000] transition-all duration-150 ease-out"
+            className="pointer-events-none absolute z-[8] transition-all duration-150 ease-out"
             style={{
               left: screenPos.x,
               top: screenPos.y,

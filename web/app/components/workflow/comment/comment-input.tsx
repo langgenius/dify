@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
@@ -13,6 +14,7 @@ type CommentInputProps = {
 
 export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, onCancel }) => {
   const [content, setContent] = useState('')
+  const { t } = useTranslation()
   const { userProfile } = useAppContext()
 
   useEffect(() => {
@@ -46,8 +48,8 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
     >
       <div className="flex items-center gap-3">
         <div className="relative shrink-0">
-          <div className="relative h-10 w-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-primary-500">
-            <div className="absolute inset-1 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
+          <div className="relative h-8 w-8 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-primary-500">
+            <div className="absolute inset-[2px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-white">
               <div className="flex h-full w-full items-center justify-center">
                 <div className="h-6 w-6 overflow-hidden rounded-full">
                   <Avatar
@@ -63,15 +65,15 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
         </div>
         <div
           className={cn(
-            'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+            'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[4px] shadow-md',
           )}
         >
-          <div className='relative px-[9px] pt-[9px]'>
+          <div className='relative px-[9px] pt-[4px]'>
             <MentionInput
               value={content}
               onChange={setContent}
               onSubmit={handleMentionSubmit}
-              placeholder="Add a comment"
+              placeholder={t('workflow.comments.placeholder.add')}
               autoFocus
               className="relative"
             />

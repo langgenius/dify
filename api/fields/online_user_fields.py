@@ -1,7 +1,7 @@
 from flask_restx import fields
 
 online_user_partial_fields = {
-    "id": fields.String,
+    "user_id": fields.String,
     "username": fields.String,
     "avatar": fields.String,
     "sid": fields.String,

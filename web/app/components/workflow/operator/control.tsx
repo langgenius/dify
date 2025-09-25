@@ -9,9 +9,9 @@ import {
   RiCursorLine,
   RiFunctionAddLine,
   RiHand,
-  RiMessage3Line,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
+import { Comment } from '@/app/components/base/icons/src/public/other'
 import {
   useNodesReadOnly,
   useWorkflowCanvasMaximize,
@@ -33,9 +33,9 @@ const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const { handleModePointer, handleModeHand } = useWorkflowMoveMode()
+  const { handleModePointer, handleModeHand, handleModeComment } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
-  const { handleAddNote, handleAddComment } = useOperator()
+  const { handleAddNote } = useOperator()
   const {
     nodesReadOnly,
     getNodesReadOnly,
@@ -48,14 +48,6 @@ const Control = () => {
 
     e.stopPropagation()
     handleAddNote()
-  }
-
-  const addComment = (e: MouseEvent<HTMLDivElement>) => {
-    if (getNodesReadOnly())
-      return
-
-    e.stopPropagation()
-    handleAddComment()
   }
 
   return (
@@ -104,9 +96,9 @@ const Control = () => {
             controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
-          onClick={addComment}
+          onClick={handleModeComment}
         >
-          <RiMessage3Line className='h-4 w-4' />
+          <Comment className='h-4 w-4' />
         </div>
       </TipPopup>
       <Divider className='my-1 w-3.5' />

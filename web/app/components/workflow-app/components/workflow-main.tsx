@@ -12,7 +12,6 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
-import UserCursors from '@/app/components/workflow/collaboration/components/user-cursors'
 
 import {
   useAvailableNodesMetaData,
@@ -46,7 +45,7 @@ const WorkflowMain = ({
   const reactFlow = useReactFlow()
 
   const store = useStoreApi()
-  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId, store)
+  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId || '', store)
   const [myUserId, setMyUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -297,10 +296,12 @@ const WorkflowMain = ({
         viewport={viewport}
         onWorkflowDataUpdate={handleWorkflowDataUpdate}
         hooksStore={hooksStore as any}
+        cursors={filteredCursors}
+        myUserId={myUserId}
+        onlineUsers={onlineUsers}
       >
         <WorkflowChildren />
       </WorkflowWithInnerContext>
-      <UserCursors cursors={filteredCursors} myUserId={myUserId} onlineUsers={onlineUsers} />
     </div>
   )
 }
