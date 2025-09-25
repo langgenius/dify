@@ -262,7 +262,7 @@ class WorkflowService:
 
         workflow.environment_variables = environment_variables
         workflow.updated_by = account.id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = naive_utc_now()
 
         # commit db session changes
         db.session.commit()
@@ -285,7 +285,7 @@ class WorkflowService:
 
         workflow.conversation_variables = conversation_variables
         workflow.updated_by = account.id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = naive_utc_now()
 
         # commit db session changes
         db.session.commit()
@@ -311,7 +311,7 @@ class WorkflowService:
 
         workflow.features = json.dumps(features)
         workflow.updated_by = account.id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = naive_utc_now()
 
         # commit db session changes
         db.session.commit()
