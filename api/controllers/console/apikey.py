@@ -76,10 +76,10 @@ class BaseApiKeyListResource(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            current_key_count = (
-                session.query(ApiToken)
-                .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-                .count()
+            current_key_count = session.scalar(
+                select(sa.func.count(ApiToken.id)).where(
+                    ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
+                )
             )
 
             if current_key_count >= self.max_keys:
