@@ -136,7 +136,7 @@ export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
     enabled,
     staleTime: 0,
     gcTime: 0,
-    queryFn: () => getPublic<isWebAppLogin>(`/login/status?app_id=${shareCode}`),
+    queryFn: () => getPublic<isWebAppLogin>(`/login/status?app_code=${shareCode}`),
   })
 }
 
