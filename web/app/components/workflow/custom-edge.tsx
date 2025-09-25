@@ -28,6 +28,7 @@ import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render
 import cn from '@/utils/classnames'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
+// eslint-disable-next-line @eslint-react/prefer-read-only-props
 const CustomEdge = ({
   id,
   data,

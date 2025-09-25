@@ -9,9 +9,9 @@ import {
   VariableLabelInText,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 type Props = {
-  nodeId: string
-  value: string
-  className?: string
+  readonly nodeId: string
+  readonly value: string
+  readonly className?: string
 }
 
 const VAR_PLACEHOLDER = '@#!@#!'

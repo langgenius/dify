@@ -3,8 +3,8 @@ import { getKeyboardKeyNameBySystem } from './utils'
 import cn from '@/utils/classnames'
 
 type ShortcutsNameProps = {
-  keys: string[]
-  className?: string
+  readonly keys: string[]
+  readonly className?: string
 }
 const ShortcutsName = ({
   keys,

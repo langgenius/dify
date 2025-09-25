@@ -1,12 +1,12 @@
 type CustomEdgeLinearGradientRenderProps = {
-  id: string
-  startColor: string
-  stopColor: string
-  position: {
-    x1: number
-    x2: number
-    y1: number
-    y2: number
+  readonly id: string
+  readonly startColor: string
+  readonly stopColor: string
+  readonly position: {
+    readonly x1: number
+    readonly x2: number
+    readonly y1: number
+    readonly y2: number
   }
 }
 const CustomEdgeLinearGradientRender = ({
