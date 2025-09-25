@@ -88,7 +88,7 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
-session_factoty = sessionmaker(bind=db.engine, expire_on_commit=False)
+session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
 class DatasetService:
     @staticmethod
@@ -3236,7 +3236,7 @@ class SegmentService:
         cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str | None = None
     ):
         assert isinstance(current_user, Account)
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
 
             query = (
                 select(ChildChunk)
@@ -3255,7 +3255,7 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             result = (
                 session.query(ChildChunk)
                 .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
@@ -3274,7 +3274,7 @@ class SegmentService:
         limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             query = select(DocumentSegment).where(
                 DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
             )
@@ -3294,7 +3294,7 @@ class SegmentService:
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
         """Get a segment by its ID."""
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             result = (
                 session.query(DocumentSegment)
                 .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
@@ -3308,7 +3308,7 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding(
         cls, provider_name: str, model_name: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             dataset_collection_binding = (
                 session.query(DatasetCollectionBinding)
                 .where(
@@ -3334,7 +3334,7 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding_by_id_and_type(
         cls, collection_binding_id: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             dataset_collection_binding = (
                 session.query(DatasetCollectionBinding)
                 .where(
@@ -3352,7 +3352,7 @@ class DatasetCollectionBindingService:
 class DatasetPermissionService:
     @classmethod
     def get_dataset_partial_member_list(cls, dataset_id):
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             user_list_query = session.scalars(
                 select(
                     DatasetPermission.account_id,
@@ -3363,7 +3363,7 @@ class DatasetPermissionService:
 
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
             for user in user_list:
@@ -3395,5 +3395,5 @@ class DatasetPermissionService:
 
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
-        with session_factoty.begin() as session:
+        with session_factory.begin() as session:
             session.execute(sa.delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
