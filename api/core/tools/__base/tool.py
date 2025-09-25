@@ -209,7 +209,7 @@ class Tool(ABC):
             message=ToolInvokeMessage.BlobMessage(blob=blob),
             meta=meta,
         )
-    
+
     def create_variable_message(self, variable_name: str, variable_value: Any) -> ToolInvokeMessage:
         """
         create a variable message
