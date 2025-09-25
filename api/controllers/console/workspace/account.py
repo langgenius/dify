@@ -583,3 +583,11 @@ api.add_resource(ChangeEmailResetApi, "/account/change-email/reset")
 api.add_resource(CheckEmailUnique, "/account/change-email/check-email-unique")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
+
+# MFA endpoints
+from controllers.console.auth.mfa import MFADisableApi, MFASetupCompleteApi, MFASetupInitApi, MFAStatusApi
+
+api.add_resource(MFAStatusApi, "/account/mfa/status")
+api.add_resource(MFASetupInitApi, "/account/mfa/setup")
+api.add_resource(MFASetupCompleteApi, "/account/mfa/setup/complete")
+api.add_resource(MFADisableApi, "/account/mfa/disable")

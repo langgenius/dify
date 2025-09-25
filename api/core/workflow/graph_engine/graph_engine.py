@@ -23,7 +23,6 @@ from core.workflow.graph_events import (
     GraphNodeEventBase,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
-    GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
@@ -261,23 +260,12 @@ class GraphEngine:
                 if self._graph_execution.error:
                     raise self._graph_execution.error
             else:
-                outputs = self._graph_runtime_state.outputs
-                exceptions_count = self._graph_execution.exceptions_count
-                if exceptions_count > 0:
-                    yield GraphRunPartialSucceededEvent(
-                        exceptions_count=exceptions_count,
-                        outputs=outputs,
-                    )
-                else:
-                    yield GraphRunSucceededEvent(
-                        outputs=outputs,
-                    )
+                yield GraphRunSucceededEvent(
+                    outputs=self._graph_runtime_state.outputs,
+                )
 
         except Exception as e:
-            yield GraphRunFailedEvent(
-                error=str(e),
-                exceptions_count=self._graph_execution.exceptions_count,
-            )
+            yield GraphRunFailedEvent(error=str(e))
             raise
 
         finally:

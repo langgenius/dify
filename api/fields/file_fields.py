@@ -33,7 +33,6 @@ file_fields = {
     "created_by": fields.String,
     "created_at": TimestampField,
     "preview_url": fields.String,
-    "source_url": fields.String,
 }
 
 

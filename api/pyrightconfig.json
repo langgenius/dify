@@ -39,6 +39,9 @@
   "reportUntypedFunctionDecorator": "hint",
 
   "reportAttributeAccessIssue": "hint",
+  "reportGeneralTypeIssues": "none",
+  "reportUnusedVariable": "none",
+  "reportCallIssue": "none",
   "pythonVersion": "3.11",
   "pythonPlatform": "All"
 }

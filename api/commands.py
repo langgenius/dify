@@ -1448,52 +1448,41 @@ def transform_datasource_credentials():
                     notion_credentials_tenant_mapping[tenant_id] = []
                 notion_credentials_tenant_mapping[tenant_id].append(notion_credential)
             for tenant_id, notion_tenant_credentials in notion_credentials_tenant_mapping.items():
-                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
-                if not tenant:
-                    continue
-                try:
-                    # check notion plugin is installed
-                    installed_plugins = installer_manager.list_plugins(tenant_id)
-                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                    if notion_plugin_id not in installed_plugins_ids:
-                        if notion_plugin_unique_identifier:
-                            # install notion plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
-                    auth_count = 0
-                    for notion_tenant_credential in notion_tenant_credentials:
-                        auth_count += 1
-                        # get credential oauth params
-                        access_token = notion_tenant_credential.access_token
-                        # notion info
-                        notion_info = notion_tenant_credential.source_info
-                        workspace_id = notion_info.get("workspace_id")
-                        workspace_name = notion_info.get("workspace_name")
-                        workspace_icon = notion_info.get("workspace_icon")
-                        new_credentials = {
-                            "integration_secret": encrypter.encrypt_token(tenant_id, access_token),
-                            "workspace_id": workspace_id,
-                            "workspace_name": workspace_name,
-                            "workspace_icon": workspace_icon,
-                        }
-                        datasource_provider = DatasourceProvider(
-                            provider="notion_datasource",
-                            tenant_id=tenant_id,
-                            plugin_id=notion_plugin_id,
-                            auth_type=oauth_credential_type.value,
-                            encrypted_credentials=new_credentials,
-                            name=f"Auth {auth_count}",
-                            avatar_url=workspace_icon or "default",
-                            is_default=False,
-                        )
-                        db.session.add(datasource_provider)
-                        deal_notion_count += 1
-                except Exception as e:
-                    click.echo(
-                        click.style(
-                            f"Error transforming notion credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
-                        )
+                # check notion plugin is installed
+                installed_plugins = installer_manager.list_plugins(tenant_id)
+                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                if notion_plugin_id not in installed_plugins_ids:
+                    if notion_plugin_unique_identifier:
+                        # install notion plugin
+                        PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
+                auth_count = 0
+                for notion_tenant_credential in notion_tenant_credentials:
+                    auth_count += 1
+                    # get credential oauth params
+                    access_token = notion_tenant_credential.access_token
+                    # notion info
+                    notion_info = notion_tenant_credential.source_info
+                    workspace_id = notion_info.get("workspace_id")
+                    workspace_name = notion_info.get("workspace_name")
+                    workspace_icon = notion_info.get("workspace_icon")
+                    new_credentials = {
+                        "integration_secret": encrypter.encrypt_token(tenant_id, access_token),
+                        "workspace_id": workspace_id,
+                        "workspace_name": workspace_name,
+                        "workspace_icon": workspace_icon,
+                    }
+                    datasource_provider = DatasourceProvider(
+                        provider="notion_datasource",
+                        tenant_id=tenant_id,
+                        plugin_id=notion_plugin_id,
+                        auth_type=oauth_credential_type.value,
+                        encrypted_credentials=new_credentials,
+                        name=f"Auth {auth_count}",
+                        avatar_url=workspace_icon or "default",
+                        is_default=False,
                     )
-                    continue
+                    db.session.add(datasource_provider)
+                    deal_notion_count += 1
                 db.session.commit()
         # deal firecrawl credentials
         deal_firecrawl_count = 0
@@ -1506,48 +1495,37 @@ def transform_datasource_credentials():
                     firecrawl_credentials_tenant_mapping[tenant_id] = []
                 firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
             for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
-                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
-                if not tenant:
-                    continue
-                try:
-                    # check firecrawl plugin is installed
-                    installed_plugins = installer_manager.list_plugins(tenant_id)
-                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                    if firecrawl_plugin_id not in installed_plugins_ids:
-                        if firecrawl_plugin_unique_identifier:
-                            # install firecrawl plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
+                # check firecrawl plugin is installed
+                installed_plugins = installer_manager.list_plugins(tenant_id)
+                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                if firecrawl_plugin_id not in installed_plugins_ids:
+                    if firecrawl_plugin_unique_identifier:
+                        # install firecrawl plugin
+                        PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
 
-                    auth_count = 0
-                    for firecrawl_tenant_credential in firecrawl_tenant_credentials:
-                        auth_count += 1
-                        # get credential api key
-                        credentials_json = json.loads(firecrawl_tenant_credential.credentials)
-                        api_key = credentials_json.get("config", {}).get("api_key")
-                        base_url = credentials_json.get("config", {}).get("base_url")
-                        new_credentials = {
-                            "firecrawl_api_key": api_key,
-                            "base_url": base_url,
-                        }
-                        datasource_provider = DatasourceProvider(
-                            provider="firecrawl",
-                            tenant_id=tenant_id,
-                            plugin_id=firecrawl_plugin_id,
-                            auth_type=api_key_credential_type.value,
-                            encrypted_credentials=new_credentials,
-                            name=f"Auth {auth_count}",
-                            avatar_url="default",
-                            is_default=False,
-                        )
-                        db.session.add(datasource_provider)
-                        deal_firecrawl_count += 1
-                except Exception as e:
-                    click.echo(
-                        click.style(
-                            f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
-                        )
+                auth_count = 0
+                for firecrawl_tenant_credential in firecrawl_tenant_credentials:
+                    auth_count += 1
+                    # get credential api key
+                    credentials_json = json.loads(firecrawl_tenant_credential.credentials)
+                    api_key = credentials_json.get("config", {}).get("api_key")
+                    base_url = credentials_json.get("config", {}).get("base_url")
+                    new_credentials = {
+                        "firecrawl_api_key": api_key,
+                        "base_url": base_url,
+                    }
+                    datasource_provider = DatasourceProvider(
+                        provider="firecrawl",
+                        tenant_id=tenant_id,
+                        plugin_id=firecrawl_plugin_id,
+                        auth_type=api_key_credential_type.value,
+                        encrypted_credentials=new_credentials,
+                        name=f"Auth {auth_count}",
+                        avatar_url="default",
+                        is_default=False,
                     )
-                    continue
+                    db.session.add(datasource_provider)
+                    deal_firecrawl_count += 1
                 db.session.commit()
         # deal jina credentials
         deal_jina_count = 0
@@ -1560,45 +1538,36 @@ def transform_datasource_credentials():
                     jina_credentials_tenant_mapping[tenant_id] = []
                 jina_credentials_tenant_mapping[tenant_id].append(jina_credential)
             for tenant_id, jina_tenant_credentials in jina_credentials_tenant_mapping.items():
-                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
-                if not tenant:
-                    continue
-                try:
-                    # check jina plugin is installed
-                    installed_plugins = installer_manager.list_plugins(tenant_id)
-                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                    if jina_plugin_id not in installed_plugins_ids:
-                        if jina_plugin_unique_identifier:
-                            # install jina plugin
-                            logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
-                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
+                # check jina plugin is installed
+                installed_plugins = installer_manager.list_plugins(tenant_id)
+                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                if jina_plugin_id not in installed_plugins_ids:
+                    if jina_plugin_unique_identifier:
+                        # install jina plugin
+                        logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
+                        PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
 
-                    auth_count = 0
-                    for jina_tenant_credential in jina_tenant_credentials:
-                        auth_count += 1
-                        # get credential api key
-                        credentials_json = json.loads(jina_tenant_credential.credentials)
-                        api_key = credentials_json.get("config", {}).get("api_key")
-                        new_credentials = {
-                            "integration_secret": api_key,
-                        }
-                        datasource_provider = DatasourceProvider(
-                            provider="jina",
-                            tenant_id=tenant_id,
-                            plugin_id=jina_plugin_id,
-                            auth_type=api_key_credential_type.value,
-                            encrypted_credentials=new_credentials,
-                            name=f"Auth {auth_count}",
-                            avatar_url="default",
-                            is_default=False,
-                        )
-                        db.session.add(datasource_provider)
-                        deal_jina_count += 1
-                except Exception as e:
-                    click.echo(
-                        click.style(f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red")
+                auth_count = 0
+                for jina_tenant_credential in jina_tenant_credentials:
+                    auth_count += 1
+                    # get credential api key
+                    credentials_json = json.loads(jina_tenant_credential.credentials)
+                    api_key = credentials_json.get("config", {}).get("api_key")
+                    new_credentials = {
+                        "integration_secret": api_key,
+                    }
+                    datasource_provider = DatasourceProvider(
+                        provider="jina",
+                        tenant_id=tenant_id,
+                        plugin_id=jina_plugin_id,
+                        auth_type=api_key_credential_type.value,
+                        encrypted_credentials=new_credentials,
+                        name=f"Auth {auth_count}",
+                        avatar_url="default",
+                        is_default=False,
                     )
-                    continue
+                    db.session.add(datasource_provider)
+                    deal_jina_count += 1
                 db.session.commit()
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))

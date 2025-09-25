@@ -1,7 +1,7 @@
 import urllib.parse
 from typing import Any
 
-import httpx
+import requests
 from flask_login import current_user
 from sqlalchemy import select
 
@@ -43,7 +43,7 @@ class NotionOAuth(OAuthDataSource):
         data = {"code": code, "grant_type": "authorization_code", "redirect_uri": self.redirect_uri}
         headers = {"Accept": "application/json"}
         auth = (self.client_id, self.client_secret)
-        response = httpx.post(self._TOKEN_URL, data=data, auth=auth, headers=headers)
+        response = requests.post(self._TOKEN_URL, data=data, auth=auth, headers=headers)
 
         response_json = response.json()
         access_token = response_json.get("access_token")
@@ -239,7 +239,7 @@ class NotionOAuth(OAuthDataSource):
                 "Notion-Version": "2022-06-28",
             }
 
-            response = httpx.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
             response_json = response.json()
 
             results.extend(response_json.get("results", []))
@@ -254,7 +254,7 @@ class NotionOAuth(OAuthDataSource):
             "Authorization": f"Bearer {access_token}",
             "Notion-Version": "2022-06-28",
         }
-        response = httpx.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
+        response = requests.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
         if response.status_code != 200:
             message = response_json.get("message", "unknown error")
@@ -270,7 +270,7 @@ class NotionOAuth(OAuthDataSource):
             "Authorization": f"Bearer {access_token}",
             "Notion-Version": "2022-06-28",
         }
-        response = httpx.get(url=self._NOTION_BOT_USER, headers=headers)
+        response = requests.get(url=self._NOTION_BOT_USER, headers=headers)
         response_json = response.json()
         if "object" in response_json and response_json["object"] == "user":
             user_type = response_json["type"]
@@ -294,7 +294,7 @@ class NotionOAuth(OAuthDataSource):
                 "Authorization": f"Bearer {access_token}",
                 "Notion-Version": "2022-06-28",
             }
-            response = httpx.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
             response_json = response.json()
 
             results.extend(response_json.get("results", []))

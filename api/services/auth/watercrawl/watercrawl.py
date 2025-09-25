@@ -1,7 +1,7 @@
 import json
 from urllib.parse import urljoin
 
-import httpx
+import requests
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase
 
@@ -31,7 +31,7 @@ class WatercrawlAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "X-API-KEY": self.api_key}
 
     def _get_request(self, url, headers):
-        return httpx.get(url, headers=headers)
+        return requests.get(url, headers=headers)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:

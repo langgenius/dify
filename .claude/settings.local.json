@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m ruff check:*)",
+      "Bash(docker compose exec:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(git checkout:*)",
+      "Bash(python:*)",
+      "Bash(docker compose:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(uv run:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm install:*)",
+      "Bash(docker exec:*)",
+      "Bash(npm test)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm list:*)",
+      "Bash(rm:*)",
+      "Bash(git log:*)",
+      "Read(//c/Users/kbrah/Pictures/Screenshots/**)",
+      "Bash(python -m pytest tests/unit_tests/services/test_mfa_service.py -v)"
+    ],
+    "deny": []
+  }
+}
