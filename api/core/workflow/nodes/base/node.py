@@ -304,7 +304,7 @@ class Node:
         This is the public accessor for the internal '_node_id'.
         """
         return self._node_id
-    
+
     # Public interface properties that delegate to abstract methods
     @property
     def error_strategy(self) -> ErrorStrategy | None:
