@@ -465,9 +465,7 @@ class AgentNode(Node):
                     model_schema.features.remove(feature)
         return model_schema
 
-    def _filter_mcp_type_tool(
-        self, strategy: PluginAgentStrategy, tools: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _filter_mcp_type_tool(self, strategy: PluginAgentStrategy, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Filter MCP type tool
         :param strategy: plugin agent strategy

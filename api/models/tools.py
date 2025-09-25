@@ -551,7 +551,7 @@ class DeprecatedPublishedAppTool(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
 
     @property
-    def description_i18n(self) -> "I18nObject":
+    def description_i18n(self) -> I18nObject:
         from core.tools.entities.common_entities import I18nObject
 
         return I18nObject(**json.loads(self.description))

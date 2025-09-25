@@ -839,7 +839,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
                 extras["icon"] = datasource_info.get("icon")
         return extras
 
-    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> Optional[WorkflowNodeExecutionOffload]:
+    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> WorkflowNodeExecutionOffload | None:
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)
 
     @property
@@ -953,7 +953,7 @@ class WorkflowNodeExecutionOffload(Base):
         back_populates="offload_data",
     )
 
-    file: Mapped[Optional[UploadFile]] = orm.relationship(
+    file: Mapped[UploadFile | None] = orm.relationship(
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
@@ -1238,7 +1238,7 @@ class WorkflowDraftVariable(Base):
     )
 
     # Relationship to WorkflowDraftVariableFile
-    variable_file: Mapped[Optional[WorkflowDraftVariableFile]] = orm.relationship(
+    variable_file: Mapped[WorkflowDraftVariableFile | None] = orm.relationship(
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,

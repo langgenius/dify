@@ -111,19 +111,19 @@ class App(Base):
                 return ""
 
     @property
-    def site(self) -> Optional[Site]:
+    def site(self) -> Site | None:
         site = db.session.query(Site).where(Site.app_id == self.id).first()
         return site
 
     @property
-    def app_model_config(self) -> Optional[AppModelConfig]:
+    def app_model_config(self) -> AppModelConfig | None:
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
         return None
 
     @property
-    def workflow(self) -> Optional[Workflow]:
+    def workflow(self) -> Workflow | None:
         if self.workflow_id:
             from .workflow import Workflow
 
