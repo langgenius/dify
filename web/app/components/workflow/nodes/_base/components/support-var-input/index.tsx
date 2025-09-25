@@ -25,7 +25,8 @@ const SupportVarInput: FC<Props> = ({
   const renderSafeContent = (inputValue: string) => {
     const parts = inputValue.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableRegex = /^\{\{([^}]+)\}\}$/
+      const variableMatch = variableRegex.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight

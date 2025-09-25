@@ -84,7 +84,8 @@ const CodeEditor: FC<Props> = ({
 
   const getUniqVarName = (varName: string) => {
     if (varList.find(v => v.variable === varName)) {
-      const match = varName.match(/_(\d+)$/)
+      const regex = /_(\d+)$/
+      const match = regex.exec(varName)
 
       const index = (() => {
         if (match)

@@ -84,7 +84,7 @@ const ConditionItem = ({
     ) {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
       const matchedStartNumber = isCommonVariable ? 2 : 3
-      const matched = condition.value.match(regex)
+      const matched = regex.exec(condition.value)
 
       if (matched?.length) {
         return {
