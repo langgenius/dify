@@ -50,11 +50,11 @@ const Add = ({
         prevNodeSourceHandle: sourceHandle,
       },
     )
-  }, [nodeId, sourceHandle, handleNodeAdd])
+  }, [handleNodeAdd])
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
-  }, [nodeId, sourceHandle])
+  }, [])
 
   const tip = useMemo(() => {
     if (isFailBranch)
