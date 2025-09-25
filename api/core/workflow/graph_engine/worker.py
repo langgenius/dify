@@ -108,8 +108,8 @@ class Worker(threading.Thread):
             except Exception as e:
                 error_event = NodeRunFailedEvent(
                     id=str(uuid4()),
-                    node_id="unknown",
-                    node_type=NodeType.CODE,
+                    node_id=node.node_id,
+                    node_type=node.node_type,
                     in_iteration_id=None,
                     error=str(e),
                     start_at=datetime.now(),
