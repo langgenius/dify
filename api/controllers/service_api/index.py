@@ -1,9 +1,11 @@
-from flask.views import MethodView
+from flask_restx import Resource
 
 from configs import dify_config
+from controllers.service_api import service_api_ns
 
 
-class IndexApi(MethodView):
+@service_api_ns.route("/")
+class IndexApi(Resource):
     def get(self):
         return {
             "welcome": "Dify OpenAPI",
