@@ -88,7 +88,7 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
-
+session_factoty = sessionmaker(bind=db.engine, expire_on_commit=False)
 
 class DatasetService:
     @staticmethod
@@ -3236,30 +3236,32 @@ class SegmentService:
         cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str | None = None
     ):
         assert isinstance(current_user, Account)
+        with session_factoty.begin() as session:
 
-        query = (
-            select(ChildChunk)
-            .filter_by(
-                tenant_id=current_user.current_tenant_id,
-                dataset_id=dataset_id,
-                document_id=document_id,
-                segment_id=segment_id,
+            query = (
+                select(ChildChunk)
+                .filter_by(
+                    tenant_id=current_user.current_tenant_id,
+                    dataset_id=dataset_id,
+                    document_id=document_id,
+                    segment_id=segment_id,
+                )
+                .order_by(ChildChunk.position.asc())
             )
-            .order_by(ChildChunk.position.asc())
-        )
-        if keyword:
-            query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
-        return db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+            if keyword:
+                query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
+            return db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
-        result = (
-            db.session.query(ChildChunk)
-            .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
-            .first()
-        )
-        return result if isinstance(result, ChildChunk) else None
+        with session_factoty.begin() as session:
+            result = (
+                session.query(ChildChunk)
+                .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
+                .first()
+            )
+            return result if isinstance(result, ChildChunk) else None
 
     @classmethod
     def get_segments(
@@ -3272,31 +3274,33 @@ class SegmentService:
         limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
-        query = select(DocumentSegment).where(
-            DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
-        )
+        with session_factoty.begin() as session:
+            query = select(DocumentSegment).where(
+                DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
+            )
 
-        # Check if status_list is not empty to avoid WHERE false condition
-        if status_list and len(status_list) > 0:
-            query = query.where(DocumentSegment.status.in_(status_list))
+            # Check if status_list is not empty to avoid WHERE false condition
+            if status_list and len(status_list) > 0:
+                query = query.where(DocumentSegment.status.in_(status_list))
 
-        if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
+            if keyword:
+                query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
-        query = query.order_by(DocumentSegment.position.asc())
-        paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+            query = query.order_by(DocumentSegment.position.asc())
+            paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
-        return paginated_segments.items, paginated_segments.total
+            return paginated_segments.items, paginated_segments.total
 
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
         """Get a segment by its ID."""
-        result = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
-        )
-        return result if isinstance(result, DocumentSegment) else None
+        with session_factoty.begin() as session:
+            result = (
+                session.query(DocumentSegment)
+                .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
+                .first()
+            )
+            return result if isinstance(result, DocumentSegment) else None
 
 
 class DatasetCollectionBindingService:
@@ -3304,61 +3308,63 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding(
         cls, provider_name: str, model_name: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        dataset_collection_binding = (
-            db.session.query(DatasetCollectionBinding)
-            .where(
-                DatasetCollectionBinding.provider_name == provider_name,
-                DatasetCollectionBinding.model_name == model_name,
-                DatasetCollectionBinding.type == collection_type,
+        with session_factoty.begin() as session:
+            dataset_collection_binding = (
+                session.query(DatasetCollectionBinding)
+                .where(
+                    DatasetCollectionBinding.provider_name == provider_name,
+                    DatasetCollectionBinding.model_name == model_name,
+                    DatasetCollectionBinding.type == collection_type,
+                )
+                .order_by(DatasetCollectionBinding.created_at)
+                .first()
             )
-            .order_by(DatasetCollectionBinding.created_at)
-            .first()
-        )
 
-        if not dataset_collection_binding:
-            dataset_collection_binding = DatasetCollectionBinding(
-                provider_name=provider_name,
-                model_name=model_name,
-                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                type=collection_type,
-            )
-            db.session.add(dataset_collection_binding)
-            db.session.commit()
-        return dataset_collection_binding
+            if not dataset_collection_binding:
+                dataset_collection_binding = DatasetCollectionBinding(
+                    provider_name=provider_name,
+                    model_name=model_name,
+                    collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
+                    type=collection_type,
+                )
+                session.add(dataset_collection_binding)
+            return dataset_collection_binding
 
     @classmethod
     def get_dataset_collection_binding_by_id_and_type(
         cls, collection_binding_id: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        dataset_collection_binding = (
-            db.session.query(DatasetCollectionBinding)
-            .where(
-                DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
+        with session_factoty.begin() as session:
+            dataset_collection_binding = (
+                session.query(DatasetCollectionBinding)
+                .where(
+                    DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
+                )
+                .order_by(DatasetCollectionBinding.created_at)
+                .first()
             )
-            .order_by(DatasetCollectionBinding.created_at)
-            .first()
-        )
-        if not dataset_collection_binding:
-            raise ValueError("Dataset collection binding not found")
+            if not dataset_collection_binding:
+                raise ValueError("Dataset collection binding not found")
 
-        return dataset_collection_binding
+            return dataset_collection_binding
 
 
 class DatasetPermissionService:
     @classmethod
     def get_dataset_partial_member_list(cls, dataset_id):
-        user_list_query = db.session.scalars(
-            select(
-                DatasetPermission.account_id,
-            ).where(DatasetPermission.dataset_id == dataset_id)
-        ).all()
+        with session_factoty.begin() as session:
+            user_list_query = session.scalars(
+                select(
+                    DatasetPermission.account_id,
+                ).where(DatasetPermission.dataset_id == dataset_id)
+            ).all()
 
-        return user_list_query
+            return user_list_query
 
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
-        try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
+        with session_factoty.begin() as session:
+            session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
@@ -3368,12 +3374,8 @@ class DatasetPermissionService:
                 )
                 permissions.append(permission)
 
-            db.session.add_all(permissions)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            raise e
-
+            session.add_all(permissions)
+   
     @classmethod
     def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
@@ -3393,8 +3395,5 @@ class DatasetPermissionService:
 
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
-        try:
-            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-                session.execute(sa.delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
-        except Exception as e:
-            raise e
+        with session_factoty.begin() as session:
+            session.execute(sa.delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
