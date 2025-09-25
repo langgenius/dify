@@ -130,13 +130,13 @@ export const useLogout = () => {
 type isWebAppLogin = {
   app_logged_in: boolean
 }
-export const useIsWebAppLogin = (enabled: boolean, appId: string) => {
+export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
   return useQuery<isWebAppLogin>({
     queryKey: [NAME_SPACE, 'is-webapp-login'],
     enabled,
     staleTime: 0,
     gcTime: 0,
-    queryFn: () => getPublic<isWebAppLogin>(`/login/status?app_id=${appId}`),
+    queryFn: () => getPublic<isWebAppLogin>(`/login/status?app_id=${shareCode}`),
   })
 }
 
