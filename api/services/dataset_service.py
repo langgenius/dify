@@ -3395,6 +3395,8 @@ class DatasetPermissionService:
     def clear_partial_member_list(cls, dataset_id):
         try:
             with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-                session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
+                session.execute(
+                    sa.delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id)
+                )
         except Exception as e:
             raise e
