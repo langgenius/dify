@@ -15,12 +15,12 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from constants.languages import languages
 from core.helper import encrypter
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -1234,7 +1234,7 @@ def setup_system_trigger_oauth_client(provider, client_params):
     """
     Setup system trigger oauth client
     """
-    from core.plugin.entities.plugin import TriggerProviderID
+    from models.provider_ids import TriggerProviderID
     from models.trigger import TriggerOAuthSystemClient
 
     provider_id = TriggerProviderID(provider)

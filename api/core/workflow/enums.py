@@ -62,6 +62,16 @@ class NodeType(StrEnum):
     TRIGGER_SCHEDULE = "trigger-schedule"
     TRIGGER_PLUGIN = "trigger-plugin"
 
+    @property
+    def is_start_node(self) -> bool:
+        """Check if this node type can serve as a workflow entry point."""
+        return self in [
+            NodeType.START,
+            NodeType.TRIGGER_WEBHOOK,
+            NodeType.TRIGGER_SCHEDULE,
+            NodeType.TRIGGER_PLUGIN,
+        ]
+
 
 class NodeExecutionType(StrEnum):
     """Node execution type classification."""

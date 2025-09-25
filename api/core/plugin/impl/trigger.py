@@ -4,7 +4,6 @@ from typing import Any
 
 from flask import Request
 
-from core.plugin.entities.plugin import GenericProviderID, TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import (
     PluginTriggerDispatchResponse,
@@ -16,6 +15,7 @@ from core.plugin.entities.request import (
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.utils.http_parser import deserialize_response, serialize_request
 from core.trigger.entities.entities import Subscription
+from models.provider_ids import GenericProviderID, TriggerProviderID
 
 
 class PluginTriggerManager(BasePluginClient):

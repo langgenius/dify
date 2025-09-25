@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import cast
+from typing import Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig

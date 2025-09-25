@@ -9,7 +9,6 @@ from configs import dify_config
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -17,104 +16,6 @@ from models.model import Account, AppMode
 from models.workflow import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
-
-from services.workflow_plugin_trigger_service import WorkflowPluginTriggerService
-
-
-class PluginTriggerApi(Resource):
-    """Workflow Plugin Trigger API"""
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
-    def post(self, app_model):
-        """Create plugin trigger"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=False, location="json")
-        parser.add_argument("provider_id", type=str, required=False, location="json")
-        parser.add_argument("trigger_name", type=str, required=False, location="json")
-        parser.add_argument("subscription_id", type=str, required=False, location="json")
-        args = parser.parse_args()
-
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        plugin_trigger = WorkflowPluginTriggerService.create_plugin_trigger(
-            app_id=app_model.id,
-            tenant_id=current_user.current_tenant_id,
-            node_id=args["node_id"],
-            provider_id=args["provider_id"],
-            trigger_name=args["trigger_name"],
-            subscription_id=args["subscription_id"],
-        )
-
-        return jsonable_encoder(plugin_trigger)
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
-    def get(self, app_model):
-        """Get plugin trigger"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        args = parser.parse_args()
-
-        plugin_trigger = WorkflowPluginTriggerService.get_plugin_trigger(
-            app_id=app_model.id,
-            node_id=args["node_id"],
-        )
-
-        return jsonable_encoder(plugin_trigger)
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
-    def put(self, app_model):
-        """Update plugin trigger"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        parser.add_argument("subscription_id", type=str, required=True, location="json", help="Subscription ID")
-        args = parser.parse_args()
-
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        plugin_trigger = WorkflowPluginTriggerService.update_plugin_trigger(
-            app_id=app_model.id,
-            node_id=args["node_id"],
-            subscription_id=args["subscription_id"],
-        )
-
-        return jsonable_encoder(plugin_trigger)
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
-    def delete(self, app_model):
-        """Delete plugin trigger"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
-        args = parser.parse_args()
-
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        WorkflowPluginTriggerService.delete_plugin_trigger(
-            app_id=app_model.id,
-            node_id=args["node_id"],
-        )
-
-        return {"result": "success"}, 204
 
 
 class WebhookTriggerApi(Resource):

@@ -137,20 +137,6 @@ from .explore import (
 # Import tag controllers
 from .tag import tags
 
-# Import workspace controllers
-from .workspace import (
-    account,
-    agent_providers,
-    endpoint,
-    load_balancing_config,
-    members,
-    model_providers,
-    models,
-    plugin,
-    tool_providers,
-    workspace,
-)
-
 # Explore Audio
 api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
 api.add_resource(ChatTextApi, "/installed-apps/<uuid:installed_app_id>/text-to-audio", endpoint="installed_app_text")
@@ -312,5 +298,6 @@ __all__ = [
     "workflow_draft_variable",
     "workflow_run",
     "workflow_statistic",
+    "workflow_trigger",
     "workspace",
 ]

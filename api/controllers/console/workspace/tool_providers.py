@@ -21,11 +21,12 @@ from core.mcp.auth.auth_provider import OAuthClientProvider
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import login_required
+from models.provider_ids import ToolProviderID
+
 # from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService

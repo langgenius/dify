@@ -1,16 +1,16 @@
 from collections.abc import Mapping
 from typing import Any, Optional
 
-from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 
 from .entities import PluginTriggerData
 
 
-class TriggerPluginNode(BaseNode):
+class TriggerPluginNode(Node):
     _node_type = NodeType.TRIGGER_PLUGIN
 
     _node_data: PluginTriggerData

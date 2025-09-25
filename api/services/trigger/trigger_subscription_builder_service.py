@@ -7,7 +7,6 @@ from typing import Any
 
 from flask import Request, Response
 
-from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
@@ -21,6 +20,7 @@ from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import masked_credentials
 from core.trigger.utils.endpoint import parse_endpoint_id
 from extensions.ext_redis import redis_client
+from models.provider_ids import TriggerProviderID
 from services.trigger.trigger_provider_service import TriggerProviderService
 
 logger = logging.getLogger(__name__)

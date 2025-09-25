@@ -9,7 +9,6 @@ from typing import Any, Optional
 from flask import Request
 
 from core.entities.provider_entities import BasicProviderConfig
-from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import (
     TriggerDispatchResponse,
@@ -28,6 +27,7 @@ from core.trigger.entities.entities import (
     Unsubscription,
 )
 from core.trigger.errors import TriggerProviderCredentialValidationError
+from models.provider_ids import TriggerProviderID
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)

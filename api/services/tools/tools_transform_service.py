@@ -89,7 +89,7 @@ class ToolTransformService:
         elif isinstance(provider, PluginDatasourceProviderEntity):
             if provider.plugin_id:
                 if isinstance(provider.declaration.identity.icon, str):
-                    provider.declaration.identity.icon = ToolTransformService.get_plugin_icon_url(
+                    provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.declaration.identity.icon
                     )
 

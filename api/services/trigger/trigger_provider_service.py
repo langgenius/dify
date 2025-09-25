@@ -11,7 +11,6 @@ from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import create_provider_encrypter
-from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
@@ -27,6 +26,7 @@ from core.trigger.utils.encryption import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient, TriggerSubscription
 from models.workflow import WorkflowPluginTrigger
 from services.plugin.plugin_service import PluginService

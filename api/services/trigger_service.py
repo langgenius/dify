@@ -7,17 +7,17 @@ from flask import Request, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.entities.entities import TriggerEntity
 from core.trigger.trigger_manager import TriggerManager
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
+from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from models.workflow import Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService

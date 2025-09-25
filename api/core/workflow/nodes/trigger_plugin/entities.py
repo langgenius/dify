@@ -2,8 +2,8 @@ from typing import Any, Optional
 
 from pydantic import Field
 
+from core.workflow.enums import ErrorStrategy
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy
 
 
 class PluginTriggerData(BaseNodeData):

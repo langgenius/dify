@@ -10,10 +10,10 @@ import logging
 from celery import shared_task
 from sqlalchemy.orm import Session
 
-from core.plugin.entities.plugin import TriggerProviderID
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from services.trigger_debug_service import TriggerDebugService
 from services.trigger_service import TriggerService

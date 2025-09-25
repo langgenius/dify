@@ -4,7 +4,6 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.tool_manager import ToolManager
@@ -13,6 +12,7 @@ from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEnt
 from core.trigger.entities.entities import SubscriptionBuilder
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
+from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService

@@ -9,7 +9,6 @@ from configs import dify_config
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.entities.plugin import TriggerProviderID
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
@@ -17,6 +16,7 @@ from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models.account import Account
+from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
