@@ -81,7 +81,7 @@ class BaseApiKeyListResource(Resource):
                     ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
                 )
             )
-
+            assert current_key_count is not None
             if current_key_count >= self.max_keys:
                 flask_restx.abort(
                     HTTPStatus.BAD_REQUEST,
