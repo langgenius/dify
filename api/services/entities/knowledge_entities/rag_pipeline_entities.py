@@ -128,3 +128,10 @@ class KnowledgeConfiguration(BaseModel):
         if v is None:
             return ""
         return v
+
+
+class PipelineBuiltInTemplateEntity(BaseModel):
+    template_id: str | None = None
+    name: str
+    description: str
+    language: str

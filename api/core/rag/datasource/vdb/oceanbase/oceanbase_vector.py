@@ -123,7 +123,7 @@ class OceanBaseVector(BaseVector):
                 # Get parser from config or use default ik parser
                 parser_name = dify_config.OCEANBASE_FULLTEXT_PARSER or "ik"
 
-                allowed_parsers = ["ik", "japanese_ftparser", "thai_ftparser"]
+                allowed_parsers = ["ngram", "beng", "space", "ngram2", "ik", "japanese_ftparser", "thai_ftparser"]
                 if parser_name not in allowed_parsers:
                     raise ValueError(
                         f"Invalid OceanBase full-text parser: {parser_name}. "
