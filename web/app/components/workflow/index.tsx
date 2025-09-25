@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import {
+  Fragment,
   memo,
   useCallback,
   useEffect,
@@ -457,7 +458,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
           const canGoPrev = index > 0
           const canGoNext = index < comments.length - 1
           return (
-            <>
+            <Fragment key={comment.id}>
               <CommentIcon
                 key={`${comment.id}-icon`}
                 comment={comment}
@@ -479,7 +480,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 canGoPrev={canGoPrev}
                 canGoNext={canGoNext}
               />
-            </>
+            </Fragment>
           )
         }
 
