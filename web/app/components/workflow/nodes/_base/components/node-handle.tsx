@@ -139,7 +139,7 @@ export const NodeSourceHandle = memo(({
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
     setOpen(v => !v)
-  }, [id, handleId])
+  }, [])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAdd(
       {
