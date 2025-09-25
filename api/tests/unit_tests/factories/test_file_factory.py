@@ -160,7 +160,9 @@ class TestExtractFilename:
 
     def test_rfc5987_filename_star_chinese(self):
         """Test RFC5987 filename* with Chinese characters."""
-        result = _extract_filename("http://example.com/", "attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95%E6%96%87%E4%BB%B6.txt")
+        result = _extract_filename(
+            "http://example.com/", "attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95%E6%96%87%E4%BB%B6.txt"
+        )
         assert result == "测试文件.txt"
 
     def test_rfc5987_filename_star_with_language(self):
@@ -206,7 +208,10 @@ class TestExtractFilename:
 
     def test_complex_rfc5987_encoding(self):
         """Test complex RFC5987 encoding with special characters."""
-        result = _extract_filename("http://example.com/", "attachment; filename*=UTF-8''%E4%B8%AD%E6%96%87%E6%96%87%E4%BB%B6%20%28%E5%89%AF%E6%9C%AC%29.pdf")
+        result = _extract_filename(
+            "http://example.com/",
+            "attachment; filename*=UTF-8''%E4%B8%AD%E6%96%87%E6%96%87%E4%BB%B6%20%28%E5%89%AF%E6%9C%AC%29.pdf",
+        )
         assert result == "中文文件 (副本).pdf"
 
     def test_iso8859_1_encoding(self):
@@ -221,5 +226,7 @@ class TestExtractFilename:
 
     def test_mixed_quotes_and_encoding(self):
         """Test filename with mixed quotes and percent encoding."""
-        result = _extract_filename("http://example.com/", 'attachment; filename="file%20with%20quotes%20%26%20encoding.txt"')
+        result = _extract_filename(
+            "http://example.com/", 'attachment; filename="file%20with%20quotes%20%26%20encoding.txt"'
+        )
         assert result == "file with quotes & encoding.txt"

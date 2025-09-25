@@ -254,12 +254,11 @@ def _extract_filename(url_path: str, content_disposition: str | None) -> str | N
     # Try to extract from Content-Disposition header first
     if content_disposition:
         # Manually extract filename* parameter since parse_options_header doesn't support it
-        filename_star_match = re.search(r'filename\*=([^;]+)', content_disposition)
+        filename_star_match = re.search(r"filename\*=([^;]+)", content_disposition)
         if filename_star_match:
             raw_star = filename_star_match.group(1).strip()
             # Remove trailing quotes if present
-            if raw_star.endswith('"'):
-                raw_star = raw_star[:-1]
+            raw_star = raw_star.removesuffix('"')
             # format: charset'lang'value
             try:
                 parts = raw_star.split("'", 2)
