@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from threading import Lock
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
@@ -61,6 +62,10 @@ class WorkflowCycleManager:
         # These caches avoid redundant repository calls during a single workflow execution
         self._workflow_execution_cache: dict[str, WorkflowExecution] = {}
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
+        
+        # Initialize separate cache locks for greenlet-safe access
+        self._workflow_cache_lock = Lock()
+        self._node_cache_lock = Lock()
 
     def handle_workflow_run_start(self) -> WorkflowExecution:
         inputs = self._prepare_workflow_inputs()
@@ -249,8 +254,10 @@ class WorkflowCycleManager:
 
     def _get_workflow_execution_or_raise_error(self, id: str, /) -> WorkflowExecution:
         # Check cache first
-        if id in self._workflow_execution_cache:
-            return self._workflow_execution_cache[id]
+        with self._workflow_cache_lock:
+            execution = self._workflow_execution_cache.get(id)
+        if execution:
+            return execution
 
         raise WorkflowRunNotFoundError(id)
 
@@ -274,7 +281,8 @@ class WorkflowCycleManager:
     def _save_and_cache_workflow_execution(self, execution: WorkflowExecution) -> WorkflowExecution:
         """Save workflow execution to repository and cache it."""
         self._workflow_execution_repository.save(execution)
-        self._workflow_execution_cache[execution.id_] = execution
+        with self._workflow_cache_lock:
+            self._workflow_execution_cache[execution.id_] = execution
         return execution
 
     def _save_and_cache_node_execution(self, execution: WorkflowNodeExecution) -> WorkflowNodeExecution:
@@ -284,12 +292,14 @@ class WorkflowCycleManager:
         """
         self._workflow_node_execution_repository.save(execution)
         if execution.node_execution_id:
-            self._node_execution_cache[execution.node_execution_id] = execution
+            with self._node_cache_lock:
+                self._node_execution_cache[execution.node_execution_id] = execution
         return execution
 
     def _get_node_execution_from_cache(self, node_execution_id: str) -> WorkflowNodeExecution:
         """Get node execution from cache or raise error if not found."""
-        domain_execution = self._node_execution_cache.get(node_execution_id)
+        with self._node_cache_lock:
+            domain_execution = self._node_execution_cache.get(node_execution_id)
         if not domain_execution:
             raise ValueError(f"Domain node execution not found: {node_execution_id}")
         return domain_execution
@@ -342,9 +352,12 @@ class WorkflowCycleManager:
         now: datetime,
     ):
         """Fail all running node executions for a workflow."""
+        with self._node_cache_lock:
+            cached_executions = list(self._node_execution_cache.values())
+
         running_node_executions = [
             node_exec
-            for node_exec in self._node_execution_cache.values()
+            for node_exec in cached_executions
             if node_exec.workflow_execution_id == workflow_execution_id
             and node_exec.status == WorkflowNodeExecutionStatus.RUNNING
         ]
