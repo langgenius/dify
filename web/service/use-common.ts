@@ -1,4 +1,4 @@
-import { get, post } from './base'
+import { get, post, postPublic } from './base'
 import type {
   FileUploadConfigResponse,
   Member,
@@ -124,6 +124,6 @@ export const useLogout = () => {
 export const useWebAppLogout = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'webapp-logout'],
-    mutationFn: () => post('/webapp-logout'),
+    mutationFn: () => postPublic('/logout'),
   })
 }
