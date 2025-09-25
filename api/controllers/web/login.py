@@ -13,7 +13,12 @@ from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from libs.helper import email
 from libs.password import valid_password
-from libs.token import clear_access_token_from_cookie, clear_webapp_token_from_cookie, set_access_token_to_cookie
+from libs.token import (
+    clear_access_token_from_cookie,
+    clear_webapp_token_from_cookie,
+    set_access_token_to_cookie,
+    extract_access_token,
+)
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
 
@@ -56,6 +61,21 @@ class LoginApi(Resource):
         set_access_token_to_cookie(request, response, token)
         return response
 
+@web_ns.route("/login/status")
+class LoginStatusApi(Resource):
+    @setup_required
+    @only_edition_enterprise
+    @web_ns.doc("web_app_login_status")
+    @web_ns.doc(description="Check login status")
+    @web_ns.doc(
+        responses={
+            200: "Login status",
+            401: "Login status",
+        }
+    )
+    def get(self):
+        token = extract_access_token(request)
+        return {"logged_in": bool(token)}
 
 @web_ns.route("/logout")
 class LogoutApi(Resource):

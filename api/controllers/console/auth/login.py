@@ -273,11 +273,7 @@ class RefreshTokenApi(Resource):
 class LoginStatus(Resource):
     def get(self):
         token = extract_access_token(request)
-        if token:
-            # checking existance is sufficient for now.
-            return {"logged_in": True}
-        else:
-            return {"logged_in": False}
+        return {"logged_in": bool(token)}
 
 
 api.add_resource(LoginApi, "/login")
