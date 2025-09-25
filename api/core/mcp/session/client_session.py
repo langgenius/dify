@@ -111,11 +111,7 @@ class ClientSession(
     def initialize(self) -> types.InitializeResult:
         # Only set capabilities if non-default callbacks are provided
         # This prevents servers from attempting callbacks when we don't actually support them
-        sampling = (
-            types.SamplingCapability()
-            if self._sampling_callback is not _default_sampling_callback
-            else None
-        )
+        sampling = types.SamplingCapability() if self._sampling_callback is not _default_sampling_callback else None
         roots = (
             types.RootsCapability(
                 # Only enable listChanged if we have a custom callback
