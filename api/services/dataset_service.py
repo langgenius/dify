@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 import sqlalchemy as sa
 from sqlalchemy import exists, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -3394,8 +3394,7 @@ class DatasetPermissionService:
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
         try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
-            db.session.commit()
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
         except Exception as e:
-            db.session.rollback()
             raise e
