@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from sqlalchemy import update
@@ -6,6 +7,8 @@ from configs import dify_config
 from core.errors.error import QuotaExceededError
 from extensions.ext_database import db
 from models import TenantCreditPool
+
+logger = logging.getLogger(__name__)
 
 
 class CreditPoolService:
@@ -72,8 +75,9 @@ class CreditPoolService:
         cls,
         tenant_id: str,
         credits_required: int,
-    ) -> bool:
+    ):
         """check and deduct credits"""
+        logger.info("check and deduct credits")
         pool = cls.get_pool(tenant_id)
         if not pool:
             raise QuotaExceededError("Credit pool not found")
@@ -92,8 +96,6 @@ class CreditPoolService:
             ]
             stmt = update(TenantCreditPool).where(*where_conditions).values(**update_values)
             db.session.execute(stmt)
-
-        return True
 
     @classmethod
     def check_deduct_credits(cls, tenant_id: str, credits_required: int) -> bool:
