@@ -41,7 +41,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
       })
       setShowTips(false)
     }
-  }, [nodesInitialized, id, handleNodeIterationRerender, data, showTips, t])
+  }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])
 
   return (
     <div className={cn(
