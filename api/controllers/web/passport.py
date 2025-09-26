@@ -13,6 +13,7 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token, set_passport_to_cookie
 from models.model import App, EndUser, Site
+from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
@@ -39,7 +40,7 @@ class PassportResource(Resource):
 
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
-
+        app_id = AppService.get_app_id_by_code(app_code)
         # exchange token for enterprise logined web user
         enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
         if enterprise_user_decoded:
@@ -49,7 +50,7 @@ class PassportResource(Resource):
             )
 
         if system_features.webapp_auth.enabled:
-            app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+            app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             if not app_settings or not app_settings.access_mode == "public":
                 raise WebAppAuthRequiredError()
 

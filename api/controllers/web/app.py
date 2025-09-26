@@ -155,7 +155,8 @@ class AppWebAuthPermission(Resource):
         features = FeatureService.get_system_features()
         if not features.webapp_auth.enabled:
             return {"result": True}
-        app_code = AppService.get_app_code_by_id(app_id)
 
-        res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+        res = True
+        if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
+            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}
