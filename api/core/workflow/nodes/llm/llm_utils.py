@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.entities.provider_entities import QuotaUnit
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.file.models import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
@@ -23,7 +23,7 @@ from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
-from core.entities.provider_entities import ProviderQuotaType
+
 from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
 
 
