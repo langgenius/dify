@@ -32,8 +32,8 @@ def upgrade():
     with op.batch_alter_table('tenant_credit_pools', schema=None) as batch_op:
         batch_op.create_index('tenant_credit_pool_pool_type_idx', ['pool_type'], unique=False)
         batch_op.create_index('tenant_credit_pool_tenant_id_idx', ['tenant_id'], unique=False)
-    # Data migration: Move trial quota data from providers to tenant_credit_pools
-    migrate_trial_quota_data()
+    # Data migration: Move quota data from providers to tenant_credit_pools
+    migrate_quota_data()
     
     # ### end Alembic commands ###
 
@@ -48,49 +48,57 @@ def downgrade():
     # ### end Alembic commands ###
 
 
-def migrate_trial_quota_data():
+def migrate_quota_data():
     """
     Migrate quota data from providers table to tenant_credit_pools table
-    for providers with quota_type='trial', provider_name='openai', provider_type='system'
+    for providers with quota_type='trial' or 'paid', provider_name='openai', provider_type='system'
     """
     # Create connection
     bind = op.get_bind()
     
-    # Query providers that match the criteria
-    select_sql = sa.text("""
-        SELECT tenant_id, quota_limit, quota_used
-        FROM providers 
-        WHERE quota_type = 'trial' 
-        AND provider_name = 'openai' 
-        AND provider_type = 'system'
-        AND quota_limit IS NOT NULL
-    """)
+    # Define quota type mappings
+    quota_type_mappings = ['trial', 'paid']
     
-    result = bind.execute(select_sql)
-    providers_data = result.fetchall()
-    
-    # Insert data into tenant_credit_pools
-    for provider_data in providers_data:
-        tenant_id, quota_limit, quota_used = provider_data
-        
-        # Check if credit pool already exists for this tenant
-        check_sql = sa.text("""
-            SELECT COUNT(*) 
-            FROM tenant_credit_pools 
-            WHERE tenant_id = :tenant_id AND pool_type = 'trial'
+    for quota_type in quota_type_mappings:
+        # Query providers that match the criteria
+        select_sql = sa.text("""
+            SELECT tenant_id, quota_limit, quota_used
+            FROM providers 
+            WHERE quota_type = :quota_type
+            AND provider_name = 'openai' 
+            AND provider_type = 'system'
+            AND quota_limit IS NOT NULL
         """)
         
-        existing_count = bind.execute(check_sql, {"tenant_id": tenant_id}).scalar()
+        result = bind.execute(select_sql, {"quota_type": quota_type})
+        providers_data = result.fetchall()
         
-        if existing_count == 0:
-            # Insert new credit pool record
-            insert_sql = sa.text("""
-                INSERT INTO tenant_credit_pools (tenant_id, pool_type, quota_limit, quota_used, created_at, updated_at)
-                VALUES (:tenant_id, 'trial', :quota_limit, :quota_used, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        # Insert data into tenant_credit_pools
+        for provider_data in providers_data:
+            tenant_id, quota_limit, quota_used = provider_data
+            
+            # Check if credit pool already exists for this tenant and pool type
+            check_sql = sa.text("""
+                SELECT COUNT(*) 
+                FROM tenant_credit_pools 
+                WHERE tenant_id = :tenant_id AND pool_type = :pool_type
             """)
             
-            bind.execute(insert_sql, {
+            existing_count = bind.execute(check_sql, {
                 "tenant_id": tenant_id,
-                "quota_limit": quota_limit or 0,
-                "quota_used": quota_used or 0
-            })
+                "pool_type": quota_type
+            }).scalar()
+            
+            if existing_count == 0:
+                # Insert new credit pool record
+                insert_sql = sa.text("""
+                    INSERT INTO tenant_credit_pools (tenant_id, pool_type, quota_limit, quota_used, created_at, updated_at)
+                    VALUES (:tenant_id, :pool_type, :quota_limit, :quota_used, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """)
+                
+                bind.execute(insert_sql, {
+                    "tenant_id": tenant_id,
+                    "pool_type": quota_type,
+                    "quota_limit": quota_limit or 0,
+                    "quota_used": quota_used or 0
+                })

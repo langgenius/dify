@@ -128,6 +128,16 @@ class HostedGeminiConfig(BaseSettings):
         default="gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,",
     )
 
+    HOSTED_GEMINI_PAID_ENABLED: bool = Field(
+        description="Enable paid access to hosted gemini service",
+        default=False,
+    )
+
+    HOSTED_GEMINI_PAID_MODELS: str = Field(
+        description="Comma-separated list of available models for paid access",
+        default="gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,",
+    )
+
 
 class HostedXAIConfig(BaseSettings):
     """
@@ -156,6 +166,16 @@ class HostedXAIConfig(BaseSettings):
 
     HOSTED_XAI_TRIAL_MODELS: str = Field(
         description="Comma-separated list of available models for trial access",
+        default="grok-3,grok-3-mini,grok-3-mini-fast",
+    )
+
+    HOSTED_XAI_PAID_ENABLED: bool = Field(
+        description="Enable paid access to hosted XAI service",
+        default=False,
+    )
+
+    HOSTED_XAI_PAID_MODELS: str = Field(
+        description="Comma-separated list of available models for paid access",
         default="grok-3,grok-3-mini,grok-3-mini-fast",
     )
 
@@ -188,6 +208,16 @@ class HostedDeepseekConfig(BaseSettings):
     HOSTED_DEEPSEEK_TRIAL_MODELS: str = Field(
         description="Comma-separated list of available models for trial access",
         default="deepseek-chat,deepseek-reasoner",
+    )
+
+    HOSTED_DEEPSEEK_PAID_ENABLED: bool = Field(
+        description="Enable paid access to hosted XAI service",
+        default=False,
+    )
+
+    HOSTED_DEEPSEEK_PAID_MODELS: str = Field(
+        description="Comma-separated list of available models for paid access",
+        default="grok-3,grok-3-mini,grok-3-mini-fast",
     )
 
 
@@ -243,6 +273,16 @@ class HostedAnthropicConfig(BaseSettings):
     )
 
     HOSTED_ANTHROPIC_TRIAL_MODELS: str = Field(
+        description="Comma-separated list of available models for paid access",
+        default="claude-opus-4-20250514,"
+        "claude-opus-4-20250514,"
+        "claude-sonnet-4-20250514,"
+        "claude-3-5-haiku-20241022,"
+        "claude-3-opus-20240229,"
+        "claude-3-7-sonnet-20250219,"
+        "claude-3-haiku-20240307",
+    )
+    HOSTED_ANTHROPIC_PAID_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
         default="claude-opus-4-20250514,"
         "claude-opus-4-20250514,"

@@ -133,18 +133,24 @@ def handle(sender: Message, **kwargs):
             system_configuration=system_configuration,
             model_name=model_config.model,
         )
-        logger.info("used_quota: %s", used_quota)
         if used_quota is not None:
             if provider_configuration.system_configuration.current_quota_type == ProviderQuotaType.TRIAL:
-                logger.info("deduct credits")
                 from services.credit_pool_service import CreditPoolService
 
                 CreditPoolService.check_and_deduct_credits(
                     tenant_id=tenant_id,
                     credits_required=used_quota,
+                    pool_type="trial",
+                )
+            elif provider_configuration.system_configuration.current_quota_type == ProviderQuotaType.PAID:
+                from services.credit_pool_service import CreditPoolService
+
+                CreditPoolService.check_and_deduct_credits(
+                    tenant_id=tenant_id,
+                    credits_required=used_quota,
+                    pool_type="paid",
                 )
             else:
-                logger.info("update provider quota")
                 quota_update = _ProviderUpdateOperation(
                     filters=_ProviderUpdateFilters(
                         tenant_id=tenant_id,
