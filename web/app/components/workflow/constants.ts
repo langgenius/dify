@@ -35,8 +35,6 @@ export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
 export const NODE_LAYOUT_VERTICAL_PADDING = 60
 export const NODE_LAYOUT_MIN_DISTANCE = 100
 
-export const PARALLEL_DEPTH_LIMIT = 3
-
 export const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",
   "title": "",

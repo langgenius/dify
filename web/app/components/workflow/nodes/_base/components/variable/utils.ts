@@ -43,6 +43,7 @@ import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/tri
 
 import {
   AGENT_OUTPUT_STRUCT,
+  FILE_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -139,6 +140,10 @@ export const varTypeToStructType = (type: VarType): Type => {
         [VarType.boolean]: Type.boolean,
         [VarType.object]: Type.object,
         [VarType.array]: Type.array,
+        [VarType.arrayString]: Type.array,
+        [VarType.arrayNumber]: Type.array,
+        [VarType.arrayObject]: Type.array,
+        [VarType.arrayFile]: Type.array,
       } as any
     )[type] || Type.string
   )
@@ -283,15 +288,6 @@ const findExceptVarInObject = (
           children: filteredObj.children,
         }
       })
-
-    if (isFile && Array.isArray(childrenResult)) {
-      if (childrenResult.length === 0) {
-        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
-          variable: key,
-          type: key === 'size' ? VarType.number : VarType.string,
-        }))
-      }
-    }
   }
   else {
     childrenResult = []
@@ -607,17 +603,15 @@ const formatItem = (
             variable: outputKey,
             type:
               output.type === 'array'
-                ? (`Array[${
-                  output.items?.type
-                    ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                        + output.items.type.slice(1)
-                    : 'Unknown'
+                ? (`Array[${output.items?.type
+                  ? output.items.type.slice(0, 1).toLocaleUpperCase()
+                  + output.items.type.slice(1)
+                  : 'Unknown'
                 }]` as VarType)
-                : (`${
-                  output.type
-                    ? output.type.slice(0, 1).toLocaleUpperCase()
-                        + output.type.slice(1)
-                    : 'Unknown'
+                : (`${output.type
+                  ? output.type.slice(0, 1).toLocaleUpperCase()
+                  + output.type.slice(1)
+                  : 'Unknown'
                 }` as VarType),
           })
         },
@@ -711,9 +705,10 @@ const formatItem = (
       const children = (() => {
         if (isFile) {
           return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+            const def = FILE_STRUCT.find(c => c.variable === key)
             return {
               variable: key,
-              type: key === 'size' ? VarType.number : VarType.string,
+              type: def?.type || VarType.string,
             }
           })
         }
@@ -735,9 +730,10 @@ const formatItem = (
         if (isFile) {
           return {
             children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+              const def = FILE_STRUCT.find(c => c.variable === key)
               return {
                 variable: key,
-                type: key === 'size' ? VarType.number : VarType.string,
+                type: def?.type || VarType.string,
               }
             }),
           }
