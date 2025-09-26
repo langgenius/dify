@@ -142,7 +142,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(app_server_fields)
-    def get(self, server_id):
+    def post(self, server_id):
         if not current_user.is_editor:
             raise NotFound()
         server = (
