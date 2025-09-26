@@ -15,7 +15,7 @@ class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
         db.UniqueConstraint("plugin_id", "provider", name="datasource_oauth_config_datasource_id_provider_idx"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     plugin_id: Mapped[str] = db.Column(db.String(255), nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
     system_credentials: Mapped[dict] = db.Column(JSONB, nullable=False)
@@ -28,8 +28,8 @@ class DatasourceProvider(Base):
         db.UniqueConstraint("tenant_id", "plugin_id", "provider", "name", name="datasource_provider_unique_name"),
         db.Index("datasource_provider_auth_type_provider_idx", "tenant_id", "plugin_id", "provider"),
     )
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = db.Column(db.String(255), nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
     plugin_id: Mapped[str] = db.Column(db.String(255), nullable=False)
@@ -50,8 +50,8 @@ class DatasourceOauthTenantParamConfig(Base):
         db.UniqueConstraint("tenant_id", "plugin_id", "provider", name="datasource_oauth_tenant_config_unique"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
     plugin_id: Mapped[str] = db.Column(db.String(255), nullable=False)
     client_params: Mapped[dict] = db.Column(JSONB, nullable=False, default={})
