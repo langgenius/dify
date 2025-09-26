@@ -108,7 +108,7 @@ class MessageFeedbackApi(InstalledAppResource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
-    def get(self, installed_app, message_id):
+    def post(self, installed_app, message_id):
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -117,7 +117,12 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
+            "response_mode",
+            type=str,
+            required=False,
+            choices=["blocking", "streaming"],
+            default="blocking",
+            location="json",
         )
         args = parser.parse_args()
 
