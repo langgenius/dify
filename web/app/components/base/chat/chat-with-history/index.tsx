@@ -4,7 +4,6 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useAsyncEffect } from 'ahooks'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
 import {
   ChatWithHistoryContext,
@@ -18,7 +17,6 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import AppUnavailable from '@/app/components/base/app-unavailable'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 
@@ -195,19 +193,6 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
 }) => {
-  const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
-  const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
-
-  useAsyncEffect(async () => {
-    if (!installedAppInfo) {
-      setIsUnknownReason(true)
-      setAppUnavailable(true)
-    }
-  }, [])
-
-  if (appUnavailable)
-    return <AppUnavailable isUnknownReason={isUnknownReason} />
-
   return (
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}

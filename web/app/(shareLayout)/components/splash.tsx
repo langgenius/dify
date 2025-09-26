@@ -43,8 +43,9 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     (async () => {
       if (message)
         return
-      if (needCheckIsLogin && !isLoggedIn && shareCode && redirectUrl) {
-        await fetchAccessToken({ appCode: shareCode })
+      if (needCheckIsLogin && shareCode && redirectUrl) {
+        if(!isLoggedIn)
+          await fetchAccessToken({ appCode: shareCode })
         router.replace(decodeURIComponent(redirectUrl))
         return
       }
