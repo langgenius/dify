@@ -103,27 +103,29 @@ const WorkflowChildren = () => {
 
     const baseNodeData = { ...nodeDefault.defaultValue }
 
-    const mergedNodeData = nodeType === BlockEnum.TriggerPlugin && toolConfig
-      ? (() => {
-        const triggerNodeData = getTriggerPluginNodeData(
-          toolConfig as TriggerDefaultValue,
-          baseNodeData.title,
-          baseNodeData.desc,
-        )
-
+    const mergedNodeData = (() => {
+      if (nodeType !== BlockEnum.TriggerPlugin || !toolConfig) {
         return {
           ...baseNodeData,
-          ...triggerNodeData,
-          config: {
-            ...(baseNodeData as any).config || {},
-            ...(triggerNodeData.config || {}),
-          },
+          ...toolConfig,
         }
-      })()
-      : {
-        ...baseNodeData,
-        ...toolConfig,
       }
+
+      const triggerNodeData = getTriggerPluginNodeData(
+        toolConfig as TriggerDefaultValue,
+        baseNodeData.title,
+        baseNodeData.desc,
+      )
+
+      return {
+        ...baseNodeData,
+        ...triggerNodeData,
+        config: {
+          ...(baseNodeData as { config?: Record<string, any> }).config || {},
+          ...(triggerNodeData.config || {}),
+        },
+      }
+    })()
 
     const { newNode } = generateNewNode({
       data: {
