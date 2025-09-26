@@ -465,14 +465,14 @@ class LLMGenerator:
             if not raw_agent_log:
                 return []
 
-            def dict_of_event(event):
-                return {
+            return [
+                {
                     "status": event["status"],
                     "error": event["error"],
                     "data": event["data"],
                 }
-
-            return [dict_of_event(event) for event in raw_agent_log]
+                for event in raw_agent_log
+            ]
 
         inputs = last_run.load_full_inputs(session, storage)
         last_run_dict = {
