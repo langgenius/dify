@@ -809,6 +809,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
                 | VectorType.BAIDU
+                | VectorType.ALIBABACLOUD_MYSQL
             ):
                 return {
                     "retrieval_method": [
@@ -863,6 +864,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
                 | VectorType.BAIDU
+                | VectorType.ALIBABACLOUD_MYSQL
             ):
                 return {
                     "retrieval_method": [
