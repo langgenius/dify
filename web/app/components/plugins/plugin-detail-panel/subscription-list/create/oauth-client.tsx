@@ -24,7 +24,7 @@ import { usePluginStore } from '../../store'
 type Props = {
   oauthConfig?: TriggerOAuthConfig
   onClose: () => void
-  showOAuthCreateModal: () => void
+  showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
 }
 
 enum AuthorizationStatusEnum {
@@ -68,7 +68,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
               message: t('pluginTrigger.modal.oauth.authorization.authSuccess'),
             })
             onClose()
-            showOAuthCreateModal()
+            showOAuthCreateModal(response.subscription_builder)
           }
         })
       },
@@ -198,7 +198,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           />
         ))}
       </div>
-      {oauthConfig?.redirect_uri && (
+      {clientType === ClientTypeEnum.Custom && oauthConfig?.redirect_uri && (
         <div className='mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4'>
           <div className='rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3'>
             <RiInformation2Fill className='h-5 w-5 shrink-0 text-text-accent' />

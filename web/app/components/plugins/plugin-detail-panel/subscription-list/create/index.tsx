@@ -1,13 +1,15 @@
 import { ActionButton } from '@/app/components/base/action-button'
+import Badge from '@/app/components/base/badge'
 import { Button } from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
-import { PortalSelect } from '@/app/components/base/select'
+import type { Option } from '@/app/components/base/select/custom'
+import CustomSelect from '@/app/components/base/select/custom'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useInitiateTriggerOAuth, useTriggerOAuthConfig, useTriggerProviderInfo } from '@/service/use-triggers'
 import cn from '@/utils/classnames'
-import { RiAddLine, RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
+import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,30 +17,6 @@ import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
-
-export const CreateModal = () => {
-  const { t } = useTranslation()
-
-  return (
-    <Modal
-      isShow
-      // onClose={onClose}
-      className='!max-w-[520px] p-6'
-      wrapperClassName='!z-[1002]'
-    >
-      <div className='flex items-center justify-between pb-3'>
-        <h3 className='text-lg font-semibold text-text-primary'>
-          {t('pluginTrigger.modal.oauth.title')}
-        </h3>
-        <ActionButton
-        // onClick={onClose}
-        >
-          <RiCloseLine className='h-4 w-4' />
-        </ActionButton>
-      </div>
-    </Modal>
-  )
-}
 
 export enum CreateButtonType {
   FULL_BUTTON = 'full-button',
@@ -67,7 +45,7 @@ export const DEFAULT_METHOD = 'default'
  */
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON }: Props) => {
   const { t } = useTranslation()
-  const [selectedCreateType, setSelectedCreateType] = useState<SupportedCreationMethods | null>(null)
+  const [selectedCreateInfo, setSelectedCreateInfo] = useState<{ type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder } | null>(null)
 
   const detail = usePluginStore(state => state.detail)
   const provider = `${detail?.plugin_id}/${detail?.declaration.name}`
@@ -99,25 +77,32 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     showClientSettingsModal()
   }
 
-  const allOptions = [
-    {
-      value: SupportedCreationMethods.OAUTH,
-      name: t('pluginTrigger.subscription.addType.options.oauth.title'),
-      extra: <ActionButton onClick={onClickClientSettings}><RiEqualizer2Line className='h-4 w-4 text-text-tertiary' /></ActionButton>,
-      show: supportedMethods.includes(SupportedCreationMethods.OAUTH),
-    },
-    {
-      value: SupportedCreationMethods.APIKEY,
-      name: t('pluginTrigger.subscription.addType.options.apiKey.title'),
-      show: supportedMethods.includes(SupportedCreationMethods.APIKEY),
-    },
-    {
-      value: SupportedCreationMethods.MANUAL,
-      name: t('pluginTrigger.subscription.addType.options.manual.description'), // 使用 description 作为标题
-      tooltip: <Tooltip popupContent={t('pluginTrigger.subscription.addType.options.manual.tip')} />,
-      show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
-    },
-  ]
+  const allOptions = useMemo(() => {
+    const showCustomBadge = oauthConfig?.custom_enabled && oauthConfig?.custom_configured
+
+    return [
+      {
+        value: SupportedCreationMethods.OAUTH,
+        label: t('pluginTrigger.subscription.addType.options.oauth.title'),
+        tag: !showCustomBadge ? null : <Badge className='ml-1 mr-0.5'>
+          {t('plugin.auth.custom')}
+        </Badge>,
+        extra: <ActionButton onClick={onClickClientSettings}><RiEqualizer2Line className='h-4 w-4 text-text-tertiary' /></ActionButton>,
+        show: supportedMethods.includes(SupportedCreationMethods.OAUTH),
+      },
+      {
+        value: SupportedCreationMethods.APIKEY,
+        label: t('pluginTrigger.subscription.addType.options.apiKey.title'),
+        show: supportedMethods.includes(SupportedCreationMethods.APIKEY),
+      },
+      {
+        value: SupportedCreationMethods.MANUAL,
+        label: t('pluginTrigger.subscription.addType.options.manual.description'), // 使用 description 作为标题
+        extra: <Tooltip popupContent={t('pluginTrigger.subscription.addType.options.manual.tip')} />,
+        show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
+      },
+    ]
+  }, [t, oauthConfig, supportedMethods, methodType])
 
   const onChooseCreateType = (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
@@ -130,7 +115,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                   type: 'success',
                   message: t('pluginTrigger.modal.oauth.authorized'),
                 })
-                setSelectedCreateType(SupportedCreationMethods.OAUTH)
+                setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder: response.subscription_builder })
               }
             })
           },
@@ -147,7 +132,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       }
     }
     else {
-      setSelectedCreateType(type)
+      setSelectedCreateInfo({ type })
     }
   }
 
@@ -164,9 +149,23 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     return null
 
   return <>
-    <PortalSelect
-      readonly={methodType !== DEFAULT_METHOD}
-      renderTrigger={() => {
+    <CustomSelect<Option & { show: boolean; extra?: React.ReactNode; tag?: React.ReactNode }>
+      options={allOptions.filter(option => option.show)}
+      value={methodType}
+      onChange={value => onChooseCreateType(value as any)}
+      containerProps={{
+        open: methodType === DEFAULT_METHOD ? undefined : false,
+        placement: 'bottom-start',
+        offset: 4,
+        triggerPopupSameWidth: buttonType === CreateButtonType.FULL_BUTTON,
+      }}
+      triggerProps={{
+        className: cn('h-8 bg-transparent px-0 hover:bg-transparent', methodType !== DEFAULT_METHOD && 'pointer-events-none', buttonType === CreateButtonType.FULL_BUTTON && 'grow'),
+      }}
+      popupProps={{
+        wrapperClassName: 'z-[1000]',
+      }}
+      CustomTrigger={() => {
         return buttonType === CreateButtonType.FULL_BUTTON ? (
           <Button
             variant='primary'
@@ -174,35 +173,47 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
             className='w-full'
             onClick={onClickCreate}
           >
-            <RiAddLine className='mr-2 h-4 w-4' />
+            <RiAddLine className='mr-2 size-4' />
             {buttonTextMap[methodType]}
+            {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && <Badge
+              className='ml-1 mr-0.5 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface'
+            >
+              {t('plugin.auth.custom')}
+            </Badge>}
             {methodType === SupportedCreationMethods.OAUTH
               && <ActionButton onClick={onClickClientSettings}>
-                <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                <RiEqualizer2Line className='size-4 text-text-tertiary' />
               </ActionButton>
             }
           </Button>
-        ) : <ActionButton onClick={onClickCreate}>
-          <RiAddLine className='h-4 w-4' />
-        </ActionButton>
+        ) : (
+          <ActionButton onClick={onClickCreate} className='float-right'>
+            <RiAddLine className='size-4' />
+          </ActionButton>
+        )
       }}
-      triggerClassName='h-8'
-      popupClassName={cn('z-[1000]')}
-      value={methodType}
-      items={allOptions.filter(option => option.show)}
-      onSelect={item => onChooseCreateType(item.value as any)}
+      CustomOption={option => (
+        <>
+          <div className='mr-8 flex grow items-center gap-1 truncate px-1'>
+            {option.label}
+            {option.tag}
+          </div>
+          {option.extra}
+        </>
+      )}
     />
-    {selectedCreateType && (
+    {selectedCreateInfo && (
       <CommonCreateModal
-        createType={selectedCreateType}
-        onClose={() => setSelectedCreateType(null)}
+        createType={selectedCreateInfo.type}
+        builder={selectedCreateInfo.builder}
+        onClose={() => setSelectedCreateInfo(null)}
       />
     )}
     {isShowClientSettingsModal && (
       <OAuthClientSettingsModal
         oauthConfig={oauthConfig}
         onClose={hideClientSettingsModal}
-        showOAuthCreateModal={() => setSelectedCreateType(SupportedCreationMethods.OAUTH)}
+        showOAuthCreateModal={builder => setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder })}
       />
     )}
   </>

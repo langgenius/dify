@@ -40,7 +40,7 @@ export const SubscriptionList = () => {
       <div className='relative mb-3 flex items-center justify-between'>
         {
           hasSubscriptions
-          && <div className='flex items-center gap-1'>
+          && <div className='flex shrink-0 items-center gap-1'>
             <span className='system-sm-semibold-uppercase text-text-secondary'>
               {t('pluginTrigger.subscription.listNum', { num: subscriptions?.length || 0 })}
             </span>

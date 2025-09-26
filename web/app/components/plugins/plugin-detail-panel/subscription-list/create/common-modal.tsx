@@ -18,12 +18,13 @@ import {
 import { RiLoader2Line } from '@remixicon/react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginStore } from '../../store'
+import { usePluginStore, usePluginSubscriptionStore } from '../../store'
 import LogViewer from '../log-viewer'
 
 type Props = {
   onClose: () => void
   createType: SupportedCreationMethods
+  builder?: TriggerSubscriptionBuilder
 }
 
 const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
@@ -58,14 +59,15 @@ const MultiSteps = ({ currentStep }: { currentStep: ApiKeyStep }) => {
   </div>
 }
 
-export const CommonCreateModal = ({ onClose, createType }: Props) => {
+export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
+  const { refresh } = usePluginSubscriptionStore()
 
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration)
 
   const [subscriptionName, setSubscriptionName] = useState('')
-  const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
+  const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
   const [verificationError, setVerificationError] = useState<string>('')
 
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyTriggerSubscriptionBuilder()
@@ -184,8 +186,8 @@ export const CommonCreateModal = ({ onClose, createType }: Props) => {
             type: 'success',
             message: 'Subscription created successfully',
           })
-          // onSuccess()
           onClose()
+          refresh?.()
         },
         onError: (error: any) => {
           Toast.notify({
