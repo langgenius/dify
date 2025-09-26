@@ -144,37 +144,26 @@ def transform_to_semantic_retrieval_format(retrieval_documents: list) -> list:
 
 
 def convert_to_gen_ai_input_message(process_data: dict) -> str:
-    """
-    Convert process_data prompts to GEN_AI_INPUT_MESSAGE format.
-    
-    Expected format: [{"role": "user", "parts": [{"type": "text", "content": "Weather in Paris?"}]}, ...]
-    
-    Actual process_data.prompts format:
-    [{"role": "user", "text": "content", "files": [...], "tool_calls": [...]}, ...]
-    """
     prompts = process_data.get("prompts", [])
     if not prompts:
         return serialize_json_data([])
-    
+
     input_messages = []
     for prompt in prompts:
         if not isinstance(prompt, dict):
             continue
-            
+
         role = prompt.get("role", "")
         text = prompt.get("text", "")
-        
+
         if not role:
             continue
-            
-        # Convert to the expected format
+
         parts = []
-        
-        # Add text content if present
+
         if text:
             parts.append({"type": "text", "content": text})
-        
-        # Add files if present
+
         files = prompt.get("files", [])
         for file in files:
             if isinstance(file, dict):
@@ -191,8 +180,7 @@ def convert_to_gen_ai_input_message(process_data: dict) -> str:
                         "data": file.get("data", ""),
                         "format": file.get("format", "")
                     })
-        
-        # Handle tool calls if present
+
         tool_calls = prompt.get("tool_calls", [])
         for tool_call in tool_calls:
             if isinstance(tool_call, dict):
@@ -203,37 +191,26 @@ def convert_to_gen_ai_input_message(process_data: dict) -> str:
                     "name": function_info.get("name", ""),
                     "arguments": function_info.get("arguments", {})
                 })
-        
-        # Only add message if it has parts
+
         if parts:
             message = {
                 "role": role,
                 "parts": parts
             }
             input_messages.append(message)
-    
+
     return serialize_json_data(input_messages)
 
 
 def convert_to_gen_ai_output_message(outputs: dict) -> str:
-    """
-    Convert outputs to GEN_AI_OUTPUT_MESSAGE format.
-    
-    Expected format: [{"role":"assistant","parts":[{"type":"text","content":"..."}],"finish_reason":"stop"}]
-    
-    Actual outputs format:
-    {"text": "...", "reasoning_content": "...", "usage": {...}, "finish_reason": "stop", "files": [...]}
-    """
     text = outputs.get("text", "")
     finish_reason = outputs.get("finish_reason", "")
-    
+
     if not text:
         return serialize_json_data([])
-    
-    # Build parts array
+
     parts = [{"type": "text", "content": text}]
-    
-    # Add files if present
+
     files = outputs.get("files", [])
     for file in files:
         if isinstance(file, dict):
@@ -250,13 +227,13 @@ def convert_to_gen_ai_output_message(outputs: dict) -> str:
                     "data": file.get("data", ""),
                     "format": file.get("format", "")
                 })
-    
+
     output_message = {
         "role": "assistant",
         "parts": parts
     }
-    
+
     if finish_reason:
         output_message["finish_reason"] = finish_reason
-    
+
     return serialize_json_data([output_message])
