@@ -121,14 +121,19 @@ function unicodeToChar(text: string) {
   })
 }
 
+const WBB_APP_LOGIN_PATH = '/webapp-signin'
 function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
+  // prevent redirect loop
+  if(globalThis.location.pathname === WBB_APP_LOGIN_PATH)
+    return
+
   params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
   if (message)
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}/webapp-signin?${params.toString()}`
+  globalThis.location.href = `${globalThis.location.origin}${basePath}/${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 export function format(text: string) {
