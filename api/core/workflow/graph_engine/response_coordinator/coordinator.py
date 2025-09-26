@@ -14,11 +14,11 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeExecutionType, NodeState
 from core.workflow.graph import Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
 from core.workflow.nodes.base.template import TextSegment, VariableSegment
+from core.workflow.runtime.variable_pool import VariablePool
 
 from .path import Path
 from .session import ResponseSession

@@ -11,11 +11,11 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
+from core.workflow.runtime.variable_pool import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry

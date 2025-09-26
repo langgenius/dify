@@ -9,8 +9,8 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
-from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry

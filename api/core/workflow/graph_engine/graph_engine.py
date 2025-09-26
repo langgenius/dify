@@ -13,7 +13,6 @@ from typing import final
 
 from flask import Flask, current_app
 
-from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
@@ -27,6 +26,7 @@ from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
+from core.workflow.runtime import GraphRuntimeState
 
 from .command_processing import AbortCommandHandler, CommandProcessor
 from .domain import GraphExecution
