@@ -38,8 +38,9 @@ elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
 else
   if [[ "${DEBUG}" == "true" ]]; then
-  # TODO: add socketio support
-    exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
+    export HOST=${DIFY_BIND_ADDRESS:-0.0.0.0}
+    export PORT=${DIFY_PORT:-5001}
+    exec python -m app
   else
     exec gunicorn \
       --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
