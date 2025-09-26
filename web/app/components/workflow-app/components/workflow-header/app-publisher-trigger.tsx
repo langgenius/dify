@@ -3,27 +3,20 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useEdges, useNodes, useStore as useReactflowStore } from 'reactflow'
-import { RiApps2AddLine } from '@remixicon/react'
+import { useStore as useReactflowStore } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import {
-  useChecklist,
   useChecklistBeforePublish,
   useNodesReadOnly,
   useNodesSyncDraft,
-  // useWorkflowRunValidation,
+  useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
-import Button from '@/app/components/base/button'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import type {
-  CommonEdgeType,
-  CommonNodeType,
-} from '@/app/components/workflow/types'
 import {
   BlockEnum,
   InputVarType,
@@ -34,17 +27,14 @@ import { useInvalidateAppTriggers } from '@/service/use-tools'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import useTheme from '@/hooks/use-theme'
-import cn from '@/utils/classnames'
 
-const FeaturesTrigger = () => {
+const AppPublisherTrigger = () => {
   const { t } = useTranslation()
-  const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { nodesReadOnly } = useNodesReadOnly()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
@@ -76,17 +66,6 @@ const FeaturesTrigger = () => {
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
 
-  const handleShowFeatures = useCallback(() => {
-    const {
-      showFeaturesPanel,
-      isRestoring,
-      setShowFeaturesPanel,
-    } = workflowStore.getState()
-    if (getNodesReadOnly() && !isRestoring)
-      return
-    setShowFeaturesPanel(!showFeaturesPanel)
-  }, [workflowStore, getNodesReadOnly])
-
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appID! })
@@ -98,21 +77,13 @@ const FeaturesTrigger = () => {
   }, [appID, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
-  // const { validateBeforeRun } = useWorkflowRunValidation()
-  const nodes = useNodes<CommonNodeType>()
-  const edges = useEdges<CommonEdgeType>()
-  const needWarningNodes = useChecklist(nodes, edges)
+  const { validateBeforeRun } = useWorkflowRunValidation()
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
     // First check if there are any items in the checklist
-    // if (!validateBeforeRun())
-    //   throw new Error('Checklist has unresolved items')
-
-    if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+    if (!validateBeforeRun())
       throw new Error('Checklist has unresolved items')
-    }
 
     // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
@@ -134,7 +105,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers])
+  }, [validateBeforeRun, handleCheckBeforePublish, publishWorkflow, updatePublishedWorkflow, appID, updateAppDetail, invalidateAppTriggers, workflowStore, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -146,32 +117,20 @@ const FeaturesTrigger = () => {
   }, [workflowStore])
 
   return (
-    <>
-      <Button
-        className={cn(
-          'text-components-button-secondary-text',
-          theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
-        )}
-        onClick={handleShowFeatures}
-      >
-        <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
-        {t('workflow.common.features')}
-      </Button>
-      <AppPublisher
-        {...{
-          publishedAt,
-          draftUpdatedAt,
-          disabled: nodesReadOnly,
-          toolPublished,
-          inputs: variables,
-          onRefreshData: handleToolConfigureUpdate,
-          onPublish,
-          onToggle: onPublisherToggle,
-          crossAxisOffset: 4,
-        }}
-      />
-    </>
+    <AppPublisher
+      {...{
+        publishedAt,
+        draftUpdatedAt,
+        disabled: nodesReadOnly,
+        toolPublished,
+        inputs: variables,
+        onRefreshData: handleToolConfigureUpdate,
+        onPublish,
+        onToggle: onPublisherToggle,
+        crossAxisOffset: 4,
+      }}
+    />
   )
 }
 
-export default memo(FeaturesTrigger)
+export default memo(AppPublisherTrigger)
