@@ -105,7 +105,7 @@ class PassportResource(Resource):
                 "access_token": tk,
             }
         )
-        set_passport_to_cookie(request, response, tk)
+        set_passport_to_cookie(app_code, request, response, tk)
         return response
 
 
@@ -192,7 +192,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     resp = make_response({
         "access_token": token,
     })
-    set_passport_to_cookie(request, resp, token)
+    set_passport_to_cookie(app_code, request, resp, token)
     return resp
 
 

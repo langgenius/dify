@@ -82,10 +82,15 @@ class LoginStatusApi(Resource):
         }
     )
     def get(self):
-        token = extract_access_token(request)
-        passport = extract_webapp_passport(request)
         app_code = request.args.get("app_code")
+        token = extract_access_token(request)
         csrf_token = extract_csrf_token(request)
+        if not app_code:
+            return {
+                "logged_in": bool(token) and bool(csrf_token),
+                "app_logged_in": False,
+            }
+        passport: str | None = extract_webapp_passport(app_code, request)
         try:
             verified = PassportService().verify(passport)
             return {
@@ -110,8 +115,9 @@ class LogoutApi(Resource):
     )
     def post(self):
         response = make_response({"result": "success"})
+        app_code = request.args.get("app_code")
         clear_access_token_from_cookie(request, response)
-        clear_webapp_token_from_cookie(request, response)
+        clear_webapp_token_from_cookie(app_code, request, response)
         clear_csrf_token_from_cookie(request, response)
         return response
 

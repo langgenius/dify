@@ -58,7 +58,7 @@ def extract_access_token(request: Request) -> str | None:
     return ret
 
 
-def extract_webapp_passport(request: Request) -> str | None:
+def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     """
     Try to extract app token from header or params.
 
@@ -70,7 +70,7 @@ def extract_webapp_passport(request: Request) -> str | None:
         return request.args.get("web_app_access_token")
 
     def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(COOKIE_NAME_PASSPORT)
+        return request.cookies.get(COOKIE_NAME_PASSPORT + "-" + app_code)
 
     ret = (
         _try_extract_passport_token_from_cookie(request)
@@ -104,9 +104,9 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
     )
 
 
-def set_passport_to_cookie(request: Request, response: Response, token: str):
+def set_passport_to_cookie(app_code: str, request: Request, response: Response, token: str):
     response.set_cookie(
-        COOKIE_NAME_PASSPORT,
+        COOKIE_NAME_PASSPORT + "-" + app_code,
         value=token,
         httponly=True,
         secure=request.is_secure,
@@ -138,8 +138,16 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str):
         samesite="Lax",
     )
 
-def clear_webapp_token_from_cookie(request: Request, response: Response):
-    _clear_cookie(request, response, COOKIE_NAME_PASSPORT)
+def _clear_cookie_begin_with(request: Request, response: Response, prefix: str):
+    for cookie_name in request.cookies.keys():
+        if cookie_name.startswith(prefix):
+            _clear_cookie(request, response, cookie_name)
+
+def clear_webapp_token_from_cookie(app_code: str | None, request: Request, response: Response):
+    if not app_code:
+        _clear_cookie_begin_with(request, response, COOKIE_NAME_PASSPORT)
+        return
+    _clear_cookie(request, response, COOKIE_NAME_PASSPORT + "-" + app_code)
 
 def clear_access_token_from_cookie(request: Request, response: Response):
     _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN)

@@ -50,7 +50,7 @@ def decode_jwt_token():
     system_features = FeatureService.get_system_features()
     app_code = str(request.headers.get("X-App-Code"))
     try:
-        tk = extract_webapp_passport(request)
+        tk = extract_webapp_passport(app_code, request)
         if not tk:
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
