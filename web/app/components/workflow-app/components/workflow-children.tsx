@@ -20,7 +20,11 @@ import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
 import dynamic from 'next/dynamic'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type {
+  PluginDefaultValue,
+  ToolDefaultValue,
+  TriggerDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 import { useAvailableNodesMetaData } from '../hooks'
 
@@ -36,6 +40,31 @@ const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/ds
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
   ssr: false,
 })
+
+const getTriggerPluginNodeData = (
+  triggerConfig: TriggerDefaultValue,
+  fallbackTitle?: string,
+  fallbackDesc?: string,
+) => {
+  return {
+    plugin_id: triggerConfig.provider_id,
+    provider_id: triggerConfig.provider_id,
+    provider_type: triggerConfig.provider_type,
+    provider_name: triggerConfig.provider_name,
+    trigger_name: triggerConfig.trigger_name,
+    trigger_label: triggerConfig.trigger_label,
+    trigger_description: triggerConfig.trigger_description,
+    title: triggerConfig.trigger_label || triggerConfig.title || fallbackTitle,
+    desc: triggerConfig.trigger_description || fallbackDesc,
+    output_schema: { ...(triggerConfig.output_schema || {}) },
+    parameters_schema: triggerConfig.paramSchemas ? [...triggerConfig.paramSchemas] : [],
+    config: { ...(triggerConfig.params || {}) },
+    subscription_id: triggerConfig.subscription_id,
+    plugin_unique_identifier: triggerConfig.plugin_unique_identifier,
+    is_team_authorization: triggerConfig.is_team_authorization,
+    meta: triggerConfig.meta ? { ...triggerConfig.meta } : undefined,
+  }
+}
 
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -67,14 +96,40 @@ const WorkflowChildren = () => {
     handleOnboardingClose()
   }, [handleOnboardingClose])
 
-  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => {
-    const nodeData = nodeType === BlockEnum.Start
-      ? availableNodesMetaData.nodesMap?.[BlockEnum.Start]
-      : { ...availableNodesMetaData.nodesMap?.[nodeType], ...toolConfig }
+  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue | TriggerDefaultValue | PluginDefaultValue) => {
+    const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
+    if (!nodeDefault?.defaultValue)
+      return
+
+    const baseNodeData = { ...nodeDefault.defaultValue }
+
+    const mergedNodeData = (() => {
+      if (nodeType !== BlockEnum.TriggerPlugin || !toolConfig) {
+        return {
+          ...baseNodeData,
+          ...toolConfig,
+        }
+      }
+
+      const triggerNodeData = getTriggerPluginNodeData(
+        toolConfig as TriggerDefaultValue,
+        baseNodeData.title,
+        baseNodeData.desc,
+      )
+
+      return {
+        ...baseNodeData,
+        ...triggerNodeData,
+        config: {
+          ...(baseNodeData as { config?: Record<string, any> }).config || {},
+          ...(triggerNodeData.config || {}),
+        },
+      }
+    })()
 
     const { newNode } = generateNewNode({
       data: {
-        ...nodeData,
+        ...mergedNodeData,
       } as any,
       position: START_INITIAL_POSITION,
     })
