@@ -38,7 +38,11 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()
-    app_code = str(request.headers.get("X-App-Code"))
+    app_code = request.headers.get("X-App-Code")
+    if not app_code:
+        app_code = None
+    else:
+        app_code = str(app_code)
     try:
         auth_header = request.headers.get("Authorization")
         if auth_header is None:
@@ -90,6 +94,8 @@ def decode_jwt_token():
         if system_features.webapp_auth.enabled:
             if not app_code:
                 raise BadRequest("App code is required for webapp authentication.")
+            if app_code in ["undefined", "null", "None", ""]:
+                raise BadRequest("Invalid app code provided.")
             app_id = AppService.get_app_id_by_code(app_code)
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
@@ -106,6 +112,8 @@ def decode_jwt_token():
         if system_features.webapp_auth.enabled:
             if not app_code:
                 raise Unauthorized("Please re-login to access the web app.")
+            if app_code in ["undefined", "null", "None", ""]:
+                raise Unauthorized("Invalid app code provided.")
             app_id = AppService.get_app_id_by_code(app_code)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode != "public"
@@ -149,6 +157,8 @@ def _validate_user_accessibility(
             raise WebAppAuthRequiredError("Web app settings not found.")
 
         if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
+            if not app_code or app_code in ["undefined", "null", "None", ""]:
+                raise WebAppAuthAccessDeniedError("Invalid app code for permission check.")
             app_id = AppService.get_app_id_by_code(app_code)
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
