@@ -9,14 +9,13 @@ import contextvars
 import logging
 import queue
 from collections.abc import Generator
-from typing import final
+from typing import TYPE_CHECKING, cast, final
 
 from flask import Flask, current_app
 
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
-from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphNodeEventBase,
@@ -29,7 +28,6 @@ from core.workflow.graph_events import (
 from core.workflow.runtime import GraphRuntimeState
 
 from .command_processing import AbortCommandHandler, CommandProcessor
-from .domain import GraphExecution
 from .entities.commands import AbortCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
@@ -38,9 +36,12 @@ from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
-from .ready_queue import ReadyQueue, ReadyQueueState, create_ready_queue_from_state
-from .response_coordinator import ResponseStreamCoordinator
+from .ready_queue import ReadyQueue
 from .worker_management import WorkerPool
+
+if TYPE_CHECKING:
+    from core.workflow.graph_engine.domain.graph_execution import GraphExecution
+    from core.workflow.graph_engine.response_coordinator import ResponseStreamCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +68,14 @@ class GraphEngine:
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
 
-        # Graph execution tracks the overall execution state
-        self._graph_execution = GraphExecution(workflow_id=workflow_id)
-        if graph_runtime_state.graph_execution_json != "":
-            self._graph_execution.loads(graph_runtime_state.graph_execution_json)
-
-        # === Core Dependencies ===
-        # Graph structure and configuration
+        # Bind runtime state to current workflow context
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
+        self._graph_runtime_state.configure(workflow_id=workflow_id, graph=graph)
         self._command_channel = command_channel
+
+        # Graph execution tracks the overall execution state
+        self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
 
         # === Worker Management Parameters ===
         # Parameters for dynamic worker pool scaling
@@ -86,13 +85,7 @@ class GraphEngine:
         self._scale_down_idle_time = scale_down_idle_time
 
         # === Execution Queues ===
-        # Create ready queue from saved state or initialize new one
-        self._ready_queue: ReadyQueue
-        if self._graph_runtime_state.ready_queue_json == "":
-            self._ready_queue = InMemoryReadyQueue()
-        else:
-            ready_queue_state = ReadyQueueState.model_validate_json(self._graph_runtime_state.ready_queue_json)
-            self._ready_queue = create_ready_queue_from_state(ready_queue_state)
+        self._ready_queue = cast(ReadyQueue, self._graph_runtime_state.ready_queue)
 
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
@@ -103,11 +96,7 @@ class GraphEngine:
 
         # === Response Coordination ===
         # Coordinates response streaming from response nodes
-        self._response_coordinator = ResponseStreamCoordinator(
-            variable_pool=self._graph_runtime_state.variable_pool, graph=self._graph
-        )
-        if graph_runtime_state.response_coordinator_json != "":
-            self._response_coordinator.loads(graph_runtime_state.response_coordinator_json)
+        self._response_coordinator = cast("ResponseStreamCoordinator", self._graph_runtime_state.response_coordinator)
 
         # === Event Management ===
         # Event manager handles both collection and emission of events

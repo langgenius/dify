@@ -1,4 +1,5 @@
 from time import time
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -94,3 +95,52 @@ class TestGraphRuntimeState:
         # Test add_tokens validation
         with pytest.raises(ValueError):
             state.add_tokens(-1)
+
+    def test_ready_queue_default_instantiation(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+
+        queue = state.ready_queue
+
+        from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
+
+        assert isinstance(queue, InMemoryReadyQueue)
+        assert state.ready_queue is queue
+
+    def test_graph_execution_requires_workflow_id(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+
+        with pytest.raises(ValueError):
+            _ = state.graph_execution
+
+        state.set_workflow_id("workflow-id")
+        execution = state.graph_execution
+
+        from core.workflow.graph_engine.domain.graph_execution import GraphExecution
+
+        assert isinstance(execution, GraphExecution)
+        assert execution.workflow_id == "workflow-id"
+        assert state.graph_execution is execution
+
+    def test_response_coordinator_configuration(self):
+        variable_pool = VariablePool()
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+
+        with pytest.raises(ValueError):
+            _ = state.response_coordinator
+
+        mock_graph = MagicMock()
+        with patch("core.workflow.graph_engine.response_coordinator.ResponseStreamCoordinator") as coordinator_cls:
+            coordinator_instance = MagicMock()
+            coordinator_cls.return_value = coordinator_instance
+
+            state.configure(workflow_id="wf", graph=mock_graph)
+
+            assert state.response_coordinator is coordinator_instance
+            coordinator_cls.assert_called_once_with(variable_pool=variable_pool, graph=mock_graph)
+
+        # Configure again with same graph should be idempotent
+        state.configure(workflow_id="wf", graph=mock_graph)
+
+        other_graph = MagicMock()
+        with pytest.raises(ValueError):
+            state.attach_graph(other_graph)
