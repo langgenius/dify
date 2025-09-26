@@ -38,7 +38,7 @@ def check_upgradable_plugin_task():
     batch_chunk_count = math.ceil(
         total_strategies / MAX_CONCURRENT_CHECK_TASKS
     )  # make sure all strategies are checked in this interval
-    batch_interval_time = AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count
+    batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
@@ -52,7 +52,7 @@ def check_upgradable_plugin_task():
                 strategy.include_plugins,
             )
 
-        if batch_interval_time > 0.0001:
+        if batch_interval_time > 0.0001:  # if lower than 1ms, skip
             time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()
