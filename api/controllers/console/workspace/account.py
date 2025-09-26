@@ -287,7 +287,7 @@ class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
+    def post(self):
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
         account = current_user
