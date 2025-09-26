@@ -6,8 +6,9 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
-from collections.abc import Sequence
-from typing import Union
+from collections.abc import Callable, Sequence
+from datetime import datetime
+from typing import Any, Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -23,6 +24,17 @@ from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
 )
+
+# Safe field getter mapping for WorkflowNodeExecution to avoid getattr reflection
+WORKFLOW_NODE_EXECUTION_FIELD_GETTERS: dict[str, Callable[[WorkflowNodeExecution], Any]] = {
+    "id": lambda x: x.id or "",
+    "index": lambda x: x.index or 0,
+    "created_at": lambda x: x.created_at or datetime.min,
+    "finished_at": lambda x: x.finished_at or datetime.min,
+    "node_id": lambda x: x.node_id or "",
+    "status": lambda x: x.status or "",
+    "elapsed_time": lambda x: x.elapsed_time or 0.0,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +192,17 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
                 # Sort by multiple fields if specified
                 for field_name in reversed(order_config.order_by):
-                    result.sort(key=lambda x: getattr(x, field_name, 0), reverse=reverse)
+                    # Use safe field getter instead of getattr reflection
+                    if field_name not in WORKFLOW_NODE_EXECUTION_FIELD_GETTERS:
+                        logger.warning(
+                            "Unsupported order field: %s. Supported fields: %s",
+                            field_name,
+                            list(WORKFLOW_NODE_EXECUTION_FIELD_GETTERS.keys()),
+                        )
+                        continue
+
+                    field_getter = WORKFLOW_NODE_EXECUTION_FIELD_GETTERS[field_name]
+                    result.sort(key=field_getter, reverse=reverse)
 
             logger.debug("Retrieved %d workflow node executions for run %s from cache", len(result), workflow_run_id)
             return result
