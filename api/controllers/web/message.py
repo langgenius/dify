@@ -249,7 +249,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
         }
     )
     @marshal_with(suggested_questions_response_fields)
-    def get(self, app_model, end_user, message_id):
+    def post(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotCompletionAppError()

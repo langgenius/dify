@@ -61,9 +61,11 @@ export const sendCompletionMessage = async (appId: string, body: Record<string, 
 }
 
 export const fetchSuggestedQuestions = (appId: string, messageId: string, getAbortController?: any) => {
-  return get(
+  return post(
     `apps/${appId}/chat-messages/${messageId}/suggested-questions`,
-    {},
+    {
+      body: {},
+    },
     {
       getAbortController,
     },
