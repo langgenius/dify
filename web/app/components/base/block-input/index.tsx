@@ -12,9 +12,15 @@ import { checkKeys } from '@/utils/var'
 const regex = /\{\{([^}]+)\}\}/g
 
 export const getInputKeys = (value: string) => {
-  const keys = value.match(regex)?.map((item) => {
+  const matches: string[] = []
+  let match
+  regex.lastIndex = 0
+  while ((match = regex.exec(value)) !== null)
+    matches.push(match[0])
+
+  const keys = matches.map((item) => {
     return item.replace('{{', '').replace('}}', '')
-  }) || []
+  })
   const keyObj: Record<string, boolean> = {}
   // remove duplicate keys
   const res: string[] = []
@@ -69,7 +75,8 @@ const BlockInput: FC<IBlockInputProps> = ({
   const renderSafeContent = (value: string) => {
     const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableRegex = /^\{\{([^}]+)\}\}$/
+      const variableMatch = variableRegex.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight

@@ -29,7 +29,13 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
     params: '',
     body: { type: BodyType.none, data: '' },
   }
-  const args = curlCommand.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
+  const regex = /(?:[^\s"']+|"[^"]*"|'[^']*')+/g
+  const matches: string[] = []
+  let match
+  while ((match = regex.exec(curlCommand)) !== null)
+    matches.push(match[0])
+
+  const args = matches
   let hasData = false
 
   for (let i = 1; i < args.length; i++) {
@@ -75,7 +81,8 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
 
         // To support command like `curl -F "file=@/path/to/file;type=application/zip"`
         // the `;type=application/zip` should translate to `Content-Type: application/zip`
-        const typeMatch = value.match(/^(.+?);type=(.+)$/)
+        const typeRegex = /^(.+?);type=(.+)$/
+        const typeMatch = typeRegex.exec(value)
         if (typeMatch) {
           const [, actualValue, mimeType] = typeMatch
           value = actualValue
