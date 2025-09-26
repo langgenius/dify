@@ -151,7 +151,7 @@ const PluginTasks = () => {
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[11]'>
-          <div className='w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pb-2 shadow-lg'>
+          <div className='w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
             {/* Running Plugins */}
             {runningPlugins.length > 0 && (
               <>
