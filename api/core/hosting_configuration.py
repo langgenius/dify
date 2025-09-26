@@ -169,6 +169,11 @@ class HostingConfiguration:
             trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
+        if dify_config.HOSTED_GEMINI_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_GEMINI_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
         if len(quotas) > 0:
             credentials = {
                 "google_api_key": dify_config.HOSTED_GEMINI_API_KEY,
@@ -196,7 +201,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
             paid_quota = PaidHostingQuota()
-            quotas.append(paid_quota)
+            paid_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_PAID_MODELS")
+            quotas.append(paid_quota,restrict_models=paid_models)
 
         if len(quotas) > 0:
             credentials = {
@@ -223,6 +229,11 @@ class HostingConfiguration:
             trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
             quotas.append(trial_quota)
 
+        if dify_config.HOSTED_XAI_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_XAI_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
         if len(quotas) > 0:
             credentials = {
                 "api_key": dify_config.HOSTED_XAI_API_KEY,
@@ -247,6 +258,11 @@ class HostingConfiguration:
             trail_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_TRIAL_MODELS")
             trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
             quotas.append(trial_quota)
+
+        if dify_config.HOSTED_DEEPSEEK_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
 
         if len(quotas) > 0:
             credentials = {

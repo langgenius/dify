@@ -23,7 +23,7 @@ from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
-
+from core.entities.provider_entities import ProviderQuotaType
 from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
 
 
@@ -136,21 +136,36 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-        with Session(db.engine) as session:
-            stmt = (
-                update(Provider)
-                .where(
-                    Provider.tenant_id == tenant_id,
-                    # TODO: Use provider name with prefix after the data migration.
-                    Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                    Provider.provider_type == ProviderType.SYSTEM.value,
-                    Provider.quota_type == system_configuration.current_quota_type.value,
-                    Provider.quota_limit > Provider.quota_used,
-                )
-                .values(
-                    quota_used=Provider.quota_used + used_quota,
-                    last_used=naive_utc_now(),
-                )
+
+        if system_configuration.current_quota_type == ProviderQuotaType.TRIAL:
+            from services.credit_pool_service import CreditPoolService
+            CreditPoolService.check_and_deduct_credits(
+                tenant_id=tenant_id,
+                credits_required=used_quota,
             )
-            session.execute(stmt)
-            session.commit()
+        elif system_configuration.current_quota_type == ProviderQuotaType.PAID:
+            from services.credit_pool_service import CreditPoolService
+            CreditPoolService.check_and_deduct_credits(
+                tenant_id=tenant_id,
+                credits_required=used_quota,
+                pool_type="paid",
+            )
+        else:
+            with Session(db.engine) as session:
+                stmt = (
+                    update(Provider)
+                    .where(
+                        Provider.tenant_id == tenant_id,
+                        # TODO: Use provider name with prefix after the data migration.
+                        Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
+                        Provider.provider_type == ProviderType.SYSTEM.value,
+                        Provider.quota_type == system_configuration.current_quota_type.value,
+                        Provider.quota_limit > Provider.quota_used,
+                    )
+                    .values(
+                        quota_used=Provider.quota_used + used_quota,
+                        last_used=naive_utc_now(),
+                    )
+                )
+                session.execute(stmt)
+                session.commit()
