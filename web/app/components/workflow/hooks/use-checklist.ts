@@ -27,7 +27,6 @@ import {
 } from '../constants'
 import {
   useGetToolIcon,
-  useWorkflow,
 } from '../hooks'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
@@ -54,7 +53,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
-  const { getStartNodes } = useWorkflow()
   const getToolIcon = useGetToolIcon()
 
   const map = useNodesAvailableVarList(nodes)
@@ -79,13 +77,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const needWarningNodes = useMemo(() => {
     const list = []
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
-    const startNodes = getStartNodes(filteredNodes)
-    const validNodesFlattened = startNodes.map(startNode => getValidTreeNodes(startNode, filteredNodes, edges))
-    const validNodes = validNodesFlattened.reduce((acc, curr) => {
-      if (curr.validNodes)
-        acc.push(...curr.validNodes)
-      return acc
-    }, [] as Node[])
+    const { validNodes } = getValidTreeNodes(filteredNodes, edges)
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
@@ -192,7 +184,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, getStartNodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map])
+  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map])
 
   return needWarningNodes
 }
@@ -206,7 +198,6 @@ export const useChecklistBeforePublish = () => {
   const { data: strategyProviders } = useStrategyProviders()
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
   const updateTime = useRef(0)
-  const { getStartNodes } = useWorkflow()
   const workflowStore = useWorkflowStore()
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
 
@@ -244,20 +235,11 @@ export const useChecklistBeforePublish = () => {
     } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
-    const startNodes = getStartNodes(filteredNodes)
-    const validNodesFlattened = startNodes.map(startNode => getValidTreeNodes(startNode, filteredNodes, edges))
-    const validNodes = validNodesFlattened.reduce((acc, curr) => {
-      if (curr.validNodes)
-        acc.push(...curr.validNodes)
-      return acc
-    }, [] as Node[])
-    const maxDepthArr = validNodesFlattened.map(item => item.maxDepth)
+    const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
-    for (let i = 0; i < maxDepthArr.length; i++) {
-      if (maxDepthArr[i] > MAX_TREE_DEPTH) {
-        notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
-        return false
-      }
+    if (maxDepth > MAX_TREE_DEPTH) {
+      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
+      return false
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
     const knowledgeRetrievalNodes = filteredNodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
@@ -360,7 +342,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, getStartNodes, workflowStore])
+  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore])
 
   return {
     handleCheckBeforePublish,

@@ -92,8 +92,16 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const getValidTreeNodes = (startNode: Node, nodes: Node[], edges: Edge[]) => {
-  if (!startNode) {
+export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
+  // Find all start nodes (Start and Trigger nodes)
+  const startNodes = nodes.filter(node =>
+    node.data.type === BlockEnum.Start
+    || node.data.type === BlockEnum.TriggerSchedule
+    || node.data.type === BlockEnum.TriggerWebhook
+    || node.data.type === BlockEnum.TriggerPlugin,
+  )
+
+  if (startNodes.length === 0) {
     return {
       validNodes: [],
       maxDepth: 0,
@@ -134,18 +142,11 @@ export const getValidTreeNodes = (startNode: Node, nodes: Node[], edges: Edge[])
     }
   }
 
-  // const startNodes = nodes.filter(node =>
-  //   node.data.type === BlockEnum.Start
-  //   || node.data.type === BlockEnum.TriggerSchedule
-  //   || node.data.type === BlockEnum.TriggerWebhook
-  //   || node.data.type === BlockEnum.TriggerPlugin,
-  // )
-
-  // // Start traversal from all start nodes
-  // startNodes.forEach((startNode) => {
-  //   if (!list.find(n => n.id === startNode.id))
-  //     traverse(startNode, 1)
-  // })
+  // Start traversal from all start nodes
+  startNodes.forEach((startNode) => {
+    if (!list.find(n => n.id === startNode.id))
+      traverse(startNode, 1)
+  })
 
   return {
     validNodes: uniqBy(list, 'id'),
