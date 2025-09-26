@@ -46,5 +46,11 @@ class WorkspaceService:
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
+        if dify_config.EDITION == "CLOUD":
+            from services.credit_pool_service import CreditPoolService
+
+            pool = CreditPoolService.get_or_create_pool(tenant_id=tenant.id)
+            tenant_info["trial_credits"] = pool.quota_limit
+            tenant_info["trial_credits_used"] = pool.quota_used
 
         return tenant_info

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -2001,3 +2001,29 @@ class TraceAppConfig(Base):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+
+class TenantCreditPool(Base):
+    __tablename__ = "tenant_credit_pools"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
+        sa.Index("tenant_credit_pool_tenant_id_idx", "tenant_id"),
+        sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
+    )
+
+    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used = mapped_column(BigInteger, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    @property
+    def remaining_credits(self) -> int:
+        return max(0, self.quota_limit - self.quota_used)
+
+    def has_sufficient_credits(self, required_credits: int) -> bool:
+        return self.remaining_credits >= required_credits
