@@ -31,16 +31,16 @@ from core.ops.aliyun_trace.entities.semconv import (
     GenAISpanKind,
 )
 from core.ops.aliyun_trace.utils import (
-    convert_to_gen_ai_input_message,
-    convert_to_gen_ai_output_message,
     create_common_span_attributes,
     create_links_from_trace_id,
     create_status_from_error,
     extract_retrieval_documents,
+    format_input_messages,
+    format_output_messages,
+    format_retrieval_documents,
     get_user_id_from_message_data,
     get_workflow_node_status,
     serialize_json_data,
-    transform_to_semantic_retrieval_format,
 )
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import AliyunConfig
@@ -362,7 +362,7 @@ class AliyunDataTrace(BaseTraceInstance):
         output_value = serialize_json_data(node_execution.outputs.get("result", [])) if node_execution.outputs else ""
 
         retrieval_documents = node_execution.outputs.get("result", []) if node_execution.outputs else []
-        semantic_retrieval_documents = transform_to_semantic_retrieval_format(retrieval_documents)
+        semantic_retrieval_documents = format_retrieval_documents(retrieval_documents)
         semantic_retrieval_documents_json = serialize_json_data(semantic_retrieval_documents)
 
         return SpanData(
@@ -397,8 +397,8 @@ class AliyunDataTrace(BaseTraceInstance):
         prompts_json = serialize_json_data(process_data.get("prompts", []))
         text_output = str(outputs.get("text", ""))
 
-        gen_ai_input_message = convert_to_gen_ai_input_message(process_data)
-        gen_ai_output_message = convert_to_gen_ai_output_message(outputs)
+        gen_ai_input_message = format_input_messages(process_data)
+        gen_ai_output_message = format_output_messages(outputs)
 
         return SpanData(
             trace_id=trace_metadata.trace_id,

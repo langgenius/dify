@@ -94,136 +94,103 @@ def create_common_span_attributes(
         OUTPUT_VALUE: outputs,
     }
 
-def transform_to_semantic_retrieval_format(retrieval_documents: list) -> list:
-    semantic_documents = []
+def format_retrieval_documents(retrieval_documents: list) -> list:
+    try:
+        if not isinstance(retrieval_documents, list):
+            return []
 
-    for doc in retrieval_documents:
-        if not isinstance(doc, dict):
-            continue
+        semantic_documents = []
+        for doc in retrieval_documents:
+            if not isinstance(doc, dict):
+                continue
 
-        metadata = doc.get("metadata", {})
-        content = doc.get("content", "")
-        title = doc.get("title", "")
-        score = metadata.get("score", 0.0)
-        document_id = metadata.get("document_id", "")
+            metadata = doc.get("metadata", {})
+            content = doc.get("content", "")
+            title = doc.get("title", "")
+            score = metadata.get("score", 0.0)
+            document_id = metadata.get("document_id", "")
 
-        semantic_metadata = {}
-        if title:
-            semantic_metadata["title"] = title
-        if metadata.get("source"):
-            semantic_metadata["source"] = metadata["source"]
-        elif metadata.get("_source"):
-            semantic_metadata["source"] = metadata["_source"]
-        if metadata.get("doc_metadata"):
-            doc_metadata = metadata["doc_metadata"]
-            if isinstance(doc_metadata, dict):
-                semantic_metadata.update(doc_metadata)
+            semantic_metadata = {}
+            if title:
+                semantic_metadata["title"] = title
+            if metadata.get("source"):
+                semantic_metadata["source"] = metadata["source"]
+            elif metadata.get("_source"):
+                semantic_metadata["source"] = metadata["_source"]
+            if metadata.get("doc_metadata"):
+                doc_metadata = metadata["doc_metadata"]
+                if isinstance(doc_metadata, dict):
+                    semantic_metadata.update(doc_metadata)
 
-        semantic_doc = {
-            "document": {
-                "content": content,
-                "metadata": semantic_metadata,
-                "score": score,
-                "id": document_id
+            semantic_doc = {
+                "document": {
+                    "content": content,
+                    "metadata": semantic_metadata,
+                    "score": score,
+                    "id": document_id
+                }
             }
+            semantic_documents.append(semantic_doc)
+
+        return semantic_documents
+    except Exception:
+        return []
+
+
+def format_input_messages(process_data: dict) -> str:
+    try:
+        if not isinstance(process_data, dict):
+            return serialize_json_data([])
+
+        prompts = process_data.get("prompts", [])
+        if not prompts:
+            return serialize_json_data([])
+
+        valid_roles = {"system", "user", "assistant", "tool"}
+        input_messages = []
+        for prompt in prompts:
+            if not isinstance(prompt, dict):
+                continue
+
+            role = prompt.get("role", "")
+            text = prompt.get("text", "")
+
+            if not role or role not in valid_roles:
+                continue
+
+            if text:
+                message = {
+                    "role": role,
+                    "parts": [{"type": "text", "content": text}]
+                }
+                input_messages.append(message)
+
+        return serialize_json_data(input_messages)
+    except Exception:
+        return serialize_json_data([])
+
+
+def format_output_messages(outputs: dict) -> str:
+    try:
+        if not isinstance(outputs, dict):
+            return serialize_json_data([])
+
+        text = outputs.get("text", "")
+        finish_reason = outputs.get("finish_reason", "")
+
+        if not text:
+            return serialize_json_data([])
+
+        valid_finish_reasons = {"stop", "length", "content_filter", "tool_call", "error"}
+        if finish_reason not in valid_finish_reasons:
+            finish_reason = "stop"
+
+        output_message = {
+            "role": "assistant",
+            "parts": [{"type": "text", "content": text}],
+            "finish_reason": finish_reason
         }
 
-        semantic_documents.append(semantic_doc)
-
-    return semantic_documents
-
-
-def convert_to_gen_ai_input_message(process_data: dict) -> str:
-    prompts = process_data.get("prompts", [])
-    if not prompts:
+        return serialize_json_data([output_message])
+    except Exception:
         return serialize_json_data([])
-
-    input_messages = []
-    for prompt in prompts:
-        if not isinstance(prompt, dict):
-            continue
-
-        role = prompt.get("role", "")
-        text = prompt.get("text", "")
-
-        if not role:
-            continue
-
-        parts = []
-
-        if text:
-            parts.append({"type": "text", "content": text})
-
-        files = prompt.get("files", [])
-        for file in files:
-            if isinstance(file, dict):
-                file_type = file.get("type", "image")
-                if file_type == "image":
-                    parts.append({
-                        "type": "image",
-                        "data": file.get("data", ""),
-                        "detail": file.get("detail", "auto")
-                    })
-                elif file_type == "audio":
-                    parts.append({
-                        "type": "audio",
-                        "data": file.get("data", ""),
-                        "format": file.get("format", "")
-                    })
-
-        tool_calls = prompt.get("tool_calls", [])
-        for tool_call in tool_calls:
-            if isinstance(tool_call, dict):
-                function_info = tool_call.get("function", {})
-                parts.append({
-                    "type": "tool_call",
-                    "id": tool_call.get("id", ""),
-                    "name": function_info.get("name", ""),
-                    "arguments": function_info.get("arguments", {})
-                })
-
-        if parts:
-            message = {
-                "role": role,
-                "parts": parts
-            }
-            input_messages.append(message)
-
-    return serialize_json_data(input_messages)
-
-
-def convert_to_gen_ai_output_message(outputs: dict) -> str:
-    text = outputs.get("text", "")
-    finish_reason = outputs.get("finish_reason", "")
-
-    if not text:
-        return serialize_json_data([])
-
-    parts = [{"type": "text", "content": text}]
-
-    files = outputs.get("files", [])
-    for file in files:
-        if isinstance(file, dict):
-            file_type = file.get("type", "image")
-            if file_type == "image":
-                parts.append({
-                    "type": "image",
-                    "data": file.get("data", ""),
-                    "detail": file.get("detail", "auto")
-                })
-            elif file_type == "audio":
-                parts.append({
-                    "type": "audio",
-                    "data": file.get("data", ""),
-                    "format": file.get("format", "")
-                })
-
-    output_message = {
-        "role": "assistant",
-        "parts": parts
-    }
-
-    if finish_reason:
-        output_message["finish_reason"] = finish_reason
-
-    return serialize_json_data([output_message])
