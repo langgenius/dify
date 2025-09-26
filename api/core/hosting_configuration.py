@@ -200,9 +200,9 @@ class HostingConfiguration:
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
-            paid_quota = PaidHostingQuota()
             paid_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_PAID_MODELS")
-            quotas.append(paid_quota, restrict_models=paid_models)
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
 
         if len(quotas) > 0:
             credentials = {
