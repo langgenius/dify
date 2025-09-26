@@ -3,14 +3,14 @@ from datetime import datetime
 from enum import StrEnum, auto
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes import NodeType
-from core.workflow.runtime import GraphRuntimeState
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
 class QueueEvent(StrEnum):
@@ -287,12 +287,27 @@ class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
 
 
 class QueueWorkflowStartedEvent(AppQueueEvent):
-    """
-    QueueWorkflowStartedEvent entity
-    """
+    """QueueWorkflowStartedEvent entity with runtime state snapshot."""
 
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
-    graph_runtime_state: GraphRuntimeState
+    graph_runtime_state_snapshot: str
+    _graph_runtime_state_cache: GraphRuntimeState | None = PrivateAttr(default=None)
+
+    @classmethod
+    def from_runtime_state(cls, graph_runtime_state: GraphRuntimeState) -> "QueueWorkflowStartedEvent":
+        """Create event from an in-memory runtime state."""
+
+        return cls(graph_runtime_state_snapshot=graph_runtime_state.dumps())
+
+    @property
+    def graph_runtime_state(self) -> GraphRuntimeState:
+        """Lazily hydrate the runtime state from the stored snapshot."""
+
+        if self._graph_runtime_state_cache is None:
+            state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+            state.loads(self.graph_runtime_state_snapshot)
+            self._graph_runtime_state_cache = state
+        return self._graph_runtime_state_cache
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):

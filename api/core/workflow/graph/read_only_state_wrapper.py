@@ -71,6 +71,20 @@ class ReadOnlyGraphRuntimeStateWrapper:
         """Get the node run steps count (read-only)."""
         return self._state.node_run_steps
 
+    @property
+    def ready_queue_size(self) -> int:
+        """Get the number of items queued for execution (read-only)."""
+        return self._state.ready_queue.qsize()
+
+    @property
+    def exceptions_count(self) -> int:
+        """Get the number of exceptions observed so far (read-only)."""
+        return self._state.graph_execution.exceptions_count
+
     def get_output(self, key: str, default: Any = None) -> Any:
         """Get a single output value (returns a copy)."""
         return self._state.get_output(key, default)
+
+    def dumps(self) -> str:
+        """Serialize the underlying runtime state for external persistence."""
+        return self._state.dumps()

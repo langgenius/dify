@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import importlib
+import json
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Protocol
+
+from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.runtime.variable_pool import VariablePool
@@ -71,7 +75,7 @@ class GraphRuntimeState:
     def __init__(
         self,
         *,
-        variable_pool: VariablePool | None = None,
+        variable_pool: VariablePool,
         start_at: float,
         total_tokens: int = 0,
         llm_usage: LLMUsage | None = None,
@@ -80,10 +84,9 @@ class GraphRuntimeState:
         ready_queue: ReadyQueueProtocol | None = None,
         graph_execution: GraphExecutionProtocol | None = None,
         response_coordinator: ResponseStreamCoordinatorProtocol | None = None,
-        workflow_id: str | None = None,
         graph: GraphProtocol | None = None,
     ) -> None:
-        self._variable_pool = variable_pool or VariablePool()
+        self._variable_pool = variable_pool
         self._start_at = start_at
 
         if total_tokens < 0:
@@ -97,12 +100,13 @@ class GraphRuntimeState:
             raise ValueError("node_run_steps must be non-negative")
         self._node_run_steps = node_run_steps
 
-        self._workflow_id = workflow_id
         self._graph: GraphProtocol | None = None
 
         self._ready_queue = ready_queue
         self._graph_execution = graph_execution
         self._response_coordinator = response_coordinator
+        self._pending_response_coordinator_dump: str | None = None
+        self._pending_graph_execution_workflow_id: str | None = None
 
         if graph is not None:
             self.attach_graph(graph)
@@ -110,17 +114,6 @@ class GraphRuntimeState:
     # ------------------------------------------------------------------
     # Context binding helpers
     # ------------------------------------------------------------------
-    def set_workflow_id(self, workflow_id: str) -> None:
-        """Bind a workflow identifier for downstream aggregates."""
-        if self._workflow_id is None:
-            self._workflow_id = workflow_id
-            return
-
-        if self._workflow_id != workflow_id:
-            raise ValueError(
-                f"GraphRuntimeState already bound to workflow '{self._workflow_id}', received '{workflow_id}'"
-            )
-
     def attach_graph(self, graph: GraphProtocol) -> None:
         """Attach the materialized graph to the runtime state."""
         if self._graph is not None and self._graph is not graph:
@@ -131,11 +124,12 @@ class GraphRuntimeState:
         if self._response_coordinator is None:
             self._response_coordinator = self._build_response_coordinator(graph)
 
-    def configure(self, *, workflow_id: str | None = None, graph: GraphProtocol | None = None) -> None:
-        """Ensure core collaborators are initialized with the provided context."""
-        if workflow_id is not None:
-            self.set_workflow_id(workflow_id)
+        if self._pending_response_coordinator_dump is not None and self._response_coordinator is not None:
+            self._response_coordinator.loads(self._pending_response_coordinator_dump)
+            self._pending_response_coordinator_dump = None
 
+    def configure(self, *, graph: GraphProtocol | None = None) -> None:
+        """Ensure core collaborators are initialized with the provided context."""
         if graph is not None:
             self.attach_graph(graph)
 
@@ -171,10 +165,6 @@ class GraphRuntimeState:
                 raise ValueError("Graph must be attached before accessing response coordinator")
             self._response_coordinator = self._build_response_coordinator(self._graph)
         return self._response_coordinator
-
-    @property
-    def workflow_id(self) -> str | None:
-        return self._workflow_id
 
     # ------------------------------------------------------------------
     # Scalar state
@@ -242,6 +232,90 @@ class GraphRuntimeState:
         self._total_tokens += tokens
 
     # ------------------------------------------------------------------
+    # Serialization
+    # ------------------------------------------------------------------
+    def dumps(self) -> str:
+        """Serialize runtime state into a JSON string."""
+
+        snapshot: dict[str, Any] = {
+            "version": "1.0",
+            "start_at": self._start_at,
+            "total_tokens": self._total_tokens,
+            "node_run_steps": self._node_run_steps,
+            "llm_usage": self._llm_usage.model_dump(mode="json"),
+            "outputs": self.outputs,
+            "variable_pool": self.variable_pool.model_dump(mode="json"),
+            "ready_queue": self.ready_queue.dumps(),
+            "graph_execution": self.graph_execution.dumps(),
+        }
+
+        if self._response_coordinator is not None and self._graph is not None:
+            snapshot["response_coordinator"] = self._response_coordinator.dumps()
+
+        return json.dumps(snapshot, default=pydantic_encoder)
+
+    def loads(self, data: str | Mapping[str, Any]) -> None:
+        """Restore runtime state from a serialized snapshot."""
+
+        payload: dict[str, Any]
+        if isinstance(data, str):
+            payload = json.loads(data)
+        else:
+            payload = dict(data)
+
+        version = payload.get("version")
+        if version != "1.0":
+            raise ValueError(f"Unsupported GraphRuntimeState snapshot version: {version}")
+
+        self._start_at = float(payload.get("start_at", 0.0))
+        total_tokens = int(payload.get("total_tokens", 0))
+        if total_tokens < 0:
+            raise ValueError("total_tokens must be non-negative")
+        self._total_tokens = total_tokens
+
+        node_run_steps = int(payload.get("node_run_steps", 0))
+        if node_run_steps < 0:
+            raise ValueError("node_run_steps must be non-negative")
+        self._node_run_steps = node_run_steps
+
+        llm_usage_payload = payload.get("llm_usage", {})
+        self._llm_usage = LLMUsage.model_validate(llm_usage_payload)
+
+        self._outputs = deepcopy(payload.get("outputs", {}))
+
+        variable_pool_payload = payload.get("variable_pool")
+        if variable_pool_payload is not None:
+            self._variable_pool = VariablePool.model_validate(variable_pool_payload)
+
+        ready_queue_payload = payload.get("ready_queue")
+        if ready_queue_payload is not None:
+            self._ready_queue = self._build_ready_queue()
+            self._ready_queue.loads(ready_queue_payload)
+        else:
+            self._ready_queue = None
+
+        graph_execution_payload = payload.get("graph_execution")
+        self._graph_execution = None
+        self._pending_graph_execution_workflow_id = None
+        if graph_execution_payload is not None:
+            try:
+                execution_payload = json.loads(graph_execution_payload)
+                self._pending_graph_execution_workflow_id = execution_payload.get("workflow_id")
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                self._pending_graph_execution_workflow_id = None
+            self.graph_execution.loads(graph_execution_payload)
+
+        response_payload = payload.get("response_coordinator")
+        if response_payload is not None:
+            if self._graph is not None:
+                self.response_coordinator.loads(response_payload)
+            else:
+                self._pending_response_coordinator_dump = response_payload
+        else:
+            self._pending_response_coordinator_dump = None
+            self._response_coordinator = None
+
+    # ------------------------------------------------------------------
     # Builders
     # ------------------------------------------------------------------
     def _build_ready_queue(self) -> ReadyQueueProtocol:
@@ -250,12 +324,11 @@ class GraphRuntimeState:
         return in_memory_cls()
 
     def _build_graph_execution(self) -> GraphExecutionProtocol:
-        if self._workflow_id is None:
-            raise ValueError("workflow_id must be set before accessing graph_execution")
-
         module = importlib.import_module("core.workflow.graph_engine.domain.graph_execution")
         graph_execution_cls = module.GraphExecution
-        return graph_execution_cls(workflow_id=self._workflow_id)
+        workflow_id = self._pending_graph_execution_workflow_id or ""
+        self._pending_graph_execution_workflow_id = None
+        return graph_execution_cls(workflow_id=workflow_id)
 
     def _build_response_coordinator(self, graph: GraphProtocol) -> ResponseStreamCoordinatorProtocol:
         module = importlib.import_module("core.workflow.graph_engine.response_coordinator")
