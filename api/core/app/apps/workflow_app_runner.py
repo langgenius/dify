@@ -348,7 +348,7 @@ class WorkflowBasedAppRunner:
         """
         if isinstance(event, GraphRunStartedEvent):
             self._publish_event(
-                QueueWorkflowStartedEvent(graph_runtime_state=workflow_entry.graph_engine.graph_runtime_state)
+                QueueWorkflowStartedEvent.from_runtime_state(workflow_entry.graph_engine.graph_runtime_state)
             )
         elif isinstance(event, GraphRunSucceededEvent):
             self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))

@@ -71,11 +71,12 @@ class GraphEngine:
         # Bind runtime state to current workflow context
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
-        self._graph_runtime_state.configure(workflow_id=workflow_id, graph=graph)
+        self._graph_runtime_state.configure(graph=graph)
         self._command_channel = command_channel
 
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
+        self._graph_execution.workflow_id = workflow_id
 
         # === Worker Management Parameters ===
         # Parameters for dynamic worker pool scaling

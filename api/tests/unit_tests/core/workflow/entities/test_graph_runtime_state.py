@@ -1,8 +1,11 @@
+import json
 from time import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
@@ -106,19 +109,15 @@ class TestGraphRuntimeState:
         assert isinstance(queue, InMemoryReadyQueue)
         assert state.ready_queue is queue
 
-    def test_graph_execution_requires_workflow_id(self):
+    def test_graph_execution_lazy_instantiation(self):
         state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
 
-        with pytest.raises(ValueError):
-            _ = state.graph_execution
-
-        state.set_workflow_id("workflow-id")
         execution = state.graph_execution
 
         from core.workflow.graph_engine.domain.graph_execution import GraphExecution
 
         assert isinstance(execution, GraphExecution)
-        assert execution.workflow_id == "workflow-id"
+        assert execution.workflow_id == ""
         assert state.graph_execution is execution
 
     def test_response_coordinator_configuration(self):
@@ -133,14 +132,107 @@ class TestGraphRuntimeState:
             coordinator_instance = MagicMock()
             coordinator_cls.return_value = coordinator_instance
 
-            state.configure(workflow_id="wf", graph=mock_graph)
+            state.configure(graph=mock_graph)
 
             assert state.response_coordinator is coordinator_instance
             coordinator_cls.assert_called_once_with(variable_pool=variable_pool, graph=mock_graph)
 
-        # Configure again with same graph should be idempotent
-        state.configure(workflow_id="wf", graph=mock_graph)
+            # Configure again with same graph should be idempotent
+            state.configure(graph=mock_graph)
 
         other_graph = MagicMock()
         with pytest.raises(ValueError):
             state.attach_graph(other_graph)
+
+    def test_read_only_wrapper_exposes_additional_state(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+        state.configure()
+
+        wrapper = ReadOnlyGraphRuntimeStateWrapper(state)
+
+        assert wrapper.ready_queue_size == 0
+        assert wrapper.exceptions_count == 0
+
+    def test_read_only_wrapper_serializes_runtime_state(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+        state.total_tokens = 5
+        state.set_output("result", {"success": True})
+        state.ready_queue.put("node-1")
+
+        wrapper = ReadOnlyGraphRuntimeStateWrapper(state)
+
+        wrapper_snapshot = json.loads(wrapper.dumps())
+        state_snapshot = json.loads(state.dumps())
+
+        assert wrapper_snapshot == state_snapshot
+
+    def test_dumps_and_loads_roundtrip_with_response_coordinator(self):
+        variable_pool = VariablePool()
+        variable_pool.add(("node1", "value"), "payload")
+
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+        state.total_tokens = 10
+        state.node_run_steps = 3
+        state.set_output("final", {"result": True})
+        usage = LLMUsage.from_metadata(
+            {
+                "prompt_tokens": 2,
+                "completion_tokens": 3,
+                "total_tokens": 5,
+                "total_price": "1.23",
+                "currency": "USD",
+                "latency": 0.5,
+            }
+        )
+        state.llm_usage = usage
+        state.ready_queue.put("node-A")
+
+        graph_execution = state.graph_execution
+        graph_execution.workflow_id = "wf-123"
+        graph_execution.exceptions_count = 4
+        graph_execution.started = True
+
+        class StubCoordinator:
+            def __init__(self) -> None:
+                self.state = "initial"
+
+            def dumps(self) -> str:
+                return json.dumps({"state": self.state})
+
+            def loads(self, data: str) -> None:
+                payload = json.loads(data)
+                self.state = payload["state"]
+
+        mock_graph = MagicMock()
+        stub = StubCoordinator()
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=stub):
+            state.attach_graph(mock_graph)
+
+        stub.state = "configured"
+
+        snapshot = state.dumps()
+
+        restored = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+        restored.loads(snapshot)
+
+        assert restored.total_tokens == 10
+        assert restored.node_run_steps == 3
+        assert restored.get_output("final") == {"result": True}
+        assert restored.llm_usage.total_tokens == usage.total_tokens
+        assert restored.ready_queue.qsize() == 1
+        assert restored.ready_queue.get(timeout=0.01) == "node-A"
+
+        restored_segment = restored.variable_pool.get(("node1", "value"))
+        assert restored_segment is not None
+        assert restored_segment.value == "payload"
+
+        restored_execution = restored.graph_execution
+        assert restored_execution.workflow_id == "wf-123"
+        assert restored_execution.exceptions_count == 4
+        assert restored_execution.started is True
+
+        new_stub = StubCoordinator()
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
+            restored.attach_graph(mock_graph)
+
+        assert new_stub.state == "configured"
