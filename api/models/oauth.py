@@ -16,9 +16,9 @@ class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
     )
 
     id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
-    plugin_id : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    provider : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    system_credentials : Mapped[dict] = mapped_column(JSONB, nullable=False)
+    plugin_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    system_credentials: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
 
 class DatasourceProvider(Base):
@@ -30,17 +30,17 @@ class DatasourceProvider(Base):
     )
     id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    name : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    provider : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    plugin_id : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    auth_type : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    encrypted_credentials : Mapped[dict] = mapped_column(JSONB, nullable=False)
-    avatar_url : Mapped[str] = mapped_column(db.Text, nullable=True, default="default")
-    is_default : Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    expires_at : Mapped[int] = mapped_column(db.Integer, nullable=False, server_default="-1")
+    name: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    plugin_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    auth_type: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    encrypted_credentials: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    avatar_url: Mapped[str] = mapped_column(db.Text, nullable=True, default="default")
+    is_default: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    expires_at: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default="-1")
 
-    created_at : Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
-    updated_at : Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
 
 
 class DatasourceOauthTenantParamConfig(Base):
@@ -52,10 +52,10 @@ class DatasourceOauthTenantParamConfig(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    provider : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    plugin_id : Mapped[str] = mapped_column(db.String(255), nullable=False)
-    client_params : Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
-    enabled : Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
+    provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    plugin_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    client_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
+    enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
 
-    created_at : Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
-    updated_at : Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now)
