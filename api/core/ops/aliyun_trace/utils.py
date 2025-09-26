@@ -124,12 +124,7 @@ def format_retrieval_documents(retrieval_documents: list) -> list:
                     semantic_metadata.update(doc_metadata)
 
             semantic_doc = {
-                "document": {
-                    "content": content,
-                    "metadata": semantic_metadata,
-                    "score": score,
-                    "id": document_id
-                }
+                "document": {"content": content, "metadata": semantic_metadata, "score": score, "id": document_id}
             }
             semantic_documents.append(semantic_doc)
 
@@ -160,10 +155,7 @@ def format_input_messages(process_data: Mapping[str, Any]) -> str:
                 continue
 
             if text:
-                message = {
-                    "role": role,
-                    "parts": [{"type": "text", "content": text}]
-                }
+                message = {"role": role, "parts": [{"type": "text", "content": text}]}
                 input_messages.append(message)
 
         return serialize_json_data(input_messages)
@@ -189,7 +181,7 @@ def format_output_messages(outputs: Mapping[str, Any]) -> str:
         output_message = {
             "role": "assistant",
             "parts": [{"type": "text", "content": text}],
-            "finish_reason": finish_reason
+            "finish_reason": finish_reason,
         }
 
         return serialize_json_data([output_message])
