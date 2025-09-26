@@ -1285,7 +1285,7 @@ class Pipeline(Base):  # type: ignore[name-defined]
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
     id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id : Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name = mapped_column(db.String(255), nullable=False)
     description = mapped_column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     workflow_id = mapped_column(StringUUID, nullable=True)
