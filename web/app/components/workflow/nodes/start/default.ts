@@ -8,7 +8,6 @@ const metaData = genNodeMetaData({
   type: BlockEnum.Start,
   isStart: true,
   isRequired: true,
-  isUndeletable: true,
   isSingleton: true,
   isTypeFixed: true,
 })

@@ -33,6 +33,7 @@ export const useWorkflowRefreshDraft = () => {
       }, {} as Record<string, string>))
       setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
       setConversationVariables(response.conversation_variables || [])
+      workflowStore.setState({ isWorkflowDataLoaded: true })
     }).finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
