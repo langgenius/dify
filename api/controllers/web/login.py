@@ -21,7 +21,9 @@ from libs.token import (
     extract_access_token,
     extract_webapp_passport,
     set_csrf_token_to_cookie,
-    generate_csrf_token
+    generate_csrf_token,
+    extract_csrf_token,
+    clear_csrf_token_from_cookie
 )
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
@@ -83,15 +85,16 @@ class LoginStatusApi(Resource):
         token = extract_access_token(request)
         passport = extract_webapp_passport(request)
         app_code = request.args.get("app_code")
+        csrf_token = extract_csrf_token(request)
         try:
             verified = PassportService().verify(passport)
             return {
-                "logged_in": bool(token),
-                "app_logged_in": bool(app_code) and verified.get("app_code") == app_code,
+                "logged_in": bool(token) and bool(csrf_token),
+                "app_logged_in": bool(app_code) and verified.get("app_code") == app_code and bool(csrf_token),
             }
         except Exception:
             return {
-                "logged_in": bool(token),
+                "logged_in": bool(token) and bool(csrf_token),
                 "app_logged_in": False,
             }
 
@@ -109,6 +112,7 @@ class LogoutApi(Resource):
         response = make_response({"result": "success"})
         clear_access_token_from_cookie(request, response)
         clear_webapp_token_from_cookie(request, response)
+        clear_csrf_token_from_cookie(request, response)
         return response
 
 

@@ -35,6 +35,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     clear_csrf_token_from_cookie,
     generate_csrf_token,
+    extract_csrf_token,
 )
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
@@ -125,6 +126,7 @@ class LogoutApi(Resource):
         # Clear cookies on logout
         clear_access_token_from_cookie(request, response)
         clear_refresh_token_from_cookie(request, response)
+        clear_csrf_token_from_cookie(request, response)
 
         return response
 
@@ -281,7 +283,8 @@ class RefreshTokenApi(Resource):
 class LoginStatus(Resource):
     def get(self):
         token = extract_access_token(request)
-        return {"logged_in": bool(token)}
+        csrf_token = extract_csrf_token(request)
+        return {"logged_in": bool(token) and bool(csrf_token)}
 
 
 api.add_resource(LoginApi, "/login")
