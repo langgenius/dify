@@ -56,6 +56,16 @@ class ReadOnlyGraphRuntimeState(Protocol):
         """Get the node run steps count (read-only)."""
         ...
 
+    @property
+    def ready_queue_size(self) -> int:
+        """Get the number of nodes currently in the ready queue."""
+        ...
+
+    @property
+    def exceptions_count(self) -> int:
+        """Get the number of node execution exceptions recorded."""
+        ...
+
     def get_output(self, key: str, default: Any = None) -> Any:
         """Get a single output value (returns a copy)."""
         ...
