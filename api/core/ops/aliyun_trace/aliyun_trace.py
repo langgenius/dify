@@ -18,8 +18,6 @@ from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_MODEL_NAME,
     GEN_AI_OUTPUT_MESSAGE,
     GEN_AI_PROMPT,
-    GEN_AI_PROMPT_TEMPLATE_TEMPLATE,
-    GEN_AI_PROMPT_TEMPLATE_VARIABLE,
     GEN_AI_RESPONSE_FINISH_REASON,
     GEN_AI_SYSTEM,
     GEN_AI_USAGE_INPUT_TOKENS,
@@ -156,10 +154,6 @@ class AliyunDataTrace(BaseTraceInstance):
         )
         self.trace_client.add_span(message_span)
 
-        app_model_config = getattr(message_data, "app_model_config", {})
-        pre_prompt = getattr(app_model_config, "pre_prompt", "")
-        inputs_data = getattr(message_data, "inputs", {})
-
         llm_span = SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=message_span_id,
@@ -180,8 +174,6 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
-                GEN_AI_PROMPT_TEMPLATE_VARIABLE: serialize_json_data(inputs_data),
-                GEN_AI_PROMPT_TEMPLATE_TEMPLATE: pre_prompt,
                 GEN_AI_PROMPT: inputs_json,
                 GEN_AI_COMPLETION: outputs_str,
             },
