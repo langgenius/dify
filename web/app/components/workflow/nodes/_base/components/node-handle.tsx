@@ -84,7 +84,10 @@ export const NodeTargetHandle = memo(({
           data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
           data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
           !connected && 'after:opacity-0',
-          data.type === BlockEnum.Start && 'opacity-0',
+          (data.type === BlockEnum.Start
+           || data.type === BlockEnum.TriggerWebhook
+           || data.type === BlockEnum.TriggerSchedule
+           || data.type === BlockEnum.TriggerPlugin) && 'opacity-0',
           handleClassName,
         )}
         isConnectable={isConnectable}
