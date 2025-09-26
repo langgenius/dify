@@ -11,6 +11,7 @@ from constants import (
 )
 from libs.passport import PassportService
 from datetime import datetime, UTC, timedelta
+from werkzeug.exceptions import Unauthorized
 import logging
 
 logger = logging.getLogger(__name__)
@@ -154,9 +155,7 @@ def clear_csrf_token_from_cookie(request: Request, response: Response):
 def check_csrf_token(request: Request):
     csrf_token = extract_csrf_token(request)
     def _unauthorized():
-        logger.error("CSRF token is missing.")
-        # TODO: raise
-        # raise Unauthorized("CSRF token is missing.")
+        raise Unauthorized("CSRF token is missing.")
     if not csrf_token:
         _unauthorized()
     verified = dict()

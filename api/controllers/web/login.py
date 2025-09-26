@@ -19,7 +19,9 @@ from libs.token import (
     clear_webapp_token_from_cookie,
     set_access_token_to_cookie,
     extract_access_token,
-    extract_webapp_passport
+    extract_webapp_passport,
+    set_csrf_token_to_cookie,
+    generate_csrf_token
 )
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
@@ -60,6 +62,8 @@ class LoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         response = make_response({"result": "success", "data": {"access_token": token}})
+        csrf_token = generate_csrf_token()
+        set_csrf_token_to_cookie(request, response, csrf_token)
         set_access_token_to_cookie(request, response, token)
         return response
 
@@ -137,9 +141,10 @@ class EmailCodeLoginSendEmailApi(Resource):
             raise AuthenticationFailedError()
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
-
+        csrf_token = generate_csrf_token()
         response = make_response({"result": "success", "data": {"access_token": token}})
         set_access_token_to_cookie(request, response, token)
+        set_csrf_token_to_cookie(request, response, csrf_token)
         return response
 
 
@@ -182,7 +187,9 @@ class EmailCodeLoginApi(Resource):
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
+        csrf_token = generate_csrf_token()
         AccountService.reset_login_error_rate_limit(args["email"])
         response = make_response({"result": "success", "data": {"access_token": token}})
         set_access_token_to_cookie(request, response, token)
+        set_csrf_token_to_cookie(request, response, csrf_token)
         return response
