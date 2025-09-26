@@ -18,7 +18,7 @@ RETRIEVAL_DOCUMENT: Final[str] = "retrieval.document"
 
 # LLM attributes
 GEN_AI_REQUEST_MODEL: Final[str] = "gen_ai.request.model"
-GEN_AI_SYSTEM: Final[str] = "gen_ai.system"
+GEN_AI_PROVIDER_NAME: Final[str] = "gen_ai.provider.name"
 GEN_AI_USAGE_INPUT_TOKENS: Final[str] = "gen_ai.usage.input_tokens"
 GEN_AI_USAGE_OUTPUT_TOKENS: Final[str] = "gen_ai.usage.output_tokens"
 GEN_AI_USAGE_TOTAL_TOKENS: Final[str] = "gen_ai.usage.total_tokens"

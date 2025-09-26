@@ -15,12 +15,11 @@ from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData, TraceMe
 from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
-    GEN_AI_MODEL_NAME,
     GEN_AI_OUTPUT_MESSAGE,
     GEN_AI_PROMPT,
+    GEN_AI_PROVIDER_NAME,
     GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,
-    GEN_AI_SYSTEM,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GEN_AI_USAGE_TOTAL_TOKENS,
@@ -171,7 +170,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     outputs=outputs_str,
                 ),
                 GEN_AI_REQUEST_MODEL: trace_info.metadata.get("ls_model_name") or "",
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
+                GEN_AI_PROVIDER_NAME: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
@@ -401,12 +400,6 @@ class AliyunDataTrace(BaseTraceInstance):
         gen_ai_input_message = convert_to_gen_ai_input_message(process_data)
         gen_ai_output_message = convert_to_gen_ai_output_message(outputs)
 
-        # gen_ai.prompt_template.template
-        # 提示词模板	string	Weather forecast for {city} on {date}
-
-        # gen_ai.prompt_template.variables
-        # 提示词模板的具体值	string	{ context: "<context from retrieval>", subject: "math" }
-
         return SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=trace_metadata.workflow_span_id,
@@ -423,7 +416,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     outputs=text_output,
                 ),
                 GEN_AI_REQUEST_MODEL: process_data.get("model_name") or "",
-                GEN_AI_SYSTEM: process_data.get("model_provider") or "",
+                GEN_AI_PROVIDER_NAME: process_data.get("model_provider") or "",
                 GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
@@ -516,7 +509,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     outputs=suggested_question_json,
                 ),
                 GEN_AI_REQUEST_MODEL: trace_info.metadata.get("ls_model_name") or "",
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
+                GEN_AI_PROVIDER_NAME: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_PROMPT: inputs_json,
                 GEN_AI_COMPLETION: suggested_question_json,
             },

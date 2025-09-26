@@ -94,12 +94,7 @@ def create_common_span_attributes(
         OUTPUT_VALUE: outputs,
     }
 
-
 def transform_to_semantic_retrieval_format(retrieval_documents: list) -> list:
-    """
-    Current format: [{"metadata": {...}, "title": "...", "content": "..."}]
-    Target format: [{"document": {"content": "...", "metadata": {...}, "score": ..., "id": "..."}}]
-    """
     semantic_documents = []
 
     for doc in retrieval_documents:
@@ -119,11 +114,6 @@ def transform_to_semantic_retrieval_format(retrieval_documents: list) -> list:
             semantic_metadata["source"] = metadata["source"]
         elif metadata.get("_source"):
             semantic_metadata["source"] = metadata["_source"]
-
-        if metadata.get("author"):
-            semantic_metadata["author"] = metadata["author"]
-        if metadata.get("language"):
-            semantic_metadata["language"] = metadata["language"]
         if metadata.get("doc_metadata"):
             doc_metadata = metadata["doc_metadata"]
             if isinstance(doc_metadata, dict):
