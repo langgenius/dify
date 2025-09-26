@@ -1,12 +1,14 @@
 import os
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any
+from functools import lru_cache
+from typing import TypeVar
 
 from configs import dify_config
-from core.tools.utils.yaml_utils import load_yaml_file
+from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
+@lru_cache(maxsize=128)
 def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> dict[str, int]:
     """
     Get the mapping from name to index from a YAML file
@@ -14,12 +16,17 @@ def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> 
     :param file_name: the YAML file name, default to '_position.yaml'
     :return: a dict with name as key and index as value
     """
+    # FIXME(-LAN-): Cache position maps to prevent file descriptor exhaustion during high-load benchmarks
     position_file_path = os.path.join(folder_path, file_name)
-    yaml_content = load_yaml_file(file_path=position_file_path, default_value=[])
+    try:
+        yaml_content = load_yaml_file_cached(file_path=position_file_path)
+    except Exception:
+        yaml_content = []
     positions = [item.strip() for item in yaml_content if item and isinstance(item, str) and item.strip()]
     return {name: index for index, name in enumerate(positions)}
 
 
+@lru_cache(maxsize=128)
 def get_tool_position_map(folder_path: str, file_name: str = "_position.yaml") -> dict[str, int]:
     """
     Get the mapping for tools from name to index from a YAML file.
@@ -32,20 +39,6 @@ def get_tool_position_map(folder_path: str, file_name: str = "_position.yaml") -
     return pin_position_map(
         position_map,
         pin_list=dify_config.POSITION_TOOL_PINS_LIST,
-    )
-
-
-def get_provider_position_map(folder_path: str, file_name: str = "_position.yaml") -> dict[str, int]:
-    """
-    Get the mapping for providers from name to index from a YAML file.
-    :param folder_path:
-    :param file_name: the YAML file name, default to '_position.yaml'
-    :return: a dict with name as key and index as value
-    """
-    position_map = get_position_map(folder_path, file_name=file_name)
-    return pin_position_map(
-        position_map,
-        pin_list=dify_config.POSITION_PROVIDER_PINS_LIST,
     )
 
 
@@ -72,11 +65,14 @@ def pin_position_map(original_position_map: dict[str, int], pin_list: list[str])
     return position_map
 
 
+T = TypeVar("T")
+
+
 def is_filtered(
     include_set: set[str],
     exclude_set: set[str],
-    data: Any,
-    name_func: Callable[[Any], str],
+    data: T,
+    name_func: Callable[[T], str],
 ) -> bool:
     """
     Check if the object should be filtered out.
@@ -103,9 +99,9 @@ def is_filtered(
 
 def sort_by_position_map(
     position_map: dict[str, int],
-    data: list[Any],
-    name_func: Callable[[Any], str],
-) -> list[Any]:
+    data: list[T],
+    name_func: Callable[[T], str],
+):
     """
     Sort the objects by the position map.
     If the name of the object is not in the position map, it will be put at the end.
@@ -122,9 +118,9 @@ def sort_by_position_map(
 
 def sort_to_dict_by_position_map(
     position_map: dict[str, int],
-    data: list[Any],
-    name_func: Callable[[Any], str],
-) -> OrderedDict[str, Any]:
+    data: list[T],
+    name_func: Callable[[T], str],
+):
     """
     Sort the objects into a ordered dict by the position map.
     If the name of the object is not in the position map, it will be put at the end.
@@ -134,4 +130,4 @@ def sort_to_dict_by_position_map(
     :return: an OrderedDict with the sorted pairs of name and object
     """
     sorted_items = sort_by_position_map(position_map, data, name_func)
-    return OrderedDict([(name_func(item), item) for item in sorted_items])
+    return OrderedDict((name_func(item), item) for item in sorted_items)

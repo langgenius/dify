@@ -2,7 +2,7 @@ import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } fro
 import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
-import { API_PREFIX, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, APP_VERSION, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
 import { getInitialTokenV2, isTokenV1 } from '@/app/components/share/utils'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 
@@ -111,7 +111,7 @@ const baseClient = ky.create({
   timeout: TIME_OUT,
 })
 
-export const baseOptions: RequestInit = {
+export const getBaseOptions = (): RequestInit => ({
   method: 'GET',
   mode: 'cors',
   credentials: 'include', // always send cookies、HTTP Basic authentication.
@@ -119,9 +119,10 @@ export const baseOptions: RequestInit = {
     'Content-Type': ContentType.json,
   }),
   redirect: 'follow',
-}
+})
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
+  const baseOptions = getBaseOptions()
   const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
   const {
     isPublicAPI = false,
@@ -151,6 +152,10 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   if (deleteContentType)
     (headers as any).delete('Content-Type')
 
+  // ! For Marketplace API, help to filter tags added in new version
+  if (isMarketplaceAPI)
+    (headers as any).set('X-Dify-Version', APP_VERSION)
+
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
@@ -162,7 +167,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         ...baseHooks.beforeRequest || [],
         isPublicAPI && beforeRequestPublicAuthorization,
         !isPublicAPI && !isMarketplaceAPI && beforeRequestAuthorization,
-      ].filter(Boolean),
+      ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         ...baseHooks.afterResponse || [],
         afterResponseErrorCode(otherOptions),

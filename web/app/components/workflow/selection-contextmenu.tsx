@@ -260,7 +260,30 @@ const SelectionContextmenu = () => {
 
     // Get all selected nodes
     const selectedNodeIds = selectedNodes.map(node => node.id)
-    const nodesToAlign = nodes.filter(node => selectedNodeIds.includes(node.id))
+
+    // Find container nodes and their children
+    // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
+    // when the container is selected. This prevents child nodes from being moved outside their containers.
+    const childNodeIds = new Set<string>()
+
+    nodes.forEach((node) => {
+      // Check if this is a container node (Iteration or Loop)
+      if (node.data._children && node.data._children.length > 0) {
+        // If container node is selected, add its children to the exclusion set
+        if (selectedNodeIds.includes(node.id)) {
+          // Add all its children to the childNodeIds set
+          node.data._children.forEach((child: { nodeId: string; nodeType: string }) => {
+            childNodeIds.add(child.nodeId)
+          })
+        }
+      }
+    })
+
+    // Filter out child nodes from the alignment operation
+    // Only align nodes that are selected AND are not children of container nodes
+    // This ensures container nodes can be aligned while their children stay in the same relative position
+    const nodesToAlign = nodes.filter(node =>
+      selectedNodeIds.includes(node.id) && !childNodeIds.has(node.id))
 
     if (nodesToAlign.length <= 1) {
       handleSelectionContextmenuCancel()
@@ -391,9 +414,9 @@ const SelectionContextmenu = () => {
             {t('workflow.operator.distributeVertical')}
           </div>
         </div>
-        <div className='h-[1px] bg-divider-regular'></div>
+        <div className='h-px bg-divider-regular'></div>
         <div className='p-1'>
-            <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
+          <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
             {t('workflow.operator.horizontal')}
           </div>
           <div

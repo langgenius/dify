@@ -32,6 +32,8 @@ import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import dynamic from 'next/dynamic'
 import Empty from './empty'
+import Footer from './footer'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -66,6 +68,7 @@ const getKey = (
 
 const List = () => {
   const { t } = useTranslation()
+  const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
@@ -208,14 +211,14 @@ const List = () => {
         {(data && data[0].total > 0)
           ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
             {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} onSuccess={mutate} />}
+              && <NewAppCard ref={newAppCardRef} onSuccess={mutate} selectedAppType={activeTab} />}
             {data.map(({ data: apps }) => apps.map(app => (
               <AppCard key={app.id} app={app} onRefresh={mutate} />
             )))}
           </div>
           : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
             {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} />}
+              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} selectedAppType={activeTab} />}
             <Empty />
           </div>}
 
@@ -228,6 +231,9 @@ const List = () => {
             <RiDragDropLine className="h-4 w-4" />
             <span className="system-xs-regular">{t('app.newApp.dropDSLToCreateApp')}</span>
           </div>
+        )}
+        {!systemFeatures.branding.enabled && (
+          <Footer />
         )}
         <CheckModal />
         <div ref={anchorRef} className='h-0'> </div>

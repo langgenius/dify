@@ -212,7 +212,9 @@ export default translation
 
 // Add command line argument support
 const isDryRun = process.argv.includes('--dry-run')
-const targetFile = process.argv.find(arg => arg.startsWith('--file='))?.split('=')[1]
+const targetFiles = process.argv
+  .filter(arg => arg.startsWith('--file='))
+  .map(arg => arg.split('=')[1])
 const targetLang = process.argv.find(arg => arg.startsWith('--lang='))?.split('=')[1]
 
 // Rate limiting helper
@@ -230,8 +232,8 @@ async function main() {
     .map(file => file.replace(/\.ts$/, ''))
     // Removed app-debug exclusion, now only skip specific problematic keys
 
-  // Filter by target file if specified
-  const filesToProcess = targetFile ? files.filter(f => f === targetFile) : files
+  // Filter by target files if specified
+  const filesToProcess = targetFiles.length > 0 ? files.filter(f => targetFiles.includes(f)) : files
   const languagesToProcess = targetLang ? [targetLang] : Object.keys(languageKeyMap)
 
   console.log(`📁 Files to process: ${filesToProcess.join(', ')}`)

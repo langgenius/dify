@@ -28,6 +28,7 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
+    const nodes = getNodes()
     const [x, y, zoom] = transform
     const {
       appId,
@@ -36,8 +37,7 @@ export const useNodesSyncDraft = () => {
       syncWorkflowDraftHash,
     } = workflowStore.getState()
 
-    if (appId) {
-      const nodes = getNodes()
+    if (appId && !!nodes.length) {
       const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
       if (!hasStartNode)
@@ -52,7 +52,7 @@ export const useNodesSyncDraft = () => {
           })
         })
       })
-      const producedEdges = produce(edges, (draft) => {
+      const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
         draft.forEach((edge) => {
           Object.keys(edge.data).forEach((key) => {
             if (key.startsWith('_'))

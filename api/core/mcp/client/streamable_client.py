@@ -55,13 +55,9 @@ DEFAULT_QUEUE_READ_TIMEOUT = 3
 class StreamableHTTPError(Exception):
     """Base exception for StreamableHTTP transport errors."""
 
-    pass
-
 
 class ResumptionError(StreamableHTTPError):
     """Raised when resumption request is invalid."""
-
-    pass
 
 
 @dataclass
@@ -74,7 +70,7 @@ class RequestContext:
     session_message: SessionMessage
     metadata: ClientMessageMetadata | None
     server_to_client_queue: ServerToClientQueue  # Renamed for clarity
-    sse_read_timeout: timedelta
+    sse_read_timeout: float
 
 
 class StreamableHTTPTransport:
@@ -84,9 +80,9 @@ class StreamableHTTPTransport:
         self,
         url: str,
         headers: dict[str, Any] | None = None,
-        timeout: timedelta = timedelta(seconds=30),
-        sse_read_timeout: timedelta = timedelta(seconds=60 * 5),
-    ) -> None:
+        timeout: float | timedelta = 30,
+        sse_read_timeout: float | timedelta = 60 * 5,
+    ):
         """Initialize the StreamableHTTP transport.
 
         Args:
@@ -97,8 +93,10 @@ class StreamableHTTPTransport:
         """
         self.url = url
         self.headers = headers or {}
-        self.timeout = timeout
-        self.sse_read_timeout = sse_read_timeout
+        self.timeout = timeout.total_seconds() if isinstance(timeout, timedelta) else timeout
+        self.sse_read_timeout = (
+            sse_read_timeout.total_seconds() if isinstance(sse_read_timeout, timedelta) else sse_read_timeout
+        )
         self.session_id: str | None = None
         self.request_headers = {
             ACCEPT: f"{JSON}, {SSE}",
@@ -124,7 +122,7 @@ class StreamableHTTPTransport:
     def _maybe_extract_session_id_from_response(
         self,
         response: httpx.Response,
-    ) -> None:
+    ):
         """Extract and store session ID from response headers."""
         new_session_id = response.headers.get(MCP_SESSION_ID)
         if new_session_id:
@@ -175,7 +173,7 @@ class StreamableHTTPTransport:
         self,
         client: httpx.Client,
         server_to_client_queue: ServerToClientQueue,
-    ) -> None:
+    ):
         """Handle GET stream for server-initiated messages."""
         try:
             if not self.session_id:
@@ -186,7 +184,7 @@ class StreamableHTTPTransport:
             with ssrf_proxy_sse_connect(
                 self.url,
                 headers=headers,
-                timeout=httpx.Timeout(self.timeout.seconds, read=self.sse_read_timeout.seconds),
+                timeout=httpx.Timeout(self.timeout, read=self.sse_read_timeout),
                 client=client,
                 method="GET",
             ) as event_source:
@@ -199,7 +197,7 @@ class StreamableHTTPTransport:
         except Exception as exc:
             logger.debug("GET stream error (non-fatal): %s", exc)
 
-    def _handle_resumption_request(self, ctx: RequestContext) -> None:
+    def _handle_resumption_request(self, ctx: RequestContext):
         """Handle a resumption request using GET with SSE."""
         headers = self._update_headers_with_session(ctx.headers)
         if ctx.metadata and ctx.metadata.resumption_token:
@@ -215,7 +213,7 @@ class StreamableHTTPTransport:
         with ssrf_proxy_sse_connect(
             self.url,
             headers=headers,
-            timeout=httpx.Timeout(self.timeout.seconds, read=ctx.sse_read_timeout.seconds),
+            timeout=httpx.Timeout(self.timeout, read=self.sse_read_timeout),
             client=ctx.client,
             method="GET",
         ) as event_source:
@@ -232,7 +230,7 @@ class StreamableHTTPTransport:
                 if is_complete:
                     break
 
-    def _handle_post_request(self, ctx: RequestContext) -> None:
+    def _handle_post_request(self, ctx: RequestContext):
         """Handle a POST request with response processing."""
         headers = self._update_headers_with_session(ctx.headers)
         message = ctx.session_message.message
@@ -246,6 +244,10 @@ class StreamableHTTPTransport:
         ) as response:
             if response.status_code == 202:
                 logger.debug("Received 202 Accepted")
+                return
+
+            if response.status_code == 204:
+                logger.debug("Received 204 No Content")
                 return
 
             if response.status_code == 404:
@@ -276,7 +278,7 @@ class StreamableHTTPTransport:
         self,
         response: httpx.Response,
         server_to_client_queue: ServerToClientQueue,
-    ) -> None:
+    ):
         """Handle JSON response from the server."""
         try:
             content = response.read()
@@ -286,7 +288,7 @@ class StreamableHTTPTransport:
         except Exception as exc:
             server_to_client_queue.put(exc)
 
-    def _handle_sse_response(self, response: httpx.Response, ctx: RequestContext) -> None:
+    def _handle_sse_response(self, response: httpx.Response, ctx: RequestContext):
         """Handle SSE response from the server."""
         try:
             event_source = EventSource(response)
@@ -305,7 +307,7 @@ class StreamableHTTPTransport:
         self,
         content_type: str,
         server_to_client_queue: ServerToClientQueue,
-    ) -> None:
+    ):
         """Handle unexpected content type in response."""
         error_msg = f"Unexpected content type: {content_type}"
         logger.error(error_msg)
@@ -315,7 +317,7 @@ class StreamableHTTPTransport:
         self,
         server_to_client_queue: ServerToClientQueue,
         request_id: RequestId,
-    ) -> None:
+    ):
         """Send a session terminated error response."""
         jsonrpc_error = JSONRPCError(
             jsonrpc="2.0",
@@ -331,7 +333,7 @@ class StreamableHTTPTransport:
         client_to_server_queue: ClientToServerQueue,
         server_to_client_queue: ServerToClientQueue,
         start_get_stream: Callable[[], None],
-    ) -> None:
+    ):
         """Handle writing requests to the server.
 
         This method processes messages from the client_to_server_queue and sends them to the server.
@@ -377,7 +379,7 @@ class StreamableHTTPTransport:
             except Exception as exc:
                 server_to_client_queue.put(exc)
 
-    def terminate_session(self, client: httpx.Client) -> None:
+    def terminate_session(self, client: httpx.Client):
         """Terminate the session by sending a DELETE request."""
         if not self.session_id:
             return
@@ -402,8 +404,8 @@ class StreamableHTTPTransport:
 def streamablehttp_client(
     url: str,
     headers: dict[str, Any] | None = None,
-    timeout: timedelta = timedelta(seconds=30),
-    sse_read_timeout: timedelta = timedelta(seconds=60 * 5),
+    timeout: float | timedelta = 30,
+    sse_read_timeout: float | timedelta = 60 * 5,
     terminate_on_close: bool = True,
 ) -> Generator[
     tuple[
@@ -436,10 +438,10 @@ def streamablehttp_client(
         try:
             with create_ssrf_proxy_mcp_http_client(
                 headers=transport.request_headers,
-                timeout=httpx.Timeout(transport.timeout.seconds, read=transport.sse_read_timeout.seconds),
+                timeout=httpx.Timeout(transport.timeout, read=transport.sse_read_timeout),
             ) as client:
                 # Define callbacks that need access to thread pool
-                def start_get_stream() -> None:
+                def start_get_stream():
                     """Start a worker thread to handle server-initiated messages."""
                     executor.submit(transport.handle_get_stream, client, server_to_client_queue)
 

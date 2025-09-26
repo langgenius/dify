@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'Ključ HTTP glave, pustite kot "Authorization", če ne veste, kaj je to, ali pa nastavite na vrednost po meri',
       types: {
         none: 'Brez',
-        api_key: 'API ključ',
         apiKeyPlaceholder: 'Ime HTTP glave za API ključ',
         apiValuePlaceholder: 'Vnesite API ključ',
         api_key_query: 'Vprašanje Param',
@@ -192,6 +191,18 @@ const translation = {
       cancel: 'Prekliči',
       save: 'Shrani',
       confirm: 'Dodaj in avtoriziraj',
+      timeout: 'Časovna omejitev',
+      sseReadTimeout: 'SSE časovna omejitev branja',
+      timeoutPlaceholder: '30',
+      headers: 'Glave',
+      headerKeyPlaceholder: 'npr., Authorization',
+      headerValue: 'Vrednost glave',
+      headerKey: 'Ime glave',
+      addHeader: 'Dodaj glavo',
+      headersTip: 'Dodatni HTTP glavi za poslati z zahtevami MCP strežnika',
+      headerValuePlaceholder: 'npr., Bearer žeton123',
+      noHeaders: 'Nobena prilagojena glava ni konfigurirana',
+      maskedHeadersTip: 'Vrednosti glave so zakrite zaradi varnosti. Spremembe bodo posodobile dejanske vrednosti.',
     },
     delete: 'Odstrani strežnik MCP',
     deleteConfirmTitle: 'Odstraniti {mcp}?',
@@ -233,6 +244,7 @@ const translation = {
       publishTip: 'Aplikacija ni objavljena. Najprej objavite aplikacijo.',
     },
   },
+  allTools: 'Vsa orodja',
 }
 
 export default translation

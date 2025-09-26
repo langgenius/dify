@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
-from typing import Any, Optional, cast
+from typing import Any
 from urllib.parse import urlparse
 
 from core.mcp.client.sse_client import sse_client
@@ -21,14 +21,20 @@ class MCPClient:
         provider_id: str,
         tenant_id: str,
         authed: bool = True,
-        authorization_code: Optional[str] = None,
+        authorization_code: str | None = None,
         for_list: bool = False,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
         # Initialize info
         self.provider_id = provider_id
         self.tenant_id = tenant_id
         self.client_type = "streamable"
         self.server_url = server_url
+        self.headers = headers or {}
+        self.timeout = timeout
+        self.sse_read_timeout = sse_read_timeout
 
         # Authentication info
         self.authed = authed
@@ -40,10 +46,10 @@ class MCPClient:
             self.token = self.provider.tokens()
 
         # Initialize session and client objects
-        self._session: Optional[ClientSession] = None
-        self._streams_context: Optional[AbstractContextManager[Any]] = None
-        self._session_context: Optional[ClientSession] = None
-        self.exit_stack = ExitStack()
+        self._session: ClientSession | None = None
+        self._streams_context: AbstractContextManager[Any] | None = None
+        self._session_context: ClientSession | None = None
+        self._exit_stack = ExitStack()
 
         # Whether the client has been initialized
         self._initialized = False
@@ -53,9 +59,7 @@ class MCPClient:
         self._initialized = True
         return self
 
-    def __exit__(
-        self, exc_type: Optional[type], exc_value: Optional[BaseException], traceback: Optional[TracebackType]
-    ):
+    def __exit__(self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None):
         self.cleanup()
 
     def _initialize(
@@ -90,23 +94,27 @@ class MCPClient:
             headers = (
                 {"Authorization": f"{self.token.token_type.capitalize()} {self.token.access_token}"}
                 if self.authed and self.token
-                else {}
+                else self.headers
             )
-            self._streams_context = client_factory(url=self.server_url, headers=headers)
+            self._streams_context = client_factory(
+                url=self.server_url,
+                headers=headers,
+                timeout=self.timeout,
+                sse_read_timeout=self.sse_read_timeout,
+            )
             if not self._streams_context:
                 raise MCPConnectionError("Failed to create connection context")
 
             # Use exit_stack to manage context managers properly
             if method_name == "mcp":
-                read_stream, write_stream, _ = self.exit_stack.enter_context(self._streams_context)
+                read_stream, write_stream, _ = self._exit_stack.enter_context(self._streams_context)
                 streams = (read_stream, write_stream)
             else:  # sse_client
-                streams = self.exit_stack.enter_context(self._streams_context)
+                streams = self._exit_stack.enter_context(self._streams_context)
 
             self._session_context = ClientSession(*streams)
-            self._session = self.exit_stack.enter_context(self._session_context)
-            session = cast(ClientSession, self._session)
-            session.initialize()
+            self._session = self._exit_stack.enter_context(self._session_context)
+            self._session.initialize()
             return
 
         except MCPAuthError:
@@ -119,9 +127,6 @@ class MCPClient:
             self.token = self.provider.tokens()
             if first_try:
                 return self.connect_server(client_factory, method_name, first_try=False)
-
-        except MCPConnectionError:
-            raise
 
     def list_tools(self) -> list[Tool]:
         """Connect to an MCP server running with SSE transport"""
@@ -142,9 +147,9 @@ class MCPClient:
         """Clean up resources"""
         try:
             # ExitStack will handle proper cleanup of all managed context managers
-            self.exit_stack.close()
+            self._exit_stack.close()
         except Exception as e:
-            logging.exception("Error during cleanup")
+            logger.exception("Error during cleanup")
             raise ValueError(f"Error during cleanup: {e}")
         finally:
             self._session = None

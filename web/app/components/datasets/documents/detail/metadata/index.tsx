@@ -5,7 +5,7 @@ import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { get } from 'lodash-es'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
@@ -285,7 +285,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   }
 
   const onCancel = () => {
-    setMetadataParams({ documentType: doc_type || '', metadata: { ...(docDetail?.doc_metadata || {}) } })
+    setMetadataParams({ documentType: doc_type || '', metadata: { ...docDetail?.doc_metadata } })
     setEditStatus(!doc_type)
     if (!doc_type)
       setShowDocTypes(true)

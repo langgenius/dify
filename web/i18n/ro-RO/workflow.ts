@@ -86,7 +86,6 @@ const translation = {
       depthLimit: 'Limita straturilor de imbricare paralelă a {{num}} straturi',
       limit: 'Paralelismul este limitat la {{num}} ramuri.',
     },
-    parallelRun: 'Rulare paralelă',
     disconnect: 'Deconecta',
     jumpToNode: 'Sari la acest nod',
     addParallelNode: 'Adăugare nod paralel',
@@ -114,6 +113,8 @@ const translation = {
     needAnswerNode: 'Nodul de răspuns trebuie adăugat',
     needEndNode: 'Nodul de sfârșit trebuie adăugat',
     tagBound: 'Numărul de aplicații care folosesc acest tag',
+    currentView: 'Vizualizare curentă',
+    currentWorkflow: 'Flux de lucru curent',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -216,6 +217,8 @@ const translation = {
     back: 'Înapoi',
     iteration: 'Iterație',
     loop: 'Loop',
+    reRun: 'Reluare',
+    preparingDataSource: 'Pregătirea sursei de date',
   },
   tabs: {
     'tools': 'Instrumente',
@@ -234,6 +237,8 @@ const translation = {
     'searchBlock': 'Căutare nod',
     'addAll': 'Adaugă tot',
     'allAdded': 'Toate adăugate',
+    'sources': 'Surse',
+    'searchDataSource': 'Sursa de date de căutare',
   },
   blocks: {
     'start': 'Începe',
@@ -258,6 +263,8 @@ const translation = {
     'loop': 'Loop',
     'loop-end': 'Ieșire din buclă',
     'loop-start': 'Întreținere buclă',
+    'knowledge-index': 'Cunoştinţe',
+    'datasource': 'Sursa datelor',
   },
   blocksAbout: {
     'start': 'Definiți parametrii inițiali pentru lansarea unui flux de lucru',
@@ -280,6 +287,8 @@ const translation = {
     'agent': 'Invocarea modelelor lingvistice mari pentru a răspunde la întrebări sau pentru a procesa limbajul natural',
     'loop': 'Executați o buclă de logică până când condiția de terminare este îndeplinită sau numărul maxim de bucle este atins.',
     'loop-end': 'Echivalent cu „break”. Acest nod nu are elemente de configurare. Când corpul buclei ajunge la acest nod, bucla se termină.',
+    'datasource': 'Sursa de date Despre',
+    'knowledge-index': 'Baza de cunoștințe despre',
   },
   operator: {
     zoomIn: 'Mărește',
@@ -293,11 +302,11 @@ const translation = {
     alignRight: 'Dreapta',
     alignLeft: 'Stânga',
     alignMiddle: 'Mijloc',
-    distributeVertical: 'Spațiu vertical',
+    distributeVertical: 'Distribuie vertical',
     alignCenter: 'Centru',
-    distributeHorizontal: 'Spațiu orizontal',
-    alignBottom: 'Fund',
-    alignTop: 'Culme',
+    distributeHorizontal: 'Distribuie orizontal',
+    alignBottom: 'Jos',
+    alignTop: 'Sus',
     alignNodes: 'Alinierea nodurilor',
   },
   panel: {
@@ -380,6 +389,7 @@ const translation = {
         variable: 'Folosește variabila',
         input: 'Valoare de intrare',
       },
+      inputVars: 'Variabile de intrare',
     },
     start: {
       required: 'necesar',
@@ -467,6 +477,12 @@ const translation = {
         required: 'Necesar',
         back: 'Înapoi',
         promptPlaceholder: 'Descrie schema ta JSON...',
+      },
+      reasoningFormat: {
+        tagged: 'Ține minte etichetele',
+        separated: 'Etichete de gândire separate',
+        title: 'Activează separarea etichetelor de raționare',
+        tooltip: 'Extrage conținutul din etichetele think și stochează-l în câmpul reasoning_content.',
       },
     },
     knowledgeRetrieval: {
@@ -840,6 +856,7 @@ const translation = {
           url: 'Adresa URL a imaginii',
         },
         text: 'Conținut generat de agent',
+        usage: 'Informații de utilizare a modelului',
         json: 'JSON generat de agent',
       },
       checkList: {
@@ -906,6 +923,27 @@ const translation = {
       breakCondition: 'Condiția de terminare a buclei',
       comma: ',',
       variableName: 'Nume Variabil',
+    },
+    dataSource: {
+      add: 'Adăugarea sursei de date',
+      supportedFileFormatsPlaceholder: 'Extensie de fișier, e.g. doc',
+      supportedFileFormats: 'Formate de fișiere acceptate',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Află mai multe',
+        title: 'Vă rugăm să alegeți o structură de bucăți',
+        message: 'Baza de cunoștințe Dify acceptă trei structuri de fragmentare: General, Părinte-copil și Întrebări și răspunsuri. Fiecare bază de cunoștințe poate avea o singură structură. Ieșirea de la nodul precedent trebuie să se alinieze cu structura de bucăți selectată. Rețineți că alegerea structurii de fragmentare afectează metodele de index disponibile.',
+      },
+      indexMethodIsRequired: 'Este necesară metoda indexului',
+      chunkStructure: 'Structura bucății',
+      chunkIsRequired: 'Este necesară structura bucății',
+      retrievalSettingIsRequired: 'Setarea de recuperare este necesară',
+      aboutRetrieval: 'despre metoda de recuperare.',
+      chooseChunkStructure: 'Alegeți o structură de bucăți',
+      changeChunkStructure: 'Modificați structura bucății',
+      chunksInput: 'Bucăți',
+      chunksInputTip: 'Variabila de intrare a nodului bazei de cunoștințe este Chunks. Tipul variabilei este un obiect cu un Șchema JSON specific care trebuie să fie coerent cu structura de chunk selectată.',
     },
   },
   tracing: {
@@ -977,6 +1015,10 @@ const translation = {
       edited: 'Editat',
       clearNode: 'Șterge variabila cached',
       emptyTip: 'După ce ai trecut printr-un nod pe canvas sau ai rulat un nod pas cu pas, poți vizualiza valoarea curentă a variabilei nodului în Inspectarea Variabilelor.',
+      export: 'export',
+      largeDataNoExport: 'Date mari - doar previzualizare parțială',
+      exportToolTip: 'Exportați variabila ca fișier',
+      largeData: 'Date mari, previzualizare doar în citire. Exportați pentru a vedea totul.',
     },
     settingsTab: 'Setări',
     lastRunTab: 'Ultima execuție',
@@ -989,6 +1031,15 @@ const translation = {
       dependenciesDescription: 'Noduri pe care se bazează acest nod',
     },
     relationsTab: 'Relații',
+    noMatchingInputsFound: 'Nu s-au găsit intrări corespunzătoare din ultima rulare',
+    copyLastRun: 'Copiază ultima execuție',
+    noLastRunFound: 'Niciun rulament anterior găsit',
+    copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
+    lastOutput: 'Ultimul rezultat',
+  },
+  sidebar: {
+    exportWarning: 'Exportați versiunea salvată curentă',
+    exportWarningDesc: 'Aceasta va exporta versiunea curent salvată a fluxului dumneavoastră de lucru. Dacă aveți modificări nesalvate în editor, vă rugăm să le salvați mai întâi utilizând opțiunea de export din canvasul fluxului de lucru.',
   },
 }
 

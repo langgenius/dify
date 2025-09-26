@@ -66,6 +66,7 @@ const translation = {
     more: 'もっと',
     selectAll: 'すべて選択',
     deSelectAll: 'すべて選択解除',
+    config: 'コンフィグ',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -486,6 +487,38 @@ const translation = {
     configureTip: 'API キーを設定するか、使用するモデルを追加してください',
     toBeConfigured: '設定中',
     emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',
+    auth: {
+      apiKeyModal: {
+        title: 'APIキー認証設定',
+        addModel: 'モデルを追加する',
+        desc: '認証情報を設定した後、ワークスペース内のすべてのメンバーは、アプリケーションを調整する際にこのモデルを使用できます。',
+      },
+      authorizationError: '認証エラー',
+      apiKeys: 'APIキー',
+      unAuthorized: '無許可',
+      configModel: 'モデルを構成する',
+      addApiKey: 'APIキーを追加してください',
+      addCredential: '認証情報を追加する',
+      authRemoved: '認証が削除されました',
+      modelCredentials: 'モデルの資格情報',
+      providerManaged: 'プロバイダーが管理しました',
+      addNewModel: '新しいモデルを追加する',
+      configLoadBalancing: '構成ロードバランシング',
+      addModelCredential: 'モデルの資格情報を追加',
+      providerManagedTip: '現在の設定はプロバイダーによってホストされています。',
+      specifyModelCredential: 'モデルの資格情報を指定してください',
+      specifyModelCredentialTip: '構成されたモデルの認証情報を使用してください。',
+      addModel: 'モデルを追加する',
+      addNewModelCredential: '新しいモデルの認証情報を追加する',
+      editModelCredential: 'モデルの資格情報を編集する',
+      removeModel: 'モデルを削除する',
+      customModelCredentialsDeleteTip: '認証情報は使用中で、削除できません。',
+      modelCredential: 'モデルの資格情報',
+      manageCredentials: '認証情報を管理する',
+      customModelCredentials: 'カスタムモデルの認証情報',
+      selectModelCredential: 'モデルの資格情報を選択する',
+    },
+    parametersInvalidRemoved: 'いくつかのパラメータが無効であり、削除されました。',
   },
   dataSource: {
     add: 'データソースの追加',
@@ -565,7 +598,7 @@ const translation = {
     overview: '監視',
     promptEng: 'オーケストレート',
     apiAccess: 'API アクセス',
-    logAndAnn: 'ログ＆アナウンス',
+    logAndAnn: 'ログ＆注釈',
     logs: 'ログ',
   },
   environment: {
@@ -584,6 +617,7 @@ const translation = {
     viewDoc: 'ドキュメントを表示',
     relatedApp: '関連アプリ',
     noRelatedApp: '関連付けられたアプリはありません',
+    pipeline: 'パイプライン',
   },
   voiceInput: {
     speaking: '今話しています...',
@@ -714,6 +748,19 @@ const translation = {
     browse: 'ブラウズする',
     supportedFormats: 'PNG、JPG、JPEG、WEBP、および GIF をサポートしています。',
     dropImageHere: 'ここに画像をドロップするか、',
+  },
+  avatar: {
+    deleteTitle: 'アバターを削除する',
+    deleteDescription: '本当にプロフィール写真を削除してもよろしいですか？あなたのアカウントはデフォルトの初期アバターを使用します。',
+  },
+  feedback: {
+    content: 'フィードバックコンテンツ',
+    title: 'フィードバックを提供する',
+    subtitle: 'この回答で何が間違っていたのか教えてください。',
+    placeholder: '何が間違っていたか、またはどのように改善できるかを教えてください...',
+  },
+  label: {
+    optional: '(オプション)',
   },
 }
 

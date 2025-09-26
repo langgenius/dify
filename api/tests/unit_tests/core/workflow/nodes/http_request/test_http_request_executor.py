@@ -1,4 +1,4 @@
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
@@ -243,14 +243,17 @@ def test_executor_with_form_data():
     # Check the executor's data
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/upload"
-    assert "Content-Type" in executor.headers
-    assert "multipart/form-data" in executor.headers["Content-Type"]
     assert executor.params is None
     assert executor.json is None
     # '__multipart_placeholder__' is expected when no file inputs exist,
     # to ensure the request is treated as multipart/form-data by the backend.
     assert executor.files == [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
     assert executor.content is None
+
+    # After fix for #23829: When placeholder files exist, Content-Type is removed
+    # to let httpx handle Content-Type and boundary automatically
+    headers = executor._assembling_headers()
+    assert "Content-Type" not in headers or "multipart/form-data" not in headers.get("Content-Type", "")
 
     # Check that the form data is correctly loaded in executor.data
     assert isinstance(executor.data, dict)

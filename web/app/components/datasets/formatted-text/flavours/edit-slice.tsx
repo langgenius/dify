@@ -56,7 +56,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   return (
     <>
       <SliceContainer {...rest}
-        className={classNames('block mr-0', className)}
+        className={classNames('mr-0 block', className)}
         ref={(ref) => {
           refs.setReference(ref)
           if (ref)

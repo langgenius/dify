@@ -89,7 +89,6 @@ const translation = {
     jumpToNode: 'Bu düğüme atla',
     addParallelNode: 'Paralel Düğüm Ekle',
     disconnect: 'Ayırmak',
-    parallelRun: 'Paralel Koşu',
     parallel: 'PARALEL',
     branch: 'DAL',
     featuresDocLink: 'Daha fazla bilgi edinin',
@@ -114,6 +113,8 @@ const translation = {
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
     tagBound: 'Bu etiketi kullanan uygulama sayısı',
+    currentView: 'Geçerli Görünüm',
+    currentWorkflow: 'Mevcut İş Akışı',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -216,6 +217,8 @@ const translation = {
     back: 'Geri',
     iteration: 'Yineleme',
     loop: 'Döngü',
+    reRun: 'Yeniden çalıştır',
+    preparingDataSource: 'Veri Kaynağını Hazırlama',
   },
   tabs: {
     'tools': 'Araçlar',
@@ -234,6 +237,8 @@ const translation = {
     'searchBlock': 'Arama düğümü',
     'allAdded': 'Hepsi eklendi',
     'addAll': 'Hepsini ekle',
+    'sources': 'Kaynak',
+    'searchDataSource': 'Veri Kaynağında Arama Yapın',
   },
   blocks: {
     'start': 'Başlat',
@@ -258,6 +263,8 @@ const translation = {
     'loop-start': 'Döngü Başlangıcı',
     'loop-end': 'Döngüden Çık',
     'loop': 'Döngü',
+    'knowledge-index': 'Bilgi bankası',
+    'datasource': 'Veri Kaynağı',
   },
   blocksAbout: {
     'start': 'Bir iş akışını başlatmak için başlangıç parametrelerini tanımlayın',
@@ -280,6 +287,8 @@ const translation = {
     'agent': 'Soruları yanıtlamak veya doğal dili işlemek için büyük dil modellerini çağırma',
     'loop': 'Sonlandırma koşulu karşılanana kadar veya maksimum döngü sayısına ulaşılana kadar bir mantık döngüsü çalıştırın.',
     'loop-end': '"break" ile eşdeğerdir. Bu düğümün yapılandırma öğesi yoktur. Döngü gövdesi bu düğüme ulaştığında, döngü sona erer.',
+    'datasource': 'Veri Kaynağı Hakkında',
+    'knowledge-index': 'Bilgi tabanı hakkında',
   },
   operator: {
     zoomIn: 'Yakınlaştır',
@@ -293,12 +302,12 @@ const translation = {
     alignNodes: 'Düğümleri Hizala',
     vertical: 'Dikey',
     alignRight: 'Sağ',
-    alignTop: 'Sayfanın Üstü',
-    alignBottom: 'Dip',
+    alignTop: 'Üst',
+    alignBottom: 'Alt',
     selectionAlignment: 'Seçim Hizalama',
-    distributeHorizontal: 'Yatay Boşluk',
+    distributeHorizontal: 'Yatay Dağıt',
     horizontal: 'Yatay',
-    distributeVertical: 'Dikey Boşluk',
+    distributeVertical: 'Dikey Dağıt',
   },
   panel: {
     userInputField: 'Kullanıcı Giriş Alanı',
@@ -380,6 +389,7 @@ const translation = {
         variable: 'Değişken kullan',
         input: 'Girdi değeri',
       },
+      inputVars: 'Giriş Değişkenleri',
     },
     start: {
       required: 'gerekli',
@@ -467,6 +477,12 @@ const translation = {
         generationTip: 'Doğal dil kullanarak hızlıca bir JSON Şeması oluşturabilirsiniz.',
         addChildField: 'Çocuk Alanı Ekle',
         resultTip: 'İşte oluşturulan sonuç. Eğer memnun değilseniz, geri dönüp isteminizi değiştirebilirsiniz.',
+      },
+      reasoningFormat: {
+        separated: 'Ayrı düşünce etiketleri',
+        title: 'Akıl yürütme etiket ayrımını etkinleştir',
+        tagged: 'Etiketleri düşünmeye devam et',
+        tooltip: 'Düşünce etiketlerinden içeriği çıkarın ve bunu reasoning_content alanında saklayın.',
       },
     },
     knowledgeRetrieval: {
@@ -841,6 +857,7 @@ const translation = {
           url: 'Resim url\'si',
         },
         text: 'Temsilci Tarafından Oluşturulan İçerik',
+        usage: 'Model Kullanım Bilgileri',
         json: 'Aracı tarafından oluşturulan JSON',
       },
       checkList: {
@@ -907,6 +924,27 @@ const translation = {
       error_other: '{{count}} Hata',
       loop_one: '{{count}} Döngü',
       loopVariables: 'Döngü Değişkenleri',
+    },
+    dataSource: {
+      add: 'Veri kaynağı ekleme',
+      supportedFileFormatsPlaceholder: 'Dosya uzantısı, e.g. doc',
+      supportedFileFormats: 'Desteklenen dosya biçimleri',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Daha fazla bilgi edinin',
+        title: 'Lütfen bir yığın yapısı seçin',
+        message: 'Dify Bilgi Bankası üç parçalı yapıyı destekler: Genel, Üst-alt ve Soru-Cevap. Her bilgi tabanı yalnızca bir yapıya sahip olabilir. Önceki düğümden gelen çıktı, seçilen öbek yapısıyla hizalanmalıdır. Yığın yapısı seçiminin mevcut dizin yöntemlerini etkilediğini unutmayın.',
+      },
+      chooseChunkStructure: 'Bir yığın yapısı seçin',
+      chunkIsRequired: 'Yığın yapısı gereklidir',
+      chunkStructure: 'Yığın Yapısı',
+      indexMethodIsRequired: 'İndeks yöntemi gereklidir',
+      aboutRetrieval: 'geri alma yöntemi hakkında.',
+      retrievalSettingIsRequired: 'Alma ayarı gereklidir',
+      changeChunkStructure: 'Yığın Yapısını Değiştir',
+      chunksInput: 'Parçalar',
+      chunksInputTip: 'Bilgi tabanı düğümünün girdi değişkeni \'Chunks\'tır. Değişkenin tipi, seçilen parça yapısıyla tutarlı olması gereken belirli bir JSON Şemasına sahip bir nesnedir.',
     },
   },
   tracing: {
@@ -978,6 +1016,10 @@ const translation = {
       reset: 'Son çalıştırma değerine sıfırla',
       view: 'Günlüğü görüntüle',
       emptyTip: 'Bir düğümü kanvas üzerinde geçtikten veya bir düğümü adım adım çalıştırdıktan sonra, Düğüm Değişkeni\'ndeki mevcut değeri Değişken İncele\'de görüntüleyebilirsiniz.',
+      export: 'Ihracat',
+      largeDataNoExport: 'Büyük veri - yalnızca kısmi önizleme',
+      largeData: 'Büyük veri, salt okunur önizleme. Tümünü görüntülemek için dışa aktarın.',
+      exportToolTip: 'Değişkeni Dosya Olarak Dışa Aktar',
     },
     lastRunTab: 'Son Koşu',
     settingsTab: 'Ayarlar',
@@ -990,6 +1032,15 @@ const translation = {
       noDependencies: 'Bağımlılık yok',
     },
     relationsTab: 'Ilişkiler',
+    copyLastRun: 'Son Çalışmayı Kopyala',
+    noLastRunFound: 'Önceki çalışmaya rastlanmadı.',
+    noMatchingInputsFound: 'Son çalışmadan eşleşen giriş bulunamadı.',
+    copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
+    lastOutput: 'Son Çıktı',
+  },
+  sidebar: {
+    exportWarning: 'Mevcut Kaydedilmiş Versiyonu Dışa Aktar',
+    exportWarningDesc: 'Bu, çalışma akışınızın mevcut kaydedilmiş sürümünü dışa aktaracaktır. Editörde kaydedilmemiş değişiklikleriniz varsa, lütfen önce bunları çalışma akışı alanındaki dışa aktarma seçeneğini kullanarak kaydedin.',
   },
 }
 

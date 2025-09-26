@@ -1,15 +1,14 @@
 import concurrent.futures
-import datetime
 import json
 import logging
 import re
 import threading
 import time
 import uuid
-from typing import Any, Optional, cast
+from typing import Any
 
 from flask import current_app
-from flask_login import current_user
+from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -20,6 +19,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -30,15 +30,18 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from core.tools.utils.rag_web_reader import get_image_upload_file_ids
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 class IndexingRunner:
@@ -55,13 +58,11 @@ class IndexingRunner:
 
                 if not dataset:
                     raise ValueError("no dataset found")
-
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
-                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
+                stmt = select(DatasetProcessRule).where(
+                    DatasetProcessRule.id == dataset_document.dataset_process_rule_id
                 )
+                processing_rule = db.session.scalar(stmt)
                 if not processing_rule:
                     raise ValueError("no process rule found")
                 index_type = dataset_document.doc_form
@@ -88,15 +89,15 @@ class IndexingRunner:
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e.description)
-                dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                dataset_document.stopped_at = naive_utc_now()
                 db.session.commit()
             except ObjectDeletedError:
-                logging.warning("Document deleted, document id: %s", dataset_document.id)
+                logger.warning("Document deleted, document id: %s", dataset_document.id)
             except Exception as e:
-                logging.exception("consume document failed")
+                logger.exception("consume document failed")
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e)
-                dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                dataset_document.stopped_at = naive_utc_now()
                 db.session.commit()
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
@@ -122,11 +123,8 @@ class IndexingRunner:
                     db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
             # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
+            stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+            processing_rule = db.session.scalar(stmt)
             if not processing_rule:
                 raise ValueError("no process rule found")
 
@@ -151,13 +149,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
         except Exception as e:
-            logging.exception("consume document failed")
+            logger.exception("consume document failed")
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
@@ -207,15 +205,7 @@ class IndexingRunner:
                                     child_documents.append(child_document)
                                 document.children = child_documents
                         documents.append(document)
-
             # build index
-            # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
-
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
@@ -226,13 +216,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
         except Exception as e:
-            logging.exception("consume document failed")
+            logger.exception("consume document failed")
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            dataset_document.stopped_at = naive_utc_now()
             db.session.commit()
 
     def indexing_estimate(
@@ -240,9 +230,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: dict,
-        doc_form: Optional[str] = None,
+        doc_form: str | None = None,
         doc_language: str = "English",
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
         indexing_technique: str = "economy",
     ) -> IndexingEstimate:
         """
@@ -280,7 +270,9 @@ class IndexingRunner:
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-        preview_texts = []  # type: ignore
+        # keep separate, avoid union-list ambiguity
+        preview_texts: list[PreviewDetail] = []
+        qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
         index_type = doc_form
@@ -295,7 +287,7 @@ class IndexingRunner:
                 text_docs,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,
             )
@@ -303,26 +295,27 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 10:
                     if doc_form and doc_form == "qa_model":
-                        preview_detail = QAPreviewDetail(
+                        qa_detail = QAPreviewDetail(
                             question=document.page_content, answer=document.metadata.get("answer") or ""
                         )
-                        preview_texts.append(preview_detail)
+                        qa_preview_texts.append(qa_detail)
                     else:
-                        preview_detail = PreviewDetail(content=document.page_content)  # type: ignore
+                        preview_detail = PreviewDetail(content=document.page_content)
                         if document.children:
-                            preview_detail.child_chunks = [child.page_content for child in document.children]  # type: ignore
+                            preview_detail.child_chunks = [child.page_content for child in document.children]
                         preview_texts.append(preview_detail)
 
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+                    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+                    image_file = db.session.scalar(stmt)
                     if image_file is None:
                         continue
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed while indexing_estimate, \
                                           image_upload_file_is: %s",
                             upload_file_id,
@@ -330,8 +323,8 @@ class IndexingRunner:
                     db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
-            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=preview_texts, preview=[])
-        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)  # type: ignore
+            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
@@ -345,14 +338,14 @@ class IndexingRunner:
         if dataset_document.data_source_type == "upload_file":
             if not data_source_info or "upload_file_id" not in data_source_info:
                 raise ValueError("no upload file found")
-
-            file_detail = (
-                db.session.query(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"]).one_or_none()
-            )
+            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+            file_detail = db.session.scalars(stmt).one_or_none()
 
             if file_detail:
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file_detail, document_model=dataset_document.doc_form
+                    datasource_type=DatasourceType.FILE.value,
+                    upload_file=file_detail,
+                    document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         elif dataset_document.data_source_type == "notion_import":
@@ -363,8 +356,9 @@ class IndexingRunner:
             ):
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
-                datasource_type="notion_import",
+                datasource_type=DatasourceType.NOTION.value,
                 notion_info={
+                    "credential_id": data_source_info["credential_id"],
                     "notion_workspace_id": data_source_info["notion_workspace_id"],
                     "notion_obj_id": data_source_info["notion_page_id"],
                     "notion_page_type": data_source_info["type"],
@@ -383,7 +377,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
-                datasource_type="website_crawl",
+                datasource_type=DatasourceType.WEBSITE.value,
                 website_info={
                     "provider": data_source_info["provider"],
                     "job_id": data_source_info["job_id"],
@@ -401,12 +395,11 @@ class IndexingRunner:
             after_indexing_status="splitting",
             extra_update_params={
                 DatasetDocument.word_count: sum(len(text_doc.page_content) for text_doc in text_docs),
-                DatasetDocument.parsing_completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DatasetDocument.parsing_completed_at: naive_utc_now(),
             },
         )
 
         # replace doc id to document model id
-        text_docs = cast(list[Document], text_docs)
         for text_doc in text_docs:
             if text_doc.metadata is not None:
                 text_doc.metadata["document_id"] = dataset_document.id
@@ -429,11 +422,12 @@ class IndexingRunner:
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
@@ -460,7 +454,7 @@ class IndexingRunner:
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter
 
     def _split_to_documents_for_estimate(
         self, text_docs: list[Document], splitter: TextSplitter, processing_rule: DatasetProcessRule
@@ -519,7 +513,7 @@ class IndexingRunner:
         dataset: Dataset,
         dataset_document: DatasetDocument,
         documents: list[Document],
-    ) -> None:
+    ):
         """
         insert index and update document/segment status to completed
         """
@@ -536,6 +530,7 @@ class IndexingRunner:
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
+        create_keyword_thread = None
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             create_keyword_thread = threading.Thread(
@@ -574,7 +569,11 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+        if (
+            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"
+            and create_keyword_thread is not None
+        ):
             create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
@@ -584,7 +583,7 @@ class IndexingRunner:
             after_indexing_status="completed",
             extra_update_params={
                 DatasetDocument.tokens: tokens,
-                DatasetDocument.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DatasetDocument.completed_at: naive_utc_now(),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
                 DatasetDocument.error: None,
             },
@@ -609,7 +608,7 @@ class IndexingRunner:
                     {
                         DocumentSegment.status: "completed",
                         DocumentSegment.enabled: True,
-                        DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                        DocumentSegment.completed_at: naive_utc_now(),
                     }
                 )
 
@@ -640,7 +639,7 @@ class IndexingRunner:
                 {
                     DocumentSegment.status: "completed",
                     DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    DocumentSegment.completed_at: naive_utc_now(),
                 }
             )
 
@@ -657,8 +656,8 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
-    ) -> None:
+        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
+    ):
         """
         Update the document indexing status.
         """
@@ -677,7 +676,7 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict) -> None:
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
         """
         Update the document segment by document id.
         """
@@ -728,7 +727,7 @@ class IndexingRunner:
         doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX)
 
         # update document status to indexing
-        cur_time = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        cur_time = naive_utc_now()
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="indexing",
@@ -743,7 +742,7 @@ class IndexingRunner:
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.indexing_at: naive_utc_now(),
             },
         )
         pass

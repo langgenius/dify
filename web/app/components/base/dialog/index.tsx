@@ -47,16 +47,16 @@ const CustomDialog = ({
           <div className="flex min-h-full items-center justify-center">
             <TransitionChild>
               <DialogPanel className={classNames(
-                'w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl',
-                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
-                'data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:opacity-0 data-[enter]:scale-95',
+                'w-full max-w-[800px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-all',
+                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
               )}>
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}
-                    className={classNames('pr-8 pb-3 title-2xl-semi-bold text-text-primary', titleClassName)}
+                    className={classNames('title-2xl-semi-bold pb-3 pr-8 text-text-primary', titleClassName)}
                   >
                     {title}
                   </DialogTitle>

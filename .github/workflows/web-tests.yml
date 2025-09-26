@@ -1,11 +1,7 @@
 name: Web Tests
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - web/**
+  workflow_call:
 
 concurrency:
   group: web-tests-${{ github.head_ref || github.run_id }}
@@ -35,7 +31,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: web/package.json
           run_install: false
 
       - name: Setup Node.js
@@ -48,8 +44,15 @@ jobs:
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm install --frozen-lockfile
+
+      - name: Check i18n types synchronization
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run check:i18n-types
 
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
         run: pnpm test

@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'کلید Http Header، می‌توانید آن را با "Authorization" ترک کنید اگر نمی‌دانید چیست یا آن را به یک مقدار سفارشی تنظیم کنید',
       types: {
         none: 'هیچ',
-        api_key: 'کلید API',
         apiKeyPlaceholder: 'نام هدر HTTP برای کلید API',
         apiValuePlaceholder: 'کلید API را وارد کنید',
         api_key_header: 'عنوان',
@@ -192,6 +191,18 @@ const translation = {
       cancel: 'لغو',
       save: 'ذخیره',
       confirm: 'افزودن و مجوزدهی',
+      timeout: 'مهلت',
+      sseReadTimeout: 'زمان.out خواندن SSE',
+      headers: 'هدرها',
+      timeoutPlaceholder: '30',
+      headerKey: 'نام هدر',
+      headerValue: 'مقدار هدر',
+      addHeader: 'هدر اضافه کنید',
+      headerKeyPlaceholder: 'Authorization',
+      headerValuePlaceholder: 'مثلاً، Bearer 123',
+      noHeaders: 'هیچ هدر سفارشی پیکربندی نشده است',
+      headersTip: 'هدرهای HTTP اضافی برای ارسال با درخواست‌های سرور MCP',
+      maskedHeadersTip: 'مقدارهای هدر به خاطر امنیت مخفی شده‌اند. تغییرات مقادیر واقعی را به‌روزرسانی خواهد کرد.',
     },
     delete: 'حذف سرور MCP',
     deleteConfirmTitle: 'آیا مایل به حذف {mcp} هستید؟',
@@ -233,6 +244,7 @@ const translation = {
       publishTip: 'برنامه منتشر نشده است. لطفاً ابتدا برنامه را منتشر کنید.',
     },
   },
+  allTools: 'همه ابزارها',
 }
 
 export default translation

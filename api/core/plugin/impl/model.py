@@ -1,6 +1,6 @@
 import binascii
 from collections.abc import Generator, Sequence
-from typing import IO, Optional
+from typing import IO
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
@@ -151,9 +151,9 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        model_parameters: dict | None = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
         stream: bool = True,
     ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -200,7 +200,7 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
+        tools: list[PromptMessageTool] | None = None,
     ) -> int:
         """
         Get number of tokens for llm
@@ -325,8 +325,8 @@ class PluginModelClient(BasePluginClient):
         credentials: dict,
         query: str,
         docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
     ) -> RerankResult:
         """
         Invoke rerank
@@ -414,8 +414,8 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model: str,
         credentials: dict,
-        language: Optional[str] = None,
-    ) -> list[dict]:
+        language: str | None = None,
+    ):
         """
         Get tts model voices
         """

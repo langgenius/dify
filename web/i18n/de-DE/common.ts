@@ -60,6 +60,7 @@ const translation = {
     format: 'Format',
     selectAll: 'Alles auswählen',
     deSelectAll: 'Alle abwählen',
+    config: 'Konfiguration',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -468,6 +469,38 @@ const translation = {
     installProvider: 'Installieren von Modellanbietern',
     toBeConfigured: 'Zu konfigurieren',
     emptyProviderTitle: 'Modellanbieter nicht eingerichtet',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Modell hinzufügen',
+        title: 'API-Schlüssel-Autorisierungskonfiguration',
+        desc: 'Nachdem die Anmeldeinformationen konfiguriert wurden, können alle Mitglieder des Arbeitsbereichs dieses Modell beim Orchestrieren von Anwendungen verwenden.',
+      },
+      specifyModelCredential: 'Angeben von Modellanmeldeinformationen',
+      addNewModel: 'Neues Modell hinzufügen',
+      addCredential: 'Anmeldeinformationen hinzufügen',
+      providerManaged: 'Anbieter verwaltet',
+      addApiKey: 'API-Schlüssel hinzufügen',
+      apiKeys: 'API-Schlüssel',
+      unAuthorized: 'Unbefugt',
+      authorizationError: 'Autorisierungsfehler',
+      modelCredentials: 'Modellanmeldeinformationen',
+      configModel: 'Konfigurationsmodell',
+      authRemoved: 'Die Authentifizierung wurde entfernt.',
+      addModelCredential: 'Modellberechtigungen hinzufügen',
+      providerManagedTip: 'Die aktuelle Konfiguration wird vom Anbieter gehostet.',
+      configLoadBalancing: 'Konfiguration Lastenverteilung',
+      specifyModelCredentialTip: 'Verwenden Sie ein konfiguriertes Modellzugang.',
+      manageCredentials: 'Anmeldeinformationen verwalten',
+      selectModelCredential: 'Wählen Sie eine Modellberechtigung aus',
+      modelCredential: 'Zeugnis des Modells',
+      addModel: 'Modell hinzufügen',
+      customModelCredentials: 'Anmeldeinformationen für benutzerdefinierte Modelle',
+      removeModel: 'Modell entfernen',
+      addNewModelCredential: 'Hinzufügen neuer Modellanmeldeinformationen',
+      editModelCredential: 'Bearbeiten von Modellanmeldeinformationen',
+      customModelCredentialsDeleteTip: 'Anmeldeinformationen werden verwendet und können nicht gelöscht werden',
+    },
+    parametersInvalidRemoved: 'Einige Parameter sind ungültig und wurden entfernt.',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',
@@ -566,6 +599,7 @@ const translation = {
     viewDoc: 'Dokumentation anzeigen',
     relatedApp: 'verbundene Apps',
     noRelatedApp: 'Keine verknüpften Apps',
+    pipeline: 'Rohrleitung',
   },
   voiceInput: {
     speaking: 'Sprechen Sie jetzt...',
@@ -715,6 +749,19 @@ const translation = {
     supportedFormats: 'Unterstützt PNG, JPG, JPEG, WEBP und GIF',
   },
   you: 'Du',
+  avatar: {
+    deleteTitle: 'Avatar entfernen',
+    deleteDescription: 'Bist du sicher, dass du dein Profilbild entfernen möchtest? Dein Konto wird das standardmäßige Anfangs-Avatar verwenden.',
+  },
+  feedback: {
+    content: 'Feedback-Inhalt',
+    title: 'Feedback geben',
+    subtitle: 'Bitte sagen Sie uns, was mit dieser Antwort falsch gelaufen ist.',
+    placeholder: 'Bitte beschreiben Sie, was schiefgelaufen ist oder wie wir uns verbessern können...',
+  },
+  label: {
+    optional: '(fakultativ)',
+  },
 }
 
 export default translation

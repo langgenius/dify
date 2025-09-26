@@ -6,6 +6,7 @@ const translation = {
     tools: 'Công cụ',
     agents: 'Chiến lược đại lý',
     models: 'Mô hình',
+    datasources: 'Nguồn dữ liệu',
   },
   categorySingle: {
     agent: 'Chiến lược đại lý',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'Phần mở rộng',
     model: 'Mẫu',
     bundle: 'Bó',
+    datasource: 'Nguồn dữ liệu',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     setDefault: 'Đặt làm mặc định',
     useApiAuthDesc: 'Sau khi cấu hình thông tin xác thực, tất cả các thành viên trong không gian làm việc có thể sử dụng công cụ này khi điều phối các ứng dụng.',
     clientInfo: 'Vì không tìm thấy bí mật khách hàng hệ thống cho nhà cung cấp công cụ này, cần thiết lập thủ công, đối với redirect_uri, vui lòng sử dụng',
+    unavailable: 'Không có sẵn',
+    customCredentialUnavailable: 'Thông tin đăng nhập tùy chỉnh hiện không khả dụng',
+    credentialUnavailable: 'Thông tin đăng nhập hiện không khả dụng. Vui lòng liên hệ với quản trị viên.',
+    credentialUnavailableInButton: 'Thông tin xác thực không khả dụng',
+    emptyAuth: 'Vui lòng định cấu hình xác thực',
+    connectedWorkspace: 'Không gian làm việc được kết nối',
   },
   deprecated: 'Đã bị ngưng sử dụng',
   autoUpdate: {

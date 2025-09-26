@@ -21,7 +21,7 @@ class MockBaiduVectorDBClass:
     def mock_vector_db_client(
         self,
         config=None,
-        adapter: HTTPAdapter = None,
+        adapter: HTTPAdapter | None = None,
     ):
         self.conn = MagicMock()
         self._config = MagicMock()
@@ -100,8 +100,8 @@ class MockBaiduVectorDBClass:
                 "row": {
                     "id": primary_key.get("id"),
                     "vector": [0.23432432, 0.8923744, 0.89238432],
-                    "text": "text",
-                    "metadata": '{"doc_id": "doc_id_001"}',
+                    "page_content": "text",
+                    "metadata": {"doc_id": "doc_id_001"},
                 },
                 "code": 0,
                 "msg": "Success",
@@ -127,8 +127,8 @@ class MockBaiduVectorDBClass:
                         "row": {
                             "id": "doc_id_001",
                             "vector": [0.23432432, 0.8923744, 0.89238432],
-                            "text": "text",
-                            "metadata": '{"doc_id": "doc_id_001"}',
+                            "page_content": "text",
+                            "metadata": {"doc_id": "doc_id_001"},
                         },
                         "distance": 0.1,
                         "score": 0.5,
