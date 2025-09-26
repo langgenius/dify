@@ -18,7 +18,7 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.runtime.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 
 
 class AdvancedPromptTransform(PromptTransform):
