@@ -1,7 +1,6 @@
-import React, { useCallback } from 'react'
-// import { useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowRun, /* useWorkflowRunValidation, */ useWorkflowStartRun } from '@/app/components/workflow/hooks'
+import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -10,9 +9,8 @@ import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import cn from '@/utils/classnames'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-// import ShortcutsName from '../shortcuts-name'
-// import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
-// import TestRunMenu, { type TestRunMenuRef, type TriggerOption } from './test-run-menu'
+import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
+import TestRunMenu, { type TestRunMenuRef, type TriggerOption } from './test-run-menu'
 
 type RunModeProps = {
   text?: string
@@ -24,42 +22,42 @@ const RunMode = ({
   const { t } = useTranslation()
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  // const { validateBeforeRun } = useWorkflowRunValidation()
+  const { validateBeforeRun } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
 
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
-  // const dynamicOptions = useDynamicTestRunOptions()
-  // const testRunMenuRef = useRef<TestRunMenuRef>(null)
+  const dynamicOptions = useDynamicTestRunOptions()
+  const testRunMenuRef = useRef<TestRunMenuRef>(null)
 
-  // useEffect(() => {
-  //   // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
-  //   window._toggleTestRunDropdown = () => {
-  //     testRunMenuRef.current?.toggle()
-  //   }
-  //   return () => {
-  //     // @ts-expect-error - Dynamic property cleanup
-  //     delete window._toggleTestRunDropdown
-  //   }
-  // }, [])
+  useEffect(() => {
+    // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
+    window._toggleTestRunDropdown = () => {
+      testRunMenuRef.current?.toggle()
+    }
+    return () => {
+      // @ts-expect-error - Dynamic property cleanup
+      delete window._toggleTestRunDropdown
+    }
+  }, [])
 
   const handleStop = useCallback(() => {
     handleStopRun(workflowRunningData?.task_id || '')
   }, [handleStopRun, workflowRunningData?.task_id])
 
-  // const handleTriggerSelect = (option: TriggerOption) => {
-  //   // Validate checklist before running any workflow
-  //   if (!validateBeforeRun())
-  //     return
+  const handleTriggerSelect = useCallback((option: TriggerOption) => {
+    // Validate checklist before running any workflow
+    if (!validateBeforeRun())
+      return
 
-  //   if (option.type === 'user_input') {
-  //     handleWorkflowStartRunInWorkflow()
-  //   }
-  //   else {
-  //     // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
-  //     console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
-  //   }
-  // }
+    if (option.type === 'user_input') {
+      handleWorkflowStartRunInWorkflow()
+    }
+    else {
+      // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
+      console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
+    }
+  }, [validateBeforeRun, handleWorkflowStartRunInWorkflow])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
@@ -69,63 +67,46 @@ const RunMode = ({
 
   return (
     <div className='flex items-center gap-x-px'>
-      <button
-        type='button'
-        className={cn(
-          'system-xs-medium flex h-7 items-center gap-x-1 px-1.5 text-text-accent hover:bg-state-accent-hover',
-          isRunning && 'cursor-not-allowed bg-state-accent-hover',
-          isRunning ? 'rounded-l-md' : 'rounded-md',
-        )}
-        onClick={() => {
-          handleWorkflowStartRunInWorkflow()
-        }}
-        disabled={isRunning}
-      >
-        {
-          isRunning
-            ? (
-              <>
-                <RiLoader2Line className='mr-1 size-4 animate-spin' />
-                {t('workflow.common.running')}
-              </>
-            )
-            : (
-              <>
+      {
+        isRunning
+          ? (
+            <button
+              type='button'
+              className={cn(
+                'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
+              )}
+              disabled={true}
+            >
+              <RiLoader2Line className='mr-1 size-4 animate-spin' />
+              {t('workflow.common.running')}
+            </button>
+          )
+          : (
+            <TestRunMenu
+              ref={testRunMenuRef}
+              options={dynamicOptions}
+              onSelect={handleTriggerSelect}
+            >
+              <div
+                className={cn(
+                  'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                )}
+                style={{ userSelect: 'none' }}
+              >
                 <RiPlayLargeLine className='mr-1 size-4' />
                 {text ?? t('workflow.common.run')}
-              </>
-              // <TestRunMenu
-              //   ref={testRunMenuRef}
-              //   options={dynamicOptions}
-              //   onSelect={handleTriggerSelect}
-              // >
-              //   <div
-              //     className={cn(
-              //       'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
-              //       'cursor-pointer hover:bg-state-accent-hover',
-              //     )}
-              //     style={{ userSelect: 'none' }}
-              //   >
-              //     <RiPlayLargeLine className='mr-1 size-4' />
-              //     {text ?? t('workflow.common.run')}
-              //     <ShortcutsName keys={['alt', 'r']} className="ml-1" textColor="secondary" />
-              //   </div>
-              // </TestRunMenu>
-            )
-        }
-        {
-          !isRunning && (
-            <div className='system-kbd flex items-center gap-x-0.5 text-text-tertiary'>
-              <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
-                {getKeyboardKeyNameBySystem('alt')}
+                <div className='system-kbd flex items-center gap-x-0.5 text-text-tertiary'>
+                  <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
+                    {getKeyboardKeyNameBySystem('alt')}
+                  </div>
+                  <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
+                    R
+                  </div>
+                </div>
               </div>
-              <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
-                R
-              </div>
-            </div>
+            </TestRunMenu>
           )
-        }
-      </button>
+      }
       {
         isRunning && (
           <button
