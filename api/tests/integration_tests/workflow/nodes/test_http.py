@@ -181,7 +181,7 @@ def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
         HttpRequestNodeTimeout,
     )
     from core.workflow.nodes.http_request.executor import Executor
-    from core.workflow.runtime.variable_pool import VariablePool
+    from core.workflow.runtime import VariablePool
     from core.workflow.system_variable import SystemVariable
 
     # Create variable pool

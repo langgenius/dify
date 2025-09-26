@@ -4,8 +4,7 @@ from typing import Any
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables.segments import Segment
-from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
-from core.workflow.runtime.variable_pool import VariablePool
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
 class ReadOnlyVariablePoolWrapper:

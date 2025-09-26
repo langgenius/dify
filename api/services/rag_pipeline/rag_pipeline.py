@@ -49,7 +49,7 @@ from core.workflow.node_events.base import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
-from core.workflow.runtime.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db

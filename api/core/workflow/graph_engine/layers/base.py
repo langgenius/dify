@@ -7,9 +7,9 @@ intercept and respond to GraphEngine events.
 
 from abc import ABC, abstractmethod
 
-from core.workflow.graph.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent
+from core.workflow.runtime import ReadOnlyGraphRuntimeState
 
 
 class GraphEngineLayer(ABC):
