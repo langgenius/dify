@@ -1,8 +1,8 @@
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-import sqlalchemy as sa
 
 from .base import Base
 from .engine import db
