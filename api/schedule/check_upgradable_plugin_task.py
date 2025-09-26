@@ -1,3 +1,4 @@
+import math
 import time
 
 import click
@@ -34,10 +35,10 @@ def check_upgradable_plugin_task():
     total_strategies = len(strategies)
     click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
 
-    batch_chunk_count = (
-        total_strategies // MAX_CONCURRENT_CHECK_TASKS + 1
+    batch_chunk_count = math.ceil(
+        total_strategies / MAX_CONCURRENT_CHECK_TASKS
     )  # make sure all strategies are checked in this interval
-    batch_interval_time = AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL // batch_chunk_count
+    batch_interval_time = AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
@@ -51,7 +52,7 @@ def check_upgradable_plugin_task():
                 strategy.include_plugins,
             )
 
-        if batch_chunk_count > 0.0001:
+        if batch_interval_time > 0.0001:
             time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()
