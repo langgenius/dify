@@ -2,7 +2,8 @@ import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } fro
 import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
-import { API_PREFIX, APP_VERSION, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+import Cookies from 'js-cookie'
 
 const TIME_OUT = 100000
 
@@ -114,7 +115,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     options.signal = abortController.signal
   }
 
-  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`);
+
+  (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME) || '')
 
   if (deleteContentType)
     (headers as any).delete('Content-Type')

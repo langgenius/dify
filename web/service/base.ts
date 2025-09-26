@@ -1,4 +1,4 @@
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import { basePath } from '@/utils/var'
@@ -29,6 +29,7 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import Cookies from 'js-cookie'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -331,7 +332,9 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
-    headers: {},
+    headers: {
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
+    },
     data: {},
   }
   options = {
@@ -405,7 +408,9 @@ export const ssePost = async (
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
-    headers: new Headers({}),
+    headers: new Headers({
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
+    }),
   } as RequestInit, fetchOptions)
 
   const contentType = (options.headers as Headers).get('Content-Type')
