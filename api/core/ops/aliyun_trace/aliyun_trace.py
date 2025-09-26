@@ -14,7 +14,9 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_COMPLETION,
+    GEN_AI_INPUT_MESSAGE,
     GEN_AI_MODEL_NAME,
+    GEN_AI_OUTPUT_MESSAGE,
     GEN_AI_PROMPT,
     GEN_AI_PROMPT_TEMPLATE_TEMPLATE,
     GEN_AI_PROMPT_TEMPLATE_VARIABLE,
@@ -31,6 +33,8 @@ from core.ops.aliyun_trace.entities.semconv import (
     GenAISpanKind,
 )
 from core.ops.aliyun_trace.utils import (
+    convert_to_gen_ai_input_message,
+    convert_to_gen_ai_output_message,
     create_common_span_attributes,
     create_links_from_trace_id,
     create_status_from_error,
@@ -401,6 +405,15 @@ class AliyunDataTrace(BaseTraceInstance):
         prompts_json = serialize_json_data(process_data.get("prompts", []))
         text_output = str(outputs.get("text", ""))
 
+        gen_ai_input_message = convert_to_gen_ai_input_message(process_data)
+        gen_ai_output_message = convert_to_gen_ai_output_message(outputs)
+
+        # gen_ai.prompt_template.template
+        # 提示词模板	string	Weather forecast for {city} on {date}
+
+        # gen_ai.prompt_template.variables
+        # 提示词模板的具体值	string	{ context: "<context from retrieval>", subject: "math" }
+
         return SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=trace_metadata.workflow_span_id,
@@ -424,6 +437,8 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_PROMPT: prompts_json,
                 GEN_AI_COMPLETION: text_output,
                 GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason") or "",
+                GEN_AI_INPUT_MESSAGE: gen_ai_input_message,
+                GEN_AI_OUTPUT_MESSAGE: gen_ai_output_message,
             },
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,

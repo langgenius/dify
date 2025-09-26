@@ -28,6 +28,9 @@ GEN_AI_PROMPT: Final[str] = "gen_ai.prompt"
 GEN_AI_COMPLETION: Final[str] = "gen_ai.completion"
 GEN_AI_RESPONSE_FINISH_REASON: Final[str] = "gen_ai.response.finish_reason"
 
+GEN_AI_INPUT_MESSAGE: Final[str] = "gen_ai.input.messages"
+GEN_AI_OUTPUT_MESSAGE: Final[str] = "gen_ai.output.messages"
+
 # Tool attributes
 TOOL_NAME: Final[str] = "tool.name"
 TOOL_DESCRIPTION: Final[str] = "tool.description"
