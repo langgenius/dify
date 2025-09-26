@@ -13,6 +13,7 @@ from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequire
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
+from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
@@ -72,7 +73,8 @@ def decode_jwt_token():
         app_web_auth_enabled = False
         webapp_settings = None
         if system_features.webapp_auth.enabled:
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+            app_id = AppService.get_app_id_by_code(app_code)
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
             app_web_auth_enabled = webapp_settings.access_mode != "public"
@@ -87,8 +89,9 @@ def decode_jwt_token():
         if system_features.webapp_auth.enabled:
             if not app_code:
                 raise Unauthorized("Please re-login to access the web app.")
+            app_id = AppService.get_app_id_by_code(app_code)
             app_web_auth_enabled = (
-                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=str(app_code)).access_mode != "public"
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode != "public"
             )
             if app_web_auth_enabled:
                 raise WebAppAuthRequiredError()
@@ -129,7 +132,8 @@ def _validate_user_accessibility(
             raise WebAppAuthRequiredError("Web app settings not found.")
 
         if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
-            if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
+            app_id = AppService.get_app_id_by_code(app_code)
+            if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
 
         auth_type = decoded.get("auth_type")
