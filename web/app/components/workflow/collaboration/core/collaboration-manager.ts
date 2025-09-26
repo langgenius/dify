@@ -180,7 +180,7 @@ export class CollaborationManager {
       onPush: (isUndo, range, event) => {
         console.log('UndoManager onPush:', { isUndo, range, event })
         // Store current selection state when an operation is pushed
-        const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data.selected)
+        const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
 
         // Emit event to update UI button states when new operation is pushed
         setTimeout(() => {
@@ -680,7 +680,29 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = this.reactFlowStore.getState()
-          const updatedNodes = Array.from(this.nodesMap.values())
+          const previousNodes: Node[] = state.getNodes()
+          const selectedIds = new Set(
+            previousNodes
+              .filter(node => node.data?.selected)
+              .map(node => node.id),
+          )
+
+          const updatedNodes = Array
+            .from(this.nodesMap.values())
+            .map((node: Node) => {
+              const clonedNode: Node = {
+                ...node,
+                data: {
+                  ...(node.data || {}),
+                },
+              }
+
+              if (selectedIds.has(clonedNode.id))
+                clonedNode.data.selected = true
+
+              return clonedNode
+            })
+
           console.log('Updating React nodes from subscription')
 
           // Call ReactFlow's native setter directly to avoid triggering collaboration
