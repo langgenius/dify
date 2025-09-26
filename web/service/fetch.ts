@@ -2,7 +2,7 @@ import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } fro
 import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
-import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import Cookies from 'js-cookie'
 
 const TIME_OUT = 100000
@@ -66,6 +66,11 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
       Toast.notify({ type: 'error', message: error.message })
     return error
   }
+}
+
+const beforeRequestPublicWithCode = (request: Request) => {
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
 }
 
 const baseHooks: Hooks = {
@@ -135,6 +140,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
       ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
+        isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         ...baseHooks.afterResponse || [],
