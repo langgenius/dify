@@ -30,7 +30,7 @@ if [[ "${MODE}" == "worker" ]]; then
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
   fi
 
-  exec celery -A celery_entrypoint.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION \
+  exec celery -A celery_entrypoint.celery worker -P ${CELERY_WORKER_CLASS:-prefork} $CONCURRENCY_OPTION \
     --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
     -Q ${CELERY_QUEUES:-dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation}
 
@@ -43,9 +43,9 @@ else
     exec gunicorn \
       --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
       --workers ${SERVER_WORKER_AMOUNT:-1} \
-      --worker-class ${SERVER_WORKER_CLASS:-gevent} \
+      --worker-class ${SERVER_WORKER_CLASS:-uvicorn.workers.UvicornWorker} \
       --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
       --timeout ${GUNICORN_TIMEOUT:-200} \
-      app:app
+      app:asgi_app
   fi
 fi

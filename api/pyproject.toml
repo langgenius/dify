@@ -4,6 +4,7 @@ version = "1.9.0"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
+    "asgiref~=3.8.1",
     "arize-phoenix-otel~=0.9.2",
     "authlib==1.6.4",
     "azure-identity==1.16.1",
@@ -20,7 +21,6 @@ dependencies = [
     "flask-migrate~=4.0.7",
     "flask-orjson~=2.0.0",
     "flask-sqlalchemy~=3.1.1",
-    "gevent~=25.9.1",
     "gmpy2~=2.2.1",
     "google-api-core==2.18.0",
     "google-api-python-client==2.90.0",
@@ -61,7 +61,6 @@ dependencies = [
     "opentelemetry-util-http==0.48b0",
     "pandas[excel,output-formatting,performance]~=2.2.2",
     "pandoc~=2.4",
-    "psycogreen~=1.0.2",
     "psycopg2-binary~=2.9.6",
     "pycryptodome==3.19.1",
     "pydantic~=2.11.4",
@@ -81,6 +80,7 @@ dependencies = [
     "tiktoken~=0.9.0",
     "transformers~=4.56.1",
     "unstructured[docx,epub,md,ppt,pptx]~=0.16.1",
+    "uvicorn[standard]~=0.32.0",
     "weave~=0.51.0",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",
@@ -130,8 +130,6 @@ dev = [
     "types-jsonschema~=4.23.0",
     "types-flask-cors~=5.0.0",
     "types-flask-migrate~=4.1.0",
-    "types-gevent~=24.11.0",
-    "types-greenlet~=3.1.0",
     "types-html5lib~=1.1.11",
     "types-markdown~=3.7.0",
     "types-oauthlib~=3.2.0",
