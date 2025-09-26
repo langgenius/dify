@@ -1286,6 +1286,7 @@ dependencies = [
     { name = "celery" },
     { name = "chardet" },
     { name = "flask" },
+    { name = "flask-accepts" },
     { name = "flask-compress" },
     { name = "flask-cors" },
     { name = "flask-login" },
@@ -1480,6 +1481,7 @@ requires-dist = [
     { name = "celery", specifier = "~=5.5.2" },
     { name = "chardet", specifier = "~=5.1.0" },
     { name = "flask", specifier = "~=3.1.2" },
+    { name = "flask-accepts", specifier = ">=1.0.1" },
     { name = "flask-compress", specifier = "~=1.17" },
     { name = "flask-cors", specifier = "~=6.0.0" },
     { name = "flask-login", specifier = "~=0.6.3" },
@@ -1873,6 +1875,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/dc/6d/cfe3c0fcc5e477df242b98bfe186a4c34357b4847e87ecaef04507332dab/flask-3.1.2.tar.gz", hash = "sha256:bf656c15c80190ed628ad08cdfd3aaa35beb087855e2f494910aa3774cc4fd87", size = 720160, upload-time = "2025-08-19T21:03:21.205Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/f9/7f9263c5695f4bd0023734af91bedb2ff8209e8de6ead162f35d8dc762fd/flask-3.1.2-py3-none-any.whl", hash = "sha256:ca1d8112ec8a6158cc29ea4858963350011b5c846a414cdb7a954aa9e967d03c", size = 103308, upload-time = "2025-08-19T21:03:19.499Z" },
+]
+
+[[package]]
+name = "flask-accepts"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flask-restx" },
+    { name = "marshmallow" },
+    { name = "werkzeug" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cd/e9/84d53878dbff82db6cdf05125daf02962c7b2a74358532b7453006b55f0e/flask_accepts-1.0.1.tar.gz", hash = "sha256:51f039bde29c226b2895a0cba1a0cafd03c90d47f974d8e2925892a434ec5442", size = 19075, upload-time = "2024-09-17T10:47:34.164Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/85/44cf06a94a1cbbda5dcf06aa07a18a4e92df6cff853ce3f35f98f7baab1d/flask_accepts-1.0.1-py3-none-any.whl", hash = "sha256:43dc1dbacb7d2cbdbfb965d350e65aab1f3c4e3e9b210d50455866ae07dc9225", size = 18303, upload-time = "2024-09-17T10:47:32.821Z" },
 ]
 
 [[package]]
