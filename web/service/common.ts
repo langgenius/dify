@@ -375,7 +375,7 @@ export const verifyWebAppResetPasswordCode = (body: { email: string; code: strin
   post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body }, { isPublicAPI: true })
 
 export const sendDeleteAccountCode = () =>
-  get<CommonResponse & { data: string }>('/account/delete/verify')
+  post<CommonResponse & { data: string }>('/account/delete/verify', { body: {} })
 
 export const verifyDeleteAccountCode = (body: { code: string; token: string }) =>
   post<CommonResponse & { is_valid: boolean }>('/account/delete', { body })
