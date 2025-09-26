@@ -77,7 +77,7 @@ const StartBlocks = ({
             }
           </div>
           <div className='system-xs-regular text-text-secondary'>
-            {block.description || availableNodesMetaData.nodesMap?.[block.type]?.description}
+            {t(`workflow.blocksAbout.${block.type}`)}
           </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>

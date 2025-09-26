@@ -49,6 +49,12 @@ const Blocks = ({
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
       const grouped = groupBy(blocks, 'metaData.classification')
       const list = (grouped[classification] || []).filter((block) => {
+        // Filter out trigger types from Blocks tab
+        if (block.metaData.type === BlockEnum.TriggerWebhook
+            || block.metaData.type === BlockEnum.TriggerSchedule
+            || block.metaData.type === BlockEnum.TriggerPlugin)
+          return false
+
         return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })
 
