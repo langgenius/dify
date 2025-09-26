@@ -6,7 +6,10 @@ from constants import DEFAULT_FILE_NUMBER_LIMITS
 
 
 def get_parameters_from_feature_dict(
-    *, features_dict: Mapping[str, Any], user_input_form: list[dict[str, Any]]
+    *,
+    features_dict: Mapping[str, Any],
+    user_input_form: list[dict[str, Any]],
+    workflow_output_form: list[dict[str, Any]] = [],
 ) -> Mapping[str, Any]:
     """
     Mapping from feature dict to webapp parameters
@@ -21,6 +24,7 @@ def get_parameters_from_feature_dict(
         "annotation_reply": features_dict.get("annotation_reply", {"enabled": False}),
         "more_like_this": features_dict.get("more_like_this", {"enabled": False}),
         "user_input_form": user_input_form,
+        "workflow_output_form": workflow_output_form,
         "sensitive_word_avoidance": features_dict.get(
             "sensitive_word_avoidance", {"enabled": False, "type": "", "configs": []}
         ),
