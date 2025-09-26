@@ -38,7 +38,7 @@ uv run --directory api basedpyright         # Type checking
 ```bash
 cd web
 pnpm lint                         # Run ESLint
-pnpm eslint-fix                   # Fix ESLint issues
+pnpm lint:fix                     # Fix ESLint issues
 pnpm test                         # Run Jest tests
 ```
 
