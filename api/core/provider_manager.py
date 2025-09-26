@@ -957,7 +957,7 @@ class ProviderManager:
                         is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
                         restrict_models=provider_quota.restrict_models,
                     )
-                
+
                 elif provider_quota.quota_type == ProviderQuotaType.PAID and paid_pool is not None:
                     quota_configuration = QuotaConfiguration(
                         quota_type=provider_quota.quota_type,

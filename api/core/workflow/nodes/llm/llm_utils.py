@@ -136,15 +136,16 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-
         if system_configuration.current_quota_type == ProviderQuotaType.TRIAL:
             from services.credit_pool_service import CreditPoolService
+
             CreditPoolService.check_and_deduct_credits(
                 tenant_id=tenant_id,
                 credits_required=used_quota,
             )
         elif system_configuration.current_quota_type == ProviderQuotaType.PAID:
             from services.credit_pool_service import CreditPoolService
+
             CreditPoolService.check_and_deduct_credits(
                 tenant_id=tenant_id,
                 credits_required=used_quota,
