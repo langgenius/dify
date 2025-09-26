@@ -235,3 +235,6 @@ scripts/stress-test/reports/
 # mcp
 .playwright-mcp/
 .serena/
+
+# settings
+*.local.json
