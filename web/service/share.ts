@@ -34,6 +34,7 @@ import type {
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
+import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -286,11 +287,13 @@ export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { c
   return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
 }
 
-export const fetchAccessToken = async ({ userId }: { userId?: string, appCode?: string }) => {
+export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
+  const headers = new Headers()
+  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
   const params = new URLSearchParams()
   userId && params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
-  return get(url) as Promise<{ access_token: string }>
+  return get(url, { headers }) as Promise<{ access_token: string }>
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
