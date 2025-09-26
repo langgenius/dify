@@ -57,7 +57,7 @@ const StartBlocks = ({
     onContentStateChange?.(!isEmpty)
   }, [isEmpty, onContentStateChange])
 
-  const renderBlock = useCallback((block: typeof START_BLOCKS[0]) => (
+  const renderBlock = useCallback((block: { type: BlockEnum; title: string; description?: string }) => (
     <Tooltip
       key={block.type}
       position='right'
@@ -76,7 +76,9 @@ const StartBlocks = ({
               : t(`workflow.blocks.${block.type}`)
             }
           </div>
-          {/* <div className='system-xs-regular text-text-secondary'>{availableNodesMetaData.nodesMap?.[block.type]?.description}</div> */}
+          <div className='system-xs-regular text-text-secondary'>
+            {block.description || availableNodesMetaData.nodesMap?.[block.type]?.description}
+          </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>
               {t('tools.author')} {t('workflow.difyTeam')}

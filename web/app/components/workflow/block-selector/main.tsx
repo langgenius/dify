@@ -52,7 +52,7 @@ export type NodeSelectorProps = {
   noBlocks?: boolean
   noTools?: boolean
   showStartTab?: boolean
-  // defaultActiveTab?: TabsEnum
+  defaultActiveTab?: TabsEnum
   forceShowStartContent?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
@@ -74,7 +74,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   noBlocks = false,
   noTools = false,
   showStartTab = false,
-  // defaultActiveTab,
+  defaultActiveTab,
   forceShowStartContent = false,
 }) => {
   const { t } = useTranslation()
@@ -107,7 +107,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     activeTab,
     setActiveTab,
     tabs,
-  } = useTabs({ noBlocks, noSources: !dataSources.length, noTools, noStart: !showStartTab })
+  } = useTabs({ noBlocks, noSources: !dataSources.length, noTools, noStart: !showStartTab, defaultActiveTab })
 
   const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
     setActiveTab(newActiveTab)

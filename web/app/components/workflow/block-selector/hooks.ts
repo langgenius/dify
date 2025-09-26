@@ -3,39 +3,40 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-// import { BLOCKS, START_BLOCKS } from './constants'
+import { BLOCKS, START_BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
 } from './types'
 
-// export const useBlocks = () => {
-//   const { t } = useTranslation()
+export const useBlocks = () => {
+  const { t } = useTranslation()
 
-//   return BLOCKS.map((block) => {
-//     return {
-//       ...block,
-//       title: t(`workflow.blocks.${block.type}`),
-//     }
-//   })
-// }
+  return BLOCKS.map((block) => {
+    return {
+      ...block,
+      title: t(`workflow.blocks.${block.type}`),
+    }
+  })
+}
 
-// export const useStartBlocks = () => {
-//   const { t } = useTranslation()
+export const useStartBlocks = () => {
+  const { t } = useTranslation()
 
-//   return START_BLOCKS.map((block) => {
-//     return {
-//       ...block,
-//       title: t(`workflow.blocks.${block.type}`),
-//     }
-//   })
-// }
+  return START_BLOCKS.map((block) => {
+    return {
+      ...block,
+      title: t(`workflow.blocks.${block.type}`),
+    }
+  })
+}
 
-export const useTabs = ({ noBlocks, noSources, noTools, noStart = true }: {
+export const useTabs = ({ noBlocks, noSources, noTools, noStart = true, defaultActiveTab }: {
   noBlocks?: boolean
   noSources?: boolean
   noTools?: boolean
   noStart?: boolean
+  defaultActiveTab?: TabsEnum
 }) => {
   const { t } = useTranslation()
   const tabs = useMemo(() => {
@@ -60,6 +61,10 @@ export const useTabs = ({ noBlocks, noSources, noTools, noStart = true }: {
   }, [t, noBlocks, noSources, noTools, noStart])
 
   const initialTab = useMemo(() => {
+    // If a default tab is specified, use it
+    if (defaultActiveTab)
+      return defaultActiveTab
+
     if (noBlocks)
       return noTools ? TabsEnum.Sources : TabsEnum.Tools
 
@@ -67,7 +72,7 @@ export const useTabs = ({ noBlocks, noSources, noTools, noStart = true }: {
       return noBlocks ? TabsEnum.Sources : TabsEnum.Blocks
 
     return TabsEnum.Blocks
-  }, [noBlocks, noSources, noTools])
+  }, [noBlocks, noSources, noTools, defaultActiveTab])
   const [activeTab, setActiveTab] = useState(initialTab)
 
   return {

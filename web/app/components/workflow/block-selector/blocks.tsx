@@ -10,6 +10,7 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import type { NodeDefault } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
+import { useBlocks } from './hooks'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import Badge from '@/app/components/base/badge'
@@ -18,20 +19,36 @@ type BlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
-  blocks: NodeDefault[]
+  blocks?: NodeDefault[]
 }
 const Blocks = ({
   searchText,
   onSelect,
   availableBlocksTypes = [],
-  blocks,
+  blocks: blocksFromProps,
 }: BlocksProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
+  const blocksFromHooks = useBlocks()
+
+  // Use external blocks if provided, otherwise fallback to hook-based blocks
+  const blocks = blocksFromProps || blocksFromHooks.map(block => ({
+    metaData: {
+      classification: block.classification,
+      sort: 0, // Default sort order
+      type: block.type,
+      title: block.title,
+      author: 'Dify',
+      description: block.description,
+    },
+    defaultValue: {},
+    checkValid: () => ({ isValid: true }),
+  }) as NodeDefault)
 
   const groups = useMemo(() => {
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
-      const list = groupBy(blocks, 'metaData.classification')[classification].filter((block) => {
+      const grouped = groupBy(blocks, 'metaData.classification')
+      const list = (grouped[classification] || []).filter((block) => {
         return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })
 
@@ -44,7 +61,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: string) => {
-    const list = groups[classification].sort((a, b) => a.metaData.sort - b.metaData.sort)
+    const list = groups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
