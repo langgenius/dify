@@ -70,6 +70,8 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
 
 const beforeRequestPublicWithCode = (request: Request) => {
   const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  if (shareCode === 'webapp-signin')
+    return
   request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
 }
 
