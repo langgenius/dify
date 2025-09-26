@@ -1656,7 +1656,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const bundledNodes = nodes.filter(
-      node => node.data._isBundled && node.data.type !== BlockEnum.Start,
+      node => node.data._isBundled,
     )
 
     if (bundledNodes.length) {
@@ -1669,7 +1669,7 @@ export const useNodesInteractions = () => {
     if (edgeSelected) return
 
     const selectedNode = nodes.find(
-      node => node.data.selected && node.data.type !== BlockEnum.Start,
+      node => node.data.selected,
     )
 
     if (selectedNode) handleNodeDelete(selectedNode.id)
