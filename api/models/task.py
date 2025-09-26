@@ -8,8 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
 
-from .engine import db
-
 
 class CeleryTask(Base):
     """Task result/status."""
