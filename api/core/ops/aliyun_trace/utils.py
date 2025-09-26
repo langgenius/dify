@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Mapping
 
 from opentelemetry.trace import Link, Status, StatusCode
 
@@ -94,6 +94,7 @@ def create_common_span_attributes(
         OUTPUT_VALUE: outputs,
     }
 
+
 def format_retrieval_documents(retrieval_documents: list) -> list:
     try:
         if not isinstance(retrieval_documents, list):
@@ -137,7 +138,7 @@ def format_retrieval_documents(retrieval_documents: list) -> list:
         return []
 
 
-def format_input_messages(process_data: dict) -> str:
+def format_input_messages(process_data: Mapping[str, Any]) -> str:
     try:
         if not isinstance(process_data, dict):
             return serialize_json_data([])
@@ -170,7 +171,7 @@ def format_input_messages(process_data: dict) -> str:
         return serialize_json_data([])
 
 
-def format_output_messages(outputs: dict) -> str:
+def format_output_messages(outputs: Mapping[str, Any]) -> str:
     try:
         if not isinstance(outputs, dict):
             return serialize_json_data([])
