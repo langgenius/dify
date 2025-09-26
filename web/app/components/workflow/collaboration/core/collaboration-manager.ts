@@ -540,7 +540,8 @@ export class CollaborationManager {
 
     const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
     const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
-    const shouldSyncDataKey = (key: string) => !key.startsWith('_') && key !== 'selected'
+    const syncDataAllowList = new Set(['_children'])
+    const shouldSyncDataKey = (key: string) => (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
 
     // Delete removed nodes
     oldNodes.forEach((oldNode) => {
@@ -549,6 +550,44 @@ export class CollaborationManager {
     })
 
     // Add or update nodes with fine-grained sync for data properties
+    const copyOptionalNodeProps = (source: Node, target: any) => {
+      const optionalProps: Array<keyof Node | keyof any> = [
+        'parentId',
+        'positionAbsolute',
+        'extent',
+        'zIndex',
+        'draggable',
+        'selectable',
+        'dragHandle',
+        'dragging',
+        'connectable',
+        'expandParent',
+        'focusable',
+        'hidden',
+        'style',
+        'className',
+        'ariaLabel',
+        'markerStart',
+        'markerEnd',
+        'resizing',
+        'deletable',
+      ]
+
+      optionalProps.forEach((prop) => {
+        const value = (source as any)[prop]
+        if (value === undefined) {
+          if (prop in target)
+            delete target[prop]
+          return
+        }
+
+        if (value !== null && typeof value === 'object')
+          target[prop as string] = JSON.parse(JSON.stringify(value))
+        else
+          target[prop as string] = value
+      })
+    }
+
     newNodes.forEach((newNode) => {
       const oldNode = oldNodesMap.get(newNode.id)
 
@@ -564,6 +603,8 @@ export class CollaborationManager {
           targetPosition: newNode.targetPosition,
           data: {},
         }
+
+        copyOptionalNodeProps(newNode, nodeData)
 
         // Clone data properties, excluding private ones
         Object.entries(newNode.data).forEach(([key, value]) => {
@@ -591,6 +632,9 @@ export class CollaborationManager {
 
           if (oldNode.height !== newNode.height)
             updatedNode.height = newNode.height
+
+          // Ensure optional node props stay in sync
+          copyOptionalNodeProps(newNode, updatedNode)
 
           // Ensure data object exists
           if (!updatedNode.data)
@@ -631,6 +675,8 @@ export class CollaborationManager {
             targetPosition: newNode.targetPosition,
             data: {},
           }
+
+          copyOptionalNodeProps(newNode, nodeData)
 
           Object.entries(newNode.data).forEach(([key, value]) => {
             if (shouldSyncDataKey(key) && value !== undefined)
