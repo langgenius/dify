@@ -2,7 +2,6 @@ import urllib.parse
 from typing import cast
 
 import httpx
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 
 import services
@@ -16,7 +15,8 @@ from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
-from models.account import Account
+from libs.login import current_user
+from models import Account
 from services.file_service import FileService
 
 

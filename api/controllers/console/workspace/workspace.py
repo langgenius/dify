@@ -25,7 +25,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
-from models.account import Account, Tenant, TenantStatus
+from models import Account, Tenant, TenantStatus
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 from services.file_service import FileService

@@ -29,7 +29,7 @@ from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account, TenantAccountRole
+from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,

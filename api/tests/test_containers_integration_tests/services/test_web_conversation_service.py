@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.account import Account
+from models import Account
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService

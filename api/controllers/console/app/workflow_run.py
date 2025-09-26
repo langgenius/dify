@@ -1,6 +1,5 @@
 from typing import cast
 
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 
@@ -14,7 +13,7 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_fields,
 )
 from libs.helper import uuid_value
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser
 from services.workflow_run_service import WorkflowRunService
 
