@@ -142,7 +142,7 @@ class AccountAvatarApi(Resource):
 
         avatar_url = file_helpers.get_signed_file_url(args["avatar"])
         return {"avatar_url": avatar_url}
-    
+
     @setup_required
     @login_required
     @account_initialization_required
