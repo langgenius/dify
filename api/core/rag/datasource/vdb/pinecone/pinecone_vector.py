@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
-from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -66,8 +66,8 @@ class PineconeVector(BaseVector):
         if not self._index_name:
             self._index_name = f"index-{hashlib.sha256(collection_name.encode()).hexdigest()[:suffix_len]}"
         # Pinecone index handle, lazily initialized
-        self._index: Optional[Any] = None
-        
+        self._index: Any | None = None
+
     def get_type(self) -> str:
         """Return vector database type identifier."""
         return VectorType.PINECONE
@@ -203,12 +203,7 @@ class PineconeVector(BaseVector):
         try:
             index = self._index
             assert index is not None
-            response = index.query(
-                vector=query_vector,
-                top_k=top_k,
-                include_metadata=True,
-                filter=filter_dict
-            )
+            response = index.query(vector=query_vector, top_k=top_k, include_metadata=True, filter=filter_dict)
         except Exception as e:
             raise
 
@@ -326,10 +321,8 @@ class PineconeVectorFactory(AbstractVectorFactory):
 
         # Set index structure
         if not dataset.index_struct_dict:
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.PINECONE, collection_name)
-            )
-        
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PINECONE, collection_name))
+
         # Create PineconeVector instance
         return PineconeVector(
             collection_name=collection_name,
