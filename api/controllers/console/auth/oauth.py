@@ -14,7 +14,12 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from libs.token import set_access_token_to_cookie, set_refresh_token_to_cookie
+from libs.token import (
+    set_access_token_to_cookie, 
+    set_refresh_token_to_cookie, 
+    set_csrf_token_to_cookie, 
+    generate_csrf_token
+)
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -156,9 +161,11 @@ class OAuthCallback(Resource):
             f"{dify_config.CONSOLE_WEB_URL}"
         )
 
+        csrf_token = generate_csrf_token()
+
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
-
+        set_csrf_token_to_cookie(request, response, csrf_token)
         return response
 
 

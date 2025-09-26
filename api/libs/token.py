@@ -2,7 +2,18 @@ from flask import Request
 from werkzeug.wrappers import Response
 
 from configs import dify_config
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_PASSPORT, COOKIE_NAME_REFRESH_TOKEN
+from constants import (
+    COOKIE_NAME_ACCESS_TOKEN, 
+    COOKIE_NAME_PASSPORT, 
+    COOKIE_NAME_REFRESH_TOKEN, 
+    COOKIE_NAME_CSRF_TOKEN,
+    HEADER_NAME_CSRF_TOKEN
+)
+from libs.passport import PassportService
+from datetime import datetime, UTC, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _try_extract_from_header(request: Request) -> str | None:
@@ -20,6 +31,13 @@ def _try_extract_from_header(request: Request) -> str | None:
                 return None
             else:
                 return auth_token
+
+
+def extract_csrf_token(request: Request) -> str | None:
+    """
+    Try to extract CSRF token from header or cookie.
+    """
+    return request.headers.get(HEADER_NAME_CSRF_TOKEN)
 
 
 def extract_access_token(request: Request) -> str | None:
@@ -68,8 +86,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str)
         httponly=True,
         secure=request.is_secure,
         samesite="Lax",
-        # TODO: maybe configurable?
-        max_age=60 * 60 * 24,
+        max_age=int(dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60),
         path="/",
     )
 
@@ -93,42 +110,73 @@ def set_passport_to_cookie(request: Request, response: Response, token: str):
         httponly=True,
         secure=request.is_secure,
         samesite="Lax",
-        max_age=60 * 60 * 24,
+        max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
         path="/",
     )
 
+def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
+    response.set_cookie(
+        COOKIE_NAME_CSRF_TOKEN,
+        value=token,
+        httponly=False,
+        secure=request.is_secure,
+        samesite="Lax",
+        max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
+        path="/",
+    )
+
+
+def _clear_cookie(request: Request, response: Response, cookie_name: str):
+    response.set_cookie(
+        cookie_name,
+        "",
+        expires=0,
+        path="/",
+        secure=request.is_secure,
+        httponly=True,
+        samesite="Lax",
+    )
 
 def clear_webapp_token_from_cookie(request: Request, response: Response):
-    response.set_cookie(
-        COOKIE_NAME_PASSPORT,
-        "",
-        expires=0,
-        path="/",
-        secure=request.is_secure,
-        httponly=True,
-        samesite="Lax",
-    )
-
+    _clear_cookie(request, response, COOKIE_NAME_PASSPORT)
 
 def clear_access_token_from_cookie(request: Request, response: Response):
-    response.set_cookie(
-        COOKIE_NAME_ACCESS_TOKEN,
-        "",
-        expires=0,
-        path="/",
-        secure=request.is_secure,
-        httponly=True,
-        samesite="Lax",
-    )
+    _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN)
 
 
 def clear_refresh_token_from_cookie(request: Request, response: Response):
-    response.set_cookie(
-        COOKIE_NAME_REFRESH_TOKEN,
-        "",
-        expires=0,
-        path="/",
-        secure=request.is_secure,
-        httponly=True,
-        samesite="Lax",
-    )
+    _clear_cookie(request, response, COOKIE_NAME_REFRESH_TOKEN)
+
+def clear_csrf_token_from_cookie(request: Request, response: Response):
+    _clear_cookie(request, response, COOKIE_NAME_CSRF_TOKEN)
+
+
+def check_csrf_token(request: Request):
+    csrf_token = extract_csrf_token(request)
+    def _unauthorized():
+        logger.error("CSRF token is missing.")
+        # TODO: raise
+        # raise Unauthorized("CSRF token is missing.")
+    if not csrf_token:
+        _unauthorized()
+    verified = dict()
+    try:
+        verified = PassportService().verify(csrf_token)
+    except:
+        _unauthorized()
+    
+    exp: int | None = verified.get("exp")
+    if not exp:
+        _unauthorized()
+    else:
+        time_now = int(datetime.now().timestamp())
+        if exp < time_now:
+            _unauthorized()
+
+def generate_csrf_token() -> str:
+    exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "exp": int(exp_dt.timestamp()),
+    }
+    return PassportService().issue(payload)
+

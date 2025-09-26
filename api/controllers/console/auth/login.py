@@ -32,6 +32,9 @@ from libs.token import (
     extract_access_token,
     set_access_token_to_cookie,
     set_refresh_token_to_cookie,
+    set_csrf_token_to_cookie,
+    clear_csrf_token_from_cookie,
+    generate_csrf_token,
 )
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
@@ -39,6 +42,7 @@ from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+
 
 
 class LoginApi(Resource):
@@ -99,10 +103,10 @@ class LoginApi(Resource):
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})
 
-        # Set HTTP-only secure cookies for tokens
-        # Max age is 30 days for refresh token
+        csrf_token = generate_csrf_token()
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+        set_csrf_token_to_cookie(request, response, csrf_token)
 
         return response
 
@@ -242,6 +246,8 @@ class EmailCodeLoginApi(Resource):
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})
 
+        csrf_token = generate_csrf_token()
+        set_csrf_token_to_cookie(request, response, csrf_token)
         # Set HTTP-only secure cookies for tokens
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
@@ -263,6 +269,8 @@ class RefreshTokenApi(Resource):
             response = make_response({"result": "success"})
 
             # Update cookies with new tokens
+            csrf_token = generate_csrf_token()
+            set_csrf_token_to_cookie(request, response, csrf_token)
             set_access_token_to_cookie(request, response, new_token_pair.access_token)
             set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
             return response
