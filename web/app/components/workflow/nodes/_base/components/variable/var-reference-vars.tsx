@@ -18,7 +18,6 @@ import { Type } from '../../../llm/types'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { isSpecialVar, varTypeToStructType } from './utils'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
-import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { noop } from 'lodash-es'
 import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
 import ManageInputField from './manage-input-field'
@@ -106,8 +105,9 @@ const Item: FC<ItemProps> = ({
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
-    const properties: Record<string, Field> = {};
-    (isFile ? FILE_STRUCT : (itemData.children as Var[])).forEach((c) => {
+    const properties: Record<string, Field> = {}
+    const childrenVars = (itemData.children as Var[]) || []
+    childrenVars.forEach((c) => {
       properties[c.variable] = {
         type: varTypeToStructType(c.type),
       }
@@ -120,7 +120,7 @@ const Item: FC<ItemProps> = ({
         additionalProperties: false,
       },
     }
-  }, [isFile, isObj, itemData.children])
+  }, [isObj, itemData.children])
 
   const structuredOutput = (() => {
     if (isStructureOutput)
@@ -448,4 +448,5 @@ const VarReferenceVars: FC<Props> = ({
     </>
   )
 }
+
 export default React.memo(VarReferenceVars)

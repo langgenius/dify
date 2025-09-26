@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
 from controllers.console import api
 from controllers.console.app.error import (
     ConversationCompletedError,
@@ -609,18 +608,6 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         return rag_pipeline_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
-class RagPipelineConfigApi(Resource):
-    """Resource for rag pipeline configuration."""
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, pipeline_id):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
-        }
-
-
 class PublishedAllRagPipelineApi(Resource):
     @setup_required
     @login_required
@@ -984,10 +971,6 @@ class RagPipelineRecommendedPluginApi(Resource):
 api.add_resource(
     DraftRagPipelineApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft",
-)
-api.add_resource(
-    RagPipelineConfigApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/config",
 )
 api.add_resource(
     DraftRagPipelineRunApi,
