@@ -27,7 +27,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 

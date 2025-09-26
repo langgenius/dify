@@ -29,7 +29,6 @@ from core.variables import (
     ObjectVariable,
     StringVariable,
 )
-from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
@@ -40,6 +39,7 @@ from core.workflow.graph_events import (
     GraphRunSucceededEvent,
 )
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
 from .test_mock_config import MockConfig

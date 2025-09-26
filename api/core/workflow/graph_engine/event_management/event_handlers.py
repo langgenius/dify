@@ -29,6 +29,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.runtime import GraphRuntimeState
 
 from ..domain.graph_execution import GraphExecution
 from ..response_coordinator import ResponseStreamCoordinator

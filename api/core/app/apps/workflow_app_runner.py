@@ -25,7 +25,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphEngineEvent,
@@ -54,6 +54,7 @@ from core.workflow.graph_events.graph import GraphRunAbortedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
