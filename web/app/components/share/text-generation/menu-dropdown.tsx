@@ -48,7 +48,8 @@ const MenuDropdown: FC<Props> = ({
     setOpen(!openRef.current)
   }, [setOpen])
 
-  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const shareCode = useWebAppStore(s => s.shareCode)
+  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const handleLogout = useCallback(async () => {
     await webAppLogout()
     router.replace(`/webapp-signin?redirect_url=${pathname}`)

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation()
+  const shareCode = useWebAppStore(s => s.shareCode)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
@@ -41,7 +42,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams, pathname])
 
-  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const backToHome = useCallback(async () => {
     await webAppLogout()
     const url = getSigninUrl()

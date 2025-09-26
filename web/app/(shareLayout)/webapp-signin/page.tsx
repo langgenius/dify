@@ -26,7 +26,8 @@ const WebSSOForm: FC = () => {
     return `/webapp-signin?${params.toString()}`
   }, [redirectUrl])
 
-  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const shareCode = useWebAppStore(s => s.shareCode)
+  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const backToHome = useCallback(async () => {
     await webAppLogout()
     const url = getSigninUrl()

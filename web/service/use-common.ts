@@ -140,9 +140,9 @@ export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
   })
 }
 
-export const useWebAppLogout = () => {
+export const useWebAppLogout = (shareCode: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'webapp-logout'],
-    mutationFn: () => postPublic('/logout'),
+    mutationFn: () => postPublic(`/logout?app_code=${shareCode}`),
   })
 }

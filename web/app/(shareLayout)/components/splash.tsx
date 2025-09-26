@@ -26,7 +26,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
-  const { mutateAsync: webAppLogout } = useWebAppLogout()
+  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const backToHome = useCallback(async () => {
     await webAppLogout()
     const url = getSigninUrl()
