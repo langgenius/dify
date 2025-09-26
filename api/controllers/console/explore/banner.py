@@ -13,7 +13,7 @@ class BannerApi(Resource):
     def get(self):
         """Get banner list."""
         banners = (
-            db.session.query(ExporleBanner).filter(ExporleBanner.status == "enabled").order_by(ExporleBanner.sort).all()
+            db.session.query(ExporleBanner).where(ExporleBanner.status == "enabled").order_by(ExporleBanner.sort).all()
         )
 
         # Convert banners to serializable format
