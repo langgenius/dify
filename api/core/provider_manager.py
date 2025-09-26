@@ -629,7 +629,7 @@ class ProviderManager:
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM.value,
                                 quota_type=ProviderQuotaType.TRIAL.value,
-                                quota_limit=quota.quota_limit,  # type: ignore
+                                quota_limit=0,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
                             )
@@ -912,6 +912,16 @@ class ProviderManager:
                 provider_record
             )
         quota_configurations = []
+
+        if dify_config.EDITION == "CLOUD":
+            from services.credit_pool_service import CreditPoolService
+
+            pool = CreditPoolService.get_or_create_pool(
+                tenant_id=tenant_id,
+            )
+        else:
+            pool = None
+
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
                 if provider_quota.quota_type == ProviderQuotaType.FREE:
@@ -932,16 +942,26 @@ class ProviderManager:
                     raise ValueError("quota_used is None")
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
+                if provider_quota.quota_type == ProviderQuotaType.TRIAL and pool is not None:
+                    quota_configuration = QuotaConfiguration(
+                        quota_type=provider_quota.quota_type,
+                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                        quota_used=pool.quota_used,
+                        quota_limit=pool.quota_limit,
+                        is_valid=pool.quota_limit > pool.quota_used or pool.quota_limit == -1,
+                        restrict_models=provider_quota.restrict_models,
+                    )
 
-                quota_configuration = QuotaConfiguration(
-                    quota_type=provider_quota.quota_type,
-                    quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                    quota_used=provider_record.quota_used,
-                    quota_limit=provider_record.quota_limit,
-                    is_valid=provider_record.quota_limit > provider_record.quota_used
-                    or provider_record.quota_limit == -1,
-                    restrict_models=provider_quota.restrict_models,
-                )
+                else:
+                    quota_configuration = QuotaConfiguration(
+                        quota_type=provider_quota.quota_type,
+                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                        quota_used=provider_record.quota_used,
+                        quota_limit=provider_record.quota_limit,
+                        is_valid=provider_record.quota_limit > provider_record.quota_used
+                        or provider_record.quota_limit == -1,
+                        restrict_models=provider_quota.restrict_models,
+                    )
 
             quota_configurations.append(quota_configuration)
 
