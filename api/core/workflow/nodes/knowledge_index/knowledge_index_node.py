@@ -15,7 +15,7 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template
-from core.workflow.runtime.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 

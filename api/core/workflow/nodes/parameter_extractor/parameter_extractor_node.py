@@ -33,7 +33,7 @@ from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import ModelConfig, llm_utils
-from core.workflow.runtime.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
