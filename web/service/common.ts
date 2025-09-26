@@ -84,8 +84,8 @@ export const updateUserProfile: Fetcher<CommonResponse, { url: string; body: Rec
   return post<CommonResponse>(url, { body })
 }
 
-export const logout: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<CommonResponse>(url, params)
+export const logout: Fetcher<CommonResponse, { url: string; body?: Record<string, any>; params?: Record<string, any> }> = ({ url, body }) => {
+  return post<CommonResponse>(url, { body: body ?? {} })
 }
 
 export const fetchLangGeniusVersion: Fetcher<LangGeniusVersionResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
