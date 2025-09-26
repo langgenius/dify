@@ -2,8 +2,8 @@ from time import time
 
 import pytest
 
-from core.workflow.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
+from core.workflow.runtime.variable_pool import VariablePool
 
 
 class TestGraphRuntimeState:

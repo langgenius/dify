@@ -19,7 +19,6 @@ from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -27,6 +26,7 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
+from core.workflow.runtime.variable_pool import VariablePool
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import UploadFile

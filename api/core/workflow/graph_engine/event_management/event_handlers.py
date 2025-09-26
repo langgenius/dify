@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, final
 
-from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import ErrorStrategy, NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
@@ -28,6 +27,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.runtime import GraphRuntimeState
 
 from ..domain.graph_execution import GraphExecution
 from ..response_coordinator import ResponseStreamCoordinator

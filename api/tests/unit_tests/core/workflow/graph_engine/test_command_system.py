@@ -3,12 +3,12 @@
 import time
 from unittest.mock import MagicMock
 
-from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand
 from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunStartedEvent
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
 def test_abort_command():

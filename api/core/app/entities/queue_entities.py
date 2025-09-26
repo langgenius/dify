@@ -7,9 +7,10 @@ from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit, GraphRuntimeState
+from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes import NodeType
+from core.workflow.runtime import GraphRuntimeState
 
 
 class QueueEvent(StrEnum):

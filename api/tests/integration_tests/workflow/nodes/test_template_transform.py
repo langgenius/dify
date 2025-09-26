@@ -4,11 +4,12 @@ import uuid
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
