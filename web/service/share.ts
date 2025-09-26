@@ -251,8 +251,8 @@ export const updateFeedback = async ({ url, body }: { url: string; body: Feedbac
 }
 
 export const fetchMoreLikeThis = async (messageId: string, isInstalledApp: boolean, installedAppId = '') => {
-  return (getAction('get', isInstalledApp))(getUrl(`/messages/${messageId}/more-like-this`, isInstalledApp, installedAppId), {
-    params: {
+  return (getAction('post', isInstalledApp))(getUrl(`/messages/${messageId}/more-like-this`, isInstalledApp, installedAppId), {
+    body: {
       response_mode: 'blocking',
     },
   })

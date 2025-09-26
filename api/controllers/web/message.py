@@ -169,12 +169,6 @@ class MessageMoreLikeThisApi(WebApiResource):
     @web_ns.doc(
         params={
             "message_id": {"description": "Message UUID", "type": "string", "required": True},
-            "response_mode": {
-                "description": "Response mode",
-                "type": "string",
-                "enum": ["blocking", "streaming"],
-                "required": True,
-            },
         }
     )
     @web_ns.doc(
@@ -187,7 +181,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id):
+    def post(self, app_model, end_user, message_id):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -195,7 +189,12 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
+            "response_mode",
+            type=str,
+            required=False,
+            choices=["blocking", "streaming"],
+            default="blocking",
+            location="json",
         )
         args = parser.parse_args()
 
