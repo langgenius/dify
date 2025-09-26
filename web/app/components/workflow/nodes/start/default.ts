@@ -7,7 +7,7 @@ const metaData = genNodeMetaData({
   sort: 0.1,
   type: BlockEnum.Start,
   isStart: true,
-  isRequired: true,
+  isRequired: false,
   isSingleton: true,
   isTypeFixed: true,
 })

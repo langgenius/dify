@@ -173,10 +173,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
     isRequiredNodesType.forEach((type: string) => {
-      // Skip Start node requirement since we already check for any start/trigger nodes above
-      if (type === BlockEnum.Start)
-        return
-
       if (!filteredNodes.find(node => node.data.type === type)) {
         list.push({
           id: `${type}-need-added`,
@@ -339,10 +335,6 @@ export const useChecklistBeforePublish = () => {
 
     for (let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]
-
-      // Skip Start node requirement since we already check for any start/trigger nodes above
-      if (type === BlockEnum.Start)
-        continue
 
       if (!filteredNodes.find(node => node.data.type === type)) {
         notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
