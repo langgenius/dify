@@ -171,6 +171,14 @@ const translation = {
       title: 'نظارت بر ابر',
       description: 'پلتفرم مشاهده‌پذیری کاملاً مدیریت‌شده و بدون نیاز به نگهداری که توسط Alibaba Cloud ارائه شده، امکان نظارت، ردیابی و ارزیابی برنامه‌های Dify را به‌صورت آماده و با تنظیمات اولیه فراهم می‌کند.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'پلتفرم LLMOps متن‌باز برای ردیابی آزمایش‌ها، مشاهده‌پذیری و ارزیابی، برای ساخت برنامه‌های AI/LLM با اطمینان.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks MLflow کاملاً مدیریت‌شده با حکمرانی و امنیت قوی برای ذخیره‌سازی داده‌های ردیابی ارائه می‌دهد.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'آیا از نماد web app برای جایگزینی 🤖 در Explore استفاده کنیم یا خیر',
