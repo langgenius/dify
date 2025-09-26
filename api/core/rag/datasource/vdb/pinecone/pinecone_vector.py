@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
@@ -62,11 +63,12 @@ class PineconeVector(BaseVector):
         # Guard empty name
         if not self._index_name:
             self._index_name = f"index-{hashlib.sha256(collection_name.encode()).hexdigest()[:suffix_len]}"
-        self._index = None
+        # Pinecone index handle, lazily initialized
+        self._index: Optional[Any] = None
         
     def get_type(self) -> str:
-        """Return vector database type identifier"""
-        return "pinecone"
+        """Return vector database type identifier."""
+        return VectorType.PINECONE
 
     def _ensure_index_initialized(self) -> None:
         """Ensure that self._index is attached to an existing Pinecone index."""
@@ -211,7 +213,9 @@ class PineconeVector(BaseVector):
 
         # Execute search
         try:
-            response = self._index.query(
+            index = self._index
+            assert index is not None
+            response = index.query(
                 vector=query_vector,
                 top_k=top_k,
                 include_metadata=True,
@@ -257,7 +261,9 @@ class PineconeVector(BaseVector):
             }
 
             # Pinecone delete operation
-            self._index.delete(filter=filter_dict)
+            index = self._index
+            assert index is not None
+            index.delete(filter=filter_dict)
         except Exception as e:
             # Ignore delete errors
             pass
@@ -268,7 +274,9 @@ class PineconeVector(BaseVector):
 
         try:
             # Pinecone delete by ID
-            self._index.delete(ids=ids)
+            index = self._index
+            assert index is not None
+            index.delete(ids=ids)
         except Exception as e:
             raise
     
@@ -279,7 +287,9 @@ class PineconeVector(BaseVector):
         try:
             # Delete all vectors by group_id
             filter_dict = {Field.GROUP_KEY.value: {"$eq": self._group_id}}
-            self._index.delete(filter=filter_dict)
+            index = self._index
+            assert index is not None
+            index.delete(filter=filter_dict)
         except Exception as e:
             raise
     
@@ -292,7 +302,9 @@ class PineconeVector(BaseVector):
 
         try:
             # Check if vector exists through query
-            response = self._index.fetch(ids=[id])
+            index = self._index
+            assert index is not None
+            response = index.fetch(ids=[id])
             exists = id in response.vectors
             return exists
         except Exception as e:
@@ -327,7 +339,7 @@ class PineconeVectorFactory(AbstractVectorFactory):
         # Set index structure
         if not dataset.index_struct_dict:
             dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict("pinecone", collection_name)
+                self.gen_index_struct_dict(VectorType.PINECONE, collection_name)
             )
         
         # Create PineconeVector instance
