@@ -7,6 +7,7 @@ import { isValidParameterType } from './utils/parameter-type-utils'
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.TriggerWebhook,
+  isStart: true,
 })
 
 const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
@@ -23,6 +24,14 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     response_body: '',
   },
   checkValid(payload: WebhookTriggerNodeType, t: any) {
+    // Require webhook_url to be configured
+    if (!payload.webhook_url || payload.webhook_url.trim() === '') {
+      return {
+        isValid: false,
+        errorMessage: t('workflow.nodes.triggerWebhook.validation.webhookUrlRequired'),
+      }
+    }
+
     // Validate parameter types for params and body
     const parametersWithTypes = [
       ...(payload.params || []),

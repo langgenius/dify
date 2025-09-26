@@ -6,6 +6,7 @@ import type { PluginTriggerNodeType } from './types'
 const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.TriggerPlugin,
+  isStart: true,
 })
 
 const nodeDefault: NodeDefault<PluginTriggerNodeType> = {

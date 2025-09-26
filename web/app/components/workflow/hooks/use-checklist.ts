@@ -27,10 +27,10 @@ import {
 } from '../constants'
 import {
   useGetToolIcon,
+  useNodesMetaData,
 } from '../hooks'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
-import { useNodesMetaData } from './use-nodes-meta-data'
 import { useToastContext } from '@/app/components/base/toast'
 import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
@@ -132,10 +132,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
         // Start nodes and Trigger nodes should not show unConnected error if they have validation errors
         // or if they are valid start nodes (even without incoming connections)
-        const isStartNode = node.data.type === BlockEnum.Start
-          || node.data.type === BlockEnum.TriggerSchedule
-          || node.data.type === BlockEnum.TriggerWebhook
-          || node.data.type === BlockEnum.TriggerPlugin
+        const isStartNode = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart || false
 
         const isUnconnected = !validNodes.find(n => n.id === node.id)
         const shouldShowError = errorMessage || (isUnconnected && !isStartNode)

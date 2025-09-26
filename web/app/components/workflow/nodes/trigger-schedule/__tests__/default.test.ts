@@ -34,15 +34,11 @@ describe('Schedule Trigger Node Default', () => {
       expect(nodeDefault.defaultValue.frequency).toBe('daily')
     })
 
-    it('should have empty prev nodes', () => {
-      const prevNodes = nodeDefault.getAvailablePrevNodes(false)
-      expect(prevNodes).toEqual([])
-    })
-
-    it('should have available next nodes excluding Start', () => {
-      const nextNodes = nodeDefault.getAvailableNextNodes(false)
-      expect(nextNodes).toBeDefined()
-      expect(nextNodes.length).toBeGreaterThan(0)
+    it('should have correct metadata for trigger node', () => {
+      expect(nodeDefault.metaData).toBeDefined()
+      expect(nodeDefault.metaData.type).toBe('trigger-schedule')
+      expect(nodeDefault.metaData.sort).toBe(2)
+      expect(nodeDefault.metaData.isStart).toBe(true)
     })
   })
 
