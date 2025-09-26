@@ -24,5 +24,4 @@ class PineconeVectorTest(AbstractVectorTest):
 
 
 def test_pinecone_vector():
-
     PineconeVectorTest().run_all_tests()

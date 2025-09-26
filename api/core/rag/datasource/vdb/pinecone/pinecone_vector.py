@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Any, Optional
+from typing import Any
 
 from pinecone import Pinecone, ServerlessSpec
 from pydantic import BaseModel
@@ -19,9 +19,10 @@ from models.dataset import Dataset, DatasetCollectionBinding
 
 class PineconeConfig(BaseModel):
     """Pinecone configuration class"""
+
     api_key: str
     environment: str
-    index_name: Optional[str] = None
+    index_name: str | None = None
     timeout: float = 30
     batch_size: int = 100
     metric: str = "cosine"
@@ -49,14 +50,15 @@ class PineconeVector(BaseVector):
         # Normalize index name: lowercase, only a-z0-9- and <=45 chars
         import hashlib
         import re
+
         base_name = collection_name.lower()
-        base_name = re.sub(r'[^a-z0-9-]+', '-', base_name)  # replace invalid chars with '-'
-        base_name = re.sub(r'-+', '-', base_name).strip('-')
+        base_name = re.sub(r"[^a-z0-9-]+", "-", base_name)  # replace invalid chars with '-'
+        base_name = re.sub(r"-+", "-", base_name).strip("-")
         # Use longer secure suffix to reduce collision risk
         suffix_len = 24  # 24 hex digits (96-bit entropy)
         if len(base_name) > 45:
             hash_suffix = hashlib.sha256(base_name.encode()).hexdigest()[:suffix_len]
-            truncated_name = base_name[:45 - (suffix_len + 1)].rstrip('-')
+            truncated_name = base_name[: 45 - (suffix_len + 1)].rstrip("-")
             self._index_name = f"{truncated_name}-{hash_suffix}"
         else:
             self._index_name = base_name
@@ -81,14 +83,11 @@ class PineconeVector(BaseVector):
             else:
                 raise ValueError("Index not initialized. Please ingest documents to create index.")
         except Exception:
-            raise 
+            raise
 
     def to_index_struct(self) -> dict:
         """Generate index structure dictionary"""
-        return {
-            "type": self.get_type(),
-            "vector_store": {"class_prefix": self._collection_name}
-        }
+        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """Create vector index"""
@@ -122,14 +121,11 @@ class PineconeVector(BaseVector):
                     name=self._index_name,
                     dimension=dimension,
                     metric=self._client_config.metric,
-                    spec=ServerlessSpec(
-                        cloud='aws',
-                        region=self._client_config.environment
-                    )
+                    spec=ServerlessSpec(cloud="aws", region=self._client_config.environment),
                 )
 
                 # Wait for index creation to complete
-                while not self._pc.describe_index(self._index_name).status['ready']:
+                while not self._pc.describe_index(self._index_name).status["ready"]:
                     time.sleep(1)
             else:
                 # Get index instance
@@ -137,7 +133,7 @@ class PineconeVector(BaseVector):
 
             # Set cache
             redis_client.set(index_exist_cache_key, 1, ex=3600)
-    
+
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """Batch add document vectors"""
         if not self._index:
@@ -152,9 +148,9 @@ class PineconeVector(BaseVector):
         # Batch processing
         total_batches = (total_docs + batch_size - 1) // batch_size  # Ceiling division
         for batch_idx, i in enumerate(range(0, len(documents), batch_size), 1):
-            batch_documents = documents[i:i + batch_size]
-            batch_embeddings = embeddings[i:i + batch_size]
-            batch_uuids = uuids[i:i + batch_size]
+            batch_documents = documents[i : i + batch_size]
+            batch_embeddings = embeddings[i : i + batch_size]
+            batch_uuids = uuids[i : i + batch_size]
             batch_size_actual = len(batch_documents)
 
             # Build Pinecone vector data (metadata must be primitives or list[str])
@@ -164,12 +160,8 @@ class PineconeVector(BaseVector):
                 safe_meta: dict[str, Any] = {}
                 # lift common identifiers to top-level fields for filtering
                 for k, v in raw_meta.items():
-                    if (
-                        isinstance(v, (str, int, float, bool))
-                        or (
-                            isinstance(v, list)
-                            and all(isinstance(x, str) for x in v)
-                        )
+                    if isinstance(v, (str, int, float, bool)) or (
+                        isinstance(v, list) and all(isinstance(x, str) for x in v)
                     ):
                         safe_meta[k] = v
                     else:
@@ -180,11 +172,7 @@ class PineconeVector(BaseVector):
                 # group id as string
                 safe_meta[Field.GROUP_KEY.value] = str(self._group_id)
 
-                vectors_to_upsert.append({
-                    "id": doc_id,
-                    "values": embedding,
-                    "metadata": safe_meta
-                })
+                vectors_to_upsert.append({"id": doc_id, "values": embedding, "metadata": safe_meta})
 
             # Batch insert to Pinecone
             try:
@@ -194,7 +182,7 @@ class PineconeVector(BaseVector):
                 raise
 
         return added_ids
-    
+
     def search_by_vector(self, query_vector: list[float], **kwargs) -> list[Document]:
         """Vector similarity search"""
         # Lazily attach to an existing index if needed
@@ -244,11 +232,11 @@ class PineconeVector(BaseVector):
         docs.sort(key=lambda x: x.metadata.get("score", 0), reverse=True)
 
         return docs
-    
+
     def search_by_full_text(self, query: str, **kwargs) -> list[Document]:
         """Full-text search - Pinecone does not natively support it, returns empty list"""
         return []
-    
+
     def delete_by_metadata_field(self, key: str, value: str):
         """Delete by metadata field"""
         self._ensure_index_initialized()
@@ -257,7 +245,7 @@ class PineconeVector(BaseVector):
             # Build filter conditions
             filter_dict = {
                 Field.GROUP_KEY.value: {"$eq": self._group_id},
-                f"{Field.METADATA_KEY.value}.{key}": {"$eq": value}
+                f"{Field.METADATA_KEY.value}.{key}": {"$eq": value},
             }
 
             # Pinecone delete operation
@@ -267,7 +255,7 @@ class PineconeVector(BaseVector):
         except Exception as e:
             # Ignore delete errors
             pass
-    
+
     def delete_by_ids(self, ids: list[str]) -> None:
         """Batch delete by ID list"""
         self._ensure_index_initialized()
@@ -279,7 +267,7 @@ class PineconeVector(BaseVector):
             index.delete(ids=ids)
         except Exception as e:
             raise
-    
+
     def delete(self) -> None:
         """Delete all vector data for the entire dataset"""
         self._ensure_index_initialized()
@@ -292,7 +280,7 @@ class PineconeVector(BaseVector):
             index.delete(filter=filter_dict)
         except Exception as e:
             raise
-    
+
     def text_exists(self, id: str) -> bool:
         """Check if document exists"""
         try:
@@ -313,10 +301,10 @@ class PineconeVector(BaseVector):
 
 class PineconeVectorFactory(AbstractVectorFactory):
     """Pinecone vector database factory class"""
-    
+
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PineconeVector:
         """Create PineconeVector instance"""
-        
+
         # Determine index name
         if dataset.collection_binding_id:
             dataset_collection_binding = (
@@ -335,7 +323,7 @@ class PineconeVectorFactory(AbstractVectorFactory):
             else:
                 dataset_id = dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-        
+
         # Set index structure
         if not dataset.index_struct_dict:
             dataset.index_struct = json.dumps(
