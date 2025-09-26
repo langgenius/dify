@@ -2,12 +2,12 @@ import logging
 from typing import Optional
 
 from sqlalchemy import update
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
 from extensions.ext_database import db
 from models import TenantCreditPool
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 

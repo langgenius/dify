@@ -930,7 +930,7 @@ class ProviderManager:
                     raise ValueError("quota_used is None")
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
-                if provider_quota.quota_type == ProviderQuotaType.TRIAL  and trail_pool is not None:
+                if provider_quota.quota_type == ProviderQuotaType.TRIAL and trail_pool is not None:
                     quota_configuration = QuotaConfiguration(
                         quota_type=provider_quota.quota_type,
                         quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
@@ -940,7 +940,7 @@ class ProviderManager:
                         restrict_models=provider_quota.restrict_models,
                     )
                 
-                elif provider_quota.quota_type == ProviderQuotaType.PAID  and paid_pool is not None:
+                elif provider_quota.quota_type == ProviderQuotaType.PAID and paid_pool is not None:
                     quota_configuration = QuotaConfiguration(
                         quota_type=provider_quota.quota_type,
                         quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
