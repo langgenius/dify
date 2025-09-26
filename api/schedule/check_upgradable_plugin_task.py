@@ -8,6 +8,7 @@ from models.account import TenantPluginAutoUpgradeStrategy
 from tasks.process_tenant_plugin_autoupgrade_check_task import process_tenant_plugin_autoupgrade_check_task
 
 AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL = 15 * 60  # 15 minutes
+MAX_CONCURRENT_CHECK_TASKS = 20
 
 
 @app.celery.task(queue="plugin")
@@ -30,15 +31,28 @@ def check_upgradable_plugin_task():
         .all()
     )
 
-    for strategy in strategies:
-        process_tenant_plugin_autoupgrade_check_task.delay(
-            strategy.tenant_id,
-            strategy.strategy_setting,
-            strategy.upgrade_time_of_day,
-            strategy.upgrade_mode,
-            strategy.exclude_plugins,
-            strategy.include_plugins,
-        )
+    total_strategies = len(strategies)
+    click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
+
+    batch_chunk_count = (
+        total_strategies // MAX_CONCURRENT_CHECK_TASKS + 1
+    )  # make sure all strategies are checked in this interval
+    batch_interval_time = AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL // batch_chunk_count
+
+    for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
+        batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
+        for strategy in batch_strategies:
+            process_tenant_plugin_autoupgrade_check_task.delay(
+                strategy.tenant_id,
+                strategy.strategy_setting,
+                strategy.upgrade_time_of_day,
+                strategy.upgrade_mode,
+                strategy.exclude_plugins,
+                strategy.include_plugins,
+            )
+
+        if batch_chunk_count > 0.0001:
+            time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()
     click.echo(
