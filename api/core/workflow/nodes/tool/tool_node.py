@@ -79,7 +79,7 @@ class ToolNode(Node):
             # But for backward compatibility with historical data
             # this version field judgment is still preserved here.
             variable_pool: VariablePool | None = None
-            if node_data.version != "1" or node_data.tool_node_version != "1":
+            if node_data.version != "1" or node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self._node_id, self._node_data, self.invoke_from, variable_pool
