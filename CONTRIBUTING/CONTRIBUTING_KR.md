@@ -6,7 +6,7 @@ Dify에 기여하려고 하시는군요 - 정말 멋집니다, 당신이 무엇�
 
 이 가이드는 Dify 자체와 마찬가지로 끊임없이 진행 중인 작업입니다. 때로는 실제 프로젝트보다 뒤처질 수 있다는 점을 이해해 주시면 감사하겠으며, 개선을 위한 피드백은 언제든지 환영합니다.
 
-라이센스 측면에서, 간략한 [라이센스 및 기여자 동의서](./LICENSE)를 읽어보는 시간을 가져주세요. 커뮤니티는 또한 [행동 강령](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)을 준수합니다.
+라이센스 측면에서, 간략한 [라이센스 및 기여자 동의서](../LICENSE)를 읽어보는 시간을 가져주세요. 커뮤니티는 또한 [행동 강령](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)을 준수합니다.
 
 ## 시작하기 전에
 

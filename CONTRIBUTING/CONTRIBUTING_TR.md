@@ -6,7 +6,7 @@ Bulunduğumuz noktada çevik olmamız ve hızlı hareket etmemiz gerekiyor, anca
 
 Bu rehber, Dify'ın kendisi gibi, sürekli gelişen bir çalışmadır. Bazen gerçek projenin gerisinde kalırsa anlayışınız için çok minnettarız ve gelişmemize yardımcı olacak her türlü geri bildirimi memnuniyetle karşılıyoruz.
 
-Lisanslama konusunda, lütfen kısa [Lisans ve Katkıda Bulunan Anlaşmamızı](./LICENSE) okumak için bir dakikanızı ayırın. Topluluk ayrıca [davranış kurallarına](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md) da uyar.
+Lisanslama konusunda, lütfen kısa [Lisans ve Katkıda Bulunan Anlaşmamızı](../LICENSE) okumak için bir dakikanızı ayırın. Topluluk ayrıca [davranış kurallarına](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md) da uyar.
 
 ## Başlamadan Önce
 
