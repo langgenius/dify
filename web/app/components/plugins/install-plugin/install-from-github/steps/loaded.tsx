@@ -7,6 +7,7 @@ import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
 import { updateFromGitHub } from '@/service/plugins'
+import Switch from '@/app/components/base/switch'
 import { useInstallPackageFromGitHub } from '@/service/use-plugins'
 import { RiLoader2Line } from '@remixicon/react'
 import { usePluginTaskList } from '@/service/use-plugins'
@@ -55,6 +56,7 @@ const Loaded: React.FC<LoadedProps> = ({
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
+  const [blueGreen, setBlueGreen] = React.useState(false)
   const { handleRefetch } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
@@ -79,6 +81,7 @@ const Loaded: React.FC<LoadedProps> = ({
           selectedPackage,
           updatePayload.originalPackageInfo.id,
           uniqueIdentifier,
+          blueGreen,
         )
 
         taskId = task_id
@@ -95,6 +98,7 @@ const Loaded: React.FC<LoadedProps> = ({
             selectedPackage,
             installedInfoPayload.uniqueIdentifier,
             uniqueIdentifier,
+            blueGreen,
           )
           taskId = task_id
           isInstalled = all_installed
@@ -105,6 +109,7 @@ const Loaded: React.FC<LoadedProps> = ({
             selectedVersion,
             selectedPackage,
             uniqueIdentifier,
+            blueGreen,
           })
 
           taskId = task_id
@@ -155,6 +160,12 @@ const Loaded: React.FC<LoadedProps> = ({
             toInstallVersion={toInstallVersion}
           />}
         />
+      </div>
+      <div className='mt-4 flex items-center justify-between self-stretch'>
+        <div className='system-md-regular text-text-secondary'>
+          {t('plugin.installModal.blueGreenInstall')}
+        </div>
+        <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
       </div>
       <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
         {!isInstalling && (

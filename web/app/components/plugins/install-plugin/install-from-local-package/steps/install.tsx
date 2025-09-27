@@ -5,12 +5,13 @@ import { type PluginDeclaration, TaskStatus } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
+import Switch from '@/app/components/base/switch'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import checkTaskStatus from '../../base/check-task-status'
 import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { uninstallPlugin } from '@/service/plugins'
+import { updateFromLocalPackage } from '@/service/plugins'
 import Version from '../../base/version'
 import { useAppContext } from '@/context/app-context'
 import { gte } from 'semver'
@@ -52,6 +53,7 @@ const Installed: FC<Props> = ({
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
+  const [blueGreen, setBlueGreen] = React.useState(false)
 
   const {
     check,
@@ -70,15 +72,18 @@ const Installed: FC<Props> = ({
     onStartToInstall?.()
 
     try {
-      if (hasInstalled)
-        await uninstallPlugin(installedInfoPayload.installedId)
-
-      const {
-        all_installed,
-        task_id,
-      } = await installPackageFromLocal(uniqueIdentifier)
-      const taskId = task_id
-      const isInstalled = all_installed
+      let isInstalled: boolean
+      let taskId: string
+      if (hasInstalled) {
+        const { all_installed, task_id } = await updateFromLocalPackage(installedInfoPayload.uniqueIdentifier, uniqueIdentifier, blueGreen)
+        isInstalled = all_installed
+        taskId = task_id
+      }
+      else {
+        const { all_installed, task_id } = await installPackageFromLocal({ uniqueIdentifier, blueGreen })
+        isInstalled = all_installed
+        taskId = task_id
+      }
 
       if (isInstalled) {
         onInstalled()
@@ -138,6 +143,12 @@ const Installed: FC<Props> = ({
               toInstallVersion={toInstallVersion}
             />}
           />
+        </div>
+        <div className='flex w-full items-center justify-between px-2'>
+          <div className='system-md-regular text-text-secondary'>
+            {t('plugin.installModal.blueGreenInstall')}
+          </div>
+          <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
         </div>
       </div>
       {/* Action Buttons */}

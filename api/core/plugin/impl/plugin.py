@@ -96,6 +96,7 @@ class PluginInstaller(BasePluginClient):
         identifiers: Sequence[str],
         source: PluginInstallationSource,
         metas: list[dict],
+        blue_green: bool = False,
     ) -> PluginInstallTaskStartResponse:
         """
         Install a plugin from an identifier.
@@ -109,6 +110,7 @@ class PluginInstaller(BasePluginClient):
                 "plugin_unique_identifiers": identifiers,
                 "source": source,
                 "metas": metas,
+                "blue_green": blue_green,
             },
             headers={"Content-Type": "application/json"},
         )
@@ -202,6 +204,17 @@ class PluginInstaller(BasePluginClient):
             headers={"Content-Type": "application/json"},
         )
 
+    def fetch_runtime_connections(self, tenant_id: str, plugin_id: str | None = None) -> dict:
+        params = {}
+        if plugin_id:
+            params["plugin_id"] = plugin_id
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/runtime/connections",
+            dict,
+            params=params,
+        )
+
     def fetch_missing_dependencies(
         self, tenant_id: str, plugin_unique_identifiers: list[str]
     ) -> list[MissingPluginDependency]:
@@ -237,6 +250,7 @@ class PluginInstaller(BasePluginClient):
         new_plugin_unique_identifier: str,
         source: PluginInstallationSource,
         meta: dict,
+        blue_green: bool = False,
     ) -> PluginInstallTaskStartResponse:
         """
         Upgrade a plugin.
@@ -250,6 +264,7 @@ class PluginInstaller(BasePluginClient):
                 "new_plugin_unique_identifier": new_plugin_unique_identifier,
                 "source": source,
                 "meta": meta,
+                "blue_green": blue_green,
             },
             headers={"Content-Type": "application/json"},
         )

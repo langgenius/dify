@@ -6,6 +6,7 @@ import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../t
 import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
+import Switch from '@/app/components/base/switch'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
@@ -48,6 +49,7 @@ const Installed: FC<Props> = ({
   const hasInstalled = !!installedVersion
 
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const [blueGreen, setBlueGreen] = React.useState(false)
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
   const [isInstalling, setIsInstalling] = React.useState(false)
   const {
@@ -80,6 +82,7 @@ const Installed: FC<Props> = ({
         } = await updatePackageFromMarketPlace({
           original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
           new_plugin_unique_identifier: uniqueIdentifier,
+          blue_green: blueGreen,
         })
         taskId = task_id
         isInstalled = all_installed
@@ -88,7 +91,7 @@ const Installed: FC<Props> = ({
         const {
           all_installed,
           task_id,
-        } = await installPackageFromMarketPlace(uniqueIdentifier)
+        } = await installPackageFromMarketPlace({ uniqueIdentifier, blueGreen })
         taskId = task_id
         isInstalled = all_installed
       }
@@ -150,6 +153,12 @@ const Installed: FC<Props> = ({
             limitedInstall={!canInstall}
           />
         </div>
+      </div>
+      <div className='flex w-full items-center justify-between px-8'>
+        <div className='system-md-regular text-text-secondary'>
+          {t('plugin.installModal.blueGreenInstall')}
+        </div>
+        <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
       </div>
       {/* Action Buttons */}
       <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>

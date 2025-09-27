@@ -218,6 +218,7 @@ const translation = {
     next: '下一步',
     pluginLoadError: '插件加载错误',
     pluginLoadErrorDesc: '此插件将不会被安装',
+    blueGreenInstall: '蓝绿安装',
     installWarning: '此插件不允许安装。',
   },
   installFromGitHub: {

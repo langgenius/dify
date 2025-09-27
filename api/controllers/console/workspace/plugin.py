@@ -186,6 +186,7 @@ class PluginInstallFromPkgApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
+        parser.add_argument("blue_green", type=bool, required=False, location="json", default=False)
         args = parser.parse_args()
 
         # check if all plugin_unique_identifiers are valid string
@@ -194,11 +195,40 @@ class PluginInstallFromPkgApi(Resource):
                 raise ValueError("Invalid plugin unique identifier")
 
         try:
-            response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
+            response = PluginService.install_from_local_pkg(
+                tenant_id, args["plugin_unique_identifiers"], args["blue_green"]
+            )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
+
+
+class PluginUpgradeFromPkgApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def post(self):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("blue_green", type=bool, required=False, location="json", default=False)
+        args = parser.parse_args()
+
+        try:
+            return jsonable_encoder(
+                PluginService.upgrade_plugin_with_local_pkg(
+                    tenant_id,
+                    args["original_plugin_unique_identifier"],
+                    args["new_plugin_unique_identifier"],
+                    args["blue_green"],
+                )
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
 
 
 class PluginInstallFromGithubApi(Resource):
@@ -214,6 +244,7 @@ class PluginInstallFromGithubApi(Resource):
         parser.add_argument("version", type=str, required=True, location="json")
         parser.add_argument("package", type=str, required=True, location="json")
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("blue_green", type=bool, required=False, location="json", default=False)
         args = parser.parse_args()
 
         try:
@@ -223,6 +254,7 @@ class PluginInstallFromGithubApi(Resource):
                 args["repo"],
                 args["version"],
                 args["package"],
+                args["blue_green"],
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
@@ -240,6 +272,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
+        parser.add_argument("blue_green", type=bool, required=False, location="json", default=False)
         args = parser.parse_args()
 
         # check if all plugin_unique_identifiers are valid string
@@ -248,7 +281,9 @@ class PluginInstallFromMarketplaceApi(Resource):
                 raise ValueError("Invalid plugin unique identifier")
 
         try:
-            response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
+            response = PluginService.install_from_marketplace_pkg(
+                tenant_id, args["plugin_unique_identifiers"], args["blue_green"]
+            )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
@@ -339,6 +374,24 @@ class PluginFetchInstallTaskApi(Resource):
             raise ValueError(e)
 
 
+class PluginRuntimeConnectionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_id", type=str, required=False, location="args")
+        args = parser.parse_args()
+
+        try:
+            return jsonable_encoder(PluginService.fetch_runtime_connections(tenant_id, args.get("plugin_id")))
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+
 class PluginDeleteInstallTaskApi(Resource):
     @setup_required
     @login_required
@@ -392,12 +445,16 @@ class PluginUpgradeFromMarketplaceApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
         parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("blue_green", type=bool, required=False, location="json", default=False)
         args = parser.parse_args()
 
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_marketplace(
-                    tenant_id, args["original_plugin_unique_identifier"], args["new_plugin_unique_identifier"]
+                    tenant_id,
+                    args["original_plugin_unique_identifier"],
+                    args["new_plugin_unique_identifier"],
+                    args["blue_green"],
                 )
             )
         except PluginDaemonClientSideError as e:
@@ -418,6 +475,7 @@ class PluginUpgradeFromGithubApi(Resource):
         parser.add_argument("repo", type=str, required=True, location="json")
         parser.add_argument("version", type=str, required=True, location="json")
         parser.add_argument("package", type=str, required=True, location="json")
+        parser.add_argument("blue_green", type=bool, required=False, location="json", default=False)
         args = parser.parse_args()
 
         try:
@@ -429,6 +487,7 @@ class PluginUpgradeFromGithubApi(Resource):
                     args["repo"],
                     args["version"],
                     args["package"],
+                    args["blue_green"],
                 )
             )
         except PluginDaemonClientSideError as e:
@@ -652,6 +711,7 @@ api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg"
 api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
 api.add_resource(PluginUploadFromBundleApi, "/workspaces/current/plugin/upload/bundle")
 api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/pkg")
+api.add_resource(PluginUpgradeFromPkgApi, "/workspaces/current/plugin/upgrade/pkg")
 api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/github")
 api.add_resource(PluginUpgradeFromMarketplaceApi, "/workspaces/current/plugin/upgrade/marketplace")
 api.add_resource(PluginUpgradeFromGithubApi, "/workspaces/current/plugin/upgrade/github")
@@ -664,6 +724,8 @@ api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin
 api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
 api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
+
+api.add_resource(PluginRuntimeConnectionsApi, "/workspaces/current/plugin/runtime/connections")
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
