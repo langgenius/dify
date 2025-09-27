@@ -41,9 +41,9 @@ const valueColorMap = {
 } as { [key: string]: string }
 
 type ITagProps = {
-  children: string
-  color?: string
-  variant?: string
+  readonly children: string
+  readonly color?: string
+  readonly variant?: string
 }
 
 export function Tag({

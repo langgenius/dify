@@ -2,10 +2,10 @@ import cn from '@/utils/classnames'
 import React, { useCallback, useMemo, useState } from 'react'
 
 type CredentialIconProps = {
-  avatar_url?: string
-  name: string
-  size?: number
-  className?: string
+  readonly avatar_url?: string
+  readonly name: string
+  readonly size?: number
+  readonly className?: string
 }
 
 const ICON_BG_COLORS = [

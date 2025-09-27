@@ -3,18 +3,18 @@ import type { PropsWithChildren } from 'react'
 import classNames from '@/utils/classnames'
 
 type IChildrenProps = {
-  children: React.ReactNode
-  id?: string
-  tag?: any
-  label?: any
-  anchor: boolean
+  readonly children: React.ReactNode
+  readonly id?: string
+  readonly tag?: any
+  readonly label?: any
+  readonly anchor: boolean
 }
 
 type IHeaderingProps = {
-  url: string
-  method: 'PUT' | 'DELETE' | 'GET' | 'POST' | 'PATCH'
-  title: string
-  name: string
+  readonly url: string
+  readonly method: 'PUT' | 'DELETE' | 'GET' | 'POST' | 'PATCH'
+  readonly title: string
+  readonly name: string
 }
 
 export const Heading = function H2({
@@ -66,7 +66,7 @@ export function Row({ children }: IChildrenProps) {
 }
 
 type IColProps = IChildrenProps & {
-  sticky: boolean
+  readonly sticky: boolean
 }
 export function Col({ children, sticky = false }: IColProps) {
   return (
@@ -95,8 +95,8 @@ export function Properties({ children }: IChildrenProps) {
 }
 
 type IProperty = IChildrenProps & {
-  name: string
-  type: string
+  readonly name: string
+  readonly type: string
 }
 export function Property({ name, type, children }: IProperty) {
   return (
@@ -120,8 +120,8 @@ export function Property({ name, type, children }: IProperty) {
 }
 
 type ISubProperty = IChildrenProps & {
-  name: string
-  type: string
+  readonly name: string
+  readonly type: string
 }
 export function SubProperty({ name, type, children }: ISubProperty) {
   return (
@@ -144,7 +144,7 @@ export function SubProperty({ name, type, children }: ISubProperty) {
   )
 }
 
-export function PropertyInstruction({ children }: PropsWithChildren<{}>) {
+export function PropertyInstruction({ children }: Readonly<PropsWithChildren<{}>>) {
   return (
     <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )

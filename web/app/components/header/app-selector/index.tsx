@@ -12,8 +12,8 @@ import { useAppContext } from '@/context/app-context'
 import { noop } from 'lodash-es'
 
 type IAppSelectorProps = {
-  appItems: AppDetailResponse[]
-  curApp: AppDetailResponse
+  readonly appItems: AppDetailResponse[]
+  readonly curApp: AppDetailResponse
 }
 
 export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {

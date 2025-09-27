@@ -12,8 +12,8 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type IAccountSettingProps = {
-  langGeniusVersionInfo: LangGeniusVersionResponse
-  onCancel: () => void
+  readonly langGeniusVersionInfo: LangGeniusVersionResponse
+  readonly onCancel: () => void
 }
 
 export default function AccountAbout({

@@ -2,10 +2,10 @@ import React, { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type CardProps = {
-  name: string
-  type: string
-  required: boolean
-  description?: string
+  readonly name: string
+  readonly type: string
+  readonly required: boolean
+  readonly description?: string
 }
 
 const Card: FC<CardProps> = ({

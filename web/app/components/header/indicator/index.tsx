@@ -3,8 +3,8 @@
 import classNames from '@/utils/classnames'
 
 export type IndicatorProps = {
-  color?: 'green' | 'orange' | 'red' | 'blue' | 'yellow' | 'gray'
-  className?: string
+  readonly color?: 'green' | 'orange' | 'red' | 'blue' | 'yellow' | 'gray'
+  readonly className?: string
 }
 
 export type ColorMap = {
