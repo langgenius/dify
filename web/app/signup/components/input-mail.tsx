@@ -1,5 +1,5 @@
 'use client'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
