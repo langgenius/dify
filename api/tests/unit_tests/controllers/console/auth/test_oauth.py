@@ -201,9 +201,9 @@ class TestOAuthCallback:
         mock_db.session.rollback = MagicMock()
 
         # Import the real requests module to create a proper exception
-        import requests
+        import httpx
 
-        request_exception = requests.exceptions.RequestException("OAuth error")
+        request_exception = httpx.RequestError("OAuth error")
         request_exception.response = MagicMock()
         request_exception.response.text = str(exception)
 
