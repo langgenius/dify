@@ -83,11 +83,11 @@ class DatasetConfigManager:
                         dataset_configs["retrieval_model"]
                     ),
                     metadata_filtering_mode=dataset_configs.get("metadata_filtering_mode", "disabled"),
-                    metadata_model_config=ModelConfig(**dataset_configs.get("metadata_model_config"))
+                    metadata_model_config=ModelConfig.model_validate(dataset_configs.get("metadata_model_config"))
                     if dataset_configs.get("metadata_model_config")
                     else None,
-                    metadata_filtering_conditions=MetadataFilteringCondition(
-                        **dataset_configs.get("metadata_filtering_conditions", {})
+                    metadata_filtering_conditions=MetadataFilteringCondition.model_validate(
+                        dataset_configs.get("metadata_filtering_conditions", {})
                     )
                     if dataset_configs.get("metadata_filtering_conditions")
                     else None,
@@ -110,7 +110,7 @@ class DatasetConfigManager:
                     reranking_enabled=dataset_configs.get("reranking_enabled", True),
                     rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
                     metadata_filtering_mode=dataset_configs.get("metadata_filtering_mode", "disabled"),
-                    metadata_model_config=ModelConfig(**dataset_configs.get("metadata_model_config"))
+                    metadata_model_config=ModelConfig.model_validate(dataset_configs.get("metadata_model_config"))
                     if dataset_configs.get("metadata_model_config")
                     else None,
                     metadata_filtering_conditions=MetadataFilteringCondition(

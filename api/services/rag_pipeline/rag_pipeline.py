@@ -358,7 +358,7 @@ class RagPipelineService:
         for node in nodes:
             if node.get("data", {}).get("type") == "knowledge-index":
                 knowledge_configuration = node.get("data", {})
-                knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
+                knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration)
 
                 # update dataset
                 dataset = pipeline.retrieve_dataset(session=session)

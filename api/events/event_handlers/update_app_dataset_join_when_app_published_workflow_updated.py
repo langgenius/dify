@@ -61,7 +61,7 @@ def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:
 
     for node in knowledge_retrieval_nodes:
         try:
-            node_data = KnowledgeRetrievalNodeData(**node.get("data", {}))
+            node_data = KnowledgeRetrievalNodeData.model_validate(node.get("data", {}))
             dataset_ids.update(dataset_id for dataset_id in node_data.dataset_ids)
         except Exception:
             continue

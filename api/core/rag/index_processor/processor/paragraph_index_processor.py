@@ -38,11 +38,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("No process rule found.")
         if process_rule.get("mode") == "automatic":
             automatic_rule = DatasetProcessRule.AUTOMATIC_RULES
-            rules = Rule(**automatic_rule)
+            rules = Rule.model_validate(automatic_rule)
         else:
             if not process_rule.get("rules"):
                 raise ValueError("No rules found in process rule.")
-            rules = Rule(**process_rule.get("rules"))
+            rules = Rule.model_validate(process_rule.get("rules"))
         # Split the text documents into nodes.
         if not rules.segmentation:
             raise ValueError("No segmentation found in rules.")
