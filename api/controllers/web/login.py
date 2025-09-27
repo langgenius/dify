@@ -31,6 +31,7 @@ from libs.token import (
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.app_service import AppService
 from werkzeug.exceptions import Unauthorized
 
 @web_ns.route("/login")
@@ -231,7 +232,8 @@ class CSRFApi(Resource):
 
         features = FeatureService.get_system_features()
         if features.webapp_auth.enabled:
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+            app_id = AppService.get_app_id_by_code(app_code)
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             if webapp_settings.access_mode == "public":
                 return _success()
 
