@@ -8,7 +8,7 @@ import {
 } from '@/app/components/workflow/types'
 import {
   useWorkflowInit,
-} from './hooks'
+} from './hooks/use-workflow-init'
 import {
   initialEdges,
   initialNodes,
