@@ -139,7 +139,7 @@ class ChatClient(DifyClient):
         data = {"user": user}
         return self._send_request("DELETE", f"/conversations/{conversation_id}", data)
 
-    def audio_to_text(self, audio_file: tuple, user: str):
+    def audio_to_text(self, audio_file: IO[bytes] | tuple, user: str):
         data = {"user": user}
         files = {"file": audio_file}
         return self._send_request_with_files("POST", "/audio-to-text", data, files)
