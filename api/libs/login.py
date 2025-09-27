@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Union, cast
 
 from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS  # type: ignore
+from flask_login.config import EXEMPT_METHODS
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
@@ -69,6 +69,6 @@ def _get_user() -> EndUser | Account | None:
         if "_login_user" not in g:
             current_app.login_manager._load_user()  # type: ignore
 
-        return g._login_user  # type: ignore
+        return g._login_user
 
     return None

@@ -42,7 +42,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
                 localtime = local_time.astimezone()  # type: ignore
             elif isinstance(local_tz, str):
                 local_tz = pytz.timezone(local_tz)
-                localtime = local_tz.localize(local_time)  # type: ignore
+                localtime = local_tz.localize(local_time)
             timestamp = int(localtime.timestamp())  # type: ignore
             return timestamp
         except Exception as e:

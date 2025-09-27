@@ -81,7 +81,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id  # type: ignore[assignment]  # We've already checked tenant_id is not None
+        self._tenant_id = tenant_id
 
         # Store app context
         self._app_id = app_id
