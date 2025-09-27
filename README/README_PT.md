@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.png)
+![cover-v5-optimized](../images/GitHub_README_if.png)
 
 <p align="center">
   📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">Introduzindo o Dify Workflow com Upload de Arquivo: Recrie o Podcast Google NotebookLM</a>
@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="README em Inglês" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="../README.md"><img alt="README em Inglês" src="https://img.shields.io/badge/English-d9d9d9"></a>
   <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
   <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
   <a href="./README_ES.md"><img alt="README em Espanhol" src="https://img.shields.io/badge/Español-d9d9d9"></a>
@@ -196,4 +196,4 @@ Para proteger sua privacidade, evite postar problemas de segurança no GitHub. E
 
 ## Licença
 
-Este repositório está disponível sob a [Licença de Código Aberto Dify](LICENSE), que é essencialmente Apache 2.0 com algumas restrições adicionais.
+Este repositório está disponível sob a [Licença de Código Aberto Dify](../LICENSE), que é essencialmente Apache 2.0 com algumas restrições adicionais.

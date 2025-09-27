@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.png)
+![cover-v5-optimized](../images/GitHub_README_if.png)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify 클라우드</a> ·
@@ -35,7 +35,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="../README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
   <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
   <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
   <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
@@ -190,4 +190,4 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 ## 라이선스
 
-이 저장소는 기본적으로 몇 가지 추가 제한 사항이 있는 Apache 2.0인 [Dify 오픈 소스 라이선스](LICENSE)에 따라 사용할 수 있습니다.
+이 저장소는 기본적으로 몇 가지 추가 제한 사항이 있는 Apache 2.0인 [Dify 오픈 소스 라이선스](../LICENSE)에 따라 사용할 수 있습니다.

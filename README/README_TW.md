@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.png)
+![cover-v5-optimized](../images/GitHub_README_if.png)
 
 <p align="center">
   📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">介紹 Dify 工作流程檔案上傳功能：重現 Google NotebookLM Podcast</a>
@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="../README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
   <a href="./README_TW.md"><img alt="繁體中文文件" src="https://img.shields.io/badge/繁體中文-d9d9d9"></a>
   <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
   <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
@@ -201,4 +201,4 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 ## 授權條款
 
-本代碼庫採用 [Dify 開源授權](LICENSE)，這基本上是 Apache 2.0 授權加上一些額外限制條款。
+本代碼庫採用 [Dify 開源授權](../LICENSE)，這基本上是 Apache 2.0 授權加上一些額外限制條款。
