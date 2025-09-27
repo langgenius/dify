@@ -5,9 +5,10 @@ from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
 from typing import TYPE_CHECKING, Any, Union
 
+import httpx
 import qdrant_client
-import requests
 from flask import current_app
+from httpx import DigestAuth
 from pydantic import BaseModel
 from qdrant_client.http import models as rest
 from qdrant_client.http.models import (
@@ -19,7 +20,6 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
-from requests.auth import HTTPDigestAuth
 from sqlalchemy import select
 
 from configs import dify_config
@@ -504,10 +504,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
         }
         cluster_data = {"displayName": display_name, "region": region_object, "labels": labels}
 
-        response = requests.post(
+        response = httpx.post(
             f"{tidb_config.api_url}/clusters",
             json=cluster_data,
-            auth=HTTPDigestAuth(tidb_config.public_key, tidb_config.private_key),
+            auth=DigestAuth(tidb_config.public_key, tidb_config.private_key),
         )
 
         if response.status_code == 200:
@@ -527,10 +527,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
 
         body = {"password": new_password}
 
-        response = requests.put(
+        response = httpx.put(
             f"{tidb_config.api_url}/clusters/{cluster_id}/password",
             json=body,
-            auth=HTTPDigestAuth(tidb_config.public_key, tidb_config.private_key),
+            auth=DigestAuth(tidb_config.public_key, tidb_config.private_key),
         )
 
         if response.status_code == 200:
