@@ -132,11 +132,18 @@ class AppWebAuthPermission(Resource):
     )
     def get(self):
         user_id = "visitor"
+        app_id = request.args.get("appId")
+        if not app_id:
+            raise ValueError("appId must be provided")
+
+        require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
+        if not require_permission_check:
+            return {"result": True}
+
         try:
             tk = extract_access_token(request)
             if not tk:
                 raise Unauthorized("Access token is missing.")
-
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
@@ -148,15 +155,7 @@ class AppWebAuthPermission(Resource):
         features = FeatureService.get_system_features()
         if not features.webapp_auth.enabled:
             return {"result": True}
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=True, location="args")
-        args = parser.parse_args()
-
-        app_id = args["appId"]
         app_code = AppService.get_app_code_by_id(app_id)
 
-        res = True
-        if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
-            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+        res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
         return {"result": res}

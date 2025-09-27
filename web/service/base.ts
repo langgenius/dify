@@ -1,4 +1,4 @@
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import { basePath } from '@/utils/var'
@@ -410,6 +410,7 @@ export const ssePost = async (
     signal: abortController.signal,
     headers: new Headers({
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: globalThis.location.pathname.split('/').slice(-1)[0]
     }),
   } as RequestInit, fetchOptions)
 

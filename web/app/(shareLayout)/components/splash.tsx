@@ -8,7 +8,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { useIsWebAppLogin, useWebAppLogout } from '@/service/use-common'
-import { fetchAccessToken } from '@/service/share'
+import { fetchAccessToken, fetchCsrfToken } from '@/service/share'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -36,6 +36,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
   const { data: isWebAppLoginData, isLoading: isWebAppLoginLoading } = useIsWebAppLogin(needCheckIsLogin, shareCode!)
   const isLoggedIn = isWebAppLoginData?.app_logged_in
+  const isUserLoggedIn = isWebAppLoginData?.logged_in
   useEffect(() => {
     if(needCheckIsLogin && isWebAppLoginLoading)
       return
@@ -43,16 +44,15 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     (async () => {
       if (message)
         return
-      if (needCheckIsLogin && shareCode && redirectUrl) {
-        if(!isLoggedIn)
-          await fetchAccessToken({ appCode: shareCode })
-        router.replace(decodeURIComponent(redirectUrl))
-        return
+      if((!needCheckIsLogin || isUserLoggedIn) && shareCode) {
+        await fetchCsrfToken(shareCode)
       }
-      if (webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
+      await fetchAccessToken({ appCode: shareCode })
+
+      if ((isLoggedIn || webAppAccessMode === AccessMode.PUBLIC) && redirectUrl)
         router.replace(decodeURIComponent(redirectUrl))
     })()
-  }, [shareCode, redirectUrl, router, message, webAppAccessMode, needCheckIsLogin, isWebAppLoginLoading, isLoggedIn])
+  }, [shareCode, redirectUrl, router, message, webAppAccessMode, needCheckIsLogin, isWebAppLoginLoading, isLoggedIn, isUserLoggedIn])
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>

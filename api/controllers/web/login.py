@@ -2,12 +2,15 @@ from flask import make_response, request
 from flask_restx import Resource, reqparse
 from jwt import InvalidTokenError
 
+from services.feature_service import FeatureService
+from configs import dify_config
 import services
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
     InvalidEmailError,
 )
+from constants import HEADER_NAME_APP_CODE
 from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
@@ -27,7 +30,8 @@ from libs.token import (
 )
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
-
+from services.enterprise.enterprise_service import EnterpriseService
+from werkzeug.exceptions import Unauthorized
 
 @web_ns.route("/login")
 class LoginApi(Resource):
@@ -64,8 +68,6 @@ class LoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         response = make_response({"result": "success", "data": {"access_token": token}})
-        csrf_token = generate_csrf_token()
-        set_csrf_token_to_cookie(request, response, csrf_token)
         set_access_token_to_cookie(request, response, token)
         return response
 
@@ -84,22 +86,21 @@ class LoginStatusApi(Resource):
     def get(self):
         app_code = request.args.get("app_code")
         token = extract_access_token(request)
-        csrf_token = extract_csrf_token(request)
         if not app_code:
             return {
-                "logged_in": bool(token) and bool(csrf_token),
+                "logged_in": bool(token),
                 "app_logged_in": False,
             }
         passport: str | None = extract_webapp_passport(app_code, request)
         try:
             verified = PassportService().verify(passport)
             return {
-                "logged_in": bool(token) and bool(csrf_token),
-                "app_logged_in": bool(app_code) and verified.get("app_code") == app_code and bool(csrf_token),
+                "logged_in": bool(token),
+                "app_logged_in": bool(app_code) and verified.get("app_code") == app_code,
             }
         except Exception:
             return {
-                "logged_in": bool(token) and bool(csrf_token),
+                "logged_in": bool(token),
                 "app_logged_in": False,
             }
 
@@ -203,3 +204,41 @@ class EmailCodeLoginApi(Resource):
         set_access_token_to_cookie(request, response, token)
         set_csrf_token_to_cookie(request, response, csrf_token)
         return response
+
+@web_ns.route("/csrf-token")
+class CSRFApi(Resource):
+    """
+    We use a dedicated api for csrf token retrieval instead of setting it in login, 
+    because webapp could be a public link.
+    """
+    @web_ns.doc("get_csrf_token")
+    @web_ns.doc(description="Get CSRF token")
+    @web_ns.doc(
+        responses={
+            200: "CSRF token",
+        }
+    )
+    def post(self):
+        def _success():
+            csrf_token = generate_csrf_token()
+            resp = make_response({"result": "success"})
+            set_csrf_token_to_cookie(request, resp, csrf_token)
+            return resp
+        
+        app_code = request.headers.get(HEADER_NAME_APP_CODE)
+        if not app_code:
+            raise Unauthorized(f"{HEADER_NAME_APP_CODE} header is missing.")
+
+        features = FeatureService.get_system_features()
+        if features.webapp_auth.enabled:
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+            if webapp_settings.access_mode == "public":
+                return _success()
+
+            access_token = extract_access_token(request)
+            if not access_token:
+                raise Unauthorized("Access token is missing.")
+            PassportService().verify(access_token)
+            return _success()
+        else:
+            return _success()

@@ -5,7 +5,7 @@ from flask import make_response, request
 from flask_restx import Resource
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
-
+from constants import HEADER_NAME_APP_CODE
 from configs import dify_config
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
@@ -33,7 +33,7 @@ class PassportResource(Resource):
     )
     def get(self):
         system_features = FeatureService.get_system_features()
-        app_code = request.headers.get("X-App-Code")
+        app_code = request.headers.get(HEADER_NAME_APP_CODE)
         user_id = request.args.get("user_id")
         access_token = extract_access_token(request)
 
@@ -226,9 +226,12 @@ def _exchange_for_public_app_token(app_model, site, token_decoded):
 
     tk = PassportService().issue(payload)
 
-    return {
+    resp = make_response({
         "access_token": tk,
-    }
+    })
+    set_passport_to_cookie(site.code, request, resp, tk)
+    return resp
+
 
 
 def generate_session_id():

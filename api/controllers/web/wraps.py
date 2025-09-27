@@ -8,7 +8,7 @@ from flask_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
-
+from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
@@ -48,7 +48,7 @@ def validate_csrf_token(view: Callable[P, R] | None = None):
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()
-    app_code = str(request.headers.get("X-App-Code"))
+    app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
     try:
         tk = extract_webapp_passport(app_code, request)
         if not tk:
