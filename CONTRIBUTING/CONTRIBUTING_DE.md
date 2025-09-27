@@ -6,7 +6,7 @@ Wir müssen wendig sein und schnell liefern, aber wir möchten auch sicherstelle
 
 Dieser Leitfaden ist, wie Dify selbst, in ständiger Entwicklung. Wir sind dankbar für Ihr Verständnis, falls er manchmal hinter dem eigentlichen Projekt zurückbleibt, und begrüßen jedes Feedback zur Verbesserung.
 
-Bitte nehmen Sie sich einen Moment Zeit, um unsere [Lizenz- und Mitwirkungsvereinbarung](./LICENSE) zu lesen. Die Community hält sich außerdem an den [Verhaltenskodex](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
+Bitte nehmen Sie sich einen Moment Zeit, um unsere [Lizenz- und Mitwirkungsvereinbarung](../LICENSE) zu lesen. Die Community hält sich außerdem an den [Verhaltenskodex](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## Bevor Sie loslegen
 
