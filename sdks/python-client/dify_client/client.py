@@ -141,7 +141,7 @@ class ChatClient(DifyClient):
 
     def audio_to_text(self, audio_file: dict, user: str):
         data = {"user": user}
-        files = {"audio_file": audio_file}
+        files = {"file": audio_file}
         return self._send_request_with_files("POST", "/audio-to-text", data, files)
 
 
