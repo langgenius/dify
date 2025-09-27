@@ -141,7 +141,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             </div>
             <div>
               <div className='mb-2 flex items-center'>
-                <button
+                <button type="button"
                   className='flex cursor-pointer items-center border-0 bg-transparent p-0'
                   onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                 >

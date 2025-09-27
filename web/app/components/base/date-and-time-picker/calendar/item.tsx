@@ -13,7 +13,7 @@ const Item: FC<CalendarItemProps> = ({
   const isToday = date.isSame(dayjs(), 'date')
 
   return (
-    <button
+    <button type="button"
       onClick={() => onClick(date)}
       className={cn(
         'system-sm-medium relative flex items-center justify-center rounded-lg px-1 py-2',

@@ -13,7 +13,7 @@ const Header: FC<YearAndMonthPickerHeaderProps> = ({
   return (
     <div className='flex border-b-[0.5px] border-divider-regular p-2 pb-1'>
       {/* Year and Month */}
-      <button
+      <button type="button"
         onClick={onClick}
         className='system-md-semibold flex items-center gap-x-0.5 rounded-lg px-2 py-1.5 text-text-primary hover:bg-state-base-hover'
       >

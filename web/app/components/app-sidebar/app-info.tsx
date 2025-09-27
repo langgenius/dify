@@ -260,7 +260,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   return (
     <div>
       {!onlyShowDetail && (
-        <button
+        <button type="button"
           onClick={() => {
             if (isCurrentWorkspaceEditor)
               setOpen(v => !v)

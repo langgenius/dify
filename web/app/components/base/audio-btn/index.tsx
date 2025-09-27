@@ -85,7 +85,7 @@ const AudioBtn = ({
       <Tooltip
         popupContent={tooltipContent}
       >
-        <button
+        <button type="button"
           disabled={audioState === 'loading'}
           className={`box-border flex h-6 w-6 cursor-pointer items-center justify-center ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
           onClick={handleToggle}
