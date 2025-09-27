@@ -6,7 +6,7 @@ Chúng tôi cần phải nhanh nhẹn và triển khai nhanh chóng, nhưng cũn
 
 Hướng dẫn này, giống như Dify, đang được phát triển liên tục. Chúng tôi rất cảm kích sự thông cảm của bạn nếu đôi khi nó chưa theo kịp dự án thực tế, và hoan nghênh mọi phản hồi để cải thiện.
 
-Về giấy phép, vui lòng dành chút thời gian đọc [Thỏa thuận Cấp phép và Người đóng góp](./LICENSE) ngắn gọn của chúng tôi. Cộng đồng cũng tuân theo [quy tắc ứng xử](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
+Về giấy phép, vui lòng dành chút thời gian đọc [Thỏa thuận Cấp phép và Người đóng góp](../LICENSE) ngắn gọn của chúng tôi. Cộng đồng cũng tuân theo [quy tắc ứng xử](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## Trước khi bắt đầu
 

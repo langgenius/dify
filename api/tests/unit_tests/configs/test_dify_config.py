@@ -40,8 +40,6 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # annotated field with configured value
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
 
-    assert config.WORKFLOW_PARALLEL_DEPTH_LIMIT == 3
-
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
 

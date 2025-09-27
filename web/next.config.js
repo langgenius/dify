@@ -91,6 +91,7 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  transpilePackages: ['echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack'
