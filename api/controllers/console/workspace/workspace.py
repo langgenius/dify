@@ -51,6 +51,8 @@ tenant_fields = {
     "in_trial": fields.Boolean,
     "trial_end_reason": fields.String,
     "custom_config": fields.Raw(attribute="custom_config"),
+    "trial_credits": fields.Integer,
+    "trial_credits_used": fields.Integer,
 }
 
 tenants_fields = {
