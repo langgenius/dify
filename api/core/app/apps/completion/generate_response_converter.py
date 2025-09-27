@@ -16,7 +16,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = CompletionAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore
+    def convert_blocking_full_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -36,7 +36,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore
+    def convert_blocking_simple_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
