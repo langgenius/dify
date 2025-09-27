@@ -55,7 +55,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
-  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
+  const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
