@@ -109,9 +109,8 @@ class LogoutApi(Resource):
     def post(self):
         response = make_response({"result": "success"})
         app_code = request.args.get("app_code")
-        clear_access_token_from_cookie(request, response)
-        clear_webapp_token_from_cookie(app_code, request, response)
-        clear_csrf_token_from_cookie(request, response)
+        clear_access_token_from_cookie(request, response, samesite="None")
+        clear_webapp_token_from_cookie(app_code, request, response, samesite="None")
         return response
 
 

@@ -127,7 +127,7 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
     )
 
 
-def _clear_cookie(request: Request, response: Response, cookie_name: str):
+def _clear_cookie(request: Request, response: Response, cookie_name: str, samesite: str = "Lax"):
     response.set_cookie(
         cookie_name,
         "",
@@ -135,7 +135,7 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str):
         path="/",
         secure=request.is_secure,
         httponly=True,
-        samesite="Lax",
+        samesite=samesite,
     )
 
 def _clear_cookie_begin_with(request: Request, response: Response, prefix: str):
@@ -143,14 +143,14 @@ def _clear_cookie_begin_with(request: Request, response: Response, prefix: str):
         if cookie_name.startswith(prefix):
             _clear_cookie(request, response, cookie_name)
 
-def clear_webapp_token_from_cookie(app_code: str | None, request: Request, response: Response):
+def clear_webapp_token_from_cookie(app_code: str | None, request: Request, response: Response, samesite: str = "Lax"):
     if not app_code:
         _clear_cookie_begin_with(request, response, COOKIE_NAME_PASSPORT)
         return
     _clear_cookie(request, response, COOKIE_NAME_PASSPORT + "-" + app_code)
 
-def clear_access_token_from_cookie(request: Request, response: Response):
-    _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN)
+def clear_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax"):
+    _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN, samesite)
 
 
 def clear_refresh_token_from_cookie(request: Request, response: Response):
