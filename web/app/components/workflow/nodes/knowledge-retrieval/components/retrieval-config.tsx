@@ -116,7 +116,7 @@ const RetrievalConfig: FC<Props> = ({
       weights: configs.weights,
       reranking_enable: configs.reranking_enable,
     })
-  }, [onMultipleRetrievalConfigChange, retrieval_mode, validRerankDefaultProvider, validRerankDefaultModel, onRetrievalModeChange])
+  }, [onMultipleRetrievalConfigChange, retrieval_mode, onRetrievalModeChange])
 
   return (
     <PortalToFollowElem
