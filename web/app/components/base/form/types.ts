@@ -50,6 +50,7 @@ export type FormSchema = {
   name: string
   label: string | ReactNode | TypeWithI18N | Record<Locale, string>
   required: boolean
+  multiple?: boolean
   default?: any
   tooltip?: string | TypeWithI18N | Record<Locale, string>
   show_on?: FormShowOnObject[]

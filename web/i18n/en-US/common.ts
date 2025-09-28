@@ -68,6 +68,7 @@ const translation = {
     more: 'More',
     selectAll: 'Select All',
     deSelectAll: 'Deselect All',
+    selectCount: '{{count}} Selected',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -76,7 +77,9 @@ const translation = {
   placeholder: {
     input: 'Please enter',
     select: 'Please select',
+    search: 'Search...',
   },
+  noData: 'No data',
   label: {
     optional: '(optional)',
   },

@@ -68,6 +68,7 @@ const translation = {
     selectAll: '全选',
     deSelectAll: '取消全选',
     now: '现在',
+    selectCount: '已选择 {{count}} 项',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -76,7 +77,9 @@ const translation = {
   placeholder: {
     input: '请输入',
     select: '请选择',
+    search: '搜索...',
   },
+  noData: '暂无数据',
   label: {
     optional: '（可选）',
   },

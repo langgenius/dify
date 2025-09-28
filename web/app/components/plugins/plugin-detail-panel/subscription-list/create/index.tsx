@@ -30,19 +30,6 @@ type Props = {
 
 export const DEFAULT_METHOD = 'default'
 
-/**
- * 区分创建订阅的授权方式有几种
- * 1. 只有一种授权方式
- *    - 按钮直接显示授权方式，点击按钮展示创建订阅弹窗
- * 2. 有多种授权方式
- *    - 下拉框显示授权方式，点击按钮展示下拉框，点击选项展示创建订阅弹窗
- * 有订阅与无订阅时，按钮形态不同
- * oauth 的授权类型：
- * - 是否配置 client_id 和 client_secret
- * - 未配置则点击按钮去配置
- * - 已配置则点击按钮去创建
- * - 固定展示设置按钮
- */
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON }: Props) => {
   const { t } = useTranslation()
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{ type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder } | null>(null)

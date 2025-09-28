@@ -1,9 +1,8 @@
 'use client'
-import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+// import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
@@ -66,7 +65,6 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration)
 
-  const [subscriptionName, setSubscriptionName] = useState('')
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
   const [verificationError, setVerificationError] = useState<string>('')
 
@@ -76,6 +74,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
   const providerName = `${detail?.plugin_id}/${detail?.declaration.name}`
   const propertiesSchema = detail?.declaration.trigger.subscription_schema.properties_schema || [] // manual
+  const subscriptionFormRef = React.useRef<FormRefObject>(null)
   const propertiesFormRef = React.useRef<FormRefObject>(null)
   const parametersSchema = detail?.declaration.trigger?.subscription_schema?.parameters_schema || [] // apikey and oauth
   const parametersFormRef = React.useRef<FormRefObject>(null)
@@ -151,32 +150,23 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   }
 
   const handleCreate = () => {
-    if (!subscriptionName.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: t('pluginTrigger.modal.form.subscriptionName.required'),
-      })
+    const parameterForm = parametersFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+    const subscriptionForm = subscriptionFormRef.current?.getFormValues({})
+    // console.log('parameterForm', parameterForm)
+
+    if (!subscriptionForm?.isCheckValidated || !parameterForm?.isCheckValidated)
       return
-    }
 
     if (!subscriptionBuilder)
       return
 
-    const parameterForm = parametersFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
-    // console.log('formValues', formValues)
-    // if (!formValues.isCheckValidated) {
-    //   Toast.notify({
-    //     type: 'error',
-    //     message: t('pluginTrigger.modal.form.properties.required'),
-    //   })
-    //   return
-    // }
+    const subscriptionNameValue = subscriptionForm.values.subscription_name as string
 
     buildSubscription(
       {
         provider: providerName,
         subscriptionBuilderId: subscriptionBuilder.id,
-        name: subscriptionName,
+        name: subscriptionNameValue,
         parameters: { ...parameterForm.values, events: ['*'] },
         // properties: formValues.values,
       },
@@ -228,6 +218,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 ref={credentialsFormRef}
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
                 preventDefaultSubmit={true}
+                formClassName='space-y-4'
               />
             </div>
           )}
@@ -241,34 +232,39 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         </>
       )}
       {currentStep === ApiKeyStep.Configuration && <div className='max-h-[70vh] overflow-y-auto'>
-        <div className='mb-6'>
-          <label className='system-sm-medium mb-2 block text-text-primary'>
-            {t('pluginTrigger.modal.form.subscriptionName.label')}
-          </label>
-          <Input
-            value={subscriptionName}
-            onChange={e => setSubscriptionName(e.target.value)}
-            placeholder={t('pluginTrigger.modal.form.subscriptionName.placeholder')}
-          />
-        </div>
-
-        <div className='mb-6'>
-          <label className='system-sm-medium mb-2 block text-text-primary'>
-            {t('pluginTrigger.modal.form.callbackUrl.label')}
-          </label>
-          <div className='relative'>
-            <Input
-              value={subscriptionBuilder?.endpoint}
-              readOnly
-              className='pr-12'
-              placeholder={t('pluginTrigger.modal.form.callbackUrl.placeholder')}
-            />
-            <CopyFeedbackNew className='absolute right-1 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary' content={subscriptionBuilder?.endpoint || ''} />
-          </div>
-          <div className='system-xs-regular mt-1 text-text-tertiary'>
-            {t('pluginTrigger.modal.form.callbackUrl.description')}
-          </div>
-        </div>
+        <BaseForm
+          formSchemas={[
+            {
+              name: 'subscription_name',
+              label: t('pluginTrigger.modal.form.subscriptionName.label'),
+              placeholder: t('pluginTrigger.modal.form.subscriptionName.placeholder'),
+              type: FormTypeEnum.textInput,
+              required: true,
+            },
+            {
+              name: 'callback_url',
+              label: t('pluginTrigger.modal.form.callbackUrl.label'),
+              placeholder: t('pluginTrigger.modal.form.callbackUrl.placeholder'),
+              type: FormTypeEnum.textInput,
+              required: false,
+              default: subscriptionBuilder?.endpoint || '',
+              disabled: true,
+              tooltip: t('pluginTrigger.modal.form.callbackUrl.tooltip'),
+              // extra: subscriptionBuilder?.endpoint ? (
+              //   <CopyFeedbackNew
+              //     className='absolute right-1 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary'
+              //     content={subscriptionBuilder?.endpoint || ''}
+              //   />
+              // ) : undefined,
+            },
+          ]}
+          ref={subscriptionFormRef}
+          labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
+          formClassName='space-y-4 mb-4'
+        />
+        {/* <div className='system-xs-regular mb-6 mt-[-1rem] text-text-tertiary'>
+          {t('pluginTrigger.modal.form.callbackUrl.description')}
+        </div> */}
         {createType !== SupportedCreationMethods.MANUAL && parametersSchema.length > 0 && (
           <BaseForm
             formSchemas={parametersSchema.map(schema => ({
@@ -283,6 +279,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
             }))}
             ref={parametersFormRef}
             labelClassName='system-sm-medium mb-2 block text-text-primary'
+            formClassName='space-y-4'
           />
         )}
         {createType === SupportedCreationMethods.MANUAL && <>
@@ -292,6 +289,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 formSchemas={propertiesSchema}
                 ref={propertiesFormRef}
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
+                formClassName='space-y-4'
               />
             </div>
           )}
@@ -311,11 +309,9 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 Awaiting request from {detail?.declaration.name}...
               </div>
             </div>
-
             <LogViewer logs={logData?.logs || []} />
           </div>
         </>}
-
       </div>}
     </Modal>
   )

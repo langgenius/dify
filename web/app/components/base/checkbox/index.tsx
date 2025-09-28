@@ -30,7 +30,7 @@ const Checkbox = ({
     <div
       id={id}
       className={cn(
-        'flex h-4 w-4 cursor-pointer items-center justify-center rounded-[4px] shadow-xs shadow-shadow-shadow-3',
+        'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-[4px] shadow-xs shadow-shadow-shadow-3',
         checkClassName,
         disabled && disabledClassName,
         className,

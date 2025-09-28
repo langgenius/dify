@@ -1,3 +1,4 @@
+import CheckboxList from '@/app/components/base/checkbox-list'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Input from '@/app/components/base/input'
@@ -5,6 +6,7 @@ import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 import { PortalSelect } from '@/app/components/base/select'
 import PureSelect from '@/app/components/base/select/pure'
+import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import cn from '@/utils/classnames'
@@ -52,6 +54,7 @@ const BaseField = ({
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
+    name,
     label,
     required,
     placeholder,
@@ -60,6 +63,8 @@ const BaseField = ({
     disabled: formSchemaDisabled,
     type: formItemType,
     dynamicSelectParams,
+    multiple = false,
+    tooltip,
   } = formSchema
   const disabled = propsDisabled || formSchemaDisabled
 
@@ -150,6 +155,12 @@ const BaseField = ({
             <span className='ml-1 text-text-destructive-secondary'>*</span>
           )
         }
+        {tooltip && (
+          <Tooltip
+            popupContent={<div className='w-[200px]'>{typeof tooltip === 'string' ? tooltip : renderI18nObject(tooltip as Record<string, string>)}</div>}
+            triggerClassName='ml-0.5 w-4 h-4'
+          />
+        )}
       </div>
       <div className={cn(inputContainerClassName)}>
         {
@@ -170,7 +181,7 @@ const BaseField = ({
           )
         }
         {
-          formItemType === FormTypeEnum.select && (
+          formItemType === FormTypeEnum.select && !multiple && (
             <PureSelect
               value={value}
               onChange={v => handleChange(v)}
@@ -181,6 +192,17 @@ const BaseField = ({
               popupProps={{
                 className: 'max-h-[320px] overflow-y-auto',
               }}
+            />
+          )
+        }
+        {
+          formItemType === FormTypeEnum.select && multiple && (
+            <CheckboxList
+              title={name}
+              value={value}
+              onChange={v => field.handleChange(v)}
+              options={memorizedOptions}
+              maxHeight='200px'
             />
           )
         }
