@@ -549,6 +549,15 @@ class ChatflowMemoryService:
         )
         ChatflowMemoryService.save_memory(updated_memory, variable_pool, is_draft)
 
+        # 添加以下代码：重置 visible_count 为 preserved_turns
+        ChatflowHistoryService.update_visible_count(
+            conversation_id=memory_block.conversation_id,
+            node_id=memory_block.node_id,
+            new_visible_count=memory_block.spec.preserved_turns,
+            app_id=memory_block.app_id,
+            tenant_id=memory_block.tenant_id
+        )
+
     @staticmethod
     def delete_memory(app: App, memory_id: str, created_by: MemoryCreatedBy):
         workflow = WorkflowService().get_published_workflow(app)

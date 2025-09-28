@@ -68,20 +68,20 @@ class ChatflowHistoryService:
             next_index = max_index + 1
 
             # Save new message to append-only table
-            message_data = {
-                'role': prompt_message.role.value,
-                'content': prompt_message.get_text_content(),
-                'timestamp': time.time()
-            }
-
             new_message = ChatflowMessage(
                 conversation_id=chatflow_conv.id,
                 index=next_index,
                 version=1,
-                data=json.dumps(message_data)
+                data=json.dumps(prompt_message)
             )
             session.add(new_message)
             session.commit()
+
+            # 添加：每次保存消息后简单增长visible_count
+            current_metadata = ChatflowConversationMetadata.model_validate_json(chatflow_conv.conversation_metadata)
+            new_visible_count = current_metadata.visible_count + 1
+            new_metadata = ChatflowConversationMetadata(visible_count=new_visible_count)
+            chatflow_conv.conversation_metadata = new_metadata.model_dump_json()
 
     @staticmethod
     def save_app_message(
@@ -209,7 +209,7 @@ class ChatflowHistoryService:
         else:
             if create_if_missing:
                 # Create a new chatflow conversation
-                default_metadata = ChatflowConversationMetadata(visible_count=20)
+                default_metadata = ChatflowConversationMetadata(visible_count=0)
                 new_chatflow_conv = ChatflowConversation(
                     tenant_id=tenant_id,
                     app_id=app_id,

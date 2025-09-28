@@ -67,7 +67,10 @@ class ChatflowMessage(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    index: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    index: Mapped[int] = mapped_column(sa.Integer, nullable=False) # This index starts from 0
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Serialized PromptMessage JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
