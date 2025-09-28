@@ -4,7 +4,7 @@ from flask import request
 from flask_restx import Resource, reqparse
 from sqlalchemy.orm import Session
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
@@ -32,6 +32,7 @@ def _validate_description_length(description):
     return description
 
 
+@console_ns.route("/rag/pipeline/templates")
 class PipelineTemplateListApi(Resource):
     @setup_required
     @login_required
@@ -45,6 +46,7 @@ class PipelineTemplateListApi(Resource):
         return pipeline_templates, 200
 
 
+@console_ns.route("/rag/pipeline/templates/<string:template_id>")
 class PipelineTemplateDetailApi(Resource):
     @setup_required
     @login_required
@@ -57,6 +59,7 @@ class PipelineTemplateDetailApi(Resource):
         return pipeline_template, 200
 
 
+@console_ns.route("/rag/pipeline/customized/templates/<string:template_id>")
 class CustomizedPipelineTemplateApi(Resource):
     @setup_required
     @login_required
@@ -112,6 +115,7 @@ class CustomizedPipelineTemplateApi(Resource):
         return {"data": template.yaml_content}, 200
 
 
+@console_ns.route("/rag/pipelines/<string:pipeline_id>/customized/publish")
 class PublishCustomizedPipelineTemplateApi(Resource):
     @setup_required
     @login_required
@@ -144,21 +148,3 @@ class PublishCustomizedPipelineTemplateApi(Resource):
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, args)
         return {"result": "success"}
-
-
-api.add_resource(
-    PipelineTemplateListApi,
-    "/rag/pipeline/templates",
-)
-api.add_resource(
-    PipelineTemplateDetailApi,
-    "/rag/pipeline/templates/<string:template_id>",
-)
-api.add_resource(
-    CustomizedPipelineTemplateApi,
-    "/rag/pipeline/customized/templates/<string:template_id>",
-)
-api.add_resource(
-    PublishCustomizedPipelineTemplateApi,
-    "/rag/pipelines/<string:pipeline_id>/customized/publish",
-)

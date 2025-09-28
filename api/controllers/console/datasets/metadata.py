@@ -4,7 +4,7 @@ from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from fields.dataset_fields import dataset_metadata_fields
 from libs.login import login_required
@@ -16,6 +16,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.metadata_service import MetadataService
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateApi(Resource):
     @setup_required
     @login_required
@@ -50,6 +51,7 @@ class DatasetMetadataCreateApi(Resource):
         return MetadataService.get_dataset_metadatas(dataset), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataApi(Resource):
     @setup_required
     @login_required
@@ -87,6 +89,7 @@ class DatasetMetadataApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/metadata/built-in")
 class DatasetMetadataBuiltInFieldApi(Resource):
     @setup_required
     @login_required
@@ -97,6 +100,7 @@ class DatasetMetadataBuiltInFieldApi(Resource):
         return {"fields": built_in_fields}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
 class DatasetMetadataBuiltInFieldActionApi(Resource):
     @setup_required
     @login_required
@@ -116,6 +120,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditApi(Resource):
     @setup_required
     @login_required
@@ -136,10 +141,3 @@ class DocumentMetadataEditApi(Resource):
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
         return {"result": "success"}, 200
-
-
-api.add_resource(DatasetMetadataCreateApi, "/datasets/<uuid:dataset_id>/metadata")
-api.add_resource(DatasetMetadataApi, "/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
-api.add_resource(DatasetMetadataBuiltInFieldApi, "/datasets/metadata/built-in")
-api.add_resource(DatasetMetadataBuiltInFieldActionApi, "/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
-api.add_resource(DocumentMetadataEditApi, "/datasets/<uuid:dataset_id>/documents/metadata")
