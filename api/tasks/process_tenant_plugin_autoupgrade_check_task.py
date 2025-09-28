@@ -108,9 +108,9 @@ def marketplace_batch_fetch_plugin_manifests(
     # Build result list from cached manifests
     result: list[MarketplacePluginDeclaration] = []
     for plugin_id in plugin_ids_plain_list:
-        manifest: typing.Union[MarketplacePluginDeclaration, None] = cached_manifests.get(plugin_id)
-        if manifest is not None:
-            result.append(manifest)
+        cached_manifest: typing.Union[MarketplacePluginDeclaration, None] = cached_manifests.get(plugin_id)
+        if cached_manifest is not None:
+            result.append(cached_manifest)
 
     return result
 
