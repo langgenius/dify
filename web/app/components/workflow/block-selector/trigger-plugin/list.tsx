@@ -17,7 +17,6 @@ const TriggerPluginList = ({
   onSelect,
   searchText,
   onContentStateChange,
-  tags = [],
 }: TriggerPluginListProps) => {
   const { data: triggerPluginsData } = useAllTriggerPlugins()
   const language = useGetLanguage()

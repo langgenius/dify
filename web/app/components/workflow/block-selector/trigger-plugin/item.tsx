@@ -5,10 +5,10 @@ import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import type { FC } from 'react'
 import React, { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CollectionType } from '../../../tools/types'
-import BlockIcon from '../../block-icon'
-import { BlockEnum } from '../../types'
-import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
+import { CollectionType } from '@/app/components/tools/types'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
+import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import TriggerPluginActionItem from './action-item'
 
 type Props = {
@@ -86,6 +86,7 @@ const TriggerPluginItem: FC<Props> = ({
               trigger_label: trigger.label[language],
               trigger_description: trigger.description[language],
               title: trigger.label[language],
+              plugin_unique_identifier: payload.plugin_unique_identifier,
               is_team_authorization: payload.is_team_authorization,
               output_schema: trigger.output_schema || {},
               paramSchemas: trigger.parameters,

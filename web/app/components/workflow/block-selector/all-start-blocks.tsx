@@ -25,7 +25,6 @@ const AllStartBlocks = ({
   className,
   searchText,
   onSelect,
-  availableBlocksTypes,
   tags = [],
 }: AllStartBlocksProps) => {
   const { t } = useTranslation()
