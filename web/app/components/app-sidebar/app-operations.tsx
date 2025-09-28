@@ -42,7 +42,10 @@ const AppOperations = ({ primaryOperations, secondaryOperations, gap }: {
           'flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover',
           operation.className,
         )}
-        onClick={operation.onClick}
+        onClick={() => {
+          setShowMore(false)
+          operation.onClick()
+        }}
       >
         {cloneElement(operation.icon, {
           className: 'h-4 w-4 text-text-tertiary',
@@ -91,7 +94,7 @@ const AppOperations = ({ primaryOperations, secondaryOperations, gap }: {
               <span className='system-xs-medium text-components-button-secondary-text'>{t('common.operation.more')}</span>
             </Button>
           </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className='z-[21]'>
+          <PortalToFollowElemContent className='z-[100]'>
             <div className='flex min-w-[264px] flex-col rounded-[12px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]'>
               {secondaryOperations.map((operation, index) => renderSecondaryOperation(operation, index))}
             </div>
