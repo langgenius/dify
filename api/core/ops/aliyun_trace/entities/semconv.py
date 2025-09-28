@@ -17,16 +17,17 @@ RETRIEVAL_QUERY: Final[str] = "retrieval.query"
 RETRIEVAL_DOCUMENT: Final[str] = "retrieval.document"
 
 # LLM attributes
-GEN_AI_MODEL_NAME: Final[str] = "gen_ai.model_name"
-GEN_AI_SYSTEM: Final[str] = "gen_ai.system"
+GEN_AI_REQUEST_MODEL: Final[str] = "gen_ai.request.model"
+GEN_AI_PROVIDER_NAME: Final[str] = "gen_ai.provider.name"
 GEN_AI_USAGE_INPUT_TOKENS: Final[str] = "gen_ai.usage.input_tokens"
 GEN_AI_USAGE_OUTPUT_TOKENS: Final[str] = "gen_ai.usage.output_tokens"
 GEN_AI_USAGE_TOTAL_TOKENS: Final[str] = "gen_ai.usage.total_tokens"
-GEN_AI_PROMPT_TEMPLATE_TEMPLATE: Final[str] = "gen_ai.prompt_template.template"
-GEN_AI_PROMPT_TEMPLATE_VARIABLE: Final[str] = "gen_ai.prompt_template.variable"
 GEN_AI_PROMPT: Final[str] = "gen_ai.prompt"
 GEN_AI_COMPLETION: Final[str] = "gen_ai.completion"
 GEN_AI_RESPONSE_FINISH_REASON: Final[str] = "gen_ai.response.finish_reason"
+
+GEN_AI_INPUT_MESSAGE: Final[str] = "gen_ai.input.messages"
+GEN_AI_OUTPUT_MESSAGE: Final[str] = "gen_ai.output.messages"
 
 # Tool attributes
 TOOL_NAME: Final[str] = "tool.name"

@@ -153,7 +153,7 @@ const translation = {
     descriptionChunk1: '既存のナレッジベースを文書処理のためにナレッジパイプラインを使用するように変換できます。',
     descriptionChunk2: '— よりオープンで柔軟なアプローチを採用し、私たちのマーケットプレイスからのプラグインへのアクセスを提供します。これにより、すべての将来のドキュメントに新しい処理方法が適用されることになります。',
   },
-  knowledgeNameAndIcon: 'ナレッジの名前とアイコン',
+  knowledgeNameAndIcon: 'ナレッジベースの名前とアイコン',
   inputField: '入力フィールド',
   pipelineNameAndIcon: 'パイプライン名とアイコン',
   knowledgePermissions: '権限',
