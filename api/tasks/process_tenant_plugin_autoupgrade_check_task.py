@@ -83,6 +83,10 @@ def marketplace_batch_fetch_plugin_manifests(
             not_cached_plugin_ids.append(plugin_id)
         else:
             # Either found manifest or cached as None (not found in marketplace)
+            # At this point, cached_result is either MarketplacePluginDeclaration or None
+            if isinstance(cached_result, bool):
+                # This should never happen due to the if condition above, but for type safety
+                continue
             cached_manifests[plugin_id] = cached_result
 
     # Fetch uncached plugins from marketplace
