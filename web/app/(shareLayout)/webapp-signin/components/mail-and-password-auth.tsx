@@ -11,6 +11,7 @@ import { webAppLogin } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
+import { fetchAccessToken } from '@/service/share'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -39,8 +40,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
     return appCode
   }, [redirectUrl])
+  const appCode = getAppCodeFromRedirectUrl()
   const handleEmailPasswordLogin = async () => {
-    const appCode = getAppCodeFromRedirectUrl()
     if (!email) {
       Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
       return
@@ -78,6 +79,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
+        await fetchAccessToken({ appCode: appCode! })
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {

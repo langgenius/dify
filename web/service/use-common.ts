@@ -7,6 +7,7 @@ import type {
 } from '@/models/common'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FileTypesRes } from './datasets'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
 
@@ -133,7 +134,7 @@ type isWebAppLogin = {
 }
 export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
   return useQuery<isWebAppLogin>({
-    queryKey: [NAME_SPACE, 'is-webapp-login'],
+    queryKey: [NAME_SPACE, 'is-webapp-login', shareCode],
     enabled,
     staleTime: 0,
     gcTime: 0,
@@ -141,9 +142,17 @@ export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
   })
 }
 
+export const useInvalidateIsWebAppLogin = (shareCode: string) => {
+  return useInvalid([NAME_SPACE, 'is-webapp-login', shareCode])
+}
+
 export const useWebAppLogout = (shareCode: string) => {
+  const invalidWebAppLogin = useInvalidateIsWebAppLogin(shareCode)
   return useMutation({
     mutationKey: [NAME_SPACE, 'webapp-logout'],
-    mutationFn: () => postPublic(`/logout?app_code=${shareCode}`),
+    mutationFn: async () => {
+      await postPublic(`/logout?app_code=${shareCode}`)
+      invalidWebAppLogin()
+    },
   })
 }
