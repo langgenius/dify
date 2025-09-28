@@ -77,6 +77,7 @@ class TenantDailyRateLimiter:
 
         # Get next midnight in UTC
         next_midnight = datetime.combine(utc_now.date() + timedelta(days=1), time.min)
+        next_midnight = next_midnight.replace(tzinfo=UTC)
 
         return int((next_midnight - utc_now).total_seconds())
 
