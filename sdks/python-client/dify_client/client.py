@@ -1,5 +1,5 @@
 import json
-from typing import Literal
+from typing import Literal, IO
 import requests
 
 
