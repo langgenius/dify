@@ -427,7 +427,9 @@ class ModelProviderModelEnableApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable")
+@api.route(
+    "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
+)
 class ModelProviderModelDisableApi(Resource):
     @setup_required
     @login_required
