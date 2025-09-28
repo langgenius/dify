@@ -167,10 +167,39 @@ import { appAction } from './app'
 import { knowledgeAction } from './knowledge'
 import { pluginAction } from './plugin'
 import { workflowNodesAction } from './workflow-nodes'
+import { ragPipelineNodesAction } from './rag-pipeline-nodes'
 import type { ActionItem, SearchResult } from './types'
 import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
 
+// Create dynamic Actions based on context
+export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolean) => {
+  const baseActions = {
+    slash: slashAction,
+    app: appAction,
+    knowledge: knowledgeAction,
+    plugin: pluginAction,
+  }
+
+  // Add appropriate node search based on context
+  if (isRagPipelinePage) {
+    return {
+      ...baseActions,
+      node: ragPipelineNodesAction,
+    }
+  }
+  else if (isWorkflowPage) {
+    return {
+      ...baseActions,
+      node: workflowNodesAction,
+    }
+  }
+
+  // Default actions without node search
+  return baseActions
+}
+
+// Legacy export for backward compatibility
 export const Actions = {
   slash: slashAction,
   app: appAction,
@@ -183,6 +212,7 @@ export const searchAnything = async (
   locale: string,
   query: string,
   actionItem?: ActionItem,
+  dynamicActions?: Record<string, ActionItem>,
 ): Promise<SearchResult[]> => {
   if (actionItem) {
     const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
@@ -198,7 +228,7 @@ export const searchAnything = async (
   if (query.startsWith('@') || query.startsWith('/'))
     return []
 
-  const globalSearchActions = Object.values(Actions)
+  const globalSearchActions = Object.values(dynamicActions || Actions)
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {
