@@ -1,7 +1,6 @@
 from .test_mock_config import MockConfigBuilder
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
-
 LLM_NODE_ID = "1759052580454"
 
 
@@ -13,14 +12,7 @@ def test_answer_nodes_emit_in_order() -> None:
         .build()
     )
 
-    expected_answer = (
-        "--- answer 1 ---\n"
-        "\n"
-        "foo\n"
-        "--- answer 2 ---\n"
-        "\n"
-        "mocked llm text\n"
-    )
+    expected_answer = "--- answer 1 ---\n\nfoo\n--- answer 2 ---\n\nmocked llm text\n"
 
     case = WorkflowTestCase(
         fixture_path="test-answer-order",
