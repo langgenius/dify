@@ -9,6 +9,7 @@ import {
   ChunkStructureEnum,
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
+  WeightedScoreEnum,
 } from '../types'
 import type {
   HybridSearchModeEnum,
@@ -16,6 +17,7 @@ import type {
   RerankingModel,
 } from '../types'
 import { isHighQualitySearchMethod } from '../utils'
+import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()
@@ -85,10 +87,13 @@ export const useConfig = (id: string) => {
       embedding_model_provider: embeddingModelProvider,
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
-        vector_setting: {
-          ...nodeData?.data.retrieval_model.vector_setting,
-          embedding_provider_name: embeddingModelProvider,
-          embedding_model_name: embeddingModel,
+        weights: {
+          ...nodeData?.data.retrieval_model.weights,
+          vector_setting: {
+            ...nodeData?.data.retrieval_model.weights.vector_setting,
+            embedding_provider_name: embeddingModelProvider,
+            embedding_model_name: embeddingModel,
+          },
         },
       },
     })
@@ -106,10 +111,21 @@ export const useConfig = (id: string) => {
 
   const handleHybridSearchModeChange = useCallback((hybridSearchMode: HybridSearchModeEnum) => {
     const nodeData = getNodeData()
+    const defaultWeights = {
+      vector_setting: {
+        vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+        embedding_provider_name: nodeData?.data.embedding_model_provider || '',
+        embedding_model_name: nodeData?.data.embedding_model || '',
+      },
+      keyword_setting: {
+        keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+      },
+    }
     handleNodeDataUpdate({
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
         reranking_mode: hybridSearchMode,
+        weights: nodeData?.data.retrieval_model.weights || defaultWeights,
       },
     })
   }, [getNodeData, handleNodeDataUpdate])
@@ -130,11 +146,10 @@ export const useConfig = (id: string) => {
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
         weights: {
-          weight_type: 'weighted_score',
+          weight_type: WeightedScoreEnum.Customized,
           vector_setting: {
+            ...nodeData?.data.retrieval_model.weights?.vector_setting,
             vector_weight: weightedScore.value[0],
-            embedding_provider_name: '',
-            embedding_model_name: '',
           },
           keyword_setting: {
             keyword_weight: weightedScore.value[1],
