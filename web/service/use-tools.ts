@@ -249,8 +249,8 @@ export const useUpdateMCPServer = () => {
 export const useRefreshMCPServerCode = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
-    mutationFn: (appID: string) => {
-      return post<MCPServerDetail>(`apps/${appID}/server/refresh`, {
+    mutationFn: (serverID: string) => {
+      return post<MCPServerDetail>(`apps/${serverID}/server/refresh`, {
         body: {},
       })
     },
