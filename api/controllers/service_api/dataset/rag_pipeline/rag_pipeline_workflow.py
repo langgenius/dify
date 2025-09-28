@@ -1,5 +1,3 @@
-import string
-import uuid
 from collections.abc import Generator
 from typing import Any
 
@@ -27,7 +25,10 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource-plugins")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/pipeline/datasource-plugins",
+    endpoint="service_dataset_pipeline_datasource_plugins",
+)
 class DatasourcePluginsApi(DatasetApiResource):
     """Resource for datasource plugins."""
 
@@ -62,7 +63,10 @@ class DatasourcePluginsApi(DatasetApiResource):
         return datasource_plugins, 200
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource/nodes/{string:node_id}/run")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/pipeline/datasource/nodes/<string:node_id>/run",
+    endpoint="service_dataset_pipeline_datasource_node_run",
+)
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
@@ -117,7 +121,10 @@ class DatasourceNodeRunApi(DatasetApiResource):
         )
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/run")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/pipeline/run",
+    endpoint="service_dataset_pipeline_run",
+)
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
@@ -182,7 +189,10 @@ class PipelineRunApi(DatasetApiResource):
             raise PipelineRunError(description=str(ex))
 
 
-@service_api_ns.route("/datasets/pipeline/file-upload")
+@service_api_ns.route(
+    "/datasets/pipeline/file-upload",
+    endpoint="service_dataset_pipeline_file_upload",
+)
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 

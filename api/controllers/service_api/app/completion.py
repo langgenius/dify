@@ -73,7 +73,10 @@ chat_parser.add_argument(
 chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
 
 
-@service_api_ns.route("/completion-messages")
+@service_api_ns.route(
+    "/completion-messages",
+    endpoint="service_app_completion",
+)
 class CompletionApi(Resource):
     @service_api_ns.expect(completion_parser)
     @service_api_ns.doc("create_completion")
@@ -138,7 +141,10 @@ class CompletionApi(Resource):
             raise InternalServerError()
 
 
-@service_api_ns.route("/completion-messages/<string:task_id>/stop")
+@service_api_ns.route(
+    "/completion-messages/<string:task_id>/stop",
+    endpoint="service_app_completion_stop",
+)
 class CompletionStopApi(Resource):
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
@@ -161,7 +167,10 @@ class CompletionStopApi(Resource):
         return {"result": "success"}, 200
 
 
-@service_api_ns.route("/chat-messages")
+@service_api_ns.route(
+    "/chat-messages",
+    endpoint="service_app_chat",
+)
 class ChatApi(Resource):
     @service_api_ns.expect(chat_parser)
     @service_api_ns.doc("create_chat_message")
@@ -231,7 +240,10 @@ class ChatApi(Resource):
             raise InternalServerError()
 
 
-@service_api_ns.route("/chat-messages/<string:task_id>/stop")
+@service_api_ns.route(
+    "/chat-messages/<string:task_id>/stop",
+    endpoint="service_app_chat_stop",
+)
 class ChatStopApi(Resource):
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")

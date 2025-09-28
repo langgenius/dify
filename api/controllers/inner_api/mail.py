@@ -26,7 +26,10 @@ class BaseMail(Resource):
         return {"message": "success"}, 200
 
 
-@inner_api_ns.route("/enterprise/mail")
+@inner_api_ns.route(
+    "/enterprise/mail",
+    endpoint="inner_enterprise_mail",
+)
 class EnterpriseMail(BaseMail):
     method_decorators = [setup_required, enterprise_inner_api_only]
 
@@ -48,7 +51,10 @@ class EnterpriseMail(BaseMail):
         return super().post()
 
 
-@inner_api_ns.route("/billing/mail")
+@inner_api_ns.route(
+    "/billing/mail",
+    endpoint="inner_billing_mail",
+)
 class BillingMail(BaseMail):
     method_decorators = [setup_required, billing_inner_api_only]
 

@@ -35,7 +35,7 @@ from models.account import Account, Tenant
 from models.model import EndUser
 
 
-@inner_api_ns.route("/invoke/llm")
+@inner_api_ns.route("/invoke/llm", endpoint="inner_plugin_invoke_llm")
 class PluginInvokeLLMApi(Resource):
     @get_user_tenant
     @setup_required
@@ -58,7 +58,10 @@ class PluginInvokeLLMApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
-@inner_api_ns.route("/invoke/llm/structured-output")
+@inner_api_ns.route(
+    "/invoke/llm/structured-output",
+    endpoint="inner_plugin_invoke_llm_structured_output",
+)
 class PluginInvokeLLMWithStructuredOutputApi(Resource):
     @get_user_tenant
     @setup_required
@@ -83,7 +86,10 @@ class PluginInvokeLLMWithStructuredOutputApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
-@inner_api_ns.route("/invoke/text-embedding")
+@inner_api_ns.route(
+    "/invoke/text-embedding",
+    endpoint="inner_plugin_invoke_text_embedding",
+)
 class PluginInvokeTextEmbeddingApi(Resource):
     @get_user_tenant
     @setup_required
@@ -113,7 +119,7 @@ class PluginInvokeTextEmbeddingApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-@inner_api_ns.route("/invoke/rerank")
+@inner_api_ns.route("/invoke/rerank", endpoint="inner_plugin_invoke_rerank")
 class PluginInvokeRerankApi(Resource):
     @get_user_tenant
     @setup_required
@@ -139,7 +145,7 @@ class PluginInvokeRerankApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-@inner_api_ns.route("/invoke/tts")
+@inner_api_ns.route("/invoke/tts", endpoint="inner_plugin_invoke_tts")
 class PluginInvokeTTSApi(Resource):
     @get_user_tenant
     @setup_required
@@ -166,7 +172,10 @@ class PluginInvokeTTSApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
-@inner_api_ns.route("/invoke/speech2text")
+@inner_api_ns.route(
+    "/invoke/speech2text",
+    endpoint="inner_plugin_invoke_speech2text",
+)
 class PluginInvokeSpeech2TextApi(Resource):
     @get_user_tenant
     @setup_required
@@ -192,7 +201,10 @@ class PluginInvokeSpeech2TextApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-@inner_api_ns.route("/invoke/moderation")
+@inner_api_ns.route(
+    "/invoke/moderation",
+    endpoint="inner_plugin_invoke_moderation",
+)
 class PluginInvokeModerationApi(Resource):
     @get_user_tenant
     @setup_required
@@ -218,7 +230,7 @@ class PluginInvokeModerationApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-@inner_api_ns.route("/invoke/tool")
+@inner_api_ns.route("/invoke/tool", endpoint="inner_plugin_invoke_tool")
 class PluginInvokeToolApi(Resource):
     @get_user_tenant
     @setup_required
@@ -250,7 +262,10 @@ class PluginInvokeToolApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
-@inner_api_ns.route("/invoke/parameter-extractor")
+@inner_api_ns.route(
+    "/invoke/parameter-extractor",
+    endpoint="inner_plugin_invoke_parameter_extractor",
+)
 class PluginInvokeParameterExtractorNodeApi(Resource):
     @get_user_tenant
     @setup_required
@@ -283,7 +298,10 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-@inner_api_ns.route("/invoke/question-classifier")
+@inner_api_ns.route(
+    "/invoke/question-classifier",
+    endpoint="inner_plugin_invoke_question_classifier",
+)
 class PluginInvokeQuestionClassifierNodeApi(Resource):
     @get_user_tenant
     @setup_required
@@ -316,7 +334,7 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-@inner_api_ns.route("/invoke/app")
+@inner_api_ns.route("/invoke/app", endpoint="inner_plugin_invoke_app")
 class PluginInvokeAppApi(Resource):
     @get_user_tenant
     @setup_required
@@ -346,7 +364,7 @@ class PluginInvokeAppApi(Resource):
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 
 
-@inner_api_ns.route("/invoke/encrypt")
+@inner_api_ns.route("/invoke/encrypt", endpoint="inner_plugin_invoke_encrypt")
 class PluginInvokeEncryptApi(Resource):
     @get_user_tenant
     @setup_required
@@ -373,7 +391,7 @@ class PluginInvokeEncryptApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
-@inner_api_ns.route("/invoke/summary")
+@inner_api_ns.route("/invoke/summary", endpoint="inner_plugin_invoke_summary")
 class PluginInvokeSummaryApi(Resource):
     @get_user_tenant
     @setup_required
@@ -403,7 +421,10 @@ class PluginInvokeSummaryApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
-@inner_api_ns.route("/upload/file/request")
+@inner_api_ns.route(
+    "/upload/file/request",
+    endpoint="inner_plugin_upload_file_request",
+)
 class PluginUploadFileRequestApi(Resource):
     @get_user_tenant
     @setup_required
@@ -429,7 +450,7 @@ class PluginUploadFileRequestApi(Resource):
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 
-@inner_api_ns.route("/fetch/app/info")
+@inner_api_ns.route("/fetch/app/info", endpoint="inner_plugin_fetch_app_info")
 class PluginFetchAppInfoApi(Resource):
     @get_user_tenant
     @setup_required

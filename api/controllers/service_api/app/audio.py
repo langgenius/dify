@@ -32,7 +32,10 @@ from services.errors.audio import (
 logger = logging.getLogger(__name__)
 
 
-@service_api_ns.route("/audio-to-text")
+@service_api_ns.route(
+    "/audio-to-text",
+    endpoint="service_app_audio_to_text",
+)
 class AudioApi(Resource):
     @service_api_ns.doc("audio_to_text")
     @service_api_ns.doc(description="Convert audio to text using speech-to-text")
@@ -92,7 +95,10 @@ text_to_audio_parser.add_argument("text", type=str, location="json", help="Text 
 text_to_audio_parser.add_argument("streaming", type=bool, location="json", help="Enable streaming response")
 
 
-@service_api_ns.route("/text-to-audio")
+@service_api_ns.route(
+    "/text-to-audio",
+    endpoint="service_app_text_to_audio",
+)
 class TextApi(Resource):
     @service_api_ns.expect(text_to_audio_parser)
     @service_api_ns.doc("text_to_audio")

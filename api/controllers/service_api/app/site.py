@@ -9,7 +9,10 @@ from models.account import TenantStatus
 from models.model import App, Site
 
 
-@service_api_ns.route("/site")
+@service_api_ns.route(
+    "/site",
+    endpoint="service_app_site",
+)
 class AppSiteApi(Resource):
     """Resource for app sites."""
 

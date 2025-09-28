@@ -4,7 +4,10 @@ from configs import dify_config
 from controllers.service_api import service_api_ns
 
 
-@service_api_ns.route("/")
+@service_api_ns.route(
+    "/",
+    endpoint="service_api_index",
+)
 class IndexApi(Resource):
     def get(self):
         return {

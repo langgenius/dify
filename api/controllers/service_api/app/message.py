@@ -91,7 +91,10 @@ def build_message_infinite_scroll_pagination_model(api_or_ns: Api | Namespace):
     return api_or_ns.model("MessageInfiniteScrollPagination", message_infinite_scroll_pagination_fields)
 
 
-@service_api_ns.route("/messages")
+@service_api_ns.route(
+    "/messages",
+    endpoint="service_app_messages",
+)
 class MessageListApi(Resource):
     @service_api_ns.expect(message_list_parser)
     @service_api_ns.doc("list_messages")
@@ -126,7 +129,10 @@ class MessageListApi(Resource):
             raise NotFound("First Message Not Exists.")
 
 
-@service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
+@service_api_ns.route(
+    "/messages/<uuid:message_id>/feedbacks",
+    endpoint="service_app_message_feedback",
+)
 class MessageFeedbackApi(Resource):
     @service_api_ns.expect(message_feedback_parser)
     @service_api_ns.doc("create_message_feedback")
@@ -163,7 +169,10 @@ class MessageFeedbackApi(Resource):
         return {"result": "success"}
 
 
-@service_api_ns.route("/app/feedbacks")
+@service_api_ns.route(
+    "/app/feedbacks",
+    endpoint="service_app_feedbacks",
+)
 class AppGetFeedbacksApi(Resource):
     @service_api_ns.expect(feedback_list_parser)
     @service_api_ns.doc("get_app_feedbacks")
@@ -185,7 +194,10 @@ class AppGetFeedbacksApi(Resource):
         return {"data": feedbacks}
 
 
-@service_api_ns.route("/messages/<uuid:message_id>/suggested")
+@service_api_ns.route(
+    "/messages/<uuid:message_id>/suggested",
+    endpoint="service_app_message_suggested",
+)
 class MessageSuggestedApi(Resource):
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(description="Get suggested follow-up questions for a message")

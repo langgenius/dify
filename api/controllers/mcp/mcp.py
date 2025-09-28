@@ -44,7 +44,10 @@ mcp_request_parser.add_argument(
 )
 
 
-@mcp_ns.route("/server/<string:server_code>/mcp")
+@mcp_ns.route(
+    "/server/<string:server_code>/mcp",
+    endpoint="mcp_server_request",
+)
 class MCPAppApi(Resource):
     @mcp_ns.expect(mcp_request_parser)
     @mcp_ns.doc("handle_mcp_request")

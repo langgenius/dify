@@ -7,7 +7,10 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from services.model_provider_service import ModelProviderService
 
 
-@service_api_ns.route("/workspaces/current/models/model-types/<string:model_type>")
+@service_api_ns.route(
+    "/workspaces/current/models/model-types/<string:model_type>",
+    endpoint="service_workspace_available_models",
+)
 class ModelProviderAvailableModelApi(Resource):
     @service_api_ns.doc("get_available_models")
     @service_api_ns.doc(description="Get available models by model type")

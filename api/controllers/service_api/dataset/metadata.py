@@ -34,7 +34,10 @@ document_metadata_parser.add_argument(
 )
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/metadata",
+    endpoint="service_dataset_metadata_create",
+)
 class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @service_api_ns.expect(metadata_create_parser)
     @service_api_ns.doc("create_dataset_metadata")
@@ -81,7 +84,10 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         return MetadataService.get_dataset_metadatas(dataset), 200
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>",
+    endpoint="service_dataset_metadata_detail",
+)
 class DatasetMetadataServiceApi(DatasetApiResource):
     @service_api_ns.expect(metadata_update_parser)
     @service_api_ns.doc("update_dataset_metadata")
@@ -133,7 +139,10 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/metadata/built-in",
+    endpoint="service_dataset_metadata_built_in",
+)
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
     @service_api_ns.doc("get_built_in_fields")
     @service_api_ns.doc(description="Get all built-in metadata fields")
@@ -149,7 +158,10 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
         return {"fields": built_in_fields}, 200
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>",
+    endpoint="service_dataset_metadata_built_in_action",
+)
 class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     @service_api_ns.doc("toggle_built_in_field")
     @service_api_ns.doc(description="Enable or disable built-in metadata field")
@@ -177,7 +189,10 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         return {"result": "success"}, 200
 
 
-@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/metadata",
+    endpoint="service_dataset_document_metadata",
+)
 class DocumentMetadataEditServiceApi(DatasetApiResource):
     @service_api_ns.expect(document_metadata_parser)
     @service_api_ns.doc("update_documents_metadata")

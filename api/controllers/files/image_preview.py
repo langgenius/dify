@@ -12,7 +12,10 @@ from services.account_service import TenantService
 from services.file_service import FileService
 
 
-@files_ns.route("/<uuid:file_id>/image-preview")
+@files_ns.route(
+    "/<uuid:file_id>/image-preview",
+    endpoint="image_preview",
+)
 class ImagePreviewApi(Resource):
     """
     Deprecated
@@ -41,7 +44,10 @@ class ImagePreviewApi(Resource):
         return Response(generator, mimetype=mimetype)
 
 
-@files_ns.route("/<uuid:file_id>/file-preview")
+@files_ns.route(
+    "/<uuid:file_id>/file-preview",
+    endpoint="file_preview",
+)
 class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
@@ -97,7 +103,10 @@ class FilePreviewApi(Resource):
         return response
 
 
-@files_ns.route("/workspaces/<uuid:workspace_id>/webapp-logo")
+@files_ns.route(
+    "/workspaces/<uuid:workspace_id>/webapp-logo",
+    endpoint="workspace_webapp_logo",
+)
 class WorkspaceWebappLogoApi(Resource):
     def get(self, workspace_id):
         workspace_id = str(workspace_id)
