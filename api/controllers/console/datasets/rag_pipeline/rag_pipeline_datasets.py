@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -32,6 +32,7 @@ def _validate_description_length(description):
     return description
 
 
+@console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
     @setup_required
     @login_required
@@ -84,6 +85,7 @@ class CreateRagPipelineDatasetApi(Resource):
         return import_info, 201
 
 
+@console_ns.route("/rag/pipeline/empty-dataset")
 class CreateEmptyRagPipelineDatasetApi(Resource):
     @setup_required
     @login_required
@@ -108,7 +110,3 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
             ),
         )
         return marshal(dataset, dataset_detail_fields), 201
-
-
-api.add_resource(CreateRagPipelineDatasetApi, "/rag/pipeline/dataset")
-api.add_resource(CreateEmptyRagPipelineDatasetApi, "/rag/pipeline/empty-dataset")
