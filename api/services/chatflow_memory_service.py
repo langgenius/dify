@@ -11,6 +11,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.entities import (
     MemoryBlock,
     MemoryBlockSpec,
+    MemoryBlockWithConversation,
     MemoryCreatedBy,
     MemoryScheduleMode,
     MemoryScope,
@@ -280,7 +281,8 @@ class ChatflowMemoryService:
                 block=memory_block,
                 is_draft=is_draft,
                 variable_pool=variable_pool,
-                visible_messages=visible_messages
+                visible_messages=visible_messages,
+                conversation_id=conversation_id,
             )
 
         # sync mode: submit a batch update task
@@ -332,7 +334,8 @@ class ChatflowMemoryService:
                 visible_messages=visible_messages,
                 memory_block=memory_block,
                 variable_pool=variable_pool,
-                is_draft=is_draft
+                is_draft=is_draft,
+                conversation_id=conversation_id
             )
         else:
             # Node-level async: execute asynchronously
@@ -340,7 +343,8 @@ class ChatflowMemoryService:
                 memory_block=memory_block,
                 visible_messages=visible_messages,
                 variable_pool=variable_pool,
-                is_draft=is_draft
+                is_draft=is_draft,
+                conversation_id=conversation_id
             )
         return True
 
@@ -422,6 +426,7 @@ class ChatflowMemoryService:
         block: MemoryBlock,
         visible_messages: Sequence[PromptMessage],
         variable_pool: VariablePool,
+        conversation_id: str,
         is_draft: bool
     ):
         thread = threading.Thread(
@@ -430,7 +435,8 @@ class ChatflowMemoryService:
                 'memory_block': block,
                 'visible_messages': visible_messages,
                 'variable_pool': variable_pool,
-                'is_draft': is_draft
+                'is_draft': is_draft,
+                'conversation_id': conversation_id
             },
         )
         thread.start()
@@ -478,7 +484,8 @@ class ChatflowMemoryService:
                             'memory_block': block,
                             'visible_messages': visible_messages,
                             'variable_pool': variable_pool,
-                            'is_draft': is_draft
+                            'is_draft': is_draft,
+                            'conversation_id': conversation_id,
                         },
                     )
                     threads.append(thread)
@@ -494,13 +501,15 @@ class ChatflowMemoryService:
         memory_block: MemoryBlock,
         visible_messages: Sequence[PromptMessage],
         variable_pool: VariablePool,
+        conversation_id: str,
         is_draft: bool
     ):
         ChatflowMemoryService._perform_memory_update(
             memory_block=memory_block,
             visible_messages=visible_messages,
             variable_pool=variable_pool,
-            is_draft=is_draft
+            is_draft=is_draft,
+            conversation_id=conversation_id
         )
 
     @staticmethod
@@ -508,6 +517,7 @@ class ChatflowMemoryService:
         memory_block: MemoryBlock,
         visible_messages: Sequence[PromptMessage],
         variable_pool: VariablePool,
+        conversation_id: str,
         is_draft: bool = False
     ):
         thread = threading.Thread(
@@ -516,7 +526,8 @@ class ChatflowMemoryService:
                 'memory_block': memory_block,
                 'visible_messages': visible_messages,
                 'variable_pool': variable_pool,
-                'is_draft': is_draft
+                'is_draft': is_draft,
+                'conversation_id': conversation_id,
             },
             daemon=True
         )
@@ -526,6 +537,7 @@ class ChatflowMemoryService:
     def _perform_memory_update(
         memory_block: MemoryBlock,
         variable_pool: VariablePool,
+        conversation_id: str,
         visible_messages: Sequence[PromptMessage],
         is_draft: bool
     ):
@@ -541,7 +553,7 @@ class ChatflowMemoryService:
             value=updated_value,
             spec=memory_block.spec,
             app_id=memory_block.app_id,
-            conversation_id=memory_block.conversation_id,
+            conversation_id=conversation_id,
             node_id=memory_block.node_id,
             edited_by_user=False,
             created_by=memory_block.created_by,
@@ -549,9 +561,8 @@ class ChatflowMemoryService:
         )
         ChatflowMemoryService.save_memory(updated_memory, variable_pool, is_draft)
 
-        # 添加以下代码：重置 visible_count 为 preserved_turns
         ChatflowHistoryService.update_visible_count(
-            conversation_id=memory_block.conversation_id,
+            conversation_id=conversation_id,
             node_id=memory_block.node_id,
             new_visible_count=memory_block.spec.preserved_turns,
             app_id=memory_block.app_id,
@@ -608,6 +619,44 @@ class ChatflowMemoryService:
             )
             session.execute(stmt)
             session.commit()
+
+    @staticmethod
+    def get_persistent_memories_with_conversation(
+        app: App,
+        created_by: MemoryCreatedBy,
+        conversation_id: str,
+        version: int | None = None
+    ) -> Sequence[MemoryBlockWithConversation]:
+        """Get persistent memories with conversation metadata (always None for persistent)"""
+        memory_blocks = ChatflowMemoryService.get_persistent_memories(app, created_by, version)
+        return [
+            MemoryBlockWithConversation.from_memory_block(
+                block,
+                ChatflowHistoryService.get_conversation_metadata(
+                    app.tenant_id, app.id, conversation_id, block.node_id
+                )
+            )
+            for block in memory_blocks
+        ]
+
+    @staticmethod
+    def get_session_memories_with_conversation(
+        app: App,
+        created_by: MemoryCreatedBy,
+        conversation_id: str,
+        version: int | None = None
+    ) -> Sequence[MemoryBlockWithConversation]:
+        """Get session memories with conversation metadata"""
+        memory_blocks = ChatflowMemoryService.get_session_memories(app, created_by, conversation_id, version)
+        return [
+            MemoryBlockWithConversation.from_memory_block(
+                block,
+                ChatflowHistoryService.get_conversation_metadata(
+                    app.tenant_id, app.id, conversation_id, block.node_id
+                )
+            )
+            for block in memory_blocks
+        ]
 
     @staticmethod
     def _format_chat_history(messages: Sequence[PromptMessage]) -> Sequence[tuple[str, str]]:

@@ -20,21 +20,28 @@ class MemoryListApi(WebApiResource):
         memory_id = args.get("memory_id")
         version = args.get("version")
 
-        result = ChatflowMemoryService.get_persistent_memories(
-            app_model,
-            MemoryCreatedBy(end_user_id=end_user.id),
-            version
-        )
+
         if conversation_id:
-            result = [
-                *result,
-                *ChatflowMemoryService.get_session_memories(
-                    app_model,
-                    MemoryCreatedBy(end_user_id=end_user.id),
-                    conversation_id,
-                    version
-                )
-            ]
+            result = ChatflowMemoryService.get_persistent_memories_with_conversation(
+                app_model,
+                MemoryCreatedBy(end_user_id=end_user.id),
+                conversation_id,
+                version
+            )
+            session_memories = ChatflowMemoryService.get_session_memories_with_conversation(
+                app_model,
+                MemoryCreatedBy(end_user_id=end_user.id),
+                conversation_id,
+                version
+            )
+            result = [*result, *session_memories]
+        else:
+            result = ChatflowMemoryService.get_persistent_memories(
+                app_model,
+                MemoryCreatedBy(end_user_id=end_user.id),
+                version
+            )
+
         if memory_id:
             result = [it for it in result if it.spec.id == memory_id]
         return [it for it in result if it.spec.end_user_visible]

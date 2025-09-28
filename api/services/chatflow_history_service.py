@@ -1,5 +1,4 @@
 import json
-import time
 from collections.abc import MutableMapping, Sequence
 from typing import Literal, Optional, overload
 
@@ -133,6 +132,21 @@ class ChatflowHistoryService:
             chatflow_conv.conversation_metadata = new_metadata.model_dump_json()
 
             session.commit()
+
+    @staticmethod
+    def get_conversation_metadata(
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+        node_id: Optional[str]
+    ) -> ChatflowConversationMetadata:
+        with Session(db.engine) as session:
+            chatflow_conv = ChatflowHistoryService._get_or_create_chatflow_conversation(
+                session, conversation_id, app_id, tenant_id, node_id, create_if_missing=False
+            )
+            if not chatflow_conv:
+                raise ValueError(f"Conversation not found: {conversation_id}")
+            return ChatflowConversationMetadata.model_validate_json(chatflow_conv.conversation_metadata)
 
     @staticmethod
     def _filter_latest_messages(raw_messages: Sequence[ChatflowMessage]) -> Sequence[ChatflowMessage]:

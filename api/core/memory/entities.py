@@ -90,3 +90,30 @@ class ChatflowConversationMetadata(BaseModel):
     """Metadata for chatflow conversation with visible message count"""
     type: str = "mutable_visible_window"
     visible_count: int = Field(gt=0, description="Number of visible messages to keep")
+
+
+class MemoryBlockWithConversation(MemoryBlock):
+    """MemoryBlock with optional conversation metadata for session memories"""
+    conversation_metadata: ChatflowConversationMetadata = Field(
+        description="Conversation metadata, only present for session memories"
+    )
+
+    @classmethod
+    def from_memory_block(
+        cls,
+        memory_block: MemoryBlock,
+        conversation_metadata: ChatflowConversationMetadata
+    ) -> "MemoryBlockWithConversation":
+        """Create MemoryBlockWithConversation from MemoryBlock"""
+        return cls(
+            spec=memory_block.spec,
+            tenant_id=memory_block.tenant_id,
+            value=memory_block.value,
+            app_id=memory_block.app_id,
+            conversation_id=memory_block.conversation_id,
+            node_id=memory_block.node_id,
+            edited_by_user=memory_block.edited_by_user,
+            created_by=memory_block.created_by,
+            version=memory_block.version,
+            conversation_metadata=conversation_metadata
+        )
