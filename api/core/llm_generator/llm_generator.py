@@ -470,12 +470,12 @@ class LLMGenerator:
                 try:
                     raw_agent_log = json.loads(raw_agent_log)
                 except (json.JSONDecodeError, TypeError) as e:
-                    logging.warning(f"Failed to parse agent_log JSON string: {e}")
+                    logging.warning("Failed to parse agent_log JSON string: %s", e)
                     return []
-            
+
             # Ensure raw_agent_log is a list before iteration
             if not isinstance(raw_agent_log, list):
-                logging.warning(f"agent_log is not a list, got {type(raw_agent_log)}")
+                logging.warning("agent_log is not a list, got %s", type(raw_agent_log))
                 return []
 
             return [
