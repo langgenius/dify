@@ -14,8 +14,6 @@ import {
 import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Button from '@/app/components/base/button'
 import type { DatasetConfigs } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
@@ -55,11 +53,6 @@ const RetrievalConfig: FC<Props> = ({
   const handleOpen = useCallback((newOpen: boolean) => {
     onRerankModelOpenChange(newOpen)
   }, [onRerankModelOpenChange])
-
-  const {
-    currentProvider: validRerankDefaultProvider,
-    currentModel: validRerankDefaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const datasetConfigs = useMemo(() => {
     const {
