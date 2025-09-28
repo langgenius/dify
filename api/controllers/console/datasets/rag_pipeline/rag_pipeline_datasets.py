@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     account_initialization_required,

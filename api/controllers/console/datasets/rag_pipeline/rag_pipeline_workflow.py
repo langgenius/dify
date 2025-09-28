@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,

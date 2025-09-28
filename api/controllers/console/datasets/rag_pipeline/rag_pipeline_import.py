@@ -5,7 +5,7 @@ from flask_restx import Resource, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,

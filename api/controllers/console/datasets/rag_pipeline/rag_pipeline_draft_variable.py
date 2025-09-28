@@ -6,7 +6,7 @@ from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqpars
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
