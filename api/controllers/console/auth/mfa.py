@@ -25,9 +25,9 @@ class MFASetupInitApi(Resource):
 
             setup_data = MFAService.generate_mfa_setup_data(account)
             return {"secret": setup_data["secret"], "qr_code": setup_data["qr_code"]}
-        except Exception as e:
+        except Exception:
             # Log the actual error for debugging
-            logging.error(f"MFA setup error: {str(e)}")
+            logging.exception("MFA setup error")
             # Return generic error message to avoid exposing internal details
             return {"error": "Failed to setup MFA. Please try again."}, 500
 
@@ -44,9 +44,9 @@ class MFASetupInitApi(Resource):
 
             setup_data = MFAService.generate_mfa_setup_data(account)
             return {"secret": setup_data["secret"], "qr_code": setup_data["qr_code"]}
-        except Exception as e:
+        except Exception:
             # Log the actual error for debugging
-            logging.error(f"MFA setup error: {str(e)}")
+            logging.exception("MFA setup error")
             # Return generic error message to avoid exposing internal details
             return {"error": "Failed to setup MFA. Please try again."}, 500
 
