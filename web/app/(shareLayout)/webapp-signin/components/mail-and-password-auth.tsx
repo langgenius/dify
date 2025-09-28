@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
@@ -23,13 +23,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
-  // use ref to avoid autofill the value not trigger value change
-  const emailInputRef = useRef<HTMLInputElement>(null)
-  const passwordInputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if(emailInputRef.current && emailFromLink)
-      emailInputRef.current.value = emailFromLink
-  }, [emailFromLink])
+  const [email, setEmail] = useState(emailFromLink)
+  const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
@@ -45,8 +40,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
     return appCode
   }, [redirectUrl])
   const handleEmailPasswordLogin = async () => {
-    const email = emailInputRef.current?.value
-    const password = passwordInputRef.current?.value
     const appCode = getAppCodeFromRedirectUrl()
     if (!email) {
       Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
@@ -107,12 +100,13 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       </label>
       <div className="mt-1">
         <Input
+          value={email}
+          onChange={e => setEmail(e.target.value)}
           id="email"
           type="email"
           autoComplete="email"
           placeholder={t('login.emailPlaceholder') || ''}
           tabIndex={1}
-          ref={emailInputRef}
         />
       </div>
     </div>
@@ -131,6 +125,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       </label>
       <div className="relative mt-1">
         <Input
+          value={password}
+          onChange={e => setPassword(e.target.value)}
           id="password"
           onKeyDown={(e) => {
             if (e.key === 'Enter')
@@ -140,7 +136,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           autoComplete="current-password"
           placeholder={t('login.passwordPlaceholder') || ''}
           tabIndex={2}
-          ref={passwordInputRef}
         />
         <div className="absolute inset-y-0 right-0 flex items-center">
           <Button
@@ -159,7 +154,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         tabIndex={2}
         variant='primary'
         onClick={handleEmailPasswordLogin}
-        disabled={isLoading || !emailInputRef.current?.value || !passwordInputRef.current?.value}
+        disabled={isLoading || !email || !password}
         className="w-full"
       >{t('login.signBtn')}</Button>
     </div>
