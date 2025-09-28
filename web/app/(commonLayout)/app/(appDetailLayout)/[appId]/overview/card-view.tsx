@@ -130,6 +130,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       {showTriggerCard && (
         <TriggerCard
           appInfo={appDetail}
+          onToggleResult={handleCallbackResult}
         />
       )}
     </div>

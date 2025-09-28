@@ -21,6 +21,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
+  onToggleResult?: (err: Error | null, message?: string) => void
 }
 
 const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
@@ -79,7 +80,7 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   )
 }
 
-function TriggerCard({ appInfo }: ITriggerCardProps) {
+function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
   const appId = appInfo.id
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -120,12 +121,17 @@ function TriggerCard({ appInfo }: ITriggerCardProps) {
         enableTrigger: enabled,
       })
       invalidateAppTriggers(appId)
+
+      // Success toast notification
+      onToggleResult?.(null)
     }
     catch (error) {
       // Rollback Zustand store state on error
       const rollbackStatus = enabled ? 'disabled' : 'enabled'
       setTriggerStatus(trigger.node_id, rollbackStatus)
-      console.error('Failed to update trigger status:', error)
+
+      // Error toast notification
+      onToggleResult?.(error as Error)
     }
   }
 
