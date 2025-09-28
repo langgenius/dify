@@ -74,7 +74,6 @@ class LoginApi(Resource):
 @web_ns.route("/login/status")
 class LoginStatusApi(Resource):
     @setup_required
-    @only_edition_enterprise
     @web_ns.doc("web_app_login_status")
     @web_ns.doc(description="Check login status")
     @web_ns.doc(
