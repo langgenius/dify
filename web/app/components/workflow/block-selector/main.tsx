@@ -168,6 +168,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               <div className='relative m-2' onClick={e => e.stopPropagation()}>
                 {activeTab === TabsEnum.Start && (
                   <SearchBox
+                    autoFocus
                     search={searchText}
                     onSearchChange={setSearchText}
                     tags={tags}
@@ -200,6 +201,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                 )}
                 {activeTab === TabsEnum.Tools && (
                   <SearchBox
+                    autoFocus
                     search={searchText}
                     onSearchChange={setSearchText}
                     tags={tags}
