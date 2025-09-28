@@ -121,7 +121,7 @@ class WorkspaceListApi(Resource):
 
 
 @api.route("/workspaces/current", endpoint="workspaces_current")
-@api.route("/info", endpoint="info")
+@api.route("/info", endpoint="info")  # Deprecated
 class TenantApi(Resource):
     @setup_required
     @login_required
