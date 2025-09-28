@@ -551,7 +551,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 total_steps=validated_state.node_run_steps,
                 outputs=event.outputs,
                 exceptions_count=event.exceptions_count,
-                conversation_id=None,
+                conversation_id=self._conversation_id,
                 trace_manager=trace_manager,
                 external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
