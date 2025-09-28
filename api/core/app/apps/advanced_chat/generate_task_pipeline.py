@@ -837,9 +837,11 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
         message = self._get_message(session=session)
-
-        # If there are assistant files, remove markdown image links from answer
-        answer_text = graph_runtime_state.get_output("add_to_history_response", "")
+        if graph_runtime_state is not None:
+            # If there are assistant files, remove markdown image links from answer
+            answer_text = graph_runtime_state.get_output("add_to_history_response", "")
+        else:
+            answer_text = self._task_state.answer
         # Respect Answer node's include_in_memory flag if provided by runtime state
         if self._recorded_files:
             # Remove markdown image links since we're storing files separately
