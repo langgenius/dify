@@ -22,6 +22,7 @@ import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVa
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -79,7 +80,7 @@ type Props = {
   popupFor?: 'assigned' | 'toAssigned'
   zIndex?: number
   currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
 }
 

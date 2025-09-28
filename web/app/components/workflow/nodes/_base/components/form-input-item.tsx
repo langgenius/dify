@@ -10,6 +10,7 @@ import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Tool } from '@/app/components/tools/types'
 import FormInputTypeSwitch from './form-input-type-switch'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -26,6 +27,8 @@ import cn from '@/utils/classnames'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
+import type { Trigger } from '@/app/components/tools/types'
+
 type Props = {
   readOnly: boolean
   nodeId: string
@@ -33,8 +36,8 @@ type Props = {
   value: ResourceVarInputs
   onChange: (value: any) => void
   inPanel?: boolean
-  currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentTool?: Tool | Trigger
+  currentProvider?: ToolWithProvider | TriggerWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void
   extraParams?: Record<string, any>

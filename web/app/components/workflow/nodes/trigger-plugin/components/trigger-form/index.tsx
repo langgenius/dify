@@ -2,9 +2,9 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Trigger } from '@/app/components/tools/types'
 import type { FC } from 'react'
-import type { PluginTriggerVarInputs } from '../../types'
+import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import TriggerFormItem from './item'
-import type { TriggerWithProvider } from '../../../../block-selector/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
   readOnly: boolean
