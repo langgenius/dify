@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.png)
+![cover-v5-optimized](../images/GitHub_README_if.png)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
@@ -35,7 +35,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="../README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
   <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
   <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
   <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
@@ -170,7 +170,7 @@ Implementa Dify en AKS con un clic usando [Azure Devops Pipeline Helm Chart by @
 
 ## Contribuir
 
-Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING_ES.md).
+Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING/CONTRIBUTING_ES.md).
 Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en eventos y conferencias.
 
 > Estamos buscando colaboradores para ayudar con la traducción de Dify a idiomas que no sean el mandarín o el inglés. Si estás interesado en ayudar, consulta el [README de i18n](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) para obtener más información y déjanos un comentario en el canal `global-users` de nuestro [Servidor de Comunidad en Discord](https://discord.gg/8Tpq4AcN9c).
@@ -198,7 +198,7 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 
 ## Licencia
 
-Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
+Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](../LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
 
 ## Divulgación de Seguridad
 
@@ -206,4 +206,4 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 
 ## Licencia
 
-Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
+Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](../LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
