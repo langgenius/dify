@@ -33,7 +33,8 @@ def trigger_endpoint(endpoint_id: str):
             if response:
                 break
         if not response:
-            raise NotFound("Endpoint not found")
+            logger.error("Endpoint not found for {endpoint_id}")
+            return jsonify({"error": "Endpoint not found"}), 404
         return response
     except ValueError as e:
         raise NotFound(str(e))

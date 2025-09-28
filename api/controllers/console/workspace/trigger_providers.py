@@ -99,8 +99,6 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
                 credential_type=credential_type,
             )
             return jsonable_encoder({"subscription_builder": subscription_builder})
-        except ValueError as e:
-            raise BadRequest(str(e))
         except Exception as e:
             logger.exception("Error adding provider credential", exc_info=e)
             raise
@@ -151,7 +149,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
             )
         except Exception as e:
             logger.exception("Error verifying provider credential", exc_info=e)
-            raise
+            raise ValueError(str(e)) from e
 
 
 class TriggerSubscriptionBuilderUpdateApi(Resource):
@@ -251,11 +249,9 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
                 subscription_builder_id=subscription_builder_id,
             )
             return 200
-        except ValueError as e:
-            raise BadRequest(str(e))
         except Exception as e:
             logger.exception("Error building provider credential", exc_info=e)
-            raise
+            raise ValueError(str(e)) from e
 
 
 class TriggerSubscriptionDeleteApi(Resource):
