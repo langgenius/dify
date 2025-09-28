@@ -1,15 +1,16 @@
-import React, { useContext, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContextSelector } from 'use-context-selector'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import ToolItem from '@/app/components/tools/provider/tool-item'
-import { usePluginStore } from './store'
 import { useTriggerProviderInfo } from '@/service/use-triggers'
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Trigger } from '@/app/components/plugins/types'
+import { usePluginStore } from './subscription-list/store'
 
 type TriggerOption = {
   value: string
@@ -79,7 +80,7 @@ const toTool = (trigger: Trigger, fallbackAuthor: string): Tool => {
 
 export const TriggerEventsList = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useContextSelector(I18n, state => state.locale)
   const language = getLanguage(locale)
   const detail = usePluginStore(state => state.detail)
   const triggers = detail?.declaration.trigger?.triggers || []

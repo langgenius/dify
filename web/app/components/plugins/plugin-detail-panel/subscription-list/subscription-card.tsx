@@ -1,10 +1,7 @@
 'use client'
 import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import cn from '@/utils/classnames'
 import {
   RiDeleteBinLine,
@@ -12,7 +9,7 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { usePluginSubscriptionStore } from '../store'
+import { DeleteConfirm } from './delete-confirm'
 
 type Props = {
   data: TriggerSubscription
@@ -24,28 +21,6 @@ const SubscriptionCard = ({ data }: Props) => {
     setTrue: showDeleteModal,
     setFalse: hideDeleteModal,
   }] = useBoolean(false)
-  const { refresh } = usePluginSubscriptionStore()
-
-  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
-
-  const handleDelete = () => {
-    deleteSubscription(data.id, {
-      onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t('pluginTrigger.subscription.list.item.actions.deleteConfirm.title'),
-        })
-        refresh?.()
-        hideDeleteModal()
-      },
-      onError: (error: any) => {
-        Toast.notify({
-          type: 'error',
-          message: error?.message || 'Failed to delete subscription',
-        })
-      },
-    })
-  }
 
   const isActive = data.properties?.active !== false
 
@@ -96,13 +71,11 @@ const SubscriptionCard = ({ data }: Props) => {
       </div>
 
       {isShowDeleteModal && (
-        <Confirm
-          title={t('pluginTrigger.subscription.list.item.actions.deleteConfirm.title')}
-          content={t('pluginTrigger.subscription.list.item.actions.deleteConfirm.content', { name: data.name })}
+        <DeleteConfirm
+          onClose={hideDeleteModal}
           isShow={isShowDeleteModal}
-          onConfirm={handleDelete}
-          onCancel={hideDeleteModal}
-          isLoading={isDeleting}
+          currentId={data.id}
+          currentName={data.name}
         />
       )}
     </>

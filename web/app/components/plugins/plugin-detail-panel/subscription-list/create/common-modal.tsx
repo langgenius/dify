@@ -17,8 +17,8 @@ import {
 import { RiLoader2Line } from '@remixicon/react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginStore, usePluginSubscriptionStore } from '../../store'
 import LogViewer from '../log-viewer'
+import { usePluginStore, usePluginSubscriptionStore } from '../store'
 
 type Props = {
   onClose: () => void
@@ -72,7 +72,6 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { mutate: createBuilder /* isPending: isCreatingBuilder */ } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
 
-  const providerName = `${detail?.plugin_id}/${detail?.declaration.name}`
   const propertiesSchema = detail?.declaration.trigger.subscription_schema.properties_schema || [] // manual
   const subscriptionFormRef = React.useRef<FormRefObject>(null)
   const propertiesFormRef = React.useRef<FormRefObject>(null)
@@ -82,7 +81,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const credentialsFormRef = React.useRef<FormRefObject>(null)
 
   const { data: logData } = useTriggerSubscriptionBuilderLogs(
-    providerName,
+    detail?.provider || '',
     subscriptionBuilder?.id || '',
     {
       enabled: createType === SupportedCreationMethods.MANUAL && !!subscriptionBuilder?.id,
@@ -94,7 +93,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     if (!subscriptionBuilder) {
       createBuilder(
         {
-          provider: providerName,
+          provider: detail?.provider || '',
           credential_type: CREDENTIAL_TYPE_MAP[createType],
         },
         {
@@ -112,7 +111,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         },
       )
     }
-  }, [createBuilder, providerName, subscriptionBuilder, t])
+  }, [createBuilder, detail?.provider, subscriptionBuilder, t])
 
   const handleVerify = () => {
     const credentialsFormValues = credentialsFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
@@ -130,7 +129,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
     verifyCredentials(
       {
-        provider: providerName,
+        provider: detail?.provider || '',
         subscriptionBuilderId: subscriptionBuilder?.id || '',
         credentials,
       },
@@ -164,7 +163,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
     buildSubscription(
       {
-        provider: providerName,
+        provider: detail?.provider || '',
         subscriptionBuilderId: subscriptionBuilder.id,
         name: subscriptionNameValue,
         parameters: { ...parameterForm.values, events: ['*'] },
@@ -267,11 +266,11 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         </div> */}
         {createType !== SupportedCreationMethods.MANUAL && parametersSchema.length > 0 && (
           <BaseForm
-            formSchemas={parametersSchema.map(schema => ({
+            formSchemas={parametersSchema.map((schema: { type: FormTypeEnum; name: any }) => ({
               ...schema,
               dynamicSelectParams: schema.type === FormTypeEnum.dynamicSelect ? {
                 plugin_id: detail?.plugin_id || '',
-                provider: providerName,
+                provider: detail?.provider || '',
                 action: 'provider',
                 parameter: schema.name,
                 credential_id: subscriptionBuilder?.id || '',
@@ -306,7 +305,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 <RiLoader2Line className='h-full w-full animate-spin' />
               </div>
               <div className='system-xs-regular text-text-tertiary'>
-                Awaiting request from {detail?.declaration.name}...
+                Awaiting request from {detail?.plugin_id}...
               </div>
             </div>
             <LogViewer logs={logData?.logs || []} />

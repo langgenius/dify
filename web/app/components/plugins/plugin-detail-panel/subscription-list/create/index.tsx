@@ -14,7 +14,7 @@ import { useBoolean } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SupportedCreationMethods } from '../../../types'
-import { usePluginStore } from '../../store'
+import { usePluginStore } from '../store'
 import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
 
@@ -35,11 +35,10 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{ type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder } | null>(null)
 
   const detail = usePluginStore(state => state.detail)
-  const provider = `${detail?.plugin_id}/${detail?.declaration.name}`
 
-  const { data: providerInfo } = useTriggerProviderInfo(provider, !!detail?.plugin_id && !!detail?.declaration.name)
+  const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
   const supportedMethods = providerInfo?.supported_creation_methods || []
-  const { data: oauthConfig } = useTriggerOAuthConfig(provider, supportedMethods.includes(SupportedCreationMethods.OAUTH))
+  const { data: oauthConfig } = useTriggerOAuthConfig(detail?.provider || '', supportedMethods.includes(SupportedCreationMethods.OAUTH))
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
 
   const methodType = supportedMethods.length === 1 ? supportedMethods[0] : DEFAULT_METHOD
@@ -94,7 +93,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const onChooseCreateType = (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
       if (oauthConfig?.configured) {
-        initiateOAuth(provider, {
+        initiateOAuth(detail?.provider || '', {
           onSuccess: (response) => {
             openOAuthPopup(response.authorization_url, (callbackData) => {
               if (callbackData) {

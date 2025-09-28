@@ -1,18 +1,18 @@
 'use client'
-import React, { useEffect } from 'react'
-import type { FC } from 'react'
-import DetailHeader from './detail-header'
-import EndpointList from './endpoint-list'
-import ActionList from './action-list'
-import DatasourceActionList from './datasource-action-list'
-import ModelList from './model-list'
-import AgentStrategyList from './agent-strategy-list'
-import { SubscriptionList } from './subscription-list'
-import { TriggerEventsList } from './trigger-events-list'
 import Drawer from '@/app/components/base/drawer'
 import { type PluginDetail, PluginType } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
-import { usePluginStore } from './store'
+import type { FC } from 'react'
+import { useEffect } from 'react'
+import ActionList from './action-list'
+import AgentStrategyList from './agent-strategy-list'
+import DatasourceActionList from './datasource-action-list'
+import DetailHeader from './detail-header'
+import EndpointList from './endpoint-list'
+import ModelList from './model-list'
+import { SubscriptionList } from './subscription-list'
+import { usePluginStore } from './subscription-list/store'
+import { TriggerEventsList } from './trigger-events-list'
 
 type Props = {
   detail?: PluginDetail
@@ -33,8 +33,13 @@ const PluginDetailPanel: FC<Props> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    if (detail)
-      setDetail(detail)
+    if (detail) {
+      setDetail({
+        plugin_id: detail.plugin_id,
+        provider: `${detail.plugin_id}/${detail.declaration.name}`,
+        declaration: detail.declaration,
+      })
+    }
   }, [detail])
 
   if (!detail)
