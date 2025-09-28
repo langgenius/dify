@@ -150,6 +150,8 @@ const translation = {
       callbackUrl: {
         label: '回调URL',
         description: '此URL将接收Webhook事件',
+        tooltip: '填写能被触发器提供方访问的公网地址，用于接收回调请求。',
+        placeholder: 'https://example.com/webhooks/github',
         copy: '复制',
         copied: '已复制！',
       },

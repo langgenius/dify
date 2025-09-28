@@ -150,6 +150,8 @@ const translation = {
       callbackUrl: {
         label: 'Callback URL',
         description: 'This URL will receive webhook events',
+        tooltip: 'Provide a publicly accessible endpoint that can receive callback requests from the trigger provider.',
+        placeholder: 'https://example.com/webhooks/github',
         copy: 'Copy',
         copied: 'Copied!',
       },
