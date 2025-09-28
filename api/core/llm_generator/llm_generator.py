@@ -465,6 +465,19 @@ class LLMGenerator:
             if not raw_agent_log:
                 return []
 
+            # Handle case where raw_agent_log might be a JSON string from older execution_metadata
+            if isinstance(raw_agent_log, str):
+                try:
+                    raw_agent_log = json.loads(raw_agent_log)
+                except (json.JSONDecodeError, TypeError) as e:
+                    logging.warning(f"Failed to parse agent_log JSON string: {e}")
+                    return []
+            
+            # Ensure raw_agent_log is a list before iteration
+            if not isinstance(raw_agent_log, list):
+                logging.warning(f"agent_log is not a list, got {type(raw_agent_log)}")
+                return []
+
             return [
                 {
                     "status": event["status"],
