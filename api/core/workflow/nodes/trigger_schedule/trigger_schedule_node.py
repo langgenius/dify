@@ -11,7 +11,7 @@ from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeDat
 
 
 class TriggerScheduleNode(Node):
-    _node_type = NodeType.TRIGGER_SCHEDULE
+    node_type = NodeType.TRIGGER_SCHEDULE
 
     _node_data: TriggerScheduleNodeData
 

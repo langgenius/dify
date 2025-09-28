@@ -11,7 +11,7 @@ from .entities import PluginTriggerData
 
 
 class TriggerPluginNode(Node):
-    _node_type = NodeType.TRIGGER_PLUGIN
+    node_type = NodeType.TRIGGER_PLUGIN
 
     _node_data: PluginTriggerData
 

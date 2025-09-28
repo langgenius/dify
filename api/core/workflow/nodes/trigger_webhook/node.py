@@ -11,7 +11,7 @@ from .entities import ContentType, WebhookData
 
 
 class TriggerWebhookNode(Node):
-    _node_type = NodeType.TRIGGER_WEBHOOK
+    node_type = NodeType.TRIGGER_WEBHOOK
 
     _node_data: WebhookData
 
