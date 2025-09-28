@@ -216,6 +216,7 @@ class ResponseStreamCoordinator:
                 if source_node.execution_type in {
                     NodeExecutionType.BRANCH,
                     NodeExecutionType.CONTAINER,
+                    NodeExecutionType.RESPONSE,
                 } or source_node.blocks_variable_output(variable_selectors):
                     blocking_edges.append(edge_id)
 
