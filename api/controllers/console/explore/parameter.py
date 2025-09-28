@@ -9,6 +9,7 @@ from models.model import AppMode, InstalledApp
 from services.app_service import AppService
 
 
+@api.route("/installed-apps/<uuid:installed_app_id>/parameters", endpoint="installed_app_parameters")
 class AppParameterApi(InstalledAppResource):
     """Resource for app variables."""
 
@@ -39,6 +40,7 @@ class AppParameterApi(InstalledAppResource):
         return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
 
+@api.route("/installed-apps/<uuid:installed_app_id>/meta", endpoint="installed_app_meta")
 class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
@@ -46,9 +48,3 @@ class ExploreAppMetaApi(InstalledAppResource):
         if not app_model:
             raise ValueError("App not found")
         return AppService().get_app_meta(app_model)
-
-
-api.add_resource(
-    AppParameterApi, "/installed-apps/<uuid:installed_app_id>/parameters", endpoint="installed_app_parameters"
-)
-api.add_resource(ExploreAppMetaApi, "/installed-apps/<uuid:installed_app_id>/meta", endpoint="installed_app_meta")

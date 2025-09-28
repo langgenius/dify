@@ -35,6 +35,7 @@ recommended_app_list_fields = {
 }
 
 
+@api.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @login_required
     @account_initialization_required
@@ -56,13 +57,10 @@ class RecommendedAppListApi(Resource):
         return RecommendedAppService.get_recommended_apps_and_categories(language_prefix)
 
 
+@api.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
         app_id = str(app_id)
         return RecommendedAppService.get_recommend_app_detail(app_id)
-
-
-api.add_resource(RecommendedAppListApi, "/explore/apps")
-api.add_resource(RecommendedAppApi, "/explore/apps/<uuid:app_id>")

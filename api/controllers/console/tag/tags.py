@@ -17,6 +17,7 @@ def _validate_name(name):
     return name
 
 
+@api.route("/tags")
 class TagListApi(Resource):
     @setup_required
     @login_required
@@ -52,6 +53,7 @@ class TagListApi(Resource):
         return response, 200
 
 
+@api.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
     @setup_required
     @login_required
@@ -89,6 +91,7 @@ class TagUpdateDeleteApi(Resource):
         return 204
 
 
+@api.route("/tag-bindings/create")
 class TagBindingCreateApi(Resource):
     @setup_required
     @login_required
@@ -114,6 +117,7 @@ class TagBindingCreateApi(Resource):
         return {"result": "success"}, 200
 
 
+@api.route("/tag-bindings/remove")
 class TagBindingDeleteApi(Resource):
     @setup_required
     @login_required
@@ -133,9 +137,3 @@ class TagBindingDeleteApi(Resource):
         TagService.delete_tag_binding(args)
 
         return {"result": "success"}, 200
-
-
-api.add_resource(TagListApi, "/tags")
-api.add_resource(TagUpdateDeleteApi, "/tags/<uuid:tag_id>")
-api.add_resource(TagBindingCreateApi, "/tag-bindings/create")
-api.add_resource(TagBindingDeleteApi, "/tag-bindings/remove")

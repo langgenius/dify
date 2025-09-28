@@ -17,6 +17,7 @@ from services.model_provider_service import ModelProviderService
 logger = logging.getLogger(__name__)
 
 
+@api.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
     @setup_required
     @login_required
@@ -85,6 +86,7 @@ class DefaultModelApi(Resource):
         return {"result": "success"}
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
@@ -187,6 +189,7 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 204
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
@@ -364,6 +367,7 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
     @setup_required
     @login_required
@@ -395,6 +399,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable")
 class ModelProviderModelEnableApi(Resource):
     @setup_required
     @login_required
@@ -422,6 +427,7 @@ class ModelProviderModelEnableApi(Resource):
         return {"result": "success"}
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable")
 class ModelProviderModelDisableApi(Resource):
     @setup_required
     @login_required
@@ -449,6 +455,7 @@ class ModelProviderModelDisableApi(Resource):
         return {"result": "success"}
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
     @setup_required
     @login_required
@@ -494,6 +501,7 @@ class ModelProviderModelValidateApi(Resource):
         return response
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
     @setup_required
     @login_required
@@ -513,6 +521,7 @@ class ModelProviderModelParameterRuleApi(Resource):
         return jsonable_encoder({"data": parameter_rules})
 
 
+@api.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
     @setup_required
     @login_required
@@ -524,32 +533,3 @@ class ModelProviderAvailableModelApi(Resource):
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 
         return jsonable_encoder({"data": models})
-
-
-api.add_resource(ModelProviderModelApi, "/workspaces/current/model-providers/<path:provider>/models")
-api.add_resource(
-    ModelProviderModelEnableApi,
-    "/workspaces/current/model-providers/<path:provider>/models/enable",
-    endpoint="model-provider-model-enable",
-)
-api.add_resource(
-    ModelProviderModelDisableApi,
-    "/workspaces/current/model-providers/<path:provider>/models/disable",
-    endpoint="model-provider-model-disable",
-)
-api.add_resource(
-    ModelProviderModelCredentialApi, "/workspaces/current/model-providers/<path:provider>/models/credentials"
-)
-api.add_resource(
-    ModelProviderModelCredentialSwitchApi,
-    "/workspaces/current/model-providers/<path:provider>/models/credentials/switch",
-)
-api.add_resource(
-    ModelProviderModelValidateApi, "/workspaces/current/model-providers/<path:provider>/models/credentials/validate"
-)
-
-api.add_resource(
-    ModelProviderModelParameterRuleApi, "/workspaces/current/model-providers/<path:provider>/models/parameter-rules"
-)
-api.add_resource(ModelProviderAvailableModelApi, "/workspaces/current/models/model-types/<string:model_type>")
-api.add_resource(DefaultModelApi, "/workspaces/current/default-model")

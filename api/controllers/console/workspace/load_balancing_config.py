@@ -10,6 +10,7 @@ from models.account import Account, TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 
+@api.route("/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate")
 class LoadBalancingCredentialsValidateApi(Resource):
     @setup_required
     @login_required
@@ -61,6 +62,9 @@ class LoadBalancingCredentialsValidateApi(Resource):
         return response
 
 
+@api.route(
+    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate"
+)
 class LoadBalancingConfigCredentialsValidateApi(Resource):
     @setup_required
     @login_required
@@ -111,15 +115,3 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
             response["error"] = error
 
         return response
-
-
-# Load Balancing Config
-api.add_resource(
-    LoadBalancingCredentialsValidateApi,
-    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate",
-)
-
-api.add_resource(
-    LoadBalancingConfigCredentialsValidateApi,
-    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate",
-)

@@ -22,6 +22,7 @@ from services.feature_service import FeatureService
 logger = logging.getLogger(__name__)
 
 
+@api.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
@@ -154,6 +155,7 @@ class InstalledAppsListApi(Resource):
         return {"message": "App installed successfully"}
 
 
+@api.route("/installed-apps/<uuid:installed_app_id>")
 class InstalledAppApi(InstalledAppResource):
     """
     update and delete an installed app
@@ -185,7 +187,3 @@ class InstalledAppApi(InstalledAppResource):
             db.session.commit()
 
         return {"result": "success", "message": "App info updated successfully"}
-
-
-api.add_resource(InstalledAppsListApi, "/installed-apps")
-api.add_resource(InstalledAppApi, "/installed-apps/<uuid:installed_app_id>")

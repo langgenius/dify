@@ -25,6 +25,7 @@ message_fields = {
 }
 
 
+@api.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(InstalledAppResource):
     saved_message_infinite_scroll_pagination_fields = {
         "limit": fields.Integer,
@@ -66,6 +67,9 @@ class SavedMessageListApi(InstalledAppResource):
         return {"result": "success"}
 
 
+@api.route(
+    "/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>", endpoint="installed_app_saved_message"
+)
 class SavedMessageApi(InstalledAppResource):
     def delete(self, installed_app, message_id):
         app_model = installed_app.app
@@ -80,15 +84,3 @@ class SavedMessageApi(InstalledAppResource):
         SavedMessageService.delete(app_model, current_user, message_id)
 
         return {"result": "success"}, 204
-
-
-api.add_resource(
-    SavedMessageListApi,
-    "/installed-apps/<uuid:installed_app_id>/saved-messages",
-    endpoint="installed_app_saved_messages",
-)
-api.add_resource(
-    SavedMessageApi,
-    "/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>",
-    endpoint="installed_app_saved_message",
-)
