@@ -46,6 +46,7 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]) => {
       ...parameter,
       variable: parameter.name,
       label: parameter.label,
+      type: toType(parameter.type),
       tooltip: parameter.help,
       show_on: [],
       options: parameter.options?.map((option) => {
