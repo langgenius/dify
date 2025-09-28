@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from flask_restx import reqparse
@@ -63,7 +64,7 @@ class CompletionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    async def post(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -80,8 +81,13 @@ class CompletionApi(WebApiResource):
         args["auto_generate_name"] = False
 
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                end_user,
+                args,
+                InvokeFrom.WEB_APP,
+                streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -161,7 +167,7 @@ class ChatApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    async def post(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -181,8 +187,13 @@ class ChatApi(WebApiResource):
         args["auto_generate_name"] = False
 
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                end_user,
+                args,
+                InvokeFrom.WEB_APP,
+                streaming,
             )
 
             return helper.compact_generate_response(response)

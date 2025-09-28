@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from flask_restx import marshal_with, reqparse
@@ -108,7 +109,7 @@ class MessageFeedbackApi(InstalledAppResource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
-    def get(self, installed_app, message_id):
+    async def get(self, installed_app, message_id):
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -126,12 +127,13 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            response = AppGenerateService.generate_more_like_this(
-                app_model=app_model,
-                user=current_user,
-                message_id=message_id,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=streaming,
+            response = await asyncio.to_thread(
+                AppGenerateService.generate_more_like_this,
+                app_model,
+                current_user,
+                message_id,
+                InvokeFrom.EXPLORE,
+                streaming,
             )
             return helper.compact_generate_response(response)
         except MessageNotExistsError:

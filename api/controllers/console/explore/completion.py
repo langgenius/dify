@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from flask_restx import reqparse
@@ -44,7 +45,7 @@ logger = logging.getLogger(__name__)
     endpoint="installed_app_completion",
 )
 class CompletionApi(InstalledAppResource):
-    def post(self, installed_app):
+    async def post(self, installed_app):
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -66,8 +67,13 @@ class CompletionApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                current_user,
+                args,
+                InvokeFrom.EXPLORE,
+                streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -115,7 +121,7 @@ class CompletionStopApi(InstalledAppResource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(InstalledAppResource):
-    def post(self, installed_app):
+    async def post(self, installed_app):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -138,8 +144,13 @@ class ChatApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                current_user,
+                args,
+                InvokeFrom.EXPLORE,
+                True,
             )
 
             return helper.compact_generate_response(response)

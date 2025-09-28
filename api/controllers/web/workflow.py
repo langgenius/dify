@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from flask_restx import reqparse
@@ -50,7 +51,7 @@ class WorkflowRunApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -64,8 +65,13 @@ class WorkflowRunApi(WebApiResource):
         args = parser.parse_args()
 
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
+            response = await asyncio.to_thread(
+                AppGenerateService.generate,
+                app_model,
+                end_user,
+                args,
+                InvokeFrom.WEB_APP,
+                True,
             )
 
             return helper.compact_generate_response(response)
