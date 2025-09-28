@@ -1,3 +1,4 @@
+import logging
 from typing import cast
 
 import flask_login
@@ -14,7 +15,21 @@ class MFASetupInitApi(Resource):
     @account_initialization_required
     def get(self):
         """Initialize MFA setup - generate secret and QR code (GET method for compatibility)."""
-        return self.post()
+        # Call post method directly with proper context
+        account = cast(Account, flask_login.current_user)
+
+        try:
+            mfa_status = MFAService.get_mfa_status(account)
+            if mfa_status["enabled"]:
+                return {"error": "MFA is already enabled"}, 400
+
+            setup_data = MFAService.generate_mfa_setup_data(account)
+            return {"secret": setup_data["secret"], "qr_code": setup_data["qr_code"]}
+        except Exception as e:
+            # Log the actual error for debugging
+            logging.error(f"MFA setup error: {str(e)}")
+            # Return generic error message to avoid exposing internal details
+            return {"error": "Failed to setup MFA. Please try again."}, 500
 
     @login_required
     @account_initialization_required
@@ -30,7 +45,10 @@ class MFASetupInitApi(Resource):
             setup_data = MFAService.generate_mfa_setup_data(account)
             return {"secret": setup_data["secret"], "qr_code": setup_data["qr_code"]}
         except Exception as e:
-            return {"error": str(e)}, 500
+            # Log the actual error for debugging
+            logging.error(f"MFA setup error: {str(e)}")
+            # Return generic error message to avoid exposing internal details
+            return {"error": "Failed to setup MFA. Please try again."}, 500
 
 
 class MFASetupCompleteApi(Resource):

@@ -2,6 +2,7 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import secrets
 from datetime import UTC, datetime
 from typing import cast
@@ -66,9 +67,7 @@ class MFAService:
                 secret = encrypter.decrypt_token(tenant_id, secret)
             totp = pyotp.TOTP(secret)
             return totp.verify(token, valid_window=1)
-        except (ValueError, TypeError) as e:
-            import logging
-
+        except (ValueError, TypeError):
             logging.exception("TOTP verification failed")
             return False
 
