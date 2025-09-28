@@ -13,17 +13,6 @@ import classNames from '@/utils/classnames'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
 
-const languageNames = {
-  js: 'JavaScript',
-  ts: 'TypeScript',
-  javascript: 'JavaScript',
-  typescript: 'TypeScript',
-  php: 'PHP',
-  python: 'Python',
-  ruby: 'Ruby',
-  go: 'Go',
-} as { [key: string]: string }
-
 type IChildrenProps = {
   children: React.ReactNode
   [key: string]: any
