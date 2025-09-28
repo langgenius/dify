@@ -7,7 +7,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     ChildChunkDeleteIndexError,
@@ -37,6 +37,7 @@ from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingS
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class DatasetDocumentSegmentListApi(Resource):
     @setup_required
     @login_required
@@ -139,6 +140,7 @@ class DatasetDocumentSegmentListApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
 class DatasetDocumentSegmentApi(Resource):
     @setup_required
     @login_required
@@ -193,6 +195,7 @@ class DatasetDocumentSegmentApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 class DatasetDocumentSegmentAddApi(Resource):
     @setup_required
     @login_required
@@ -244,6 +247,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetDocumentSegmentUpdateApi(Resource):
     @setup_required
     @login_required
@@ -345,6 +349,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
+    "/datasets/batch_import_status/<uuid:job_id>",
+)
 class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
@@ -393,7 +401,9 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, job_id):
+    def get(self, job_id=None, dataset_id=None, document_id=None):
+        if job_id is None:
+            raise NotFound("The job does not exist.")
         job_id = str(job_id)
         indexing_cache_key = f"segment_batch_import_{job_id}"
         cache_result = redis_client.get(indexing_cache_key)
@@ -403,6 +413,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks")
 class ChildChunkAddApi(Resource):
     @setup_required
     @login_required
@@ -553,6 +564,9 @@ class ChildChunkAddApi(Resource):
         return {"data": marshal(child_chunks, child_chunk_fields)}, 200
 
 
+@console_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
+)
 class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
@@ -666,27 +680,3 @@ class ChildChunkUpdateApi(Resource):
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
-
-
-api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
-api.add_resource(
-    DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>"
-)
-api.add_resource(DatasetDocumentSegmentAddApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
-api.add_resource(
-    DatasetDocumentSegmentUpdateApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>",
-)
-api.add_resource(
-    DatasetDocumentSegmentBatchImportApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
-    "/datasets/batch_import_status/<uuid:job_id>",
-)
-api.add_resource(
-    ChildChunkAddApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks",
-)
-api.add_resource(
-    ChildChunkUpdateApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
-)
