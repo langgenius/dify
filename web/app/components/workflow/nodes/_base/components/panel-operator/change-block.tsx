@@ -8,6 +8,7 @@ import { intersection } from 'lodash-es'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
+  useIsChatMode,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
 import type {
@@ -31,6 +32,7 @@ const ChangeBlock = ({
     availablePrevBlocks,
     availableNextBlocks,
   } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
+  const isChatMode = useIsChatMode()
 
   const availableNodes = useMemo(() => {
     if (availablePrevBlocks.length && availableNextBlocks.length)
@@ -64,6 +66,7 @@ const ChangeBlock = ({
       trigger={renderTrigger}
       popupClassName='min-w-[240px]'
       availableBlocksTypes={availableNodes}
+      showStartTab={!isChatMode}
     />
   )
 }
