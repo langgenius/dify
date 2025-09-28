@@ -6,7 +6,7 @@ import click
 import app
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
-from tasks.process_tenant_plugin_autoupgrade_check_task import process_tenant_plugin_autoupgrade_check_task
+from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
 AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL = 15 * 60  # 15 minutes
 MAX_CONCURRENT_CHECK_TASKS = 20
@@ -16,6 +16,9 @@ MAX_CONCURRENT_CHECK_TASKS = 20
 def check_upgradable_plugin_task():
     click.echo(click.style("Start check upgradable plugin.", fg="green"))
     start_at = time.perf_counter()
+
+    # clear cached plugin manifests to avoid potantial dirty data
+    check_task.cached_plugin_manifests.clear()
 
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
@@ -43,7 +46,7 @@ def check_upgradable_plugin_task():
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
         for strategy in batch_strategies:
-            process_tenant_plugin_autoupgrade_check_task.delay(
+            check_task.process_tenant_plugin_autoupgrade_check_task.delay(
                 strategy.tenant_id,
                 strategy.strategy_setting,
                 strategy.upgrade_time_of_day,
