@@ -12,7 +12,7 @@ const Apps = () => {
 
   return (
     <div className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
-      <List /> 哈哈哈哈哈哈哈哈
+      <List />
     </div >
   )
 }
