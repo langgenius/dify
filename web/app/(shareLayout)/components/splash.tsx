@@ -44,10 +44,10 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     (async () => {
       if (message)
         return
-      if((!needCheckIsLogin || isUserLoggedIn) && shareCode) {
+      if((!needCheckIsLogin || isUserLoggedIn) && shareCode)
         await fetchCsrfToken(shareCode)
-      }
-      await fetchAccessToken({ appCode: shareCode })
+
+      await fetchAccessToken({ appCode: shareCode! })
 
       if ((isLoggedIn || webAppAccessMode === AccessMode.PUBLIC) && redirectUrl)
         router.replace(decodeURIComponent(redirectUrl))

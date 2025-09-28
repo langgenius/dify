@@ -129,6 +129,7 @@ export const useLogout = () => {
 
 type isWebAppLogin = {
   app_logged_in: boolean
+  logged_in: boolean
 }
 export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
   return useQuery<isWebAppLogin>({
