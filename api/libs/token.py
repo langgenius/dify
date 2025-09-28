@@ -80,13 +80,13 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     return ret
 
 
-def set_access_token_to_cookie(request: Request, response: Response, token: str):
+def set_access_token_to_cookie(request: Request, response: Response, token: str, samesite: str = "Lax"):
     response.set_cookie(
         COOKIE_NAME_ACCESS_TOKEN,
         value=token,
         httponly=True,
         secure=request.is_secure,
-        samesite="Lax",
+        samesite=samesite,
         max_age=int(dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60),
         path="/",
     )
@@ -110,7 +110,7 @@ def set_passport_to_cookie(app_code: str, request: Request, response: Response, 
         value=token,
         httponly=True,
         secure=request.is_secure,
-        samesite="Lax",
+        samesite="None",
         max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
         path="/",
     )

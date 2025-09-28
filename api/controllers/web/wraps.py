@@ -156,4 +156,4 @@ def _validate_user_accessibility(
 
 
 class WebApiResource(Resource):
-    method_decorators = [validate_jwt_token, validate_csrf_token]
+    method_decorators = [validate_jwt_token]

@@ -8,7 +8,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { useIsWebAppLogin, useWebAppLogout } from '@/service/use-common'
-import { fetchAccessToken, fetchCsrfToken } from '@/service/share'
+import { fetchAccessToken } from '@/service/share'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -44,9 +44,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     (async () => {
       if (message)
         return
-      if((!needCheckIsLogin || isUserLoggedIn) && shareCode)
-        await fetchCsrfToken(shareCode)
-
       await fetchAccessToken({ appCode: shareCode! })
 
       if ((isLoggedIn || webAppAccessMode === AccessMode.PUBLIC) && redirectUrl)

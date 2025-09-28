@@ -306,9 +306,3 @@ export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
 export const getAppAccessModeByAppCode = (appCode: string) => {
   return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
 }
-
-export const fetchCsrfToken = async (appCode: string) => {
-  const headers = new Headers()
-  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
-  return post<{}>('/csrf-token', { headers })
-}

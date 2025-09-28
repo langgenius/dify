@@ -4,7 +4,7 @@ from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
-from libs.token import extract_access_token
+from libs.token import extract_access_token, extract_webapp_passport
 from controllers.common import fields
 from controllers.web import web_ns
 from controllers.web.error import AppUnavailableError
@@ -16,6 +16,7 @@ from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
+from constants import HEADER_NAME_APP_CODE
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +133,9 @@ class AppWebAuthPermission(Resource):
     )
     def get(self):
         user_id = "visitor"
+        app_code = request.headers.get(HEADER_NAME_APP_CODE)
         app_id = request.args.get("appId")
-        if not app_id:
+        if not app_id or not app_code:
             raise ValueError("appId must be provided")
 
         require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
@@ -141,7 +143,7 @@ class AppWebAuthPermission(Resource):
             return {"result": True}
 
         try:
-            tk = extract_access_token(request)
+            tk = extract_webapp_passport(app_code, request)
             if not tk:
                 raise Unauthorized("Access token is missing.")
             decoded = PassportService().verify(tk)

@@ -25,7 +25,6 @@ from libs.token import (
     extract_webapp_passport,
     set_csrf_token_to_cookie,
     generate_csrf_token,
-    extract_csrf_token,
     clear_csrf_token_from_cookie
 )
 from services.account_service import AccountService
@@ -69,7 +68,7 @@ class LoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         response = make_response({"result": "success", "data": {"access_token": token}})
-        set_access_token_to_cookie(request, response, token)
+        set_access_token_to_cookie(request, response, token, samesite="None")
         return response
 
 @web_ns.route("/login/status")
@@ -155,7 +154,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
         csrf_token = generate_csrf_token()
         response = make_response({"result": "success", "data": {"access_token": token}})
-        set_access_token_to_cookie(request, response, token)
+        set_access_token_to_cookie(request, response, token, samesite="None")
         set_csrf_token_to_cookie(request, response, csrf_token)
         return response
 
@@ -202,45 +201,6 @@ class EmailCodeLoginApi(Resource):
         csrf_token = generate_csrf_token()
         AccountService.reset_login_error_rate_limit(args["email"])
         response = make_response({"result": "success", "data": {"access_token": token}})
-        set_access_token_to_cookie(request, response, token)
+        set_access_token_to_cookie(request, response, token, samesite="None")
         set_csrf_token_to_cookie(request, response, csrf_token)
         return response
-
-@web_ns.route("/csrf-token")
-class CSRFApi(Resource):
-    """
-    We use a dedicated api for csrf token retrieval instead of setting it in login, 
-    because webapp could be a public link.
-    """
-    @web_ns.doc("get_csrf_token")
-    @web_ns.doc(description="Get CSRF token")
-    @web_ns.doc(
-        responses={
-            200: "CSRF token",
-        }
-    )
-    def post(self):
-        def _success():
-            csrf_token = generate_csrf_token()
-            resp = make_response({"result": "success"})
-            set_csrf_token_to_cookie(request, resp, csrf_token)
-            return resp
-        
-        app_code = request.headers.get(HEADER_NAME_APP_CODE)
-        if not app_code:
-            raise Unauthorized(f"{HEADER_NAME_APP_CODE} header is missing.")
-
-        features = FeatureService.get_system_features()
-        if features.webapp_auth.enabled:
-            app_id = AppService.get_app_id_by_code(app_code)
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
-            if webapp_settings.access_mode == "public":
-                return _success()
-
-            access_token = extract_access_token(request)
-            if not access_token:
-                raise Unauthorized("Access token is missing.")
-            PassportService().verify(access_token)
-            return _success()
-        else:
-            return _success()
