@@ -17,9 +17,6 @@ def check_upgradable_plugin_task():
     click.echo(click.style("Start check upgradable plugin.", fg="green"))
     start_at = time.perf_counter()
 
-    # clear cached plugin manifests to avoid potantial dirty data
-    check_task.cached_plugin_manifests.clear()
-
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
