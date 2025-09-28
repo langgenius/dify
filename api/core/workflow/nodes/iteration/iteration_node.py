@@ -456,10 +456,7 @@ class IterationNode(Node):
 
     def _extract_conversation_variable_snapshot(self, *, variable_pool: VariablePool) -> dict[str, VariableUnion]:
         conversation_variables = variable_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
-        return {
-            name: variable.model_copy(deep=True)
-            for name, variable in conversation_variables.items()
-        }
+        return {name: variable.model_copy(deep=True) for name, variable in conversation_variables.items()}
 
     def _sync_conversation_variables_from_snapshot(self, snapshot: dict[str, VariableUnion]) -> None:
         parent_pool = self.graph_runtime_state.variable_pool
