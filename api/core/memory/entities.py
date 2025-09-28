@@ -103,7 +103,7 @@ class MemoryBlockWithConversation(MemoryBlock):
         cls,
         memory_block: MemoryBlock,
         conversation_metadata: ChatflowConversationMetadata
-    ) -> "MemoryBlockWithConversation":
+    ) -> MemoryBlockWithConversation:
         """Create MemoryBlockWithConversation from MemoryBlock"""
         return cls(
             spec=memory_block.spec,

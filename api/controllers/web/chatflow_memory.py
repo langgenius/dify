@@ -20,7 +20,6 @@ class MemoryListApi(WebApiResource):
         memory_id = args.get("memory_id")
         version = args.get("version")
 
-
         if conversation_id:
             result = ChatflowMemoryService.get_persistent_memories_with_conversation(
                 app_model,
