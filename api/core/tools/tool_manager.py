@@ -157,6 +157,7 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
+        app_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -186,6 +187,7 @@ class ToolManager:
                     builtin_tool.fork_tool_runtime(
                         runtime=ToolRuntime(
                             tenant_id=tenant_id,
+                            app_id=app_id,
                             credentials={},
                             invoke_from=invoke_from,
                             tool_invoke_from=tool_invoke_from,
@@ -299,6 +301,7 @@ class ToolManager:
                 builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
+                        app_id=app_id,
                         credentials=dict(decrypted_credentials),
                         credential_type=CredentialType.of(builtin_provider.credential_type),
                         runtime_parameters={},
@@ -317,6 +320,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    app_id=app_id,
                     credentials=encrypter.decrypt(credentials),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -339,6 +343,7 @@ class ToolManager:
             return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    app_id=app_id,
                     credentials={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -373,6 +378,7 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
+            app_id=app_id,
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
@@ -416,6 +422,7 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
+            app_id=app_id,
         )
 
         parameters = tool_runtime.get_merged_runtime_parameters()
@@ -446,6 +453,7 @@ class ToolManager:
         tool_name: str,
         tool_parameters: dict[str, Any],
         credential_id: str | None = None,
+        app_id: str | None = None,
     ) -> Tool:
         """
         get tool runtime from plugin
@@ -458,6 +466,7 @@ class ToolManager:
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.PLUGIN,
             credential_id=credential_id,
+            app_id=app_id,
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
