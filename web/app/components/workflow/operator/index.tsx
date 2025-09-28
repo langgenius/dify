@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import type { Node } from 'reactflow'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
 import ZoomInOut from './zoom-in-out'
@@ -23,6 +24,16 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
       return 'auto'
     return Math.max((workflowCanvasWidth - rightPanelWidth), 400)
   }, [workflowCanvasWidth, rightPanelWidth])
+
+  const getMiniMapNodeColor = useCallback(() => {
+    return 'var(--color-workflow-minimap-block)'
+  }, [])
+
+  const getMiniMapNodeStrokeColor = useCallback((node: Node) => {
+    return node.data?.selected
+      ? 'var(--components-option-card-option-selected-border, #296DFF)'
+      : 'transparent'
+  }, [])
 
   // update bottom panel height
   useEffect(() => {
@@ -65,6 +76,9 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               height: 72,
             }}
             maskColor='var(--color-workflow-minimap-bg)'
+            nodeColor={getMiniMapNodeColor}
+            nodeStrokeColor={getMiniMapNodeStrokeColor}
+            nodeStrokeWidth={3}
             className='!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
             !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
           />
