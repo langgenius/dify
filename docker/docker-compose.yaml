@@ -598,105 +598,105 @@ x-shared-env: &shared-api-worker-env
 
 services:
   # API service
-  # api:
-  #   build: ../api
-  #   restart: always
-  #   environment:
-  #     # Use the shared environment variables.
-  #     <<: *shared-api-worker-env
-  #     # Startup mode, 'api' starts the API server.
-  #     MODE: api
-  #     SENTRY_DSN: ${API_SENTRY_DSN:-}
-  #     SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-  #     SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-  #     PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
-  #     PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
-  #     PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-  #     INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_started
-  #   volumes:
-  #     # Mount the storage directory to the container, for storing user files.
-  #     - ./volumes/app/storage:/app/api/storage
-  #   networks:
-  #     - ssrf_proxy_network
-  #     - default
+  api:
+    image: langgenius/dify-api:1.9.0
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'api' starts the API server.
+      MODE: api
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
 
   # worker service
   # The Celery worker for processing the queue.
-  # worker:
-  #   build: ../api
-  #   restart: always
-  #   environment:
-  #     # Use the shared environment variables.
-  #     <<: *shared-api-worker-env
-  #     # Startup mode, 'worker' starts the Celery worker for processing the queue.
-  #     MODE: worker
-  #     SENTRY_DSN: ${API_SENTRY_DSN:-}
-  #     SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-  #     SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-  #     PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-  #     INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_started
-  #   volumes:
-  #     # Mount the storage directory to the container, for storing user files.
-  #     - ./volumes/app/storage:/app/api/storage
-  #   networks:
-  #     - ssrf_proxy_network
-  #     - default
+  worker:
+    image: langgenius/dify-api:1.9.0
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      MODE: worker
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
 
-  # # worker_beat service
-  # # Celery beat for scheduling periodic tasks.
-  # worker_beat:
-  #   build: ../api
-  #   restart: always
-  #   environment:
-  #     # Use the shared environment variables.
-  #     <<: *shared-api-worker-env
-  #     # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
-  #     MODE: beat
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_started
-  #   networks:
-  #     - ssrf_proxy_network
-  #     - default
+  # worker_beat service
+  # Celery beat for scheduling periodic tasks.
+  worker_beat:
+    image: langgenius/dify-api:1.9.0
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
+      MODE: beat
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
 
-  # # Frontend web application.
-  # web:
-  #   build: ../web
-  #   restart: always
-  #   environment:
-  #     CONSOLE_API_URL: ${CONSOLE_API_URL:-}
-  #     APP_API_URL: ${APP_API_URL:-}
-  #     SENTRY_DSN: ${WEB_SENTRY_DSN:-}
-  #     NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
-  #     TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
-  #     CSP_WHITELIST: ${CSP_WHITELIST:-}
-  #     ALLOW_EMBED: ${ALLOW_EMBED:-false}
-  #     ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
-  #     MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
-  #     MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
-  #     TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
-  #     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
-  #     PM2_INSTANCES: ${PM2_INSTANCES:-2}
-  #     LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
-  #     MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
-  #     MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
-  #     MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
-  #     MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
-  #     ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
-  #     ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
-  #     ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
+  # Frontend web application.
+  web:
+    image: langgenius/dify-web:1.9.0
+    restart: always
+    environment:
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-}
+      APP_API_URL: ${APP_API_URL:-}
+      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
+      CSP_WHITELIST: ${CSP_WHITELIST:-}
+      ALLOW_EMBED: ${ALLOW_EMBED:-false}
+      ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
+      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
+      PM2_INSTANCES: ${PM2_INSTANCES:-2}
+      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
+      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
+      MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
+      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
+      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
+      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -714,8 +714,6 @@ services:
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test:
         [
@@ -742,8 +740,6 @@ services:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
     # Set the redis password when startup redis server.
-    ports: 
-      - "6379:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
       test:
@@ -768,8 +764,6 @@ services:
       HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
       PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
-    ports:
-      - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
       - ./volumes/sandbox/conf:/conf
@@ -790,7 +784,7 @@ services:
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
-      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://host.docker.internal:5001}
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
       DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
       PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
@@ -832,7 +826,6 @@ services:
       SENTRY_ENABLED: ${PLUGIN_SENTRY_ENABLED:-false}
       SENTRY_DSN: ${PLUGIN_SENTRY_DSN:-}
     ports:
-      - "${EXPOSE_PLUGIN_DAEMON_PORT:-5002}:${PLUGIN_DAEMON_PORT:-5002}"   # 确保加入这一行
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
@@ -888,48 +881,48 @@ services:
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
-  # nginx:
-  #   image: nginx:latest
-  #   restart: always
-  #   volumes:
-  #     - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
-  #     - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
-  #     - ./nginx/https.conf.template:/etc/nginx/https.conf.template
-  #     - ./nginx/conf.d:/etc/nginx/conf.d
-  #     - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-  #     - ./nginx/ssl:/etc/ssl # cert dir (legacy)
-  #     - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
-  #     - ./volumes/certbot/conf:/etc/letsencrypt
-  #     - ./volumes/certbot/www:/var/www/html
-  #   entrypoint:
-  #     [
-  #       "sh",
-  #       "-c",
-  #       "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-  #     ]
-  #   environment:
-  #     NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
-  #     NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
-  #     NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
-  #     NGINX_PORT: ${NGINX_PORT:-80}
-  #     # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
-  #     # and modify the env vars below in .env if HTTPS_ENABLED is true.
-  #     NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
-  #     NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
-  #     NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
-  #     NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
-  #     NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
-  #     NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
-  #     NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
-  #     NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
-  #     NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
-  #     CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
-  #   depends_on:
-  #     - api
-  #     - web
-  #   ports:
-  #     - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
-  #     - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
+      - ./volumes/certbot/conf:/etc/letsencrypt
+      - ./volumes/certbot/www:/var/www/html
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
+      NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
+      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
+      NGINX_PORT: ${NGINX_PORT:-80}
+      # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
+      # and modify the env vars below in .env if HTTPS_ENABLED is true.
+      NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
+      NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
+      NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
+      NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
+      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
+      NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
+      NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
+      NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
+      NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
+      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
+    depends_on:
+      - api
+      - web
+    ports:
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:
@@ -941,8 +934,6 @@ services:
     volumes:
       # Mount the Weaviate data directory to the con tainer.
       - ./volumes/weaviate:/var/lib/weaviate
-    ports:
-      - "8080:8080"
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
