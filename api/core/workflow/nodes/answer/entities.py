@@ -12,6 +12,9 @@ class AnswerNodeData(BaseNodeData):
     """
 
     answer: str = Field(..., description="answer template string")
+    include_in_memory: bool = Field(
+        default=True, description="whether to include this node's output in conversation memory"
+    )
 
 
 class GenerateRouteChunk(BaseModel):

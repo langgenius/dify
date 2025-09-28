@@ -196,6 +196,22 @@ class EventHandler:
         if node.execution_type == NodeExecutionType.RESPONSE:
             self._update_response_outputs(event.node_run_result.outputs)
 
+            # If this is an Answer node, propagate its include_in_memory flag into runtime outputs
+            try:
+                from core.workflow.nodes.answer.answer_node import AnswerNode  # local import to avoid cycles
+
+                if isinstance(node, AnswerNode):
+                    include_in_memory = node.get_base_node_data().include_in_memory
+                    if include_in_memory is True:
+                        answer=event.node_run_result.outputs["answer"]
+                        history_response=self._graph_runtime_state.get_output("add_to_history_response", "")
+                        self._graph_runtime_state.set_output("add_to_history_response", history_response+answer if answer is not None else "")   
+                    # Store flag in runtime state for downstream pipelines to respect when saving history
+                    self._graph_runtime_state.set_output("_answer_include_in_memory", include_in_memory)
+            except Exception:
+                # Be tolerant to import/type issues; do not break execution flow
+                pass
+
         # Collect the event
         self._event_collector.collect(event)
 

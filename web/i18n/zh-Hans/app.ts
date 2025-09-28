@@ -32,7 +32,7 @@ const translation = {
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',
   appDeleted: '应用已删除',
   appDeleteFailed: '应用删除失败',
-  join: '参与社区',
+  join: '参与社区哈哈哈哈哈哈哈哈',
   communityIntro: '与团队成员、贡献者和开发者在不同频道中交流',
   roadmap: '产品路线图',
   newApp: {

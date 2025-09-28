@@ -839,15 +839,14 @@ class AdvancedChatAppGenerateTaskPipeline:
         message = self._get_message(session=session)
 
         # If there are assistant files, remove markdown image links from answer
-        answer_text = self._task_state.answer
+        answer_text = graph_runtime_state.get_output("add_to_history_response","")
+        # Respect Answer node's include_in_memory flag if provided by runtime state
         if self._recorded_files:
             # Remove markdown image links since we're storing files separately
             answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
-
         message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
-        message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -864,6 +863,8 @@ class AdvancedChatAppGenerateTaskPipeline:
             for file in self._recorded_files
         ]
         session.add_all(message_files)
+
+        message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if graph_runtime_state and graph_runtime_state.llm_usage:
             usage = graph_runtime_state.llm_usage

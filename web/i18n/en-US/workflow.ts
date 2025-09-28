@@ -433,6 +433,7 @@ const translation = {
     answer: {
       answer: 'Answer',
       outputVars: 'Output Variables',
+      includeInMemory: 'Include in chat memory',
     },
     llm: {
       model: 'model',

@@ -433,6 +433,7 @@ const translation = {
     answer: {
       answer: '回复',
       outputVars: '输出变量',
+      includeInMemory: '写入会话记忆',
     },
     llm: {
       model: '模型',

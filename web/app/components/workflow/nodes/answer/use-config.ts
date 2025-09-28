@@ -28,6 +28,13 @@ const useConfig = (id: string, payload: AnswerNodeType) => {
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type !== VarType.arrayObject
   }, [])
+
+  const toggleIncludeInMemory = useCallback((value: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.include_in_memory = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
   return {
     readOnly,
     inputs,
@@ -35,6 +42,7 @@ const useConfig = (id: string, payload: AnswerNodeType) => {
     handleAddVariable,
     handleAnswerChange,
     filterVar,
+    toggleIncludeInMemory,
   }
 }
 
