@@ -16,11 +16,10 @@ from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
     clear_access_token_from_cookie,
-    clear_webapp_token_from_cookie,
+    clear_passport_from_cookie,
     set_access_token_to_cookie,
     extract_access_token,
     extract_webapp_passport,
-    clear_csrf_token_from_cookie
 )
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
@@ -110,7 +109,7 @@ class LogoutApi(Resource):
         response = make_response({"result": "success"})
         app_code = request.args.get("app_code")
         clear_access_token_from_cookie(request, response, samesite="None")
-        clear_webapp_token_from_cookie(app_code, request, response, samesite="None")
+        clear_passport_from_cookie(app_code, request, response, samesite="None")
         return response
 
 

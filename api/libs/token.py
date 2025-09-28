@@ -138,16 +138,16 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str, samesi
         samesite=samesite,
     )
 
-def _clear_cookie_begin_with(request: Request, response: Response, prefix: str):
+def _clear_cookie_begin_with(request: Request, response: Response, prefix: str, samesite: str = "Lax"):
     for cookie_name in request.cookies.keys():
         if cookie_name.startswith(prefix):
-            _clear_cookie(request, response, cookie_name)
+            _clear_cookie(request, response, cookie_name, samesite)
 
-def clear_webapp_token_from_cookie(app_code: str | None, request: Request, response: Response, samesite: str = "Lax"):
+def clear_passport_from_cookie(app_code: str | None, request: Request, response: Response, samesite: str = "Lax"):
     if not app_code:
-        _clear_cookie_begin_with(request, response, COOKIE_NAME_PASSPORT)
+        _clear_cookie_begin_with(request, response, COOKIE_NAME_PASSPORT, samesite)
         return
-    _clear_cookie(request, response, COOKIE_NAME_PASSPORT + "-" + app_code)
+    _clear_cookie(request, response, COOKIE_NAME_PASSPORT + "-" + app_code, samesite)
 
 def clear_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax"):
     _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN, samesite)
