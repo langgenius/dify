@@ -71,7 +71,6 @@ document_text_update_parser.add_argument("retrieval_model", type=dict, required=
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/document/create_by_text",
     "/datasets/<uuid:dataset_id>/document/create-by-text",
-    endpoint="service_dataset_document_create_by_text",
 )
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
@@ -161,7 +160,6 @@ class DocumentAddByTextApi(DatasetApiResource):
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text",
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-text",
-    endpoint="service_dataset_document_update_by_text",
 )
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
@@ -242,7 +240,6 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/document/create_by_file",
     "/datasets/<uuid:dataset_id>/document/create-by-file",
-    endpoint="service_dataset_document_create_by_file",
 )
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
@@ -353,7 +350,6 @@ class DocumentAddByFileApi(DatasetApiResource):
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file",
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file",
-    endpoint="service_dataset_document_update_by_file",
 )
 class DocumentUpdateByFileApi(DatasetApiResource):
     """Resource for update documents."""
@@ -445,10 +441,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         return documents_and_batch_fields, 200
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents",
-    endpoint="service_dataset_documents",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents")
 class DocumentListApi(DatasetApiResource):
     @service_api_ns.doc("list_documents")
     @service_api_ns.doc(description="List all documents in a dataset")
@@ -492,10 +485,7 @@ class DocumentListApi(DatasetApiResource):
         return response
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status",
-    endpoint="service_dataset_document_indexing_status",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
 class DocumentIndexingStatusApi(DatasetApiResource):
     @service_api_ns.doc("get_document_indexing_status")
     @service_api_ns.doc(description="Get indexing status for documents in a batch")
@@ -555,10 +545,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         return data
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>",
-    endpoint="service_dataset_document_detail",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
 

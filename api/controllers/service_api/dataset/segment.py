@@ -46,10 +46,7 @@ child_chunk_update_parser = reqparse.RequestParser()
 child_chunk_update_parser.add_argument("content", type=str, required=True, nullable=False, location="json")
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments",
-    endpoint="service_dataset_document_segments",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
@@ -171,10 +168,7 @@ class SegmentApi(DatasetApiResource):
         return response, 200
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>",
-    endpoint="service_dataset_document_segment_detail",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc("delete_segment")
     @service_api_ns.doc(description="Delete a specific segment")
@@ -291,8 +285,7 @@ class DatasetSegmentApi(DatasetApiResource):
 
 
 @service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks",
-    endpoint="service_dataset_document_segment_child_chunks",
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
 )
 class ChildChunkApi(DatasetApiResource):
     """Resource for child chunks."""
@@ -405,8 +398,7 @@ class ChildChunkApi(DatasetApiResource):
 
 
 @service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
-    endpoint="service_dataset_document_segment_child_chunk_detail",
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
 class DatasetChildChunkApi(DatasetApiResource):
     """Resource for updating child chunks."""

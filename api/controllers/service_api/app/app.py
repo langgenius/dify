@@ -9,10 +9,7 @@ from models.model import App, AppMode
 from services.app_service import AppService
 
 
-@service_api_ns.route(
-    "/parameters",
-    endpoint="service_app_parameters",
-)
+@service_api_ns.route("/parameters")
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
@@ -51,10 +48,7 @@ class AppParameterApi(Resource):
         return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
 
-@service_api_ns.route(
-    "/meta",
-    endpoint="service_app_meta",
-)
+@service_api_ns.route("/meta")
 class AppMetaApi(Resource):
     @service_api_ns.doc("get_app_meta")
     @service_api_ns.doc(description="Get application metadata")
@@ -74,10 +68,7 @@ class AppMetaApi(Resource):
         return AppService().get_app_meta(app_model)
 
 
-@service_api_ns.route(
-    "/info",
-    endpoint="service_app_info",
-)
+@service_api_ns.route("/info")
 class AppInfoApi(Resource):
     @service_api_ns.doc("get_app_info")
     @service_api_ns.doc(description="Get basic application information")

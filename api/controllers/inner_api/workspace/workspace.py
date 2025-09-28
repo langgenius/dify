@@ -11,10 +11,7 @@ from models.account import Account
 from services.account_service import TenantService
 
 
-@inner_api_ns.route(
-    "/enterprise/workspace",
-    endpoint="inner_enterprise_workspace",
-)
+@inner_api_ns.route("/enterprise/workspace")
 class EnterpriseWorkspace(Resource):
     @setup_required
     @enterprise_inner_api_only
@@ -57,10 +54,7 @@ class EnterpriseWorkspace(Resource):
         }
 
 
-@inner_api_ns.route(
-    "/enterprise/workspace/ownerless",
-    endpoint="inner_enterprise_workspace_ownerless",
-)
+@inner_api_ns.route("/enterprise/workspace/ownerless")
 class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @setup_required
     @enterprise_inner_api_only

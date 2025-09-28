@@ -11,10 +11,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_database import db as global_db
 
 
-@files_ns.route(
-    "/tools/<uuid:file_id>.<string:extension>",
-    endpoint="tool_files",
-)
+@files_ns.route("/tools/<uuid:file_id>.<string:extension>")
 class ToolFileApi(Resource):
     def get(self, file_id, extension):
         file_id = str(file_id)

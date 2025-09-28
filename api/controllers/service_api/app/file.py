@@ -18,10 +18,7 @@ from models import App, EndUser
 from services.file_service import FileService
 
 
-@service_api_ns.route(
-    "/files/upload",
-    endpoint="service_app_file_upload",
-)
+@service_api_ns.route("/files/upload")
 class FileApi(Resource):
     @service_api_ns.doc("upload_file")
     @service_api_ns.doc(description="Upload a file for use in conversations")

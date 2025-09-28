@@ -69,11 +69,8 @@ conversation_variable_update_parser.add_argument(
 )
 
 
-@service_api_ns.route(
-    "/conversations",
-    endpoint="service_app_conversations",
-)
-class ConversationListApi(Resource):
+@service_api_ns.route("/conversations")
+class ConversationApi(Resource):
     @service_api_ns.expect(conversation_list_parser)
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
@@ -112,11 +109,8 @@ class ConversationListApi(Resource):
             raise NotFound("Last Conversation Not Exists.")
 
 
-@service_api_ns.route(
-    "/conversations/<uuid:c_id>",
-    endpoint="service_app_conversation_detail",
-)
-class ConversationApi(Resource):
+@service_api_ns.route("/conversations/<uuid:c_id>")
+class ConversationDetailApi(Resource):
     @service_api_ns.doc("delete_conversation")
     @service_api_ns.doc(description="Delete a specific conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -144,10 +138,7 @@ class ConversationApi(Resource):
         return {"result": "success"}, 204
 
 
-@service_api_ns.route(
-    "/conversations/<uuid:c_id>/name",
-    endpoint="service_app_conversation_rename",
-)
+@service_api_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(Resource):
     @service_api_ns.expect(conversation_rename_parser)
     @service_api_ns.doc("rename_conversation")
@@ -178,10 +169,7 @@ class ConversationRenameApi(Resource):
             raise NotFound("Conversation Not Exists.")
 
 
-@service_api_ns.route(
-    "/conversations/<uuid:c_id>/variables",
-    endpoint="service_app_conversation_variables",
-)
+@service_api_ns.route("/conversations/<uuid:c_id>/variables")
 class ConversationVariablesApi(Resource):
     @service_api_ns.expect(conversation_variables_parser)
     @service_api_ns.doc("list_conversation_variables")
@@ -218,11 +206,8 @@ class ConversationVariablesApi(Resource):
             raise NotFound("Conversation Not Exists.")
 
 
-@service_api_ns.route(
-    "/conversations/<uuid:c_id>/variables/<uuid:variable_id>",
-    endpoint="service_app_conversation_variable_detail",
-)
-class ConversationVariableApi(Resource):
+@service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
+class ConversationVariableDetailApi(Resource):
     @service_api_ns.expect(conversation_variable_update_parser)
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")

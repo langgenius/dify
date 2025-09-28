@@ -33,10 +33,7 @@ upload_parser.add_argument("tenant_id", type=str, required=True, location="args"
 upload_parser.add_argument("user_id", type=str, required=False, location="args", help="User identifier")
 
 
-@files_ns.route(
-    "/upload/for-plugin",
-    endpoint="upload_for_plugin",
-)
+@files_ns.route("/upload/for-plugin")
 class PluginUploadFileApi(Resource):
     @setup_required
     @files_ns.expect(upload_parser)

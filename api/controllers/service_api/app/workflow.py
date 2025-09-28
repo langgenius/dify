@@ -89,10 +89,7 @@ def build_workflow_run_model(api_or_ns: Api | Namespace):
     return api_or_ns.model("WorkflowRun", workflow_run_fields)
 
 
-@service_api_ns.route(
-    "/workflows/run/<string:workflow_run_id>",
-    endpoint="service_app_workflow_run_detail",
-)
+@service_api_ns.route("/workflows/run/<string:workflow_run_id>")
 class WorkflowRunDetailApi(Resource):
     @service_api_ns.doc("get_workflow_run_detail")
     @service_api_ns.doc(description="Get workflow run details")
@@ -127,10 +124,7 @@ class WorkflowRunDetailApi(Resource):
         return workflow_run
 
 
-@service_api_ns.route(
-    "/workflows/run",
-    endpoint="service_app_workflow_run",
-)
+@service_api_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
     @service_api_ns.expect(workflow_run_parser)
     @service_api_ns.doc("run_workflow")
@@ -185,10 +179,7 @@ class WorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-@service_api_ns.route(
-    "/workflows/<string:workflow_id>/run",
-    endpoint="service_app_workflow_run_by_id",
-)
+@service_api_ns.route("/workflows/<string:workflow_id>/run")
 class WorkflowRunByIdApi(Resource):
     @service_api_ns.expect(workflow_run_parser)
     @service_api_ns.doc("run_workflow_by_id")
@@ -253,10 +244,7 @@ class WorkflowRunByIdApi(Resource):
             raise InternalServerError()
 
 
-@service_api_ns.route(
-    "/workflows/tasks/<string:task_id>/stop",
-    endpoint="service_app_workflow_task_stop",
-)
+@service_api_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
@@ -285,10 +273,7 @@ class WorkflowTaskStopApi(Resource):
         return {"result": "success"}
 
 
-@service_api_ns.route(
-    "/workflows/logs",
-    endpoint="service_app_workflow_logs",
-)
+@service_api_ns.route("/workflows/logs")
 class WorkflowAppLogApi(Resource):
     @service_api_ns.expect(workflow_log_parser)
     @service_api_ns.doc("get_workflow_logs")

@@ -31,10 +31,7 @@ annotation_reply_action_parser.add_argument(
 )
 
 
-@service_api_ns.route(
-    "/apps/annotation-reply/<string:action>",
-    endpoint="service_app_annotation_reply_action",
-)
+@service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
     @service_api_ns.expect(annotation_reply_action_parser)
     @service_api_ns.doc("annotation_reply_action")
@@ -57,10 +54,7 @@ class AnnotationReplyActionApi(Resource):
         return result, 200
 
 
-@service_api_ns.route(
-    "/apps/annotation-reply/<string:action>/status/<uuid:job_id>",
-    endpoint="service_app_annotation_reply_action_status",
-)
+@service_api_ns.route("/apps/annotation-reply/<string:action>/status/<uuid:job_id>")
 class AnnotationReplyActionStatusApi(Resource):
     @service_api_ns.doc("get_annotation_reply_action_status")
     @service_api_ns.doc(description="Get the status of an annotation reply action job")
@@ -107,10 +101,7 @@ def build_annotation_list_model(api_or_ns: Api | Namespace):
     return api_or_ns.model("AnnotationList", copied_annotation_list_fields)
 
 
-@service_api_ns.route(
-    "/apps/annotations",
-    endpoint="service_app_annotations",
-)
+@service_api_ns.route("/apps/annotations")
 class AnnotationListApi(Resource):
     @service_api_ns.doc("list_annotations")
     @service_api_ns.doc(description="List annotations for the application")
@@ -155,10 +146,7 @@ class AnnotationListApi(Resource):
         return annotation, 201
 
 
-@service_api_ns.route(
-    "/apps/annotations/<uuid:annotation_id>",
-    endpoint="service_app_annotation_detail",
-)
+@service_api_ns.route("/apps/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.expect(annotation_create_parser)
     @service_api_ns.doc("update_annotation")

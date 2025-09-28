@@ -24,10 +24,7 @@ file_preview_parser.add_argument(
 )
 
 
-@service_api_ns.route(
-    "/files/<uuid:file_id>/preview",
-    endpoint="service_app_file_preview",
-)
+@service_api_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
     """
     Service API File Preview endpoint

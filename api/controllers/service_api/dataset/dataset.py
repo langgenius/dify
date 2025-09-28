@@ -188,10 +188,7 @@ tag_unbinding_parser.add_argument("tag_id", type=str, nullable=False, required=T
 tag_unbinding_parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
 
 
-@service_api_ns.route(
-    "/datasets",
-    endpoint="service_datasets",
-)
+@service_api_ns.route("/datasets")
 class DatasetListApi(DatasetApiResource):
     """Resource for datasets."""
 
@@ -296,10 +293,7 @@ class DatasetListApi(DatasetApiResource):
         return marshal(dataset, dataset_detail_fields), 200
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>",
-    endpoint="service_dataset_detail",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(DatasetApiResource):
     """Resource for dataset."""
 
@@ -464,10 +458,7 @@ class DatasetApi(DatasetApiResource):
             raise DatasetInUseError()
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/status/<string:action>",
-    endpoint="service_dataset_document_status",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>")
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
@@ -535,10 +526,7 @@ class DocumentStatusApi(DatasetApiResource):
         return {"result": "success"}, 200
 
 
-@service_api_ns.route(
-    "/datasets/tags",
-    endpoint="service_dataset_tags",
-)
+@service_api_ns.route("/datasets/tags")
 class DatasetTagsApi(DatasetApiResource):
     @service_api_ns.doc("list_dataset_tags")
     @service_api_ns.doc(description="Get all knowledge type tags")
@@ -633,10 +621,7 @@ class DatasetTagsApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route(
-    "/datasets/tags/binding",
-    endpoint="service_dataset_tag_binding",
-)
+@service_api_ns.route("/datasets/tags/binding")
 class DatasetTagBindingApi(DatasetApiResource):
     @service_api_ns.expect(tag_binding_parser)
     @service_api_ns.doc("bind_dataset_tags")
@@ -662,10 +647,7 @@ class DatasetTagBindingApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route(
-    "/datasets/tags/unbinding",
-    endpoint="service_dataset_tag_unbinding",
-)
+@service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
     @service_api_ns.expect(tag_unbinding_parser)
     @service_api_ns.doc("unbind_dataset_tag")
@@ -691,10 +673,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/tags",
-    endpoint="service_dataset_tags_binding_status",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/tags")
 class DatasetTagsBindingStatusApi(DatasetApiResource):
     @service_api_ns.doc("get_dataset_tags_binding_status")
     @service_api_ns.doc(description="Get tags bound to a specific dataset")
