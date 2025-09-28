@@ -1,7 +1,7 @@
 import logging
 
 import httpx
-from flask import current_app, make_response, redirect, request
+from flask import current_app, redirect, request
 from flask_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -163,11 +163,9 @@ class OAuthCallback(Resource):
             f"{dify_config.CONSOLE_WEB_URL}"
         )
 
-        csrf_token = generate_csrf_token()
-
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
-        set_csrf_token_to_cookie(request, response, csrf_token)
+        set_csrf_token_to_cookie(request, response, generate_csrf_token())
         return response
 
 

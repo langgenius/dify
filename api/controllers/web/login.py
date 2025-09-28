@@ -2,15 +2,12 @@ from flask import make_response, request
 from flask_restx import Resource, reqparse
 from jwt import InvalidTokenError
 
-from services.feature_service import FeatureService
-from configs import dify_config
 import services
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
     InvalidEmailError,
 )
-from constants import HEADER_NAME_APP_CODE
 from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
@@ -23,15 +20,11 @@ from libs.token import (
     set_access_token_to_cookie,
     extract_access_token,
     extract_webapp_passport,
-    set_csrf_token_to_cookie,
-    generate_csrf_token,
     clear_csrf_token_from_cookie
 )
 from services.account_service import AccountService
 from services.webapp_auth_service import WebAppAuthService
-from services.enterprise.enterprise_service import EnterpriseService
-from services.app_service import AppService
-from werkzeug.exceptions import Unauthorized
+
 
 @web_ns.route("/login")
 class LoginApi(Resource):
@@ -151,10 +144,8 @@ class EmailCodeLoginSendEmailApi(Resource):
             raise AuthenticationFailedError()
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
-        csrf_token = generate_csrf_token()
         response = make_response({"result": "success", "data": {"access_token": token}})
         set_access_token_to_cookie(request, response, token, samesite="None")
-        set_csrf_token_to_cookie(request, response, csrf_token)
         return response
 
 
@@ -197,9 +188,7 @@ class EmailCodeLoginApi(Resource):
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        csrf_token = generate_csrf_token()
         AccountService.reset_login_error_rate_limit(args["email"])
         response = make_response({"result": "success", "data": {"access_token": token}})
         set_access_token_to_cookie(request, response, token, samesite="None")
-        set_csrf_token_to_cookie(request, response, csrf_token)
         return response
