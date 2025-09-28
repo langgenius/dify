@@ -146,11 +146,11 @@ export const useInvalidateInstalledPluginList = () => {
   }
 }
 
-export const useInstallPackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, { uniqueIdentifier: string; blueGreen?: boolean }>) => {
+export const useInstallPackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, { uniqueIdentifier: string; blueGreen?: boolean; blueGreenMode?: 'auto' | 'manual' }>) => {
   return useMutation({
     ...options,
-    mutationFn: ({ uniqueIdentifier, blueGreen = false }: { uniqueIdentifier: string; blueGreen?: boolean }) => {
-      return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier], blue_green: blueGreen } })
+    mutationFn: ({ uniqueIdentifier, blueGreen = false, blueGreenMode = 'auto' }: { uniqueIdentifier: string; blueGreen?: boolean; blueGreenMode?: 'auto' | 'manual' }) => {
+      return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier], blue_green: blueGreen, blue_green_mode: blueGreen ? blueGreenMode : undefined } })
     },
   })
 }
@@ -190,10 +190,10 @@ export const useInvalidateVersionListOfPlugin = () => {
 
 export const useInstallPackageFromLocal = () => {
   return useMutation({
-    mutationFn: (payload: { uniqueIdentifier: string; blueGreen?: boolean }) => {
-      const { uniqueIdentifier, blueGreen = false } = payload
+    mutationFn: (payload: { uniqueIdentifier: string; blueGreen?: boolean; blueGreenMode?: 'auto' | 'manual' }) => {
+      const { uniqueIdentifier, blueGreen = false, blueGreenMode = 'auto' } = payload
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
-        body: { plugin_unique_identifiers: [uniqueIdentifier], blue_green: blueGreen },
+        body: { plugin_unique_identifiers: [uniqueIdentifier], blue_green: blueGreen, blue_green_mode: blueGreen ? blueGreenMode : undefined },
       })
     },
   })
@@ -201,12 +201,13 @@ export const useInstallPackageFromLocal = () => {
 
 export const useInstallPackageFromGitHub = () => {
   return useMutation({
-    mutationFn: ({ repoUrl, selectedVersion, selectedPackage, uniqueIdentifier, blueGreen = false }: {
+    mutationFn: ({ repoUrl, selectedVersion, selectedPackage, uniqueIdentifier, blueGreen = false, blueGreenMode = 'auto' }: {
       repoUrl: string
       selectedVersion: string
       selectedPackage: string
       uniqueIdentifier: string
       blueGreen?: boolean
+      blueGreenMode?: 'auto' | 'manual'
     }) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
         body: {
@@ -215,6 +216,7 @@ export const useInstallPackageFromGitHub = () => {
           package: selectedPackage,
           plugin_unique_identifier: uniqueIdentifier,
           blue_green: blueGreen,
+          blue_green_mode: blueGreen ? blueGreenMode : undefined,
         },
       })
     },

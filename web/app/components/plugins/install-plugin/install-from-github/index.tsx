@@ -24,7 +24,7 @@ const i18nPrefix = 'plugin.installFromGitHub'
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (pluginId: string) => void
 }
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
@@ -141,7 +141,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     if (!notRefresh)
       refreshPluginList(manifest)
     setIsInstalling(false)
-    onSuccess()
+    const pid = manifest ? `${manifest.author}/${manifest.name}` : ''
+    if (pid)
+      onSuccess(pid)
   }, [manifest, onSuccess, refreshPluginList, setIsInstalling])
 
   const handleFailed = useCallback((errorMsg?: string) => {

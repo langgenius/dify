@@ -57,6 +57,7 @@ const Loaded: React.FC<LoadedProps> = ({
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
   const [blueGreen, setBlueGreen] = React.useState(false)
+  const [blueGreenMode, setBlueGreenMode] = React.useState<'auto' | 'manual'>('auto')
   const { handleRefetch } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
@@ -82,6 +83,7 @@ const Loaded: React.FC<LoadedProps> = ({
           updatePayload.originalPackageInfo.id,
           uniqueIdentifier,
           blueGreen,
+          blueGreenMode,
         )
 
         taskId = task_id
@@ -99,6 +101,7 @@ const Loaded: React.FC<LoadedProps> = ({
             installedInfoPayload.uniqueIdentifier,
             uniqueIdentifier,
             blueGreen,
+            blueGreenMode,
           )
           taskId = task_id
           isInstalled = all_installed
@@ -110,6 +113,7 @@ const Loaded: React.FC<LoadedProps> = ({
             selectedPackage,
             uniqueIdentifier,
             blueGreen,
+            blueGreenMode,
           })
 
           taskId = task_id
@@ -165,7 +169,24 @@ const Loaded: React.FC<LoadedProps> = ({
         <div className='system-md-regular text-text-secondary'>
           {t('plugin.installModal.blueGreenInstall')}
         </div>
-        <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
+        <div className='flex items-center gap-4'>
+          <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
+          {blueGreen && (
+            <div className='flex items-center gap-2'>
+              <label className='system-md-regular text-text-secondary'>
+                {t('plugin.runtimeTraffic.modePrefix')}
+              </label>
+              <label className='flex items-center gap-1'>
+                <input type='radio' name='bg-mode' checked={blueGreenMode === 'auto'} onChange={() => setBlueGreenMode('auto')} />
+                {t('plugin.runtimeTraffic.modeAuto')}
+              </label>
+              <label className='flex items-center gap-1'>
+                <input type='radio' name='bg-mode' checked={blueGreenMode === 'manual'} onChange={() => setBlueGreenMode('manual')} />
+                {t('plugin.runtimeTraffic.modeManual')}
+              </label>
+            </div>
+          )}
+        </div>
       </div>
       <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
         {!isInstalling && (

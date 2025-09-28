@@ -257,6 +257,7 @@ class PluginService:
         original_plugin_unique_identifier: str,
         new_plugin_unique_identifier: str,
         blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Upgrade plugin with marketplace
@@ -297,6 +298,7 @@ class PluginService:
                 "plugin_unique_identifier": new_plugin_unique_identifier,
             },
             blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -308,6 +310,7 @@ class PluginService:
         version: str,
         package: str,
         blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Upgrade plugin with github
@@ -325,6 +328,7 @@ class PluginService:
                 "package": package,
             },
             blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -333,6 +337,7 @@ class PluginService:
         original_plugin_unique_identifier: str,
         new_plugin_unique_identifier: str,
         blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Upgrade plugin with local uploaded package
@@ -350,6 +355,7 @@ class PluginService:
                 "plugin_unique_identifier": new_plugin_unique_identifier,
             },
             blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -403,7 +409,12 @@ class PluginService:
         return manager.upload_bundle(tenant_id, bundle, verify_signature)
 
     @staticmethod
-    def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str], blue_green: bool = False):
+    def install_from_local_pkg(
+        tenant_id: str,
+        plugin_unique_identifiers: Sequence[str],
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
+    ):
         PluginService._check_marketplace_only_permission()
 
         manager = PluginInstaller()
@@ -414,11 +425,18 @@ class PluginService:
             PluginInstallationSource.Package,
             [{}],
             blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
     def install_from_github(
-        tenant_id: str, plugin_unique_identifier: str, repo: str, version: str, package: str, blue_green: bool = False
+        tenant_id: str,
+        plugin_unique_identifier: str,
+        repo: str,
+        version: str,
+        package: str,
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Install plugin from github release package files,
@@ -439,6 +457,7 @@ class PluginService:
                 }
             ],
             blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -469,7 +488,10 @@ class PluginService:
 
     @staticmethod
     def install_from_marketplace_pkg(
-        tenant_id: str, plugin_unique_identifiers: Sequence[str], blue_green: bool = False
+        tenant_id: str,
+        plugin_unique_identifiers: Sequence[str],
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Install plugin from marketplace package files,
@@ -515,6 +537,7 @@ class PluginService:
             PluginInstallationSource.Marketplace,
             metas,
             blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -526,6 +549,21 @@ class PluginService:
     def fetch_runtime_connections(tenant_id: str, plugin_id: str | None = None) -> dict:
         manager = PluginInstaller()
         return manager.fetch_runtime_connections(tenant_id, plugin_id)
+
+    @staticmethod
+    def approve_blue_green(tenant_id: str, plugin_id: str) -> bool:
+        manager = PluginInstaller()
+        return manager.approve_blue_green(tenant_id, plugin_id)
+
+    @staticmethod
+    def force_offline_runtime(tenant_id: str, plugin_unique_identifier: str) -> bool:
+        manager = PluginInstaller()
+        return manager.force_offline(tenant_id, plugin_unique_identifier)
+
+    @staticmethod
+    def rollback_blue_green(tenant_id: str, plugin_unique_identifier: str) -> bool:
+        manager = PluginInstaller()
+        return manager.rollback_blue_green(tenant_id, plugin_unique_identifier)
 
     @staticmethod
     def check_tools_existence(tenant_id: str, provider_ids: Sequence[GenericProviderID]) -> Sequence[bool]:

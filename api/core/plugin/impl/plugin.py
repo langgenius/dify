@@ -97,21 +97,25 @@ class PluginInstaller(BasePluginClient):
         source: PluginInstallationSource,
         metas: list[dict],
         blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ) -> PluginInstallTaskStartResponse:
         """
         Install a plugin from an identifier.
         """
         # exception will be raised if the request failed
+        data = {
+            "plugin_unique_identifiers": identifiers,
+            "source": source,
+            "metas": metas,
+            "blue_green": blue_green,
+        }
+        if blue_green and blue_green_mode in {"auto", "manual"}:
+            data["blue_green_mode"] = blue_green_mode
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/identifiers",
             PluginInstallTaskStartResponse,
-            data={
-                "plugin_unique_identifiers": identifiers,
-                "source": source,
-                "metas": metas,
-                "blue_green": blue_green,
-            },
+            data=data,
             headers={"Content-Type": "application/json"},
         )
 
@@ -251,21 +255,52 @@ class PluginInstaller(BasePluginClient):
         source: PluginInstallationSource,
         meta: dict,
         blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ) -> PluginInstallTaskStartResponse:
         """
         Upgrade a plugin.
         """
+        data = {
+            "original_plugin_unique_identifier": original_plugin_unique_identifier,
+            "new_plugin_unique_identifier": new_plugin_unique_identifier,
+            "source": source,
+            "meta": meta,
+            "blue_green": blue_green,
+        }
+        if blue_green and blue_green_mode in {"auto", "manual"}:
+            data["blue_green_mode"] = blue_green_mode
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/upgrade",
             PluginInstallTaskStartResponse,
-            data={
-                "original_plugin_unique_identifier": original_plugin_unique_identifier,
-                "new_plugin_unique_identifier": new_plugin_unique_identifier,
-                "source": source,
-                "meta": meta,
-                "blue_green": blue_green,
-            },
+            data=data,
+            headers={"Content-Type": "application/json"},
+        )
+
+    def approve_blue_green(self, tenant_id: str, plugin_id: str) -> bool:
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/blue_green/approve",
+            bool,
+            data={"plugin_id": plugin_id},
+            headers={"Content-Type": "application/json"},
+        )
+
+    def force_offline(self, tenant_id: str, plugin_unique_identifier: str) -> bool:
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/blue_green/force_offline",
+            bool,
+            data={"plugin_unique_identifier": plugin_unique_identifier},
+            headers={"Content-Type": "application/json"},
+        )
+
+    def rollback_blue_green(self, tenant_id: str, plugin_unique_identifier: str) -> bool:
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/blue_green/rollback",
+            bool,
+            data={"plugin_unique_identifier": plugin_unique_identifier},
             headers={"Content-Type": "application/json"},
         )
 

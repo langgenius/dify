@@ -50,6 +50,7 @@ const Installed: FC<Props> = ({
 
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const [blueGreen, setBlueGreen] = React.useState(false)
+  const [blueGreenMode, setBlueGreenMode] = React.useState<'auto' | 'manual'>('auto')
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
   const [isInstalling, setIsInstalling] = React.useState(false)
   const {
@@ -76,22 +77,17 @@ const Installed: FC<Props> = ({
       let taskId
       let isInstalled
       if (hasInstalled) {
-        const {
-          all_installed,
-          task_id,
-        } = await updatePackageFromMarketPlace({
+        const { all_installed, task_id } = await updatePackageFromMarketPlace({
           original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
           new_plugin_unique_identifier: uniqueIdentifier,
           blue_green: blueGreen,
+          blue_green_mode: blueGreen ? blueGreenMode : undefined,
         })
         taskId = task_id
         isInstalled = all_installed
       }
       else {
-        const {
-          all_installed,
-          task_id,
-        } = await installPackageFromMarketPlace({ uniqueIdentifier, blueGreen })
+        const { all_installed, task_id } = await installPackageFromMarketPlace({ uniqueIdentifier, blueGreen, blueGreenMode })
         taskId = task_id
         isInstalled = all_installed
       }
@@ -158,7 +154,26 @@ const Installed: FC<Props> = ({
         <div className='system-md-regular text-text-secondary'>
           {t('plugin.installModal.blueGreenInstall')}
         </div>
-        <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
+        <div className='flex items-center gap-4'>
+          <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
+          {blueGreen && (
+            <div className='flex items-center gap-2'>
+              <label className='system-md-regular text-text-secondary'>
+                {t('plugin.runtimeTraffic.modePrefix')}
+              </label>
+              <div className='flex items-center gap-2'>
+                <label className='flex items-center gap-1'>
+                  <input type='radio' name='bg-mode' checked={blueGreenMode === 'auto'} onChange={() => setBlueGreenMode('auto')} />
+                  {t('plugin.runtimeTraffic.modeAuto')}
+                </label>
+                <label className='flex items-center gap-1'>
+                  <input type='radio' name='bg-mode' checked={blueGreenMode === 'manual'} onChange={() => setBlueGreenMode('manual')} />
+                  {t('plugin.runtimeTraffic.modeManual')}
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       {/* Action Buttons */}
       <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
