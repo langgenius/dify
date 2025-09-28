@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
@@ -27,6 +27,10 @@ from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
+@console_ns.route(
+    "/data-source/integrates",
+    "/data-source/integrates/<uuid:binding_id>/<string:action>",
+)
 class DataSourceApi(Resource):
     @setup_required
     @login_required
@@ -109,6 +113,7 @@ class DataSourceApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/notion/pre-import/pages")
 class DataSourceNotionListApi(Resource):
     @setup_required
     @login_required
@@ -196,6 +201,10 @@ class DataSourceNotionListApi(Resource):
             return {"notion_info": {**workspace_info, "pages": pages}}, 200
 
 
+@console_ns.route(
+    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
+    "/datasets/notion-indexing-estimate",
+)
 class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
@@ -269,6 +278,7 @@ class DataSourceNotionApi(Resource):
         return response.model_dump(), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
 class DataSourceNotionDatasetSyncApi(Resource):
     @setup_required
     @login_required
@@ -285,6 +295,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
 class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required
     @login_required
@@ -301,16 +312,3 @@ class DataSourceNotionDocumentSyncApi(Resource):
             raise NotFound("Document not found.")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)
         return {"result": "success"}, 200
-
-
-api.add_resource(DataSourceApi, "/data-source/integrates", "/data-source/integrates/<uuid:binding_id>/<string:action>")
-api.add_resource(DataSourceNotionListApi, "/notion/pre-import/pages")
-api.add_resource(
-    DataSourceNotionApi,
-    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
-    "/datasets/notion-indexing-estimate",
-)
-api.add_resource(DataSourceNotionDatasetSyncApi, "/datasets/<uuid:dataset_id>/notion/sync")
-api.add_resource(
-    DataSourceNotionDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync"
-)
