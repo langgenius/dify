@@ -1,6 +1,7 @@
 from .account import (
     Account,
     AccountIntegrate,
+    AccountMFASettings,
     AccountStatus,
     InvitationCode,
     Tenant,
@@ -97,6 +98,7 @@ __all__ = [
     "APIBasedExtensionPoint",
     "Account",
     "AccountIntegrate",
+    "AccountMFASettings",
     "AccountStatus",
     "ApiRequest",
     "ApiToken",
