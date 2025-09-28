@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import click
 from sqlalchemy import func, select
@@ -17,7 +17,7 @@ from services.feature_service import FeatureService
 
 class CleanupConfig(TypedDict):
     clean_day: datetime.datetime
-    plan_filter: Optional[str]
+    plan_filter: str | None
     add_logs: bool
 
 

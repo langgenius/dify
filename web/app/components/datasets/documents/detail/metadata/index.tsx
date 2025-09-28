@@ -5,7 +5,7 @@ import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { get } from 'lodash-es'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
@@ -107,7 +107,7 @@ const IconButton: FC<{
     <Tooltip
       popupContent={metadataMap[type].text}
     >
-      <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
+      <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}
           className={`group-hover:bg-primary-600 ${isChecked ? '!bg-primary-600' : ''}`}

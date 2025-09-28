@@ -1,13 +1,13 @@
 import flask_restx
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
@@ -20,7 +20,6 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
-from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
@@ -33,6 +32,7 @@ from fields.document_fields import document_status_fields
 from libs.login import login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
+from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
@@ -48,7 +48,21 @@ def _validate_description_length(description):
     return description
 
 
+@console_ns.route("/datasets")
 class DatasetListApi(Resource):
+    @api.doc("get_datasets")
+    @api.doc(description="Get list of datasets")
+    @api.doc(
+        params={
+            "page": "Page number (default: 1)",
+            "limit": "Number of items per page (default: 20)",
+            "ids": "Filter by dataset IDs (list)",
+            "keyword": "Search keyword",
+            "tag_ids": "Filter by tag IDs (list)",
+            "include_all": "Include all datasets (default: false)",
+        }
+    )
+    @api.response(200, "Datasets retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -100,6 +114,24 @@ class DatasetListApi(Resource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
+    @api.doc("create_dataset")
+    @api.doc(description="Create a new dataset")
+    @api.expect(
+        api.model(
+            "CreateDatasetRequest",
+            {
+                "name": fields.String(required=True, description="Dataset name (1-40 characters)"),
+                "description": fields.String(description="Dataset description (max 400 characters)"),
+                "indexing_technique": fields.String(description="Indexing technique"),
+                "permission": fields.String(description="Dataset permission"),
+                "provider": fields.String(description="Provider"),
+                "external_knowledge_api_id": fields.String(description="External knowledge API ID"),
+                "external_knowledge_id": fields.String(description="External knowledge ID"),
+            },
+        )
+    )
+    @api.response(201, "Dataset created successfully")
+    @api.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -172,7 +204,14 @@ class DatasetListApi(Resource):
         return marshal(dataset, dataset_detail_fields), 201
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(Resource):
+    @api.doc("get_dataset")
+    @api.doc(description="Get dataset details")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Dataset retrieved successfully", dataset_detail_fields)
+    @api.response(404, "Dataset not found")
+    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -215,6 +254,23 @@ class DatasetApi(Resource):
 
         return data, 200
 
+    @api.doc("update_dataset")
+    @api.doc(description="Update dataset details")
+    @api.expect(
+        api.model(
+            "UpdateDatasetRequest",
+            {
+                "name": fields.String(description="Dataset name"),
+                "description": fields.String(description="Dataset description"),
+                "permission": fields.String(description="Dataset permission"),
+                "indexing_technique": fields.String(description="Indexing technique"),
+                "external_retrieval_model": fields.Raw(description="External retrieval model settings"),
+            },
+        )
+    )
+    @api.response(200, "Dataset updated successfully", dataset_detail_fields)
+    @api.response(404, "Dataset not found")
+    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -281,6 +337,15 @@ class DatasetApi(Resource):
             location="json",
             help="Invalid external knowledge api id.",
         )
+
+        parser.add_argument(
+            "icon_info",
+            type=dict,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid icon info.",
+        )
         args = parser.parse_args()
         data = request.get_json()
 
@@ -331,7 +396,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor or current_user.is_dataset_operator:
+        if not (current_user.is_editor or current_user.is_dataset_operator):
             raise Forbidden()
 
         try:
@@ -344,7 +409,12 @@ class DatasetApi(Resource):
             raise DatasetInUseError()
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/use-check")
 class DatasetUseCheckApi(Resource):
+    @api.doc("check_dataset_use")
+    @api.doc(description="Check if dataset is in use")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Dataset use status retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -355,7 +425,12 @@ class DatasetUseCheckApi(Resource):
         return {"is_using": dataset_is_using}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
+    @api.doc("get_dataset_queries")
+    @api.doc(description="Get dataset query history")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Query history retrieved successfully", dataset_query_detail_fields)
     @setup_required
     @login_required
     @account_initialization_required
@@ -385,7 +460,11 @@ class DatasetQueryApi(Resource):
         return response, 200
 
 
+@console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
+    @api.doc("estimate_dataset_indexing")
+    @api.doc(description="Estimate dataset indexing cost")
+    @api.response(200, "Indexing estimate calculated successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -433,10 +512,12 @@ class DatasetIndexingEstimateApi(Resource):
             notion_info_list = args["info_list"]["notion_info_list"]
             for notion_info in notion_info_list:
                 workspace_id = notion_info["workspace_id"]
+                credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.NOTION.value,
                         notion_info={
+                            "credential_id": credential_id,
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
                             "notion_page_type": page["type"],
@@ -486,7 +567,12 @@ class DatasetIndexingEstimateApi(Resource):
         return response.model_dump(), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
 class DatasetRelatedAppListApi(Resource):
+    @api.doc("get_dataset_related_apps")
+    @api.doc(description="Get applications related to dataset")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Related apps retrieved successfully", related_app_list)
     @setup_required
     @login_required
     @account_initialization_required
@@ -513,7 +599,12 @@ class DatasetRelatedAppListApi(Resource):
         return {"data": related_apps, "total": len(related_apps)}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
 class DatasetIndexingStatusApi(Resource):
+    @api.doc("get_dataset_indexing_status")
+    @api.doc(description="Get dataset indexing status")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Indexing status retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -560,11 +651,15 @@ class DatasetIndexingStatusApi(Resource):
         return data, 200
 
 
+@console_ns.route("/datasets/api-keys")
 class DatasetApiKeyApi(Resource):
     max_keys = 10
     token_prefix = "dataset-"
     resource_type = "dataset"
 
+    @api.doc("get_dataset_api_keys")
+    @api.doc(description="Get dataset API keys")
+    @api.response(200, "API keys retrieved successfully", api_key_list)
     @setup_required
     @login_required
     @account_initialization_required
@@ -609,9 +704,14 @@ class DatasetApiKeyApi(Resource):
         return api_token, 200
 
 
+@console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
     resource_type = "dataset"
 
+    @api.doc("delete_dataset_api_key")
+    @api.doc(description="Delete dataset API key")
+    @api.doc(params={"api_key_id": "API key ID"})
+    @api.response(204, "API key deleted successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -641,7 +741,24 @@ class DatasetApiDeleteApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
+class DatasetEnableApiApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, status):
+        dataset_id_str = str(dataset_id)
+
+        DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
+
+        return {"result": "success"}, 200
+
+
+@console_ns.route("/datasets/api-base-info")
 class DatasetApiBaseUrlApi(Resource):
+    @api.doc("get_dataset_api_base_info")
+    @api.doc(description="Get dataset API base information")
+    @api.response(200, "API base info retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -649,7 +766,11 @@ class DatasetApiBaseUrlApi(Resource):
         return {"api_base_url": (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"}
 
 
+@console_ns.route("/datasets/retrieval-setting")
 class DatasetRetrievalSettingApi(Resource):
+    @api.doc("get_dataset_retrieval_setting")
+    @api.doc(description="Get dataset retrieval settings")
+    @api.response(200, "Retrieval settings retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -661,7 +782,6 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.PGVECTO_RS
-                | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
@@ -688,6 +808,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TENCENT
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
+                | VectorType.BAIDU
             ):
                 return {
                     "retrieval_method": [
@@ -700,7 +821,12 @@ class DatasetRetrievalSettingApi(Resource):
                 raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
+@console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
 class DatasetRetrievalSettingMockApi(Resource):
+    @api.doc("get_dataset_retrieval_setting_mock")
+    @api.doc(description="Get mock dataset retrieval settings by vector type")
+    @api.doc(params={"vector_type": "Vector store type"})
+    @api.response(200, "Mock retrieval settings retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -712,7 +838,6 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.PGVECTO_RS
-                | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
@@ -737,6 +862,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
+                | VectorType.BAIDU
             ):
                 return {
                     "retrieval_method": [
@@ -749,7 +875,13 @@ class DatasetRetrievalSettingMockApi(Resource):
                 raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
 class DatasetErrorDocs(Resource):
+    @api.doc("get_dataset_error_docs")
+    @api.doc(description="Get dataset error documents")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Error documents retrieved successfully")
+    @api.response(404, "Dataset not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -763,7 +895,14 @@ class DatasetErrorDocs(Resource):
         return {"data": [marshal(item, document_status_fields) for item in results], "total": len(results)}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
 class DatasetPermissionUserListApi(Resource):
+    @api.doc("get_dataset_permission_users")
+    @api.doc(description="Get dataset permission user list")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Permission users retrieved successfully")
+    @api.response(404, "Dataset not found")
+    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -784,7 +923,13 @@ class DatasetPermissionUserListApi(Resource):
         }, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
 class DatasetAutoDisableLogApi(Resource):
+    @api.doc("get_dataset_auto_disable_logs")
+    @api.doc(description="Get dataset auto disable logs")
+    @api.doc(params={"dataset_id": "Dataset ID"})
+    @api.response(200, "Auto disable logs retrieved successfully")
+    @api.response(404, "Dataset not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -794,20 +939,3 @@ class DatasetAutoDisableLogApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
         return DatasetService.get_dataset_auto_disable_logs(dataset_id_str), 200
-
-
-api.add_resource(DatasetListApi, "/datasets")
-api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
-api.add_resource(DatasetUseCheckApi, "/datasets/<uuid:dataset_id>/use-check")
-api.add_resource(DatasetQueryApi, "/datasets/<uuid:dataset_id>/queries")
-api.add_resource(DatasetErrorDocs, "/datasets/<uuid:dataset_id>/error-docs")
-api.add_resource(DatasetIndexingEstimateApi, "/datasets/indexing-estimate")
-api.add_resource(DatasetRelatedAppListApi, "/datasets/<uuid:dataset_id>/related-apps")
-api.add_resource(DatasetIndexingStatusApi, "/datasets/<uuid:dataset_id>/indexing-status")
-api.add_resource(DatasetApiKeyApi, "/datasets/api-keys")
-api.add_resource(DatasetApiDeleteApi, "/datasets/api-keys/<uuid:api_key_id>")
-api.add_resource(DatasetApiBaseUrlApi, "/datasets/api-base-info")
-api.add_resource(DatasetRetrievalSettingApi, "/datasets/retrieval-setting")
-api.add_resource(DatasetRetrievalSettingMockApi, "/datasets/retrieval-setting/<string:vector_type>")
-api.add_resource(DatasetPermissionUserListApi, "/datasets/<uuid:dataset_id>/permission-part-users")
-api.add_resource(DatasetAutoDisableLogApi, "/datasets/<uuid:dataset_id>/auto-disable-logs")

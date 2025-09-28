@@ -78,6 +78,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           model.provider,
           model.modelId,
           inputs.model.completion_params,
+          true,
         )
         const keys = Object.keys(removedDetails)
         if (keys.length)

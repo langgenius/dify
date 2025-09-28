@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -13,16 +13,16 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 
 from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
 
@@ -86,8 +86,8 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-) -> Optional[TokenBufferMemory]:
+    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
+) -> TokenBufferMemory | None:
     if not node_data_memory:
         return None
 

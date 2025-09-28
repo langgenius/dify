@@ -516,7 +516,17 @@ const translation = {
       unAuthorized: 'Non autorizzato',
       specifyModelCredentialTip: 'Usa una credenziale di modello configurato.',
       configModel: 'Configura modello',
+      addNewModelCredential: 'Aggiungere nuove credenziali del modello',
+      selectModelCredential: 'Seleziona una credenziale del modello',
+      customModelCredentials: 'Credenziali del modello personalizzato',
+      manageCredentials: 'Gestisci credenziali',
+      customModelCredentialsDeleteTip: 'La credenziale è in uso e non può essere eliminata',
+      addModel: 'Aggiungi modello',
+      modelCredential: 'Credenziale del modello',
+      removeModel: 'Rimuovi modello',
+      editModelCredential: 'Modificare le credenziali del modello',
     },
+    parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
@@ -618,6 +628,7 @@ const translation = {
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
     noRelatedApp: 'Nessuna app collegata',
+    pipeline: 'Oleodotto',
   },
   voiceInput: {
     speaking: 'Parla ora...',
@@ -777,6 +788,9 @@ const translation = {
     content: 'Contenuto del feedback',
     subtitle: 'Per favore, dicci cosa è andato storto con questa risposta.',
     placeholder: 'Per favore descrivi cosa è andato storto o come possiamo migliorare...',
+  },
+  label: {
+    optional: '(Facoltativo)',
   },
 }
 

@@ -94,9 +94,9 @@ const Configuration: FC = () => {
   const { notify } = useContext(ToastContext)
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
-  const { appDetail, showAppConfigureFeaturesModal, setAppSiderbarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
+  const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
-    setAppSiderbarExpand: state.setAppSiderbarExpand,
+    setAppSidebarExpand: state.setAppSidebarExpand,
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
@@ -464,6 +464,7 @@ const Configuration: FC = () => {
         provider,
         modelId,
         completionParams,
+        isAdvancedMode,
       )
       if (Object.keys(removedDetails).length)
         Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
@@ -842,7 +843,7 @@ const Configuration: FC = () => {
         { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
-    setAppSiderbarExpand('collapse')
+    setAppSidebarExpand('collapse')
   }
 
   if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {

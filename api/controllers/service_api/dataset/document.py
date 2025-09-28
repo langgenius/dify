@@ -30,7 +30,6 @@ from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
-from models.model import EndUser
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService
@@ -124,7 +123,12 @@ class DocumentAddByTextApi(DatasetApiResource):
                 args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
-        upload_file = FileService.upload_text(text=str(text), text_name=str(name))
+        if not current_user:
+            raise ValueError("current_user is required")
+
+        upload_file = FileService(db.engine).upload_text(
+            text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
+        )
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -133,6 +137,9 @@ class DocumentAddByTextApi(DatasetApiResource):
         knowledge_config = KnowledgeConfig(**args)
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
+
+        if not current_user:
+            raise ValueError("current_user is required")
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
@@ -199,7 +206,11 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             name = args.get("name")
             if text is None or name is None:
                 raise ValueError("Both text and name must be strings.")
-            upload_file = FileService.upload_text(text=str(text), text_name=str(name))
+            if not current_user:
+                raise ValueError("current_user is required")
+            upload_file = FileService(db.engine).upload_text(
+                text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
+            )
             data_source = {
                 "type": "upload_file",
                 "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -299,10 +310,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        if not isinstance(current_user, EndUser):
-            raise ValueError("Invalid user account")
-
-        upload_file = FileService.upload_file(
+        if not current_user:
+            raise ValueError("current_user is required")
+        upload_file = FileService(db.engine).upload_file(
             filename=file.filename,
             content=file.read(),
             mimetype=file.mimetype,
@@ -390,10 +400,11 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if not file.filename:
                 raise FilenameNotExistsError
 
+            if not current_user:
+                raise ValueError("current_user is required")
+
             try:
-                if not isinstance(current_user, EndUser):
-                    raise ValueError("Invalid user account")
-                upload_file = FileService.upload_file(
+                upload_file = FileService(db.engine).upload_file(
                     filename=file.filename,
                     content=file.read(),
                     mimetype=file.mimetype,
@@ -571,7 +582,7 @@ class DocumentApi(DatasetApiResource):
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -604,7 +615,7 @@ class DocumentApi(DatasetApiResource):
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,

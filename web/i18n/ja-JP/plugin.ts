@@ -6,6 +6,7 @@ const translation = {
     bundles: 'バンドル',
     agents: 'エージェント戦略',
     models: 'モデル',
+    datasources: 'データソース',
   },
   categorySingle: {
     agent: 'エージェント戦略',
@@ -13,6 +14,7 @@ const translation = {
     bundle: 'バンドル',
     tool: 'ツール',
     extension: '拡張',
+    datasource: 'データソース',
   },
   list: {
     source: {
@@ -250,6 +252,9 @@ const translation = {
     unavailable: '利用できません',
     customCredentialUnavailable: 'カスタム資格情報は現在利用できません',
     credentialUnavailable: '現在、資格情報は利用できません。管理者にご連絡ください。',
+    credentialUnavailableInButton: '資格情報が利用できません',
+    connectedWorkspace: '接続されたワークスペース',
+    emptyAuth: '認証を設定してください',
   },
   autoUpdate: {
     strategy: {

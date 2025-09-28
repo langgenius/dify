@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import wandb
 import weave
@@ -23,8 +23,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -169,13 +168,13 @@ class WeaveDataTrace(BaseTraceInstance):
             if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             node_total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
             attributes = {str(k): v for k, v in execution_metadata.items()}
             attributes.update(
@@ -190,7 +189,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
             if process_data and process_data.get("model_mode") == "chat":
                 attributes.update(
                     {
@@ -223,7 +222,7 @@ class WeaveDataTrace(BaseTraceInstance):
     def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
         file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
         file_list.append(file_url)
         attributes = trace_info.metadata
@@ -236,7 +235,7 @@ class WeaveDataTrace(BaseTraceInstance):
         attributes["user_id"] = user_id
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -418,13 +417,13 @@ class WeaveDataTrace(BaseTraceInstance):
             if not login_status:
                 raise ValueError("Weave login failed")
             else:
-                print("Weave login successful")
+                logger.info("Weave login successful")
                 return True
         except Exception as e:
             logger.debug("Weave API check failed: %s", str(e))
             raise ValueError(f"Weave API check failed: {str(e)}")
 
-    def start_call(self, run_data: WeaveTraceModel, parent_run_id: Optional[str] = None):
+    def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
         call = self.weave_client.create_call(op=run_data.op, inputs=run_data.inputs, attributes=run_data.attributes)
         self.calls[run_data.id] = call
         if parent_run_id:

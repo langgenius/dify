@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from openai._exceptions import RateLimitError
 
@@ -116,7 +116,6 @@ class AppGenerateService:
                             invoke_from=invoke_from,
                             streaming=streaming,
                             call_depth=0,
-                            workflow_thread_pool_id=None,
                         ),
                     ),
                     request_id,
@@ -214,7 +213,7 @@ class AppGenerateService:
         )
 
     @classmethod
-    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom, workflow_id: Optional[str] = None) -> Workflow:
+    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom, workflow_id: str | None = None) -> Workflow:
         """
         Get workflow
         :param app_model: app model

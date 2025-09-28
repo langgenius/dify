@@ -86,6 +86,7 @@ const translation = {
       '작업 목표를 달성하기 위해 반복적인 추론과 자율적인 도구를 사용할 수 있는 지능형 에이전트입니다.',
     advancedUserDescription: '메모리 기능과 챗봇 인터페이스를 갖춘 워크플로우',
     dropDSLToCreateApp: '여기에 DSL 파일을 드롭하여 앱을 불러오세요.',
+    import: '수입',
   },
   editApp: '정보 편집하기',
   editAppTitle: '앱 정보 편집하기',
@@ -336,6 +337,10 @@ const translation = {
     tryDifferentSearch: '다른 검색어 사용해 보기',
     noMatchingCommands: '일치하는 명령을 찾을 수 없습니다.',
     slashHint: '모든 사용 가능한 명령을 보려면 /를 입력하세요.',
+    tips: '↑↓ 키를 눌러 탐색하세요',
+    pressEscToClose: 'ESC를 눌러 닫기',
+    selectToNavigate: '선택하여 탐색하기',
+    startTyping: '검색하려면 타이핑을 시작하세요',
   },
 }
 
