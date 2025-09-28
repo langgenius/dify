@@ -20,7 +20,10 @@ const RunMode = ({
   text,
 }: RunModeProps) => {
   const { t } = useTranslation()
-  const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
+  const {
+    handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+  } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const { validateBeforeRun } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -53,11 +56,18 @@ const RunMode = ({
     if (option.type === 'user_input') {
       handleWorkflowStartRunInWorkflow()
     }
+    else if (option.type === 'schedule') {
+      handleWorkflowTriggerScheduleRunInWorkflow(option.nodeId)
+    }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
       console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
     }
-  }, [validateBeforeRun, handleWorkflowStartRunInWorkflow])
+  }, [
+    validateBeforeRun,
+    handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+  ])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

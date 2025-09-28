@@ -1151,3 +1151,66 @@ class DraftWorkflowTriggerRunApi(Resource):
                 }
             ), 500
 
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/schedule/run")
+class DraftWorkflowTriggerScheduleRunApi(Resource):
+    """
+    Full workflow debug when the start node is a schedule trigger
+    Path: /apps/<uuid:app_id>/workflows/draft/trigger/schedule/run
+    """
+
+    @api.doc("draft_workflow_trigger_schedule_run")
+    @api.doc(description="Full workflow debug when the start node is a schedule trigger")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "DraftWorkflowTriggerScheduleRunRequest",
+            {
+                "node_id": fields.String(required=True, description="Node ID"),
+            }
+        )
+    )
+    @api.response(200, "Workflow executed successfully")
+    @api.response(403, "Permission denied")
+    @api.response(500, "Internal server error")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Full workflow debug when the start node is a schedule trigger
+        """
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        args = parser.parse_args()
+        node_id = args["node_id"]
+
+        workflow_args = {
+            "inputs": {},
+            "query": "",
+            "files": [],
+        }
+
+        try:
+            response = AppGenerateService.generate(
+                app_model=app_model,
+                user=current_user,
+                args=workflow_args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+                root_node_id=node_id
+            )
+            return helper.compact_generate_response(response)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except Exception:
+            logger.exception("Error running draft workflow trigger schedule run")
+            return jsonable_encoder(
+                {
+                    "status": "error",
+                }
+            ), 500

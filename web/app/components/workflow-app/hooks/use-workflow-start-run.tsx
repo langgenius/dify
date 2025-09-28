@@ -61,6 +61,50 @@ export const useWorkflowStartRun = () => {
     }
   }, [store, workflowStore, featuresStore, handleCancelDebugAndPreviewPanel, handleRun, doSyncWorkflowDraft])
 
+  const handleWorkflowTriggerScheduleRunInWorkflow = useCallback(async (nodeId?: string) => {
+    if (!nodeId)
+      return
+
+    const {
+      workflowRunningData,
+      showDebugAndPreviewPanel,
+      setShowDebugAndPreviewPanel,
+      setShowInputsPanel,
+      setShowEnvPanel,
+    } = workflowStore.getState()
+
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
+      return
+
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const scheduleNode = nodes.find(node => node.id === nodeId && node.data.type === BlockEnum.TriggerSchedule)
+
+    if (!scheduleNode) {
+      console.warn('handleWorkflowTriggerScheduleRunInWorkflow: schedule node not found', nodeId)
+      return
+    }
+
+    setShowEnvPanel(false)
+
+    if (showDebugAndPreviewPanel) {
+      handleCancelDebugAndPreviewPanel()
+      return
+    }
+
+    await doSyncWorkflowDraft()
+    handleRun(
+      {},
+      undefined,
+      {
+        mode: 'schedule',
+        scheduleNodeId: nodeId,
+      },
+    )
+    setShowDebugAndPreviewPanel(true)
+    setShowInputsPanel(false)
+  }, [store, workflowStore, handleCancelDebugAndPreviewPanel, handleRun, doSyncWorkflowDraft])
+
   const handleWorkflowStartRunInChatflow = useCallback(async () => {
     const {
       showDebugAndPreviewPanel,
@@ -92,5 +136,6 @@ export const useWorkflowStartRun = () => {
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
   }
 }

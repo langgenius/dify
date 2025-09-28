@@ -23,6 +23,13 @@ import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
 
+type HandleRunMode = 'default' | 'schedule'
+
+type HandleRunOptions = {
+  mode?: HandleRunMode
+  scheduleNodeId?: string
+}
+
 export const useWorkflowRun = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
@@ -111,7 +118,10 @@ export const useWorkflowRun = () => {
   const handleRun = useCallback(async (
     params: any,
     callback?: IOtherOptions,
+    options?: HandleRunOptions,
   ) => {
+    const runMode: HandleRunMode = options?.mode ?? 'default'
+    const resolvedParams = params ?? {}
     const {
       getNodes,
       setNodes,
@@ -153,11 +163,31 @@ export const useWorkflowRun = () => {
     const isInWorkflowDebug = appDetail?.mode === 'workflow'
 
     let url = ''
-    if (appDetail?.mode === 'advanced-chat')
+    if (runMode === 'schedule') {
+      if (!appDetail?.id) {
+        console.error('handleRun: missing app id for schedule trigger run')
+        return
+      }
+      url = `/apps/${appDetail.id}/workflows/draft/trigger/schedule/run`
+    }
+    else if (appDetail?.mode === 'advanced-chat') {
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
-
-    if (isInWorkflowDebug)
+    }
+    else if (isInWorkflowDebug && appDetail?.id) {
       url = `/apps/${appDetail.id}/workflows/draft/run`
+    }
+
+    const requestBody = runMode === 'schedule'
+      ? { node_id: options?.scheduleNodeId }
+      : resolvedParams
+
+    if (!url)
+      return
+
+    if (runMode === 'schedule' && !options?.scheduleNodeId) {
+      console.error('handleRun: schedule trigger run requires node id')
+      return
+    }
 
     const {
       setWorkflowRunningData,
@@ -172,22 +202,22 @@ export const useWorkflowRun = () => {
 
     let ttsUrl = ''
     let ttsIsPublic = false
-    if (params.token) {
+    if (resolvedParams.token) {
       ttsUrl = '/text-to-audio'
       ttsIsPublic = true
     }
-    else if (params.appId) {
+    else if (resolvedParams.appId) {
       if (pathname.search('explore/installed') > -1)
-        ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
+        ttsUrl = `/installed-apps/${resolvedParams.appId}/text-to-audio`
       else
-        ttsUrl = `/apps/${params.appId}/text-to-audio`
+        ttsUrl = `/apps/${resolvedParams.appId}/text-to-audio`
     }
     const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
 
     ssePost(
       url,
       {
-        body: params,
+        body: requestBody,
       },
       {
         onWorkflowStarted: (params) => {

@@ -66,6 +66,7 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
   } = useWorkflowStartRun()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
@@ -108,6 +109,7 @@ const WorkflowMain = ({
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
+      handleWorkflowTriggerScheduleRunInWorkflow,
       availableNodesMetaData,
       getWorkflowRunAndTraceUrl,
       exportCheck,
@@ -141,6 +143,7 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
     availableNodesMetaData,
     getWorkflowRunAndTraceUrl,
     exportCheck,
