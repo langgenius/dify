@@ -84,7 +84,7 @@ export const updateUserProfile: Fetcher<CommonResponse, { url: string; body: Rec
   return post<CommonResponse>(url, { body })
 }
 
-export const logout: Fetcher<CommonResponse, { url: string; body?: Record<string, any>; params?: Record<string, any> }> = ({ url, body }) => {
+export const logout: Fetcher<CommonResponse, { url: string; body?: Record<string, any> }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body: body ?? {} })
 }
 
