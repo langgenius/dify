@@ -72,7 +72,7 @@ class TestDeleteSegmentFromIndexTask:
         fake = fake or Faker()
         account = Account(
             name=fake.name(),
-            emasil=fake.email(),
+            email=fake.email(),
             avatar=fake.url(),
             tenant_id=tenant.id,
             status="active",

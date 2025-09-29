@@ -131,34 +131,33 @@ class TestDisableSegmentsFromIndexTask:
             DatasetDocument: Created test document instance
         """
         fake = fake or Faker()
-        document = DatasetDocument(
-            id=fake.uuid4(),
-            tenant_id=dataset.tenant_id,
-            dataset_id=dataset.id,
-            position=1,
-            data_source_type="upload_file",
-            data_source_info='{"upload_file_id": "test_file_id"}',
-            batch=fake.uuid4(),
-            name=f"Test Document {fake.word()}.txt",
-            created_from="upload_file",
-            created_by=account.id,
-            created_api_request_id=fake.uuid4(),
-            processing_started_at=fake.date_time_this_year(),
-            file_id=fake.uuid4(),
-            word_count=fake.random_int(min=100, max=1000),
-            parsing_completed_at=fake.date_time_this_year(),
-            cleaning_completed_at=fake.date_time_this_year(),
-            splitting_completed_at=fake.date_time_this_year(),
-            tokens=fake.random_int(min=50, max=500),
-            indexing_started_at=fake.date_time_this_year(),
-            indexing_completed_at=fake.date_time_this_year(),
-            indexing_status="completed",
-            enabled=True,
-            archived=False,
-            doc_form="text_model",  # Use text_model form for testing
-            doc_language="en",
-        )
+        document = DatasetDocument()
 
+        document.id = fake.uuid4()
+        document.tenant_id = dataset.tenant_id
+        document.dataset_id = dataset.id
+        document.position = 1
+        document.data_source_type = "upload_file"
+        document.data_source_info = '{"upload_file_id": "test_file_id"}'
+        document.batch = fake.uuid4()
+        document.name = f"Test Document {fake.word()}.txt"
+        document.created_from = "upload_file"
+        document.created_by = account.id
+        document.created_api_request_id = fake.uuid4()
+        document.processing_started_at = fake.date_time_this_year()
+        document.file_id = fake.uuid4()
+        document.word_count = fake.random_int(min=100, max=1000)
+        document.parsing_completed_at = fake.date_time_this_year()
+        document.cleaning_completed_at = fake.date_time_this_year()
+        document.splitting_completed_at = fake.date_time_this_year()
+        document.tokens = fake.random_int(min=50, max=500)
+        document.indexing_started_at = fake.date_time_this_year()
+        document.indexing_completed_at = fake.date_time_this_year()
+        document.indexing_status = "completed"
+        document.enabled = True
+        document.archived = False
+        document.doc_form = ("text_model",)  # Use text_model form for testin
+        document.doc_language = "en"
         from extensions.ext_database import db
 
         db.session.add(document)
