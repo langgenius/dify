@@ -159,16 +159,15 @@ const Chat: FC<ChatProps> = ({
     }
   })
 
-  const debouncedResizeRef = useRef(debounce(handleWindowResize, 200))
-
   useEffect(() => {
-    debouncedResizeRef.current = debounce(handleWindowResize, 200)
+    const debouncedHandler = debounce(handleWindowResize, 200)
+    window.addEventListener('resize', debouncedHandler)
+
+    return () => {
+      window.removeEventListener('resize', debouncedHandler)
+      debouncedHandler.cancel()
+    }
   }, [handleWindowResize])
-
-  useEffect(() => {
-    window.addEventListener('resize', debouncedResizeRef.current)
-    return () => window.removeEventListener('resize', debouncedResizeRef.current)
-  }, [])
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
