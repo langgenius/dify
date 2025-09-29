@@ -34,18 +34,18 @@ class TestChatMessageApiPermissions:
     def mock_account(self):
         """Create a mock Account for testing."""
 
-        account = Account()
+        account = Account(
+            name="Test User",
+            email="test@example.com",
+            last_active_at=naive_utc_now(),
+            created_at=naive_utc_now(),
+            updated_at=naive_utc_now(),
+        )
         account.id = str(uuid.uuid4())
-        account.name = "Test User"
-        account.email = "test@example.com"
-        account.last_active_at = naive_utc_now()
-        account.created_at = naive_utc_now()
-        account.updated_at = naive_utc_now()
 
         # Create mock tenant
-        tenant = Tenant()
+        tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid.uuid4())
-        tenant.name = "Test Tenant"
 
         account._current_tenant = tenant
         return account

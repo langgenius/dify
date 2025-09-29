@@ -42,9 +42,8 @@ class TestModelConfigResourcePermissions:
         account.updated_at = naive_utc_now()
 
         # Create mock tenant
-        tenant = Tenant()
+        tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid.uuid4())
-        tenant.name = "Test Tenant"
 
         account._current_tenant = tenant
         return account

@@ -45,7 +45,6 @@ class TestWorkflowService:
         """
         fake = fake or Faker()
         account = Account(
-            id=fake.uuid4(),
             email=fake.email(),
             name=fake.name(),
             avatar_url=fake.url(),
@@ -56,6 +55,7 @@ class TestWorkflowService:
             interface_language="en-US",  # Set interface language for Site creation
             created_at=fake.date_time_this_year(),
         )
+        account.id = fake.uuid4()
         account.updated_at = account.created_at
 
         # Create a tenant for the account
@@ -105,9 +105,9 @@ class TestWorkflowService:
             enable_site=True,
             enable_api=True,
             created_by=fake.uuid4(),
-            updated_by=app.created_by,
             workflow_id=None,  # Will be set when workflow is created
         )
+        app.updated_by = app.created_by
 
         from extensions.ext_database import db
 
