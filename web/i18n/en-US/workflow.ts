@@ -11,6 +11,7 @@ const translation = {
     publishUpdate: 'Publish Update',
     run: 'Test Run',
     running: 'Running',
+    listening: 'Listening',
     chooseStartNodeToRun: 'Choose the start node to run',
     runAllTriggers: 'Run all triggers',
     inRunMode: 'In Run Mode',

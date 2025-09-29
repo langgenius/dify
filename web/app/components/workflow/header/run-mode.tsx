@@ -30,8 +30,8 @@ const RunMode = ({
   const workflowRunningData = useStore(s => s.workflowRunningData)
 
   const status = workflowRunningData?.result.status
-  const isWaiting = status === WorkflowRunningStatus.Waiting
-  const isRunning = status === WorkflowRunningStatus.Running || isWaiting
+  const isListening = status === WorkflowRunningStatus.Listening
+  const isRunning = status === WorkflowRunningStatus.Running || isListening
 
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
@@ -96,7 +96,7 @@ const RunMode = ({
               disabled={true}
             >
               <RiLoader2Line className='mr-1 size-4 animate-spin' />
-              {isWaiting ? t('workflow.common.waiting', { defaultValue: 'Waiting' }) : t('workflow.common.running')}
+              {isListening ? t('workflow.common.listening') : t('workflow.common.running')}
             </button>
           )
           : (

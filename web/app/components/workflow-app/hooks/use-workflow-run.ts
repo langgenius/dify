@@ -220,13 +220,13 @@ export const useWorkflowRun = () => {
     if (runMode === 'webhook') {
       setWorkflowRunningData({
         result: {
-          status: WorkflowRunningStatus.Waiting,
+          status: WorkflowRunningStatus.Listening,
           inputs_truncated: false,
           process_data_truncated: false,
           outputs_truncated: false,
         },
         tracing: [],
-        resultText: 'Waiting for webhook call...',
+        resultText: 'Listening for webhook call...',
       })
     }
     else {

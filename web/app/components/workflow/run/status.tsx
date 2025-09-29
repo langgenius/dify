@@ -5,6 +5,7 @@ import cn from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
 type ResultProps = {
   status: string
@@ -23,6 +24,7 @@ const StatusPanel: FC<ResultProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const isActive = status === WorkflowRunningStatus.Running || status === WorkflowRunningStatus.Listening
 
   return (
     <StatusContainer status={status}>
@@ -39,13 +41,19 @@ const StatusPanel: FC<ResultProps> = ({
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
               status === 'stopped' && 'text-util-colors-warning-warning-600',
-              status === 'running' && 'text-util-colors-blue-light-blue-light-600',
+              isActive && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
-            {status === 'running' && (
+            {status === WorkflowRunningStatus.Running && (
               <>
                 <Indicator color={'blue'} />
                 <span>Running</span>
+              </>
+            )}
+            {status === WorkflowRunningStatus.Listening && (
+              <>
+                <Indicator color={'blue'} />
+                <span>Listening</span>
               </>
             )}
             {status === 'succeeded' && (
@@ -83,10 +91,10 @@ const StatusPanel: FC<ResultProps> = ({
         <div className='max-w-[152px] flex-[33%]'>
           <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.time')}</div>
           <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
-            {status === 'running' && (
+            {isActive && (
               <div className='h-2 w-16 rounded-sm bg-text-quaternary' />
             )}
-            {status !== 'running' && (
+            {!isActive && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
             )}
           </div>
@@ -94,10 +102,10 @@ const StatusPanel: FC<ResultProps> = ({
         <div className='flex-[33%]'>
           <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.tokens')}</div>
           <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
-            {status === 'running' && (
+            {isActive && (
               <div className='h-2 w-20 rounded-sm bg-text-quaternary' />
             )}
-            {status !== 'running' && (
+            {!isActive && (
               <span>{`${tokens || 0} Tokens`}</span>
             )}
           </div>
