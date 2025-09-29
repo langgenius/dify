@@ -62,9 +62,7 @@ class DatasetMetadataApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        name = args.get("name")
-        if not name:
-            raise ValueError("name is required")
+        name = args["name"]
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
