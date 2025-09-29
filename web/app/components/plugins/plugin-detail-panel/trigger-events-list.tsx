@@ -52,7 +52,7 @@ const toToolParameter = (parameter: any): ToolParameter => {
     human_description: paramDescription || paramLabel,
     type: parameter.type,
     form: 'setting',
-    llm_description: typeof paramDescription === 'object' ? (paramDescription.en_US || '') : (paramDescription || ''),
+    llm_description: typeof paramDescription === 'object' ? (paramDescription?.en_US || '') : (paramDescription || ''),
     required: parameter.required ?? false,
     multiple: parameter.multiple ?? false,
     default: parameter.default ?? '',
