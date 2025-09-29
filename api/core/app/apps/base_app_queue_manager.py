@@ -92,7 +92,7 @@ class AppQueueManager:
         try:
             redis_client.delete(self._task_belong_cache_key)
         except RedisError:
-            logger.exception("Failed to clear task belong cache for %s", self._task_id)
+            logger.exception("Failed to clear task belong cache for task %s (key: %s)", self._task_id, self._task_belong_cache_key)
 
     def publish_error(self, e, pub_from: PublishFrom) -> None:
         """
