@@ -469,8 +469,7 @@ class IterationNode(Node):
             parent_pool.remove((CONVERSATION_VARIABLE_NODE_ID, removed_key))
 
         for name, variable in snapshot.items():
-            cloned_variable = variable.model_copy(deep=True)
-            parent_pool.add((CONVERSATION_VARIABLE_NODE_ID, name), cloned_variable)
+            parent_pool.add((CONVERSATION_VARIABLE_NODE_ID, name), variable)
 
     def _append_iteration_info_to_event(
         self,
