@@ -505,6 +505,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'اعتبار در حال استفاده است و قابل حذف نیست',
     },
     parametersInvalidRemoved: 'برخی پارامترها نامعتبر هستند و حذف شده‌اند',
+    installDataSourceProvider: 'نصب ارائه‌دهندگان منبع داده',
   },
   dataSource: {
     add: 'افزودن منبع داده',

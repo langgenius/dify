@@ -497,6 +497,7 @@ const translation = {
       customModelCredentialsDeleteTip: '자격 증명이 사용 중이며 삭제할 수 없습니다.',
     },
     parametersInvalidRemoved: '일부 매개변수가 유효하지 않아 제거되었습니다.',
+    installDataSourceProvider: '데이터 소스 공급자 설치',
   },
   dataSource: {
     add: '데이터 소스 추가하기',
