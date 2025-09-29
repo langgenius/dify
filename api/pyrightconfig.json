@@ -9,7 +9,6 @@
     "libs",
     "controllers/console/datasets",
     "core/ops",
-    "core/tools",
     "core/model_runtime",
     "core/workflow/nodes",
     "core/app/app_config/easy_ui_based_app/dataset"
