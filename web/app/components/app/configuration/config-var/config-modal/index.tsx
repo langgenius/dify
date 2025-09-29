@@ -53,7 +53,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
-  const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
+  const [tempPayload, setTempPayload] = useState<InputVar>(() => payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
