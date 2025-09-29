@@ -375,7 +375,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             "get_datasource_plugins",
             "run_datasource_node",
             "run_rag_pipeline",
-            "upload_pipeline_file"
+            "upload_pipeline_file",
         ]
         kb_client = KnowledgeBaseClient(self.api_key)
         for method in kb_methods:
