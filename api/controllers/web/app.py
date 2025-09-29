@@ -160,9 +160,8 @@ class AppWebAuthPermission(Resource):
         args = parser.parse_args()
 
         app_id = args["appId"]
-        app_code = AppService.get_app_code_by_id(app_id)
 
         res = True
         if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
-            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}
