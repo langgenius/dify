@@ -416,4 +416,8 @@ class WorkflowEntry:
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
+                # in the case of a single run, input_value is added to variable_pool as the value of the LLM structured output
+                if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
+                    input_value = {variable_key_list[1]: input_value}
+                    variable_key_list = variable_key_list[0:1]
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
