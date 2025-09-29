@@ -25,6 +25,7 @@ from core.model_runtime.entities.llm_entities import (
     LLMResultChunkWithStructuredOutput,
     LLMStructuredOutput,
     LLMUsage,
+    LLMResultWithStructuredOutput,
 )
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -277,6 +278,9 @@ class LLMNode(Node):
                     else:
                         # Extract clean text from <think> tags
                         clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
+                    
+                    # if structured output enabled, return the structured output
+                    structured_output = LLMStructuredOutput(structured_output=event.structured_output)
 
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
@@ -1048,7 +1052,7 @@ class LLMNode(Node):
     @staticmethod
     def handle_blocking_result(
         *,
-        invoke_result: LLMResult,
+        invoke_result: LLMResult | LLMResultWithStructuredOutput,
         saver: LLMFileSaver,
         file_outputs: list["File"],
         reasoning_format: Literal["separated", "tagged"] = "tagged",
@@ -1079,6 +1083,8 @@ class LLMNode(Node):
             finish_reason=None,
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
+            # Return the structured output dict result when enable llm node structured output, 
+            structured_output=getattr(invoke_result, "structured_output", None),
         )
 
     @staticmethod
