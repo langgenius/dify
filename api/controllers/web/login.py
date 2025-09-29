@@ -8,10 +8,10 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
 )
-from controllers.web.wraps import decode_jwt_token
 from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
+from controllers.web.wraps import decode_jwt_token
 from libs.helper import email
 from libs.passport import PassportService
 from libs.password import valid_password
@@ -19,12 +19,10 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_passport_from_cookie,
     extract_access_token,
-    extract_webapp_passport,
     set_access_token_to_cookie,
 )
 from services.account_service import AccountService
 from services.app_service import AppService
-from services.enterprise.enterprise_service import EnterpriseService
 from services.webapp_auth_service import WebAppAuthService
 
 

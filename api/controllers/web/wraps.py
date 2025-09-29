@@ -13,7 +13,7 @@ from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from libs.token import check_csrf_token, extract_webapp_passport
+from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
@@ -36,7 +36,6 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
     if view:
         return decorator(view)
     return decorator
-
 
 
 def decode_jwt_token():
