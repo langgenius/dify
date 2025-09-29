@@ -49,7 +49,6 @@ class TestWorkflowService:
             name=fake.name(),
             avatar=fake.url(),
             status="active",
-            role="owner",
             interface_language="en-US",  # Set interface language for Site creation
             created_at=fake.date_time_this_year(),
         )

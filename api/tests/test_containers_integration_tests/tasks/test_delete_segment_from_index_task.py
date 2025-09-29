@@ -75,7 +75,6 @@ class TestDeleteSegmentFromIndexTask:
             email=fake.email(),
             avatar=fake.url(),
             status="active",
-            role="owner",
             interface_language="en-US",
         )
         account.id = fake.uuid4()
