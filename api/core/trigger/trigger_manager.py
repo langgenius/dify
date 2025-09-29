@@ -16,7 +16,6 @@ from core.plugin.impl.exc import PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
     Subscription,
-    SubscriptionSchema,
     TriggerEntity,
     Unsubscription,
 )
@@ -225,17 +224,6 @@ class TriggerManager:
         """
         provider = cls.get_trigger_provider(tenant_id, provider_id)
         return provider.unsubscribe_trigger(user_id=user_id, subscription=subscription, credentials=credentials)
-
-    @classmethod
-    def get_provider_subscription_schema(cls, tenant_id: str, provider_id: TriggerProviderID) -> SubscriptionSchema:
-        """
-        Get provider subscription schema
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider ID
-        :return: List of subscription config schemas
-        """
-        return cls.get_trigger_provider(tenant_id, provider_id).get_subscription_schema()
 
     @classmethod
     def refresh_trigger(

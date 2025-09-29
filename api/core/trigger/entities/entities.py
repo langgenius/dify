@@ -31,7 +31,7 @@ class TriggerParameterType(StrEnum):
     ARRAY = "array"
     DYNAMIC_SELECT = "dynamic-select"
     CHECKBOX = "checkbox"
-    
+
     def as_normal_type(self):
         return as_normal_type(self)
 
@@ -119,32 +119,30 @@ class OAuthSchema(BaseModel):
     )
 
 
-class SubscriptionSchema(BaseModel):
+class SubscriptionConstructor(BaseModel):
     """
-    The subscription schema of the trigger provider
+    The subscription constructor of the trigger provider
     """
 
-    parameters_schema: list[TriggerParameter] | None = Field(
-        default_factory=list,
-        description="The parameters schema required to create a subscription",
+    parameters: list[TriggerParameter] = Field(
+        default_factory=list, description="The parameters schema of the subscription constructor"
     )
 
-    properties_schema: list[ProviderConfig] | None = Field(
+    credentials_schema: list[ProviderConfig] = Field(
         default_factory=list,
-        description="The configuration schema stored in the subscription entity",
+        description="The credentials schema of the subscription constructor",
+    )
+
+    oauth_schema: Optional[OAuthSchema] = Field(
+        default=None,
+        description="The OAuth schema of the subscription constructor if OAuth is supported",
     )
 
     def get_default_parameters(self) -> Mapping[str, Any]:
         """Get the default parameters from the parameters schema"""
-        if not self.parameters_schema:
+        if not self.parameters:
             return {}
-        return {param.name: param.default for param in self.parameters_schema if param.default}
-
-    def get_default_properties(self) -> Mapping[str, Any]:
-        """Get the default properties from the properties schema"""
-        if not self.properties_schema:
-            return {}
-        return {prop.name: prop.default for prop in self.properties_schema if prop.default}
+        return {param.name: param.default for param in self.parameters if param.default}
 
 
 class TriggerProviderEntity(BaseModel):
@@ -153,16 +151,12 @@ class TriggerProviderEntity(BaseModel):
     """
 
     identity: TriggerProviderIdentity = Field(..., description="The identity of the trigger provider")
-    credentials_schema: list[ProviderConfig] = Field(
+    subscription_schema: list[ProviderConfig] = Field(
         default_factory=list,
-        description="The credentials schema of the trigger provider",
+        description="The configuration schema stored in the subscription entity",
     )
-    oauth_schema: Optional[OAuthSchema] = Field(
-        default=None,
-        description="The OAuth schema of the trigger provider if OAuth is supported",
-    )
-    subscription_schema: SubscriptionSchema = Field(
-        description="The subscription schema for trigger(webhook, polling, etc.) subscription parameters",
+    subscription_constructor: SubscriptionConstructor = Field(
+        description="The subscription constructor of the trigger provider",
     )
     triggers: list[TriggerEntity] = Field(default=[], description="The triggers of the trigger provider")
 

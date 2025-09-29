@@ -19,7 +19,7 @@ from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProvider
 from core.trigger.entities.entities import (
     ProviderConfig,
     Subscription,
-    SubscriptionSchema,
+    SubscriptionConstructor,
     TriggerCreationMethod,
     TriggerEntity,
     TriggerProviderEntity,
@@ -81,13 +81,12 @@ class PluginTriggerProviderController:
             if self.entity.identity.icon_dark
             else None
         )
-        supported_creation_methods = []
-        if self.entity.oauth_schema:
+        subscription_constructor = self.entity.subscription_constructor
+        supported_creation_methods = [TriggerCreationMethod.MANUAL]
+        if subscription_constructor and subscription_constructor.oauth_schema:
             supported_creation_methods.append(TriggerCreationMethod.OAUTH)
-        if self.entity.credentials_schema:
+        if subscription_constructor and subscription_constructor.credentials_schema:
             supported_creation_methods.append(TriggerCreationMethod.APIKEY)
-        if self.entity.subscription_schema:
-            supported_creation_methods.append(TriggerCreationMethod.MANUAL)
         return TriggerProviderApiEntity(
             author=self.entity.identity.author,
             name=self.entity.identity.name,
@@ -98,8 +97,7 @@ class PluginTriggerProviderController:
             tags=self.entity.identity.tags,
             plugin_id=self.plugin_id,
             plugin_unique_identifier=self.plugin_unique_identifier,
-            credentials_schema=self.entity.credentials_schema,
-            oauth_client_schema=self.entity.oauth_schema.client_schema if self.entity.oauth_schema else [],
+            subscription_constructor=subscription_constructor,
             subscription_schema=self.entity.subscription_schema,
             supported_creation_methods=supported_creation_methods,
             triggers=[
@@ -139,13 +137,21 @@ class PluginTriggerProviderController:
                 return trigger
         return None
 
-    def get_subscription_schema(self) -> SubscriptionSchema:
+    def get_subscription_default_properties(self) -> Mapping[str, Any]:
         """
-        Get subscription schema for this provider
+        Get default properties for this provider
 
-        :return: List of subscription config schemas
+        :return: Default properties
         """
-        return self.entity.subscription_schema
+        return {prop.name: prop.default for prop in self.entity.subscription_schema if prop.default}
+
+    def get_subscription_constructor(self) -> SubscriptionConstructor:
+        """
+        Get subscription constructor for this provider
+
+        :return: Subscription constructor
+        """
+        return self.entity.subscription_constructor
 
     def validate_credentials(self, user_id: str, credentials: Mapping[str, str]) -> None:
         """
@@ -155,7 +161,7 @@ class PluginTriggerProviderController:
         :return: Validation response
         """
         # First validate against schema
-        for config in self.entity.credentials_schema:
+        for config in self.entity.subscription_constructor.credentials_schema:
             if config.required and config.name not in credentials:
                 raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
 
@@ -180,9 +186,10 @@ class PluginTriggerProviderController:
         :return: List of supported credential types
         """
         types = []
-        if self.entity.oauth_schema:
+        subscription_constructor = self.entity.subscription_constructor
+        if subscription_constructor and subscription_constructor.oauth_schema:
             types.append(CredentialType.OAUTH2)
-        if self.entity.credentials_schema:
+        if subscription_constructor and subscription_constructor.credentials_schema:
             types.append(CredentialType.API_KEY)
         return types
 
@@ -193,11 +200,20 @@ class PluginTriggerProviderController:
         :param credential_type: The type of credential (oauth or api_key)
         :return: List of provider config schemas
         """
+        subscription_constructor = self.entity.subscription_constructor
         credential_type = CredentialType.of(credential_type) if isinstance(credential_type, str) else credential_type
         if credential_type == CredentialType.OAUTH2:
-            return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
+            return (
+                subscription_constructor.oauth_schema.credentials_schema.copy()
+                if subscription_constructor and subscription_constructor.oauth_schema
+                else []
+            )
         if credential_type == CredentialType.API_KEY:
-            return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+            return (
+                subscription_constructor.credentials_schema.copy()
+                if subscription_constructor and subscription_constructor.credentials_schema
+                else []
+            )
         if credential_type == CredentialType.UNAUTHORIZED:
             return []
         raise ValueError(f"Invalid credential type: {credential_type}")
@@ -214,7 +230,12 @@ class PluginTriggerProviderController:
 
         :return: List of OAuth client config schemas
         """
-        return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
+        subscription_constructor = self.entity.subscription_constructor
+        return (
+            subscription_constructor.oauth_schema.client_schema.copy()
+            if subscription_constructor and subscription_constructor.oauth_schema
+            else []
+        )
 
     def get_properties_schema(self) -> list[BasicProviderConfig]:
         """
@@ -223,8 +244,8 @@ class PluginTriggerProviderController:
         :return: List of properties config schemas
         """
         return (
-            [x.to_basic_provider_config() for x in self.entity.subscription_schema.properties_schema.copy()]
-            if self.entity.subscription_schema.properties_schema
+            [x.to_basic_provider_config() for x in self.entity.subscription_schema.copy()]
+            if self.entity.subscription_schema
             else []
         )
 

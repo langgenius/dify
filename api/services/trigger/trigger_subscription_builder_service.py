@@ -152,7 +152,7 @@ class TriggerSubscriptionBuilderService:
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
-        subscription_schema = provider_controller.get_subscription_schema()
+        subscription_constructor = provider_controller.get_subscription_constructor()
         subscription_id = str(uuid.uuid4())
         subscription_builder = SubscriptionBuilder(
             id=subscription_id,
@@ -161,8 +161,8 @@ class TriggerSubscriptionBuilderService:
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=str(provider_id),
-            parameters=subscription_schema.get_default_parameters(),
-            properties=subscription_schema.get_default_properties(),
+            parameters=subscription_constructor.get_default_parameters() if subscription_constructor else {},
+            properties=provider_controller.get_subscription_default_properties(),
             credentials={},
             credential_type=credential_type,
             credential_expires_at=-1,
