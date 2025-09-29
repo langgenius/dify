@@ -8,6 +8,7 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
 )
+from configs import dify_config
 from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
@@ -85,7 +86,7 @@ class LoginStatusApi(Resource):
                 "app_logged_in": False,
             }
         app_id = AppService.get_app_id_by_code(app_code)
-        is_public = not WebAppAuthService.is_app_require_permission_check(app_id=app_id)
+        is_public = not WebAppAuthService.is_app_require_permission_check(app_id=app_id) or not dify_config.ENTERPRISE_ENABLED
         user_logged_in = False
 
         if is_public:
