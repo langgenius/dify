@@ -410,7 +410,7 @@ export const ssePost = async (
     signal: abortController.signal,
     headers: new Headers({
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: globalThis.location.pathname.split('/').slice(-1)[0]
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: globalThis.location.pathname.split('/').slice(-1)[0],
     }),
   } as RequestInit, fetchOptions)
 

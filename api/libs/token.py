@@ -32,6 +32,7 @@ def _try_extract_from_header(request: Request) -> str | None:
                 return None
             else:
                 return auth_token
+    return None
 
 
 def extract_csrf_token(request: Request) -> str | None:
@@ -139,7 +140,7 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str, samesi
     )
 
 def _clear_cookie_begin_with(request: Request, response: Response, prefix: str, samesite: str = "Lax"):
-    for cookie_name in request.cookies.keys():
+    for cookie_name in request.cookies:
         if cookie_name.startswith(prefix):
             _clear_cookie(request, response, cookie_name, samesite)
 
@@ -166,7 +167,7 @@ def check_csrf_token(request: Request):
         raise Unauthorized("CSRF token is missing.")
     if not csrf_token:
         _unauthorized()
-    verified = dict()
+    verified = {}
     try:
         verified = PassportService().verify(csrf_token)
     except:

@@ -4,7 +4,7 @@ from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
-from libs.token import extract_access_token, extract_webapp_passport
+from libs.token import extract_webapp_passport
 from controllers.common import fields
 from controllers.web import web_ns
 from controllers.web.error import AppUnavailableError
