@@ -173,8 +173,8 @@ class VariablePool(BaseModel):
         result: Any = segment
         for attr in selector[2:]:
             result = self._extract_value(result)
-            result, attr_exist = self._get_nested_attribute(result, attr)
-            if not attr_exist:
+            result = self._get_nested_attribute(result, attr)
+            if result is None:
                 return None
 
         # Return result as Segment
@@ -184,7 +184,7 @@ class VariablePool(BaseModel):
         """Extract the actual value from an ObjectSegment."""
         return obj.value if isinstance(obj, ObjectSegment) else obj
 
-    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str) -> tuple[Any, bool]:
+    def _get_nested_attribute(self, obj: Mapping[str, Any], attr: str) -> Segment | None:
         """
         Get a nested attribute from a dictionary-like object.
 
@@ -193,13 +193,13 @@ class VariablePool(BaseModel):
             attr: The key to look up.
 
         Returns:
-            tuple:
-                - The value of the attribute if found, otherwise None.
-                - A boolean indicating whether the attribute exists in the object.
+            Segment | None:
+                The corresponding Segment built from the attribute value if the key exists,
+                otherwise None.
         """
-        if not isinstance(obj, dict):
-            return None, False
-        return obj.get(attr), attr in obj
+        if not isinstance(obj, dict) or not attr in obj:
+            return None
+        return variable_factory.build_segment(obj.get(attr))
 
     def remove(self, selector: Sequence[str], /):
         """
