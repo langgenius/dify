@@ -63,7 +63,7 @@ class TestWorkflowService:
             plan="basic",
             status="active",
         )
-        tenant.id = account.tenant_id
+        tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
