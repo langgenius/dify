@@ -220,13 +220,25 @@ class WorkflowClient(DifyClient):
         status: Literal["succeeded", "failed", "stopped"] | None = None,
         page: int = 1,
         limit: int = 20,
+        created_at__before: str = None,
+        created_at__after: str = None,
+        created_by_end_user_session_id: str = None,
+        created_by_account: str = None,
     ):
-        """Get workflow execution logs."""
+        """Get workflow execution logs with optional filtering."""
         params = {"page": page, "limit": limit}
         if keyword:
             params["keyword"] = keyword
         if status:
             params["status"] = status
+        if created_at__before:
+            params["created_at__before"] = created_at__before
+        if created_at__after:
+            params["created_at__after"] = created_at__after
+        if created_by_end_user_session_id:
+            params["created_by_end_user_session_id"] = created_by_end_user_session_id
+        if created_by_account:
+            params["created_by_account"] = created_by_account
         return self._send_request("GET", "/workflows/logs", params=params)
 
     def run_specific_workflow(
@@ -623,7 +635,7 @@ class KnowledgeBaseClient(DifyClient):
         if credential_id:
             data["credential_id"] = credential_id
         url = f"/datasets/{self._get_dataset_id()}/pipeline/datasource/nodes/{node_id}/run"
-        return self._send_request("POST", url, json=data)
+        return self._send_request("POST", url, json=data, stream=True)
 
     def run_rag_pipeline(
         self,
@@ -644,7 +656,7 @@ class KnowledgeBaseClient(DifyClient):
             "response_mode": response_mode,
         }
         url = f"/datasets/{self._get_dataset_id()}/pipeline/run"
-        return self._send_request("POST", url, json=data)
+        return self._send_request("POST", url, json=data, stream=response_mode == "streaming")
 
     def upload_pipeline_file(self, file_path: str):
         """Upload file for RAG pipeline."""

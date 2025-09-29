@@ -225,7 +225,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             credential_id="cred-123",
         )
 
-        # Test run_rag_pipeline
+        # Test run_rag_pipeline with blocking mode
         client.run_rag_pipeline(
             inputs={"query": "test"},
             datasource_type="online_document",
@@ -235,7 +235,17 @@ class TestNewServiceAPIs(unittest.TestCase):
             response_mode="blocking",
         )
 
-        self.assertEqual(mock_request.call_count, 3)
+        # Test run_rag_pipeline with streaming mode
+        client.run_rag_pipeline(
+            inputs={"query": "test"},
+            datasource_type="online_document",
+            datasource_info_list=[{"id": "ds1"}],
+            start_node_id="start-node",
+            is_published=True,
+            response_mode="streaming",
+        )
+
+        self.assertEqual(mock_request.call_count, 4)
 
     @patch("dify_client.client.requests.request")
     def test_workspace_apis(self, mock_request):
@@ -272,12 +282,12 @@ class TestNewServiceAPIs(unittest.TestCase):
         client = WorkflowClient(self.api_key, self.base_url)
 
         # Test get_workflow_logs
-        client.get_workflow_logs(keyword="test", status="completed", page=1, limit=20)
+        client.get_workflow_logs(keyword="test", status="succeeded", page=1, limit=20)
         mock_request.assert_called_with(
             "GET",
             f"{self.base_url}/workflows/logs",
             json=None,
-            params={"page": 1, "limit": 20, "keyword": "test", "status": "completed"},
+            params={"page": 1, "limit": 20, "keyword": "test", "status": "succeeded"},
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
@@ -285,12 +295,23 @@ class TestNewServiceAPIs(unittest.TestCase):
             stream=False,
         )
 
+        # Test get_workflow_logs with additional filters
+        client.get_workflow_logs(
+            keyword="test",
+            status="succeeded",
+            page=1,
+            limit=20,
+            created_at__before="2024-01-01",
+            created_at__after="2023-01-01",
+            created_by_account="user123"
+        )
+
         # Test run_specific_workflow
         client.run_specific_workflow(
             workflow_id="workflow-123", inputs={"param": "value"}, response_mode="streaming", user="user-123"
         )
 
-        self.assertEqual(mock_request.call_count, 2)
+        self.assertEqual(mock_request.call_count, 3)
 
     def test_error_handling(self):
         """Test error handling for required parameters."""
