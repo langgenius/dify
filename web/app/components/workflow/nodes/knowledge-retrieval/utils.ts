@@ -271,7 +271,8 @@ export const checkoutRerankModelConfiguredInRetrievalSettings = (
 
   const {
     allEconomic,
-    mixtureInternalAndExternal,
+    allExternal,
+    allInternal,
   } = getSelectedDatasetsMode(datasets)
 
   const {
@@ -281,7 +282,7 @@ export const checkoutRerankModelConfiguredInRetrievalSettings = (
   } = multipleRetrievalConfig
 
   if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.provider || !reranking_model?.model))
-    return allEconomic && !mixtureInternalAndExternal && !reranking_enable
+    return ((allEconomic && allInternal) || allExternal) && !reranking_enable
 
   return true
 }
