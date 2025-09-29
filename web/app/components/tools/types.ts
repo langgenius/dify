@@ -53,6 +53,8 @@ export type Collection = {
   allow_delete: boolean
   labels: string[]
   plugin_id?: string
+  plugin_unique_identifier?: string
+  tenant_id?: string
   letter?: string
   // MCP Server
   server_url?: string
