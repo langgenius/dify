@@ -110,15 +110,17 @@ export const useConfig = (id: string) => {
     const changeData = {
       embedding_model: embeddingModel,
       embedding_model_provider: embeddingModelProvider,
-      retrieval_model: nodeData?.data.retrieval_model,
-    }
-    if (nodeData?.data.retrieval_model.weights) {
-      changeData.retrieval_model = {
+      retrieval_model: {
         ...nodeData?.data.retrieval_model,
+      },
+    }
+    if (changeData.retrieval_model.weights) {
+      changeData.retrieval_model = {
+        ...changeData.retrieval_model,
         weights: {
-          ...nodeData?.data.retrieval_model.weights,
+          ...changeData.retrieval_model.weights,
           vector_setting: {
-            ...nodeData?.data.retrieval_model.weights.vector_setting,
+            ...changeData.retrieval_model.weights.vector_setting,
             embedding_provider_name: embeddingModelProvider,
             embedding_model_name: embeddingModel,
           },
@@ -127,7 +129,7 @@ export const useConfig = (id: string) => {
     }
     else {
       changeData.retrieval_model = {
-        ...nodeData?.data.retrieval_model,
+        ...changeData.retrieval_model,
         weights: defaultWeights,
       }
     }
