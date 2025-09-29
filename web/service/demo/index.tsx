@@ -51,7 +51,7 @@ const Service: FC = () => {
         </div>
 
         <div>
-          <button onClick={handleCreateApp}>Click me to Create App</button>
+          <button type="button" onClick={handleCreateApp}>Click me to Create App</button>
         </div>
 
         <div>
