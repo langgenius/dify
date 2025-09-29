@@ -186,7 +186,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         # Test tag operations
         client.list_dataset_tags()
         client.bind_dataset_tags(["tag1", "tag2"])
-        client.unbind_dataset_tags(["tag1"])
+        client.unbind_dataset_tag("tag1")
         client.get_dataset_tags()
 
         # Verify multiple calls were made
@@ -370,12 +370,12 @@ class TestNewServiceAPIs(unittest.TestCase):
             "update_documents_metadata",
             "list_dataset_tags",
             "bind_dataset_tags",
-            "unbind_dataset_tags",
+            "unbind_dataset_tag",
             "get_dataset_tags",
             "get_datasource_plugins",
             "run_datasource_node",
             "run_rag_pipeline",
-            "upload_pipeline_file",
+            "upload_pipeline_file"
         ]
         kb_client = KnowledgeBaseClient(self.api_key)
         for method in kb_methods:

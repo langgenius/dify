@@ -584,12 +584,12 @@ class KnowledgeBaseClient(DifyClient):
 
     def bind_dataset_tags(self, tag_ids: List[str]):
         """Bind tags to dataset."""
-        data = {"tag_ids": tag_ids, "dataset_id": self._get_dataset_id()}
+        data = {"tag_ids": tag_ids, "target_id": self._get_dataset_id()}
         return self._send_request("POST", "/datasets/tags/binding", json=data)
 
-    def unbind_dataset_tags(self, tag_ids: List[str]):
-        """Unbind tags from dataset."""
-        data = {"tag_ids": tag_ids, "dataset_id": self._get_dataset_id()}
+    def unbind_dataset_tag(self, tag_id: str):
+        """Unbind a single tag from dataset."""
+        data = {"tag_id": tag_id, "target_id": self._get_dataset_id()}
         return self._send_request("POST", "/datasets/tags/unbinding", json=data)
 
     def get_dataset_tags(self):
