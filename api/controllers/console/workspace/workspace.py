@@ -14,7 +14,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
@@ -295,5 +295,3 @@ class WorkspaceInfoApi(Resource):
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
-
-
