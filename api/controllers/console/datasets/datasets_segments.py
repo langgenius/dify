@@ -473,9 +473,7 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            content = args.get("content")
-            if content is None:
-                raise ValueError("Content cannot be None.")
+            content = args["content"]
             child_chunk = SegmentService.create_child_chunk(content, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
