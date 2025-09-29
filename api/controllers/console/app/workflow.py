@@ -35,7 +35,8 @@ from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
-from services.trigger_debug_service import TriggerDebugService
+from services.trigger_debug_service import TriggerDebugService, WebhookDebugService
+from services.webhook_service import WebhookService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -1145,6 +1146,90 @@ class DraftWorkflowTriggerRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
         except Exception:
             logger.exception("Error running draft workflow trigger run")
+            return jsonable_encoder(
+                {
+                    "status": "error",
+                }
+            ), 500
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/webhook/run")
+class DraftWorkflowTriggerWebhookRunApi(Resource):
+    """
+    Full workflow debug when the start node is a webhook trigger
+    Path: /apps/<uuid:app_id>/workflows/draft/trigger/webhook/run
+    """
+
+    @api.doc("draft_workflow_trigger_webhook_run")
+    @api.doc(description="Full workflow debug when the start node is a webhook trigger")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "DraftWorkflowTriggerWebhookRunRequest",
+            {
+                "node_id": fields.String(required=True, description="Node ID"),
+            }
+        )
+    )
+    @api.response(200, "Workflow executed successfully")
+    @api.response(403, "Permission denied")
+    @api.response(500, "Internal server error")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Full workflow debug when the start node is a webhook trigger
+        """
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        args = parser.parse_args()
+        node_id = args["node_id"]
+
+        event = WebhookDebugService.poll_event(
+            tenant_id=app_model.tenant_id,
+            user_id=current_user.id,
+            app_id=app_model.id,
+            node_id=node_id,
+        )
+
+        if not event:
+            return jsonable_encoder({"status": "waiting", "retry_in": 2000})
+
+        payload = event.payload or {}
+        workflow_inputs = payload.get("inputs")
+        if workflow_inputs is None:
+            webhook_data = payload.get("webhook_data", {})
+            workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
+
+        workflow_args = {
+            "inputs": workflow_inputs or {},
+            "query": "",
+            "files": [],
+        }
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            workflow_args["external_trace_id"] = external_trace_id
+
+        try:
+            response = AppGenerateService.generate(
+                app_model=app_model,
+                user=current_user,
+                args=workflow_args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+                root_node_id=node_id,
+            )
+            return helper.compact_generate_response(response)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except Exception:
+            logger.exception("Error running draft workflow trigger webhook run")
             return jsonable_encoder(
                 {
                     "status": "error",

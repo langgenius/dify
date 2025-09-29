@@ -105,6 +105,48 @@ export const useWorkflowStartRun = () => {
     setShowInputsPanel(false)
   }, [store, workflowStore, handleCancelDebugAndPreviewPanel, handleRun, doSyncWorkflowDraft])
 
+  const handleWorkflowTriggerWebhookRunInWorkflow = useCallback(async ({ nodeId }: { nodeId: string }) => {
+    if (!nodeId)
+      return
+
+    const {
+      workflowRunningData,
+      showDebugAndPreviewPanel,
+      setShowDebugAndPreviewPanel,
+      setShowInputsPanel,
+      setShowEnvPanel,
+    } = workflowStore.getState()
+
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
+      return
+
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const webhookNode = nodes.find(node => node.id === nodeId && node.data.type === BlockEnum.TriggerWebhook)
+
+    if (!webhookNode) {
+      console.warn('handleWorkflowTriggerWebhookRunInWorkflow: webhook node not found', nodeId)
+      return
+    }
+
+    setShowEnvPanel(false)
+
+    if (!showDebugAndPreviewPanel)
+      setShowDebugAndPreviewPanel(true)
+
+    setShowInputsPanel(false)
+
+    await doSyncWorkflowDraft()
+    handleRun(
+      { node_id: nodeId },
+      undefined,
+      {
+        mode: 'webhook',
+        webhookNodeId: nodeId,
+      },
+    )
+  }, [store, workflowStore, handleRun, doSyncWorkflowDraft])
+
   const handleWorkflowStartRunInChatflow = useCallback(async () => {
     const {
       showDebugAndPreviewPanel,
@@ -137,5 +179,6 @@ export const useWorkflowStartRun = () => {
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
   }
 }

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import {
   useReactFlow,
   useStoreApi,
@@ -12,7 +12,8 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
-import { ssePost } from '@/service/base'
+import Toast from '@/app/components/base/toast'
+import { handleStream, ssePost } from '@/service/base'
 import { stopWorkflowRun } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
@@ -22,12 +23,15 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
+import { API_PREFIX } from '@/config'
+import { ContentType, getAccessToken, getBaseOptions } from '@/service/fetch'
 
-type HandleRunMode = 'default' | 'schedule'
+type HandleRunMode = 'default' | 'schedule' | 'webhook'
 
 type HandleRunOptions = {
   mode?: HandleRunMode
   scheduleNodeId?: string
+  webhookNodeId?: string
 }
 
 export const useWorkflowRun = () => {
@@ -45,6 +49,8 @@ export const useWorkflowRun = () => {
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
   })
+
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const {
     handleWorkflowStarted,
@@ -149,6 +155,7 @@ export const useWorkflowRun = () => {
       onNodeRetry,
       onAgentLog,
       onError,
+      onCompleted,
       ...restCallback
     } = callback || {}
     workflowStore.setState({ historyWorkflowData: undefined })
@@ -170,6 +177,13 @@ export const useWorkflowRun = () => {
       }
       url = `/apps/${appDetail.id}/workflows/draft/trigger/schedule/run`
     }
+    else if (runMode === 'webhook') {
+      if (!appDetail?.id) {
+        console.error('handleRun: missing app id for webhook trigger run')
+        return
+      }
+      url = `/apps/${appDetail.id}/workflows/draft/trigger/webhook/run`
+    }
     else if (appDetail?.mode === 'advanced-chat') {
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
     }
@@ -179,7 +193,9 @@ export const useWorkflowRun = () => {
 
     const requestBody = runMode === 'schedule'
       ? { node_id: options?.scheduleNodeId }
-      : resolvedParams
+      : runMode === 'webhook'
+        ? { node_id: options?.webhookNodeId }
+        : resolvedParams
 
     if (!url)
       return
@@ -189,16 +205,36 @@ export const useWorkflowRun = () => {
       return
     }
 
+    if (runMode === 'webhook' && !options?.webhookNodeId) {
+      console.error('handleRun: webhook trigger run requires node id')
+      return
+    }
+
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+
     const {
       setWorkflowRunningData,
     } = workflowStore.getState()
-    setWorkflowRunningData({
-      result: {
-        status: WorkflowRunningStatus.Running,
-      },
-      tracing: [],
-      resultText: '',
-    })
+
+    if (runMode === 'webhook') {
+      setWorkflowRunningData({
+        result: {
+          status: WorkflowRunningStatus.Waiting,
+        },
+        tracing: [],
+        resultText: 'Waiting for webhook call...',
+      })
+    }
+    else {
+      setWorkflowRunningData({
+        result: {
+          status: WorkflowRunningStatus.Running,
+        },
+        tracing: [],
+        resultText: '',
+      })
+    }
 
     let ttsUrl = ''
     let ttsIsPublic = false
@@ -214,138 +250,309 @@ export const useWorkflowRun = () => {
     }
     const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
 
+    const clearAbortController = () => {
+      abortControllerRef.current = null
+    }
+
+    const wrappedOnError = (params: any) => {
+      clearAbortController()
+      handleWorkflowFailed()
+
+      if (onError)
+        onError(params)
+    }
+
+    const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError?: boolean, errorMessage?: string) => {
+      clearAbortController()
+      if (onCompleted)
+        onCompleted(hasError, errorMessage)
+    }
+
+    const baseSseOptions: IOtherOptions = {
+      ...restCallback,
+      onWorkflowStarted: (params) => {
+        const state = workflowStore.getState()
+        if (state.workflowRunningData) {
+          state.setWorkflowRunningData(produce(state.workflowRunningData, (draft) => {
+            draft.resultText = ''
+          }))
+        }
+        handleWorkflowStarted(params)
+
+        if (onWorkflowStarted)
+          onWorkflowStarted(params)
+      },
+      onWorkflowFinished: (params) => {
+        handleWorkflowFinished(params)
+
+        if (onWorkflowFinished)
+          onWorkflowFinished(params)
+        if (isInWorkflowDebug) {
+          fetchInspectVars({})
+          invalidAllLastRun()
+        }
+      },
+      onNodeStarted: (params) => {
+        handleWorkflowNodeStarted(
+          params,
+          {
+            clientWidth,
+            clientHeight,
+          },
+        )
+
+        if (onNodeStarted)
+          onNodeStarted(params)
+      },
+      onNodeFinished: (params) => {
+        handleWorkflowNodeFinished(params)
+
+        if (onNodeFinished)
+          onNodeFinished(params)
+      },
+      onIterationStart: (params) => {
+        handleWorkflowNodeIterationStarted(
+          params,
+          {
+            clientWidth,
+            clientHeight,
+          },
+        )
+
+        if (onIterationStart)
+          onIterationStart(params)
+      },
+      onIterationNext: (params) => {
+        handleWorkflowNodeIterationNext(params)
+
+        if (onIterationNext)
+          onIterationNext(params)
+      },
+      onIterationFinish: (params) => {
+        handleWorkflowNodeIterationFinished(params)
+
+        if (onIterationFinish)
+          onIterationFinish(params)
+      },
+      onLoopStart: (params) => {
+        handleWorkflowNodeLoopStarted(
+          params,
+          {
+            clientWidth,
+            clientHeight,
+          },
+        )
+
+        if (onLoopStart)
+          onLoopStart(params)
+      },
+      onLoopNext: (params) => {
+        handleWorkflowNodeLoopNext(params)
+
+        if (onLoopNext)
+          onLoopNext(params)
+      },
+      onLoopFinish: (params) => {
+        handleWorkflowNodeLoopFinished(params)
+
+        if (onLoopFinish)
+          onLoopFinish(params)
+      },
+      onNodeRetry: (params) => {
+        handleWorkflowNodeRetry(params)
+
+        if (onNodeRetry)
+          onNodeRetry(params)
+      },
+      onAgentLog: (params) => {
+        handleWorkflowAgentLog(params)
+
+        if (onAgentLog)
+          onAgentLog(params)
+      },
+      onTextChunk: (params) => {
+        handleWorkflowTextChunk(params)
+      },
+      onTextReplace: (params) => {
+        handleWorkflowTextReplace(params)
+      },
+      onTTSChunk: (messageId: string, audio: string) => {
+        if (!audio || audio === '')
+          return
+        player.playAudioWithAudio(audio, true)
+        AudioPlayerManager.getInstance().resetMsgId(messageId)
+      },
+      onTTSEnd: (messageId: string, audio: string) => {
+        player.playAudioWithAudio(audio, false)
+      },
+      onError: wrappedOnError,
+      onCompleted: wrappedOnCompleted,
+    }
+
+    const waitWithAbort = (signal: AbortSignal, delay: number) => new Promise<void>((resolve) => {
+      const timer = window.setTimeout(resolve, delay)
+      signal.addEventListener('abort', () => {
+        clearTimeout(timer)
+        resolve()
+      }, { once: true })
+    })
+
+    const runWebhookDebug = async () => {
+      const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+        ? url
+        : `${API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`
+
+      const poll = async (): Promise<void> => {
+        const controller = new AbortController()
+        abortControllerRef.current = controller
+
+        try {
+          const baseOptions = getBaseOptions()
+          const headers = new Headers(baseOptions.headers as Headers)
+          headers.set('Content-Type', ContentType.json)
+          const accessToken = await getAccessToken()
+          headers.set('Authorization', `Bearer ${accessToken}`)
+
+          const response = await fetch(urlWithPrefix, {
+            ...baseOptions,
+            method: 'POST',
+            headers,
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+          })
+
+          if (controller.signal.aborted)
+            return
+
+          if (!response.ok) {
+            const message = `Webhook debug request failed (${response.status})`
+            Toast.notify({ type: 'error', message })
+            clearAbortController()
+            return
+          }
+
+          const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
+          if (contentType.includes('application/json')) {
+            const data = await response.json()
+            if (controller.signal.aborted)
+              return
+
+            if (data.status === 'waiting') {
+              const delay = Number(data.retry_in) || 2000
+              await waitWithAbort(controller.signal, delay)
+              if (controller.signal.aborted)
+                return
+              await poll()
+              return
+            }
+
+            const errorMessage = data.message || 'Webhook debug failed'
+            Toast.notify({ type: 'error', message: errorMessage })
+            clearAbortController()
+            setWorkflowRunningData({
+              result: {
+                status: WorkflowRunningStatus.Failed,
+                error: errorMessage,
+                inputs_truncated: false,
+                process_data_truncated: false,
+                outputs_truncated: false,
+              },
+              tracing: [],
+            })
+            return
+          }
+
+          handleStream(
+            response,
+            baseSseOptions.onData ?? noop,
+            baseSseOptions.onCompleted,
+            baseSseOptions.onThought,
+            baseSseOptions.onMessageEnd,
+            baseSseOptions.onMessageReplace,
+            baseSseOptions.onFile,
+            baseSseOptions.onWorkflowStarted,
+            baseSseOptions.onWorkflowFinished,
+            baseSseOptions.onNodeStarted,
+            baseSseOptions.onNodeFinished,
+            baseSseOptions.onIterationStart,
+            baseSseOptions.onIterationNext,
+            baseSseOptions.onIterationFinish,
+            baseSseOptions.onLoopStart,
+            baseSseOptions.onLoopNext,
+            baseSseOptions.onLoopFinish,
+            baseSseOptions.onNodeRetry,
+            baseSseOptions.onParallelBranchStarted,
+            baseSseOptions.onParallelBranchFinished,
+            baseSseOptions.onTextChunk,
+            baseSseOptions.onTTSChunk,
+            baseSseOptions.onTTSEnd,
+            baseSseOptions.onTextReplace,
+            baseSseOptions.onAgentLog,
+            baseSseOptions.onDataSourceNodeProcessing,
+            baseSseOptions.onDataSourceNodeCompleted,
+            baseSseOptions.onDataSourceNodeError,
+          )
+        }
+        catch (error) {
+          if (controller.signal.aborted)
+            return
+          console.error('handleRun: webhook debug polling error', error)
+          Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
+          clearAbortController()
+          setWorkflowRunningData({
+            result: {
+              status: WorkflowRunningStatus.Failed,
+              error: 'Webhook debug request failed',
+              inputs_truncated: false,
+              process_data_truncated: false,
+              outputs_truncated: false,
+            },
+            tracing: [],
+          })
+        }
+      }
+
+      await poll()
+    }
+
+    if (runMode === 'webhook') {
+      await runWebhookDebug()
+      return
+    }
+
     ssePost(
       url,
       {
         body: requestBody,
       },
       {
-        onWorkflowStarted: (params) => {
-          handleWorkflowStarted(params)
-
-          if (onWorkflowStarted)
-            onWorkflowStarted(params)
+        ...baseSseOptions,
+        getAbortController: (controller: AbortController) => {
+          abortControllerRef.current = controller
         },
-        onWorkflowFinished: (params) => {
-          handleWorkflowFinished(params)
-
-          if (onWorkflowFinished)
-            onWorkflowFinished(params)
-          if (isInWorkflowDebug) {
-            fetchInspectVars({})
-            invalidAllLastRun()
-          }
-        },
-        onError: (params) => {
-          handleWorkflowFailed()
-
-          if (onError)
-            onError(params)
-        },
-        onNodeStarted: (params) => {
-          handleWorkflowNodeStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onNodeStarted)
-            onNodeStarted(params)
-        },
-        onNodeFinished: (params) => {
-          handleWorkflowNodeFinished(params)
-
-          if (onNodeFinished)
-            onNodeFinished(params)
-        },
-        onIterationStart: (params) => {
-          handleWorkflowNodeIterationStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onIterationStart)
-            onIterationStart(params)
-        },
-        onIterationNext: (params) => {
-          handleWorkflowNodeIterationNext(params)
-
-          if (onIterationNext)
-            onIterationNext(params)
-        },
-        onIterationFinish: (params) => {
-          handleWorkflowNodeIterationFinished(params)
-
-          if (onIterationFinish)
-            onIterationFinish(params)
-        },
-        onLoopStart: (params) => {
-          handleWorkflowNodeLoopStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onLoopStart)
-            onLoopStart(params)
-        },
-        onLoopNext: (params) => {
-          handleWorkflowNodeLoopNext(params)
-
-          if (onLoopNext)
-            onLoopNext(params)
-        },
-        onLoopFinish: (params) => {
-          handleWorkflowNodeLoopFinished(params)
-
-          if (onLoopFinish)
-            onLoopFinish(params)
-        },
-        onNodeRetry: (params) => {
-          handleWorkflowNodeRetry(params)
-
-          if (onNodeRetry)
-            onNodeRetry(params)
-        },
-        onAgentLog: (params) => {
-          handleWorkflowAgentLog(params)
-
-          if (onAgentLog)
-            onAgentLog(params)
-        },
-        onTextChunk: (params) => {
-          handleWorkflowTextChunk(params)
-        },
-        onTextReplace: (params) => {
-          handleWorkflowTextReplace(params)
-        },
-        onTTSChunk: (messageId: string, audio: string) => {
-          if (!audio || audio === '')
-            return
-          player.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
-        },
-        onTTSEnd: (messageId: string, audio: string) => {
-          player.playAudioWithAudio(audio, false)
-        },
-        ...restCallback,
       },
     )
   }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace],
   )
 
   const handleStopRun = useCallback((taskId: string) => {
-    const appId = useAppStore.getState().appDetail?.id
+    if (taskId) {
+      const appId = useAppStore.getState().appDetail?.id
+      stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+      return
+    }
 
-    stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
-  }, [])
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    const { setWorkflowRunningData } = workflowStore.getState()
+    setWorkflowRunningData({
+      result: {
+        status: WorkflowRunningStatus.Stopped,
+      },
+      tracing: [],
+      resultText: '',
+    })
+  }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
     const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))

@@ -23,12 +23,15 @@ const RunMode = ({
   const {
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const { validateBeforeRun } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
 
-  const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
+  const status = workflowRunningData?.result.status
+  const isWaiting = status === WorkflowRunningStatus.Waiting
+  const isRunning = status === WorkflowRunningStatus.Running || isWaiting
 
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
@@ -59,6 +62,10 @@ const RunMode = ({
     else if (option.type === 'schedule') {
       handleWorkflowTriggerScheduleRunInWorkflow(option.nodeId)
     }
+    else if (option.type === 'webhook') {
+      if (option.nodeId)
+        handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId, debugUrl: option.debugUrl })
+    }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
       console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
@@ -67,6 +74,7 @@ const RunMode = ({
     validateBeforeRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
   ])
 
   const { eventEmitter } = useEventEmitterContextContext()
@@ -88,7 +96,7 @@ const RunMode = ({
               disabled={true}
             >
               <RiLoader2Line className='mr-1 size-4 animate-spin' />
-              {t('workflow.common.running')}
+              {isWaiting ? t('workflow.common.waiting', { defaultValue: 'Waiting' }) : t('workflow.common.running')}
             </button>
           )
           : (

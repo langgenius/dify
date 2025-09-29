@@ -1,10 +1,10 @@
-"""Trigger debug service for webhook debugging in draft workflows."""
+"""Trigger debug service supporting plugin and webhook debugging in draft workflows."""
 
 import hashlib
 import logging
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from redis import RedisError
 
 from extensions.ext_redis import redis_client
@@ -18,6 +18,18 @@ class TriggerDebugEvent(BaseModel):
     subscription_id: str
     request_id: str
     timestamp: int
+
+
+class WebhookDebugEvent(BaseModel):
+    request_id: str
+    timestamp: int
+    node_id: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+def _address(tenant_id: str, user_id: str, app_id: str, node_id: str) -> str:
+    address_id = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
+    return f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
 
 
 class TriggerDebugService:
@@ -53,11 +65,6 @@ class TriggerDebugService:
         "end;"
         "return #a"
     )
-
-    @classmethod
-    def address(cls, tenant_id: str, user_id: str, app_id: str, node_id: str) -> str:
-        address_id = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
-        return f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
 
     @classmethod
     def waiting_pool(cls, tenant_id: str, subscription_id: str, trigger_name: str) -> str:
@@ -116,11 +123,71 @@ class TriggerDebugService:
             event = redis_client.eval(
                 cls.LUA_SELECT,
                 2,
-                cls.address(tenant_id, user_id, app_id, node_id),
+                _address(tenant_id, user_id, app_id, node_id),
                 cls.waiting_pool(tenant_id, subscription_id, trigger_name),
                 address_id,
             )
             return TriggerDebugEvent.model_validate_json(event) if event else None
         except RedisError:
             logger.exception("Failed to poll debug event")
+            return None
+
+
+class WebhookDebugService:
+    """Debug helpers dedicated to webhook triggers."""
+
+    @staticmethod
+    def waiting_pool(tenant_id: str, app_id: str, node_id: str) -> str:
+        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{app_id}:{node_id}"
+
+    @classmethod
+    def dispatch_event(
+        cls,
+        tenant_id: str,
+        app_id: str,
+        node_id: str,
+        request_id: str,
+        timestamp: int,
+        payload: dict[str, Any],
+    ) -> int:
+        event_json = WebhookDebugEvent(
+            request_id=request_id,
+            timestamp=timestamp,
+            node_id=node_id,
+            payload=payload,
+        ).model_dump_json()
+
+        try:
+            return redis_client.eval(
+                TriggerDebugService.LUA_DISPATCH,
+                1,
+                cls.waiting_pool(tenant_id, app_id, node_id),
+                tenant_id,
+                event_json,
+            )
+        except RedisError:
+            logger.exception("Failed to dispatch webhook debug event")
+            return 0
+
+    @classmethod
+    def poll_event(
+        cls,
+        tenant_id: str,
+        user_id: str,
+        app_id: str,
+        node_id: str,
+    ) -> Optional[WebhookDebugEvent]:
+        address_id = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
+
+        try:
+            event = redis_client.eval(
+                TriggerDebugService.LUA_SELECT,
+                2,
+                _address(tenant_id, user_id, app_id, node_id),
+                cls.waiting_pool(tenant_id, app_id, node_id),
+                address_id,
+            )
+            return WebhookDebugEvent.model_validate_json(event) if event else None
+        except RedisError:
+            logger.exception("Failed to poll webhook debug event")
             return None

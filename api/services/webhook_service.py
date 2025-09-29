@@ -523,6 +523,16 @@ class WebhookService:
             return False
 
     @classmethod
+    def build_workflow_inputs(cls, webhook_data: dict[str, Any]) -> dict[str, Any]:
+        """Construct workflow inputs payload from webhook data."""
+        return {
+            "webhook_data": webhook_data,
+            "webhook_headers": webhook_data.get("headers", {}),
+            "webhook_query_params": webhook_data.get("query_params", {}),
+            "webhook_body": webhook_data.get("body", {}),
+        }
+
+    @classmethod
     def trigger_workflow_execution(
         cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
     ) -> None:
@@ -545,12 +555,7 @@ class WebhookService:
 
                 # Prepare inputs for the webhook node
                 # The webhook node expects webhook_data in the inputs
-                workflow_inputs = {
-                    "webhook_data": webhook_data,
-                    "webhook_headers": webhook_data.get("headers", {}),
-                    "webhook_query_params": webhook_data.get("query_params", {}),
-                    "webhook_body": webhook_data.get("body", {}),
-                }
+                workflow_inputs = cls.build_workflow_inputs(webhook_data)
 
                 # Create trigger data
                 trigger_data = TriggerData(
