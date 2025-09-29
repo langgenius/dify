@@ -2,8 +2,10 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import { RiExportLine, RiMoreFill } from '@remixicon/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
@@ -18,6 +20,7 @@ import {
 import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const MoreActions: FC = () => {
   const { t } = useTranslation()
@@ -29,6 +32,15 @@ const MoreActions: FC = () => {
   const [previewTitle, setPreviewTitle] = useState('')
   const knowledgeName = useStore(s => s.knowledgeName)
   const appName = useStore(s => s.appName)
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+  const { appSidebarExpand } = useAppStore(useShallow(state => ({
+    appSidebarExpand: state.appSidebarExpand,
+  })))
+
+  const crossAxisOffset = useMemo(() => {
+    if (maximizeCanvas) return 40
+    return appSidebarExpand === 'expand' ? 188 : 40
+  }, [appSidebarExpand, maximizeCanvas])
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
     if (!appName && !knowledgeName)
@@ -173,7 +185,7 @@ const MoreActions: FC = () => {
         placement="bottom-end"
         offset={{
           mainAxis: -200,
-          crossAxis: 40,
+          crossAxis: crossAxisOffset,
         }}
       >
         <PortalToFollowElemTrigger>
