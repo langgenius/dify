@@ -111,9 +111,7 @@ class DocumentAddByTextApi(DatasetApiResource):
         embedding_model_provider = args.get("embedding_model_provider")
         embedding_model = args.get("embedding_model")
         if embedding_model_provider and embedding_model:
-            DatasetService.check_embedding_model_setting(
-                tenant_id, embedding_model_provider, embedding_model
-            )
+            DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
 
         retrieval_model = args.get("retrieval_model")
         if (
