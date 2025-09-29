@@ -18,13 +18,13 @@ class MockUser(UserMixin):
     def is_authenticated(self):
         return self._is_authenticated
 
+
 def mock_csrf_check(*args, **kwargs):
     return
 
 
 class TestLoginRequired:
     """Test cases for login_required decorator."""
-
 
     @pytest.fixture
     @patch("libs.login.check_csrf_token", mock_csrf_check)

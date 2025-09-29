@@ -17,9 +17,9 @@ from libs.password import valid_password
 from libs.token import (
     clear_access_token_from_cookie,
     clear_passport_from_cookie,
-    set_access_token_to_cookie,
     extract_access_token,
     extract_webapp_passport,
+    set_access_token_to_cookie,
 )
 from services.account_service import AccountService
 from services.app_service import AppService
@@ -65,6 +65,7 @@ class LoginApi(Resource):
         set_access_token_to_cookie(request, response, token, samesite="None")
         return response
 
+
 @web_ns.route("/login/status")
 class LoginStatusApi(Resource):
     @setup_required
@@ -100,7 +101,9 @@ class LoginStatusApi(Resource):
 
         try:
             decoded_token = PassportService().verify(passport)
-            app_logged_in = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(decoded_token.get("user_id", "visitor"), app_id)
+            app_logged_in = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
+                decoded_token.get("user_id", "visitor"), app_id
+            )
         except Exception:
             app_logged_in = False
 

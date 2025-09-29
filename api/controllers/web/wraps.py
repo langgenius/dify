@@ -8,11 +8,12 @@ from flask_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+
 from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
-from libs.token import extract_webapp_passport, check_csrf_token
+from libs.token import check_csrf_token, extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
@@ -36,16 +37,20 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
         return decorator(view)
     return decorator
 
+
 def validate_csrf_token(view: Callable[P, R] | None = None):
     def decorator(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             check_csrf_token(request)
             return view(*args, **kwargs)
+
         return decorated
+
     if view:
         return decorator(view)
     return decorator
+
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()

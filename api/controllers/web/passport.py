@@ -5,8 +5,9 @@ from flask import make_response, request
 from flask_restx import Resource
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
-from constants import HEADER_NAME_APP_CODE
+
 from configs import dify_config
+from constants import HEADER_NAME_APP_CODE
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
@@ -190,9 +191,11 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         "exp": exp,
     }
     token: str = PassportService().issue(payload)
-    resp = make_response({
-        "access_token": token,
-    })
+    resp = make_response(
+        {
+            "access_token": token,
+        }
+    )
     set_passport_to_cookie(app_code, request, resp, token)
     return resp
 
@@ -227,12 +230,13 @@ def _exchange_for_public_app_token(app_model, site, token_decoded):
 
     tk = PassportService().issue(payload)
 
-    resp = make_response({
-        "access_token": tk,
-    })
+    resp = make_response(
+        {
+            "access_token": tk,
+        }
+    )
     set_passport_to_cookie(site.code, request, resp, tk)
     return resp
-
 
 
 def generate_session_id():

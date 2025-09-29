@@ -1,18 +1,19 @@
+import logging
+from datetime import UTC, datetime, timedelta
+
 from flask import Request
+from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
 
 from configs import dify_config
 from constants import (
-    COOKIE_NAME_ACCESS_TOKEN, 
-    COOKIE_NAME_PASSPORT, 
-    COOKIE_NAME_REFRESH_TOKEN, 
+    COOKIE_NAME_ACCESS_TOKEN,
     COOKIE_NAME_CSRF_TOKEN,
-    HEADER_NAME_CSRF_TOKEN
+    COOKIE_NAME_PASSPORT,
+    COOKIE_NAME_REFRESH_TOKEN,
+    HEADER_NAME_CSRF_TOKEN,
 )
 from libs.passport import PassportService
-from datetime import datetime, UTC, timedelta
-from werkzeug.exceptions import Unauthorized
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,7 @@ def set_passport_to_cookie(app_code: str, request: Request, response: Response, 
         path="/",
     )
 
+
 def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
         COOKIE_NAME_CSRF_TOKEN,
@@ -139,16 +141,19 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str, samesi
         samesite=samesite,
     )
 
+
 def _clear_cookie_begin_with(request: Request, response: Response, prefix: str, samesite: str = "Lax"):
     for cookie_name in request.cookies:
         if cookie_name.startswith(prefix):
             _clear_cookie(request, response, cookie_name, samesite)
+
 
 def clear_passport_from_cookie(app_code: str | None, request: Request, response: Response, samesite: str = "Lax"):
     if not app_code:
         _clear_cookie_begin_with(request, response, COOKIE_NAME_PASSPORT, samesite)
         return
     _clear_cookie(request, response, COOKIE_NAME_PASSPORT + "-" + app_code, samesite)
+
 
 def clear_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax"):
     _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN, samesite)
@@ -157,14 +162,17 @@ def clear_access_token_from_cookie(request: Request, response: Response, samesit
 def clear_refresh_token_from_cookie(request: Request, response: Response):
     _clear_cookie(request, response, COOKIE_NAME_REFRESH_TOKEN)
 
+
 def clear_csrf_token_from_cookie(request: Request, response: Response):
     _clear_cookie(request, response, COOKIE_NAME_CSRF_TOKEN)
 
 
 def check_csrf_token(request: Request):
     csrf_token = extract_csrf_token(request)
+
     def _unauthorized():
         raise Unauthorized("CSRF token is missing.")
+
     if not csrf_token:
         _unauthorized()
     verified = {}
@@ -172,7 +180,7 @@ def check_csrf_token(request: Request):
         verified = PassportService().verify(csrf_token)
     except:
         _unauthorized()
-    
+
     exp: int | None = verified.get("exp")
     if not exp:
         _unauthorized()
@@ -181,10 +189,10 @@ def check_csrf_token(request: Request):
         if exp < time_now:
             _unauthorized()
 
+
 def generate_csrf_token() -> str:
     exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "exp": int(exp_dt.timestamp()),
     }
     return PassportService().issue(payload)
-

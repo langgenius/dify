@@ -7,9 +7,9 @@ from flask_login.config import EXEMPT_METHODS  # type: ignore
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
+from libs.token import check_csrf_token
 from models.account import Account
 from models.model import EndUser
-from libs.token import check_csrf_token
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user

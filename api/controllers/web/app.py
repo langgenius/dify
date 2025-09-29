@@ -4,19 +4,19 @@ from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
-from libs.token import extract_webapp_passport
+from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
 from controllers.web import web_ns
 from controllers.web.error import AppUnavailableError
 from controllers.web.wraps import WebApiResource
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
+from libs.token import extract_webapp_passport
 from models.model import App, AppMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
-from constants import HEADER_NAME_APP_CODE
 
 logger = logging.getLogger(__name__)
 

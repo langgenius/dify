@@ -15,10 +15,10 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from libs.token import (
-    set_access_token_to_cookie, 
-    set_refresh_token_to_cookie, 
-    set_csrf_token_to_cookie, 
-    generate_csrf_token
+    generate_csrf_token,
+    set_access_token_to_cookie,
+    set_csrf_token_to_cookie,
+    set_refresh_token_to_cookie,
 )
 from models import Account
 from models.account import AccountStatus
@@ -158,10 +158,8 @@ class OAuthCallback(Resource):
             account=account,
             ip_address=extract_remote_ip(request),
         )
-        
-        response = redirect(
-            f"{dify_config.CONSOLE_WEB_URL}"
-        )
+
+        response = redirect(f"{dify_config.CONSOLE_WEB_URL}")
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)

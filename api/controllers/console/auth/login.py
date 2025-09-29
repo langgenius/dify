@@ -28,14 +28,14 @@ from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
 from libs.token import (
     clear_access_token_from_cookie,
+    clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
     extract_access_token,
-    set_access_token_to_cookie,
-    set_refresh_token_to_cookie,
-    set_csrf_token_to_cookie,
-    clear_csrf_token_from_cookie,
-    generate_csrf_token,
     extract_csrf_token,
+    generate_csrf_token,
+    set_access_token_to_cookie,
+    set_csrf_token_to_cookie,
+    set_refresh_token_to_cookie,
 )
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
@@ -43,7 +43,6 @@ from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
-
 
 
 class LoginApi(Resource):
