@@ -67,8 +67,7 @@ COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Download nltk data
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')" \
-    && mkdir -p /usr/local/share/nltk_data \
+RUN mkdir -p /usr/local/share/nltk_data && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
@@ -83,10 +82,10 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Create non-root user and set permissions
-RUN useradd -r -u 1001 -g root -s /bin/bash dify \
-    && mkdir -p /home/dify \
-    && chown -R 1001:0 /app /home/dify ${TIKTOKEN_CACHE_DIR} /entrypoint.sh \
-    && chmod -R g=u /app /home/dify ${TIKTOKEN_CACHE_DIR}
+RUN groupadd -r -g 1001 dify && \
+    useradd -r -u 1001 -g 1001 -s /bin/bash dify && \
+    mkdir -p /home/dify && \
+    chown -R 1001:1001 /app /home/dify ${TIKTOKEN_CACHE_DIR} /entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
