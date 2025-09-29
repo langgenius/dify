@@ -6,7 +6,7 @@ from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqpars
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
@@ -111,6 +111,7 @@ def _api_prerequisite(f):
     return wrapper
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
 class RagPipelineVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
@@ -168,6 +169,7 @@ def validate_node_id(node_id: str) -> NoReturn | None:
     return None
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
 class RagPipelineNodeVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
@@ -190,6 +192,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
         return Response("", 204)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>")
 class RagPipelineVariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
@@ -284,6 +287,7 @@ class RagPipelineVariableApi(Resource):
         return Response("", 204)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class RagPipelineVariableResetApi(Resource):
     @_api_prerequisite
     def put(self, pipeline: Pipeline, variable_id: str):
@@ -325,6 +329,7 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
     return draft_vars
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables")
 class RagPipelineSystemVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
@@ -332,6 +337,7 @@ class RagPipelineSystemVariableCollectionApi(Resource):
         return _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
 class RagPipelineEnvironmentVariableCollectionApi(Resource):
     @_api_prerequisite
     def get(self, pipeline: Pipeline):
@@ -364,26 +370,3 @@ class RagPipelineEnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
-
-
-api.add_resource(
-    RagPipelineVariableCollectionApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables",
-)
-api.add_resource(
-    RagPipelineNodeVariableCollectionApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables",
-)
-api.add_resource(
-    RagPipelineVariableApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>"
-)
-api.add_resource(
-    RagPipelineVariableResetApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset"
-)
-api.add_resource(
-    RagPipelineSystemVariableCollectionApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables"
-)
-api.add_resource(
-    RagPipelineEnvironmentVariableCollectionApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables",
-)
