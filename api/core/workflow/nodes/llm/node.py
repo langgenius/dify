@@ -23,9 +23,9 @@ from core.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
     LLMStructuredOutput,
     LLMUsage,
-    LLMResultWithStructuredOutput,
 )
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -278,10 +278,13 @@ class LLMNode(Node):
                     else:
                         # Extract clean text from <think> tags
                         clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
-                    
+
                     # Process structured output if available from the event.
-                    structured_output = LLMStructuredOutput(
-                        structured_output=event.structured_output) if event.structured_output else None
+                    structured_output = (
+                        LLMStructuredOutput(structured_output=event.structured_output)
+                        if event.structured_output
+                        else None
+                    )
 
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
