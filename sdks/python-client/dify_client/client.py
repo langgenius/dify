@@ -214,7 +214,13 @@ class WorkflowClient(DifyClient):
     def get_result(self, workflow_run_id):
         return self._send_request("GET", f"/workflows/run/{workflow_run_id}")
 
-    def get_workflow_logs(self, keyword: str = None, status: Literal["succeeded", "failed", "stopped"] | None = None, page: int = 1, limit: int = 20):
+    def get_workflow_logs(
+        self,
+        keyword: str = None,
+        status: Literal["succeeded", "failed", "stopped"] | None = None,
+        page: int = 1,
+        limit: int = 20,
+    ):
         """Get workflow execution logs."""
         params = {"page": page, "limit": limit}
         if keyword:
