@@ -565,9 +565,7 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("chunks", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            chunks_data = args.get("chunks")
-            if chunks_data is None:
-                raise ValueError("Chunks data cannot be None.")
+            chunks_data = args["chunks"]
             chunks = [ChildChunkUpdateArgs(**chunk) for chunk in chunks_data]
             child_chunks = SegmentService.update_child_chunks(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
