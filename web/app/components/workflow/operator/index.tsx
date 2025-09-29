@@ -25,14 +25,10 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
     return Math.max((workflowCanvasWidth - rightPanelWidth), 400)
   }, [workflowCanvasWidth, rightPanelWidth])
 
-  const getMiniMapNodeColor = useCallback(() => {
-    return 'var(--color-workflow-minimap-block)'
-  }, [])
-
-  const getMiniMapNodeStrokeColor = useCallback((node: Node) => {
+  const getMiniMapNodeClassName = useCallback((node: Node) => {
     return node.data?.selected
-      ? 'var(--components-option-card-option-selected-border, #296DFF)'
-      : 'transparent'
+      ? 'bg-workflow-minimap-block border-components-option-card-option-selected-border'
+      : 'bg-workflow-minimap-block'
   }, [])
 
   // update bottom panel height
@@ -76,8 +72,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               height: 72,
             }}
             maskColor='var(--color-workflow-minimap-bg)'
-            nodeColor={getMiniMapNodeColor}
-            nodeStrokeColor={getMiniMapNodeStrokeColor}
+            nodeClassName={getMiniMapNodeClassName}
             nodeStrokeWidth={3}
             className='!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
             !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
