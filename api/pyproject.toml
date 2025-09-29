@@ -207,7 +207,7 @@ vdb = [
     "couchbase~=4.3.0",
     "elasticsearch==8.14.0",
     "opensearch-py==2.4.0",
-    "oracledb==3.0.0",
+    "oracledb==3.3.0",
     "pgvecto-rs[sqlalchemy]~=0.2.1",
     "pgvector==0.2.5",
     "pymilvus~=2.5.0",
