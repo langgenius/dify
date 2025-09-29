@@ -86,7 +86,10 @@ const OptionCard = memo(({
         readonly && 'cursor-not-allowed',
         wrapperClassName && (typeof wrapperClassName === 'function' ? wrapperClassName(isActive) : wrapperClassName),
       )}
-      onClick={() => !readonly && enableSelect && id && onClick?.(id)}
+      onClick={(e) => {
+        e.stopPropagation()
+        !readonly && enableSelect && id && onClick?.(id)
+      }}
     >
       <div className={cn(
         'relative flex rounded-t-xl p-2',
