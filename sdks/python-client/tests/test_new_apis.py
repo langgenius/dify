@@ -301,6 +301,12 @@ class TestNewServiceAPIs(unittest.TestCase):
         with self.assertRaises(TypeError):
             client.annotation_reply_action("enable")
 
+        # Test annotation_reply_action with explicit None values should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            client.annotation_reply_action("enable", None, "provider", "model")
+
+        self.assertIn("cannot be None", str(context.exception))
+
         # Test KnowledgeBaseClient without dataset_id
         kb_client = KnowledgeBaseClient(self.api_key, self.base_url)
         with self.assertRaises(ValueError) as context:

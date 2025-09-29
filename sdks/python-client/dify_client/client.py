@@ -165,6 +165,9 @@ class ChatClient(DifyClient):
         embedding_model_name: str,
     ):
         """Enable or disable annotation reply feature."""
+        # Backend API requires these fields to be non-None values
+        if score_threshold is None or embedding_provider_name is None or embedding_model_name is None:
+            raise ValueError("score_threshold, embedding_provider_name, and embedding_model_name cannot be None")
 
         data = {
             "score_threshold": score_threshold,
