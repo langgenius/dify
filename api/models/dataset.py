@@ -1066,8 +1066,8 @@ class DatasetPermission(Base):
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), primary_key=True)
     dataset_id = mapped_column(StringUUID, nullable=False)
-    account_id = mapped_column(StringUUID, nullable=False)
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     has_permission: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
