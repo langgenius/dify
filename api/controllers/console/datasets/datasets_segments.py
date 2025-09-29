@@ -392,7 +392,12 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_create_segment_to_index_task.delay(
-                str(job_id), upload_file_id, dataset_id, document_id, current_user.current_tenant_id, current_user.id
+                str(job_id),
+                upload_file_id,
+                dataset_id,
+                document_id,
+                current_user.current_tenant_id,
+                current_user.id,
             )
         except Exception as e:
             return {"error": str(e)}, 500
@@ -468,7 +473,8 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            child_chunk = SegmentService.create_child_chunk(args.get("content"), segment, document, dataset)
+            content = args["content"]
+            child_chunk = SegmentService.create_child_chunk(content, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
@@ -557,7 +563,8 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("chunks", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            chunks = [ChildChunkUpdateArgs(**chunk) for chunk in args.get("chunks")]
+            chunks_data = args["chunks"]
+            chunks = [ChildChunkUpdateArgs(**chunk) for chunk in chunks_data]
             child_chunks = SegmentService.update_child_chunks(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
@@ -674,9 +681,8 @@ class ChildChunkUpdateApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            child_chunk = SegmentService.update_child_chunk(
-                args.get("content"), child_chunk, segment, document, dataset
-            )
+            content = args["content"]
+            child_chunk = SegmentService.update_child_chunk(content, child_chunk, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
