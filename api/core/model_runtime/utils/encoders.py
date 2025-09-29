@@ -204,7 +204,7 @@ def jsonable_encoder(
             data = vars(obj)  # type: ignore
         except Exception as e:
             errors.append(e)
-            raise ValueError(errors) from e  # type: ignore
+            raise ValueError(str(errors)) from e
     return jsonable_encoder(
         data,
         by_alias=by_alias,
