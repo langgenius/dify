@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -32,6 +32,29 @@ export type TestRunMenuRef = {
   toggle: () => void
 }
 
+type ShortcutMapping = {
+  option: TriggerOption
+  shortcutKey: string
+}
+
+const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
+  const mappings: ShortcutMapping[] = []
+
+  if (options.userInput)
+    mappings.push({ option: options.userInput, shortcutKey: '~' })
+
+  let numericShortcut = 0
+
+  if (options.runAll)
+    mappings.push({ option: options.runAll, shortcutKey: String(numericShortcut++) })
+
+  options.triggers.forEach((trigger) => {
+    mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
+  })
+
+  return mappings
+}
+
 const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
   options,
   onSelect,
@@ -39,37 +62,72 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
 }, ref) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const shortcutMappings = useMemo(() => buildShortcutMappings(options), [options])
+  const shortcutKeyById = useMemo(() => {
+    const map = new Map<string, string>()
+    shortcutMappings.forEach(({ option, shortcutKey }) => {
+      map.set(option.id, shortcutKey)
+    })
+    return map
+  }, [shortcutMappings])
 
   useImperativeHandle(ref, () => ({
     toggle: () => setOpen(prev => !prev),
   }))
 
-  const handleSelect = (option: TriggerOption) => {
+  const handleSelect = useCallback((option: TriggerOption) => {
     onSelect(option)
     setOpen(false)
-  }
+  }, [onSelect])
 
-  const renderOption = (option: TriggerOption, shortcutKey: string) => (
-    <div
-      key={option.id}
-      className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
-      onClick={() => handleSelect(option)}
-    >
-      <div className='flex min-w-0 flex-1 items-center'>
-        <div className='flex h-6 w-6 shrink-0 items-center justify-center'>
-          {option.icon}
+  useEffect(() => {
+    if (!open)
+      return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey)
+        return
+
+      const normalizedKey = event.key === '`' ? '~' : event.key
+      const mapping = shortcutMappings.find(({ shortcutKey }) => shortcutKey === normalizedKey)
+
+      if (mapping) {
+        event.preventDefault()
+        handleSelect(mapping.option)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleSelect, open, shortcutMappings])
+
+  const renderOption = (option: TriggerOption) => {
+    const shortcutKey = shortcutKeyById.get(option.id)
+
+    return (
+      <div
+        key={option.id}
+        className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
+        onClick={() => handleSelect(option)}
+      >
+        <div className='flex min-w-0 flex-1 items-center'>
+          <div className='flex h-6 w-6 shrink-0 items-center justify-center'>
+            {option.icon}
+          </div>
+          <span className='ml-2 truncate'>{option.name}</span>
         </div>
-        <span className='ml-2 truncate'>{option.name}</span>
+        {shortcutKey && (
+          <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
+        )}
       </div>
-      <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
-    </div>
-  )
+    )
+  }
 
   const hasUserInput = !!options.userInput
   const hasTriggers = options.triggers.length > 0
   const hasRunAll = !!options.runAll
-
-  let currentIndex = 0
 
   return (
     <PortalToFollowElem
@@ -89,16 +147,16 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
             {t('workflow.common.chooseStartNodeToRun')}
           </div>
           <div>
-            {hasUserInput && renderOption(options.userInput!, '~')}
+            {hasUserInput && renderOption(options.userInput!)}
 
             {(hasTriggers || hasRunAll) && hasUserInput && (
               <div className='mx-3 my-1 h-px bg-divider-subtle' />
             )}
 
-            {hasRunAll && renderOption(options.runAll!, String(currentIndex++))}
+            {hasRunAll && renderOption(options.runAll!)}
 
             {hasTriggers && options.triggers.map(trigger =>
-              renderOption(trigger, String(currentIndex++)),
+              renderOption(trigger),
             )}
           </div>
         </div>
