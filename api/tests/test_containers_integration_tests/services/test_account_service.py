@@ -16,9 +16,10 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.errors.account import TenantNotFoundError
+
 
 class TestAccountService:
     """Integration tests for AccountService using testcontainers."""
