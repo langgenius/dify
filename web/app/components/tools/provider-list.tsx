@@ -17,11 +17,10 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import MCPList from './mcp'
 import { useAllToolProviders } from '@/service/use-tools'
-import { useInvalidateInstalledPluginList, usePluginDeclarationFromMarketPlace } from '@/service/use-plugins'
+import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { ToolTypeEnum } from '../workflow/block-selector/types'
 import { useMarketplace } from './marketplace/hooks'
-import type { PluginDetail } from '@/app/components/plugins/types'
 
 const getToolType = (type: string) => {
   switch (type) {
@@ -78,18 +77,14 @@ const ProviderList = () => {
   const currentProvider = useMemo<Collection | undefined>(() => {
     return filteredCollectionList.find(collection => collection.id === currentProviderId)
   }, [currentProviderId, filteredCollectionList])
-  const { data: pluginDetail } = usePluginDeclarationFromMarketPlace(currentProvider?.plugin_unique_identifier || '')
+  const { data: checkedInstalledData } = useCheckInstalled({
+    pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
+    enabled: !!currentProvider?.plugin_id,
+  })
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {
-    if (!pluginDetail) return
-    const detail = {
-      plugin_id: currentProvider?.plugin_id,
-      plugin_unique_identifier: currentProvider?.plugin_unique_identifier,
-      declaration: pluginDetail?.manifest,
-      tenant_id: currentProvider?.tenant_id,
-    }
-    return detail as PluginDetail
-  }, [currentProvider, pluginDetail])
+    return checkedInstalledData?.plugins?.[0]
+  }, [checkedInstalledData])
 
   const toolListTailRef = useRef<HTMLDivElement>(null)
   const showMarketplacePanel = useCallback(() => {
