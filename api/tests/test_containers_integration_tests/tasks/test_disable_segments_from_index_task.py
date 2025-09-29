@@ -43,29 +43,31 @@ class TestDisableSegmentsFromIndexTask:
             Account: Created test account instance
         """
         fake = fake or Faker()
-        account = Account()
-        account.id = fake.uuid4()
-        account.email = fake.email()
-        account.name = fake.name()
-        account.avatar_url = fake.url()
-        account.tenant_id = fake.uuid4()
-        account.status = "active"
-        account.type = "normal"
-        account.role = "owner"
-        account.interface_language = "en-US"
-        account.created_at = fake.date_time_this_year()
-        account.updated_at = account.created_at
+        account = Account(
+            id=fake.uuid4(),
+            email=fake.email(),
+            name=fake.name(),
+            avatar_url=fake.url(),
+            tenant_id=fake.uuid4(),
+            status="active",
+            type="normal",
+            role="owner",
+            interface_language="en-US",
+            created_at=fake.date_time_this_year(),
+            updated_at=account.created_at,
+        )
 
         # Create a tenant for the account
         from models.account import Tenant
 
-        tenant = Tenant()
-        tenant.id = account.tenant_id
-        tenant.name = f"Test Tenant {fake.company()}"
-        tenant.plan = "basic"
-        tenant.status = "active"
-        tenant.created_at = fake.date_time_this_year()
-        tenant.updated_at = tenant.created_at
+        tenant = Tenant(
+            id=account.tenant_id,
+            name=f"Test Tenant {fake.company()}",
+            plan="basic",
+            status="active",
+            created_at=fake.date_time_this_year(),
+            updated_at=tenant.created_at,
+        )
 
         from extensions.ext_database import db
 
@@ -91,20 +93,21 @@ class TestDisableSegmentsFromIndexTask:
             Dataset: Created test dataset instance
         """
         fake = fake or Faker()
-        dataset = Dataset()
-        dataset.id = fake.uuid4()
-        dataset.tenant_id = account.tenant_id
-        dataset.name = f"Test Dataset {fake.word()}"
-        dataset.description = fake.text(max_nb_chars=200)
-        dataset.provider = "vendor"
-        dataset.permission = "only_me"
-        dataset.data_source_type = "upload_file"
-        dataset.indexing_technique = "high_quality"
-        dataset.created_by = account.id
-        dataset.updated_by = account.id
-        dataset.embedding_model = "text-embedding-ada-002"
-        dataset.embedding_model_provider = "openai"
-        dataset.built_in_field_enabled = False
+        dataset = Dataset(
+            id=fake.uuid4(),
+            tenant_id=account.tenant_id,
+            name=f"Test Dataset {fake.word()}",
+            description=fake.text(max_nb_chars=200),
+            provider="vendor",
+            permission="only_me",
+            data_source_type="upload_file",
+            indexing_technique="high_quality",
+            created_by=account.id,
+            updated_by=account.id,
+            embedding_model="text-embedding-ada-002",
+            embedding_model_provider="openai",
+            built_in_field_enabled=False,
+        )
 
         from extensions.ext_database import db
 
@@ -127,32 +130,33 @@ class TestDisableSegmentsFromIndexTask:
             DatasetDocument: Created test document instance
         """
         fake = fake or Faker()
-        document = DatasetDocument()
-        document.id = fake.uuid4()
-        document.tenant_id = dataset.tenant_id
-        document.dataset_id = dataset.id
-        document.position = 1
-        document.data_source_type = "upload_file"
-        document.data_source_info = '{"upload_file_id": "test_file_id"}'
-        document.batch = fake.uuid4()
-        document.name = f"Test Document {fake.word()}.txt"
-        document.created_from = "upload_file"
-        document.created_by = account.id
-        document.created_api_request_id = fake.uuid4()
-        document.processing_started_at = fake.date_time_this_year()
-        document.file_id = fake.uuid4()
-        document.word_count = fake.random_int(min=100, max=1000)
-        document.parsing_completed_at = fake.date_time_this_year()
-        document.cleaning_completed_at = fake.date_time_this_year()
-        document.splitting_completed_at = fake.date_time_this_year()
-        document.tokens = fake.random_int(min=50, max=500)
-        document.indexing_started_at = fake.date_time_this_year()
-        document.indexing_completed_at = fake.date_time_this_year()
-        document.indexing_status = "completed"
-        document.enabled = True
-        document.archived = False
-        document.doc_form = "text_model"  # Use text_model form for testing
-        document.doc_language = "en"
+        document = DatasetDocument(
+            id=fake.uuid4(),
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type="upload_file",
+            data_source_info='{"upload_file_id": "test_file_id"}',
+            batch=fake.uuid4(),
+            name=f"Test Document {fake.word()}.txt",
+            created_from="upload_file",
+            created_by=account.id,
+            created_api_request_id=fake.uuid4(),
+            processing_started_at=fake.date_time_this_year(),
+            file_id=fake.uuid4(),
+            word_count=fake.random_int(min=100, max=1000),
+            parsing_completed_at=fake.date_time_this_year(),
+            cleaning_completed_at=fake.date_time_this_year(),
+            splitting_completed_at=fake.date_time_this_year(),
+            tokens=fake.random_int(min=50, max=500),
+            indexing_started_at=fake.date_time_this_year(),
+            indexing_completed_at=fake.date_time_this_year(),
+            indexing_status="completed",
+            enabled=True,
+            archived=False,
+            doc_form="text_model",  # Use text_model form for testing
+            doc_language="en",
+        )
 
         from extensions.ext_database import db
 
