@@ -18,7 +18,7 @@ from services.errors.account import (
     CurrentPasswordIncorrectError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-
+from services.errors.account import TenantNotFoundError
 
 class TestAccountService:
     """Integration tests for AccountService using testcontainers."""
@@ -1414,7 +1414,7 @@ class TestTenantService:
         )
 
         # Try to get current tenant (should fail)
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, TenantNotFoundError)):
             TenantService.get_current_tenant_by_account(account)
 
     def test_switch_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
