@@ -197,7 +197,7 @@ class VariablePool(BaseModel):
                 The corresponding Segment built from the attribute value if the key exists,
                 otherwise None.
         """
-        if not isinstance(obj, dict) or not attr in obj:
+        if not isinstance(obj, dict) or attr not in obj:
             return None
         return variable_factory.build_segment(obj.get(attr))
 
