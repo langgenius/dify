@@ -1,6 +1,5 @@
 import json
 import operator
-import traceback
 import typing
 
 import click
@@ -43,7 +42,6 @@ def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginDeclar
 
         return MarketplacePluginDeclaration.model_validate(cached_json)
     except Exception:
-        traceback.print_exc()
         return False
 
 
@@ -64,7 +62,7 @@ def _set_cached_manifest(plugin_id: str, manifest: typing.Union[MarketplacePlugi
             redis_client.setex(key, CACHE_REDIS_TTL, manifest.model_dump_json())
     except Exception:
         # If Redis fails, continue without caching
-        traceback.print_exc()
+        # traceback.print_exc()
         pass
 
 
@@ -227,10 +225,10 @@ def process_tenant_plugin_autoupgrade_check_task(
                         )
                 except Exception as e:
                     click.echo(click.style(f"Error when upgrading plugin: {e}", fg="red"))
-                    traceback.print_exc()
+                    # traceback.print_exc()
                 break
 
     except Exception as e:
         click.echo(click.style(f"Error when checking upgradable plugin: {e}", fg="red"))
-        traceback.print_exc()
+        # traceback.print_exc()
         return
