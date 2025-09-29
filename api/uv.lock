@@ -1076,7 +1076,7 @@ wheels = [
 
 [[package]]
 name = "cos-python-sdk-v5"
-version = "1.9.30"
+version = "1.9.38"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "crcmod" },
@@ -1085,7 +1085,10 @@ dependencies = [
     { name = "six" },
     { name = "xmltodict" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/f2/be99b41433b33a76896680920fca621f191875ca410a66778015e47a501b/cos-python-sdk-v5-1.9.30.tar.gz", hash = "sha256:a23fd090211bf90883066d90cd74317860aa67c6d3aa80fe5e44b18c7e9b2a81", size = 108384, upload-time = "2024-06-14T08:02:37.063Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/3c/d208266fec7cc3221b449e236b87c3fc1999d5ac4379d4578480321cfecc/cos_python_sdk_v5-1.9.38.tar.gz", hash = "sha256:491a8689ae2f1a6f04dacba66a877b2c8d361456f9cfd788ed42170a1cbf7a9f", size = 98092, upload-time = "2025-07-22T07:56:20.34Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/c8/c9c156aa3bc7caba9b4f8a2b6abec3da6263215988f3fec0ea843f137a10/cos_python_sdk_v5-1.9.38-py3-none-any.whl", hash = "sha256:1d3dd3be2bd992b2e9c2dcd018e2596aa38eab022dbc86b4a5d14c8fc88370e6", size = 92601, upload-time = "2025-08-17T05:12:30.867Z" },
+]
 
 [[package]]
 name = "couchbase"
@@ -1624,7 +1627,7 @@ dev = [
 storage = [
     { name = "azure-storage-blob", specifier = "==12.13.0" },
     { name = "bce-python-sdk", specifier = "~=0.9.23" },
-    { name = "cos-python-sdk-v5", specifier = "==1.9.30" },
+    { name = "cos-python-sdk-v5", specifier = "==1.9.38" },
     { name = "esdk-obs-python", specifier = "==3.24.6.1" },
     { name = "google-cloud-storage", specifier = "==2.16.0" },
     { name = "opendal", specifier = "~=0.46.0" },
