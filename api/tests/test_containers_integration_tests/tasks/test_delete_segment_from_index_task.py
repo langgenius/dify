@@ -74,9 +74,7 @@ class TestDeleteSegmentFromIndexTask:
             name=fake.name(),
             email=fake.email(),
             avatar=fake.url(),
-            tenant_id=tenant.id,
             status="active",
-            type="normal",
             role="owner",
             interface_language="en-US",
         )
