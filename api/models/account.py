@@ -116,10 +116,6 @@ class Account(UserMixin, TypeBase):
     role: TenantAccountRole | None = field(default=None, init=False)
     _current_tenant: "Tenant | None" = field(default=None, init=False)
 
-    def __post_init__(self):
-        self.role = None
-        self._current_tenant = None
-
     @property
     def is_password_set(self):
         return self.password is not None
