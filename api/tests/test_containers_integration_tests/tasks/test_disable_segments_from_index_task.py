@@ -55,7 +55,7 @@ class TestDisableSegmentsFromIndexTask:
             interface_language="en-US",
             created_at=fake.date_time_this_year(),
         )
-        account.updated_at=account.created_at
+        account.updated_at = account.created_at
 
         # Create a tenant for the account
         from models.account import Tenant
@@ -67,7 +67,7 @@ class TestDisableSegmentsFromIndexTask:
             status="active",
             created_at=fake.date_time_this_year(),
         )
-        tenant.updated_at=tenant.created_at
+        tenant.updated_at = tenant.created_at
 
         from extensions.ext_database import db
 
