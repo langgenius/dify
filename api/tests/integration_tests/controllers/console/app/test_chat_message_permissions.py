@@ -37,10 +37,10 @@ class TestChatMessageApiPermissions:
         account = Account(
             name="Test User",
             email="test@example.com",
-            last_active_at=naive_utc_now(),
-            created_at=naive_utc_now(),
-            updated_at=naive_utc_now(),
         )
+        account.last_active_at=naive_utc_now()
+        account.created_at=naive_utc_now()
+        account.updated_at=naive_utc_now()
         account.id = str(uuid.uuid4())
 
         # Create mock tenant

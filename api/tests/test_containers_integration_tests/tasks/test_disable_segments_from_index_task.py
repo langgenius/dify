@@ -44,29 +44,30 @@ class TestDisableSegmentsFromIndexTask:
         """
         fake = fake or Faker()
         account = Account(
-            id=fake.uuid4(),
             email=fake.email(),
             name=fake.name(),
-            avatar_url=fake.url(),
-            tenant_id=fake.uuid4(),
+            avatar=fake.url(),
             status="active",
-            type="normal",
-            role="owner",
             interface_language="en-US",
-            created_at=fake.date_time_this_year(),
         )
+        account.id = fake.uuid4()
+        # monkey-patch attributes for test setup
+        account.tenant_id = fake.uuid4()
+        account.type = "normal"
+        account.role = "owner"
+        account.created_at = fake.date_time_this_year()
         account.updated_at = account.created_at
 
         # Create a tenant for the account
         from models.account import Tenant
 
         tenant = Tenant(
-            id=account.tenant_id,
             name=f"Test Tenant {fake.company()}",
             plan="basic",
             status="active",
-            created_at=fake.date_time_this_year(),
         )
+        tenant.id = account.tenant_id
+        tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
         from extensions.ext_database import db
