@@ -47,7 +47,7 @@ class TestWorkflowService:
         account = Account(
             email=fake.email(),
             name=fake.name(),
-            avatar_url=fake.url(),
+            avatar=fake.url(),
             tenant_id=fake.uuid4(),
             status="active",
             type="normal",

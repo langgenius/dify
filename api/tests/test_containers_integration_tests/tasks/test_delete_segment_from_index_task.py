@@ -70,16 +70,17 @@ class TestDeleteSegmentFromIndexTask:
             Account: Created test account instance
         """
         fake = fake or Faker()
-        account = Account()
+        account = Account(
+            name=fake.name(),
+            emasil=fake.email(),
+            avatar=fake.url(),
+            tenant_id=tenant.id,
+            status="active",
+            type="normal",
+            role="owner",
+            interface_language="en-US",
+        )
         account.id = fake.uuid4()
-        account.email = fake.email()
-        account.name = fake.name()
-        account.avatar_url = fake.url()
-        account.tenant_id = tenant.id
-        account.status = "active"
-        account.type = "normal"
-        account.role = "owner"
-        account.interface_language = "en-US"
         account.created_at = fake.date_time_this_year()
         account.updated_at = account.created_at
 
