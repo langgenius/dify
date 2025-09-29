@@ -426,11 +426,15 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
         inputs = run_data.inputs
-        if not isinstance(inputs, dict) and inputs is not None:
+        if inputs is None:
+            inputs = {}
+        elif not isinstance(inputs, dict):
             inputs = {"inputs": str(inputs)}
 
         attributes = run_data.attributes
-        if not isinstance(attributes, dict) and attributes is not None:
+        if attributes is None:
+            attributes = {}
+        elif not isinstance(attributes, dict):
             attributes = {"attributes": str(attributes)}
 
         call = self.weave_client.create_call(
