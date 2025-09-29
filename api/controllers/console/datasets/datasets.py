@@ -1,4 +1,4 @@
-from typing import Any, cast, Dict, List
+from typing import Any, cast
 
 from flask import request
 from flask_login import current_user
@@ -94,7 +94,7 @@ class DatasetListApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = cast(List[Dict[str, Any]], marshal(datasets, dataset_detail_fields))
+        data = cast(list[dict[str, Any]], marshal(datasets, dataset_detail_fields))
         for item in data:
             # convert embedding_model_provider to plugin standard format
             if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
@@ -226,7 +226,7 @@ class DatasetApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = cast(Dict[str, Any], marshal(dataset, dataset_detail_fields))
+        data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         if dataset.indexing_technique == "high_quality":
             if dataset.embedding_model_provider:
                 provider_id = ModelProviderID(dataset.embedding_model_provider)
@@ -371,7 +371,7 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = cast(Dict[str, Any], marshal(dataset, dataset_detail_fields))
+        result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         tenant_id = current_user.current_tenant_id
 
         if data.get("partial_member_list") and data.get("permission") == "partial_members":
