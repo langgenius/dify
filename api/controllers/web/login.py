@@ -22,6 +22,8 @@ from libs.token import (
     extract_webapp_passport,
 )
 from services.account_service import AccountService
+from services.app_service import AppService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -82,18 +84,31 @@ class LoginStatusApi(Resource):
                 "logged_in": bool(token),
                 "app_logged_in": False,
             }
+        app_id = AppService.get_app_id_by_code(app_code)
+        is_public = not WebAppAuthService.is_app_require_permission_check(app_id=app_id)
         passport: str | None = extract_webapp_passport(app_code, request)
+        user_logged_in = False
+        app_logged_in = False
+
+        if is_public:
+            user_logged_in = True
+        else:
+            try:
+                PassportService().verify(token=token)
+            except Exception:
+                user_logged_in = False
+
         try:
-            verified = PassportService().verify(passport)
-            return {
-                "logged_in": bool(token),
-                "app_logged_in": bool(app_code) and verified.get("app_code") == app_code,
-            }
+            decoded_token = PassportService().verify(passport)
+            app_logged_in = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(decoded_token.get("user_id", "visitor"), app_id)
         except Exception:
-            return {
-                "logged_in": bool(token),
-                "app_logged_in": False,
-            }
+            app_logged_in = False
+
+        return {
+            "logged_in": user_logged_in,
+            "app_logged_in": app_logged_in,
+        }
+
 
 @web_ns.route("/logout")
 class LogoutApi(Resource):
