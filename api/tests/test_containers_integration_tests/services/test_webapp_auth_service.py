@@ -11,7 +11,6 @@ from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, Te
 from models.model import App, Site
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
-from services.enterprise.enterprise_service import WebAppSettings
 
 
 class TestWebAppAuthService:
