@@ -279,8 +279,9 @@ class LLMNode(Node):
                         # Extract clean text from <think> tags
                         clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
                     
-                    # if structured output enabled, return the structured output
-                    structured_output = LLMStructuredOutput(structured_output=event.structured_output)
+                    # Process structured output if available from the event.
+                    structured_output = LLMStructuredOutput(
+                        structured_output=event.structured_output) if event.structured_output else None
 
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
@@ -1083,7 +1084,7 @@ class LLMNode(Node):
             finish_reason=None,
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
-            # Return the structured output dict result when enable llm node structured output, 
+            # Pass structured output if enabled
             structured_output=getattr(invoke_result, "structured_output", None),
         )
 
