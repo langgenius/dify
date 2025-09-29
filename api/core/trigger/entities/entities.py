@@ -6,7 +6,13 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.parameters import PluginParameterAutoGenerate, PluginParameterOption, PluginParameterTemplate
+from core.plugin.entities.parameters import (
+    PluginParameterAutoGenerate,
+    PluginParameterOption,
+    PluginParameterTemplate,
+    as_normal_type,
+    cast_parameter_value,
+)
 from core.tools.entities.common_entities import I18nObject
 
 
@@ -24,6 +30,13 @@ class TriggerParameterType(StrEnum):
     OBJECT = "object"
     ARRAY = "array"
     DYNAMIC_SELECT = "dynamic-select"
+    CHECKBOX = "checkbox"
+    
+    def as_normal_type(self):
+        return as_normal_type(self)
+
+    def cast_value(self, value: Any):
+        return cast_parameter_value(self, value)
 
 
 class TriggerParameter(BaseModel):

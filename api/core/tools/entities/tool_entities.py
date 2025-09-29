@@ -262,6 +262,7 @@ class ToolParameter(PluginParameter):
         SECRET_INPUT = PluginParameterType.SECRET_INPUT
         FILE = PluginParameterType.FILE
         FILES = PluginParameterType.FILES
+        CHECKBOX = PluginParameterType.CHECKBOX
         APP_SELECTOR = PluginParameterType.APP_SELECTOR
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
         ANY = PluginParameterType.ANY
