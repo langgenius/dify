@@ -22,7 +22,6 @@ import dynamic from 'next/dynamic'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type {
   PluginDefaultValue,
-  ToolDefaultValue,
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
@@ -96,7 +95,7 @@ const WorkflowChildren = () => {
     handleOnboardingClose()
   }, [handleOnboardingClose])
 
-  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue | TriggerDefaultValue | PluginDefaultValue) => {
+  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
     const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
     if (!nodeDefault?.defaultValue)
       return

@@ -7,12 +7,12 @@ import NodeSelector from '@/app/components/workflow/block-selector'
 import { Home } from '@/app/components/base/icons/src/vender/workflow'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { TabsEnum } from '@/app/components/workflow/block-selector/types'
 
 type StartNodeSelectionPanelProps = {
   onSelectUserInput: () => void
-  onSelectTrigger: (nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => void
+  onSelectTrigger: (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => void
 }
 
 const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
@@ -26,7 +26,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
     setShowTriggerSelector(true)
   }, [])
 
-  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => {
+  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
     setShowTriggerSelector(false)
     onSelectTrigger(nodeType, toolConfig)
   }, [onSelectTrigger])

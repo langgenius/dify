@@ -43,8 +43,8 @@ const ChangeBlock = ({
       return availableNextBlocks
   }, [availablePrevBlocks, availableNextBlocks])
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
-    handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
   }, [handleNodeChange, nodeId, sourceHandle])
 
   const renderTrigger = useCallback(() => {

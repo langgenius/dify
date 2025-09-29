@@ -37,7 +37,7 @@ const DataSources = ({
   const { t } = useTranslation()
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
-  const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
+  const handleSelect = useCallback((_: BlockEnum, toolDefaultValue: ToolDefaultValue) => {
     let defaultValue: DataSourceDefaultValue = {
       plugin_id: toolDefaultValue?.provider_id,
       provider_type: toolDefaultValue?.provider_type,
@@ -67,7 +67,7 @@ const DataSources = ({
         <Tools
           className={toolContentClassName}
           tools={dataSources}
-          onSelect={handleSelect as OnSelectBlock}
+          onSelect={handleSelect}
           viewType={ViewType.flat}
           hasSearchText={!!searchText}
           canNotSelectMultiple

@@ -16,7 +16,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { ToolDefaultValue } from '../block-selector/types'
+import type { PluginDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import { BlockEnum } from '../types'
 import { useWorkflowStore } from '../store'
@@ -737,7 +737,7 @@ export const useNodesInteractions = () => {
         nodeType,
         sourceHandle = 'source',
         targetHandle = 'target',
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
     ) => {
@@ -758,7 +758,7 @@ export const useNodesInteractions = () => {
               nodesWithSameType.length > 0
                 ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
                 : defaultValue.title,
-            ...toolDefaultValue,
+            ...pluginDefaultValue,
             selected: true,
             _showAddVariablePopup:
               (nodeType === BlockEnum.VariableAssigner
@@ -1288,7 +1288,7 @@ export const useNodesInteractions = () => {
       currentNodeId: string,
       nodeType: BlockEnum,
       sourceHandle: string,
-      toolDefaultValue?: ToolDefaultValue,
+      pluginDefaultValue?: PluginDefaultValue,
     ) => {
       if (getNodesReadOnly()) return
 
@@ -1312,7 +1312,7 @@ export const useNodesInteractions = () => {
             nodesWithSameType.length > 0
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
               : defaultValue.title,
-          ...toolDefaultValue,
+          ...pluginDefaultValue,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           selected: currentNode.data.selected,

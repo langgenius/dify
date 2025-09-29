@@ -16,7 +16,7 @@ type Props = {
   payload: Tool
   disabled?: boolean
   isAdded?: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
 }
 
 const ToolItem: FC<Props> = ({

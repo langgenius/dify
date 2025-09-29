@@ -5,11 +5,7 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type {
-  DataSourceDefaultValue,
-  PluginDefaultValue,
-  ToolDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -109,8 +105,7 @@ export type CommonNodeType<T = {}> = {
   credential_id?: string
   subscription_id?: string
   _dimmed?: boolean
-} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
-  & Partial<Pick<DataSourceDefaultValue, 'plugin_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
+} & T & Partial<PluginDefaultValue>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -346,7 +341,7 @@ export type NodeDefault<T = {}> = {
   }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | PluginDefaultValue | DataSourceDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Listening = 'listening',
@@ -378,7 +373,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue
+    pluginDefaultValue?: PluginDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string

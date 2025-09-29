@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import Modal from '@/app/components/base/modal'
 import StartNodeSelectionPanel from './start-node-selection-panel'
 import { useDocLink } from '@/context/i18n'
@@ -14,7 +14,7 @@ import { useDocLink } from '@/context/i18n'
 type WorkflowOnboardingModalProps = {
   isShow: boolean
   onClose: () => void
-  onSelectStartNode: (nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => void
+  onSelectStartNode: (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => void
 }
 
 const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
@@ -30,7 +30,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
     onClose() // Close modal after selection
   }, [onSelectStartNode, onClose])
 
-  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: ToolDefaultValue) => {
+  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
     onSelectStartNode(nodeType, toolConfig)
     onClose() // Close modal after selection
   }, [onSelectStartNode, onClose])

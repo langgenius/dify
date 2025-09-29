@@ -1,5 +1,6 @@
 'use client'
-import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
@@ -39,7 +40,7 @@ const List = ({
 
   const { handleScroll, scrollPosition } = useStickyScroll({
     wrapElemRef,
-    nextToStickyELemRef,
+    nextToStickyELemRef: nextToStickyELemRef as RefObject<HTMLElement>,
   })
   const stickyClassName = useMemo(() => {
     switch (scrollPosition) {

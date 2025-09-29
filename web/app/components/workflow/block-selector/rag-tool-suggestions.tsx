@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { OnSelectBlock } from '../types'
+import type { BlockEnum } from '../types'
 import Tools from './tools'
 import { ToolTypeEnum } from './types'
+import type { ToolDefaultValue } from './types'
 import type { ViewType } from './view-type-select'
 import { RiMoreLine } from '@remixicon/react'
 import Loading from '@/app/components/base/loading'
@@ -13,7 +14,7 @@ import { useRAGRecommendedPlugins } from '@/service/use-tools'
 
 type RAGToolSuggestionsProps = {
   viewType: ViewType
-  onSelect: OnSelectBlock
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   onTagsChange: Dispatch<SetStateAction<string[]>>
 }
 

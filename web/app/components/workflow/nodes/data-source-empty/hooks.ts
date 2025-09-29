@@ -11,7 +11,7 @@ export const useReplaceDataSourceNode = (id: string) => {
 
   const handleReplaceNode = useCallback<OnSelectBlock>((
     type,
-    toolDefaultValue,
+    pluginDefaultValue,
   ) => {
     const {
       getNodes,
@@ -28,7 +28,7 @@ export const useReplaceDataSourceNode = (id: string) => {
     const { newNode } = generateNewNode({
       data: {
         ...(defaultValue as any),
-        ...toolDefaultValue,
+        ...pluginDefaultValue,
       },
       position: {
         x: emptyNode.position.x,

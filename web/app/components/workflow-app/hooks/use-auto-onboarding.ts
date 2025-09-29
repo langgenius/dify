@@ -28,15 +28,15 @@ export const useAutoOnboarding = () => {
 
     // Show onboarding only if canvas is completely empty and we haven't shown it before in this session
     if (isCompletelyEmpty && !hasShownOnboarding) {
-      setShowOnboarding(true)
-      setHasShownOnboarding(true)
+      setShowOnboarding?.(true)
+      setHasShownOnboarding?.(true)
     }
   }, [store, workflowStore])
 
   const handleOnboardingClose = useCallback(() => {
     const { setShowOnboarding, setHasShownOnboarding } = workflowStore.getState()
-    setShowOnboarding(false)
-    setHasShownOnboarding(true)
+    setShowOnboarding?.(false)
+    setHasShownOnboarding?.(true)
   }, [workflowStore])
 
   // Check on mount and when nodes change

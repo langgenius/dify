@@ -1,5 +1,6 @@
 import type {
   Dispatch,
+  RefObject,
   SetStateAction,
 } from 'react'
 import {
@@ -10,7 +11,6 @@ import {
 } from 'react'
 import type {
   BlockEnum,
-  OnSelectBlock,
   ToolWithProvider,
 } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
@@ -36,12 +36,12 @@ type AllToolsProps = {
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
-  onSelect: OnSelectBlock
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
-  onTagsChange: Dispatch<SetStateAction<string[]>>
+  onTagsChange?: Dispatch<SetStateAction<string[]>>
   isInRAGPipeline?: boolean
 }
 
@@ -147,7 +147,7 @@ const AllTools = ({
         className='max-h-[464px] overflow-y-auto'
         onScroll={pluginRef.current?.handleScroll}
       >
-        {isShowRAGRecommendations && (
+        {isShowRAGRecommendations && onTagsChange && (
           <RAGToolSuggestions
             viewType={isSupportGroupView ? activeView : ViewType.flat}
             onSelect={onSelect}
@@ -171,7 +171,7 @@ const AllTools = ({
         {enable_marketplace && (
           <PluginList
             ref={pluginRef}
-            wrapElemRef={wrapElemRef}
+            wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
             list={notInstalledPlugins}
             searchText={searchText}
             toolContentClassName={toolContentClassName}

@@ -25,13 +25,13 @@ export enum BlockClassificationEnum {
   Utilities = 'utilities',
 }
 
-export type PluginDefaultValue = {
+type PluginCommonDefaultValue = {
   provider_id: string
   provider_type: string
   provider_name: string
 }
 
-export type TriggerDefaultValue = PluginDefaultValue & {
+export type TriggerDefaultValue = PluginCommonDefaultValue & {
   trigger_name: string
   trigger_label: string
   trigger_description: string
@@ -45,7 +45,7 @@ export type TriggerDefaultValue = PluginDefaultValue & {
   meta?: PluginMeta
 }
 
-export type ToolDefaultValue = PluginDefaultValue & {
+export type ToolDefaultValue = PluginCommonDefaultValue & {
   tool_name: string
   tool_label: string
   tool_description: string
@@ -53,12 +53,12 @@ export type ToolDefaultValue = PluginDefaultValue & {
   is_team_authorization: boolean
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
-  output_schema: Record<string, any>
+  output_schema?: Record<string, any>
   credential_id?: string
   meta?: PluginMeta
 }
 
-export type DataSourceDefaultValue = {
+export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {
   plugin_id: string
   provider_type: string
   provider_name: string
@@ -67,6 +67,8 @@ export type DataSourceDefaultValue = {
   title: string
   fileExtensions?: string[]
 }
+
+export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
 
 export type ToolValue = {
   provider_name: string

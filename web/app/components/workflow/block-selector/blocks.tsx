@@ -11,13 +11,12 @@ import { BlockEnum } from '../types'
 import type { NodeDefault } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
-import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import Badge from '@/app/components/base/badge'
 
 type BlocksProps = {
   searchText: string
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum) => void
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
 }

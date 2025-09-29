@@ -11,13 +11,13 @@ import type { BlockEnum, CommonNodeType } from '../types'
 import { BlockEnum as BlockEnumValues } from '../types'
 // import { useNodeMetaData } from '../hooks'
 import { START_BLOCKS } from './constants'
-import type { ToolDefaultValue } from './types'
+import type { TriggerDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAvailableNodesMetaData } from '../../workflow-app/hooks'
 
 type StartBlocksProps = {
   searchText: string
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, triggerDefaultValue?: TriggerDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   onContentStateChange?: (hasContent: boolean) => void
 }

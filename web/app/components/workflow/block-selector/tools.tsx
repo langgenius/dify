@@ -16,7 +16,7 @@ import ToolListFlatView from './tool/tool-list-flat-view/list'
 import classNames from '@/utils/classnames'
 
 type ToolsProps = {
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]

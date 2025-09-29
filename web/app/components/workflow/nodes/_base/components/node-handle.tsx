@@ -16,7 +16,7 @@ import {
 } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
-import type { ToolDefaultValue } from '../../../block-selector/types'
+import type { PluginDefaultValue } from '../../../block-selector/types'
 import {
   useAvailableBlocks,
   useIsChatMode,
@@ -57,11 +57,11 @@ export const NodeTargetHandle = memo(({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         nextNodeId: id,
@@ -143,11 +143,11 @@ export const NodeSourceHandle = memo(({
     e.stopPropagation()
     setOpen(v => !v)
   }, [])
-  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         prevNodeId: id,

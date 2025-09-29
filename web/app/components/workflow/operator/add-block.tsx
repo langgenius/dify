@@ -53,7 +53,7 @@ const AddBlock = ({
       handlePaneContextmenuCancel()
   }, [handlePaneContextmenuCancel])
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     const {
       getNodes,
     } = store.getState()
@@ -67,7 +67,7 @@ const AddBlock = ({
       data: {
         ...(defaultValue as any),
         title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
-        ...toolDefaultValue,
+        ...pluginDefaultValue,
         _isCandidate: true,
       },
       position: {

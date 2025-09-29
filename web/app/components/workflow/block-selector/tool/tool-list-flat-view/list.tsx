@@ -13,7 +13,7 @@ type Props = {
   isShowLetterIndex: boolean
   indexBar: React.ReactNode
   hasSearchText: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   letters: string[]

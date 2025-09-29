@@ -22,11 +22,12 @@ type Props = {
   payload: ToolWithProvider
   viewType: ViewType
   hasSearchText: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
+  isShowLetterIndex?: boolean
 }
 
 const Tool: FC<Props> = ({
