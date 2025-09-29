@@ -64,7 +64,7 @@ const RunMode = ({
     }
     else if (option.type === 'webhook') {
       if (option.nodeId)
-        handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId, debugUrl: option.debugUrl })
+        handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId })
     }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types

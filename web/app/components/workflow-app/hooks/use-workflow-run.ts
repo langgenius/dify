@@ -221,6 +221,9 @@ export const useWorkflowRun = () => {
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Waiting,
+          inputs_truncated: false,
+          process_data_truncated: false,
+          outputs_truncated: false,
         },
         tracing: [],
         resultText: 'Waiting for webhook call...',
@@ -230,6 +233,9 @@ export const useWorkflowRun = () => {
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Running,
+          inputs_truncated: false,
+          process_data_truncated: false,
+          outputs_truncated: false,
         },
         tracing: [],
         resultText: '',
@@ -402,10 +408,13 @@ export const useWorkflowRun = () => {
         ? url
         : `${API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`
 
-      const poll = async (): Promise<void> => {
-        const controller = new AbortController()
-        abortControllerRef.current = controller
+      const controller = new AbortController()
+      abortControllerRef.current = controller
 
+      // Store controller in global variable as fallback
+      ;(window as any).__webhookDebugAbortController = controller
+
+      const poll = async (): Promise<void> => {
         try {
           const baseOptions = getBaseOptions()
           const headers = new Headers(baseOptions.headers as Headers)
@@ -542,12 +551,23 @@ export const useWorkflowRun = () => {
       return
     }
 
-    abortControllerRef.current?.abort()
+    // Try webhook debug controller from global variable first
+    const webhookController = (window as any).__webhookDebugAbortController
+    if (webhookController)
+      webhookController.abort()
+
+    // Also try the ref
+    if (abortControllerRef.current)
+      abortControllerRef.current.abort()
+
     abortControllerRef.current = null
     const { setWorkflowRunningData } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
         status: WorkflowRunningStatus.Stopped,
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
       },
       tracing: [],
       resultText: '',
