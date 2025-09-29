@@ -52,7 +52,20 @@ class AppService:
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT)
 
-        if args.get("is_created_by_me", False):
+        from models.account import TenantAccountJoin, TenantAccountRole
+        # 查询当前用户在租户中的角色
+        join = db.session.query(TenantAccountJoin).filter(
+            TenantAccountJoin.tenant_id == tenant_id,
+            TenantAccountJoin.account_id == user_id
+        ).first()
+        # 检查管理员/所有者权限
+        is_admin_or_owner = join and join.role in {
+            TenantAccountRole.ADMIN.value,
+            TenantAccountRole.OWNER.value
+        }
+        
+        # 默认过滤：普通用户只能看自己的应用
+        if not is_admin_or_owner and not args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
             name = args["name"][:30]
