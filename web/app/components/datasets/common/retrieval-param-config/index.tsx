@@ -54,7 +54,7 @@ const RetrievalParamConfig: FC<Props> = ({
     },
   )
 
-  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+  const handleToggleRerankEnable = useCallback((enable: boolean) => {
     if (enable && !currentModel)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
     onChange({
@@ -119,7 +119,7 @@ const RetrievalParamConfig: FC<Props> = ({
               <Switch
                 size='md'
                 defaultValue={value.reranking_enable}
-                onChange={handleDisabledSwitchClick}
+                onChange={handleToggleRerankEnable}
               />
             )}
             <div className='flex items-center'>
