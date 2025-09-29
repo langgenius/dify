@@ -91,19 +91,21 @@ class Account(UserMixin, TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255))
-    password: Mapped[Optional[str]] = mapped_column(String(255), default=None)
-    password_salt: Mapped[Optional[str]] = mapped_column(String(255), default=None)
-    avatar: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, default=None)
-    interface_language: Mapped[Optional[str]] = mapped_column(String(255), default=None)
-    interface_theme: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, default=None)
-    timezone: Mapped[Optional[str]] = mapped_column(String(255), default=None)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
-    last_login_ip: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, default=None)
+    password: Mapped[str | None] = mapped_column(String(255), default=None)
+    password_salt: Mapped[str | None] = mapped_column(String(255), default=None)
+    avatar: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    interface_language: Mapped[str | None] = mapped_column(String(255), default=None)
+    interface_theme: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    timezone: Mapped[str | None] = mapped_column(String(255), default=None)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    last_login_ip: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     last_active_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
-    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'active'::character varying"), default="active")
-    initialized_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    status: Mapped[str] = mapped_column(
+        String(16), server_default=sa.text("'active'::character varying"), default="active"
+    )
+    initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
@@ -241,12 +243,14 @@ class Tenant(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     name: Mapped[str] = mapped_column(String(255))
-    encrypt_public_key: Mapped[Optional[str]] = mapped_column(sa.Text, default=None)
-    plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'::character varying"), default="basic")
+    encrypt_public_key: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    plan: Mapped[str] = mapped_column(
+        String(255), server_default=sa.text("'basic'::character varying"), default="basic"
+    )
     status: Mapped[str] = mapped_column(
         String(255), server_default=sa.text("'normal'::character varying"), default="normal"
     )
-    custom_config: Mapped[Optional[str]] = mapped_column(sa.Text, default=None)
+    custom_config: Mapped[str | None] = mapped_column(sa.Text, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
@@ -284,7 +288,7 @@ class TenantAccountJoin(TypeBase):
     account_id: Mapped[str] = mapped_column(StringUUID)
     current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
     role: Mapped[str] = mapped_column(String(16), server_default="normal", default="normal")
-    invited_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True, default=None)
+    invited_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
@@ -325,11 +329,13 @@ class InvitationCode(TypeBase):
     id: Mapped[int] = mapped_column(sa.Integer, init=False)
     batch: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'unused'::character varying"), default="unused")
-    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
-    used_by_tenant_id: Mapped[Optional[str]] = mapped_column(StringUUID, default=None)
-    used_by_account_id: Mapped[Optional[str]] = mapped_column(StringUUID, default=None)
-    deprecated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    status: Mapped[str] = mapped_column(
+        String(16), server_default=sa.text("'unused'::character varying"), default="unused"
+    )
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    used_by_tenant_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    used_by_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    deprecated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=sa.text("CURRENT_TIMESTAMP(0)"), nullable=False, init=False
     )
