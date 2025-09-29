@@ -7,7 +7,6 @@
     "core/rag",
     "extensions",
     "libs",
-    "controllers/console/datasets",
     "controllers/service_api/dataset",
     "core/ops",
     "core/tools",

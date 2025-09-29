@@ -62,6 +62,9 @@ class DatasetMetadataApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
+        name = args.get("name")
+        if not name:
+            raise ValueError("name is required")
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -70,7 +73,7 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
         return metadata, 200
 
     @setup_required

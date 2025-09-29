@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restx import Resource, marshal, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restx import Resource, marshal, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -18,18 +18,6 @@ from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-
-
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description):
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
 
 
 @console_ns.route("/rag/pipeline/dataset")
