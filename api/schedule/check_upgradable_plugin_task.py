@@ -40,9 +40,6 @@ def check_upgradable_plugin_task():
     )  # make sure all strategies are checked in this interval
     batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
 
-    # Set batch_interval_time to 0 when there is only one batch
-    if batch_chunk_count <= 1:
-        batch_interval_time = 0
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
