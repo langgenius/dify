@@ -177,7 +177,7 @@
     "@storybook/react": "8.5.0",
     "@storybook/test": "8.5.0",
     "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.2",
+    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.0.1",
     "@types/crypto-js": "^4.2.2",
     "@types/dagre": "^0.7.52",
