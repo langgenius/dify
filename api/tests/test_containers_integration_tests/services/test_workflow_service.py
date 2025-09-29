@@ -61,13 +61,14 @@ class TestWorkflowService:
         # Create a tenant for the account
         from models.account import Tenant
 
+        tenant_created_at = fake.date_time_this_year()
         tenant = Tenant(
             id=account.tenant_id,
             name=f"Test Tenant {fake.company()}",
             plan="basic",
             status="active",
-            created_at=fake.date_time_this_year(),
-            updated_at=tenant.created_at,
+            created_at=tenant_created_at,
+            updated_at=tenant_created_at,
         )
 
         from extensions.ext_database import db
