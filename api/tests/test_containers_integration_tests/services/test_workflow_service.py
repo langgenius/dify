@@ -55,8 +55,8 @@ class TestWorkflowService:
             role="owner",
             interface_language="en-US",  # Set interface language for Site creation
             created_at=fake.date_time_this_year(),
-            updated_at=account.created_at,
         )
+        account.updated_at=account.created_at
 
         # Create a tenant for the account
         from models.account import Tenant
