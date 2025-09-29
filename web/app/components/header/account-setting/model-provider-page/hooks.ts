@@ -323,15 +323,18 @@ export const useRefreshModel = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const handleRefreshModel = useCallback((provider: ModelProvider, configurationMethod: ConfigurationMethodEnum, CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => {
+  const handleRefreshModel = useCallback((
+    provider: ModelProvider,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    refreshModelList?: boolean,
+  ) => {
     updateModelProviders()
 
     provider.supported_model_types.forEach((type) => {
       updateModelList(type)
     })
 
-    if (configurationMethod === ConfigurationMethodEnum.customizableModel
-        && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
       eventEmitter?.emit({
         type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
         payload: provider.provider,
