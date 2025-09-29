@@ -27,7 +27,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         self.api_key = "test-api-key"
         self.base_url = "https://api.dify.ai/v1"
 
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.requests.request")
     def test_app_info_apis(self, mock_request):
         """Test application info APIs."""
         mock_response = Mock()
@@ -36,7 +36,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             "description": "Test Description",
             "tags": ["test", "api"],
             "mode": "chat",
-            "author_name": "Test Author"
+            "author_name": "Test Author",
         }
         mock_request.return_value = mock_response
 
@@ -53,7 +53,7 @@ class TestNewServiceAPIs(unittest.TestCase):
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
         # Test get_app_site_info
@@ -67,7 +67,7 @@ class TestNewServiceAPIs(unittest.TestCase):
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
         # Test get_file_preview
@@ -82,10 +82,10 @@ class TestNewServiceAPIs(unittest.TestCase):
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.requests.request")
     def test_annotation_apis(self, mock_request):
         """Test annotation APIs."""
         mock_response = Mock()
@@ -99,7 +99,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             action="enable",
             score_threshold=0.8,
             embedding_provider_name="openai",
-            embedding_model_name="text-embedding-ada-002"
+            embedding_model_name="text-embedding-ada-002",
         )
         mock_request.assert_called_with(
             "POST",
@@ -107,14 +107,14 @@ class TestNewServiceAPIs(unittest.TestCase):
             json={
                 "score_threshold": 0.8,
                 "embedding_provider_name": "openai",
-                "embedding_model_name": "text-embedding-ada-002"
+                "embedding_model_name": "text-embedding-ada-002",
             },
             params=None,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
         # Test annotation_reply_action - disable (now requires same fields as enable)
@@ -122,7 +122,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             action="disable",
             score_threshold=0.5,
             embedding_provider_name="openai",
-            embedding_model_name="text-embedding-ada-002"
+            embedding_model_name="text-embedding-ada-002",
         )
 
         # Test annotation_reply_action with score_threshold=0 (edge case)
@@ -130,7 +130,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             action="enable",
             score_threshold=0.0,  # This should work and not raise ValueError
             embedding_provider_name="openai",
-            embedding_model_name="text-embedding-ada-002"
+            embedding_model_name="text-embedding-ada-002",
         )
 
         # Test get_annotation_reply_status
@@ -151,7 +151,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         # Verify all calls were made (8 calls: enable + disable + enable with 0.0 + 5 other operations)
         self.assertEqual(mock_request.call_count, 8)
 
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.requests.request")
     def test_knowledge_base_advanced_apis(self, mock_request):
         """Test advanced knowledge base APIs."""
         mock_response = Mock()
@@ -166,16 +166,13 @@ class TestNewServiceAPIs(unittest.TestCase):
         mock_request.assert_called_with(
             "POST",
             f"{self.base_url}/datasets/{dataset_id}/hit-testing",
-            json={
-                "query": "test query",
-                "retrieval_model": {"type": "vector"}
-            },
+            json={"query": "test query", "retrieval_model": {"type": "vector"}},
             params=None,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
         # Test metadata operations
@@ -195,7 +192,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         # Verify multiple calls were made
         self.assertGreater(mock_request.call_count, 5)
 
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.requests.request")
     def test_rag_pipeline_apis(self, mock_request):
         """Test RAG pipeline APIs."""
         mock_response = Mock()
@@ -216,7 +213,7 @@ class TestNewServiceAPIs(unittest.TestCase):
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
         # Test run_datasource_node
@@ -225,7 +222,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             inputs={"param": "value"},
             datasource_type="online_document",
             is_published=True,
-            credential_id="cred-123"
+            credential_id="cred-123",
         )
 
         # Test run_rag_pipeline
@@ -235,20 +232,17 @@ class TestNewServiceAPIs(unittest.TestCase):
             datasource_info_list=[{"id": "ds1"}],
             start_node_id="start-node",
             is_published=True,
-            response_mode="blocking"
+            response_mode="blocking",
         )
 
         self.assertEqual(mock_request.call_count, 3)
 
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.requests.request")
     def test_workspace_apis(self, mock_request):
         """Test workspace APIs."""
         mock_response = Mock()
         mock_response.json.return_value = {
-            "data": [
-                {"name": "gpt-3.5-turbo", "type": "llm"},
-                {"name": "gpt-4", "type": "llm"}
-            ]
+            "data": [{"name": "gpt-3.5-turbo", "type": "llm"}, {"name": "gpt-4", "type": "llm"}]
         }
         mock_request.return_value = mock_response
 
@@ -265,10 +259,10 @@ class TestNewServiceAPIs(unittest.TestCase):
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.requests.request")
     def test_workflow_advanced_apis(self, mock_request):
         """Test advanced workflow APIs."""
         mock_response = Mock()
@@ -288,15 +282,12 @@ class TestNewServiceAPIs(unittest.TestCase):
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            stream=False
+            stream=False,
         )
 
         # Test run_specific_workflow
         client.run_specific_workflow(
-            workflow_id="workflow-123",
-            inputs={"param": "value"},
-            response_mode="streaming",
-            user="user-123"
+            workflow_id="workflow-123", inputs={"param": "value"}, response_mode="streaming", user="user-123"
         )
 
         self.assertEqual(mock_request.call_count, 2)
@@ -309,8 +300,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             client.annotation_reply_action("enable")
 
-        self.assertIn("score_threshold, embedding_provider_name, and embedding_model_name are required",
-                     str(context.exception))
+        self.assertIn(
+            "score_threshold, embedding_provider_name, and embedding_model_name are required", str(context.exception)
+        )
 
         # Test KnowledgeBaseClient without dataset_id
         kb_client = KnowledgeBaseClient(self.api_key, self.base_url)
@@ -319,8 +311,8 @@ class TestNewServiceAPIs(unittest.TestCase):
 
         self.assertIn("dataset_id is not set", str(context.exception))
 
-    @patch('dify_client.client.open')
-    @patch('dify_client.client.requests.request')
+    @patch("dify_client.client.open")
+    @patch("dify_client.client.requests.request")
     def test_file_upload_apis(self, mock_request, mock_open):
         """Test file upload APIs."""
         mock_response = Mock()
@@ -343,48 +335,58 @@ class TestNewServiceAPIs(unittest.TestCase):
         """Test that all previously missing APIs are now implemented."""
 
         # Test DifyClient methods
-        dify_methods = [
-            'get_app_info', 'get_app_site_info', 'get_file_preview'
-        ]
+        dify_methods = ["get_app_info", "get_app_site_info", "get_file_preview"]
         client = DifyClient(self.api_key)
         for method in dify_methods:
             self.assertTrue(hasattr(client, method), f"DifyClient missing method: {method}")
 
         # Test ChatClient annotation methods
         chat_methods = [
-            'annotation_reply_action', 'get_annotation_reply_status',
-            'list_annotations', 'create_annotation', 'update_annotation', 'delete_annotation'
+            "annotation_reply_action",
+            "get_annotation_reply_status",
+            "list_annotations",
+            "create_annotation",
+            "update_annotation",
+            "delete_annotation",
         ]
         chat_client = ChatClient(self.api_key)
         for method in chat_methods:
             self.assertTrue(hasattr(chat_client, method), f"ChatClient missing method: {method}")
 
         # Test WorkflowClient advanced methods
-        workflow_methods = [
-            'get_workflow_logs', 'run_specific_workflow'
-        ]
+        workflow_methods = ["get_workflow_logs", "run_specific_workflow"]
         workflow_client = WorkflowClient(self.api_key)
         for method in workflow_methods:
             self.assertTrue(hasattr(workflow_client, method), f"WorkflowClient missing method: {method}")
 
         # Test KnowledgeBaseClient advanced methods
         kb_methods = [
-            'hit_testing', 'get_dataset_metadata', 'create_dataset_metadata',
-            'update_dataset_metadata', 'get_built_in_metadata', 'manage_built_in_metadata',
-            'update_documents_metadata', 'list_dataset_tags', 'bind_dataset_tags',
-            'unbind_dataset_tags', 'get_dataset_tags', 'get_datasource_plugins',
-            'run_datasource_node', 'run_rag_pipeline', 'upload_pipeline_file'
+            "hit_testing",
+            "get_dataset_metadata",
+            "create_dataset_metadata",
+            "update_dataset_metadata",
+            "get_built_in_metadata",
+            "manage_built_in_metadata",
+            "update_documents_metadata",
+            "list_dataset_tags",
+            "bind_dataset_tags",
+            "unbind_dataset_tags",
+            "get_dataset_tags",
+            "get_datasource_plugins",
+            "run_datasource_node",
+            "run_rag_pipeline",
+            "upload_pipeline_file",
         ]
         kb_client = KnowledgeBaseClient(self.api_key)
         for method in kb_methods:
             self.assertTrue(hasattr(kb_client, method), f"KnowledgeBaseClient missing method: {method}")
 
         # Test WorkspaceClient methods
-        workspace_methods = ['get_available_models']
+        workspace_methods = ["get_available_models"]
         workspace_client = WorkspaceClient(self.api_key)
         for method in workspace_methods:
             self.assertTrue(hasattr(workspace_client, method), f"WorkspaceClient missing method: {method}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

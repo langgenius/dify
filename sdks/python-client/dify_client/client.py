@@ -157,8 +157,13 @@ class ChatClient(DifyClient):
         return self._send_request_with_files("POST", "/audio-to-text", data, files)
 
     # Annotation APIs
-    def annotation_reply_action(self, action: Literal["enable", "disable"], score_threshold: float = None,
-                                embedding_provider_name: str = None, embedding_model_name: str = None):
+    def annotation_reply_action(
+        self,
+        action: Literal["enable", "disable"],
+        score_threshold: float = None,
+        embedding_provider_name: str = None,
+        embedding_model_name: str = None,
+    ):
         """Enable or disable annotation reply feature."""
         # Backend API requires these fields for both enable and disable actions
         if score_threshold is None or embedding_provider_name is None or embedding_model_name is None:
@@ -167,7 +172,7 @@ class ChatClient(DifyClient):
         data = {
             "score_threshold": score_threshold,
             "embedding_provider_name": embedding_provider_name,
-            "embedding_model_name": embedding_model_name
+            "embedding_model_name": embedding_model_name,
         }
         return self._send_request("POST", f"/apps/annotation-reply/{action}", json=data)
 
@@ -218,14 +223,17 @@ class WorkflowClient(DifyClient):
             params["status"] = status
         return self._send_request("GET", "/workflows/logs", params=params)
 
-    def run_specific_workflow(self, workflow_id: str, inputs: dict, response_mode: Literal["blocking", "streaming"] = "streaming", user: str = "abc-123"):
+    def run_specific_workflow(
+        self,
+        workflow_id: str,
+        inputs: dict,
+        response_mode: Literal["blocking", "streaming"] = "streaming",
+        user: str = "abc-123",
+    ):
         """Run a specific workflow by workflow ID."""
         data = {"inputs": inputs, "response_mode": response_mode, "user": user}
         return self._send_request(
-            "POST",
-            f"/workflows/{workflow_id}/run",
-            data,
-            stream=True if response_mode == "streaming" else False
+            "POST", f"/workflows/{workflow_id}/run", data, stream=True if response_mode == "streaming" else False
         )
 
 
@@ -525,7 +533,9 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", url, json=data, **kwargs)
 
     # Advanced Knowledge Base APIs
-    def hit_testing(self, query: str, retrieval_model: Dict[str, Any] = None, external_retrieval_model: Dict[str, Any] = None):
+    def hit_testing(
+        self, query: str, retrieval_model: Dict[str, Any] = None, external_retrieval_model: Dict[str, Any] = None
+    ):
         """Perform hit testing on the dataset."""
         data = {"query": query}
         if retrieval_model:
@@ -594,21 +604,30 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/pipeline/datasource-plugins"
         return self._send_request("GET", url, params=params)
 
-    def run_datasource_node(self, node_id: str, inputs: Dict[str, Any], datasource_type: str,
-                           is_published: bool = True, credential_id: str = None):
+    def run_datasource_node(
+        self,
+        node_id: str,
+        inputs: Dict[str, Any],
+        datasource_type: str,
+        is_published: bool = True,
+        credential_id: str = None,
+    ):
         """Run a datasource node in RAG pipeline."""
-        data = {
-            "inputs": inputs,
-            "datasource_type": datasource_type,
-            "is_published": is_published
-        }
+        data = {"inputs": inputs, "datasource_type": datasource_type, "is_published": is_published}
         if credential_id:
             data["credential_id"] = credential_id
         url = f"/datasets/{self._get_dataset_id()}/pipeline/datasource/nodes/{node_id}/run"
         return self._send_request("POST", url, json=data)
 
-    def run_rag_pipeline(self, inputs: Dict[str, Any], datasource_type: str, datasource_info_list: List[Dict[str, Any]],
-                        start_node_id: str, is_published: bool = True, response_mode: Literal["streaming", "blocking"] = "blocking"):
+    def run_rag_pipeline(
+        self,
+        inputs: Dict[str, Any],
+        datasource_type: str,
+        datasource_info_list: List[Dict[str, Any]],
+        start_node_id: str,
+        is_published: bool = True,
+        response_mode: Literal["streaming", "blocking"] = "blocking",
+    ):
         """Run RAG pipeline."""
         data = {
             "inputs": inputs,
@@ -616,7 +635,7 @@ class KnowledgeBaseClient(DifyClient):
             "datasource_info_list": datasource_info_list,
             "start_node_id": start_node_id,
             "is_published": is_published,
-            "response_mode": response_mode
+            "response_mode": response_mode,
         }
         url = f"/datasets/{self._get_dataset_id()}/pipeline/run"
         return self._send_request("POST", url, json=data)
