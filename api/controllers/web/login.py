@@ -8,6 +8,7 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
 )
+from controllers.web.wraps import decode_jwt_token
 from controllers.console.error import AccountBannedError
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import web_ns
@@ -87,9 +88,7 @@ class LoginStatusApi(Resource):
             }
         app_id = AppService.get_app_id_by_code(app_code)
         is_public = not WebAppAuthService.is_app_require_permission_check(app_id=app_id)
-        passport: str | None = extract_webapp_passport(app_code, request)
         user_logged_in = False
-        app_logged_in = False
 
         if is_public:
             user_logged_in = True
@@ -100,10 +99,8 @@ class LoginStatusApi(Resource):
                 user_logged_in = False
 
         try:
-            decoded_token = PassportService().verify(passport)
-            app_logged_in = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
-                decoded_token.get("user_id", "visitor"), app_id
-            )
+            _ = decode_jwt_token()
+            app_logged_in = True
         except Exception:
             app_logged_in = False
 

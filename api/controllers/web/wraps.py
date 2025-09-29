@@ -38,19 +38,6 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
     return decorator
 
 
-def validate_csrf_token(view: Callable[P, R] | None = None):
-    def decorator(view: Callable[P, R]):
-        @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
-            check_csrf_token(request)
-            return view(*args, **kwargs)
-
-        return decorated
-
-    if view:
-        return decorator(view)
-    return decorator
-
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()
