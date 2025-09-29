@@ -303,7 +303,7 @@ class TestNewServiceAPIs(unittest.TestCase):
             limit=20,
             created_at__before="2024-01-01",
             created_at__after="2023-01-01",
-            created_by_account="user123"
+            created_by_account="user123",
         )
 
         # Test run_specific_workflow
