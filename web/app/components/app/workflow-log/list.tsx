@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import DetailPanel from './detail'
+import TriggerByDisplay from './trigger-by-display'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
@@ -159,7 +160,11 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   {endUser}
                 </div>
               </td>
-              {isWorkflow && <td className='p-3 pr-2'>{log.workflow_run.triggered_from}</td>}
+              {isWorkflow && (
+                <td className='p-3 pr-2'>
+                  <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from || 'app-run'} />
+                </td>
+              )}
             </tr>
           })}
         </tbody>

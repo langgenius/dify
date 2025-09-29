@@ -95,6 +95,15 @@ const translation = {
     iteration: 'Iteration',
     finalProcessing: 'Final Processing',
   },
+  triggerBy: {
+    debugging: 'Debugging',
+    appRun: 'WebApp',
+    webhook: 'Webhook',
+    schedule: 'Schedule',
+    plugin: 'Plugin',
+    ragPipelineRun: 'RAG Pipeline',
+    ragPipelineDebugging: 'RAG Debugging',
+  },
 }
 
 export default translation
