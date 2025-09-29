@@ -69,7 +69,7 @@ class TestWorkflowService:
         tenant.id = account.tenant_id
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
-        )
+
 
         from extensions.ext_database import db
 
