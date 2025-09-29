@@ -1,3 +1,9 @@
+from core.variables.segments import (
+    BooleanSegment,
+    IntegerSegment,
+    NoneSegment,
+    StringSegment,
+)
 from core.workflow.entities.variable_pool import VariablePool
 
 
@@ -23,6 +29,21 @@ class TestVariablePoolGetAndNestedAttribute:
         obj = ["not", "a", "dict"]
         segment = pool._get_nested_attribute(obj, "a")
         assert segment is None
+
+    def test__get_nested_attribute_with_none_value(self):
+        pool = VariablePool.empty()
+        obj = {"a": None}
+        segment = pool._get_nested_attribute(obj, "a")
+        assert segment is not None
+        assert isinstance(segment, NoneSegment)
+
+    def test__get_nested_attribute_with_empty_string(self):
+        pool = VariablePool.empty()
+        obj = {"a": ""}
+        segment = pool._get_nested_attribute(obj, "a")
+        assert segment is not None
+        assert isinstance(segment, StringSegment)
+        assert segment.value == ""
 
     #
     # get tests
@@ -61,3 +82,32 @@ class TestVariablePoolGetAndNestedAttribute:
 
         result = pool.get(("node1", "obj", "not_exist"))
         assert result is None
+
+    def test_get_nested_object_attribute_with_falsy_values(self):
+        pool = VariablePool.empty()
+        obj_value = {
+            "inner_none": None,
+            "inner_empty": "",
+            "inner_zero": 0,
+            "inner_false": False,
+        }
+        pool.add(("node1", "obj"), obj_value)
+
+        segment_none = pool.get(("node1", "obj", "inner_none"))
+        assert segment_none is not None
+        assert isinstance(segment_none, NoneSegment)
+
+        segment_empty = pool.get(("node1", "obj", "inner_empty"))
+        assert segment_empty is not None
+        assert isinstance(segment_empty, StringSegment)
+        assert segment_empty.value == ""
+
+        segment_zero = pool.get(("node1", "obj", "inner_zero"))
+        assert segment_zero is not None
+        assert isinstance(segment_zero, IntegerSegment)
+        assert segment_zero.value == 0
+
+        segment_false = pool.get(("node1", "obj", "inner_false"))
+        assert segment_false is not None
+        assert isinstance(segment_false, BooleanSegment)
+        assert segment_false.value is False
