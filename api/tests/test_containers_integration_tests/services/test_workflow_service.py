@@ -44,29 +44,31 @@ class TestWorkflowService:
             Account: Created test account instance
         """
         fake = fake or Faker()
-        account = Account()
-        account.id = fake.uuid4()
-        account.email = fake.email()
-        account.name = fake.name()
-        account.avatar_url = fake.url()
-        account.tenant_id = fake.uuid4()
-        account.status = "active"
-        account.type = "normal"
-        account.role = "owner"
-        account.interface_language = "en-US"  # Set interface language for Site creation
-        account.created_at = fake.date_time_this_year()
-        account.updated_at = account.created_at
+        account = Account(
+            id=fake.uuid4(),
+            email=fake.email(),
+            name=fake.name(),
+            avatar_url=fake.url(),
+            tenant_id=fake.uuid4(),
+            status="active",
+            type="normal",
+            role="owner",
+            interface_language="en-US",  # Set interface language for Site creation
+            created_at=fake.date_time_this_year(),
+            updated_at=account.created_at,
+        )
 
         # Create a tenant for the account
         from models.account import Tenant
 
-        tenant = Tenant()
-        tenant.id = account.tenant_id
-        tenant.name = f"Test Tenant {fake.company()}"
-        tenant.plan = "basic"
-        tenant.status = "active"
-        tenant.created_at = fake.date_time_this_year()
-        tenant.updated_at = tenant.created_at
+        tenant = Tenant(
+            id=account.tenant_id,
+            name=f"Test Tenant {fake.company()}",
+            plan="basic",
+            status="active",
+            created_at=fake.date_time_this_year(),
+            updated_at=tenant.created_at,
+        )
 
         from extensions.ext_database import db
 
@@ -91,20 +93,21 @@ class TestWorkflowService:
             App: Created test app instance
         """
         fake = fake or Faker()
-        app = App()
-        app.id = fake.uuid4()
-        app.tenant_id = fake.uuid4()
-        app.name = fake.company()
-        app.description = fake.text()
-        app.mode = AppMode.WORKFLOW
-        app.icon_type = "emoji"
-        app.icon = "🤖"
-        app.icon_background = "#FFEAD5"
-        app.enable_site = True
-        app.enable_api = True
-        app.created_by = fake.uuid4()
-        app.updated_by = app.created_by
-        app.workflow_id = None  # Will be set when workflow is created
+        app = App(
+            id=fake.uuid4(),
+            tenant_id=fake.uuid4(),
+            name=fake.company(),
+            description=fake.text(),
+            mode=AppMode.WORKFLOW,
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FFEAD5",
+            enable_site=True,
+            enable_api=True,
+            created_by=fake.uuid4(),
+            updated_by=app.created_by,
+            workflow_id=None,  # Will be set when workflow is created
+        )
 
         from extensions.ext_database import db
 
@@ -126,19 +129,20 @@ class TestWorkflowService:
             Workflow: Created test workflow instance
         """
         fake = fake or Faker()
-        workflow = Workflow()
-        workflow.id = fake.uuid4()
-        workflow.tenant_id = app.tenant_id
-        workflow.app_id = app.id
-        workflow.type = WorkflowType.WORKFLOW.value
-        workflow.version = Workflow.VERSION_DRAFT
-        workflow.graph = json.dumps({"nodes": [], "edges": []})
-        workflow.features = json.dumps({"features": []})
-        # unique_hash is a computed property based on graph and features
-        workflow.created_by = account.id
-        workflow.updated_by = account.id
-        workflow.environment_variables = []
-        workflow.conversation_variables = []
+        workflow = Workflow(
+            id=fake.uuid4(),
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps({"features": []}),
+            # unique_hash is a computed property based on graph and features
+            created_by=account.id,
+            updated_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+        )
 
         from extensions.ext_database import db
 
