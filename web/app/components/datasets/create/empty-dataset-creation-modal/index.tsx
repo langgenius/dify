@@ -11,6 +11,7 @@ import Button from '@/app/components/base/button'
 
 import { ToastContext } from '@/app/components/base/toast'
 import { createEmptyDataset } from '@/service/datasets'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 type IProps = {
   show: boolean
@@ -25,6 +26,7 @@ const EmptyDatasetCreationModal = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const router = useRouter()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const submit = async () => {
     if (!inputValue) {
@@ -37,6 +39,7 @@ const EmptyDatasetCreationModal = ({
     }
     try {
       const dataset = await createEmptyDataset({ name: inputValue })
+      invalidDatasetList()
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
     }

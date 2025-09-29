@@ -98,6 +98,9 @@ const translation = {
       upload_file: '文件上传',
       notion: '从 Notion 同步的文档',
       github: '从 Github 同步的代码',
+      local_file: '本地文件',
+      website_crawl: '网站爬取',
+      online_document: '在线文档',
     },
     type: {
       book: '书籍',
@@ -314,6 +317,7 @@ const translation = {
     },
   },
   embedding: {
+    waiting: '嵌入等待中...',
     processing: '嵌入处理中...',
     paused: '嵌入已停止',
     completed: '嵌入已完成',

@@ -1,8 +1,10 @@
+import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from typing import Literal, cast
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal, marshal_with, reqparse
@@ -53,6 +55,7 @@ from fields.document_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 
@@ -209,13 +212,13 @@ class DatasetDocumentListApi(Resource):
 
         if sort == "hit_count":
             sub_query = (
-                db.select(DocumentSegment.document_id, db.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
                 .group_by(DocumentSegment.document_id)
                 .subquery()
             )
 
             query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
-                sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)),
+                sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
                 sort_logic(Document.position),
             )
         elif sort == "created_at":
@@ -542,6 +545,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION.value,
                     notion_info={
+                        "credential_id": data_source_info["credential_id"],
                         "notion_workspace_id": data_source_info["notion_workspace_id"],
                         "notion_obj_id": data_source_info["notion_page_id"],
                         "notion_page_type": data_source_info["type"],
@@ -716,7 +720,7 @@ class DocumentApi(DocumentResource):
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -1108,3 +1112,39 @@ class WebsiteDocumentSyncApi(DocumentResource):
         DocumentService.sync_website_document(dataset_id, document)
 
         return {"result": "success"}, 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
+class DocumentPipelineExecutionLogApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        log = (
+            db.session.query(DocumentPipelineExecutionLog)
+            .filter_by(document_id=document_id)
+            .order_by(DocumentPipelineExecutionLog.created_at.desc())
+            .first()
+        )
+        if not log:
+            return {
+                "datasource_info": None,
+                "datasource_type": None,
+                "input_data": None,
+                "datasource_node_id": None,
+            }, 200
+        return {
+            "datasource_info": json.loads(log.datasource_info),
+            "datasource_type": log.datasource_type,
+            "input_data": log.input_data,
+            "datasource_node_id": log.datasource_node_id,
+        }, 200

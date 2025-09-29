@@ -1,7 +1,6 @@
-from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, field_validator
 
 from core.variables.types import SegmentType
 from core.workflow.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
@@ -39,15 +38,18 @@ class LoopVariableData(BaseModel):
 
 
 class LoopNodeData(BaseLoopNodeData):
-    """
-    Loop Node Data.
-    """
-
     loop_count: int  # Maximum number of loops
     break_conditions: list[Condition]  # Conditions to break the loop
     logical_operator: Literal["and", "or"]
     loop_variables: list[LoopVariableData] | None = Field(default_factory=list[LoopVariableData])
-    outputs: Mapping[str, Any] | None = None
+    outputs: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("outputs", mode="before")
+    @classmethod
+    def validate_outputs(cls, v):
+        if v is None:
+            return {}
+        return v
 
 
 class LoopStartNodeData(BaseNodeData):
@@ -72,7 +74,7 @@ class LoopState(BaseLoopState):
     """
 
     outputs: list[Any] = Field(default_factory=list)
-    current_output: Any | None = None
+    current_output: Any = None
 
     class MetaData(BaseLoopState.MetaData):
         """
@@ -81,7 +83,7 @@ class LoopState(BaseLoopState):
 
         loop_length: int
 
-    def get_last_output(self) -> Any | None:
+    def get_last_output(self) -> Any:
         """
         Get last output.
         """
@@ -89,7 +91,7 @@ class LoopState(BaseLoopState):
             return self.outputs[-1]
         return None
 
-    def get_current_output(self) -> Any | None:
+    def get_current_output(self) -> Any:
         """
         Get current output.
         """

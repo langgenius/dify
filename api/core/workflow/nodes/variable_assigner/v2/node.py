@@ -7,11 +7,10 @@ from core.variables import SegmentType, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
@@ -53,8 +52,8 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
     mapping[key] = selector
 
 
-class VariableAssignerNode(BaseNode):
-    _node_type = NodeType.VARIABLE_ASSIGNER
+class VariableAssignerNode(Node):
+    node_type = NodeType.VARIABLE_ASSIGNER
 
     _node_data: VariableAssignerNodeData
 
@@ -78,6 +77,23 @@ class VariableAssignerNode(BaseNode):
 
     def get_base_node_data(self) -> BaseNodeData:
         return self._node_data
+
+    def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
+        """
+        Check if this Variable Assigner node blocks the output of specific variables.
+
+        Returns True if this node updates any of the requested conversation variables.
+        """
+        # Check each item in this Variable Assigner node
+        for item in self._node_data.items:
+            # Convert the item's variable_selector to tuple for comparison
+            item_selector_tuple = tuple(item.variable_selector)
+
+            # Check if this item updates any of the requested variables
+            if item_selector_tuple in variable_selectors:
+                return True
+
+        return False
 
     def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
         return conversation_variable_updater_factory()
@@ -258,5 +274,3 @@ class VariableAssignerNode(BaseNode):
                 if not variable.value:
                     return variable.value
                 return variable.value[:-1]
-            case _:
-                raise OperationNotSupportedError(operation=operation, variable_type=variable.value_type)
