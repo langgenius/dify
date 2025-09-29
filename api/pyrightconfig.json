@@ -6,7 +6,6 @@
     "migrations/",
     "core/rag",
     "extensions",
-    "libs",
     "controllers/console/datasets",
     "core/ops",
     "core/model_runtime",
