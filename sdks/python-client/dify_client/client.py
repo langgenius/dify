@@ -160,14 +160,11 @@ class ChatClient(DifyClient):
     def annotation_reply_action(
         self,
         action: Literal["enable", "disable"],
-        score_threshold: float = None,
-        embedding_provider_name: str = None,
-        embedding_model_name: str = None,
+        score_threshold: float,
+        embedding_provider_name: str,
+        embedding_model_name: str,
     ):
         """Enable or disable annotation reply feature."""
-        # Backend API requires these fields for both enable and disable actions
-        if score_threshold is None or embedding_provider_name is None or embedding_model_name is None:
-            raise ValueError("score_threshold, embedding_provider_name, and embedding_model_name are required")
 
         data = {
             "score_threshold": score_threshold,
@@ -176,7 +173,7 @@ class ChatClient(DifyClient):
         }
         return self._send_request("POST", f"/apps/annotation-reply/{action}", json=data)
 
-    def get_annotation_reply_status(self, action: str, job_id: str):
+    def get_annotation_reply_status(self, action: Literal["enable", "disable"], job_id: str):
         """Get the status of an annotation reply action job."""
         return self._send_request("GET", f"/apps/annotation-reply/{action}/status/{job_id}")
 
@@ -214,7 +211,7 @@ class WorkflowClient(DifyClient):
     def get_result(self, workflow_run_id):
         return self._send_request("GET", f"/workflows/run/{workflow_run_id}")
 
-    def get_workflow_logs(self, keyword: str = None, status: str = None, page: int = 1, limit: int = 20):
+    def get_workflow_logs(self, keyword: str = None, status: Literal["succeeded", "failed", "stopped"] | None = None, page: int = 1, limit: int = 20):
         """Get workflow execution logs."""
         params = {"page": page, "limit": limit}
         if keyword:

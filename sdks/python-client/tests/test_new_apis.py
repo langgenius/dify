@@ -296,13 +296,10 @@ class TestNewServiceAPIs(unittest.TestCase):
         """Test error handling for required parameters."""
         client = ChatClient(self.api_key, self.base_url)
 
-        # Test annotation_reply_action with missing required parameters for enable action
-        with self.assertRaises(ValueError) as context:
+        # Test annotation_reply_action with missing required parameters would be a TypeError now
+        # since parameters are required in method signature
+        with self.assertRaises(TypeError):
             client.annotation_reply_action("enable")
-
-        self.assertIn(
-            "score_threshold, embedding_provider_name, and embedding_model_name are required", str(context.exception)
-        )
 
         # Test KnowledgeBaseClient without dataset_id
         kb_client = KnowledgeBaseClient(self.api_key, self.base_url)
