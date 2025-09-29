@@ -51,7 +51,7 @@ class TestWorkflowService:
             status="active",
             interface_language="en-US",  # Set interface language for Site creation
         )
-        account.created_at = (fake.date_time_this_year(),)
+        account.created_at = fake.date_time_this_year()
         account.id = fake.uuid4()
         account.updated_at = account.created_at
 
