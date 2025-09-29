@@ -9,7 +9,6 @@
     "libs",
     "controllers/console/datasets",
     "controllers/service_api/dataset",
-    "core/ops",
     "core/tools",
     "core/model_runtime",
     "core/workflow/nodes",
