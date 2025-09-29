@@ -527,6 +527,7 @@ const translation = {
       editModelCredential: 'Modificare le credenziali del modello',
     },
     parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
+    installDataSourceProvider: 'Installa i fornitori di sorgenti dati',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
