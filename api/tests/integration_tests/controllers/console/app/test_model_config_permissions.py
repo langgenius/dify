@@ -9,8 +9,8 @@ from flask.testing import FlaskClient
 from controllers.console.app import model_config as model_config_api
 from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
-from models import Account, App, Tenant
-from models.account import TenantAccountRole
+from models import App, Tenant
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.model import AppMode
 from services.app_model_config_service import AppModelConfigService
 
@@ -30,9 +30,8 @@ class TestModelConfigResourcePermissions:
         return app
 
     @pytest.fixture
-    def mock_account(self):
+    def mock_account(self, monkeypatch):
         """Create a mock Account for testing."""
-
         account = Account()
         account.id = str(uuid.uuid4())
         account.name = "Test User"
@@ -41,12 +40,24 @@ class TestModelConfigResourcePermissions:
         account.created_at = naive_utc_now()
         account.updated_at = naive_utc_now()
 
-        # Create mock tenant
         tenant = Tenant()
         tenant.id = str(uuid.uuid4())
         tenant.name = "Test Tenant"
 
-        account._current_tenant = tenant
+        mock_session_instance = mock.Mock()
+
+        mock_tenant_join = TenantAccountJoin(role=TenantAccountRole.OWNER)
+        monkeypatch.setattr(mock_session_instance, "scalar", mock.Mock(return_value=mock_tenant_join))
+
+        mock_scalars_result = mock.Mock()
+        mock_scalars_result.one.return_value = tenant
+        monkeypatch.setattr(mock_session_instance, "scalars", mock.Mock(return_value=mock_scalars_result))
+
+        mock_session_context = mock.Mock()
+        mock_session_context.__enter__.return_value = mock_session_instance
+        monkeypatch.setattr("models.account.Session", lambda _, expire_on_commit: mock_session_context)
+
+        account.current_tenant = tenant
         return account
 
     @pytest.mark.parametrize(
