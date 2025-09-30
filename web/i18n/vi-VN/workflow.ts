@@ -942,6 +942,9 @@ const translation = {
       indexMethodIsRequired: 'Phương pháp chỉ mục là bắt buộc',
       chunksInput: 'Mảnh',
       chunksInputTip: 'Biến đầu vào của nút cơ sở tri thức là Chunks. Loại biến là một đối tượng với một JSON Schema cụ thể mà phải nhất quán với cấu trúc chunk đã chọn.',
+      chunksVariableIsRequired: 'Biến Chunks là bắt buộc',
+      embeddingModelIsRequired: 'Cần có mô hình nhúng',
+      rerankingModelIsRequired: 'Cần có mô hình sắp xếp lại',
     },
   },
   tracing: {

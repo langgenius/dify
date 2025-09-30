@@ -1028,7 +1028,10 @@ const translation = {
       aboutRetrieval: 'about retrieval method.',
       chunkIsRequired: 'Chunk structure is required',
       indexMethodIsRequired: 'Index method is required',
+      chunksVariableIsRequired: 'Chunks variable is required',
+      embeddingModelIsRequired: 'Embedding model is required',
       retrievalSettingIsRequired: 'Retrieval setting is required',
+      rerankingModelIsRequired: 'Reranking model is required',
     },
     triggerSchedule: {
       title: 'Schedule',

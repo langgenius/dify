@@ -485,6 +485,7 @@ const translation = {
     emptyProviderTitle: 'モデルプロバイダーが設定されていません',
     discoverMore: 'もっと発見する',
     installProvider: 'モデルプロバイダーをインストールする',
+    installDataSourceProvider: 'データソースプロバイダーをインストールする',
     configureTip: 'API キーを設定するか、使用するモデルを追加してください',
     toBeConfigured: '設定中',
     emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',

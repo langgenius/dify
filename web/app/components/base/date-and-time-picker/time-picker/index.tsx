@@ -29,7 +29,7 @@ const TimePicker = ({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isInitial = useRef(true)
-  const [selectedTime, setSelectedTime] = useState(value ? getDateWithTimezone({ timezone, date: value }) : undefined)
+  const [selectedTime, setSelectedTime] = useState(() => value ? getDateWithTimezone({ timezone, date: value }) : undefined)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

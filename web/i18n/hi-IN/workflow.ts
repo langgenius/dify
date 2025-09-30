@@ -962,6 +962,9 @@ const translation = {
       chooseChunkStructure: 'एक चंक संरचना चुनें',
       chunksInput: 'टुकड़े',
       chunksInputTip: 'ज्ञान आधार नोड का इनपुट वेरिएबल चंक्स है। वेरिएबल प्रकार एक ऑब्जेक्ट है जिसमें एक विशेष JSON स्कीमा है जो चयनित चंक संरचना के साथ सुसंगत होना चाहिए।',
+      chunksVariableIsRequired: 'Chunks चर आवश्यक है',
+      embeddingModelIsRequired: 'एम्बेडिंग मॉडल आवश्यक है',
+      rerankingModelIsRequired: 'पुनः क्रमांकन मॉडल की आवश्यकता है',
     },
   },
   tracing: {

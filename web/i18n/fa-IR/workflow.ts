@@ -942,6 +942,9 @@ const translation = {
       chooseChunkStructure: 'یک ساختار تکه ای را انتخاب کنید',
       chunksInput: 'تکه‌ها',
       chunksInputTip: 'متغیر ورودی گره پایگاه دانش چانک‌ها است. نوع متغیر یک شیء با یک طرح JSON خاص است که باید با ساختار چانک انتخاب شده سازگار باشد.',
+      embeddingModelIsRequired: 'مدل جاسازی مورد نیاز است',
+      chunksVariableIsRequired: 'متغیر Chunks الزامی است',
+      rerankingModelIsRequired: 'مدل رتبه‌بندی مجدد مورد نیاز است',
     },
   },
   tracing: {

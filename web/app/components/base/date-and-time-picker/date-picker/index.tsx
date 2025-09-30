@@ -56,8 +56,8 @@ const DatePicker = ({
   const [currentDate, setCurrentDate] = useState(inputValue || defaultValue)
   const [selectedDate, setSelectedDate] = useState(inputValue)
 
-  const [selectedMonth, setSelectedMonth] = useState((inputValue || defaultValue).month())
-  const [selectedYear, setSelectedYear] = useState((inputValue || defaultValue).year())
+  const [selectedMonth, setSelectedMonth] = useState(() => (inputValue || defaultValue).month())
+  const [selectedYear, setSelectedYear] = useState(() => (inputValue || defaultValue).year())
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

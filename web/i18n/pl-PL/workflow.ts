@@ -942,6 +942,9 @@ const translation = {
       chunkIsRequired: 'Wymagana jest struktura porcji',
       chunksInput: 'Kawałki',
       chunksInputTip: 'Zmienna wejściowa węzła bazy wiedzy to Chunks. Typ zmiennej to obiekt z określonym schematem JSON, który musi być zgodny z wybraną strukturą chunk.',
+      embeddingModelIsRequired: 'Wymagany jest model osadzania',
+      chunksVariableIsRequired: 'Wymagana jest zmienna Chunks',
+      rerankingModelIsRequired: 'Wymagany jest model ponownego rankingu',
     },
   },
   tracing: {

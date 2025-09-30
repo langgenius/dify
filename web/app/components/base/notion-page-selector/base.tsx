@@ -93,7 +93,7 @@ const NotionPageSelector = ({
   const defaultSelectedPagesId = useMemo(() => {
     return [...Array.from(pagesMapAndSelectedPagesId[1]), ...(value || [])]
   }, [pagesMapAndSelectedPagesId, value])
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
+  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(() => new Set(defaultSelectedPagesId))
 
   useEffect(() => {
     setSelectedPagesId(new Set(defaultSelectedPagesId))
