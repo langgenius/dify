@@ -1,4 +1,5 @@
 import posixpath
+import typing
 from collections.abc import Generator
 
 import oss2 as aliyun_s3  # type: ignore
@@ -33,7 +34,7 @@ class AliyunOssStorage(BaseStorage):
 
     def load_once(self, filename: str) -> bytes:
         obj = self.client.get_object(self.__wrapper_folder_filename(filename))
-        data: bytes = obj.read()
+        data: bytes = typing.cast(bytes, obj.read())
         return data
 
     def load_stream(self, filename: str) -> Generator:

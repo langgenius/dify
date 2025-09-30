@@ -1,3 +1,4 @@
+import typing
 from collections.abc import Generator
 from datetime import timedelta
 
@@ -39,7 +40,7 @@ class AzureBlobStorage(BaseStorage):
         client = self._sync_client()
         blob = client.get_container_client(container=self.bucket_name)
         blob = blob.get_blob_client(blob=filename)
-        data: bytes = blob.download_blob().readall()
+        data: bytes = typing.cast(bytes, blob.download_blob().readall())
         return data
 
     def load_stream(self, filename: str) -> Generator:

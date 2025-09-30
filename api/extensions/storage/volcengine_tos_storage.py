@@ -11,6 +11,18 @@ class VolcengineTosStorage(BaseStorage):
 
     def __init__(self):
         super().__init__()
+
+        if not dify_config.VOLCENGINE_TOS_ACCESS_KEY:
+            raise ValueError("VOLCENGINE_TOS_ACCESS_KEY is not set")
+        if not dify_config.VOLCENGINE_TOS_SECRET_KEY:
+            raise ValueError("VOLCENGINE_TOS_SECRET_KEY is not set")
+        if not dify_config.VOLCENGINE_TOS_ENDPOINT:
+            raise ValueError("VOLCENGINE_TOS_ENDPOINT is not set")
+        if not dify_config.VOLCENGINE_TOS_REGION:
+            raise ValueError("VOLCENGINE_TOS_REGION is not set")
+        if not dify_config.VOLCENGINE_TOS_BUCKET_NAME:
+            raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
+
         self.bucket_name = dify_config.VOLCENGINE_TOS_BUCKET_NAME
         self.client = tos.TosClientV2(
             ak=dify_config.VOLCENGINE_TOS_ACCESS_KEY,

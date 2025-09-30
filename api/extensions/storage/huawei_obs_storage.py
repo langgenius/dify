@@ -45,7 +45,8 @@ class HuaweiObsStorage(BaseStorage):
 
     def _get_meta(self, filename):
         res = self.client.getObjectMetadata(bucketName=self.bucket_name, objectKey=filename)
-        if res.status < 300:
-            return res
-        else:
-            return None
+        if res:
+            status = getattr(res, "status", None)
+            if status is not None and status < 300:
+                return res
+        return None
