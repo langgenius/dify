@@ -586,6 +586,7 @@ const translation = {
       customModelCredentials: 'Poverilnice modela po meri',
     },
     parametersInvalidRemoved: 'Nekateri parametri so neveljavni in so bili odstranjeni.',
+    installDataSourceProvider: 'Namestite ponudnike podatkovnih virov',
   },
   dataSource: {
     notion: {

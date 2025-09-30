@@ -55,6 +55,7 @@ from fields.document_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models.account import Account
 from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
@@ -418,7 +419,9 @@ class DatasetInitApi(Resource):
 
         try:
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
-                tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
+                tenant_id=current_user.current_tenant_id,
+                knowledge_config=knowledge_config,
+                account=cast(Account, current_user),
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -452,7 +455,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.dataset_process_rule
-        data_process_rule_dict = data_process_rule.to_dict()
+        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
 
         response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
 
@@ -514,7 +517,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         if not documents:
             return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
-        data_process_rule_dict = data_process_rule.to_dict()
+        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
         extract_settings = []
         for document in documents:
             if document.indexing_status in {"completed", "error"}:
@@ -757,7 +760,7 @@ class DocumentApi(DocumentResource):
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -1077,7 +1080,9 @@ class DocumentRenameApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
-        DatasetService.check_dataset_operator_permission(current_user, dataset)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        DatasetService.check_dataset_operator_permission(cast(Account, current_user), dataset)
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()

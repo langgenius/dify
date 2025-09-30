@@ -20,13 +20,13 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 logger = logging.getLogger(__name__)
 
 
-def _validate_name(name):
+def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError("Name must be between 1 to 40 characters.")
     return name
 
 
-def _validate_description_length(description):
+def _validate_description_length(description: str) -> str:
     if len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
@@ -76,7 +76,7 @@ class CustomizedPipelineTemplateApi(Resource):
         )
         parser.add_argument(
             "description",
-            type=str,
+            type=_validate_description_length,
             nullable=True,
             required=False,
             default="",
@@ -133,7 +133,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
         )
         parser.add_argument(
             "description",
-            type=str,
+            type=_validate_description_length,
             nullable=True,
             required=False,
             default="",

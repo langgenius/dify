@@ -108,19 +108,21 @@ class DocumentAddByTextApi(DatasetApiResource):
         if text is None or name is None:
             raise ValueError("Both 'text' and 'name' must be non-null values.")
 
-        if args.get("embedding_model_provider"):
-            DatasetService.check_embedding_model_setting(
-                tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
-            )
+        embedding_model_provider = args.get("embedding_model_provider")
+        embedding_model = args.get("embedding_model")
+        if embedding_model_provider and embedding_model:
+            DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
+
+        retrieval_model = args.get("retrieval_model")
         if (
-            args.get("retrieval_model")
-            and args.get("retrieval_model").get("reranking_model")
-            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+            retrieval_model
+            and retrieval_model.get("reranking_model")
+            and retrieval_model.get("reranking_model").get("reranking_provider_name")
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+                retrieval_model.get("reranking_model").get("reranking_provider_name"),
+                retrieval_model.get("reranking_model").get("reranking_model_name"),
             )
 
         if not current_user:
@@ -187,15 +189,16 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
+        retrieval_model = args.get("retrieval_model")
         if (
-            args.get("retrieval_model")
-            and args.get("retrieval_model").get("reranking_model")
-            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+            retrieval_model
+            and retrieval_model.get("reranking_model")
+            and retrieval_model.get("reranking_model").get("reranking_provider_name")
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+                retrieval_model.get("reranking_model").get("reranking_provider_name"),
+                retrieval_model.get("reranking_model").get("reranking_model_name"),
             )
 
         # indexing_technique is already set in dataset since this is an update

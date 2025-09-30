@@ -501,6 +501,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Acreditarea este în uz și nu poate fi ștearsă',
     },
     parametersInvalidRemoved: 'Unele parametrii sunt invalizi și au fost eliminați.',
+    installDataSourceProvider: 'Instalați furnizorii de surse de date',
   },
   dataSource: {
     add: 'Adăugați o sursă de date',
