@@ -121,41 +121,15 @@ class WorkspaceListApi(Resource):
 
 
 @console_ns.route("/workspaces/current")
-class TenantCurrentApi(Resource):
+@console_ns.route("/info")  # Deprecated
+class TenantApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(tenant_fields)
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        tenant = current_user.current_tenant
-        if not tenant:
-            raise ValueError("No current tenant")
-
-        if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user)
-            # if there is any tenant, switch to the first one
-            if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id)
-                tenant = tenants[0]
-            # else, raise Unauthorized
-            else:
-                raise Unauthorized("workspace is archived")
-
-        if not tenant:
-            raise ValueError("No tenant available")
-        return WorkspaceService.get_tenant_info(tenant), 200
-
-
-@console_ns.route("/info")
-class TenantInfoApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(tenant_fields)
-    def get(self):
-        logger.warning("Deprecated URL /info was used.")
+        if request.path == "/info":
+            logger.warning("Deprecated URL /info was used.")
 
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
@@ -173,8 +147,6 @@ class TenantInfoApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        if not tenant:
-            raise ValueError("No tenant available")
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
@@ -295,5 +267,3 @@ class WorkspaceInfoApi(Resource):
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
-
-
