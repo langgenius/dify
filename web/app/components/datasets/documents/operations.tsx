@@ -177,7 +177,7 @@ const Operations = ({
           popupClassName='text-text-secondary system-xs-medium'
           needsDelay={false}
         >
-          <button
+          <button type="button"
             className={cn('mr-2 cursor-pointer rounded-lg',
               !isListScene
                 ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'

@@ -39,7 +39,7 @@ export default function Select({
             <div className="px-1 py-1 ">
               {items.map((item) => {
                 return <MenuItem key={item.value}>
-                  <button
+                  <button type="button"
                     className={'group flex w-full items-center rounded-lg px-3 py-2 text-sm text-text-secondary data-[active]:bg-state-base-hover'}
                     onClick={(evt) => {
                       evt.preventDefault()
