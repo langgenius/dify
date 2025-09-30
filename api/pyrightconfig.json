@@ -6,8 +6,6 @@
     "migrations/",
     "core/rag",
     "extensions",
-    "core/ops",
-    "core/model_runtime",
     "core/workflow/nodes",
     "core/app/app_config/easy_ui_based_app/dataset"
   ],
