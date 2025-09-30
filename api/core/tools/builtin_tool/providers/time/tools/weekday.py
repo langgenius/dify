@@ -1,7 +1,7 @@
 import calendar
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -12,9 +12,9 @@ class WeekdayTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Calculate the day of the week for a given date

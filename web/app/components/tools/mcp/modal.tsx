@@ -65,7 +65,7 @@ const MCPModal = ({
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
   const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
@@ -102,7 +102,7 @@ const MCPModal = ({
 
   const isValidUrl = (string: string) => {
     try {
-      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(\:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
+      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
       return urlPattern.test(string)
     }
     catch {

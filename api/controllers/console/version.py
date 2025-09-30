@@ -1,7 +1,7 @@
 import json
 import logging
 
-import requests
+import httpx
 from flask_restx import Resource, fields, reqparse
 from packaging import version
 
@@ -57,7 +57,11 @@ class VersionApi(Resource):
             return result
 
         try:
-            response = requests.get(check_update_url, {"current_version": args["current_version"]}, timeout=(3, 10))
+            response = httpx.get(
+                check_update_url,
+                params={"current_version": args["current_version"]},
+                timeout=httpx.Timeout(connect=3, read=10),
+            )
         except Exception as error:
             logger.warning("Check update version error: %s.", str(error))
             result["version"] = args["current_version"]

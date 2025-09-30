@@ -2,7 +2,7 @@ import re
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from typing import Optional
+from typing import Any
 
 from flask import request
 from requests import get
@@ -128,34 +128,34 @@ class ApiBasedToolSchemaParser:
                                 if "allOf" in prop_dict:
                                     del prop_dict["allOf"]
 
-                    # parse body parameters
-                    if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
-                        body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]
-                        required = body_schema.get("required", [])
-                        properties = body_schema.get("properties", {})
-                        for name, property in properties.items():
-                            tool = ToolParameter(
-                                name=name,
-                                label=I18nObject(en_US=name, zh_Hans=name),
-                                human_description=I18nObject(
-                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
-                                ),
-                                type=ToolParameter.ToolParameterType.STRING,
-                                required=name in required,
-                                form=ToolParameter.ToolParameterForm.LLM,
-                                llm_description=property.get("description", ""),
-                                default=property.get("default", None),
-                                placeholder=I18nObject(
-                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
-                                ),
-                            )
+                        # parse body parameters
+                        if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
+                            body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]
+                            required = body_schema.get("required", [])
+                            properties = body_schema.get("properties", {})
+                            for name, property in properties.items():
+                                tool = ToolParameter(
+                                    name=name,
+                                    label=I18nObject(en_US=name, zh_Hans=name),
+                                    human_description=I18nObject(
+                                        en_US=property.get("description", ""), zh_Hans=property.get("description", "")
+                                    ),
+                                    type=ToolParameter.ToolParameterType.STRING,
+                                    required=name in required,
+                                    form=ToolParameter.ToolParameterForm.LLM,
+                                    llm_description=property.get("description", ""),
+                                    default=property.get("default", None),
+                                    placeholder=I18nObject(
+                                        en_US=property.get("description", ""), zh_Hans=property.get("description", "")
+                                    ),
+                                )
 
-                            # check if there is a type
-                            typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
-                            if typ:
-                                tool.type = typ
+                                # check if there is a type
+                                typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
+                                if typ:
+                                    tool.type = typ
 
-                            parameters.append(tool)
+                                parameters.append(tool)
 
             # check if parameters is duplicated
             parameters_count = {}
@@ -198,9 +198,9 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
-    def _get_tool_parameter_type(parameter: dict) -> Optional[ToolParameter.ToolParameterType]:
+    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: Optional[str] = None
+        typ: str | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 
@@ -242,7 +242,9 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None):
+    def parse_swagger_to_openapi(
+        swagger: dict, extra_info: dict | None = None, warning: dict | None = None
+    ) -> dict[str, Any]:
         warning = warning or {}
         """
         parse swagger to openapi
@@ -258,7 +260,7 @@ class ApiBasedToolSchemaParser:
         if len(servers) == 0:
             raise ToolApiSchemaError("No server found in the swagger yaml.")
 
-        openapi = {
+        converted_openapi: dict[str, Any] = {
             "openapi": "3.0.0",
             "info": {
                 "title": info.get("title", "Swagger"),
@@ -276,7 +278,7 @@ class ApiBasedToolSchemaParser:
 
         # convert paths
         for path, path_item in swagger["paths"].items():
-            openapi["paths"][path] = {}
+            converted_openapi["paths"][path] = {}
             for method, operation in path_item.items():
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
@@ -287,7 +289,7 @@ class ApiBasedToolSchemaParser:
                     if warning is not None:
                         warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
-                openapi["paths"][path][method] = {
+                converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],
                     "summary": operation.get("summary", ""),
                     "description": operation.get("description", ""),
@@ -296,13 +298,14 @@ class ApiBasedToolSchemaParser:
                 }
 
                 if "requestBody" in operation:
-                    openapi["paths"][path][method]["requestBody"] = operation["requestBody"]
+                    converted_openapi["paths"][path][method]["requestBody"] = operation["requestBody"]
 
         # convert definitions
-        for name, definition in swagger["definitions"].items():
-            openapi["components"]["schemas"][name] = definition
+        if "definitions" in swagger:
+            for name, definition in swagger["definitions"].items():
+                converted_openapi["components"]["schemas"][name] = definition
 
-        return openapi
+        return converted_openapi
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(

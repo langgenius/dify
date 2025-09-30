@@ -37,6 +37,14 @@ const translation = {
     helpText: 'เรียนรู้วิธีเขียนคําอธิบายชุดข้อมูลที่ดี',
     upgradeHighQualityTip: 'เมื่ออัปเกรดเป็นโหมดคุณภาพสูงแล้ว จะไม่สามารถเปลี่ยนกลับเป็นโหมดประหยัดได้',
     searchModel: 'ค้นหารุ่น',
+    chunkStructure: {
+      learnMore: 'ศึกษาเพิ่มเติม',
+      description: 'เกี่ยวกับ Chunk Structure',
+      title: 'โครงสร้างก้อน',
+    },
+    numberOfKeywords: 'จํานวนคําหลัก',
+    nameAndIcon: 'ชื่อ & ไอคอน',
+    onSearchResults: 'ไม่มีสมาชิกที่ตรงกับคําค้นหาของคุณ\nลองค้นหาอีกครั้ง',
   },
 }
 

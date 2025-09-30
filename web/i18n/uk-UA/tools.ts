@@ -244,6 +244,7 @@ const translation = {
       publishTip: 'Додаток не опубліковано. Спочатку опублікуйте додаток.',
     },
   },
+  allTools: 'Всі інструменти',
 }
 
 export default translation

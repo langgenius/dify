@@ -106,7 +106,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args["name"])
         return marshal(metadata, dataset_metadata_fields), 200
 
     @service_api_ns.doc("delete_dataset_metadata")
@@ -133,7 +133,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route("/datasets/metadata/built-in")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
     @service_api_ns.doc("get_built_in_fields")
     @service_api_ns.doc(description="Get all built-in metadata fields")
@@ -143,7 +143,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    def get(self, tenant_id):
+    def get(self, tenant_id, dataset_id):
         """Get all built-in metadata fields."""
         built_in_fields = MetadataService.get_built_in_fields()
         return {"fields": built_in_fields}, 200

@@ -88,6 +88,10 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
+class KnowledgePipeline(BaseModel):
+    publish_enabled: bool = False
+
+
 class PluginInstallationScope(StrEnum):
     NONE = "none"
     OFFICIAL_ONLY = "official_only"
@@ -126,6 +130,7 @@ class FeatureModel(BaseModel):
     is_allow_transfer_workspace: bool = True
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+    knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
 
 
 class KnowledgeRateLimitModel(BaseModel):
@@ -270,6 +275,9 @@ class FeatureService:
 
         if "knowledge_rate_limit" in billing_info:
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+
+        if "knowledge_pipeline_publish_enabled" in billing_info:
+            features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
