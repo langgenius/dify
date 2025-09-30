@@ -2,6 +2,7 @@ from flask import Blueprint, Flask
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, Unauthorized
 
+from controllers.console import console_ns
 from core.errors.error import AppInvokeQuotaExceededError
 from libs.external_api import ExternalApi
 
