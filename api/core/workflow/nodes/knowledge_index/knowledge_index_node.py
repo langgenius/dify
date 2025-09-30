@@ -136,6 +136,11 @@ class KnowledgeIndexNode(Node):
         document = db.session.query(Document).filter_by(id=document_id.value).first()
         if not document:
             raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")
+        doc_id_value = document.id
+        ds_id_value = dataset.id
+        dataset_name_value = dataset.name
+        document_name_value = document.name
+        created_at_value = document.created_at
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
@@ -161,16 +166,16 @@ class KnowledgeIndexNode(Node):
         document.word_count = (
             db.session.query(func.sum(DocumentSegment.word_count))
             .where(
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == doc_id_value,
+                DocumentSegment.dataset_id == ds_id_value,
             )
             .scalar()
         )
         db.session.add(document)
         # update document segment status
         db.session.query(DocumentSegment).where(
-            DocumentSegment.document_id == document.id,
-            DocumentSegment.dataset_id == dataset.id,
+            DocumentSegment.document_id == doc_id_value,
+            DocumentSegment.dataset_id == ds_id_value,
         ).update(
             {
                 DocumentSegment.status: "completed",
@@ -182,13 +187,13 @@ class KnowledgeIndexNode(Node):
         db.session.commit()
 
         return {
-            "dataset_id": dataset.id,
-            "dataset_name": dataset.name,
+            "dataset_id": ds_id_value,
+            "dataset_name": dataset_name_value,
             "batch": batch.value,
-            "document_id": document.id,
-            "document_name": document.name,
-            "created_at": document.created_at.timestamp(),
-            "display_status": document.indexing_status,
+            "document_id": doc_id_value,
+            "document_name": document_name_value,
+            "created_at": created_at_value.timestamp(),
+            "display_status": "completed",
         }
 
     def _get_preview_output(self, chunk_structure: str, chunks: Any) -> Mapping[str, Any]:
