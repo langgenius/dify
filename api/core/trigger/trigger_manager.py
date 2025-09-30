@@ -5,7 +5,7 @@ Trigger Manager for loading and managing trigger providers and triggers
 import logging
 from collections.abc import Mapping
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
 from flask import Request
 

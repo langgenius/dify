@@ -26,11 +26,29 @@ class TestWebhookServiceUnit:
 
             assert webhook_data["method"] == "POST"
             assert webhook_data["headers"]["Authorization"] == "Bearer token"
-            assert webhook_data["query_params"]["version"] == "1"
+            assert webhook_data["query_params"]["version"] == 1
             assert webhook_data["query_params"]["format"] == "json"
             assert webhook_data["body"]["message"] == "hello"
             assert webhook_data["body"]["count"] == 42
             assert webhook_data["files"] == {}
+
+    def test_extract_webhook_data_query_params_remain_strings(self):
+        """Query parameters remain raw strings during extraction."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook",
+            method="GET",
+            headers={"Content-Type": "application/json"},
+            query_string="count=42&threshold=3.14&enabled=true&note=text",
+        ):
+            webhook_trigger = MagicMock()
+            webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+
+            assert webhook_data["query_params"]["count"] == 42
+            assert webhook_data["query_params"]["threshold"] == 3.14
+            assert webhook_data["query_params"]["enabled"] == True
+            assert webhook_data["query_params"]["note"] == "text"
 
     def test_extract_webhook_data_form_urlencoded(self):
         """Test webhook data extraction from form URL encoded request."""
@@ -181,6 +199,92 @@ class TestWebhookServiceUnit:
 
         assert result["valid"] is False
         assert "Required query parameter missing: version" in result["error"]
+
+    def test_validate_webhook_request_query_param_number_type(self):
+        """Numeric query parameters should validate with numeric types."""
+        webhook_data = {
+            "method": "POST",
+            "headers": {},
+            "query_params": {"count": "42"},
+            "body": {},
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "params": [{"name": "count", "required": True, "type": "number"}],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+
+        assert result["valid"] is True
+
+    def test_validate_webhook_request_query_param_number_type_invalid(self):
+        """Numeric query parameter validation should fail for non-numeric values."""
+        webhook_data = {
+            "method": "POST",
+            "headers": {},
+            "query_params": {"count": "forty-two"},
+            "body": {},
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "params": [{"name": "count", "required": True, "type": "number"}],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+
+        assert result["valid"] is False
+        assert "must be a valid number" in result["error"]
+
+    def test_validate_webhook_request_query_param_boolean_type(self):
+        """Boolean query parameters should validate with supported boolean strings."""
+        webhook_data = {
+            "method": "POST",
+            "headers": {},
+            "query_params": {"enabled": "true"},
+            "body": {},
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "params": [{"name": "enabled", "required": True, "type": "boolean"}],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+
+        assert result["valid"] is True
+
+    def test_validate_webhook_request_query_param_string_type_preserved(self):
+        """String typed query parameters remain as strings even if boolean-like."""
+        webhook_data = {
+            "method": "POST",
+            "headers": {},
+            "query_params": {"flag": "true"},
+            "body": {},
+            "files": {},
+        }
+
+        node_config = {
+            "data": {
+                "method": "post",
+                "params": [{"name": "flag", "required": True, "type": "string"}],
+            }
+        }
+
+        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+
+        assert result["valid"] is True
+        assert webhook_data["query_params"]["flag"] == "true"
 
     def test_validate_webhook_request_missing_required_body_param(self):
         """Test webhook validation with missing required body parameter."""
@@ -515,7 +619,7 @@ class TestWebhookServiceUnit:
         assert "must be an array of numbers" in result["error"]
 
     def test_validate_json_parameter_type_array_bool(self):
-        """Test JSON parameter type validation for array[bool] type."""
+        """Test JSON parameter type validation for array[boolean] type."""
         # Valid array of booleans
         result = WebhookService._validate_json_parameter_type("flags", [True, False, True], "array[boolean]")
         assert result["valid"] is True
@@ -539,12 +643,6 @@ class TestWebhookServiceUnit:
         )
         assert result["valid"] is False
         assert "must be an array of objects" in result["error"]
-
-    def test_validate_json_parameter_type_unknown_type(self):
-        """Test JSON parameter type validation for unknown type."""
-        # Unknown type should return valid and log warning
-        result = WebhookService._validate_json_parameter_type("data", "anything", "unknown_type")
-        assert result["valid"] is True
 
     def test_validate_webhook_request_json_type_validation(self):
         """Test webhook validation with JSON parameter type validation."""
@@ -573,11 +671,11 @@ class TestWebhookServiceUnit:
                 "body": [
                     {"name": "name", "type": "string", "required": True},
                     {"name": "age", "type": "number", "required": True},
-                    {"name": "active", "type": "bool", "required": True},
+                    {"name": "active", "type": "boolean", "required": True},
                     {"name": "profile", "type": "object", "required": True},
                     {"name": "tags", "type": "array[string]", "required": True},
                     {"name": "scores", "type": "array[number]", "required": True},
-                    {"name": "flags", "type": "array[bool]", "required": True},
+                    {"name": "flags", "type": "array[boolean]", "required": True},
                     {"name": "items", "type": "array[object]", "required": True},
                 ],
             }

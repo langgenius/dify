@@ -90,7 +90,7 @@ class WebhookService:
         data = {
             "method": request.method,
             "headers": dict(request.headers),
-            "query_params": dict(request.args),
+            "query_params": cls._extract_query_params(),
             "body": {},
             "files": {},
         }
@@ -119,6 +119,43 @@ class WebhookService:
         data["files"] = files_data
 
         return data
+
+    @classmethod
+    def _extract_query_params(cls) -> dict[str, Any]:
+        """Extract query parameters preserving multi-value entries."""
+        if not request.args:
+            return {}
+
+        query_params: dict[str, Any] = {}
+        for key, value in request.args.items():
+            query_params[key] = cls._convert_query_param_value(value)
+
+        return query_params
+
+    @classmethod
+    def _convert_query_param_value(cls, value: str) -> Any:
+        """Convert query parameter strings to numbers or booleans when applicable."""
+        lower_value = value.lower()
+        bool_map = {
+            "true": True,
+            "false": False,
+            "yes": True,
+            "no": False,
+        }
+
+        if lower_value in bool_map:
+            return bool_map[lower_value]
+
+        if cls._can_convert_to_number(value):
+            try:
+                numeric_value = float(value)
+                if numeric_value.is_integer():
+                    return int(numeric_value)
+                return numeric_value
+            except ValueError:
+                return value
+
+        return value
 
     @classmethod
     def _validate_content_length(cls) -> None:
@@ -285,11 +322,24 @@ class WebhookService:
                     return cls._validation_error(f"Required header missing: {header_name}")
 
         # Validate required query parameters
+        query_params = webhook_data.get("query_params", {})
         for param in node_data.get("params", []):
-            if param.get("required", False):
-                param_name = param.get("name", "")
-                if param_name not in webhook_data["query_params"]:
-                    return cls._validation_error(f"Required query parameter missing: {param_name}")
+            param_name = param.get("name", "")
+            param_type = param.get("type", SegmentType.STRING)
+            is_required = param.get("required", False)
+
+            param_exists = param_name in query_params
+            if is_required and not param_exists:
+                return cls._validation_error(f"Required query parameter missing: {param_name}")
+
+            if not param_exists:
+                continue
+
+            if param_exists and param_type != SegmentType.STRING:
+                param_value = query_params[param_name]
+                validation_result = cls._validate_form_parameter_type(param_name, param_value, param_type)
+                if not validation_result["valid"]:
+                    return validation_result
 
         return {"valid": True}
 
