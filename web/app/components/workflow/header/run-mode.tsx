@@ -28,9 +28,9 @@ const RunMode = ({
   const { handleStopRun } = useWorkflowRun()
   const { validateBeforeRun } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isListening = useStore(s => s.isListening)
 
   const status = workflowRunningData?.result.status
-  const isListening = status === WorkflowRunningStatus.Listening
   const isRunning = status === WorkflowRunningStatus.Running || isListening
 
   const dynamicOptions = useDynamicTestRunOptions()

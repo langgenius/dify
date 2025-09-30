@@ -13,6 +13,8 @@ type PreviewRunningData = WorkflowRunningData & {
 export type WorkflowSliceShape = {
   workflowRunningData?: PreviewRunningData
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
+  isListening: boolean
+  setIsListening: (listening: boolean) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
@@ -36,6 +38,8 @@ export type WorkflowSliceShape = {
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   workflowRunningData: undefined,
   setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
+  isListening: false,
+  setIsListening: listening => set(() => ({ isListening: listening })),
   clipboardElements: [],
   setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
   selection: null,

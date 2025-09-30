@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import StatusPanel from './status'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import TracingPanel from './tracing-panel'
 import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
@@ -13,14 +14,14 @@ import Loading from '@/app/components/base/loading'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useStore } from '../store'
+
 export type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
-  statusHint?: string
 }
 
 const RunPanel: FC<RunProps> = ({
@@ -29,7 +30,6 @@ const RunPanel: FC<RunProps> = ({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
-  statusHint,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -37,6 +37,7 @@ const RunPanel: FC<RunProps> = ({
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
+  const isListening = useStore(s => s.isListening)
 
   const executor = useMemo(() => {
     if (runDetail?.created_by_role === 'account')
@@ -91,17 +92,15 @@ const RunPanel: FC<RunProps> = ({
   }
 
   useEffect(() => {
+    if (isListening)
+      setCurrentTab('DETAIL')
+  }, [isListening])
+
+  useEffect(() => {
     // fetch data
     if (runDetailUrl && tracingListUrl)
       getData()
   }, [runDetailUrl, tracingListUrl])
-
-  const derivedStatus = runDetail?.status ?? statusHint
-
-  useEffect(() => {
-    if (derivedStatus === WorkflowRunningStatus.Listening && currentTab !== 'DETAIL')
-      setCurrentTab('DETAIL')
-  }, [currentTab, derivedStatus])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -174,9 +173,9 @@ const RunPanel: FC<RunProps> = ({
             exceptionCounts={runDetail.exceptions_count}
           />
         )}
-        {!loading && currentTab === 'DETAIL' && !runDetail && derivedStatus === WorkflowRunningStatus.Listening && (
+        {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (
           <StatusPanel
-            status={WorkflowRunningStatus.Listening}
+            status={WorkflowRunningStatus.Running}
           />
         )}
         {!loading && currentTab === 'TRACING' && (

@@ -215,21 +215,24 @@ export const useWorkflowRun = () => {
 
     const {
       setWorkflowRunningData,
+      setIsListening,
     } = workflowStore.getState()
 
     if (runMode === 'webhook') {
+      setIsListening(true)
       setWorkflowRunningData({
         result: {
-          status: WorkflowRunningStatus.Listening,
+          status: WorkflowRunningStatus.Running,
           inputs_truncated: false,
           process_data_truncated: false,
           outputs_truncated: false,
         },
         tracing: [],
-        resultText: 'Listening for webhook call...',
+        resultText: '',
       })
     }
     else {
+      setIsListening(false)
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Running,
@@ -260,9 +263,15 @@ export const useWorkflowRun = () => {
       abortControllerRef.current = null
     }
 
+    const clearListeningState = () => {
+      const state = workflowStore.getState()
+      state.setIsListening(false)
+    }
+
     const wrappedOnError = (params: any) => {
       clearAbortController()
       handleWorkflowFailed()
+      clearListeningState()
 
       if (onError)
         onError(params)
@@ -270,6 +279,7 @@ export const useWorkflowRun = () => {
 
     const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError?: boolean, errorMessage?: string) => {
       clearAbortController()
+      clearListeningState()
       if (onCompleted)
         onCompleted(hasError, errorMessage)
     }
@@ -289,6 +299,7 @@ export const useWorkflowRun = () => {
           onWorkflowStarted(params)
       },
       onWorkflowFinished: (params) => {
+        clearListeningState()
         handleWorkflowFinished(params)
 
         if (onWorkflowFinished)
@@ -468,9 +479,11 @@ export const useWorkflowRun = () => {
               },
               tracing: [],
             })
+            setIsListening(false)
             return
           }
 
+          setIsListening(false)
           handleStream(
             response,
             baseSseOptions.onData ?? noop,
@@ -518,6 +531,7 @@ export const useWorkflowRun = () => {
             },
             tracing: [],
           })
+          setIsListening(false)
         }
       }
 
@@ -561,7 +575,7 @@ export const useWorkflowRun = () => {
       abortControllerRef.current.abort()
 
     abortControllerRef.current = null
-    const { setWorkflowRunningData } = workflowStore.getState()
+    const { setWorkflowRunningData, setIsListening } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
         status: WorkflowRunningStatus.Stopped,
@@ -572,6 +586,7 @@ export const useWorkflowRun = () => {
       tracing: [],
       resultText: '',
     })
+    setIsListening(false)
   }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {

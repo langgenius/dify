@@ -344,7 +344,6 @@ export type NodeDefault<T = {}> = {
 export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
 
 export enum WorkflowRunningStatus {
-  Listening = 'listening',
   Waiting = 'waiting',
   Running = 'running',
   Succeeded = 'succeeded',
