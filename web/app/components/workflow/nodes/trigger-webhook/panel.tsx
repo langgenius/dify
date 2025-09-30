@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
@@ -7,8 +7,10 @@ import useConfig from './use-config'
 import ParameterTable from './components/parameter-table'
 import HeaderTable from './components/header-table'
 import ParagraphInput from './components/paragraph-input'
+import { OutputVariablesContent } from './utils/render-output-vars'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import { InputNumber } from '@/app/components/base/input-number'
@@ -42,6 +44,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const [debugUrlCopied, setDebugUrlCopied] = React.useState(false)
+  const [outputVarsCollapsed, setOutputVarsCollapsed] = useState(false)
   const {
     readOnly,
     inputs,
@@ -213,6 +216,17 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             </div>
           </div>
         </Field>
+      </div>
+
+      <Split />
+
+      <div className=''>
+        <OutputVars
+          collapsed={outputVarsCollapsed}
+          onCollapse={setOutputVarsCollapsed}
+        >
+          <OutputVariablesContent variables={inputs.variables} />
+        </OutputVars>
       </div>
     </div>
   )
