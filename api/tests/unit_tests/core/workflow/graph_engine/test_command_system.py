@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.entities.commands import AbortCommand
-from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunStartedEvent
+from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType, PauseCommand
+from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
@@ -100,8 +100,57 @@ def test_redis_channel_serialization():
     assert command_data["command_type"] == "abort"
     assert command_data["reason"] == "Test abort"
 
+    # Test pause command serialization
+    pause_command = PauseCommand(reason="User requested pause")
+    channel.send_command(pause_command)
 
-if __name__ == "__main__":
-    test_abort_command()
-    test_redis_channel_serialization()
-    print("All tests passed!")
+    assert len(mock_pipeline.rpush.call_args_list) == 2
+    second_call_args = mock_pipeline.rpush.call_args_list[1]
+    pause_command_json = second_call_args[0][1]
+    pause_command_data = json.loads(pause_command_json)
+    assert pause_command_data["command_type"] == CommandType.PAUSE.value
+    assert pause_command_data["reason"] == "User requested pause"
+
+
+def test_pause_command():
+    """Test that GraphEngine properly handles pause commands."""
+
+    shared_runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
+
+    mock_graph = MagicMock(spec=Graph)
+    mock_graph.nodes = {}
+    mock_graph.edges = {}
+    mock_graph.root_node = MagicMock()
+    mock_graph.root_node.id = "start"
+
+    mock_start_node = MagicMock()
+    mock_start_node.state = None
+    mock_start_node.id = "start"
+    mock_start_node.graph_runtime_state = shared_runtime_state
+    mock_graph.nodes["start"] = mock_start_node
+
+    mock_graph.get_outgoing_edges = MagicMock(return_value=[])
+    mock_graph.get_incoming_edges = MagicMock(return_value=[])
+
+    command_channel = InMemoryChannel()
+
+    engine = GraphEngine(
+        workflow_id="test_workflow",
+        graph=mock_graph,
+        graph_runtime_state=shared_runtime_state,
+        command_channel=command_channel,
+    )
+
+    pause_command = PauseCommand(reason="User requested pause")
+    command_channel.send_command(pause_command)
+
+    events = list(engine.run())
+
+    assert any(isinstance(e, GraphRunStartedEvent) for e in events)
+    pause_events = [e for e in events if isinstance(e, GraphRunPausedEvent)]
+    assert len(pause_events) == 1
+    assert pause_events[0].reason == "User requested pause"
+
+    graph_execution = engine.graph_runtime_state.graph_execution
+    assert graph_execution.is_paused
+    assert graph_execution.pause_reason == "User requested pause"

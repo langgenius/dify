@@ -76,6 +76,8 @@ class WorkflowTestResult:
     event_sequence_match: bool | None = None
     event_mismatch_details: str | None = None
     events: list[GraphEngineEvent] = field(default_factory=list)
+    graph: Graph | None = None
+    graph_runtime_state: GraphRuntimeState | None = None
     validation_details: str | None = None
 
 
@@ -346,6 +348,8 @@ class TableTestRunner:
                     events=events,
                     event_sequence_match=event_sequence_match,
                     event_mismatch_details=event_mismatch_details,
+                    graph=graph,
+                    graph_runtime_state=graph_runtime_state,
                 )
 
             # Get actual outputs
@@ -368,6 +372,8 @@ class TableTestRunner:
                 events=events,
                 validation_details=validation_details,
                 error=None if success else Exception(validation_details or event_mismatch_details or "Test failed"),
+                graph=graph,
+                graph_runtime_state=graph_runtime_state,
             )
 
         except Exception as e:
@@ -377,6 +383,8 @@ class TableTestRunner:
                 success=False,
                 error=e,
                 execution_time=time.perf_counter() - start_time,
+                graph=graph if "graph" in locals() else None,
+                graph_runtime_state=graph_runtime_state if "graph_runtime_state" in locals() else None,
             )
 
     def _create_graph_runtime_state(self, test_case: WorkflowTestCase) -> tuple[Graph, GraphRuntimeState]:
