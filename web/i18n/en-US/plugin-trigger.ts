@@ -167,6 +167,8 @@ const translation = {
     title: 'Available Events',
     description: 'Events that this trigger plugin can subscribe to',
     empty: 'No events available',
+    event: 'Event',
+    events: 'Events',
     actionNum: '{{num}} {{event}} INCLUDED',
     item: {
       parameters: '{{count}} parameters',

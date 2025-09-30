@@ -167,7 +167,9 @@ const translation = {
     title: '可用事件',
     description: '此触发器插件可以订阅的事件',
     empty: '没有可用事件',
-    eventNum: '包含 {{num}} 个 {{event}}',
+    event: '事件',
+    events: '事件',
+    actionNum: '包含 {{num}} 个 {{event}}',
     item: {
       parameters: '{{count}}个参数',
     },

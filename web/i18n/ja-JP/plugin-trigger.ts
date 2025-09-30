@@ -164,6 +164,8 @@ const translation = {
     title: '利用可能なイベント',
     description: 'このトリガープラグインが購読できるイベント',
     empty: '利用可能なイベントがありません',
+    event: 'イベント',
+    events: 'イベント',
     actionNum: '{{num}} {{event}} が含まれています',
     item: {
       parameters: '{{count}} パラメータ',
