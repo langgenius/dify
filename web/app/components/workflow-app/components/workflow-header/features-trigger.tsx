@@ -36,10 +36,12 @@ import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
+import { useIsChatMode } from '../../hooks'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
@@ -147,16 +149,19 @@ const FeaturesTrigger = () => {
 
   return (
     <>
-      <Button
-        className={cn(
-          'text-components-button-secondary-text',
-          theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
-        )}
-        onClick={handleShowFeatures}
-      >
-        <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
-        {t('workflow.common.features')}
-      </Button>
+      {/* Feature button is only visible in chatflow mode (advanced-chat) */}
+      {isChatMode && (
+        <Button
+          className={cn(
+            'text-components-button-secondary-text',
+            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+          )}
+          onClick={handleShowFeatures}
+        >
+          <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
+          {t('workflow.common.features')}
+        </Button>
+      )}
       <AppPublisher
         {...{
           publishedAt,
