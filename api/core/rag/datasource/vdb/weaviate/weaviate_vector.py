@@ -2,7 +2,6 @@ import datetime
 import json
 from typing import Any
 
-import requests
 import weaviate  # type: ignore
 from pydantic import BaseModel, model_validator
 
@@ -45,8 +44,8 @@ class WeaviateVector(BaseVector):
             client = weaviate.Client(
                 url=config.endpoint, auth_client_secret=auth_config, timeout_config=(5, 60), startup_period=None
             )
-        except requests.ConnectionError:
-            raise ConnectionError("Vector database connection error")
+        except Exception as exc:
+            raise ConnectionError("Vector database connection error") from exc
 
         client.batch.configure(
             # `batch_size` takes an `int` value to enable auto-batching

@@ -4,7 +4,7 @@ import math
 from typing import Any, cast
 from urllib.parse import urlparse
 
-import requests
+from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import Elasticsearch
 from flask import current_app
 from packaging.version import parse as parse_version
@@ -138,7 +138,7 @@ class ElasticSearchVector(BaseVector):
             if not client.ping():
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
-        except requests.ConnectionError as e:
+        except ElasticsearchConnectionError as e:
             raise ConnectionError(f"Vector database connection error: {str(e)}")
         except Exception as e:
             raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
