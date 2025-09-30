@@ -33,7 +33,7 @@ class WebAppAuthService:
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
         """authenticate account with email and password"""
-        account = db.session.query(Account).filter(func.lower(Account.email) == func.lower(email)).first()
+        account = db.session.query(Account).where(func.lower(Account.email) == func.lower(email)).first()
         if not account:
             raise AccountNotFoundError()
 
@@ -53,7 +53,7 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = db.session.query(Account).filter(func.lower(Account.email) == func.lower(email)).first()
+        account = db.session.query(Account).where(func.lower(Account.email) == func.lower(email)).first()
         if not account:
             return None
 
