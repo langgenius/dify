@@ -107,6 +107,7 @@ class GraphRuntimeState:
         self._response_coordinator = response_coordinator
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
+        self._paused_nodes: set[str] = set()
 
         if graph is not None:
             self.attach_graph(graph)
@@ -247,6 +248,7 @@ class GraphRuntimeState:
             "variable_pool": self.variable_pool.model_dump(mode="json"),
             "ready_queue": self.ready_queue.dumps(),
             "graph_execution": self.graph_execution.dumps(),
+            "paused_nodes": list(self._paused_nodes),
         }
 
         if self._response_coordinator is not None and self._graph is not None:
@@ -314,6 +316,21 @@ class GraphRuntimeState:
         else:
             self._pending_response_coordinator_dump = None
             self._response_coordinator = None
+
+        paused_nodes_payload = payload.get("paused_nodes", [])
+        self._paused_nodes = set(map(str, paused_nodes_payload))
+
+    def register_paused_node(self, node_id: str) -> None:
+        """Record a node that should resume when execution is continued."""
+
+        self._paused_nodes.add(node_id)
+
+    def consume_paused_nodes(self) -> list[str]:
+        """Retrieve and clear the list of paused nodes awaiting resume."""
+
+        nodes = list(self._paused_nodes)
+        self._paused_nodes.clear()
+        return nodes
 
     # ------------------------------------------------------------------
     # Builders

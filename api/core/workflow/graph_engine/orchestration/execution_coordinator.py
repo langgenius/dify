@@ -49,13 +49,18 @@ class ExecutionCoordinator:
         self._event_collector = event_collector
         self._command_processor = command_processor
         self._worker_pool = worker_pool
+        self._pause_requested = False
 
     def check_commands(self) -> None:
         """Process any pending commands."""
         self._command_processor.process_commands()
+        if self._graph_execution.is_paused and not self._pause_requested:
+            self._handle_pause_request()
 
     def check_scaling(self) -> None:
         """Check and perform worker scaling if needed."""
+        if self._pause_requested:
+            return
         self._worker_pool.check_and_scale()
 
     def is_execution_complete(self) -> bool:
@@ -69,11 +74,16 @@ class ExecutionCoordinator:
         if self._graph_execution.aborted or self._graph_execution.has_error:
             return True
 
+        if self._pause_requested:
+            return self._state_manager.get_executing_count() == 0
+
         # Complete if no work remains
         return self._state_manager.is_execution_complete()
 
     def mark_complete(self) -> None:
         """Mark execution as complete."""
+        if self._graph_execution.is_paused:
+            return
         if not self._graph_execution.completed:
             self._graph_execution.complete()
 
@@ -85,3 +95,16 @@ class ExecutionCoordinator:
             error: The error that caused failure
         """
         self._graph_execution.fail(error)
+
+    def _handle_pause_request(self) -> None:
+        """Handle workflow pause request by shutting down workers."""
+
+        self._pause_requested = True
+        self._worker_pool.stop()
+        self._state_manager.clear_executing()
+
+    @property
+    def pause_requested(self) -> bool:
+        """Return whether a pause request is active."""
+
+        return self._pause_requested

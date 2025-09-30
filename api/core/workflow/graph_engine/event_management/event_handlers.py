@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, final
 
-from core.workflow.enums import ErrorStrategy, NodeExecutionType
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphNodeEventBase,
@@ -22,6 +22,7 @@ from core.workflow.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunPauseRequestedEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
@@ -197,6 +198,18 @@ class EventHandler:
             self._update_response_outputs(event.node_run_result.outputs)
 
         # Collect the event
+        self._event_collector.collect(event)
+
+    @_dispatch.register
+    def _(self, event: NodeRunPauseRequestedEvent) -> None:
+        """Handle pause requests emitted by nodes."""
+
+        pause_reason = event.reason or "Awaiting human input"
+        self._graph_execution.pause(pause_reason)
+        self._state_manager.finish_execution(event.node_id)
+        if event.node_id in self._graph.nodes:
+            self._graph.nodes[event.node_id].state = NodeState.UNKNOWN
+        self._graph_runtime_state.register_paused_node(event.node_id)
         self._event_collector.collect(event)
 
     @_dispatch.register

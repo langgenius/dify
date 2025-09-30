@@ -22,13 +22,14 @@ from core.workflow.graph_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
 from core.workflow.runtime import GraphRuntimeState
 
-from .command_processing import AbortCommandHandler, CommandProcessor
-from .entities.commands import AbortCommand
+from .command_processing import AbortCommandHandler, CommandProcessor, PauseCommandHandler
+from .entities.commands import AbortCommand, PauseCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
 from .graph_state_manager import GraphStateManager
@@ -143,12 +144,12 @@ class GraphEngine:
             graph_execution=self._graph_execution,
         )
 
-        # Register abort command handler
+        # Register command handlers
         abort_handler = AbortCommandHandler()
-        self._command_processor.register_handler(
-            AbortCommand,
-            abort_handler,
-        )
+        self._command_processor.register_handler(AbortCommand, abort_handler)
+
+        pause_handler = PauseCommandHandler()
+        self._command_processor.register_handler(PauseCommand, pause_handler)
 
         # === Worker Pool Setup ===
         # Capture Flask app context for worker threads
@@ -227,19 +228,28 @@ class GraphEngine:
             # Initialize layers
             self._initialize_layers()
 
-            # Start execution
-            self._graph_execution.start()
-            start_event = GraphRunStartedEvent()
-            yield start_event
+            is_resume = self._graph_execution.started
+            if not is_resume:
+                self._graph_execution.start()
+            else:
+                self._graph_execution.paused = False
+                self._graph_execution.pause_reason = None
+
+            yield GraphRunStartedEvent()
 
             # Start subsystems
-            self._start_execution()
+            self._start_execution(resume=is_resume)
 
             # Yield events as they occur
             yield from self._event_manager.emit_events()
 
             # Handle completion
-            if self._graph_execution.aborted:
+            if self._graph_execution.is_paused:
+                yield GraphRunPausedEvent(
+                    reason=self._graph_execution.pause_reason,
+                    outputs=self._graph_runtime_state.outputs,
+                )
+            elif self._graph_execution.aborted:
                 abort_reason = "Workflow execution aborted by user command"
                 if self._graph_execution.error:
                     abort_reason = str(self._graph_execution.error)
@@ -289,8 +299,12 @@ class GraphEngine:
             except Exception as e:
                 logger.warning("Layer %s failed on_graph_start: %s", layer.__class__.__name__, e)
 
-    def _start_execution(self) -> None:
+    def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
+        paused_nodes: list[str] = []
+        if resume:
+            paused_nodes = self._graph_runtime_state.consume_paused_nodes()
+
         # Start worker pool (it calculates initial workers internally)
         self._worker_pool.start()
 
@@ -299,10 +313,14 @@ class GraphEngine:
             if node.execution_type == NodeExecutionType.RESPONSE:
                 self._response_coordinator.register(node.id)
 
-        # Enqueue root node
-        root_node = self._graph.root_node
-        self._state_manager.enqueue_node(root_node.id)
-        self._state_manager.start_execution(root_node.id)
+        if not resume:
+            # Enqueue root node
+            root_node = self._graph.root_node
+            self._state_manager.enqueue_node(root_node.id)
+            self._state_manager.start_execution(root_node.id)
+        else:
+            for node_id in paused_nodes:
+                self._state_manager.enqueue_node(node_id)
 
         # Start dispatcher
         self._dispatcher.start()

@@ -51,3 +51,7 @@ class NodeRunExceptionEvent(GraphNodeEventBase):
 class NodeRunRetryEvent(NodeRunStartedEvent):
     error: str = Field(..., description="error")
     retry_index: int = Field(..., description="which retry attempt is about to be performed")
+
+
+class NodeRunPauseRequestedEvent(GraphNodeEventBase):
+    reason: str | None = Field(default=None, description="Optional pause reason")
