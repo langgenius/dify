@@ -6,6 +6,9 @@ type OutputVariablesContentProps = {
   variables?: Variable[]
 }
 
+// Define the display order for variable labels to match the table order in the UI
+const LABEL_ORDER = { param: 1, header: 2, body: 3 } as const
+
 const getLabelPrefix = (label: string): string => {
   const prefixMap: Record<string, string> = {
     param: 'query_params',
@@ -42,9 +45,18 @@ export const OutputVariablesContent: FC<OutputVariablesContentProps> = ({ variab
     )
   }
 
+  // Sort variables by label to match the table display order: param → header → body
+  // Unknown labels are placed at the end (order value 999)
+  const sortedVariables = [...variables].sort((a, b) => {
+    const labelA = typeof a.label === 'string' ? a.label : ''
+    const labelB = typeof b.label === 'string' ? b.label : ''
+    return (LABEL_ORDER[labelA as keyof typeof LABEL_ORDER] || 999)
+           - (LABEL_ORDER[labelB as keyof typeof LABEL_ORDER] || 999)
+  })
+
   return (
     <div>
-      {variables.map((variable, index) => {
+      {sortedVariables.map((variable, index) => {
         const label = typeof variable.label === 'string' ? variable.label : ''
         const varName = typeof variable.variable === 'string' ? variable.variable : ''
 
