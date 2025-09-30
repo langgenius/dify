@@ -952,7 +952,7 @@ const translation = {
       chunksInput: 'Kosi',
       chunksInputTip: 'Vhodna spremenljivka vozlišča podatkovne baze je Chunks. Tip spremenljivke je objekt s specifično JSON shemo, ki mora biti skladna z izbrano strukturo kosov.',
       chunksVariableIsRequired: 'Spremenljivka Chunks je obvezna',
-      embeddingModelIsRequired: 'Zahtuje se vgrajevalni model',
+      embeddingModelIsRequired: 'Zahteva se vgrajevalni model',
       rerankingModelIsRequired: 'Potreben je model za ponovno razvrščanje',
     },
   },
