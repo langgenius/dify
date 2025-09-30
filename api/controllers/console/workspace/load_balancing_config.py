@@ -6,7 +6,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import current_user, login_required
-from models.account import Account, TenantAccountRole
+from models import Account, TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 

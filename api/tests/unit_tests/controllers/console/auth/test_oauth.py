@@ -11,7 +11,7 @@ from controllers.console.auth.oauth import (
     get_oauth_providers,
 )
 from libs.oauth import OAuthUserInfo
-from models.account import AccountStatus
+from models import AccountStatus
 from services.errors.account import AccountRegisterError
 
 

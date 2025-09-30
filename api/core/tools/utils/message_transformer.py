@@ -12,7 +12,7 @@ from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from libs.login import current_user
-from models.account import Account
+from models import Account
 
 logger = logging.getLogger(__name__)
 

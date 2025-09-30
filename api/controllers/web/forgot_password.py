@@ -20,7 +20,7 @@ from controllers.web import web_ns
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
-from models.account import Account
+from models import Account
 from services.account_service import AccountService
 
 

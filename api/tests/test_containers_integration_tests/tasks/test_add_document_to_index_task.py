@@ -6,7 +6,7 @@ from faker import Faker
 from core.rag.index_processor.constant.index_type import IndexType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
 from tasks.add_document_to_index_task import add_document_to_index_task
 
