@@ -6,7 +6,7 @@
 
 這份指南與 Dify 一樣，都在持續完善中。如果指南內容有落後於實際專案的情況，還請見諒，也歡迎提供改進建議。
 
-關於授權部分，請花點時間閱讀我們簡短的[授權和貢獻者協議](./LICENSE)。社群也需遵守[行為準則](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)。
+關於授權部分，請花點時間閱讀我們簡短的[授權和貢獻者協議](../LICENSE)。社群也需遵守[行為準則](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)。
 
 ## 開始之前
 

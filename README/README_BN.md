@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.png)
+![cover-v5-optimized](../images/GitHub_README_if.png)
 
 <p align="center">
   📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">ডিফাই ওয়ার্কফ্লো ফাইল আপলোড পরিচিতি: গুগল নোটবুক-এলএম পডকাস্ট পুনর্নির্মাণ</a>
@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="../README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
   <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
   <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
   <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
@@ -203,4 +203,4 @@ GitHub-এ ডিফাইকে স্টার দিয়ে রাখুন �
 
 ## লাইসেন্স
 
-এই রিপোজিটরিটি [ডিফাই ওপেন সোর্স লাইসেন্স](LICENSE) এর অধিনে , যা মূলত অ্যাপাচি ২.০, তবে কিছু অতিরিক্ত বিধিনিষেধ রয়েছে।
+এই রিপোজিটরিটি [ডিফাই ওপেন সোর্স লাইসেন্স](../LICENSE) এর অধিনে , যা মূলত অ্যাপাচি ২.০, তবে কিছু অতিরিক্ত বিধিনিষেধ রয়েছে।
