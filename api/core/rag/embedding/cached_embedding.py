@@ -42,6 +42,10 @@ class CacheEmbedding(Embeddings):
                 text_embeddings[i] = embedding.get_embedding()
             else:
                 embedding_queue_indices.append(i)
+
+        # release database connection, because embedding may take a long time
+        db.session.close()
+
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]
             embedding_queue_embeddings = []
