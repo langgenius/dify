@@ -22,6 +22,8 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.enums import NodeType
+from core.workflow.nodes.node_utils import match_node_type
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -577,7 +579,7 @@ class DatasetService:
                 updated = False
 
                 for node in nodes:
-                    if node.get("data", {}).get("type") == "knowledge-index":
+                    if match_node_type(node, NodeType.KNOWLEDGE_INDEX):
                         try:
                             knowledge_index_node_data = node.get("data", {})
                             knowledge_index_node_data["embedding_model"] = dataset.embedding_model

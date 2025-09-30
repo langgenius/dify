@@ -49,6 +49,7 @@ from core.workflow.graph_events.base import GraphNodeEventBase
 from core.workflow.node_events.base import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from core.workflow.nodes.node_utils import match_node_type
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
@@ -356,7 +357,7 @@ class RagPipelineService:
         from services.dataset_service import DatasetService
 
         for node in nodes:
-            if node.get("data", {}).get("type") == "knowledge-index":
+            if match_node_type(node, NodeType.KNOWLEDGE_INDEX):
                 knowledge_configuration = node.get("data", {})
                 knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
 
@@ -1381,7 +1382,7 @@ class RagPipelineService:
         datasource_nodes = workflow.graph_dict.get("nodes", [])
         datasource_plugins = []
         for datasource_node in datasource_nodes:
-            if datasource_node.get("data", {}).get("type") == "datasource":
+            if match_node_type(datasource_node, NodeType.DATASOURCE):
                 datasource_node_data = datasource_node["data"]
                 if not datasource_node_data:
                     continue
