@@ -181,7 +181,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_URL: HttpUrl = Field(
         description="Plugin API URL",
-        default=HttpUrl("http://127.0.0.1:5002"),
+        default=HttpUrl("http://localhost:5002"),
     )
 
     PLUGIN_DAEMON_KEY: str = Field(

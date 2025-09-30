@@ -209,9 +209,24 @@ class EventHandler:
                         )
                     # Store flag in runtime state for downstream pipelines to respect when saving history
                     self._graph_runtime_state.set_output("_answer_include_in_memory", include_in_memory)
+            except ImportError:
+                # Expected: AnswerNode may not be available in some contexts (e.g., minimal imports)
+                # This is safe to ignore as it's an optional feature
+                logger.debug("AnswerNode not available for include_in_memory processing")
+            except (AttributeError, KeyError) as e:
+                # Node structure may vary or outputs may be missing
+                logger.warning(
+                    "Failed to process AnswerNode include_in_memory for node %s: %s",
+                    event.node_id,
+                    e,
+                    exc_info=False
+                )
             except Exception:
-                # Be tolerant to import/type issues; do not break execution flow
-                pass
+                # Catch any unexpected errors but log them for debugging
+                logger.exception(
+                    "Unexpected error processing AnswerNode include_in_memory for node %s",
+                    event.node_id
+                )
 
         # Collect the event
         self._event_collector.collect(event)
