@@ -176,10 +176,8 @@ class TestSupabaseStorage:
         """Test exists returns True when list() returns items (using len() > 0)."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with special object that has count() method
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 1
-        mock_client.storage.from_().list.return_value = mock_list_result
+        # Mock list return with a list containing one item
+        mock_client.storage.from_().list.return_value = [Mock()]
 
         result = storage.exists("test.txt")
 
@@ -192,10 +190,8 @@ class TestSupabaseStorage:
         """Test exists returns True when list result has count() > 0."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with count() method
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 1
-        mock_client.storage.from_().list.return_value = mock_list_result
+        # Mock list return with a list containing one item
+        mock_client.storage.from_().list.return_value = [Mock()]
 
         result = storage.exists("test.txt")
 
@@ -203,16 +199,13 @@ class TestSupabaseStorage:
         # Verify the correct calls were made
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
         mock_client.storage.from_().list.assert_called_with("test.txt")
-        mock_list_result.count.assert_called()
 
     def test_exists_with_count_method_zero(self, storage_with_mock_client):
         """Test exists returns False when list result has count() == 0."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with count() method returning 0
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 0
-        mock_client.storage.from_().list.return_value = mock_list_result
+        # Mock list return with an empty list
+        mock_client.storage.from_().list.return_value = []
 
         result = storage.exists("test.txt")
 
@@ -220,16 +213,13 @@ class TestSupabaseStorage:
         # Verify the correct calls were made
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
         mock_client.storage.from_().list.assert_called_with("test.txt")
-        mock_list_result.count.assert_called()
 
     def test_exists_with_empty_list(self, storage_with_mock_client):
         """Test exists returns False when list() returns empty list."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with special object that has count() method returning 0
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 0
-        mock_client.storage.from_().list.return_value = mock_list_result
+        # Mock list return with an empty list
+        mock_client.storage.from_().list.return_value = []
 
         result = storage.exists("test.txt")
 
