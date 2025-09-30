@@ -26,6 +26,7 @@ const TYPE_DISPLAY_NAMES: Record<VarType, string> = {
   'array[file]': 'Array[File]',
   [VarType.any]: 'Any',
   'array[any]': 'Array[Any]',
+  [VarType.integer]: 'Integer',
 } as const
 
 // Content type configurations
@@ -98,11 +99,9 @@ export const getParameterTypeDisplayName = (type: VarType): string => {
  * Gets available parameter types based on content type
  * Provides context-aware type filtering for different webhook content types
  */
-export const getAvailableParameterTypes = (contentType?: string, isRequestBody = false): VarType[] => {
-  if (!isRequestBody) {
-    // Query parameters and headers are always strings
-    return [VarType.string]
-  }
+export const getAvailableParameterTypes = (contentType?: string): VarType[] => {
+  if (!contentType)
+    return [VarType.string, VarType.number, VarType.boolean]
 
   const normalizedContentType = (contentType || '').toLowerCase()
   const configKey = normalizedContentType in CONTENT_TYPE_CONFIGS
@@ -116,8 +115,8 @@ export const getAvailableParameterTypes = (contentType?: string, isRequestBody =
 /**
  * Creates type options for UI select components
  */
-export const createParameterTypeOptions = (contentType?: string, isRequestBody = false) => {
-  const availableTypes = getAvailableParameterTypes(contentType, isRequestBody)
+export const createParameterTypeOptions = (contentType?: string) => {
+  const availableTypes = getAvailableParameterTypes(contentType)
 
   return availableTypes.map(type => ({
     name: getParameterTypeDisplayName(type),

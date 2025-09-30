@@ -14,8 +14,6 @@ type ParameterTableProps = {
   onChange: (params: WebhookParameter[]) => void
   readonly?: boolean
   placeholder?: string
-  showType?: boolean
-  isRequestBody?: boolean // Special handling for request body parameters
   contentType?: string
 }
 
@@ -25,37 +23,33 @@ const ParameterTable: FC<ParameterTableProps> = ({
   onChange,
   readonly,
   placeholder,
-  showType = true,
-  isRequestBody = false,
   contentType,
 }) => {
   const { t } = useTranslation()
 
   // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
   const typeOptions = useMemo(() =>
-    createParameterTypeOptions(contentType, isRequestBody),
-  [contentType, isRequestBody],
+    createParameterTypeOptions(contentType),
+  [contentType],
   )
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [
     {
       key: 'key',
-      title: isRequestBody ? 'Name' : 'Variable Name',
+      title: 'Variable Name',
       type: 'input',
       width: 'flex-1',
-      placeholder: isRequestBody ? 'Name' : 'Variable Name',
+      placeholder: 'Variable Name',
     },
-    ...(showType
-      ? [{
-        key: 'type',
-        title: 'Type',
-        type: (isRequestBody ? 'select' : 'input') as ColumnConfig['type'],
-        width: 'w-[120px]',
-        placeholder: 'Type',
-        options: isRequestBody ? typeOptions : undefined,
-      }]
-      : []),
+    {
+      key: 'type',
+      title: 'Type',
+      type: 'select',
+      width: 'w-[120px]',
+      placeholder: 'Type',
+      options: typeOptions,
+    },
     {
       key: 'required',
       title: 'Required',
@@ -70,7 +64,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {
     key: '',
-    type: isRequestBody ? defaultTypeValue : '',
+    type: defaultTypeValue,
     required: false,
   }
 
@@ -83,8 +77,8 @@ const ParameterTable: FC<ParameterTableProps> = ({
   const handleDataChange = (data: GenericTableRow[]) => {
     // For text/plain, enforce single text body semantics: keep only first non-empty row and force string type
     // For application/octet-stream, enforce single file body semantics: keep only first non-empty row and force file type
-    const isTextPlain = isRequestBody && (contentType || '').toLowerCase() === 'text/plain'
-    const isOctetStream = isRequestBody && (contentType || '').toLowerCase() === 'application/octet-stream'
+    const isTextPlain = (contentType || '').toLowerCase() === 'text/plain'
+    const isOctetStream = (contentType || '').toLowerCase() === 'application/octet-stream'
 
     const normalized = data
       .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')

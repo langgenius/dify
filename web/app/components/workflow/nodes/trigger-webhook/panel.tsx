@@ -158,7 +158,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           parameters={inputs.params}
           onChange={handleParamsChange}
           placeholder={t(`${i18nPrefix}.noQueryParameters`)}
-          showType={false}
         />
 
         {/* Header Parameters */}
@@ -175,8 +174,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           parameters={inputs.body}
           onChange={handleBodyChange}
           placeholder={t(`${i18nPrefix}.noBodyParameters`)}
-          showType={true}
-          isRequestBody={true}
           contentType={inputs.content_type}
         />
 

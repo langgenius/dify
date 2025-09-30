@@ -280,7 +280,7 @@ const GenericTable: FC<GenericTableProps> = ({
   return (
     <div className={className}>
       <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-sm font-medium text-text-secondary">{title}</h4>
+        <h4 className="system-sm-semibold-uppercase text-text-secondary">{title}</h4>
       </div>
 
       {showPlaceholder ? (
