@@ -15,7 +15,7 @@ class VariableAggregatorNode(Node):
     _node_data: VariableAssignerNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = VariableAssignerNodeData(**data)
+        self._node_data = VariableAssignerNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy

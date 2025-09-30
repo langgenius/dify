@@ -28,7 +28,7 @@ class DatasetMetadataCreateApi(Resource):
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        metadata_args = MetadataArgs(**args)
+        metadata_args = MetadataArgs.model_validate(args)
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -137,7 +137,7 @@ class DocumentMetadataEditApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("operation_data", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        metadata_args = MetadataOperationData(**args)
+        metadata_args = MetadataOperationData.model_validate(args)
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 

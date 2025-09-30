@@ -294,7 +294,7 @@ class ClientSession(
                     method="completion/complete",
                     params=types.CompleteRequestParams(
                         ref=ref,
-                        argument=types.CompletionArgument(**argument),
+                        argument=types.CompletionArgument.model_validate(argument),
                     ),
                 )
             ),

@@ -288,7 +288,7 @@ class RagPipelineDslService:
             dataset_id = None
             for node in nodes:
                 if node.get("data", {}).get("type") == "knowledge-index":
-                    knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
+                    knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if (
                         dataset
                         and pipeline.is_published
@@ -426,7 +426,7 @@ class RagPipelineDslService:
             dataset_id = None
             for node in nodes:
                 if node.get("data", {}).get("type") == "knowledge-index":
-                    knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
+                    knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if not dataset:
                         dataset = Dataset(
                             tenant_id=account.current_tenant_id,
@@ -734,35 +734,35 @@ class RagPipelineDslService:
                 typ = node.get("data", {}).get("type")
                 match typ:
                     case NodeType.TOOL.value:
-                        tool_entity = ToolNodeData(**node["data"])
+                        tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
                     case NodeType.DATASOURCE.value:
-                        datasource_entity = DatasourceNodeData(**node["data"])
+                        datasource_entity = DatasourceNodeData.model_validate(node["data"])
                         if datasource_entity.provider_type != "local_file":
                             dependencies.append(datasource_entity.plugin_id)
                     case NodeType.LLM.value:
-                        llm_entity = LLMNodeData(**node["data"])
+                        llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
                     case NodeType.QUESTION_CLASSIFIER.value:
-                        question_classifier_entity = QuestionClassifierNodeData(**node["data"])
+                        question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
                     case NodeType.PARAMETER_EXTRACTOR.value:
-                        parameter_extractor_entity = ParameterExtractorNodeData(**node["data"])
+                        parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
                     case NodeType.KNOWLEDGE_INDEX.value:
-                        knowledge_index_entity = KnowledgeConfiguration(**node["data"])
+                        knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
                         if knowledge_index_entity.indexing_technique == "high_quality":
                             if knowledge_index_entity.embedding_model_provider:
                                 dependencies.append(
@@ -783,7 +783,7 @@ class RagPipelineDslService:
                                             ),
                                         )
                     case NodeType.KNOWLEDGE_RETRIEVAL.value:
-                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData(**node["data"])
+                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:
                                 if (
@@ -873,7 +873,7 @@ class RagPipelineDslService:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency(**dep) for dep in dsl_dependencies]
+        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
         if not dependencies:
             return []
 
