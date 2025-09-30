@@ -48,13 +48,21 @@ const ConversationOpener = ({
       },
       onSaveCallback: (newOpening) => {
         const newFeatures = produce(features, (draft) => {
-          draft.opening = newOpening
+          draft.opening = {
+            ...newOpening,
+            enabled: !!(newOpening.opening_statement || (newOpening.suggested_questions && newOpening.suggested_questions.length > 0)),
+          }
         })
         setFeatures(newFeatures)
         if (onChange)
           onChange()
       },
       onCancelCallback: () => {
+        const newFeatures = produce(features, (draft) => {
+          if (draft.opening && !draft.opening.opening_statement && !(draft.opening.suggested_questions && draft.opening.suggested_questions.length > 0))
+            draft.opening.enabled = false
+        })
+        setFeatures(newFeatures)
         if (onChange)
           onChange()
       },
@@ -67,6 +75,11 @@ const ConversationOpener = ({
       setFeatures,
     } = featuresStore!.getState()
 
+    if (enabled && !features.opening?.opening_statement && !(features.opening?.suggested_questions && features.opening.suggested_questions.length > 0)) {
+      handleOpenOpeningModal()
+      return
+    }
+
     const newFeatures = produce(features, (draft) => {
       draft[type] = {
         ...draft[type],
@@ -76,7 +89,7 @@ const ConversationOpener = ({
     setFeatures(newFeatures)
     if (onChange)
       onChange()
-  }, [featuresStore, onChange])
+  }, [featuresStore, onChange, handleOpenOpeningModal])
 
   return (
     <FeatureCard
