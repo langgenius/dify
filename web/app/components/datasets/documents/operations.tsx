@@ -35,7 +35,7 @@ import {
 } from '@remixicon/react'
 import CustomPopover from '../../base/popover'
 import s from './style.module.css'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import Confirm from '../../base/confirm'
 import RenameModal from './rename-modal'
 
@@ -50,6 +50,8 @@ type OperationsProps = {
     doc_form: string
     display_status?: string
   }
+  selectedIds?: string[]
+  onSelectedIdChange?: (ids: string[]) => void
   datasetId: string
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
@@ -60,6 +62,8 @@ const Operations = ({
   embeddingAvailable,
   datasetId,
   detail,
+  selectedIds,
+  onSelectedIdChange,
   onUpdate,
   scene = 'list',
   className = '',
@@ -116,17 +120,20 @@ const Operations = ({
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      // If it is a delete operation, need to update the selectedIds state
+      if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
+        onSelectedIdChange(selectedIds.filter(selectedId => selectedId !== id))
       onUpdate(operationName)
     }
     else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
-    if (operationName === 'delete')
+    if (operationName === DocumentActionType.delete)
       setDeleting(false)
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
-    if (operationName === 'enable' && enabled)
+    if (operationName === DocumentActionType.enable && enabled)
       return
-    if (operationName === 'disable' && !enabled)
+    if (operationName === DocumentActionType.disable && !enabled)
       return
     onOperate(operationName)
   }, { wait: 500 })
