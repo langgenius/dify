@@ -1,4 +1,4 @@
-import { get, post } from './base'
+import { get, getPublic, post, postPublic } from './base'
 import type {
   FileUploadConfigResponse,
   Member,
@@ -7,6 +7,7 @@ import type {
 } from '@/models/common'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FileTypesRes } from './datasets'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
 
@@ -50,7 +51,7 @@ export const useMailValidity = () => {
   })
 }
 
-export type MailRegisterResponse = { result: string, data: { access_token: string, refresh_token: string } }
+export type MailRegisterResponse = { result: string, data: {} }
 
 export const useMailRegister = () => {
   return useMutation({
@@ -104,5 +105,54 @@ export const useSchemaTypeDefinitions = () => {
   return useQuery<SchemaTypeDefinition[]>({
     queryKey: [NAME_SPACE, 'schema-type-definitions'],
     queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
+  })
+}
+
+type isLogin = {
+  logged_in: boolean
+}
+
+export const useIsLogin = () => {
+  return useQuery<isLogin>({
+    queryKey: [NAME_SPACE, 'is-login'],
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: () => get<isLogin>('/login/status'),
+  })
+}
+
+export const useLogout = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'logout'],
+    mutationFn: () => post('/logout'),
+  })
+}
+
+type isWebAppLogin = {
+  app_logged_in: boolean
+  logged_in: boolean
+}
+export const useIsWebAppLogin = (enabled: boolean, shareCode: string) => {
+  return useQuery<isWebAppLogin>({
+    queryKey: [NAME_SPACE, 'is-webapp-login', shareCode],
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: () => getPublic<isWebAppLogin>(`/login/status?app_code=${shareCode}`),
+  })
+}
+
+export const useInvalidateIsWebAppLogin = (shareCode: string) => {
+  return useInvalid([NAME_SPACE, 'is-webapp-login', shareCode])
+}
+
+export const useWebAppLogout = (shareCode: string) => {
+  const invalidWebAppLogin = useInvalidateIsWebAppLogin(shareCode)
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'webapp-logout'],
+    mutationFn: async () => {
+      await postPublic(`/logout?app_code=${shareCode}`)
+      invalidWebAppLogin()
+    },
   })
 }

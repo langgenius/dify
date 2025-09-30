@@ -1,15 +1,15 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useCallback } from 'react'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import { checkOrSetAccessToken, removeAccessToken, setAccessToken } from '@/app/components/share/utils'
 import { useTranslation } from 'react-i18next'
+import { AccessMode } from '@/models/access-control'
+import { useIsWebAppLogin, useWebAppLogout } from '@/service/use-common'
 import { fetchAccessToken } from '@/service/share'
 import Loading from '@/app/components/base/loading'
-import { AccessMode } from '@/models/access-control'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -18,7 +18,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   const searchParams = useSearchParams()
   const router = useRouter()
   const redirectUrl = searchParams.get('redirect_url')
-  const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
   const code = searchParams.get('code')
   const getSigninUrl = useCallback(() => {
@@ -28,35 +27,47 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
-  const backToHome = useCallback(() => {
-    removeAccessToken()
+  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
+  const backToHome = useCallback(async () => {
+    await webAppLogout()
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router])
+  }, [getSigninUrl, router, webAppLogout])
 
+  const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
+  const { data: isWebAppLoginData, isLoading: isWebAppLoginLoading } = useIsWebAppLogin(needCheckIsLogin, shareCode!)
+  // call login api only to login the user, call fetchAccessToken to login the app
+  const isUserLoggedIn = isWebAppLoginData?.logged_in
+  const isAppLoggedIn = isWebAppLoginData?.app_logged_in
+  const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
+    if(needCheckIsLogin && isWebAppLoginLoading) {
+      setIsLoading(false)
+      return
+    }
+
     (async () => {
-      if (message)
-        return
-      if (shareCode && tokenFromUrl && redirectUrl) {
-        localStorage.setItem('webapp_access_token', tokenFromUrl)
-        const tokenResp = await fetchAccessToken({ appCode: shareCode, webAppAccessToken: tokenFromUrl })
-        await setAccessToken(shareCode, tokenResp.access_token)
-        router.replace(decodeURIComponent(redirectUrl))
+      if (message) {
+        setIsLoading(false)
         return
       }
-      if (shareCode && redirectUrl && localStorage.getItem('webapp_access_token')) {
-        const tokenResp = await fetchAccessToken({ appCode: shareCode, webAppAccessToken: localStorage.getItem('webapp_access_token') })
-        await setAccessToken(shareCode, tokenResp.access_token)
-        router.replace(decodeURIComponent(redirectUrl))
-        return
+      if(isUserLoggedIn && !isAppLoggedIn) {
+        try {
+          await fetchAccessToken({ appCode: shareCode! })
+          if (redirectUrl)
+            router.replace(decodeURIComponent(redirectUrl))
+        }
+        finally {
+          setIsLoading(false)
+        }
       }
-      if (webAppAccessMode === AccessMode.PUBLIC && redirectUrl) {
-        await checkOrSetAccessToken(shareCode)
+
+      if ((isAppLoggedIn || webAppAccessMode === AccessMode.PUBLIC) && redirectUrl) {
+        setIsLoading(false)
         router.replace(decodeURIComponent(redirectUrl))
       }
     })()
-  }, [shareCode, redirectUrl, router, tokenFromUrl, message, webAppAccessMode])
+  }, [shareCode, redirectUrl, router, message, webAppAccessMode, needCheckIsLogin, isWebAppLoginLoading, isAppLoggedIn])
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
@@ -64,12 +75,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{code === '403' ? t('common.userProfile.logout') : t('share.login.backToHome')}</span>
     </div>
   }
-  if (tokenFromUrl) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
-  }
-  if (webAppAccessMode === AccessMode.PUBLIC && redirectUrl) {
+
+  if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
       <Loading />
     </div>

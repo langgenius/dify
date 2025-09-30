@@ -179,9 +179,7 @@ class TestOAuthCallback:
 
         oauth_setup["provider"].get_access_token.assert_called_once_with("test_code")
         oauth_setup["provider"].get_user_info.assert_called_once_with("access_token")
-        mock_redirect.assert_called_once_with(
-            "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token"
-        )
+        mock_redirect.assert_called_once_with("http://localhost:3000")
 
     @pytest.mark.parametrize(
         ("exception", "expected_error"),
@@ -225,7 +223,7 @@ class TestOAuthCallback:
             # This documents actual behavior. See test_defensive_check_for_closed_account_status for details
             (
                 AccountStatus.CLOSED.value,
-                "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token",
+                "http://localhost:3000",
             ),
         ],
     )
@@ -299,6 +297,11 @@ class TestOAuthCallback:
         mock_account.status = AccountStatus.PENDING.value
         mock_generate_account.return_value = mock_account
 
+        mock_token_pair = MagicMock()
+        mock_token_pair.access_token = "jwt_access_token"
+        mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_account_service.login.return_value = mock_token_pair
+
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
             resource.get("github")
 
@@ -368,9 +371,7 @@ class TestOAuthCallback:
             resource.get("github")
 
         # Verify current behavior: login succeeds (this is NOT ideal)
-        mock_redirect.assert_called_once_with(
-            "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token"
-        )
+        mock_redirect.assert_called_once_with("http://localhost:3000")
         mock_account_service.login.assert_called_once()
 
         # Document expected behavior in comments:

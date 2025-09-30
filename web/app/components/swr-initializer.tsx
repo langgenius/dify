@@ -19,10 +19,7 @@ const SwrInitializer = ({
 }: SwrInitializerProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
-  const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
-  const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
-  const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
+  // Tokens are now stored in cookies, no need to check localStorage
   const pathname = usePathname()
   const [init, setInit] = useState(false)
 
@@ -57,19 +54,12 @@ const SwrInitializer = ({
           router.replace('/install')
           return
         }
-        if (!((consoleToken && refreshToken) || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage))) {
-          router.replace('/signin')
-          return
-        }
-        if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
-          consoleToken && localStorage.setItem('console_token', consoleToken)
-          refreshToken && localStorage.setItem('refresh_token', refreshToken)
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
-          if (redirectUrl)
-            location.replace(redirectUrl)
-          else
-            router.replace(pathname)
-        }
+
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        if (redirectUrl)
+          location.replace(redirectUrl)
+        else
+          router.replace(pathname)
 
         setInit(true)
       }
@@ -77,7 +67,7 @@ const SwrInitializer = ({
         router.replace('/signin')
       }
     })()
-  }, [isSetupFinished, router, pathname, searchParams, consoleToken, refreshToken, consoleTokenFromLocalStorage, refreshTokenFromLocalStorage])
+  }, [isSetupFinished, router, pathname, searchParams])
 
   return init
     ? (

@@ -172,7 +172,8 @@ class WebAppAuthService:
                 return WebAppAuthType.EXTERNAL
 
         if app_code:
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code)
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
 
         raise ValueError("Could not determine app authentication type.")
