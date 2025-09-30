@@ -48,7 +48,13 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,
   setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-  controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : localStorage.getItem('workflow-operation-mode') === 'hand' ? 'hand' : 'comment',
+  controlMode: (() => {
+    const storedControlMode = localStorage.getItem('workflow-operation-mode')
+    if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
+      return storedControlMode
+
+    return 'pointer'
+  })(),
   setControlMode: (controlMode) => {
     set(() => ({ controlMode }))
     localStorage.setItem('workflow-operation-mode', controlMode)
