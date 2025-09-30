@@ -1,8 +1,8 @@
 {
   "name": "dify-web",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
-  "packageManager": "pnpm@10.16.0",
+  "packageManager": "pnpm@10.17.1",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -158,7 +158,7 @@
     "@storybook/react": "8.5.0",
     "@storybook/test": "8.5.0",
     "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.2",
+    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.0.1",
     "@types/jest": "^29.5.13",
     "@types/js-cookie": "^3.0.6",

@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.9.0"
+version = "1.9.1"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -180,7 +180,7 @@ dev = [
 storage = [
     "azure-storage-blob==12.13.0",
     "bce-python-sdk~=0.9.23",
-    "cos-python-sdk-v5==1.9.30",
+    "cos-python-sdk-v5==1.9.38",
     "esdk-obs-python==3.24.6.1",
     "google-cloud-storage==2.16.0",
     "opendal~=0.46.0",
@@ -207,7 +207,7 @@ vdb = [
     "couchbase~=4.3.0",
     "elasticsearch==8.14.0",
     "opensearch-py==2.4.0",
-    "oracledb==3.0.0",
+    "oracledb==3.3.0",
     "pgvecto-rs[sqlalchemy]~=0.2.1",
     "pgvector==0.2.5",
     "pymilvus~=2.5.0",
