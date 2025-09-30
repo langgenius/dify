@@ -30,7 +30,7 @@ class TestModelConfigResourcePermissions:
         return app
 
     @pytest.fixture
-    def mock_account(self, monkeypatch):
+    def mock_account(self, monkeypatch: pytest.MonkeyPatch):
         """Create a mock Account for testing."""
         account = Account()
         account.id = str(uuid.uuid4())
