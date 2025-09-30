@@ -106,7 +106,9 @@ class RetrievalService:
         if exceptions:
             raise ValueError(";\n".join(exceptions))
 
+        # Deduplicate documents for hybrid search to avoid duplicate chunks
         if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
+            all_documents = cls._deduplicate_documents(all_documents)
             data_post_processor = DataPostProcessor(
                 str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
             )
@@ -142,6 +144,40 @@ class RetrievalService:
             metadata_condition=metadata_condition,
         )
         return all_documents
+
+    @classmethod
+    def _deduplicate_documents(cls, documents: list[Document]) -> list[Document]:
+        """Deduplicate documents based on doc_id to avoid duplicate chunks in hybrid search."""
+        if not documents:
+            return documents
+
+        unique_documents = []
+        seen_doc_ids = set()
+
+        for document in documents:
+            # For dify provider documents, use doc_id for deduplication
+            if document.provider == "dify" and document.metadata is not None and "doc_id" in document.metadata:
+                doc_id = document.metadata["doc_id"]
+                if doc_id not in seen_doc_ids:
+                    seen_doc_ids.add(doc_id)
+                    unique_documents.append(document)
+                # If duplicate, keep the one with higher score
+                elif "score" in document.metadata:
+                    # Find existing document with same doc_id and compare scores
+                    for i, existing_doc in enumerate(unique_documents):
+                        if (
+                            existing_doc.metadata
+                            and existing_doc.metadata.get("doc_id") == doc_id
+                            and existing_doc.metadata.get("score", 0) < document.metadata.get("score", 0)
+                        ):
+                            unique_documents[i] = document
+                            break
+            else:
+                # For non-dify documents, use content-based deduplication
+                if document not in unique_documents:
+                    unique_documents.append(document)
+
+        return unique_documents
 
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
