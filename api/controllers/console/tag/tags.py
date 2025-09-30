@@ -3,7 +3,7 @@ from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns, api
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.tag_fields import dataset_tag_fields
 from libs.login import login_required
