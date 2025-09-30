@@ -96,6 +96,7 @@ class LoginStatusApi(Resource):
         else:
             try:
                 PassportService().verify(token=token)
+                user_logged_in = True
             except Exception:
                 user_logged_in = False
 
