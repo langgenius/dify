@@ -1193,6 +1193,11 @@ const translation = {
       view: 'View log',
       edited: 'Edited',
       reset: 'Reset to last run value',
+      listening: {
+        title: 'Listening for events from triggers...',
+        tip: 'Now you can create events in Slack and Gmail, and retrieve outputs from these events in the Variable Inspector.',
+        stopButton: 'Stop',
+      },
       trigger: {
         normal: 'Variable Inspect',
         running: 'Caching running status',

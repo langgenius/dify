@@ -216,10 +216,12 @@ export const useWorkflowRun = () => {
     const {
       setWorkflowRunningData,
       setIsListening,
+      setShowVariableInspectPanel,
     } = workflowStore.getState()
 
     if (runMode === 'webhook') {
       setIsListening(true)
+      setShowVariableInspectPanel(true)
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Running,
@@ -479,11 +481,11 @@ export const useWorkflowRun = () => {
               },
               tracing: [],
             })
-            setIsListening(false)
+            clearListeningState()
             return
           }
 
-          setIsListening(false)
+          clearListeningState()
           handleStream(
             response,
             baseSseOptions.onData ?? noop,
@@ -531,7 +533,7 @@ export const useWorkflowRun = () => {
             },
             tracing: [],
           })
-          setIsListening(false)
+          clearListeningState()
         }
       }
 
@@ -575,7 +577,7 @@ export const useWorkflowRun = () => {
       abortControllerRef.current.abort()
 
     abortControllerRef.current = null
-    const { setWorkflowRunningData, setIsListening } = workflowStore.getState()
+    const { setWorkflowRunningData, setIsListening, setShowVariableInspectPanel } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
         status: WorkflowRunningStatus.Stopped,
@@ -587,6 +589,7 @@ export const useWorkflowRun = () => {
       resultText: '',
     })
     setIsListening(false)
+    setShowVariableInspectPanel(true)
   }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
