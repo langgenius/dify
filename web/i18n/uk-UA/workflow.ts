@@ -946,7 +946,7 @@ const translation = {
       chunksInputTip: 'Вхідна змінна вузла бази знань - це Частини. Тип змінної - об\'єкт з певною JSON-схемою, яка повинна відповідати вибраній структурі частин.',
       chunksVariableIsRequired: 'Змінна chunks є обов\'язковою',
       embeddingModelIsRequired: 'Потрібна модель вбудовування',
-      rerankingModelIsRequired: 'Потрібна модель перенавчання',
+      rerankingModelIsRequired: 'Потрібна модель повторного ранжування',
     },
   },
   tracing: {
