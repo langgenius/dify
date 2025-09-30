@@ -5,7 +5,6 @@
     "tests/",
     "migrations/",
     "core/rag",
-    "extensions",
     "core/app/app_config/easy_ui_based_app/dataset"
   ],
   "typeCheckingMode": "strict",

@@ -47,7 +47,7 @@ class SupabaseStorage(BaseStorage):
 
     def exists(self, filename):
         result = self.client.storage.from_(self.bucket_name).list(filename)
-        if result.count() > 0:
+        if len(result) > 0:
             return True
         return False
 
