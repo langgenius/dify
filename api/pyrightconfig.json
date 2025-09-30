@@ -31,7 +31,7 @@
   "reportUnnecessaryCast": "hint",
   "reportUnnecessaryIsInstance": "hint",
   "reportUntypedFunctionDecorator": "hint",
-
+  "reportUnnecessaryTypeIgnoreComment": "hint",
   "reportAttributeAccessIssue": "hint",
   "pythonVersion": "3.11",
   "pythonPlatform": "All"
