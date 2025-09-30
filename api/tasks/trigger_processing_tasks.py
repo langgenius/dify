@@ -48,14 +48,14 @@ def dispatch_triggered_workflows_async(
     provider_id = dispatch_params.provider_id
     subscription_id = dispatch_params.subscription_id
     timestamp = dispatch_params.timestamp
-    triggers = dispatch_params.triggers
+    events = dispatch_params.events
     request_id = dispatch_params.request_id
 
     try:
         logger.info(
-            "Starting async trigger dispatching for endpoint=%s, triggers=%s, request_id=%s, timestamp=%s",
+            "Starting async trigger dispatching for endpoint=%s, events=%s, request_id=%s, timestamp=%s",
             endpoint_id,
-            triggers,
+            events,
             request_id,
             timestamp,
         )
@@ -85,13 +85,13 @@ def dispatch_triggered_workflows_async(
 
             # Dispatch each trigger
             dispatched_count = 0
-            for trigger in triggers:
+            for event_name in events:
                 try:
-                    trigger = controller.get_trigger(trigger)
+                    trigger = controller.get_event(event_name)
                     if trigger is None:
                         logger.error(
                             "Trigger '%s' not found in provider '%s'",
-                            trigger,
+                            event_name,
                             provider_id,
                         )
                         continue
@@ -105,7 +105,7 @@ def dispatch_triggered_workflows_async(
                 except Exception:
                     logger.exception(
                         "Failed to dispatch trigger '%s' for subscription %s",
-                        trigger,
+                        event_name,
                         subscription_id,
                     )
                     # Continue processing other triggers even if one fails
@@ -117,7 +117,7 @@ def dispatch_triggered_workflows_async(
                 debug_dispatched = TriggerDebugService.dispatch_debug_event(
                     tenant_id=subscription.tenant_id,
                     subscription_id=subscription_id,
-                    triggers=triggers,
+                    events=events,
                     timestamp=timestamp,
                     request_id=request_id,
                 )
@@ -128,7 +128,7 @@ def dispatch_triggered_workflows_async(
             logger.info(
                 "Completed async trigger dispatching: processed %d/%d triggers",
                 dispatched_count,
-                len(triggers),
+                len(events),
             )
 
             # Note: Stored request is not deleted here. It should be handled by:
@@ -138,7 +138,7 @@ def dispatch_triggered_workflows_async(
 
             return {
                 "status": "completed",
-                "total_count": len(triggers),
+                "total_count": len(events),
                 "dispatched_count": dispatched_count,
                 "debug_dispatched_count": debug_dispatched,
             }

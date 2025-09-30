@@ -65,7 +65,7 @@ class PluginTriggerDispatchData(BaseModel):
     provider_id: str
     subscription_id: str
     timestamp: int
-    triggers: list[str]
+    events: list[str]
     request_id: str
 
 

@@ -28,8 +28,8 @@ class PluginTriggerManager(BasePluginClient):
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
-                for trigger in declaration.get("triggers", []):
-                    trigger["identity"]["provider"] = provider_id
+                for event in declaration.get("events", []):
+                    event["identity"]["provider"] = provider_id
 
             return json_response
 
@@ -45,8 +45,8 @@ class PluginTriggerManager(BasePluginClient):
             provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
 
             # override the provider name for each trigger to plugin_id/provider_name
-            for trigger in provider.declaration.triggers:
-                trigger.identity.provider = provider.declaration.identity.name
+            for event in provider.declaration.events:
+                event.identity.provider = provider.declaration.identity.name
 
         return response
 
@@ -58,8 +58,8 @@ class PluginTriggerManager(BasePluginClient):
         def transformer(json_response: dict[str, Any]) -> dict:
             data = json_response.get("data")
             if data:
-                for trigger in data.get("declaration", {}).get("triggers", []):
-                    trigger["identity"]["provider"] = str(provider_id)
+                for event in data.get("declaration", {}).get("events", []):
+                    event["identity"]["provider"] = str(provider_id)
 
             return json_response
 
@@ -74,8 +74,8 @@ class PluginTriggerManager(BasePluginClient):
         response.declaration.identity.name = str(provider_id)
 
         # override the provider name for each trigger to plugin_id/provider_name
-        for trigger in response.declaration.triggers:
-            trigger.identity.provider = str(provider_id)
+        for event in response.declaration.events:
+            event.identity.provider = str(provider_id)
 
         return response
 
@@ -184,7 +184,7 @@ class PluginTriggerManager(BasePluginClient):
 
         for resp in response:
             return TriggerDispatchResponse(
-                triggers=resp.triggers,
+                events=resp.events,
                 response=deserialize_response(binascii.unhexlify(resp.raw_http_response.encode())),
             )
 

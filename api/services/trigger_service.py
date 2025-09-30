@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
-from core.trigger.entities.entities import TriggerEntity
+from core.trigger.entities.entities import EventEntity
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
@@ -70,7 +70,7 @@ class TriggerService:
 
     @classmethod
     def dispatch_triggered_workflows(
-        cls, subscription: TriggerSubscription, trigger: TriggerEntity, request_id: str
+        cls, subscription: TriggerSubscription, trigger: EventEntity, request_id: str
     ) -> int:
         """Process triggered workflows.
 
@@ -191,7 +191,7 @@ class TriggerService:
             user_id=subscription.user_id, request=request, subscription=subscription.to_entity()
         )
 
-        if dispatch_response.triggers:
+        if dispatch_response.events:
             request_id = f"trigger_request_{uuid.uuid4().hex}"
             serialized_request = serialize_request(request)
             storage.save(f"triggers/{request_id}", serialized_request)
@@ -204,7 +204,7 @@ class TriggerService:
                 provider_id=subscription.provider_id,
                 subscription_id=subscription.id,
                 timestamp=timestamp,
-                triggers=list(dispatch_response.triggers),
+                events=list(dispatch_response.events),
                 request_id=request_id,
             )
             dispatch_data = plugin_trigger_dispatch_data.model_dump(mode="json")
@@ -212,7 +212,7 @@ class TriggerService:
 
             logger.info(
                 "Queued async dispatching for %d triggers on endpoint %s with request_id %s",
-                len(dispatch_response.triggers),
+                len(dispatch_response.events),
                 endpoint_id,
                 request_id,
             )

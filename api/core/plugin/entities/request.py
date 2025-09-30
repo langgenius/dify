@@ -264,9 +264,9 @@ class TriggerValidateProviderCredentialsResponse(BaseModel):
 
 
 class TriggerDispatchResponse:
-    triggers: list[str]
+    events: list[str]
     response: Response
 
-    def __init__(self, triggers: list[str], response: Response):
-        self.triggers = triggers
+    def __init__(self, events: list[str], response: Response):
+        self.events = events
         self.response = response

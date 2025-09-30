@@ -7,11 +7,11 @@ from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import (
+    EventDescription,
+    EventIdentity,
+    EventParameter,
     SubscriptionConstructor,
     TriggerCreationMethod,
-    TriggerDescription,
-    TriggerIdentity,
-    TriggerParameter,
 )
 
 
@@ -29,9 +29,9 @@ class TriggerProviderSubscriptionApiEntity(BaseModel):
 
 class TriggerApiEntity(BaseModel):
     name: str = Field(description="The name of the trigger")
-    identity: TriggerIdentity = Field(description="The identity of the trigger")
-    description: TriggerDescription = Field(description="The description of the trigger")
-    parameters: list[TriggerParameter] = Field(description="The parameters of the trigger")
+    identity: EventIdentity = Field(description="The identity of the trigger")
+    description: EventDescription = Field(description="The description of the trigger")
+    parameters: list[EventParameter] = Field(description="The parameters of the trigger")
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
 
 
@@ -60,7 +60,7 @@ class TriggerProviderApiEntity(BaseModel):
         default_factory=list,
         description="The subscription schema of the trigger provider",
     )
-    triggers: list[TriggerApiEntity] = Field(description="The triggers of the trigger provider")
+    events: list[TriggerApiEntity] = Field(description="The events of the trigger provider")
 
 
 class SubscriptionBuilderApiEntity(BaseModel):

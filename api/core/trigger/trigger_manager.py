@@ -15,8 +15,8 @@ from core.plugin.entities.request import Event, TriggerInvokeResponse
 from core.plugin.impl.exc import PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
+    EventEntity,
     Subscription,
-    TriggerEntity,
     Unsubscription,
 )
 from core.trigger.provider import PluginTriggerProviderController
@@ -116,7 +116,7 @@ class TriggerManager:
         return cls.list_plugin_trigger_providers(tenant_id)
 
     @classmethod
-    def list_triggers_by_provider(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[TriggerEntity]:
+    def list_triggers_by_provider(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[EventEntity]:
         """
         List all triggers for a specific provider
 
@@ -125,20 +125,8 @@ class TriggerManager:
         :return: List of trigger entities
         """
         provider = cls.get_trigger_provider(tenant_id, provider_id)
-        return provider.get_triggers()
-
-    @classmethod
-    def get_trigger(cls, tenant_id: str, provider_id: TriggerProviderID, trigger_name: str) -> Optional[TriggerEntity]:
-        """
-        Get a specific trigger
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider ID
-        :param trigger_name: Trigger name
-        :return: Trigger entity or None
-        """
-        return cls.get_trigger_provider(tenant_id, provider_id).get_trigger(trigger_name)
-
+        return provider.get_events()
+  
     @classmethod
     def invoke_trigger(
         cls,
@@ -165,7 +153,7 @@ class TriggerManager:
         :return: Trigger execution result
         """
         provider = cls.get_trigger_provider(tenant_id, provider_id)
-        trigger = provider.get_trigger(trigger_name)
+        trigger = provider.get_event(trigger_name)
         if not trigger:
             raise ValueError(f"Trigger {trigger_name} not found in provider {provider_id}")
         try:

@@ -16,7 +16,7 @@ from core.plugin.entities.parameters import (
 from core.tools.entities.common_entities import I18nObject
 
 
-class TriggerParameterType(StrEnum):
+class EventParameterType(StrEnum):
     """The type of the parameter"""
 
     STRING = "string"
@@ -39,14 +39,14 @@ class TriggerParameterType(StrEnum):
         return cast_parameter_value(self, value)
 
 
-class TriggerParameter(BaseModel):
+class EventParameter(BaseModel):
     """
-    The parameter of the trigger
+    The parameter of the event
     """
 
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
-    type: TriggerParameterType = Field(..., description="The type of the parameter")
+    type: EventParameterType = Field(..., description="The type of the parameter")
     auto_generate: Optional[PluginParameterAutoGenerate] = Field(
         default=None, description="The auto generate of the parameter"
     )
@@ -79,36 +79,36 @@ class TriggerProviderIdentity(BaseModel):
     tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
 
 
-class TriggerIdentity(BaseModel):
+class EventIdentity(BaseModel):
     """
-    The identity of the trigger
+    The identity of the event
     """
 
-    author: str = Field(..., description="The author of the trigger")
-    name: str = Field(..., description="The name of the trigger")
-    label: I18nObject = Field(..., description="The label of the trigger")
-    provider: Optional[str] = Field(default=None, description="The provider of the trigger")
+    author: str = Field(..., description="The author of the event")
+    name: str = Field(..., description="The name of the event")
+    label: I18nObject = Field(..., description="The label of the event")
+    provider: Optional[str] = Field(default=None, description="The provider of the event")
 
 
-class TriggerDescription(BaseModel):
+class EventDescription(BaseModel):
     """
-    The description of the trigger
+    The description of the event
     """
 
     human: I18nObject = Field(..., description="Human readable description")
     llm: I18nObject = Field(..., description="LLM readable description")
 
 
-class TriggerEntity(BaseModel):
+class EventEntity(BaseModel):
     """
-    The configuration of a trigger
+    The configuration of an event
     """
 
-    identity: TriggerIdentity = Field(..., description="The identity of the trigger")
-    parameters: list[TriggerParameter] = Field(default=[], description="The parameters of the trigger")
-    description: TriggerDescription = Field(..., description="The description of the trigger")
+    identity: EventIdentity = Field(..., description="The identity of the event")
+    parameters: list[EventParameter] = Field(default=[], description="The parameters of the event")
+    description: EventDescription = Field(..., description="The description of the event")
     output_schema: Optional[Mapping[str, Any]] = Field(
-        default=None, description="The output schema that this trigger produces"
+        default=None, description="The output schema that this event produces"
     )
 
 
@@ -124,7 +124,7 @@ class SubscriptionConstructor(BaseModel):
     The subscription constructor of the trigger provider
     """
 
-    parameters: list[TriggerParameter] = Field(
+    parameters: list[EventParameter] = Field(
         default_factory=list, description="The parameters schema of the subscription constructor"
     )
 
@@ -158,7 +158,7 @@ class TriggerProviderEntity(BaseModel):
     subscription_constructor: SubscriptionConstructor = Field(
         description="The subscription constructor of the trigger provider",
     )
-    triggers: list[TriggerEntity] = Field(default=[], description="The triggers of the trigger provider")
+    events: list[EventEntity] = Field(default=[], description="The events of the trigger provider")
 
 
 class Subscription(BaseModel):
@@ -262,7 +262,7 @@ class TriggerEventData(BaseModel):
     """Event data dispatched to trigger sessions."""
 
     subscription_id: str
-    triggers: list[str]
+    events: list[str]
     request_id: str
     timestamp: float
 
@@ -293,18 +293,18 @@ class TriggerCreationMethod(StrEnum):
 
 # Export all entities
 __all__ = [
+    "EventDescription",
+    "EventEntity",
+    "EventIdentity",
+    "EventParameter",
+    "EventParameterType",
     "OAuthSchema",
     "RequestLog",
     "Subscription",
     "SubscriptionBuilder",
     "TriggerCreationMethod",
-    "TriggerDescription",
-    "TriggerEntity",
     "TriggerEventData",
-    "TriggerIdentity",
     "TriggerInputs",
-    "TriggerParameter",
-    "TriggerParameterType",
     "TriggerProviderEntity",
     "TriggerProviderIdentity",
     "Unsubscription",

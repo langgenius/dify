@@ -75,7 +75,7 @@ class TriggerDebugService:
         cls,
         tenant_id: str,
         subscription_id: str,
-        triggers: list[str],
+        events: list[str],
         request_id: str,
         timestamp: int,
     ) -> int:
@@ -86,15 +86,15 @@ class TriggerDebugService:
         ).model_dump_json()
 
         dispatched = 0
-        if len(triggers) > 10:
+        if len(events) > 10:
             logger.warning(
-                "Too many triggers to dispatch at once: %d triggers tenant: %s subscription: %s",
-                len(triggers),
+                "Too many events to dispatch at once: %d events tenant: %s subscription: %s",
+                len(events),
                 tenant_id,
                 subscription_id,
             )
 
-        for trigger_name in triggers:
+        for trigger_name in events:
             try:
                 dispatched += redis_client.eval(
                     cls.LUA_DISPATCH,

@@ -17,11 +17,11 @@ from core.plugin.entities.request import (
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
+    EventEntity,
     ProviderConfig,
     Subscription,
     SubscriptionConstructor,
     TriggerCreationMethod,
-    TriggerEntity,
     TriggerProviderEntity,
     TriggerProviderIdentity,
     Unsubscription,
@@ -100,15 +100,15 @@ class PluginTriggerProviderController:
             subscription_constructor=subscription_constructor,
             subscription_schema=self.entity.subscription_schema,
             supported_creation_methods=supported_creation_methods,
-            triggers=[
+            events=[
                 TriggerApiEntity(
-                    name=trigger.identity.name,
-                    identity=trigger.identity,
-                    description=trigger.description,
-                    parameters=trigger.parameters,
-                    output_schema=trigger.output_schema,
+                    name=event.identity.name,
+                    identity=event.identity,
+                    description=event.description,
+                    parameters=event.parameters,
+                    output_schema=event.output_schema,
                 )
-                for trigger in self.entity.triggers
+                for event in self.entity.events
             ],
         )
 
@@ -117,24 +117,24 @@ class PluginTriggerProviderController:
         """Get provider identity"""
         return self.entity.identity
 
-    def get_triggers(self) -> list[TriggerEntity]:
+    def get_events(self) -> list[EventEntity]:
         """
-        Get all triggers for this provider
+        Get all events for this provider
 
-        :return: List of trigger entities
+        :return: List of event entities
         """
-        return self.entity.triggers
+        return self.entity.events
 
-    def get_trigger(self, trigger_name: str) -> Optional[TriggerEntity]:
+    def get_event(self, event_name: str) -> Optional[EventEntity]:
         """
-        Get a specific trigger by name
+        Get a specific event by name
 
-        :param trigger_name: Trigger name
-        :return: Trigger entity or None
+        :param event_name: Event name
+        :return: Event entity or None
         """
-        for trigger in self.entity.triggers:
-            if trigger.identity.name == trigger_name:
-                return trigger
+        for event in self.entity.events:
+            if event.identity.name == event_name:
+                return event
         return None
 
     def get_subscription_default_properties(self) -> Mapping[str, Any]:
@@ -161,7 +161,7 @@ class PluginTriggerProviderController:
         :return: Validation response
         """
         # First validate against schema
-        for config in self.entity.subscription_constructor.credentials_schema:
+        for config in self.entity.subscription_constructor.credentials_schema or []:
             if config.required and config.name not in credentials:
                 raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
 
@@ -210,7 +210,7 @@ class PluginTriggerProviderController:
             )
         if credential_type == CredentialType.API_KEY:
             return (
-                subscription_constructor.credentials_schema.copy()
+                subscription_constructor.credentials_schema.copy() or []
                 if subscription_constructor and subscription_constructor.credentials_schema
                 else []
             )
