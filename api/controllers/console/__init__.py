@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from importlib import import_module
 
 from flask import Blueprint
 from flask_restx import Namespace
@@ -30,7 +31,6 @@ from .explore.workflow import (
 )
 from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
-
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
 api: "Api" = ExternalApi(
@@ -40,23 +40,23 @@ api: "Api" = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 
-# Create namespace
 console_ns = Namespace("console", description="Console management API operations", path="/")
 
-# File
-api.add_resource(FileApi, "/files/upload")
-api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")
-api.add_resource(FileSupportTypeApi, "/files/support-type")
+RESOURCE_MODULES = (
+    "controllers.console.app.app_import",
+    "controllers.console.explore.audio",
+    "controllers.console.explore.completion",
+    "controllers.console.explore.conversation",
+    "controllers.console.explore.message",
+    "controllers.console.explore.workflow",
+    "controllers.console.files",
+    "controllers.console.remote_files",
+)
 
-# Remote files
-api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
-api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
+for module_name in RESOURCE_MODULES:
+    import_module(module_name)
 
-# Import App
-api.add_resource(AppImportApi, "/apps/imports")
-api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm")
-api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
-
+# Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
 from . import (
     admin,
@@ -66,6 +66,7 @@ from . import (
     init_validate,
     ping,
     setup,
+    spec,
     version,
 )
 
@@ -118,6 +119,15 @@ from .datasets import (
     hit_testing,
     metadata,
     website,
+)
+from .datasets.rag_pipeline import (
+    datasource_auth,
+    datasource_content_preview,
+    rag_pipeline,
+    rag_pipeline_datasets,
+    rag_pipeline_draft_variable,
+    rag_pipeline_import,
+    rag_pipeline_workflow,
 )
 
 # Import explore controllers
@@ -222,7 +232,6 @@ from .app.workflow_alias import WorkflowAliasApi
 api.add_resource(
     WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases", "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
 )
-
 api.add_namespace(console_ns)
 
 __all__ = [
@@ -250,6 +259,8 @@ __all__ = [
     "datasets",
     "datasets_document",
     "datasets_segments",
+    "datasource_auth",
+    "datasource_content_preview",
     "email_register",
     "endpoint",
     "extension",
@@ -275,10 +286,16 @@ __all__ = [
     "parameter",
     "ping",
     "plugin",
+    "rag_pipeline",
+    "rag_pipeline_datasets",
+    "rag_pipeline_draft_variable",
+    "rag_pipeline_import",
+    "rag_pipeline_workflow",
     "recommended_app",
     "saved_message",
     "setup",
     "site",
+    "spec",
     "statistic",
     "tags",
     "tool_providers",

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import { workflowAliasTranslation } from '@/i18n/zh-Hans/workflow-alias'
 import type { ContextMenuProps } from './index'
+import { useStore } from '@/app/components/workflow/store'
 
 const useContextMenu = (props: ContextMenuProps) => {
   const {
@@ -10,6 +11,7 @@ const useContextMenu = (props: ContextMenuProps) => {
   } = props
   const { t } = useTranslation()
   const aliasT = workflowAliasTranslation
+  const pipelineId = useStore(s => s.pipelineId)
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -31,10 +33,11 @@ const useContextMenu = (props: ContextMenuProps) => {
           key: VersionHistoryContextMenuOptions.edit,
           name: t('workflow.versionHistory.nameThisVersion'),
         },
-      {
+      // todo: pipeline support export specific version DSL
+      ...(!pipelineId ? [{
         key: VersionHistoryContextMenuOptions.exportDSL,
         name: t('app.export'),
-      },
+      }] : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t('workflow.versionHistory.copyId'),
@@ -44,7 +47,7 @@ const useContextMenu = (props: ContextMenuProps) => {
         name: aliasT.manageAlias,
       },
     ]
-  }, [isNamedVersion, t])
+  }, [isNamedVersion, t, pipelineId, aliasT])
 
   return {
     deleteOperation,

@@ -22,7 +22,6 @@ import {
   useIsChatMode,
   useNodesInteractions,
   useNodesReadOnly,
-  useWorkflow,
 } from '../../../hooks'
 import {
   useStore,
@@ -47,7 +46,7 @@ export const NodeTargetHandle = memo(({
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
-  const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
+  const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availablePrevBlocks.length
 
   const handleOpenChange = useCallback((v: boolean) => {
@@ -129,10 +128,9 @@ export const NodeSourceHandle = memo(({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
-  const { checkParallelLimit } = useWorkflow()
 
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
@@ -140,9 +138,8 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (checkParallelLimit(id, handleId))
-      setOpen(v => !v)
-  }, [checkParallelLimit, id, handleId])
+    setOpen(v => !v)
+  }, [])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAdd(
       {

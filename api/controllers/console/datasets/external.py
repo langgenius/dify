@@ -1,3 +1,5 @@
+from typing import cast
+
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal, reqparse
@@ -9,13 +11,14 @@ from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import login_required
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
 
 
-def _validate_name(name):
+def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 100:
         raise ValueError("Name must be between 1 to 100 characters.")
     return name
@@ -148,7 +151,7 @@ class ExternalApiTemplateApi(Resource):
         external_knowledge_api_id = str(external_knowledge_api_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor or current_user.is_dataset_operator:
+        if not (current_user.is_editor or current_user.is_dataset_operator):
             raise Forbidden()
 
         ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
@@ -274,7 +277,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
             response = HitTestingService.external_retrieve(
                 dataset=dataset,
                 query=args["query"],
-                account=current_user,
+                account=cast(Account, current_user),
                 external_retrieval_model=args["external_retrieval_model"],
                 metadata_filtering_conditions=args["metadata_filtering_conditions"],
             )
