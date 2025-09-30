@@ -20,6 +20,7 @@ from core.workflow.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunPauseRequestedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
@@ -37,6 +38,7 @@ from core.workflow.node_events import (
     LoopSucceededEvent,
     NodeEventBase,
     NodeRunResult,
+    PauseRequestedEvent,
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
@@ -385,6 +387,16 @@ class Node:
                 raise NotImplementedError(
                     f"Node {self._node_id} does not support status {event.node_run_result.status}"
                 )
+
+    @_dispatch.register
+    def _(self, event: PauseRequestedEvent) -> NodeRunPauseRequestedEvent:
+        return NodeRunPauseRequestedEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.PAUSED),
+            reason=event.reason,
+        )
 
     @_dispatch.register
     def _(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
