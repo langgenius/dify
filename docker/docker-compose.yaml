@@ -10,7 +10,7 @@ x-shared-env: &shared-api-worker-env
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   APP_API_URL: ${APP_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
-  FILES_URL: ${FILES_URL:-http://api:5001}
+  FILES_URL: ${FILES_URL:-}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
   LANG: ${LANG:-en_US.UTF-8}
   LC_ALL: ${LC_ALL:-en_US.UTF-8}
@@ -598,105 +598,105 @@ x-shared-env: &shared-api-worker-env
 
 services:
   # API service
-  # api:
-  #   build: ../api
-  #   restart: always
-  #   environment:
-  #     # Use the shared environment variables.
-  #     <<: *shared-api-worker-env
-  #     # Startup mode, 'api' starts the API server.
-  #     MODE: api
-  #     SENTRY_DSN: ${API_SENTRY_DSN:-}
-  #     SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-  #     SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-  #     PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
-  #     PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
-  #     PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-  #     INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_started
-  #   volumes:
-  #     # Mount the storage directory to the container, for storing user files.
-  #     - ./volumes/app/storage:/app/api/storage
-  #   networks:
-  #     - ssrf_proxy_network
-  #     - default
+  api:
+    image: langgenius/dify-api:1.9.1
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'api' starts the API server.
+      MODE: api
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
 
   # worker service
   # The Celery worker for processing the queue.
-  # worker:
-  #   build: ../api
-  #   restart: always
-  #   environment:
-  #     # Use the shared environment variables.
-  #     <<: *shared-api-worker-env
-  #     # Startup mode, 'worker' starts the Celery worker for processing the queue.
-  #     MODE: worker
-  #     SENTRY_DSN: ${API_SENTRY_DSN:-}
-  #     SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-  #     SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-  #     PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-  #     INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_started
-  #   volumes:
-  #     # Mount the storage directory to the container, for storing user files.
-  #     - ./volumes/app/storage:/app/api/storage
-  #   networks:
-  #     - ssrf_proxy_network
-  #     - default
+  worker:
+    image: langgenius/dify-api:1.9.1
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      MODE: worker
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
 
-  # # worker_beat service
-  # # Celery beat for scheduling periodic tasks.
-  # worker_beat:
-  #   build: ../api
-  #   restart: always
-  #   environment:
-  #     # Use the shared environment variables.
-  #     <<: *shared-api-worker-env
-  #     # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
-  #     MODE: beat
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_started
-  #   networks:
-  #     - ssrf_proxy_network
-  #     - default
+  # worker_beat service
+  # Celery beat for scheduling periodic tasks.
+  worker_beat:
+    image: langgenius/dify-api:1.9.1
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
+      MODE: beat
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
 
-  # # Frontend web application.
-  # web:
-  #   build: ../web
-  #   restart: always
-  #   environment:
-  #     CONSOLE_API_URL: ${CONSOLE_API_URL:-}
-  #     APP_API_URL: ${APP_API_URL:-}
-  #     SENTRY_DSN: ${WEB_SENTRY_DSN:-}
-  #     NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
-  #     TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
-  #     CSP_WHITELIST: ${CSP_WHITELIST:-}
-  #     ALLOW_EMBED: ${ALLOW_EMBED:-false}
-  #     ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
-  #     MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
-  #     MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
-  #     TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
-  #     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
-  #     PM2_INSTANCES: ${PM2_INSTANCES:-2}
-  #     LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
-  #     MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
-  #     MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
-  #     MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
-  #     MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
-  #     ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
-  #     ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
-  #     ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
+  # Frontend web application.
+  web:
+    image: langgenius/dify-web:1.9.1
+    restart: always
+    environment:
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-}
+      APP_API_URL: ${APP_API_URL:-}
+      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
+      CSP_WHITELIST: ${CSP_WHITELIST:-}
+      ALLOW_EMBED: ${ALLOW_EMBED:-false}
+      ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
+      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
+      PM2_INSTANCES: ${PM2_INSTANCES:-2}
+      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
+      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
+      MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
+      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
+      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
+      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
   # The postgres database.
   db:
     image: postgres:15-alpine

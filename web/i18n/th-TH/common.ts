@@ -500,6 +500,7 @@ const translation = {
       addNewModelCredential: 'เพิ่มข้อมูลประจําตัวของโมเดลใหม่',
     },
     parametersInvalidRemoved: 'บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก',
+    installDataSourceProvider: 'ติดตั้งผู้ให้บริการแหล่งข้อมูล',
   },
   dataSource: {
     add: 'เพิ่มแหล่งข้อมูล',

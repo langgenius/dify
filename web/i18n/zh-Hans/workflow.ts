@@ -956,7 +956,10 @@ const translation = {
       aboutRetrieval: '关于知识检索。',
       chunkIsRequired: '分段结构是必需的',
       indexMethodIsRequired: '索引方法是必需的',
+      chunksVariableIsRequired: 'Chunks 变量是必需的',
+      embeddingModelIsRequired: 'Embedding 模型是必需的',
       retrievalSettingIsRequired: '检索设置是必需的',
+      rerankingModelIsRequired: 'Reranking 模型是必需的',
     },
   },
   tracing: {

@@ -493,6 +493,7 @@ const translation = {
     toBeConfigured: 'To be configured',
     configureTip: 'Set up api-key or add model to use',
     installProvider: 'Install model providers',
+    installDataSourceProvider: 'Install data source providers',
     discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',

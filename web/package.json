@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "packageManager": "pnpm@10.16.0",
   "engines": {
@@ -158,7 +158,7 @@
     "@chromatic-com/storybook": "^3.1.0",
     "@eslint-react/eslint-plugin": "^1.15.0",
     "@eslint/eslintrc": "^3.1.0",
-    "@eslint/js": "^9.20.0",
+    "@eslint/js": "^9.36.0",
     "@faker-js/faker": "^9.0.3",
     "@happy-dom/jest-environment": "^17.4.4",
     "@mdx-js/loader": "^3.1.0",
@@ -177,7 +177,7 @@
     "@storybook/react": "8.5.0",
     "@storybook/test": "8.5.0",
     "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.2",
+    "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.0.1",
     "@types/crypto-js": "^4.2.2",
     "@types/dagre": "^0.7.52",
