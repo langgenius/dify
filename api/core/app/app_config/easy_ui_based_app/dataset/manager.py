@@ -1,5 +1,5 @@
 import uuid
-from typing import cast, Literal
+from typing import Literal, cast
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -200,7 +200,10 @@ class DatasetConfigManager:
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
 
         has_datasets = False
-        if config.get("agent_mode", {}).get("strategy") in {PlanningStrategy.ROUTER.value, PlanningStrategy.REACT_ROUTER.value}:
+        if config.get("agent_mode", {}).get("strategy") in {
+            PlanningStrategy.ROUTER.value,
+            PlanningStrategy.REACT_ROUTER.value,
+        }:
             for tool in config.get("agent_mode", {}).get("tools", []):
                 key = list(tool.keys())[0]
                 if key == "dataset":
