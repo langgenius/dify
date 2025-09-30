@@ -11,27 +11,27 @@ def _create_api_app():
     bp = Blueprint("t", __name__)
     api = ExternalApi(bp)
 
-    @api.route("/bad-request")
+    @console_ns.route("/bad-request")
     class Bad(Resource):  # type: ignore
         def get(self):  # type: ignore
             raise BadRequest("invalid input")
 
-    @api.route("/unauth")
+    @console_ns.route("/unauth")
     class Unauth(Resource):  # type: ignore
         def get(self):  # type: ignore
             raise Unauthorized("auth required")
 
-    @api.route("/value-error")
+    @console_ns.route("/value-error")
     class ValErr(Resource):  # type: ignore
         def get(self):  # type: ignore
             raise ValueError("boom")
 
-    @api.route("/quota")
+    @console_ns.route("/quota")
     class Quota(Resource):  # type: ignore
         def get(self):  # type: ignore
             raise AppInvokeQuotaExceededError("quota exceeded")
 
-    @api.route("/general")
+    @console_ns.route("/general")
     class Gen(Resource):  # type: ignore
         def get(self):  # type: ignore
             raise RuntimeError("oops")
@@ -39,7 +39,7 @@ def _create_api_app():
     # Note: We avoid altering default_mediatype to keep normal error paths
 
     # Special 400 message rewrite
-    @api.route("/json-empty")
+    @console_ns.route("/json-empty")
     class JsonEmpty(Resource):  # type: ignore
         def get(self):  # type: ignore
             e = BadRequest()
@@ -48,7 +48,7 @@ def _create_api_app():
             raise e
 
     # 400 mapping payload path
-    @api.route("/param-errors")
+    @console_ns.route("/param-errors")
     class ParamErrors(Resource):  # type: ignore
         def get(self):  # type: ignore
             e = BadRequest()

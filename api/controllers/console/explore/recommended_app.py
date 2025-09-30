@@ -1,7 +1,7 @@
 from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
 from libs.login import current_user, login_required
@@ -35,7 +35,7 @@ recommended_app_list_fields = {
 }
 
 
-@api.route("/explore/apps")
+@console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @login_required
     @account_initialization_required
@@ -57,7 +57,7 @@ class RecommendedAppListApi(Resource):
         return RecommendedAppService.get_recommended_apps_and_categories(language_prefix)
 
 
-@api.route("/explore/apps/<uuid:app_id>")
+@console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required

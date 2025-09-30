@@ -14,7 +14,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
@@ -65,7 +65,7 @@ tenants_fields = {
 workspace_fields = {"id": fields.String, "name": fields.String, "status": fields.String, "created_at": TimestampField}
 
 
-@api.route("/workspaces")
+@console_ns.route("/workspaces")
 class TenantListApi(Resource):
     @setup_required
     @login_required
@@ -94,7 +94,7 @@ class TenantListApi(Resource):
         return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
 
 
-@api.route("/all-workspaces")
+@console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
@@ -120,8 +120,8 @@ class WorkspaceListApi(Resource):
         }, 200
 
 
-@api.route("/workspaces/current", endpoint="workspaces_current")
-@api.route("/info", endpoint="info")  # Deprecated
+@console_ns.route("/workspaces/current", endpoint="workspaces_current")
+@console_ns.route("/info", endpoint="info")  # Deprecated
 class TenantApi(Resource):
     @setup_required
     @login_required
@@ -152,7 +152,7 @@ class TenantApi(Resource):
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
-@api.route("/workspaces/switch")
+@console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
@@ -177,7 +177,7 @@ class SwitchWorkspaceApi(Resource):
         return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
 
 
-@api.route("/workspaces/custom-config")
+@console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
     @setup_required
     @login_required
@@ -208,7 +208,7 @@ class CustomConfigWorkspaceApi(Resource):
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
 
-@api.route("/workspaces/custom-config/webapp-logo/upload")
+@console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
     @setup_required
     @login_required
@@ -249,7 +249,7 @@ class WebappLogoWorkspaceApi(Resource):
         return {"id": upload_file.id}, 201
 
 
-@api.route("/workspaces/info")
+@console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @setup_required
     @login_required

@@ -6,7 +6,7 @@ from flask_restx import Resource, marshal_with, reqparse
 
 import services
 from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -33,7 +33,7 @@ from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
 
-@api.route("/workspaces/current/members")
+@console_ns.route("/workspaces/current/members")
 class MemberListApi(Resource):
     """List all members of current tenant."""
 
@@ -50,7 +50,7 @@ class MemberListApi(Resource):
         return {"result": "success", "accounts": members}, 200
 
 
-@api.route("/workspaces/current/members/invite-email")
+@console_ns.route("/workspaces/current/members/invite-email")
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
@@ -113,7 +113,7 @@ class MemberInviteEmailApi(Resource):
         }, 201
 
 
-@api.route("/workspaces/current/members/<uuid:member_id>")
+@console_ns.route("/workspaces/current/members/<uuid:member_id>")
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
@@ -146,7 +146,7 @@ class MemberCancelInviteApi(Resource):
         }, 200
 
 
-@api.route("/workspaces/current/members/<uuid:member_id>/update-role")
+@console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
@@ -181,7 +181,7 @@ class MemberUpdateRoleApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/dataset-operators")
+@console_ns.route("/workspaces/current/dataset-operators")
 class DatasetOperatorMemberListApi(Resource):
     """List all members of current tenant."""
 
@@ -198,7 +198,7 @@ class DatasetOperatorMemberListApi(Resource):
         return {"result": "success", "accounts": members}, 200
 
 
-@api.route("/workspaces/current/members/send-owner-transfer-confirm-email")
+@console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
@@ -239,7 +239,7 @@ class SendOwnerTransferEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
-@api.route("/workspaces/current/members/owner-transfer-check")
+@console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
     @setup_required
     @login_required
@@ -285,7 +285,7 @@ class OwnerTransferCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
-@api.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
+@console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
     @setup_required
     @login_required

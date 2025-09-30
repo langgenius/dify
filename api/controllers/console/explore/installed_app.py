@@ -6,7 +6,7 @@ from flask_restx import Resource, inputs, marshal_with, reqparse
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
@@ -22,7 +22,7 @@ from services.feature_service import FeatureService
 logger = logging.getLogger(__name__)
 
 
-@api.route("/installed-apps")
+@console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
@@ -155,7 +155,7 @@ class InstalledAppsListApi(Resource):
         return {"message": "App installed successfully"}
 
 
-@api.route("/installed-apps/<uuid:installed_app_id>")
+@console_ns.route("/installed-apps/<uuid:installed_app_id>")
 class InstalledAppApi(InstalledAppResource):
     """
     update and delete an installed app

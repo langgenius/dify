@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailChangeLimitError,
@@ -45,7 +45,7 @@ from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
-@api.route("/account/init")
+@console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @setup_required
     @login_required
@@ -98,7 +98,7 @@ class AccountInitApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/account/profile")
+@console_ns.route("/account/profile")
 class AccountProfileApi(Resource):
     @setup_required
     @login_required
@@ -111,7 +111,7 @@ class AccountProfileApi(Resource):
         return current_user
 
 
-@api.route("/account/name")
+@console_ns.route("/account/name")
 class AccountNameApi(Resource):
     @setup_required
     @login_required
@@ -133,7 +133,7 @@ class AccountNameApi(Resource):
         return updated_account
 
 
-@api.route("/account/avatar")
+@console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
     @setup_required
     @login_required
@@ -151,7 +151,7 @@ class AccountAvatarApi(Resource):
         return updated_account
 
 
-@api.route("/account/interface-language")
+@console_ns.route("/account/interface-language")
 class AccountInterfaceLanguageApi(Resource):
     @setup_required
     @login_required
@@ -169,7 +169,7 @@ class AccountInterfaceLanguageApi(Resource):
         return updated_account
 
 
-@api.route("/account/interface-theme")
+@console_ns.route("/account/interface-theme")
 class AccountInterfaceThemeApi(Resource):
     @setup_required
     @login_required
@@ -187,7 +187,7 @@ class AccountInterfaceThemeApi(Resource):
         return updated_account
 
 
-@api.route("/account/timezone")
+@console_ns.route("/account/timezone")
 class AccountTimezoneApi(Resource):
     @setup_required
     @login_required
@@ -209,7 +209,7 @@ class AccountTimezoneApi(Resource):
         return updated_account
 
 
-@api.route("/account/password")
+@console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
     @setup_required
     @login_required
@@ -235,7 +235,7 @@ class AccountPasswordApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/account/integrates")
+@console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
     integrate_fields = {
         "provider": fields.String,
@@ -292,7 +292,7 @@ class AccountIntegrateApi(Resource):
         return {"data": integrate_data}
 
 
-@api.route("/account/delete/verify")
+@console_ns.route("/account/delete/verify")
 class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
@@ -308,7 +308,7 @@ class AccountDeleteVerifyApi(Resource):
         return {"result": "success", "data": token}
 
 
-@api.route("/account/delete")
+@console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
     @setup_required
     @login_required
@@ -331,7 +331,7 @@ class AccountDeleteApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/account/delete/feedback")
+@console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
     @setup_required
     def post(self):
@@ -345,7 +345,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/account/education/verify")
+@console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
     verify_fields = {
         "token": fields.String,
@@ -365,7 +365,7 @@ class EducationVerifyApi(Resource):
         return BillingService.EducationIdentity.verify(account.id, account.email)
 
 
-@api.route("/account/education")
+@console_ns.route("/account/education")
 class EducationApi(Resource):
     status_fields = {
         "result": fields.Boolean,
@@ -410,7 +410,7 @@ class EducationApi(Resource):
         return res
 
 
-@api.route("/account/education/autocomplete")
+@console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
     data_fields = {
         "data": fields.List(fields.String),
@@ -434,7 +434,7 @@ class EducationAutoCompleteApi(Resource):
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
 
-@api.route("/account/change-email")
+@console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
     @enable_change_email
     @setup_required
@@ -483,7 +483,7 @@ class ChangeEmailSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
-@api.route("/account/change-email/validity")
+@console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
     @enable_change_email
     @setup_required
@@ -525,7 +525,7 @@ class ChangeEmailCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
-@api.route("/account/change-email/reset")
+@console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
     @enable_change_email
     @setup_required
@@ -565,7 +565,7 @@ class ChangeEmailResetApi(Resource):
         return updated_account
 
 
-@api.route("/account/change-email/check-email-unique")
+@console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
     @setup_required
     def post(self):

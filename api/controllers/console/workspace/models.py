@@ -4,7 +4,7 @@ from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -17,7 +17,7 @@ from services.model_provider_service import ModelProviderService
 logger = logging.getLogger(__name__)
 
 
-@api.route("/workspaces/current/default-model")
+@console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
     @setup_required
     @login_required
@@ -86,7 +86,7 @@ class DefaultModelApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
@@ -189,7 +189,7 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 204
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
@@ -367,7 +367,7 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
     @setup_required
     @login_required
@@ -399,7 +399,9 @@ class ModelProviderModelCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable")
+@console_ns.route(
+    "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
+)
 class ModelProviderModelEnableApi(Resource):
     @setup_required
     @login_required
@@ -427,7 +429,7 @@ class ModelProviderModelEnableApi(Resource):
         return {"result": "success"}
 
 
-@api.route(
+@console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
 class ModelProviderModelDisableApi(Resource):
@@ -457,7 +459,7 @@ class ModelProviderModelDisableApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
     @setup_required
     @login_required
@@ -503,7 +505,7 @@ class ModelProviderModelValidateApi(Resource):
         return response
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
     @setup_required
     @login_required
@@ -523,7 +525,7 @@ class ModelProviderModelParameterRuleApi(Resource):
         return jsonable_encoder({"data": parameter_rules})
 
 
-@api.route("/workspaces/current/models/model-types/<string:model_type>")
+@console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
     @setup_required
     @login_required

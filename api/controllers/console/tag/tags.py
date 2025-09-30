@@ -3,7 +3,7 @@ from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.tag_fields import dataset_tag_fields
 from libs.login import login_required
@@ -17,7 +17,7 @@ def _validate_name(name):
     return name
 
 
-@api.route("/tags")
+@console_ns.route("/tags")
 class TagListApi(Resource):
     @setup_required
     @login_required
@@ -53,7 +53,7 @@ class TagListApi(Resource):
         return response, 200
 
 
-@api.route("/tags/<uuid:tag_id>")
+@console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
     @setup_required
     @login_required
@@ -91,7 +91,7 @@ class TagUpdateDeleteApi(Resource):
         return 204
 
 
-@api.route("/tag-bindings/create")
+@console_ns.route("/tag-bindings/create")
 class TagBindingCreateApi(Resource):
     @setup_required
     @login_required
@@ -117,7 +117,7 @@ class TagBindingCreateApi(Resource):
         return {"result": "success"}, 200
 
 
-@api.route("/tag-bindings/remove")
+@console_ns.route("/tag-bindings/remove")
 class TagBindingDeleteApi(Resource):
     @setup_required
     @login_required

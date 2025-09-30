@@ -1,7 +1,7 @@
 from flask_restx import marshal_with
 
 from controllers.common import fields
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
@@ -9,7 +9,7 @@ from models.model import AppMode, InstalledApp
 from services.app_service import AppService
 
 
-@api.route("/installed-apps/<uuid:installed_app_id>/parameters", endpoint="installed_app_parameters")
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/parameters", endpoint="installed_app_parameters")
 class AppParameterApi(InstalledAppResource):
     """Resource for app variables."""
 
@@ -40,7 +40,7 @@ class AppParameterApi(InstalledAppResource):
         return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
 
-@api.route("/installed-apps/<uuid:installed_app_id>/meta", endpoint="installed_app_meta")
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/meta", endpoint="installed_app_meta")
 class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""

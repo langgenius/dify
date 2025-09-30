@@ -5,7 +5,7 @@ from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -17,7 +17,7 @@ from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
 
 
-@api.route("/workspaces/current/model-providers")
+@console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
     @setup_required
     @login_required
@@ -46,7 +46,7 @@ class ModelProviderListApi(Resource):
         return jsonable_encoder({"data": provider_list})
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/credentials")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
@@ -153,7 +153,7 @@ class ModelProviderCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
     @setup_required
     @login_required
@@ -178,7 +178,7 @@ class ModelProviderCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
     @setup_required
     @login_required
@@ -215,7 +215,7 @@ class ModelProviderValidateApi(Resource):
         return response
 
 
-@api.route("/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>")
+@console_ns.route("/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>")
 class ModelProviderIconApi(Resource):
     """
     Get model provider icon
@@ -234,7 +234,7 @@ class ModelProviderIconApi(Resource):
         return send_file(io.BytesIO(icon), mimetype=mimetype)
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
     @setup_required
     @login_required
@@ -268,7 +268,7 @@ class PreferredProviderTypeUpdateApi(Resource):
         return {"result": "success"}
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
 class ModelProviderPaymentCheckoutUrlApi(Resource):
     @setup_required
     @login_required

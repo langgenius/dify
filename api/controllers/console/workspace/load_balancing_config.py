@@ -1,7 +1,7 @@
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -10,7 +10,9 @@ from models.account import Account, TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 
-@api.route("/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate")
+@console_ns.route(
+    "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate"
+)
 class LoadBalancingCredentialsValidateApi(Resource):
     @setup_required
     @login_required
@@ -62,7 +64,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
         return response
 
 
-@api.route(
+@console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate"
 )
 class LoadBalancingConfigCredentialsValidateApi(Resource):
