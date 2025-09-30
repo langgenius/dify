@@ -93,7 +93,7 @@ logger = logging.getLogger(__name__)
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
-        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
+        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if user:
             # get permitted dataset ids
