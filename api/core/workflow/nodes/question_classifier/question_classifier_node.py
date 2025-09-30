@@ -68,7 +68,7 @@ class QuestionClassifierNode(Node):
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -111,9 +111,9 @@ class QuestionClassifierNode(Node):
         query = variable.value if variable else None
         variables = {"query": query}
         # fetch model config
-        model_instance, model_config = LLMNode._fetch_model_config(
-            node_data_model=node_data.model,
+        model_instance, model_config = llm_utils.fetch_model_config(
             tenant_id=self.tenant_id,
+            node_data_model=node_data.model,
         )
         # fetch memory
         memory = llm_utils.fetch_memory(
