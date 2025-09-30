@@ -62,7 +62,8 @@ class WeaveDataTrace(BaseTraceInstance):
         self,
     ):
         try:
-            project_url = f"https://wandb.ai/{self.weave_client._project_id()}"
+            project_identifier = f"{self.entity}/{self.project_name}" if self.entity else self.project_name
+            project_url = f"https://wandb.ai/{project_identifier}"
             return project_url
         except Exception as e:
             logger.debug("Weave get run url failed: %s", str(e))
@@ -424,7 +425,23 @@ class WeaveDataTrace(BaseTraceInstance):
             raise ValueError(f"Weave API check failed: {str(e)}")
 
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
-        call = self.weave_client.create_call(op=run_data.op, inputs=run_data.inputs, attributes=run_data.attributes)
+        inputs = run_data.inputs
+        if inputs is None:
+            inputs = {}
+        elif not isinstance(inputs, dict):
+            inputs = {"inputs": str(inputs)}
+
+        attributes = run_data.attributes
+        if attributes is None:
+            attributes = {}
+        elif not isinstance(attributes, dict):
+            attributes = {"attributes": str(attributes)}
+
+        call = self.weave_client.create_call(
+            op=run_data.op,
+            inputs=inputs,
+            attributes=attributes,
+        )
         self.calls[run_data.id] = call
         if parent_run_id:
             self.calls[run_data.id].parent_id = parent_run_id
@@ -432,6 +449,7 @@ class WeaveDataTrace(BaseTraceInstance):
     def finish_call(self, run_data: WeaveTraceModel):
         call = self.calls.get(run_data.id)
         if call:
-            self.weave_client.finish_call(call=call, output=run_data.outputs, exception=run_data.exception)
+            exception = Exception(run_data.exception) if run_data.exception else None
+            self.weave_client.finish_call(call=call, output=run_data.outputs, exception=exception)
         else:
             raise ValueError(f"Call with id {run_data.id} not found")
