@@ -53,6 +53,8 @@ const translation = {
     needEndNode: 'The End node must be added',
     needStartNode: 'At least one start node must be added',
     needAnswerNode: 'The Answer node must be added',
+    endNodeConvergence: 'End Node Validation',
+    multipleEntryNodesConflict: 'Multiple entry nodes in the same connected part cannot point to different end nodes',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
     previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',
