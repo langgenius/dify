@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(pnpm:*)",
+      "Bash(uv:*)",
+      "Bash(docker:*)",
+      "Bash(pyenv:*)",
+      "Bash(findstr:*)",
+      "Bash(openssl rand:*)",
+      "Bash(make:*)",
+      "Bash(start \"Docker Desktop\" \"C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe\")",
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(python:*)",
+      "Bash(.venvScriptspython.exe -c \"import sys; print(''Python path:'', sys.executable)\")",
+      "Bash(.venv/Scripts/python.exe:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "context7",
+    "sequential-thinking",
+    "github",
+    "fetch",
+    "playwright"
+  ]
+}

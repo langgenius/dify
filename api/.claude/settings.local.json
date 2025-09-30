@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Projects/Github/dify/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
