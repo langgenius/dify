@@ -156,7 +156,7 @@ class TestDisableSegmentsFromIndexTask:
         document.indexing_status = "completed"
         document.enabled = True
         document.archived = False
-        document.doc_form = ("text_model",)  # Use text_model form for testin
+        document.doc_form = "text_model"  # Use text_model form for testing
         document.doc_language = "en"
         from extensions.ext_database import db
 
