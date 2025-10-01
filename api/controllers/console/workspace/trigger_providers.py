@@ -20,7 +20,7 @@ from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
-from services.workflow_plugin_trigger_service import WorkflowPluginTriggerService
+from services.trigger.workflow_plugin_trigger_service import WorkflowPluginTriggerService
 
 logger = logging.getLogger(__name__)
 
