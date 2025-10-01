@@ -43,7 +43,9 @@ class AzureBlobStorage(BaseStorage):
         blob = client.get_container_client(container=self.bucket_name)
         blob = blob.get_blob_client(blob=filename)
         data = blob.download_blob().readall()
-        return cast(bytes, data)
+        if not isinstance(data, bytes):
+            raise TypeError(f"Expected bytes from blob.readall(), got {type(data).__name__}")
+        return data
 
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
