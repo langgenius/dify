@@ -503,4 +503,3 @@ class TestEnableSegmentsToIndexTask:
         for segment in segments:
             indexing_cache_key = f"segment_{segment.id}_indexing"
             assert redis_client.exists(indexing_cache_key) == 0
-
