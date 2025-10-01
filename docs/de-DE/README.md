@@ -65,7 +65,7 @@ Dify ist eine Open-Source-Plattform zur Entwicklung von LLM-Anwendungen. Ihre in
 
 </br>
 
-Der einfachste Weg, den Dify-Server zu starten, ist über [docker compose](docker/docker-compose.yaml). Stellen Sie vor dem Ausführen von Dify mit den folgenden Befehlen sicher, dass [Docker](https://docs.docker.com/get-docker/) und [Docker Compose](https://docs.docker.com/compose/install/) auf Ihrem System installiert sind:
+Der einfachste Weg, den Dify-Server zu starten, ist über [docker compose](../../docker/docker-compose.yaml). Stellen Sie vor dem Ausführen von Dify mit den folgenden Befehlen sicher, dass [Docker](https://docs.docker.com/get-docker/) und [Docker Compose](https://docs.docker.com/compose/install/) auf Ihrem System installiert sind:
 
 ```bash
 cd dify
@@ -128,7 +128,7 @@ Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichti
 
 ## Erweiterte Einstellungen
 
-Falls Sie die Konfiguration anpassen müssen, lesen Sie bitte die Kommentare in unserer [.env.example](docker/.env.example)-Datei und aktualisieren Sie die entsprechenden Werte in Ihrer `.env`-Datei. Zusätzlich müssen Sie eventuell Anpassungen an der `docker-compose.yaml`-Datei vornehmen, wie zum Beispiel das Ändern von Image-Versionen, Portzuordnungen oder Volumen-Mounts, je nach Ihrer spezifischen Einsatzumgebung und Ihren Anforderungen. Nachdem Sie Änderungen vorgenommen haben, starten Sie `docker-compose up -d` erneut. Eine vollständige Liste der verfügbaren Umgebungsvariablen finden Sie [hier](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+Falls Sie die Konfiguration anpassen müssen, lesen Sie bitte die Kommentare in unserer [.env.example](../../docker/.env.example)-Datei und aktualisieren Sie die entsprechenden Werte in Ihrer `.env`-Datei. Zusätzlich müssen Sie eventuell Anpassungen an der `docker-compose.yaml`-Datei vornehmen, wie zum Beispiel das Ändern von Image-Versionen, Portzuordnungen oder Volumen-Mounts, je nach Ihrer spezifischen Einsatzumgebung und Ihren Anforderungen. Nachdem Sie Änderungen vorgenommen haben, starten Sie `docker-compose up -d` erneut. Eine vollständige Liste der verfügbaren Umgebungsvariablen finden Sie [hier](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 Falls Sie eine hochverfügbare Konfiguration einrichten möchten, gibt es von der Community bereitgestellte [Helm Charts](https://helm.sh/) und YAML-Dateien, die es ermöglichen, Dify auf Kubernetes bereitzustellen.
 

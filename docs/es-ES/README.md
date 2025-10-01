@@ -110,7 +110,7 @@ Dale estrella a Dify en GitHub y serás notificado instantáneamente de las nuev
 
 </br>
 
-La forma más fácil de iniciar el servidor de Dify es ejecutar nuestro archivo [docker-compose.yml](docker/docker-compose.yaml). Antes de ejecutar el comando de instalación, asegúrate de que [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) estén instalados en tu máquina:
+La forma más fácil de iniciar el servidor de Dify es ejecutar nuestro archivo [docker-compose.yml](../../docker/docker-compose.yaml). Antes de ejecutar el comando de instalación, asegúrate de que [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) estén instalados en tu máquina:
 
 ```bash
 cd docker
@@ -124,7 +124,7 @@ Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegad
 
 ## Próximos pasos
 
-Si necesita personalizar la configuración, consulte los comentarios en nuestro archivo [.env.example](docker/.env.example) y actualice los valores correspondientes en su archivo `.env`. Además, es posible que deba realizar ajustes en el propio archivo `docker-compose.yaml`, como cambiar las versiones de las imágenes, las asignaciones de puertos o los montajes de volúmenes, según su entorno de implementación y requisitos específicos. Después de realizar cualquier cambio, vuelva a ejecutar `docker-compose up -d`. Puede encontrar la lista completa de variables de entorno disponibles [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+Si necesita personalizar la configuración, consulte los comentarios en nuestro archivo [.env.example](../../docker/.env.example) y actualice los valores correspondientes en su archivo `.env`. Además, es posible que deba realizar ajustes en el propio archivo `docker-compose.yaml`, como cambiar las versiones de las imágenes, las asignaciones de puertos o los montajes de volúmenes, según su entorno de implementación y requisitos específicos. Después de realizar cualquier cambio, vuelva a ejecutar `docker-compose up -d`. Puede encontrar la lista completa de variables de entorno disponibles [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 . Después de realizar los cambios, ejecuta `docker-compose up -d` nuevamente. Puedes ver la lista completa de variables de entorno [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
@@ -193,14 +193,6 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 ## Historial de Estrellas
 
 [![Gráfico de Historial de Estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
-## Divulgación de Seguridad
-
-Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.
-
-## Licencia
-
-Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](../../LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
 
 ## Divulgación de Seguridad
 

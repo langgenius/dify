@@ -171,7 +171,7 @@ Z enim klikom namestite Dify v AKS z uporabo [Azure Devops Pipeline Helm Chart b
 
 ## Prispevam
 
-Za tiste, ki bi radi prispevali kodo, si oglejte naš vodnik za prispevke . Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah.
+Za tiste, ki bi radi prispevali kodo, si oglejte naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah.
 
 > Iščemo sodelavce za pomoč pri prevajanju Difyja v jezike, ki niso mandarinščina ali angleščina. Če želite pomagati, si oglejte i18n README za več informacij in nam pustite komentar v global-userskanalu našega strežnika skupnosti Discord .
 

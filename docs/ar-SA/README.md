@@ -99,7 +99,7 @@
 
 </br>
 
-أسهل طريقة لبدء تشغيل خادم Dify هي تشغيل ملف [docker-compose.yml](docker/docker-compose.yaml) الخاص بنا. قبل تشغيل أمر التثبيت، تأكد من تثبيت [Docker](https://docs.docker.com/get-docker/) و [Docker Compose](https://docs.docker.com/compose/install/) على جهازك:
+أسهل طريقة لبدء تشغيل خادم Dify هي تشغيل ملف [docker-compose.yml](../../docker/docker-compose.yaml) الخاص بنا. قبل تشغيل أمر التثبيت، تأكد من تثبيت [Docker](https://docs.docker.com/get-docker/) و [Docker Compose](https://docs.docker.com/compose/install/) على جهازك:
 
 ```bash
 cd docker
@@ -113,7 +113,7 @@ docker compose up -d
 
 ## الخطوات التالية
 
-إذا كنت بحاجة إلى تخصيص الإعدادات، فيرجى الرجوع إلى التعليقات في ملف [.env.example](docker/.env.example) وتحديث القيم المقابلة في ملف `.env`. بالإضافة إلى ذلك، قد تحتاج إلى إجراء تعديلات على ملف `docker-compose.yaml` نفسه، مثل تغيير إصدارات الصور أو تعيينات المنافذ أو نقاط تحميل وحدات التخزين، بناءً على بيئة النشر ومتطلباتك الخاصة. بعد إجراء أي تغييرات، يرجى إعادة تشغيل `docker-compose up -d`. يمكنك العثور على قائمة كاملة بمتغيرات البيئة المتاحة [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+إذا كنت بحاجة إلى تخصيص الإعدادات، فيرجى الرجوع إلى التعليقات في ملف [.env.example](../../docker/.env.example) وتحديث القيم المقابلة في ملف `.env`. بالإضافة إلى ذلك، قد تحتاج إلى إجراء تعديلات على ملف `docker-compose.yaml` نفسه، مثل تغيير إصدارات الصور أو تعيينات المنافذ أو نقاط تحميل وحدات التخزين، بناءً على بيئة النشر ومتطلباتك الخاصة. بعد إجراء أي تغييرات، يرجى إعادة تشغيل `docker-compose up -d`. يمكنك العثور على قائمة كاملة بمتغيرات البيئة المتاحة [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 يوجد مجتمع خاص بـ [Helm Charts](https://helm.sh/) وملفات YAML التي تسمح بتنفيذ Dify على Kubernetes للنظام من الإيجابيات العلوية.
 
@@ -180,14 +180,6 @@ docker compose up -d
 ## تاريخ النجمة
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
-## الكشف عن الأمان
-
-لحماية خصوصيتك، يرجى تجنب نشر مشكلات الأمان على GitHub. بدلاً من ذلك، أرسل أسئلتك إلى <security@dify.ai> وسنقدم لك إجابة أكثر تفصيلاً.
-
-## الرخصة
-
-هذا المستودع متاح تحت [رخصة البرنامج الحر Dify](../../LICENSE)، والتي تعتبر بشكل أساسي Apache 2.0 مع بعض القيود الإضافية.
 
 ## الكشف عن الأمان
 

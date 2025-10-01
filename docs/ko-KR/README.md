@@ -104,7 +104,7 @@ GitHub에서 Dify에 별표를 찍어 새로운 릴리스를 즉시 알림 받�
 
 </br>
 
-Dify 서버를 시작하는 가장 쉬운 방법은 [docker-compose.yml](docker/docker-compose.yaml) 파일을 실행하는 것입니다. 설치 명령을 실행하기 전에 [Docker](https://docs.docker.com/get-docker/) 및 [Docker Compose](https://docs.docker.com/compose/install/)가 머신에 설치되어 있는지 확인하세요.
+Dify 서버를 시작하는 가장 쉬운 방법은 [docker-compose.yml](../../docker/docker-compose.yaml) 파일을 실행하는 것입니다. 설치 명령을 실행하기 전에 [Docker](https://docs.docker.com/get-docker/) 및 [Docker Compose](https://docs.docker.com/compose/install/)가 머신에 설치되어 있는지 확인하세요.
 
 ```bash
 cd docker
@@ -118,7 +118,7 @@ docker compose up -d
 
 ## 다음 단계
 
-구성을 사용자 정의해야 하는 경우 [.env.example](docker/.env.example) 파일의 주석을 참조하고 `.env` 파일에서 해당 값을 업데이트하십시오. 또한 특정 배포 환경 및 요구 사항에 따라 `docker-compose.yaml` 파일 자체를 조정해야 할 수도 있습니다. 예를 들어 이미지 버전, 포트 매핑 또는 볼륨 마운트를 변경합니다. 변경 한 후 `docker-compose up -d`를 다시 실행하십시오. 사용 가능한 환경 변수의 전체 목록은 [여기](https://docs.dify.ai/getting-started/install-self-hosted/environments)에서 찾을 수 있습니다.
+구성을 사용자 정의해야 하는 경우 [.env.example](../../docker/.env.example) 파일의 주석을 참조하고 `.env` 파일에서 해당 값을 업데이트하십시오. 또한 특정 배포 환경 및 요구 사항에 따라 `docker-compose.yaml` 파일 자체를 조정해야 할 수도 있습니다. 예를 들어 이미지 버전, 포트 매핑 또는 볼륨 마운트를 변경합니다. 변경 한 후 `docker-compose up -d`를 다시 실행하십시오. 사용 가능한 환경 변수의 전체 목록은 [여기](https://docs.dify.ai/getting-started/install-self-hosted/environments)에서 찾을 수 있습니다.
 
 Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했다는 커뮤니티가 제공하는 [Helm Charts](https://helm.sh/)와 YAML 파일이 존재합니다.
 
