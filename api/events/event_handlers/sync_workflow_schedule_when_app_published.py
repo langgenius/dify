@@ -8,7 +8,7 @@ from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode, Workflow, WorkflowSchedulePlan
-from services.schedule_service import ScheduleService
+from services.trigger.schedule_service import ScheduleService
 
 logger = logging.getLogger(__name__)
 

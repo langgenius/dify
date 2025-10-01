@@ -14,7 +14,7 @@ from extensions.ext_database import db
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
-from services.schedule_service import ScheduleService
+from services.trigger.schedule_service import ScheduleService
 from services.workflow.entities import TriggerData
 
 logger = logging.getLogger(__name__)
