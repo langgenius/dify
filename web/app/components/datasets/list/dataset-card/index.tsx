@@ -197,7 +197,7 @@ const DatasetCard = ({
               {dataset.name}
             </div>
             <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
-              <div className='truncate' title={dataset.created_by}>{dataset.created_by}</div>
+              <div className='truncate' title={dataset.author_name || dataset.created_by}>{dataset.author_name || dataset.created_by}</div>
               <div>·</div>
               <div className='truncate' title={editTimeText}>{editTimeText}</div>
             </div>
