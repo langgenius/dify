@@ -126,15 +126,16 @@ class TestEnableSegmentsToIndexTask:
         segments = []
 
         for i in range(count):
+            text = fake.text(max_nb_chars=200)
             segment = DocumentSegment(
                 id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
                 position=i,
-                content=fake.text(max_nb_chars=200),
-                word_count=len(fake.text(max_nb_chars=200).split()),
-                tokens=len(fake.text(max_nb_chars=200).split()) * 2,
+                content=text,
+                word_count=len(text.split()),
+                tokens=len(text.split()) * 2,
                 index_node_id=f"node_{i}",
                 index_node_hash=f"hash_{i}",
                 enabled=enabled,
