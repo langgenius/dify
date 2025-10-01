@@ -66,8 +66,8 @@ class StorageConfig(BaseSettings):
         description="Type of storage to use."
         " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
         "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
-        "'volcengine-tos', 'supabase'. Default is 'opendal'.",
-        default="opendal",
+        "'volcengine-tos', 'supabase'. Default is 'local'.",
+        default="local",
     )
 
     STORAGE_LOCAL_PATH: str = Field(
