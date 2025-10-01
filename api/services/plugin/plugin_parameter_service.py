@@ -87,10 +87,9 @@ class PluginParameterService:
                 provider_controller = TriggerManager.get_trigger_provider(tenant_id, TriggerProviderID(provider))
                 subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
-                    subscription = (
-                        TriggerSubscriptionBuilderService.get_subscription_builder(credential_id)
-                        or TriggerProviderService.get_subscription_by_id(tenant_id, credential_id)
-                    )
+                    subscription = TriggerSubscriptionBuilderService.get_subscription_builder(
+                        credential_id
+                    ) or TriggerProviderService.get_subscription_by_id(tenant_id, credential_id)
                 else:
                     subscription = TriggerProviderService.get_subscription_by_id(tenant_id)
 

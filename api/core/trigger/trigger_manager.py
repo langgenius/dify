@@ -126,7 +126,7 @@ class TriggerManager:
         """
         provider = cls.get_trigger_provider(tenant_id, provider_id)
         return provider.get_events()
-  
+
     @classmethod
     def invoke_trigger(
         cls,

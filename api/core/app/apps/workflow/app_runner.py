@@ -90,7 +90,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
                 user_id=self.application_generate_entity.user_id,
-                root_node_id=self._root_node_id
+                root_node_id=self._root_node_id,
             )
 
         # RUN WORKFLOW

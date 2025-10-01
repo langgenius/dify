@@ -80,7 +80,7 @@ class WorkflowBasedAppRunner:
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
-        root_node_id: Optional[str] = None
+        root_node_id: Optional[str] = None,
     ) -> Graph:
         """
         Init graph

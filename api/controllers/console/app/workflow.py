@@ -999,17 +999,14 @@ class DraftWorkflowTriggerNodeApi(Resource):
 
     @api.doc("poll_draft_workflow_trigger_node")
     @api.doc(description="Poll for trigger events and execute single node when event arrives")
-    @api.doc(params={
-        "app_id": "Application ID",
-        "node_id": "Node ID"
-    })
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @api.expect(
         api.model(
             "DraftWorkflowTriggerNodeRequest",
             {
                 "trigger_name": fields.String(required=True, description="Trigger name"),
                 "subscription_id": fields.String(required=True, description="Subscription ID"),
-            }
+            },
         )
     )
     @api.response(200, "Trigger event received and node executed successfully")
@@ -1087,7 +1084,7 @@ class DraftWorkflowTriggerRunApi(Resource):
                 "node_id": fields.String(required=True, description="Node ID"),
                 "trigger_name": fields.String(required=True, description="Trigger name"),
                 "subscription_id": fields.String(required=True, description="Subscription ID"),
-            }
+            },
         )
     )
     @api.response(200, "Trigger event received and workflow executed successfully")
@@ -1168,7 +1165,7 @@ class DraftWorkflowTriggerWebhookRunApi(Resource):
             "DraftWorkflowTriggerWebhookRunRequest",
             {
                 "node_id": fields.String(required=True, description="Node ID"),
-            }
+            },
         )
     )
     @api.response(200, "Workflow executed successfully")
@@ -1252,7 +1249,7 @@ class DraftWorkflowTriggerScheduleRunApi(Resource):
             "DraftWorkflowTriggerScheduleRunRequest",
             {
                 "node_id": fields.String(required=True, description="Node ID"),
-            }
+            },
         )
     )
     @api.response(200, "Workflow executed successfully")
@@ -1287,7 +1284,7 @@ class DraftWorkflowTriggerScheduleRunApi(Resource):
                 args=workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
-                root_node_id=node_id
+                root_node_id=node_id,
             )
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
