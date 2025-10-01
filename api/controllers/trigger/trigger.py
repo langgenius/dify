@@ -5,8 +5,8 @@ from flask import jsonify, request
 from werkzeug.exceptions import NotFound
 
 from controllers.trigger import bp
+from services.trigger.trigger_service import TriggerService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
-from services.trigger_service import TriggerService
 
 logger = logging.getLogger(__name__)
 
