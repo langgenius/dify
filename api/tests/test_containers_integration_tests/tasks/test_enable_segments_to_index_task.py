@@ -329,7 +329,7 @@ class TestEnableSegmentsToIndexTask:
             ("not_completed", {"indexing_status": "processing"}),
         ]
 
-        for status_name, status_attrs in invalid_statuses:
+        for _, status_attrs in invalid_statuses:
             # Reset document status
             document.enabled = True
             document.archived = False
