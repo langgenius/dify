@@ -3,10 +3,12 @@ from decimal import Decimal
 from typing import Any, cast
 
 from configs import dify_config
+from core.helper import encrypter
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
+from core.variables import SecretVariable
 from core.variables.segments import ArrayFileSegment
 from core.variables.types import SegmentType
 from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
@@ -73,15 +75,24 @@ class CodeNode(Node):
         code_language = self._node_data.code_language
         code = self._node_data.code
 
+        # to store secret variables used in the code block.
+        secret_variables = []
+
         # Get variables
         variables = {}
         for variable_selector in self._node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if isinstance(variable, SecretVariable):
+                secret_variables.append(variable_name)
+
             if isinstance(variable, ArrayFileSegment):
                 variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None
             else:
                 variables[variable_name] = variable.to_object() if variable else None
+
+        obfuscated_variables = encrypter.encrypt_secret_keys(variables, secret_variables, None)
+
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
@@ -94,10 +105,13 @@ class CodeNode(Node):
             result = self._transform_result(result=result, output_schema=self._node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=obfuscated_variables,
+                error=str(e),
+                error_type=type(e).__name__,
             )
 
-        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
+        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=obfuscated_variables, outputs=result)
 
     def _check_string(self, value: str | None, variable: str) -> str | None:
         """

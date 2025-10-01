@@ -1,4 +1,6 @@
 import base64
+from collections.abc import Mapping
+from typing import Any, overload
 
 from libs import rsa
 
@@ -42,3 +44,59 @@ def get_decrypt_decoding(tenant_id: str):
 
 def decrypt_token_with_decoding(token: str, rsa_key, cipher_rsa):
     return rsa.decrypt_token_with_decoding(base64.b64decode(token), rsa_key, cipher_rsa)
+
+
+# =========================
+# encrypt_secret_keys
+# =========================
+
+
+# Overloads to preserve input type
+@overload
+def encrypt_secret_keys(
+    obj: Mapping[str, Any],
+    secret_variables: list[str] | None = None,
+    parent_key: str | None = None,
+) -> Mapping[str, Any]: ...
+
+
+@overload
+def encrypt_secret_keys(
+    obj: list[Any],
+    secret_variables: list[str] | None = None,
+    parent_key: str | None = None,
+) -> list[Any]: ...
+
+
+@overload
+def encrypt_secret_keys(
+    obj: Any,
+    secret_variables: list[str] | None = None,
+    parent_key: str | None = None,
+) -> Any: ...
+
+
+def encrypt_secret_keys(
+    obj: Any,
+    secret_variables: list[str] | None = None,
+    parent_key: str | None = None,
+) -> Any:
+    """
+    Recursively obfuscate the value if it belongs to a Secret Variable.
+    Preserves input type: dict -> dict, list -> list, scalar -> scalar.
+    """
+    secret_variables = secret_variables or []
+
+    if isinstance(obj, dict):
+        # recurse into dict
+        return {key: encrypt_secret_keys(value, secret_variables, key) for key, value in obj.items()}
+
+    elif isinstance(obj, list):
+        # recurse into all list elements
+        return [encrypt_secret_keys(value, secret_variables, None) for value in obj]
+
+    else:
+        # leaf node: obfuscate if parent_key is a secret variable
+        if parent_key in secret_variables:
+            return obfuscated_token(str(obj))
+        return obj
