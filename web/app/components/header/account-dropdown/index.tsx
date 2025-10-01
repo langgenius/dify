@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   RiAccountCircleLine,
   RiArrowRightUpLine,
@@ -25,7 +24,7 @@ import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Avatar from '@/app/components/base/avatar'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import { logout } from '@/service/common'
+import useLogout from '@/hooks/use-logout'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -39,7 +38,6 @@ export default function AppSelector() {
     flex items-center w-full h-8 pl-3 pr-2 text-text-secondary system-md-regular
     rounded-lg hover:bg-state-base-hover cursor-pointer gap-1
   `
-  const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
   const { systemFeatures } = useGlobalPublicStore()
 
@@ -48,24 +46,7 @@ export default function AppSelector() {
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-
-  const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
-
-    localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
-
-    // To avoid use other account's education notice info
-    localStorage.removeItem('education-reverify-prev-expire-at')
-    localStorage.removeItem('education-reverify-has-noticed')
-    localStorage.removeItem('education-expired-has-noticed')
-
-    router.push('/signin')
-  }
+  const { handleLogout } = useLogout()
 
   return (
     <div className="">
@@ -204,7 +185,7 @@ export default function AppSelector() {
                     </div>
                   </MenuItem>
                   <MenuItem>
-                    <div className='p-1' onClick={() => handleLogout()}>
+                    <div className='p-1' onClick={() => handleLogout({ source: 'header' })}>
                       <div
                         className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
