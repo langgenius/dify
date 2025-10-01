@@ -14,6 +14,7 @@ import {
 } from '../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import type { CaseItem, IfElseNodeType } from '../nodes/if-else/types'
 
 // Although the file name refers to Dagre, the implementation now relies on ELK's layered algorithm.
 // Keep the export signatures unchanged to minimise the blast radius while we migrate the layout stack.
@@ -299,7 +300,7 @@ const buildIfElseWithPorts = (
     const handleB = edgeB.sourceHandle
 
     if (handleA && handleB) {
-      const cases = (ifElseNode.data as any).cases || []
+      const cases = (ifElseNode.data as IfElseNodeType).cases || []
       const isAElse = handleA === 'false'
       const isBElse = handleB === 'false'
 
@@ -308,8 +309,8 @@ const buildIfElseWithPorts = (
       if (isBElse)
         return -1
 
-      const indexA = cases.findIndex((c: any) => c.case_id === handleA)
-      const indexB = cases.findIndex((c: any) => c.case_id === handleB)
+      const indexA = cases.findIndex((c: CaseItem) => c.case_id === handleA)
+      const indexB = cases.findIndex((c: CaseItem) => c.case_id === handleB)
 
       if (indexA !== -1 && indexB !== -1)
         return indexA - indexB
