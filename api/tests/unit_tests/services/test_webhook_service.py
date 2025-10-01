@@ -454,3 +454,33 @@ class TestWebhookServiceUnit:
 
             with pytest.raises(ValueError, match="HTTP method mismatch"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+
+    def test_debug_mode_parameter_handling(self):
+        """Test that the debug mode parameter is properly handled in _prepare_webhook_execution."""
+        from controllers.trigger.webhook import _prepare_webhook_execution
+
+        # Mock the WebhookService methods
+        with (
+            patch.object(WebhookService, "get_webhook_trigger_and_workflow") as mock_get_trigger,
+            patch.object(WebhookService, "extract_and_validate_webhook_data") as mock_extract,
+        ):
+            mock_trigger = MagicMock()
+            mock_workflow = MagicMock()
+            mock_config = {"data": {"test": "config"}}
+            mock_data = {"test": "data"}
+
+            mock_get_trigger.return_value = (mock_trigger, mock_workflow, mock_config)
+            mock_extract.return_value = mock_data
+
+            # Test normal mode (skip_status_check=False)
+            result = _prepare_webhook_execution("test_webhook", is_debug=False)
+            mock_get_trigger.assert_called_with("test_webhook", skip_status_check=False)
+            assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
+
+            # Reset mock
+            mock_get_trigger.reset_mock()
+
+            # Test debug mode (skip_status_check=True)
+            result = _prepare_webhook_execution("test_webhook", is_debug=True)
+            mock_get_trigger.assert_called_with("test_webhook", skip_status_check=True)
+            assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)

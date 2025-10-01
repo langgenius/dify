@@ -11,9 +11,16 @@ from services.webhook_service import WebhookService
 logger = logging.getLogger(__name__)
 
 
-def _prepare_webhook_execution(webhook_id: str):
-    """Fetch trigger context, extract request data, and validate payload using unified processing."""
-    webhook_trigger, workflow, node_config = WebhookService.get_webhook_trigger_and_workflow(webhook_id)
+def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
+    """Fetch trigger context, extract request data, and validate payload using unified processing.
+
+    Args:
+        webhook_id: The webhook ID to process
+        is_debug: If True, skip status validation for debug mode
+    """
+    webhook_trigger, workflow, node_config = WebhookService.get_webhook_trigger_and_workflow(
+        webhook_id, skip_status_check=is_debug
+    )
 
     try:
         # Use new unified extraction and validation
@@ -58,7 +65,7 @@ def handle_webhook(webhook_id: str):
 def handle_webhook_debug(webhook_id: str):
     """Handle webhook debug calls without triggering production workflow execution."""
     try:
-        webhook_trigger, _, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id)
+        webhook_trigger, _, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id, is_debug=True)
         if error:
             return jsonify({"error": "Bad Request", "message": error}), 400
 

@@ -37,9 +37,14 @@ class WebhookService:
 
     @classmethod
     def get_webhook_trigger_and_workflow(
-        cls, webhook_id: str
+        cls, webhook_id: str, skip_status_check: bool = False
     ) -> tuple[WorkflowWebhookTrigger, Workflow, Mapping[str, Any]]:
-        """Get webhook trigger, workflow, and node configuration."""
+        """Get webhook trigger, workflow, and node configuration.
+
+        Args:
+            webhook_id: The webhook ID to look up
+            skip_status_check: If True, skip the enabled status check (for debug mode)
+        """
         with Session(db.engine) as session:
             # Get webhook trigger
             webhook_trigger = (
@@ -48,7 +53,7 @@ class WebhookService:
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
 
-            # Check if the corresponding AppTrigger is enabled
+            # Check if the corresponding AppTrigger exists
             app_trigger = (
                 session.query(AppTrigger)
                 .filter(
@@ -62,7 +67,8 @@ class WebhookService:
             if not app_trigger:
                 raise ValueError(f"App trigger not found for webhook {webhook_id}")
 
-            if app_trigger.status != AppTriggerStatus.ENABLED:
+            # Only check enabled status if not in debug mode
+            if not skip_status_check and app_trigger.status != AppTriggerStatus.ENABLED:
                 raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
             # Get workflow
