@@ -1,4 +1,5 @@
 import ELK from 'elkjs/lib/elk.bundled.js'
+import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
 import { cloneDeep } from 'lodash-es'
 import type {
   Edge,
@@ -177,22 +178,17 @@ export type LayoutResult = {
 }
 
 // ELK Port definition for native port support
-type ElkPort = {
+type ElkPortShape = {
   id: string
-  properties?: {
-    'side'?: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST'
-    'index'?: number
-    'port.side'?: string
-    'port.index'?: number
-  }
+  layoutOptions?: LayoutOptions
 }
 
 type ElkNodeShape = {
   id: string
   width: number
   height: number
-  ports?: ElkPort[]
-  properties?: Record<string, any>
+  ports?: ElkPortShape[]
+  layoutOptions?: LayoutOptions
   children?: ElkNodeShape[]
 }
 
@@ -226,28 +222,28 @@ const createEdge = (
   targetPort,
 })
 
-const collectLayout = (graph: any, predicate: (id: string) => boolean): LayoutResult => {
+const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): LayoutResult => {
   const result = new Map<string, LayoutInfo>()
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
 
-  const visit = (node: any) => {
-    node.children?.forEach((child: any) => {
+  const visit = (node: ElkNode) => {
+    node.children?.forEach((child: ElkNode) => {
       if (predicate(child.id)) {
         const x = child.x ?? 0
         const y = child.y ?? 0
         const width = child.width ?? DEFAULT_NODE_WIDTH
         const height = child.height ?? DEFAULT_NODE_HEIGHT
-        const layer = child?.properties?.['org.eclipse.elk.layered.layerIndex']
+        const layer = child?.layoutOptions?.['org.eclipse.elk.layered.layerIndex']
 
         result.set(child.id, {
           x,
           y,
           width,
           height,
-          layer,
+          layer: layer ? Number.parseInt(layer) : undefined,
         })
 
         minX = Math.min(minX, x)
@@ -320,13 +316,11 @@ const buildIfElseWithPorts = (
   })
 
   // Create ELK ports for each branch
-  const ports: ElkPort[] = sortedChildEdges.map((edge, index) => ({
+  const ports: ElkPortShape[] = sortedChildEdges.map((edge, index) => ({
     id: `${ifElseNode.id}-port-${edge.sourceHandle || index}`,
-    properties: {
-      'side': 'EAST', // Ports on the right side (matching 'RIGHT' direction)
-      index,
-      'port.side': 'EAST',
-      'port.index': index,
+    layoutOptions: {
+      'port.side': 'EAST', // Ports on the right side (matching 'RIGHT' direction)
+      'port.index': String(index),
     },
   }))
 
@@ -343,7 +337,7 @@ const buildIfElseWithPorts = (
       width: ifElseNode.width ?? DEFAULT_NODE_WIDTH,
       height: ifElseNode.height ?? DEFAULT_NODE_HEIGHT,
       ports,
-      properties: {
+      layoutOptions: {
         'elk.portConstraints': 'FIXED_ORDER',
       },
     },
@@ -429,7 +423,7 @@ export const getLayoutByDagre = async (originNodes: Node[], originEdges: Edge[])
     edges: elkEdges,
   }
 
-  const layoutedGraph = await elk.layout(graph as any)
+  const layoutedGraph = await elk.layout(graph)
   // No need to filter dummy nodes anymore, as we're using ports
   const layout = collectLayout(layoutedGraph, () => true)
   return normaliseBounds(layout)
@@ -529,7 +523,7 @@ export const getLayoutForChildNodes = async (
     edges: elkEdges,
   }
 
-  const layoutedGraph = await elk.layout(graph as any)
+  const layoutedGraph = await elk.layout(graph)
   const layout = collectLayout(layoutedGraph, () => true)
   return normaliseChildLayout(layout, nodes)
 }
