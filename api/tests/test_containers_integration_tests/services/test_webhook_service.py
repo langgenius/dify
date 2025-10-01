@@ -10,7 +10,7 @@ from werkzeug.datastructures import FileStorage
 from models.model import App
 from models.workflow import Workflow, WorkflowWebhookTrigger
 from services.account_service import AccountService, TenantService
-from services.webhook_service import WebhookService
+from services.trigger.webhook_service import WebhookService
 
 
 class TestWebhookService:

@@ -5,7 +5,7 @@ import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
 
-from services.webhook_service import WebhookService
+from services.trigger.webhook_service import WebhookService
 
 
 class TestWebhookServiceUnit:

@@ -3,7 +3,7 @@ import logging
 from events.app_event import app_draft_workflow_was_synced
 from models.model import App, AppMode
 from models.workflow import Workflow
-from services.webhook_service import WebhookService
+from services.trigger.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
 
