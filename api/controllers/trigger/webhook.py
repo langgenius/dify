@@ -5,8 +5,8 @@ from flask import jsonify
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
+from services.trigger.trigger_debug_service import WebhookDebugService
 from services.trigger.webhook_service import WebhookService
-from services.trigger_debug_service import WebhookDebugService
 
 logger = logging.getLogger(__name__)
 

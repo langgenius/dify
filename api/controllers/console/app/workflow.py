@@ -35,8 +35,8 @@ from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
+from services.trigger.trigger_debug_service import TriggerDebugService, WebhookDebugService
 from services.trigger.webhook_service import WebhookService
-from services.trigger_debug_service import TriggerDebugService, WebhookDebugService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
