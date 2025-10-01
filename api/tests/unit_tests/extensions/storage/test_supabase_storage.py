@@ -176,7 +176,7 @@ class TestSupabaseStorage:
         """Test exists returns True when list() returns items."""
         storage, mock_client = storage_with_mock_client
 
-        mock_client.storage.from_().list.return_value = [{'name': 'test.txt'}]
+        mock_client.storage.from_().list.return_value = [{"name": "test.txt"}]
 
         result = storage.exists("test.txt")
 

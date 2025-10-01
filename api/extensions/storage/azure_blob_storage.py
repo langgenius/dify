@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from datetime import timedelta
+from typing import cast
 
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
@@ -42,7 +43,7 @@ class AzureBlobStorage(BaseStorage):
         blob = client.get_container_client(container=self.bucket_name)
         blob = blob.get_blob_client(blob=filename)
         data = blob.download_blob().readall()
-        return data
+        return cast(bytes, data)
 
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
