@@ -1,6 +1,5 @@
 from collections.abc import Generator
 from datetime import timedelta
-from typing import cast
 
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
