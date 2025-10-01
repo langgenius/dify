@@ -202,7 +202,7 @@ export type TriggerProviderApiEntity = {
   credentials_schema: TriggerCredentialField[]
   oauth_client_schema: TriggerCredentialField[]
   subscription_schema: TriggerSubscriptionSchema
-  triggers: TriggerApiEntity[]
+  events: TriggerApiEntity[]
 }
 
 // Frontend types - compatible with ToolWithProvider

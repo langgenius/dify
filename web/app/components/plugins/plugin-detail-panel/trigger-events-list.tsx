@@ -96,7 +96,7 @@ export const TriggerEventsList = () => {
     if (!detail || !providerInfo)
       return undefined
 
-    const tools = (providerInfo.triggers || []).map((trigger: any) => toTool(trigger, providerInfo.author))
+    const tools = (providerInfo.events || []).map((trigger: any) => toTool(trigger, providerInfo.author))
 
     const metaVersion = detail.declaration.meta?.version || detail.version || '1.0'
 
