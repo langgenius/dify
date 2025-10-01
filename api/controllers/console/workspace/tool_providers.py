@@ -458,6 +458,7 @@ class ToolWorkflowProviderCreateApi(Resource):
         reqparser.add_argument("label", type=str, required=True, nullable=False, location="json")
         reqparser.add_argument("description", type=str, required=True, nullable=False, location="json")
         reqparser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
+        reqparser.add_argument("output_schema", type=dict, required=True, nullable=False, location="json")
         reqparser.add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
         reqparser.add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
         reqparser.add_argument("labels", type=list[str], required=False, nullable=True, location="json")
@@ -473,6 +474,7 @@ class ToolWorkflowProviderCreateApi(Resource):
             icon=args["icon"],
             description=args["description"],
             parameters=args["parameters"],
+            output_schema=args["output_schema"],
             privacy_policy=args["privacy_policy"],
             labels=args["labels"],
         )
@@ -497,6 +499,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
         reqparser.add_argument("label", type=str, required=True, nullable=False, location="json")
         reqparser.add_argument("description", type=str, required=True, nullable=False, location="json")
         reqparser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
+        reqparser.add_argument("output_schema", type=dict, required=False, nullable=True, location="json", default={})
         reqparser.add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
         reqparser.add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
         reqparser.add_argument("labels", type=list[str], required=False, nullable=True, location="json")
@@ -515,6 +518,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
             args["icon"],
             args["description"],
             args["parameters"],
+            args["output_schema"],
             args["privacy_policy"],
             args.get("labels", []),
         )
