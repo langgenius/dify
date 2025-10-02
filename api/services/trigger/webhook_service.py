@@ -37,13 +37,13 @@ class WebhookService:
 
     @classmethod
     def get_webhook_trigger_and_workflow(
-        cls, webhook_id: str, skip_status_check: bool = False
+        cls, webhook_id: str, is_debug: bool = False
     ) -> tuple[WorkflowWebhookTrigger, Workflow, Mapping[str, Any]]:
         """Get webhook trigger, workflow, and node configuration.
 
         Args:
             webhook_id: The webhook ID to look up
-            skip_status_check: If True, skip the enabled status check (for debug mode)
+            is_debug: If True, use the draft workflow graph and skip the trigger enabled status check
             
         Returns:
             A tuple containing:
@@ -61,35 +61,46 @@ class WebhookService:
             )
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
-
-            # Check if the corresponding AppTrigger exists
-            app_trigger = (
-                session.query(AppTrigger)
-                .filter(
-                    AppTrigger.app_id == webhook_trigger.app_id,
-                    AppTrigger.node_id == webhook_trigger.node_id,
-                    AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
+            
+            if is_debug:
+                workflow = (
+                    session.query(Workflow)
+                    .filter(
+                        Workflow.app_id == webhook_trigger.app_id,
+                        Workflow.version == Workflow.VERSION_DRAFT,
+                    )
+                    .order_by(Workflow.created_at.desc())
+                    .first()
                 )
-                .first()
-            )
-
-            if not app_trigger:
-                raise ValueError(f"App trigger not found for webhook {webhook_id}")
-
-            # Only check enabled status if not in debug mode
-            if not skip_status_check and app_trigger.status != AppTriggerStatus.ENABLED:
-                raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
-
-            # Get workflow
-            workflow = (
-                session.query(Workflow)
-                .filter(
-                    Workflow.app_id == webhook_trigger.app_id,
-                    Workflow.version != Workflow.VERSION_DRAFT,
+            else:
+                # Check if the corresponding AppTrigger exists
+                app_trigger = (
+                    session.query(AppTrigger)
+                    .filter(
+                        AppTrigger.app_id == webhook_trigger.app_id,
+                        AppTrigger.node_id == webhook_trigger.node_id,
+                        AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
+                    )
+                    .first()
                 )
-                .order_by(Workflow.created_at.desc())
-                .first()
-            )
+
+                if not app_trigger:
+                    raise ValueError(f"App trigger not found for webhook {webhook_id}")
+
+                # Only check enabled status if not in debug mode
+                if app_trigger.status != AppTriggerStatus.ENABLED:
+                    raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
+
+                # Get workflow
+                workflow = (
+                    session.query(Workflow)
+                    .filter(
+                        Workflow.app_id == webhook_trigger.app_id,
+                        Workflow.version != Workflow.VERSION_DRAFT,
+                    )
+                    .order_by(Workflow.created_at.desc())
+                    .first()
+                )
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
 

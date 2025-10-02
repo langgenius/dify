@@ -19,7 +19,7 @@ def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
         is_debug: If True, skip status validation for debug mode
     """
     webhook_trigger, workflow, node_config = WebhookService.get_webhook_trigger_and_workflow(
-        webhook_id, skip_status_check=is_debug
+        webhook_id, is_debug=is_debug
     )
 
     try:
