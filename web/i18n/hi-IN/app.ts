@@ -80,6 +80,7 @@ const translation = {
     noTemplateFoundTip: 'विभिन्न कीवर्ड का उपयोग करके खोजने का प्रयास करें।',
     workflowUserDescription: 'ड्रैग-एंड-ड्रॉप सरलता के साथ स्वायत्त AI वर्कफ़्लो का दृश्य निर्माण करें।',
     dropDSLToCreateApp: 'यहाँ DSL फ़ाइल ड्रॉप करें ताकि ऐप बनाया जा सके',
+    import: 'आयात',
   },
   editApp: 'जानकारी संपादित करें',
   editAppTitle: 'ऐप जानकारी संपादित करें',
@@ -277,6 +278,10 @@ const translation = {
       themeSystemDesc: 'अपने ऑपरेटिंग सिस्टम की उपस्थिति का पालन करें',
       runDesc: 'त्वरित कमांड चलाएँ (थीम, भाषा, ...)',
       slashDesc: 'कमांड्स चलाएं जैसे /theme, /lang',
+      accountDesc: 'खाता पृष्ठ पर जाएं',
+      docDesc: 'सहायता दस्तावेज़ खोलें',
+      communityDesc: 'ओपन डिस्कॉर्ड समुदाय',
+      feedbackDesc: 'खुले समुदाय की फीडबैक चर्चाएँ',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',
@@ -311,6 +316,11 @@ const translation = {
     inScope: '{{scope}}s में',
     tryDifferentSearch: 'एक अलग खोज शब्द आजमाएँ',
     noMatchingCommands: 'कोई मिलती-जुलती कमांड्स नहीं मिलीं',
+    slashHint: 'सभी उपलब्ध कमांड देखने के लिए टाइप करें /',
+    pressEscToClose: 'बंद करने के लिए ESC दबाएं',
+    startTyping: 'खोजने के लिए टाइप करना शुरू करें',
+    selectToNavigate: 'नेविगेट करने के लिए चुनें',
+    tips: 'नेविगेट करने के लिए ↑↓ दबाएँ',
   },
 }
 

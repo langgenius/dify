@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -52,13 +52,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
+        llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
 
-        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -126,8 +127,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError:
-                            # ensure ascii to avoid encoding error
+                        except TypeError:
+                            # fallback: force ASCII to handle non-serializable objects
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -153,8 +154,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError:
-                        # ensure ascii to avoid encoding error
+                    except TypeError:
+                        # fallback: force ASCII to handle non-serializable objects
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                 if result.usage:
@@ -395,9 +396,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=query))
-
             # get image detail config
             image_detail_config = (
                 self.application_generate_entity.file_upload_config.image_config.detail
@@ -408,6 +406,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 else None
             )
             image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in self.files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(
@@ -415,6 +415,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         image_detail_config=image_detail_config,
                     )
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:

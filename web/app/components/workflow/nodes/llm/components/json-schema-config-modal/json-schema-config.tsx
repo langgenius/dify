@@ -11,7 +11,6 @@ import VisualEditor from './visual-editor'
 import SchemaEditor from './schema-editor'
 import {
   checkJsonSchemaDepth,
-  convertBooleanToString,
   getValidationErrorMessage,
   jsonToSchema,
   preValidateSchema,
@@ -56,7 +55,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
-  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
+  const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
@@ -87,7 +86,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
           return
         }
-        convertBooleanToString(schema)
         const validationErrors = validateSchemaAgainstDraft7(schema)
         if (validationErrors.length > 0) {
           setValidationError(getValidationErrorMessage(validationErrors))
@@ -168,7 +166,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
           return
         }
-        convertBooleanToString(schema)
         const validationErrors = validateSchemaAgainstDraft7(schema)
         if (validationErrors.length > 0) {
           setValidationError(getValidationErrorMessage(validationErrors))

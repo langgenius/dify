@@ -6,6 +6,7 @@ const translation = {
     agents: 'กลยุทธ์ตัวแทน',
     all: 'ทั้งหมด',
     bundles: 'ชุดรวม',
+    datasources: 'แหล่งข้อมูล',
   },
   categorySingle: {
     tool: 'เครื่องมือ',
@@ -13,6 +14,7 @@ const translation = {
     agent: 'กลยุทธ์ตัวแทน',
     model: 'แบบ',
     bundle: 'มัด',
+    datasource: 'แหล่งข้อมูล',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     custom: 'ที่กำหนดเอง',
     useApiAuthDesc: 'หลังจากตั้งค่าข้อมูลประจำตัวแล้ว สมาชิกทุกคนภายในพื้นที่ทำงานสามารถใช้เครื่องมือนี้เมื่อจัดการแอปพลิเคชันได้',
     clientInfo: 'เนื่องจากไม่พบความลับของลูกค้าสำหรับผู้ให้บริการเครื่องมือนี้ จำเป็นต้องตั้งค่าแบบแมนนวล สำหรับ redirect_uri กรุณาใช้',
+    unavailable: 'ไม่มีให้บริการ',
+    customCredentialUnavailable: 'ข้อมูลรับรองที่กำหนดเองขณะนี้ไม่สามารถใช้ได้',
+    credentialUnavailable: 'ข้อมูลรับรองไม่สามารถใช้งานได้ในขณะนี้ กรุณาติดต่อผู้ดูแลระบบ.',
+    credentialUnavailableInButton: 'ข้อมูลรับรองไม่พร้อมใช้งาน',
+    connectedWorkspace: 'พื้นที่ทํางานที่เชื่อมต่อ',
+    emptyAuth: 'โปรดกําหนดค่าการรับรองความถูกต้อง',
   },
   deprecated: 'เลิกใช้',
   autoUpdate: {

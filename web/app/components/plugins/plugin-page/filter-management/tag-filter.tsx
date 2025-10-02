@@ -27,7 +27,7 @@ const TagsFilter = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const { tags: options, tagsMap } = useTags()
+  const { tags: options, getTagLabel } = useTags()
   const filteredOptions = options.filter(option => option.name.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (value.includes(id))
@@ -59,7 +59,7 @@ const TagsFilter = ({
               !selectedTagsLength && t('pluginTags.allTags')
             }
             {
-              !!selectedTagsLength && value.map(val => tagsMap[val].label).slice(0, 2).join(',')
+              !!selectedTagsLength && value.map(val => getTagLabel(val)).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
@@ -85,7 +85,7 @@ const TagsFilter = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+        <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
           <div className='p-2 pb-1'>
             <Input
               showLeftIcon

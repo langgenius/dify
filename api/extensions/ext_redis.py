@@ -246,7 +246,7 @@ def init_app(app: DifyApp):
     app.extensions["redis"] = redis_client
 
 
-def redis_fallback(default_return: Any = None):
+def redis_fallback(default_return: Any | None = None):
     """
     decorator to handle Redis operation exceptions and return a default value when Redis is unavailable.
 
@@ -260,7 +260,8 @@ def redis_fallback(default_return: Any = None):
             try:
                 return func(*args, **kwargs)
             except RedisError as e:
-                logger.warning("Redis operation failed in %s: %s", func.__name__, str(e), exc_info=True)
+                func_name = getattr(func, "__name__", "Unknown")
+                logger.warning("Redis operation failed in %s: %s", func_name, str(e), exc_info=True)
                 return default_return
 
         return wrapper

@@ -1,7 +1,7 @@
 const translation = {
   title: 'Dnevniki',
   description: 'Dnevniki beležijo stanje delovanja aplikacije, vključno z vnosi uporabnikov in odgovori umetne inteligence.',
-  dateTimeFormat: 'DD.MM.YYYY hh:mm A',
+  dateTimeFormat: 'DD.MM.YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'Čas posodobitve',

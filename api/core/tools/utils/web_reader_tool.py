@@ -2,7 +2,7 @@ import mimetypes
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import unquote
 
 import chardet
@@ -27,7 +27,7 @@ def page_result(text: str, cursor: int, max_length: int) -> str:
     return text[cursor : cursor + max_length]
 
 
-def get_url(url: str, user_agent: Optional[str] = None) -> str:
+def get_url(url: str, user_agent: str | None = None) -> str:
     """Fetch URL and return the contents as a string."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
@@ -80,7 +80,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
     else:
         content = response.text
 
-    article = extract_using_readability(content)
+    article = extract_using_readabilipy(content)
 
     if not article.text:
         return ""
@@ -101,7 +101,7 @@ class Article:
     text: Sequence[dict]
 
 
-def extract_using_readability(html: str):
+def extract_using_readabilipy(html: str):
     json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=True)
     article = Article(
         title=json_article.get("title") or "",

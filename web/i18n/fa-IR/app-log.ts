@@ -1,7 +1,7 @@
 const translation = {
   title: 'لاگ‌ها',
   description: 'لاگ‌ها وضعیت اجرایی برنامه را ثبت می‌کنند، شامل ورودی‌های کاربر و پاسخ‌های هوش مصنوعی.',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'زمان به‌روزرسانی',

@@ -80,6 +80,7 @@ const translation = {
     noAppsFound: 'Nenhum aplicativo encontrado',
     advancedShortDescription: 'Fluxo aprimorado para conversas de múltiplos turnos',
     dropDSLToCreateApp: 'Cole o arquivo DSL aqui para criar o aplicativo',
+    import: 'Importação',
   },
   editApp: 'Editar Informações',
   editAppTitle: 'Editar Informações do Aplicativo',
@@ -277,6 +278,10 @@ const translation = {
       themeSystemDesc: 'Siga a aparência do seu sistema operacional',
       languageCategoryDesc: 'Mudar o idioma da interface',
       slashDesc: 'Execute comandos como /tema, /idioma',
+      accountDesc: 'Navegue até a página da conta',
+      communityDesc: 'Comunidade do Discord aberta',
+      feedbackDesc: 'Discussões de feedback da comunidade aberta',
+      docDesc: 'Abra a documentação de ajuda',
     },
     emptyState: {
       noAppsFound: 'Nenhum aplicativo encontrado',
@@ -311,6 +316,11 @@ const translation = {
     inScope: 'em {{scope}}s',
     noMatchingCommands: 'Nenhum comando correspondente encontrado',
     tryDifferentSearch: 'Tente um termo de pesquisa diferente',
+    slashHint: 'Digite / para ver todos os comandos disponíveis',
+    tips: 'Pressione ↑↓ para navegar',
+    selectToNavigate: 'Selecione para navegar',
+    pressEscToClose: 'Pressione ESC para fechar',
+    startTyping: 'Comece a digitar para pesquisar',
   },
 }
 

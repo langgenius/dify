@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
@@ -25,7 +27,7 @@ class CompletionAppRunner(AppRunner):
 
     def run(
         self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity
@@ -35,8 +37,8 @@ class CompletionAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(CompletionAppConfig, app_config)
-
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.scalar(stmt)
         if not app_record:
             raise ValueError("App not found")
 
@@ -122,7 +124,9 @@ class CompletionAppRunner(AppRunner):
                 config=dataset_config,
                 query=query or "",
                 invoke_from=application_generate_entity.invoke_from,
-                show_retrieve_source=app_config.additional_features.show_retrieve_source,
+                show_retrieve_source=app_config.additional_features.show_retrieve_source
+                if app_config.additional_features
+                else False,
                 hit_callback=hit_callback,
                 message_id=message.id,
                 inputs=inputs,

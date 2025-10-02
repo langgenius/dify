@@ -1,11 +1,11 @@
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
-from fields.tag_fields import tag_fields
+from fields.tag_fields import dataset_tag_fields
 from libs.login import login_required
 from models.model import Tag
 from services.tag_service import TagService
@@ -17,11 +17,12 @@ def _validate_name(name):
     return name
 
 
+@console_ns.route("/tags")
 class TagListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(tag_fields)
+    @marshal_with(dataset_tag_fields)
     def get(self):
         tag_type = request.args.get("type", type=str, default="")
         keyword = request.args.get("keyword", default=None, type=str)
@@ -52,6 +53,7 @@ class TagListApi(Resource):
         return response, 200
 
 
+@console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
     @setup_required
     @login_required
@@ -89,6 +91,7 @@ class TagUpdateDeleteApi(Resource):
         return 204
 
 
+@console_ns.route("/tag-bindings/create")
 class TagBindingCreateApi(Resource):
     @setup_required
     @login_required
@@ -111,9 +114,10 @@ class TagBindingCreateApi(Resource):
         args = parser.parse_args()
         TagService.save_tag_binding(args)
 
-        return 200
+        return {"result": "success"}, 200
 
 
+@console_ns.route("/tag-bindings/remove")
 class TagBindingDeleteApi(Resource):
     @setup_required
     @login_required
@@ -132,10 +136,4 @@ class TagBindingDeleteApi(Resource):
         args = parser.parse_args()
         TagService.delete_tag_binding(args)
 
-        return 200
-
-
-api.add_resource(TagListApi, "/tags")
-api.add_resource(TagUpdateDeleteApi, "/tags/<uuid:tag_id>")
-api.add_resource(TagBindingCreateApi, "/tag-bindings/create")
-api.add_resource(TagBindingDeleteApi, "/tag-bindings/remove")
+        return {"result": "success"}, 200

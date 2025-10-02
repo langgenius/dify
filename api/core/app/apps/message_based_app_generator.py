@@ -1,7 +1,10 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Union, cast
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -81,13 +84,12 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
+    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
         if conversation:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
-                .first()
+            stmt = select(AppModelConfig).where(
+                AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
+            app_model_config = db.session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -110,7 +112,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AgentChatAppGenerateEntity,
             AdvancedChatAppGenerateEntity,
         ],
-        conversation: Optional[Conversation] = None,
+        conversation: Conversation | None = None,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -253,7 +255,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param conversation_id: conversation id
         :return: conversation
         """
-        conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id))
 
         if not conversation:
             raise ConversationNotExistsError("Conversation not exists")
@@ -266,7 +269,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        message = db.session.query(Message).where(Message.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message = session.scalar(select(Message).where(Message.id == message_id))
 
         if message is None:
             raise MessageNotExistsError("Message not exists")

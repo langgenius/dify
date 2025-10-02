@@ -6,6 +6,7 @@ const translation = {
     all: 'Все',
     bundles: 'Пакеты',
     agents: 'Агентские стратегии',
+    datasources: 'Источники данных',
   },
   categorySingle: {
     bundle: 'Связка',
@@ -13,6 +14,7 @@ const translation = {
     model: 'Модель',
     extension: 'Расширение',
     tool: 'Инструмент',
+    datasource: 'Источник данных',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     saveAndAuth: 'Сохранить и авторизовать',
     useApiAuthDesc: 'После настройки учетных данных все члены рабочей области могут использовать этот инструмент при оркестрации приложений.',
     clientInfo: 'Поскольку не найдены секреты клиентской системы для этого поставщика инструментов, необходимо настроить его вручную, для redirect_uri, пожалуйста, используйте',
+    unavailable: 'Недоступно',
+    customCredentialUnavailable: 'Кастомные учетные данные в настоящее время недоступны',
+    credentialUnavailable: 'Учетные данные в настоящее время недоступны. Пожалуйста, свяжитесь с администратором.',
+    credentialUnavailableInButton: 'Учетные данные недоступны',
+    emptyAuth: 'Пожалуйста, настройте аутентификацию',
+    connectedWorkspace: 'Подключенное рабочее пространство',
   },
   deprecated: 'Устаревший',
   autoUpdate: {

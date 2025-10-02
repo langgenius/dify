@@ -1,5 +1,4 @@
 import json
-from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,17 +11,22 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
-from core.workflow.entities.workflow_node_execution import (
+from core.workflow.entities import (
+    WorkflowExecution,
     WorkflowNodeExecution,
+)
+from core.workflow.enums import (
+    WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
+    WorkflowType,
 )
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowRun
@@ -93,7 +97,7 @@ def mock_workflow_execution_repository():
 def real_workflow_entity():
     return CycleManagerWorkflowInfo(
         workflow_id="test-workflow-id",  # Matches ID used in other fixtures
-        workflow_type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.WORKFLOW,
         version="1.0.0",
         graph_data={
             "nodes": [
@@ -145,8 +149,8 @@ def real_workflow():
     workflow.graph = json.dumps(graph_data)
     workflow.features = json.dumps({"file_upload": {"enabled": False}})
     workflow.created_by = "test-user-id"
-    workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
-    workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    workflow.created_at = naive_utc_now()
+    workflow.updated_at = naive_utc_now()
     workflow._environment_variables = "{}"
     workflow._conversation_variables = "{}"
 
@@ -169,7 +173,7 @@ def real_workflow_run():
     workflow_run.outputs = json.dumps({"answer": "test answer"})
     workflow_run.created_by_role = CreatorUserRole.ACCOUNT
     workflow_run.created_by = "test-user-id"
-    workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+    workflow_run.created_at = naive_utc_now()
 
     return workflow_run
 
@@ -207,11 +211,11 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
     workflow_execution = WorkflowExecution(
         id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
+        workflow_type=WorkflowType.WORKFLOW,
         workflow_version="1.0",
-        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
-        started_at=datetime.now(UTC).replace(tzinfo=None),
+        started_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the workflow execution
@@ -241,11 +245,11 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
     workflow_execution = WorkflowExecution(
         id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
+        workflow_type=WorkflowType.WORKFLOW,
         workflow_version="1.0",
-        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
-        started_at=datetime.now(UTC).replace(tzinfo=None),
+        started_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the workflow execution
@@ -278,11 +282,11 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
     workflow_execution = WorkflowExecution(
         id_="test-workflow-execution-id",
         workflow_id="test-workflow-id",
+        workflow_type=WorkflowType.WORKFLOW,
         workflow_version="1.0",
-        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
-        started_at=datetime.now(UTC).replace(tzinfo=None),
+        started_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the workflow execution
@@ -293,12 +297,7 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
     event.node_execution_id = "test-node-execution-id"
     event.node_id = "test-node-id"
     event.node_type = NodeType.LLM
-
-    # Create node_data as a separate mock
-    node_data = MagicMock()
-    node_data.title = "Test Node"
-    event.node_data = node_data
-
+    event.node_title = "Test Node"
     event.predecessor_node_id = "test-predecessor-node-id"
     event.node_run_index = 1
     event.parallel_mode_run_id = "test-parallel-mode-run-id"
@@ -317,7 +316,7 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
     assert result.node_execution_id == event.node_execution_id
     assert result.node_id == event.node_id
     assert result.node_type == event.node_type
-    assert result.title == event.node_data.title
+    assert result.title == event.node_title
     assert result.status == WorkflowNodeExecutionStatus.RUNNING
 
     # Verify save was called
@@ -331,11 +330,11 @@ def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_work
     workflow_execution = WorkflowExecution(
         id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
+        workflow_type=WorkflowType.WORKFLOW,
         workflow_version="1.0",
-        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
-        started_at=datetime.now(UTC).replace(tzinfo=None),
+        started_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the workflow execution
@@ -366,7 +365,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
     event.process_data = {"process": "test process"}
     event.outputs = {"output": "test output"}
     event.execution_metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100}
-    event.start_at = datetime.now(UTC).replace(tzinfo=None)
+    event.start_at = naive_utc_now()
 
     # Create a real node execution
 
@@ -379,7 +378,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
         node_id="test-node-id",
         node_type=NodeType.LLM,
         title="Test Node",
-        created_at=datetime.now(UTC).replace(tzinfo=None),
+        created_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the node execution
@@ -405,11 +404,11 @@ def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workfl
     workflow_execution = WorkflowExecution(
         id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
+        workflow_type=WorkflowType.WORKFLOW,
         workflow_version="1.0",
-        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
-        started_at=datetime.now(UTC).replace(tzinfo=None),
+        started_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the workflow execution
@@ -443,7 +442,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
     event.process_data = {"process": "test process"}
     event.outputs = {"output": "test output"}
     event.execution_metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100}
-    event.start_at = datetime.now(UTC).replace(tzinfo=None)
+    event.start_at = naive_utc_now()
     event.error = "Test error message"
 
     # Create a real node execution
@@ -457,7 +456,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
         node_id="test-node-id",
         node_type=NodeType.LLM,
         title="Test Node",
-        created_at=datetime.now(UTC).replace(tzinfo=None),
+        created_at=naive_utc_now(),
     )
 
     # Pre-populate the cache with the node execution
