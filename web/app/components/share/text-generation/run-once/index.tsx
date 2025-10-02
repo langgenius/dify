@@ -120,7 +120,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'paragraph' && (
                     <Textarea
-                      className='h-[104px] sm:text-xs'
+                      className='min-h-[104px] max-h-[500px] resize-y sm:text-xs'
                       placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                       value={inputs[item.key]}
                       onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
