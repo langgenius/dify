@@ -6,6 +6,8 @@ import type { AnswerNodeType } from './types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import Switch from '@/app/components/base/switch'
 const i18nPrefix = 'workflow.nodes.answer'
 
 const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
@@ -19,6 +21,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
     inputs,
     handleAnswerChange,
     filterVar,
+    toggleIncludeInMemory,
   } = useConfig(id, data)
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
@@ -39,6 +42,17 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         isSupportFileVar
+      />
+      <Field
+        title={t(`${i18nPrefix}.includeInMemory`)!}
+        operations={
+          <Switch
+            disabled={readOnly}
+            defaultValue={inputs.include_in_memory ?? true}
+            onChange={toggleIncludeInMemory}
+            size='md'
+          />
+        }
       />
     </div>
   )

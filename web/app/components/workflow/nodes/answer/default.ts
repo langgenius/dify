@@ -13,6 +13,7 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
   defaultValue: {
     variables: [],
     answer: '',
+    include_in_memory: true,
   },
   checkValid(payload: AnswerNodeType, t: any) {
     let errorMessages = ''

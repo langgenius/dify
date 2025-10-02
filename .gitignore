@@ -161,6 +161,8 @@ docker-legacy/volumes/opensearch/data/*
 docker-legacy/volumes/pgvectors/data/*
 docker-legacy/volumes/pgvector/data/*
 
+docker/docker-compose.yaml
+
 docker/volumes/app/storage/*
 docker/volumes/certbot/*
 docker/volumes/db/data/*
