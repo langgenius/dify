@@ -119,7 +119,7 @@ class Dataset(Base):
 
     @property
     def author_name(self) -> str | None:
-        account = db.session.query(Account).where(Account.id == self.created_by).first()
+        account = db.session.get(Account, self.created_by)
         if account:
             return account.name
         return None
