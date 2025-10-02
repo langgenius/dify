@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiStopLargeLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 
 export type ListeningProps = {
   onStop: () => void
@@ -32,7 +32,7 @@ const Listening: FC<ListeningProps> = ({
           variant='primary'
           onClick={onStop}
         >
-          <RiStopLargeLine className='mr-1 size-4' />
+          <StopCircle className='mr-1 size-4' />
           {t('workflow.debug.variableInspect.listening.stopButton')}
         </Button>
       </div>
