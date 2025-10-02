@@ -80,6 +80,7 @@ const translation = {
     workflowShortDescription: 'Agentowy przepływ dla inteligentnych automatyzacji',
     advancedUserDescription: 'Przepływ z dodatkowymi funkcjami pamięci i interfejsem chatbota.',
     dropDSLToCreateApp: 'Upuść plik DSL tutaj, aby utworzyć aplikację',
+    import: 'Import',
   },
   editApp: 'Edytuj informacje',
   editAppTitle: 'Edytuj informacje o aplikacji',
@@ -317,6 +318,10 @@ const translation = {
     noMatchingCommands: 'Nie znaleziono pasujących poleceń',
     tryDifferentSearch: 'Spróbuj użyć innego hasła',
     slashHint: 'Wpisz / aby zobaczyć wszystkie dostępne polecenia',
+    selectToNavigate: 'Wybierz, aby nawigować',
+    tips: 'Naciśnij ↑↓, aby nawigować',
+    startTyping: 'Zacznij pisać, aby wyszukać',
+    pressEscToClose: 'Naciśnij ESC, aby zamknąć',
   },
 }
 

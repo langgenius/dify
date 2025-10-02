@@ -1,16 +1,26 @@
 import dataclasses
 import secrets
+import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from core.variables import StringSegment
+from core.variables.segments import StringSegment
+from core.variables.types import SegmentType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
+from libs.uuid_utils import uuidv7
+from models.account import Account
 from models.enums import DraftVariableType
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowDraftVariableFile,
+    WorkflowNodeExecutionModel,
+    is_system_variable_editable,
+)
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,
@@ -37,6 +47,7 @@ class TestDraftVariableSaver:
 
     def test__should_variable_be_visible(self):
         mock_session = MagicMock(spec=Session)
+        mock_user = Account(id=str(uuid.uuid4()))
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=mock_session,
@@ -44,6 +55,7 @@ class TestDraftVariableSaver:
             node_id="test_node_id",
             node_type=NodeType.START,
             node_execution_id="test_execution_id",
+            user=mock_user,
         )
         assert saver._should_variable_be_visible("123_456", NodeType.IF_ELSE, "output") == False
         assert saver._should_variable_be_visible("123", NodeType.START, "output") == True
@@ -83,6 +95,7 @@ class TestDraftVariableSaver:
         ]
 
         mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock()
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=mock_session,
@@ -90,12 +103,83 @@ class TestDraftVariableSaver:
             node_id=_NODE_ID,
             node_type=NodeType.START,
             node_execution_id="test_execution_id",
+            user=mock_user,
         )
         for idx, c in enumerate(cases, 1):
             fail_msg = f"Test case {c.name} failed, index={idx}"
             node_id, name = saver._normalize_variable_for_start_node(c.input_name)
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
+
+    @pytest.fixture
+    def mock_session(self):
+        """Mock SQLAlchemy session."""
+        from sqlalchemy import Engine
+
+        mock_session = MagicMock(spec=Session)
+        mock_engine = MagicMock(spec=Engine)
+        mock_session.get_bind.return_value = mock_engine
+        return mock_session
+
+    @pytest.fixture
+    def draft_saver(self, mock_session):
+        """Create DraftVariableSaver instance with user context."""
+        # Create a mock user
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.tenant_id = "test-tenant-id"
+
+        return DraftVariableSaver(
+            session=mock_session,
+            app_id="test-app-id",
+            node_id="test-node-id",
+            node_type=NodeType.LLM,
+            node_execution_id="test-execution-id",
+            user=mock_user,
+        )
+
+    def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
+        with patch(
+            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable"
+        ) as _mock_try_offload:
+            _mock_try_offload.return_value = None
+            mock_segment = StringSegment(value="small value")
+            draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
+
+            # Should not have large variable metadata
+            assert draft_var.file_id is None
+            _mock_try_offload.return_value = None
+
+    def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
+        with patch(
+            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable"
+        ) as _mock_try_offload:
+            mock_segment = StringSegment(value="small value")
+            mock_draft_var_file = WorkflowDraftVariableFile(
+                id=str(uuidv7()),
+                size=1024,
+                length=10,
+                value_type=SegmentType.ARRAY_STRING,
+                upload_file_id=str(uuid.uuid4()),
+            )
+
+            _mock_try_offload.return_value = mock_segment, mock_draft_var_file
+            draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
+
+            # Should not have large variable metadata
+            assert draft_var.file_id == mock_draft_var_file.id
+
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable")
+    def test_save_method_integration(self, mock_batch_upsert, draft_saver):
+        """Test complete save workflow."""
+        outputs = {"result": {"data": "test_output"}, "metadata": {"type": "llm_response"}}
+
+        draft_saver.save(outputs=outputs)
+
+        # Should batch upsert draft variables
+        mock_batch_upsert.assert_called_once()
+        draft_vars = mock_batch_upsert.call_args[0][1]
+        assert len(draft_vars) == 2
 
 
 class TestWorkflowDraftVariableService:
@@ -115,6 +199,7 @@ class TestWorkflowDraftVariableService:
             created_by="test_user_id",
             environment_variables=[],
             conversation_variables=[],
+            rag_pipeline_variables=[],
         )
 
     def test_reset_conversation_variable(self, mock_session):
@@ -225,7 +310,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.outputs_dict = {"test_var": "output_value"}
+        mock_execution.load_full_outputs.return_value = {"test_var": "output_value"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
@@ -298,7 +383,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.outputs_dict = {"sys.files": "[]"}
+        mock_execution.load_full_outputs.return_value = {"sys.files": "[]"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()
@@ -330,7 +415,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.outputs_dict = {"sys.query": "reset query"}
+        mock_execution.load_full_outputs.return_value = {"sys.query": "reset query"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()

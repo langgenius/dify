@@ -87,6 +87,7 @@ const translation = {
       watercrawlDoc: 'Wasserkriechen-Dokumente',
       configureFirecrawl: 'Firecrawl konfigurieren',
       waterCrawlNotConfiguredDescription: 'Konfigurieren Sie Watercrawl mit dem API-Schlüssel, um es zu verwenden.',
+      running: 'Ausgeführte',
     },
     cancel: 'Abbrechen',
   },
@@ -172,6 +173,7 @@ const translation = {
     paragraph: 'Absatz',
     fullDocTip: 'Das gesamte Dokument wird als übergeordneter Block verwendet und direkt abgerufen. Bitte beachten Sie, dass aus Leistungsgründen Texte, die 10000 Token überschreiten, automatisch abgeschnitten werden.',
     paragraphTip: 'In diesem Modus wird der Text basierend auf Trennzeichen und der maximalen Blocklänge in Absätze aufgeteilt, wobei der geteilte Text als übergeordneter Block für den Abruf verwendet wird.',
+    qaTip: 'Wenn Sie strukturierte Q&A-Daten verwenden, können Sie Dokumente erstellen, die Fragen mit Antworten verknüpfen. Diese Dokumente werden basierend auf dem Frageteil indiziert, sodass das System relevante Antworten basierend auf der Ähnlichkeit der Abfrage abrufen kann.',
   },
   stepThree: {
     creationTitle: '🎉 Wissen erstellt',

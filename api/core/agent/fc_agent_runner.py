@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -52,13 +52,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
+        llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
 
-        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:

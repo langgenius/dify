@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from functools import wraps
-from typing import cast
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 import flask_login
 from flask import jsonify, request
@@ -13,12 +14,16 @@ from models.account import Account
 from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
-from .. import api
+from .. import console_ns
+
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
 
-def oauth_server_client_id_required(view):
+def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
         parser = reqparse.RequestParser()
         parser.add_argument("client_id", type=str, required=True, location="json")
         parsed_args = parser.parse_args()
@@ -30,18 +35,15 @@ def oauth_server_client_id_required(view):
         if not oauth_provider_app:
             raise NotFound("client_id is invalid")
 
-        kwargs["oauth_provider_app"] = oauth_provider_app
-
-        return view(*args, **kwargs)
+        return view(self, oauth_provider_app, *args, **kwargs)
 
     return decorated
 
 
-def oauth_server_access_token_required(view):
+def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProviderApp, Account, P], R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
-        oauth_provider_app = kwargs.get("oauth_provider_app")
-        if not oauth_provider_app or not isinstance(oauth_provider_app, OAuthProviderApp):
+    def decorated(self: T, oauth_provider_app: OAuthProviderApp, *args: P.args, **kwargs: P.kwargs):
+        if not isinstance(oauth_provider_app, OAuthProviderApp):
             raise BadRequest("Invalid oauth_provider_app")
 
         authorization_header = request.headers.get("Authorization")
@@ -79,13 +81,12 @@ def oauth_server_access_token_required(view):
             response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
-        kwargs["account"] = account
-
-        return view(*args, **kwargs)
+        return view(self, oauth_provider_app, account, *args, **kwargs)
 
     return decorated
 
 
+@console_ns.route("/oauth/provider")
 class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
@@ -108,6 +109,7 @@ class OAuthServerAppApi(Resource):
         )
 
 
+@console_ns.route("/oauth/provider/authorize")
 class OAuthServerUserAuthorizeApi(Resource):
     @setup_required
     @login_required
@@ -125,6 +127,7 @@ class OAuthServerUserAuthorizeApi(Resource):
         )
 
 
+@console_ns.route("/oauth/provider/token")
 class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
@@ -180,6 +183,7 @@ class OAuthServerUserTokenApi(Resource):
             )
 
 
+@console_ns.route("/oauth/provider/account")
 class OAuthServerUserAccountApi(Resource):
     @setup_required
     @oauth_server_client_id_required
@@ -194,9 +198,3 @@ class OAuthServerUserAccountApi(Resource):
                 "timezone": account.timezone,
             }
         )
-
-
-api.add_resource(OAuthServerAppApi, "/oauth/provider")
-api.add_resource(OAuthServerUserAuthorizeApi, "/oauth/provider/authorize")
-api.add_resource(OAuthServerUserTokenApi, "/oauth/provider/token")
-api.add_resource(OAuthServerUserAccountApi, "/oauth/provider/account")

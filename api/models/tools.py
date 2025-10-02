@@ -1,6 +1,7 @@
 import json
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
 import sqlalchemy as sa
@@ -8,9 +9,7 @@ from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.file import helpers as file_helpers
 from core.helper import encrypter
-from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
@@ -19,6 +18,12 @@ from models.base import Base, TypeBase
 from .engine import db
 from .model import Account, App, Tenant
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from core.mcp.types import Tool as MCPTool
+    from core.tools.entities.common_entities import I18nObject
+    from core.tools.entities.tool_bundle import ApiToolBundle
+    from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 
 
 # system level tool oauth client params (client_id, client_secret, etc.)
@@ -54,8 +59,8 @@ class ToolOAuthTenantClient(Base):
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     @property
-    def oauth_params(self):
-        return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class BuiltinToolProvider(Base):
@@ -96,8 +101,8 @@ class BuiltinToolProvider(Base):
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"))
 
     @property
-    def credentials(self):
-        return cast(dict, json.loads(self.encrypted_credentials))
+    def credentials(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
 
 
 class ApiToolProvider(Base):
@@ -138,16 +143,20 @@ class ApiToolProvider(Base):
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def schema_type(self) -> ApiProviderSchemaType:
+    def schema_type(self) -> "ApiProviderSchemaType":
+        from core.tools.entities.tool_entities import ApiProviderSchemaType
+
         return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
-    def tools(self) -> list[ApiToolBundle]:
+    def tools(self) -> list["ApiToolBundle"]:
+        from core.tools.entities.tool_bundle import ApiToolBundle
+
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
 
     @property
-    def credentials(self):
-        return dict(json.loads(self.credentials_str))
+    def credentials(self) -> dict[str, Any]:
+        return dict[str, Any](json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -230,7 +239,9 @@ class WorkflowToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
+    def parameter_configurations(self) -> list["WorkflowToolParameterConfiguration"]:
+        from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+
         return [WorkflowToolParameterConfiguration(**config) for config in json.loads(self.parameter_configuration)]
 
     @property
@@ -280,6 +291,8 @@ class MCPToolProvider(Base):
     )
     timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"))
     sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("300"))
+    # encrypted headers for MCP server requests
+    encrypted_headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
@@ -289,26 +302,86 @@ class MCPToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def credentials(self):
+    def credentials(self) -> dict[str, Any]:
         try:
-            return cast(dict, json.loads(self.encrypted_credentials)) or {}
+            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
         except Exception:
             return {}
 
     @property
-    def mcp_tools(self) -> list[Tool]:
-        return [Tool(**tool) for tool in json.loads(self.tools)]
+    def mcp_tools(self) -> list["MCPTool"]:
+        from core.mcp.types import Tool as MCPTool
+
+        return [MCPTool(**tool) for tool in json.loads(self.tools)]
 
     @property
-    def provider_icon(self) -> dict[str, str] | str:
+    def provider_icon(self) -> Mapping[str, str] | str:
+        from core.file import helpers as file_helpers
+
         try:
-            return cast(dict[str, str], json.loads(self.icon))
+            return json.loads(self.icon)
         except json.JSONDecodeError:
             return file_helpers.get_signed_file_url(self.icon)
 
     @property
     def decrypted_server_url(self) -> str:
         return encrypter.decrypt_token(self.tenant_id, self.server_url)
+
+    @property
+    def decrypted_headers(self) -> dict[str, Any]:
+        """Get decrypted headers for MCP server requests."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_headers:
+                return {}
+
+            headers_data = json.loads(self.encrypted_headers)
+
+            # Create dynamic config for all headers as SECRET_INPUT
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            result = encrypter_instance.decrypt(headers_data)
+            return result
+        except Exception:
+            return {}
+
+    @property
+    def masked_headers(self) -> dict[str, Any]:
+        """Get masked headers for frontend display."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_headers:
+                return {}
+
+            headers_data = json.loads(self.encrypted_headers)
+
+            # Create dynamic config for all headers as SECRET_INPUT
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            # First decrypt, then mask
+            decrypted_headers = encrypter_instance.decrypt(headers_data)
+            result = encrypter_instance.mask_tool_credentials(decrypted_headers)
+            return result
+        except Exception:
+            return {}
 
     @property
     def masked_server_url(self) -> str:
@@ -327,12 +400,12 @@ class MCPToolProvider(Base):
         return mask_url(self.decrypted_server_url)
 
     @property
-    def decrypted_credentials(self):
+    def decrypted_credentials(self) -> dict[str, Any]:
         from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
         from core.tools.utils.encryption import create_provider_encrypter
 
-        provider_controller = MCPToolProviderController._from_db(self)
+        provider_controller = MCPToolProviderController.from_db(self)
 
         encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
@@ -340,7 +413,7 @@ class MCPToolProvider(Base):
             cache=NoOpProviderCredentialCache(),
         )
 
-        return encrypter.decrypt(self.credentials)  # type: ignore
+        return encrypter.decrypt(self.credentials)
 
 
 class ToolModelInvoke(Base):
@@ -429,13 +502,13 @@ class ToolFile(TypeBase):
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
     mimetype: Mapped[str] = mapped_column(String(255), nullable=False)
     # original url
-    original_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True, default=None)
+    original_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
     # name
     name: Mapped[str] = mapped_column(default="")
     # size
@@ -476,5 +549,7 @@ class DeprecatedPublishedAppTool(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
 
     @property
-    def description_i18n(self) -> I18nObject:
+    def description_i18n(self) -> "I18nObject":
+        from core.tools.entities.common_entities import I18nObject
+
         return I18nObject(**json.loads(self.description))

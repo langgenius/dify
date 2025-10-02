@@ -1,7 +1,7 @@
 import logging
 import time as time_module
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import update
@@ -10,13 +10,13 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit, SystemConfiguration
-from core.plugin.entities.plugin import ModelProviderID
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def _get_provider_cache_key(tenant_id: str, provider_name: str) -> str:
 
 
 @redis_fallback(default_return=None)
-def _get_last_update_timestamp(cache_key: str) -> Optional[datetime]:
+def _get_last_update_timestamp(cache_key: str) -> datetime | None:
     """Get last update timestamp from Redis cache."""
     timestamp_str = redis_client.get(cache_key)
     if timestamp_str:
@@ -52,8 +52,8 @@ class _ProviderUpdateFilters(BaseModel):
 
     tenant_id: str
     provider_name: str
-    provider_type: Optional[str] = None
-    quota_type: Optional[str] = None
+    provider_type: str | None = None
+    quota_type: str | None = None
 
 
 class _ProviderUpdateAdditionalFilters(BaseModel):
@@ -65,8 +65,8 @@ class _ProviderUpdateAdditionalFilters(BaseModel):
 class _ProviderUpdateValues(BaseModel):
     """Values to update in Provider records."""
 
-    last_used: Optional[datetime] = None
-    quota_used: Optional[Any] = None  # Can be Provider.quota_used + int expression
+    last_used: datetime | None = None
+    quota_used: Any | None = None  # Can be Provider.quota_used + int expression
 
 
 class _ProviderUpdateOperation(BaseModel):
@@ -182,7 +182,7 @@ def handle(sender: Message, **kwargs):
 
 def _calculate_quota_usage(
     *, message: Message, system_configuration: SystemConfiguration, model_name: str
-) -> Optional[int]:
+) -> int | None:
     """Calculate quota usage based on message tokens and quota type."""
     quota_unit = None
     for quota_configuration in system_configuration.quota_configurations:

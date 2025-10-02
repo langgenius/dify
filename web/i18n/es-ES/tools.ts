@@ -193,6 +193,16 @@ const translation = {
       confirm: 'Añadir y Autorizar',
       sseReadTimeout: 'Tiempo de espera de lectura SSE',
       timeout: 'Tiempo de espera',
+      timeoutPlaceholder: 'treinta',
+      headers: 'Encabezados',
+      addHeader: 'Agregar encabezado',
+      headerValuePlaceholder: 'por ejemplo, token de portador123',
+      headersTip: 'Encabezados HTTP adicionales para enviar con las solicitudes del servidor MCP',
+      maskedHeadersTip: 'Los valores del encabezado están enmascarados por seguridad. Los cambios actualizarán los valores reales.',
+      headerKeyPlaceholder: 'por ejemplo, Autorización',
+      headerValue: 'Valor del encabezado',
+      noHeaders: 'No se han configurado encabezados personalizados',
+      headerKey: 'Nombre del encabezado',
     },
     delete: 'Eliminar servidor MCP',
     deleteConfirmTitle: '¿Eliminar {{mcp}}?',
@@ -234,6 +244,7 @@ const translation = {
       publishTip: 'App no publicada. Publícala primero.',
     },
   },
+  allTools: 'Todas las herramientas',
 }
 
 export default translation

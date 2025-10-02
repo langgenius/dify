@@ -175,6 +175,16 @@ const translation = {
       cancel: 'Membatalkan',
       serverIdentifierPlaceholder: 'Pengidentifikasi unik, misalnya, my-mcp-server',
       serverUrl: 'Server URL',
+      headers: 'Header',
+      timeoutPlaceholder: '30',
+      addHeader: 'Tambahkan Judul',
+      headerKey: 'Nama Header',
+      headerValue: 'Nilai Header',
+      headersTip: 'Header HTTP tambahan untuk dikirim bersama permintaan server MCP',
+      headerKeyPlaceholder: 'Authorization',
+      headerValuePlaceholder: 'Bearer 123',
+      noHeaders: 'Tidak ada header kustom yang dikonfigurasi',
+      maskedHeadersTip: 'Nilai header disembunyikan untuk keamanan. Perubahan akan memperbarui nilai yang sebenarnya.',
     },
     operation: {
       edit: 'Mengedit',
@@ -230,6 +240,7 @@ const translation = {
   openInStudio: 'Buka di Studio',
   builtInPromptTitle: 'Cepat',
   toolNameUsageTip: 'Nama panggilan alat untuk penalaran dan permintaan agen',
+  allTools: 'Semua alat',
 }
 
 export default translation

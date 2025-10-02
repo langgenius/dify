@@ -1,5 +1,7 @@
+from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import wraps
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource
@@ -15,13 +17,15 @@ from services.enterprise.enterprise_service import EnterpriseService, WebAppSett
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def validate_jwt_token(view=None):
-    def decorator(view):
+
+def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[App, EndUser, P], R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs):
             app_model, end_user = decode_jwt_token()
-
             return view(app_model, end_user, *args, **kwargs)
 
         return decorated

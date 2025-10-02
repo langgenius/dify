@@ -1,6 +1,5 @@
 import unittest
 from datetime import UTC, datetime
-from typing import Optional
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -42,7 +41,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         self.session.rollback()
 
     def _create_upload_file(
-        self, file_id: Optional[str] = None, storage_key: Optional[str] = None, tenant_id: Optional[str] = None
+        self, file_id: str | None = None, storage_key: str | None = None, tenant_id: str | None = None
     ) -> UploadFile:
         """Helper method to create an UploadFile record for testing."""
         if file_id is None:
@@ -74,7 +73,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         return upload_file
 
     def _create_tool_file(
-        self, file_id: Optional[str] = None, file_key: Optional[str] = None, tenant_id: Optional[str] = None
+        self, file_id: str | None = None, file_key: str | None = None, tenant_id: str | None = None
     ) -> ToolFile:
         """Helper method to create a ToolFile record for testing."""
         if file_id is None:
@@ -101,9 +100,7 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         return tool_file
 
-    def _create_file(
-        self, related_id: str, transfer_method: FileTransferMethod, tenant_id: Optional[str] = None
-    ) -> File:
+    def _create_file(self, related_id: str, transfer_method: FileTransferMethod, tenant_id: str | None = None) -> File:
         """Helper method to create a File object for testing."""
         if tenant_id is None:
             tenant_id = self.tenant_id
