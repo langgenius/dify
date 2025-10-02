@@ -50,8 +50,9 @@ class DailyMessageStatistic(Resource):
 FROM
     messages
 WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    app_id = :app_id
+    AND invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -187,8 +188,9 @@ class DailyTerminalsStatistic(Resource):
 FROM
     messages
 WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    app_id = :app_id
+    AND invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -259,8 +261,9 @@ class DailyTokenCostStatistic(Resource):
 FROM
     messages
 WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    app_id = :app_id
+    AND invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -340,8 +343,9 @@ FROM
             messages m
             ON c.id = m.conversation_id
         WHERE
-            c.app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+            c.app_id = :app_id
+            AND m.invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -426,8 +430,9 @@ LEFT JOIN
     message_feedbacks mf
     ON mf.message_id=m.id AND mf.rating='like'
 WHERE
-    m.app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    m.app_id = :app_id
+    AND m.invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -502,8 +507,9 @@ class AverageResponseTimeStatistic(Resource):
 FROM
     messages
 WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    app_id = :app_id
+    AND invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -576,8 +582,9 @@ class TokensPerSecondStatistic(Resource):
 FROM
     messages
 WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    app_id = :app_id
+    AND invoke_from != :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc

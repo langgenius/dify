@@ -196,15 +196,15 @@ def jsonable_encoder(
             return encoder(obj)
 
     try:
-        data = dict(obj)
+        data = dict(obj)  # type: ignore
     except Exception as e:
         errors: list[Exception] = []
         errors.append(e)
         try:
-            data = vars(obj)
+            data = vars(obj)  # type: ignore
         except Exception as e:
             errors.append(e)
-            raise ValueError(errors) from e
+            raise ValueError(str(errors)) from e
     return jsonable_encoder(
         data,
         by_alias=by_alias,

@@ -67,7 +67,7 @@ const MCPModal = ({
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
   const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)

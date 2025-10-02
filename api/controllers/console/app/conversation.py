@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytz  # pip install pytz
+import sqlalchemy as sa
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
@@ -70,7 +71,7 @@ class CompletionConversationApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(
+        query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
 
@@ -236,7 +237,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
+        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
             keyword_filter = f"%{args['keyword']}%"

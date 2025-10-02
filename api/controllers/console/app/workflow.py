@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
 from controllers.console import api, console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
@@ -20,6 +19,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
@@ -536,7 +536,12 @@ class WorkflowTaskStopApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -788,24 +793,6 @@ class ConvertToWorkflowApi(Resource):
         # return app id
         return {
             "new_app_id": new_app_model.id,
-        }
-
-
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/config")
-class WorkflowConfigApi(Resource):
-    """Resource for workflow configuration."""
-
-    @api.doc("get_workflow_config")
-    @api.doc(description="Get workflow configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Workflow configuration retrieved successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }
 
 
