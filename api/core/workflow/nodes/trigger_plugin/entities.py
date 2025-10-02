@@ -23,6 +23,3 @@ class PluginTriggerData(BaseNodeData):
         default=ErrorStrategy.FAIL_BRANCH, description="Error handling strategy"
     )
     retry_config: RetryConfig = Field(default_factory=lambda: RetryConfig(), description="Retry configuration")
-    default_value_dict: dict[str, Any] = Field(
-        default_factory=dict, description="Default values for outputs when error occurs"
-    )

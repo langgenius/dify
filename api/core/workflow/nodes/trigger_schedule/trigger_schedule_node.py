@@ -41,7 +41,7 @@ class TriggerScheduleNode(Node):
         return "1"
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "trigger-schedule",
             "config": {

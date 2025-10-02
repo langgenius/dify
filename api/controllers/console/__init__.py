@@ -132,21 +132,6 @@ from .workspace import (
 
 api.add_namespace(console_ns)
 
-# Import workspace controllers
-from .workspace import (
-    account,
-    agent_providers,
-    endpoint,
-    load_balancing_config,
-    members,
-    model_providers,
-    models,
-    plugin,
-    tool_providers,
-    trigger_providers,
-    workspace,
-)
-
 __all__ = [
     "account",
     "activate",
@@ -212,7 +197,6 @@ __all__ = [
     "statistic",
     "tags",
     "tool_providers",
-    "trigger_providers",
     "version",
     "website",
     "workflow",

@@ -37,7 +37,7 @@ class TriggerWebhookNode(Node):
         return self._node_data
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "webhook",
             "config": {
