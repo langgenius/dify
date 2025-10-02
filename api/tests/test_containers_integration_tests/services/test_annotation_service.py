@@ -1,9 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
 from werkzeug.exceptions import NotFound
 
+from models.account import Account
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
@@ -24,7 +25,9 @@ class TestAnnotationService:
             patch("services.annotation_service.enable_annotation_reply_task") as mock_enable_task,
             patch("services.annotation_service.disable_annotation_reply_task") as mock_disable_task,
             patch("services.annotation_service.batch_import_annotations_task") as mock_batch_import_task,
-            patch("services.annotation_service.current_user") as mock_current_user,
+            patch(
+                "services.annotation_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
         ):
             # Setup default mock returns
             mock_account_feature_service.get_features.return_value.billing.enabled = False
@@ -410,18 +413,18 @@ class TestAnnotationService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create annotations with specific keywords
-        unique_keyword = fake.word()
+        unique_keyword = f"unique_{fake.uuid4()[:8]}"
         annotation_args = {
             "question": f"Question with {unique_keyword} keyword",
             "answer": f"Answer with {unique_keyword} keyword",
         }
         AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
-
         # Create another annotation without the keyword
         other_args = {
-            "question": "Question without keyword",
-            "answer": "Answer without keyword",
+            "question": "Different question without special term",
+            "answer": "Different answer without special content",
         }
+
         AppAnnotationService.insert_app_annotation_directly(other_args, app.id)
 
         # Search with keyword
@@ -674,7 +677,7 @@ class TestAnnotationService:
 
         history = (
             db.session.query(AppAnnotationHitHistory)
-            .filter(
+            .where(
                 AppAnnotationHitHistory.annotation_id == annotation.id, AppAnnotationHitHistory.message_id == message_id
             )
             .first()

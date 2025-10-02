@@ -188,11 +188,18 @@ export const useEmbeddedChatbot = () => {
         }
       }
       if (item.number) {
-        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
+        const convertedNumber = Number(initInputs[item.number.variable])
         return {
           ...item.number,
           default: convertedNumber || item.default || item.number.default,
           type: 'number',
+        }
+      }
+      if (item.checkbox) {
+        return {
+          ...item.checkbox,
+          default: false,
+          type: 'checkbox',
         }
       }
       if (item.select) {
@@ -215,6 +222,13 @@ export const useEmbeddedChatbot = () => {
         return {
           ...item.file,
           type: 'file',
+        }
+      }
+
+      if (item.json_object) {
+        return {
+          ...item.json_object,
+          type: 'json_object',
         }
       }
 
@@ -312,7 +326,7 @@ export const useEmbeddedChatbot = () => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -376,7 +390,7 @@ export const useEmbeddedChatbot = () => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 

@@ -375,16 +375,16 @@ Here is the extra instruction you need to follow:
 
         # merge lines into messages with max tokens
         messages: list[str] = []
-        for i in new_lines:  # type: ignore
+        for line in new_lines:
             if len(messages) == 0:
-                messages.append(i)  # type: ignore
+                messages.append(line)
             else:
-                if len(messages[-1]) + len(i) < max_tokens * 0.5:  # type: ignore
-                    messages[-1] += i  # type: ignore
-                if get_prompt_tokens(messages[-1] + i) > max_tokens * 0.7:  # type: ignore
-                    messages.append(i)  # type: ignore
+                if len(messages[-1]) + len(line) < max_tokens * 0.5:
+                    messages[-1] += line
+                if get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
+                    messages.append(line)
                 else:
-                    messages[-1] += i  # type: ignore
+                    messages[-1] += line
 
         summaries = []
         for i in range(len(messages)):

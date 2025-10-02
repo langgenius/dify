@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any, cast
 
 from core.agent.entities import AgentEntity
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
@@ -30,7 +30,7 @@ class AgentChatAppConfig(EasyUIBasedAppConfig):
     Agent Chatbot App Config Entity.
     """
 
-    agent: Optional[AgentEntity] = None
+    agent: AgentEntity | None = None
 
 
 class AgentChatAppConfigManager(BaseAppConfigManager):
@@ -39,8 +39,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         cls,
         app_model: App,
         app_model_config: AppModelConfig,
-        conversation: Optional[Conversation] = None,
-        override_config_dict: Optional[dict] = None,
+        conversation: Conversation | None = None,
+        override_config_dict: dict | None = None,
     ) -> AgentChatAppConfig:
         """
         Convert app model config to agent chat app config
@@ -86,7 +86,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]) -> dict:
+    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]):
         """
         Validate for agent chat app model config
 
@@ -160,7 +160,9 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         return filtered_config
 
     @classmethod
-    def validate_agent_mode_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_agent_mode_and_set_defaults(
+        cls, tenant_id: str, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate agent_mode and set defaults for agent feature
 
@@ -170,30 +172,32 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         if not config.get("agent_mode"):
             config["agent_mode"] = {"enabled": False, "tools": []}
 
-        if not isinstance(config["agent_mode"], dict):
+        agent_mode = config["agent_mode"]
+        if not isinstance(agent_mode, dict):
             raise ValueError("agent_mode must be of object type")
 
-        if "enabled" not in config["agent_mode"] or not config["agent_mode"]["enabled"]:
-            config["agent_mode"]["enabled"] = False
+        # FIXME(-LAN-): Cast needed due to basedpyright limitation with dict type narrowing
+        agent_mode = cast(dict[str, Any], agent_mode)
 
-        if not isinstance(config["agent_mode"]["enabled"], bool):
+        if "enabled" not in agent_mode or not agent_mode["enabled"]:
+            agent_mode["enabled"] = False
+
+        if not isinstance(agent_mode["enabled"], bool):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
-        if not config["agent_mode"].get("strategy"):
-            config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
+        if not agent_mode.get("strategy"):
+            agent_mode["strategy"] = PlanningStrategy.ROUTER.value
 
-        if config["agent_mode"]["strategy"] not in [
-            member.value for member in list(PlanningStrategy.__members__.values())
-        ]:
+        if agent_mode["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
             raise ValueError("strategy in agent_mode must be in the specified strategy list")
 
-        if not config["agent_mode"].get("tools"):
-            config["agent_mode"]["tools"] = []
+        if not agent_mode.get("tools"):
+            agent_mode["tools"] = []
 
-        if not isinstance(config["agent_mode"]["tools"], list):
+        if not isinstance(agent_mode["tools"], list):
             raise ValueError("tools in agent_mode must be a list of objects")
 
-        for tool in config["agent_mode"]["tools"]:
+        for tool in agent_mode["tools"]:
             key = list(tool.keys())[0]
             if key in OLD_TOOLS:
                 # old style, use tool name as key

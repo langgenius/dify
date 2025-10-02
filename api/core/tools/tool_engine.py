@@ -4,7 +4,7 @@ from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from yarl import URL
 
@@ -51,10 +51,10 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: Optional[TraceQueueManager] = None,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -152,10 +152,9 @@ class ToolEngine:
         user_id: str,
         workflow_tool_callback: DifyWorkflowCallbackHandler,
         workflow_call_depth: int,
-        thread_pool_id: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Workflow invokes the tool with the given arguments.
@@ -166,7 +165,6 @@ class ToolEngine:
 
             if isinstance(tool, WorkflowTool):
                 tool.workflow_call_depth = workflow_call_depth + 1
-                tool.thread_pool_id = thread_pool_id
 
             if tool.runtime and tool.runtime.runtime_parameters:
                 tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
@@ -196,9 +194,9 @@ class ToolEngine:
         tool: Tool,
         tool_parameters: dict,
         user_id: str,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
@@ -280,7 +278,7 @@ class ToolEngine:
                     mimetype = "image/jpeg"
 
                 yield ToolInvokeMessageBinary(
-                    mimetype=response.meta.get("mime_type", "image/jpeg"),
+                    mimetype=response.meta.get("mime_type", mimetype),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                 )
             elif response.type == ToolInvokeMessage.MessageType.BLOB:

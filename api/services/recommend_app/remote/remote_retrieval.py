@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import requests
 
@@ -24,7 +23,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
             result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin(app_id)
         return result
 
-    def get_recommended_apps_and_categories(self, language: str) -> dict:
+    def get_recommended_apps_and_categories(self, language: str):
         try:
             result = self.fetch_recommended_apps_from_dify_official(language)
         except Exception as e:
@@ -36,7 +35,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return RecommendAppType.REMOTE
 
     @classmethod
-    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> Optional[dict]:
+    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> dict | None:
         """
         Fetch recommended app detail from dify official.
         :param app_id: App ID
@@ -51,7 +50,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return data
 
     @classmethod
-    def fetch_recommended_apps_from_dify_official(cls, language: str) -> dict:
+    def fetch_recommended_apps_from_dify_official(cls, language: str):
         """
         Fetch recommended apps from dify official.
         :param language: language

@@ -6,6 +6,7 @@ from typing import Any, Literal, Union, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from configs import dify_config
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
@@ -191,7 +192,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message_id: str,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -248,28 +249,30 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        message = (
-            db.session.query(Message)
-            .where(
-                Message.id == message_id,
-                Message.app_id == app_model.id,
-                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Message.from_account_id == (user.id if isinstance(user, Account) else None),
-            )
-            .first()
+        stmt = select(Message).where(
+            Message.id == message_id,
+            Message.app_id == app_model.id,
+            Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
+            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+            Message.from_account_id == (user.id if isinstance(user, Account) else None),
         )
+        message = db.session.scalar(stmt)
 
         if not message:
             raise MessageNotExistsError()
 
         current_app_model_config = app_model.app_model_config
+        if not current_app_model_config:
+            raise MoreLikeThisDisabledError()
+
         more_like_this = current_app_model_config.more_like_this_dict
 
         if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
             raise MoreLikeThisDisabledError()
 
         app_model_config = message.app_model_config
+        if not app_model_config:
+            raise ValueError("Message app_model_config is None")
         override_model_config_dict = app_model_config.to_dict()
         model_dict = override_model_config_dict["model"]
         completion_params = model_dict.get("completion_params")

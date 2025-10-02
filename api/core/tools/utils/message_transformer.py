@@ -3,25 +3,25 @@ from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from mimetypes import guess_extension
-from typing import Optional, cast
 from uuid import UUID
 
 import numpy as np
 import pytz
-from flask_login import current_user
 
 from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
+from libs.login import current_user
+from models.account import Account
 
 logger = logging.getLogger(__name__)
 
 
 def safe_json_value(v):
     if isinstance(v, datetime):
-        tz_name = getattr(current_user, "timezone", None) if current_user is not None else None
-        if not tz_name:
-            tz_name = "UTC"
+        tz_name = "UTC"
+        if isinstance(current_user, Account) and current_user.timezone is not None:
+            tz_name = current_user.timezone
         return v.astimezone(pytz.timezone(tz_name)).isoformat()
     elif isinstance(v, date):
         return v.isoformat()
@@ -46,7 +46,7 @@ def safe_json_value(v):
         return v
 
 
-def safe_json_dict(d):
+def safe_json_dict(d: dict):
     if not isinstance(d, dict):
         raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}
@@ -59,7 +59,7 @@ class ToolFileMessageTransformer:
         messages: Generator[ToolInvokeMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Transform tool message and handle file download
@@ -158,12 +158,11 @@ class ToolFileMessageTransformer:
 
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 if isinstance(message.message, ToolInvokeMessage.JsonMessage):
-                    json_msg = cast(ToolInvokeMessage.JsonMessage, message.message)
-                    json_msg.json_object = safe_json_value(json_msg.json_object)
+                    message.message.json_object = safe_json_value(message.message.json_object)
                 yield message
             else:
                 yield message
 
     @classmethod
-    def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
+    def get_tool_file_url(cls, tool_file_id: str, extension: str | None) -> str:
         return f"/files/tools/{tool_file_id}{extension or '.bin'}"

@@ -6,6 +6,7 @@ const translation = {
     models: 'Modelos',
     agents: 'Estratégias do agente',
     tools: 'Ferramentas',
+    datasources: 'Fontes de dados',
   },
   categorySingle: {
     model: 'Modelo',
@@ -13,6 +14,7 @@ const translation = {
     agent: 'Estratégia do agente',
     extension: 'Extensão',
     tool: 'Ferramenta',
+    datasource: 'Fonte de dados',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     addOAuth: 'Adicionar OAuth',
     useApiAuthDesc: 'Após configurar as credenciais, todos os membros dentro do espaço de trabalho podem usar esta ferramenta ao orquestrar aplicações.',
     clientInfo: 'Como não foram encontrados segredos de cliente do sistema para este provedor de ferramentas, é necessário configurá-lo manualmente. Para redirect_uri, use',
+    customCredentialUnavailable: 'Credenciais personalizadas atualmente indisponíveis',
+    unavailable: 'Indisponível',
+    credentialUnavailable: 'Credenciais atualmente indisponíveis. Por favor, contate o administrador.',
+    credentialUnavailableInButton: 'Credencial indisponível',
+    emptyAuth: 'Configure a autenticação',
+    connectedWorkspace: 'Espaço de trabalho conectado',
   },
   deprecated: 'Obsoleto',
   autoUpdate: {

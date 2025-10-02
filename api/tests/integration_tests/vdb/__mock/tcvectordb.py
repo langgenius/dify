@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Union
+from typing import Union
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -23,16 +23,16 @@ class MockTcvectordbClass:
         key="",
         read_consistency: ReadConsistency = ReadConsistency.EVENTUAL_CONSISTENCY,
         timeout=10,
-        adapter: Optional[HTTPAdapter] = None,
+        adapter: HTTPAdapter | None = None,
         pool_size: int = 2,
-        proxies: Optional[dict] = None,
-        password: Optional[str] = None,
+        proxies: dict | None = None,
+        password: str | None = None,
         **kwargs,
     ):
         self._conn = None
         self._read_consistency = read_consistency
 
-    def create_database_if_not_exists(self, database_name: str, timeout: Optional[float] = None) -> RPCDatabase:
+    def create_database_if_not_exists(self, database_name: str, timeout: float | None = None) -> RPCDatabase:
         return RPCDatabase(
             name="dify",
             read_consistency=self._read_consistency,
@@ -42,7 +42,7 @@ class MockTcvectordbClass:
         return True
 
     def describe_collection(
-        self, database_name: str, collection_name: str, timeout: Optional[float] = None
+        self, database_name: str, collection_name: str, timeout: float | None = None
     ) -> RPCCollection:
         index = Index(
             FilterIndex("id", enum.FieldType.String, enum.IndexType.PRIMARY_KEY),
@@ -71,13 +71,13 @@ class MockTcvectordbClass:
         collection_name: str,
         shard: int,
         replicas: int,
-        description: Optional[str] = None,
-        index: Optional[Index] = None,
-        embedding: Optional[Embedding] = None,
-        timeout: Optional[float] = None,
-        ttl_config: Optional[dict] = None,
-        filter_index_config: Optional[FilterIndexConfig] = None,
-        indexes: Optional[list[IndexField]] = None,
+        description: str | None = None,
+        index: Index | None = None,
+        embedding: Embedding | None = None,
+        timeout: float | None = None,
+        ttl_config: dict | None = None,
+        filter_index_config: FilterIndexConfig | None = None,
+        indexes: list[IndexField] | None = None,
     ) -> RPCCollection:
         return RPCCollection(
             RPCDatabase(
@@ -102,7 +102,7 @@ class MockTcvectordbClass:
         database_name: str,
         collection_name: str,
         documents: list[Union[Document, dict]],
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         build_index: bool = True,
         **kwargs,
     ):
@@ -113,12 +113,12 @@ class MockTcvectordbClass:
         database_name: str,
         collection_name: str,
         vectors: list[list[float]],
-        filter: Optional[Filter] = None,
+        filter: Filter | None = None,
         params=None,
         retrieve_vector: bool = False,
         limit: int = 10,
-        output_fields: Optional[list[str]] = None,
-        timeout: Optional[float] = None,
+        output_fields: list[str] | None = None,
+        timeout: float | None = None,
     ) -> list[list[dict]]:
         return [[{"metadata": {"doc_id": "foo1"}, "text": "text", "doc_id": "foo1", "score": 0.1}]]
 
@@ -126,14 +126,14 @@ class MockTcvectordbClass:
         self,
         database_name: str,
         collection_name: str,
-        ann: Optional[Union[list[AnnSearch], AnnSearch]] = None,
-        match: Optional[Union[list[KeywordSearch], KeywordSearch]] = None,
-        filter: Optional[Union[Filter, str]] = None,
-        rerank: Optional[Rerank] = None,
-        retrieve_vector: Optional[bool] = None,
-        output_fields: Optional[list[str]] = None,
-        limit: Optional[int] = None,
-        timeout: Optional[float] = None,
+        ann: Union[list[AnnSearch], AnnSearch] | None = None,
+        match: Union[list[KeywordSearch], KeywordSearch] | None = None,
+        filter: Union[Filter, str] | None = None,
+        rerank: Rerank | None = None,
+        retrieve_vector: bool | None = None,
+        output_fields: list[str] | None = None,
+        limit: int | None = None,
+        timeout: float | None = None,
         return_pd_object=False,
         **kwargs,
     ) -> list[list[dict]]:
@@ -143,27 +143,27 @@ class MockTcvectordbClass:
         self,
         database_name: str,
         collection_name: str,
-        document_ids: Optional[list] = None,
+        document_ids: list | None = None,
         retrieve_vector: bool = False,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        filter: Optional[Filter] = None,
-        output_fields: Optional[list[str]] = None,
-        timeout: Optional[float] = None,
-    ) -> list[dict]:
+        limit: int | None = None,
+        offset: int | None = None,
+        filter: Filter | None = None,
+        output_fields: list[str] | None = None,
+        timeout: float | None = None,
+    ):
         return [{"metadata": '{"doc_id":"foo1"}', "text": "text", "doc_id": "foo1", "score": 0.1}]
 
     def collection_delete(
         self,
         database_name: str,
         collection_name: str,
-        document_ids: Optional[list[str]] = None,
-        filter: Optional[Filter] = None,
-        timeout: Optional[float] = None,
+        document_ids: list[str] | None = None,
+        filter: Filter | None = None,
+        timeout: float | None = None,
     ):
         return {"code": 0, "msg": "operation success"}
 
-    def drop_collection(self, database_name: str, collection_name: str, timeout: Optional[float] = None) -> dict:
+    def drop_collection(self, database_name: str, collection_name: str, timeout: float | None = None):
         return {"code": 0, "msg": "operation success"}
 
 

@@ -16,7 +16,7 @@ const translation = {
     indexMethodHighQuality: '高質量',
     indexMethodHighQualityTip: '使用 Embedding 模型進行處理，以在使用者查詢時提供更高的準確度。',
     indexMethodEconomy: '經濟',
-    indexMethodEconomyTip: '使用離線的向量引擎、關鍵詞索引等方式，降低了準確度但無需花費 Token',
+    indexMethodEconomyTip: '每個區塊使用 10 個關鍵字進行檢索，不會消耗 tokens，但可能會降低檢索的準確度。',
     embeddingModel: 'Embedding 模型',
     embeddingModelTip: '修改 Embedding 模型，請去',
     embeddingModelTipLink: '設定',
@@ -37,6 +37,14 @@ const translation = {
     upgradeHighQualityTip: '升級到高品質模式后，無法恢復到經濟模式',
     helpText: '瞭解如何編寫良好的數據集描述。',
     searchModel: '搜索模型',
+    chunkStructure: {
+      learnMore: '瞭解詳情',
+      title: '區塊結構',
+      description: '關於塊結構。',
+    },
+    numberOfKeywords: '關鍵字數量',
+    onSearchResults: '沒有成員符合您的搜尋查詢。\n請再次嘗試搜尋。',
+    nameAndIcon: '名稱和圖示',
   },
 }
 

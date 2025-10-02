@@ -136,6 +136,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           provider,
           model,
           value?.completion_params,
+          isAdvancedMode,
         )
         nextCompletionParams = filtered
 
@@ -165,7 +166,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
   const handleLLMParamsChange = (newParams: FormValue) => {
     const newValue = {
-      ...(value?.completionParams || {}),
+      ...value?.completionParams,
       completion_params: newParams,
     }
     setModel({
