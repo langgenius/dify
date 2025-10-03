@@ -24,6 +24,7 @@ type EducationMessages = typeof import('../i18n/en-US/education').default
 type ExploreMessages = typeof import('../i18n/en-US/explore').default
 type LayoutMessages = typeof import('../i18n/en-US/layout').default
 type LoginMessages = typeof import('../i18n/en-US/login').default
+type MfaMessages = typeof import('../i18n/en-US/mfa').default
 type OauthMessages = typeof import('../i18n/en-US/oauth').default
 type PipelineMessages = typeof import('../i18n/en-US/pipeline').default
 type PluginTagsMessages = typeof import('../i18n/en-US/plugin-tags').default
@@ -56,6 +57,7 @@ export type Messages = {
   explore: ExploreMessages;
   layout: LayoutMessages;
   login: LoginMessages;
+  mfa: MfaMessages;
   oauth: OauthMessages;
   pipeline: PipelineMessages;
   pluginTags: PluginTagsMessages;
@@ -81,7 +83,7 @@ export type ValidTranslationKeys = FlattenKeys<Messages>
 
 // Extend react-i18next with Dify's type structure
 declare module 'react-i18next' {
-  type CustomTypeOptions = {
+  interface CustomTypeOptions {
     defaultNS: 'translation';
     resources: {
       translation: Messages;
@@ -91,7 +93,7 @@ declare module 'react-i18next' {
 
 // Extend i18next for complete type safety
 declare module 'i18next' {
-  type CustomTypeOptions = {
+  interface CustomTypeOptions {
     defaultNS: 'translation';
     resources: {
       translation: Messages;

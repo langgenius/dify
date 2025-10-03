@@ -155,3 +155,21 @@ class MemberNotInTenantError(BaseHTTPException):
     error_code = "member_not_in_tenant"
     description = "The member is not in the workspace."
     code = 400
+
+
+class MFARequiredError(BaseHTTPException):
+    error_code = "mfa_required"
+    description = "Multi-factor authentication is required."
+    code = 401
+
+
+class MFATokenRequiredError(BaseHTTPException):
+    error_code = "mfa_token_invalid"
+    description = "The MFA token is invalid or expired."
+    code = 401
+
+
+class MFASetupRequiredError(BaseHTTPException):
+    error_code = "mfa_setup_required"
+    description = "MFA setup is required to complete this action."
+    code = 400

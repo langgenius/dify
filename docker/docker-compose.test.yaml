@@ -1,0 +1,4 @@
+# Testing override - removes DB volume mount to avoid permission issues
+services:
+  db:
+    volumes: []

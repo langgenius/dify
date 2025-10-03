@@ -196,6 +196,7 @@ const translation = {
     billing: 'Billing',
     integrations: 'Integrations',
     language: 'Language',
+    mfa: 'Two-Factor Authentication',
     provider: 'Model Provider',
     dataSource: 'Data Source',
     plugin: 'Plugins',

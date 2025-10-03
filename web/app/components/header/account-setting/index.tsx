@@ -15,11 +15,14 @@ import {
   RiMoneyDollarCircleLine,
   RiPuzzle2Fill,
   RiPuzzle2Line,
+  RiShieldKeyholeFill,
+  RiShieldKeyholeLine,
   RiTranslate2,
 } from '@remixicon/react'
 import Button from '../../base/button'
 import MembersPage from './members-page'
 import LanguagePage from './language-page'
+import MFAPage from './mfa-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import ModelProviderPage from './model-provider-page'
@@ -53,10 +56,13 @@ export default function AccountSetting({
   onCancel,
   activeTab = 'members',
 }: IAccountSettingProps) {
-  const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+
+  // Set appropriate default tab based on user role
+  const defaultTab = isCurrentWorkspaceDatasetOperator ? 'mfa' : activeTab
+  const [activeMenu, setActiveMenu] = useState(defaultTab)
 
   const workplaceGroupItems = (() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -117,6 +123,12 @@ export default function AccountSetting({
       name: t('common.settings.generalGroup'),
       items: [
         {
+          key: 'mfa',
+          name: t('common.settings.mfa'),
+          icon: <RiShieldKeyholeLine className={iconClassName} />,
+          activeIcon: <RiShieldKeyholeFill className={iconClassName} />,
+        },
+        {
           key: 'language',
           name: t('common.settings.language'),
           icon: <RiTranslate2 className={iconClassName} />,
@@ -155,7 +167,7 @@ export default function AccountSetting({
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-2'>
-                  {!isCurrentWorkspaceDatasetOperator && (
+                  {menuItem.items.length > 0 && (
                     <div className='system-xs-medium-uppercase mb-0.5 py-2 pb-1 pl-3 text-text-tertiary'>{menuItem.name}</div>
                   )}
                   <div>
@@ -219,6 +231,7 @@ export default function AccountSetting({
               {activeMenu === 'data-source' && <DataSourcePage />}
               {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
               {activeMenu === 'custom' && <CustomPage />}
+              {activeMenu === 'mfa' && <MFAPage />}
               {activeMenu === 'language' && <LanguagePage />}
             </div>
           </div>
