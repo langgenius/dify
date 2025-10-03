@@ -12,12 +12,12 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import { useHooksStore } from '../../../hooks-store'
 
 type Props = {
-  className?: string
-  onGenerated?: (prompt: string) => void
-  modelConfig?: ModelConfig
-  nodeId: string
-  editorId?: string
-  currentPrompt?: string
+  readonly className?: string
+  readonly onGenerated?: (prompt: string) => void
+  readonly modelConfig?: ModelConfig
+  readonly nodeId: string
+  readonly editorId?: string
+  readonly currentPrompt?: string
 }
 
 const PromptGeneratorBtn: FC<Props> = ({

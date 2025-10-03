@@ -15,7 +15,7 @@ import cn from '@/utils/classnames'
 const LOW = 50
 const MIDDLE = 80
 
-const AppsFull: FC<{ loc: string; className?: string; }> = ({
+const AppsFull: FC<{ readonly loc: string; readonly className?: string }> = ({
   loc,
   className,
 }) => {

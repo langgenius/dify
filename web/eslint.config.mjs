@@ -10,6 +10,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import sonar from 'eslint-plugin-sonarjs'
 import oxlint from 'eslint-plugin-oxlint'
 import next from '@next/eslint-plugin-next'
+import eslintReact from '@eslint-react/eslint-plugin'
 
 // import reactRefresh from 'eslint-plugin-react-refresh'
 
@@ -142,6 +143,22 @@ export default combine(
     rules: reactHooks.configs.recommended.rules,
     plugins: {
       'react-hooks': reactHooks,
+    },
+  },
+  // eslint-react
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      '@eslint-react': eslintReact,
+    },
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@eslint-react/prefer-read-only-props': 'error',
     },
   },
   // sonar

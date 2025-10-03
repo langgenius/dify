@@ -3,13 +3,13 @@ import s from './style.module.css'
 import cn from '@/utils/classnames'
 
 type ISliderProps = {
-  className?: string
-  value: number
-  max?: number
-  min?: number
-  step?: number
-  disabled?: boolean
-  onChange: (value: number) => void
+  readonly className?: string
+  readonly value: number
+  readonly max?: number
+  readonly min?: number
+  readonly step?: number
+  readonly disabled?: boolean
+  readonly onChange: (value: number) => void
 }
 
 const Slider: React.FC<ISliderProps> = ({ className, max, min, step, value, disabled, onChange }) => {
