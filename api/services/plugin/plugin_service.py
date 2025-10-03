@@ -253,7 +253,11 @@ class PluginService:
 
     @staticmethod
     def upgrade_plugin_with_marketplace(
-        tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
+        tenant_id: str,
+        original_plugin_unique_identifier: str,
+        new_plugin_unique_identifier: str,
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Upgrade plugin with marketplace
@@ -293,6 +297,8 @@ class PluginService:
             {
                 "plugin_unique_identifier": new_plugin_unique_identifier,
             },
+            blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -303,6 +309,8 @@ class PluginService:
         repo: str,
         version: str,
         package: str,
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
     ):
         """
         Upgrade plugin with github
@@ -319,6 +327,35 @@ class PluginService:
                 "version": version,
                 "package": package,
             },
+            blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
+        )
+
+    @staticmethod
+    def upgrade_plugin_with_local_pkg(
+        tenant_id: str,
+        original_plugin_unique_identifier: str,
+        new_plugin_unique_identifier: str,
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
+    ):
+        """
+        Upgrade plugin with local uploaded package
+        """
+        PluginService._check_marketplace_only_permission()
+        manager = PluginInstaller()
+        # ensure new plugin manifest exists (uploaded)
+        _ = manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
+        return manager.upgrade_plugin(
+            tenant_id,
+            original_plugin_unique_identifier,
+            new_plugin_unique_identifier,
+            PluginInstallationSource.Package,
+            {
+                "plugin_unique_identifier": new_plugin_unique_identifier,
+            },
+            blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -372,7 +409,12 @@ class PluginService:
         return manager.upload_bundle(tenant_id, bundle, verify_signature)
 
     @staticmethod
-    def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
+    def install_from_local_pkg(
+        tenant_id: str,
+        plugin_unique_identifiers: Sequence[str],
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
+    ):
         PluginService._check_marketplace_only_permission()
 
         manager = PluginInstaller()
@@ -382,10 +424,20 @@ class PluginService:
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
             [{}],
+            blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
-    def install_from_github(tenant_id: str, plugin_unique_identifier: str, repo: str, version: str, package: str):
+    def install_from_github(
+        tenant_id: str,
+        plugin_unique_identifier: str,
+        repo: str,
+        version: str,
+        package: str,
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
+    ):
         """
         Install plugin from github release package files,
         returns plugin_unique_identifier
@@ -404,6 +456,8 @@ class PluginService:
                     "package": package,
                 }
             ],
+            blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
@@ -433,7 +487,12 @@ class PluginService:
         return declaration
 
     @staticmethod
-    def install_from_marketplace_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
+    def install_from_marketplace_pkg(
+        tenant_id: str,
+        plugin_unique_identifiers: Sequence[str],
+        blue_green: bool = False,
+        blue_green_mode: str | None = None,
+    ):
         """
         Install plugin from marketplace package files,
         returns installation task id
@@ -477,12 +536,34 @@ class PluginService:
             actual_plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
             metas,
+            blue_green=blue_green,
+            blue_green_mode=blue_green_mode,
         )
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
         manager = PluginInstaller()
         return manager.uninstall(tenant_id, plugin_installation_id)
+
+    @staticmethod
+    def fetch_runtime_connections(tenant_id: str, plugin_id: str | None = None) -> dict:
+        manager = PluginInstaller()
+        return manager.fetch_runtime_connections(tenant_id, plugin_id)
+
+    @staticmethod
+    def approve_blue_green(tenant_id: str, plugin_id: str) -> bool:
+        manager = PluginInstaller()
+        return manager.approve_blue_green(tenant_id, plugin_id)
+
+    @staticmethod
+    def force_offline_runtime(tenant_id: str, plugin_unique_identifier: str) -> bool:
+        manager = PluginInstaller()
+        return manager.force_offline(tenant_id, plugin_unique_identifier)
+
+    @staticmethod
+    def rollback_blue_green(tenant_id: str, plugin_unique_identifier: str) -> bool:
+        manager = PluginInstaller()
+        return manager.rollback_blue_green(tenant_id, plugin_unique_identifier)
 
     @staticmethod
     def check_tools_existence(tenant_id: str, provider_ids: Sequence[GenericProviderID]) -> Sequence[bool]:

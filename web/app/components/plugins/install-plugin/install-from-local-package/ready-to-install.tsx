@@ -17,6 +17,7 @@ type Props = {
   manifest: PluginDeclaration | null,
   errorMsg: string | null,
   onError: (errorMsg: string) => void,
+  onSuccess: (pluginId: string) => void,
 }
 
 const ReadyToInstall: FC<Props> = ({
@@ -29,6 +30,7 @@ const ReadyToInstall: FC<Props> = ({
   manifest,
   errorMsg,
   onError,
+  onSuccess,
 }) => {
   const { refreshPluginList } = useRefreshPluginList()
 
@@ -37,6 +39,9 @@ const ReadyToInstall: FC<Props> = ({
     if (!notRefresh)
       refreshPluginList(manifest)
     setIsInstalling(false)
+    const pid = manifest ? `${manifest.author}/${manifest.name}` : ''
+    if (pid)
+      onSuccess(pid)
   }, [manifest, onStepChange, refreshPluginList, setIsInstalling])
 
   const handleFailed = useCallback((errorMsg?: string) => {

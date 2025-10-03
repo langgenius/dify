@@ -27,14 +27,14 @@ export const uploadFile = async (file: File, isBundle: boolean) => {
   }, false, `/workspaces/current/plugin/upload/${isBundle ? 'bundle' : 'pkg'}`)
 }
 
-export const updateFromMarketPlace = async (body: Record<string, string>) => {
+export const updateFromMarketPlace = async (body: Record<string, string | boolean>) => {
   return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
     body,
   })
 }
 
 export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string,
-  originalPlugin: string, newPlugin: string) => {
+  originalPlugin: string, newPlugin: string, blueGreen = false, blueGreenMode: 'auto' | 'manual' = 'auto') => {
   return post<updatePackageResponse>('/workspaces/current/plugin/upgrade/github', {
     body: {
       repo: repoUrl,
@@ -42,7 +42,38 @@ export const updateFromGitHub = async (repoUrl: string, selectedVersion: string,
       package: selectedPackage,
       original_plugin_unique_identifier: originalPlugin,
       new_plugin_unique_identifier: newPlugin,
+      blue_green: blueGreen,
+      blue_green_mode: blueGreen ? blueGreenMode : undefined,
     },
+  })
+}
+
+export const updateFromLocalPackage = async (originalPlugin: string, newPlugin: string, blueGreen = false, blueGreenMode: 'auto' | 'manual' = 'auto') => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/pkg', {
+    body: {
+      original_plugin_unique_identifier: originalPlugin,
+      new_plugin_unique_identifier: newPlugin,
+      blue_green: blueGreen,
+      blue_green_mode: blueGreen ? blueGreenMode : undefined,
+    },
+  })
+}
+
+export const approveBlueGreen = async (pluginId: string) => {
+  return post<{ success: boolean }>('/workspaces/current/plugin/blue_green/approve', {
+    body: { plugin_id: pluginId },
+  })
+}
+
+export const forceOfflineRuntime = async (pluginUniqueIdentifier: string) => {
+  return post<{ success: boolean }>('/workspaces/current/plugin/blue_green/force_offline', {
+    body: { plugin_unique_identifier: pluginUniqueIdentifier },
+  })
+}
+
+export const cancelBlueGreen = async (pluginUniqueIdentifier: string) => {
+  return post<{ success: boolean }>('/workspaces/current/plugin/blue_green/rollback', {
+    body: { plugin_unique_identifier: pluginUniqueIdentifier },
   })
 }
 

@@ -8,6 +8,7 @@ import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import { usePluginPageContext } from './context'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -16,7 +17,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { noop } from 'lodash-es'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
@@ -77,6 +77,8 @@ const InstallPluginDropdown = ({
     }
   }, [plugin_installation_permission, enable_marketplace, t])
 
+  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
+
   return (
     <PortalToFollowElem
       open={isMenuOpen}
@@ -134,14 +136,20 @@ const InstallPluginDropdown = ({
         </PortalToFollowElemContent>
       </div>
       {selectedAction === 'github' && <InstallFromGitHub
-        onSuccess={noop}
+        onSuccess={(pluginId) => {
+          setSelectedAction(null)
+          setCurrentPluginID(pluginId)
+        }}
         onClose={() => setSelectedAction(null)}
       />}
       {selectedAction === 'local' && selectedFile
         && (<InstallFromLocalPackage
           file={selectedFile}
           onClose={() => setSelectedAction(null)}
-          onSuccess={noop}
+          onSuccess={(pluginId) => {
+            setSelectedAction(null)
+            setCurrentPluginID(pluginId)
+          }}
         />
         )
       }

@@ -16,13 +16,14 @@ const i18nPrefix = 'plugin.installModal'
 
 type InstallFromLocalPackageProps = {
   file: File
-  onSuccess: () => void
+  onSuccess: (pluginId: string) => void
   onClose: () => void
 }
 
 const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   file,
   onClose,
+  onSuccess,
 }) => {
   const { t } = useTranslation()
   // uploading -> !uploadFailed -> readyToInstall -> installed/failed
@@ -124,6 +125,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
           manifest={manifest}
           errorMsg={errorMsg}
           onError={setErrorMsg}
+          onSuccess={onSuccess}
         />
       )}
     </Modal>
