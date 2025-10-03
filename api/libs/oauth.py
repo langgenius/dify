@@ -176,8 +176,10 @@ class DingTalkOAuth(OAuth):
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         user_id = raw_info.get("unionId", "")
+        if not user_id:  
+            raise ValueError("`unionId` not found in DingTalk user info response.")  
         name = raw_info.get("nick", "")
-        email = raw_info.get("email", f"{user_id}@dingtalk.com")
+        email = raw_info.get("email", f"{user_id}@dingtalk.local")
         return OAuthUserInfo(id=user_id, name=name, email=email)
 
 
@@ -227,7 +229,7 @@ class MicrosoftOAuth(OAuth):
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         user_id = str(raw_info.get("id", ""))
         name = raw_info.get("displayName", "")
-        email = raw_info.get("mail") or raw_info.get("userPrincipalName", f"{user_id}@microsoft.com")
+        email = raw_info.get("mail") or raw_info.get("userPrincipalName", f"{user_id}@microsoft.local")
         return OAuthUserInfo(id=user_id, name=name, email=email)
 
 
@@ -280,7 +282,7 @@ class CanvasOAuth(OAuth):
         if self._user_cache:
             return self._user_cache
         
-        raise ValueError("No user info available.")
+        raise ValueError("Canvas user info not available from token response.")
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         # Canvas uses 'id' as the primary identifier
