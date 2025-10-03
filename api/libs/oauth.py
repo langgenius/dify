@@ -228,6 +228,8 @@ class MicrosoftOAuth(OAuth):
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         user_id = str(raw_info.get("id", ""))
+        if not user_id:
+            raise ValueError("`id` not found in Microsoft user info response.")
         name = raw_info.get("displayName", "")
         email = raw_info.get("mail") or raw_info.get("userPrincipalName", f"{user_id}@microsoft.local")
         return OAuthUserInfo(id=user_id, name=name, email=email)
