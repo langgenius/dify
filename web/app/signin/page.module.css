@@ -9,3 +9,15 @@ html[data-theme="dark"] .githubIcon {
 .googleIcon {
   background: center/contain url('./assets/google.svg') no-repeat;
 }
+
+.microsoftIcon {
+  background: center/contain url('./assets/microsoft.svg') no-repeat;
+}
+
+.dingtalkIcon {
+  background: center/contain url('./assets/dingtalk.svg') no-repeat;
+}
+
+.canvasIcon {
+  background: center/contain url('./assets/canvas.svg') no-repeat;
+}
