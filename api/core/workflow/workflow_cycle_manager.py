@@ -30,7 +30,6 @@ from core.workflow.repositories.workflow_node_execution_repository import Workfl
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from libs.datetime_utils import naive_utc_now
-from libs.uuid_utils import uuidv7
 
 
 @dataclass
@@ -269,7 +268,7 @@ class WorkflowCycleManager:
         """Get execution ID from system variables or generate a new one."""
         if self._workflow_system_variables and self._workflow_system_variables.workflow_execution_id:
             return str(self._workflow_system_variables.workflow_execution_id)
-        return str(uuidv7())
+        raise ValueError("workflow_execution_id must be provided in system variables for pause/resume flows")
 
     def _save_and_cache_workflow_execution(self, execution: WorkflowExecution) -> WorkflowExecution:
         """Save workflow execution to repository and cache it."""
