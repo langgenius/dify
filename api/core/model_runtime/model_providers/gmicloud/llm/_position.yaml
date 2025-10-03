@@ -1,0 +1,23 @@
+# DeepSeek Models
+- deepseek-v3-0324
+- deepseek-r1-0528
+- deepseek-v31
+
+# OpenAI Models
+- openai-gpt-oss-120b
+
+# Meta Llama Models
+- llama4-scout-17b-16e-instruct
+- llama3-70b-instruct
+
+# Qwen Models
+- qwen3-coder-480b-a35b-instruct-fp8
+- qwen3-next-80b-a3b-instruct
+- qwen3-next-80b-a3b-thinking
+- qwen3-235b-a22b-instruct-2507-fp8
+- qwen3-235b-a22b-thinking-2507-fp8
+- qwen3-32b-fp8
+
+# ZAI Models
+- zai-glm45-fp8
+- zai-glm45-air-fp8
