@@ -128,7 +128,6 @@ export const useWorkflowComment = () => {
     setPendingComment(null)
 
     activeCommentIdRef.current = comment.id
-    setControlMode(ControlMode.Comment)
     setActiveCommentId(comment.id)
 
     const cachedDetail = commentDetailCacheRef.current[comment.id]
