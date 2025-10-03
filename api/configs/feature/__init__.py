@@ -684,6 +684,41 @@ class AuthConfig(BaseSettings):
         default=None,
     )
 
+    DINGTALK_CLIENT_ID: str | None = Field(
+        description="DingTalk OAuth client ID",
+        default=None,
+    )
+
+    DINGTALK_CLIENT_SECRET: str | None = Field(
+        description="DingTalk OAuth client secret",
+        default=None,
+    )
+
+    MICROSOFT_CLIENT_ID: str | None = Field(
+        description="Microsoft OAuth client ID",
+        default=None,
+    )
+
+    MICROSOFT_CLIENT_SECRET: str | None = Field(
+        description="Microsoft OAuth client secret",
+        default=None,
+    )
+
+    CANVAS_CLIENT_ID: str | None = Field(
+        description="Canvas OAuth client ID",
+        default=None,
+    )
+
+    CANVAS_CLIENT_SECRET: str | None = Field(
+        description="Canvas OAuth client secret",
+        default=None,
+    )
+
+    CANVAS_INSTALL_URL: str | None = Field(
+        description="Canvas installation URL (e.g., https://canvas.instructure.com)",
+        default=None,
+    )
+
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,

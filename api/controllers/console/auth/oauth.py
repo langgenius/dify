@@ -13,7 +13,14 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import (
+    CanvasOAuth,
+    DingTalkOAuth,
+    GitHubOAuth,
+    GoogleOAuth,
+    MicrosoftOAuth,
+    OAuthUserInfo,
+)
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -29,25 +36,54 @@ logger = logging.getLogger(__name__)
 
 def get_oauth_providers():
     with current_app.app_context():
-        if not dify_config.GITHUB_CLIENT_ID or not dify_config.GITHUB_CLIENT_SECRET:
-            github_oauth = None
-        else:
-            github_oauth = GitHubOAuth(
+        providers = {}
+
+        # GitHub
+        if dify_config.GITHUB_CLIENT_ID and dify_config.GITHUB_CLIENT_SECRET:
+            providers["github"] = GitHubOAuth(
                 client_id=dify_config.GITHUB_CLIENT_ID,
                 client_secret=dify_config.GITHUB_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/github",
             )
-        if not dify_config.GOOGLE_CLIENT_ID or not dify_config.GOOGLE_CLIENT_SECRET:
-            google_oauth = None
-        else:
-            google_oauth = GoogleOAuth(
+
+        # Google
+        if dify_config.GOOGLE_CLIENT_ID and dify_config.GOOGLE_CLIENT_SECRET:
+            providers["google"] = GoogleOAuth(
                 client_id=dify_config.GOOGLE_CLIENT_ID,
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
             )
 
-        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
-        return OAUTH_PROVIDERS
+        # DingTalk
+        if dify_config.DINGTALK_CLIENT_ID and dify_config.DINGTALK_CLIENT_SECRET:
+            providers["dingtalk"] = DingTalkOAuth(
+                client_id=dify_config.DINGTALK_CLIENT_ID,
+                client_secret=dify_config.DINGTALK_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/dingtalk",
+            )
+
+        # Microsoft
+        if dify_config.MICROSOFT_CLIENT_ID and dify_config.MICROSOFT_CLIENT_SECRET:
+            providers["microsoft"] = MicrosoftOAuth(
+                client_id=dify_config.MICROSOFT_CLIENT_ID,
+                client_secret=dify_config.MICROSOFT_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/microsoft",
+            )
+
+        # Canvas
+        if (
+            dify_config.CANVAS_CLIENT_ID
+            and dify_config.CANVAS_CLIENT_SECRET
+            and dify_config.CANVAS_INSTALL_URL
+        ):
+            providers["canvas"] = CanvasOAuth(
+                client_id=dify_config.CANVAS_CLIENT_ID,
+                client_secret=dify_config.CANVAS_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/canvas",
+                install_url=dify_config.CANVAS_INSTALL_URL,
+            )
+
+        return providers
 
 
 @console_ns.route("/oauth/login/<provider>")
