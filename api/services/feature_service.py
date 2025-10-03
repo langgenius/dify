@@ -3,6 +3,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
+from controllers.console.auth.oauth import get_oauth_providers
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
@@ -209,7 +210,6 @@ class FeatureService:
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
-        from controllers.console.auth.oauth import get_oauth_providers
         
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN

@@ -287,6 +287,8 @@ class CanvasOAuth(OAuth):
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         # Canvas uses 'id' as the primary identifier
         user_id = str(raw_info.get("id", ""))
+        if not user_id:
+            raise ValueError("`id` not found in Canvas user info response.")
         name = raw_info.get("name", "")
         email = raw_info.get("email", f"{user_id}@canvas.local")
         return OAuthUserInfo(id=user_id, name=name, email=email)
