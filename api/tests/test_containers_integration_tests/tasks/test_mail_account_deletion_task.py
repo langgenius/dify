@@ -110,7 +110,6 @@ class TestMailAccountDeletionTask:
             },
         )
 
-
     def test_send_deletion_success_task_mail_not_initialized(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -156,7 +155,6 @@ class TestMailAccountDeletionTask:
         # Assert: Verify email service was called but exception was handled
         mock_external_service_dependencies["email_service"].send_email.assert_called_once()
 
-
     def test_send_account_deletion_verification_code_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -195,7 +193,6 @@ class TestMailAccountDeletionTask:
                 "code": test_code,
             },
         )
-
 
     def test_send_account_deletion_verification_code_mail_not_initialized(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -243,4 +240,3 @@ class TestMailAccountDeletionTask:
 
         # Assert: Verify email service was called but exception was handled
         mock_external_service_dependencies["email_service"].send_email.assert_called_once()
-
