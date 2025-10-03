@@ -1,3 +1,6 @@
+export type { AddApiKeyButtonProps } from './authorize/add-api-key-button'
+export type { AddOAuthButtonProps } from './authorize/add-oauth-button'
+
 export enum AuthCategory {
   tool = 'tool',
   datasource = 'datasource',
@@ -22,4 +25,6 @@ export type Credential = {
   is_default: boolean
   credentials?: Record<string, any>
   isWorkspaceDefault?: boolean
+  from_enterprise?: boolean
+  not_allowed_to_use?: boolean
 }

@@ -40,18 +40,18 @@
 
 <p align="center">
   <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
-  <a href="./README_TW.md"><img alt="繁體中文文件" src="https://img.shields.io/badge/繁體中文-d9d9d9"></a>
-  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
-  <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
-  <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
-  <a href="./README_FR.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
-  <a href="./README_KL.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
-  <a href="./README_KR.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
-  <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
-  <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
-  <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
-  <a href="./README_DE.md"><img alt="README in Deutsch" src="https://img.shields.io/badge/German-d9d9d9"></a>
-  <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
+  <a href="./README/README_TW.md"><img alt="繁體中文文件" src="https://img.shields.io/badge/繁體中文-d9d9d9"></a>
+  <a href="./README/README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+  <a href="./README/README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
+  <a href="./README/README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
+  <a href="./README/README_FR.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
+  <a href="./README/README_KL.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="./README/README_KR.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README/README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
+  <a href="./README/README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
+  <a href="./README/README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
+  <a href="./README/README_DE.md"><img alt="README in Deutsch" src="https://img.shields.io/badge/German-d9d9d9"></a>
+  <a href="./README/README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
 Dify is an open-source platform for developing LLM applications. Its intuitive interface combines agentic AI workflows, RAG pipelines, agent capabilities, model management, observability features, and more—allowing you to quickly move from prototype to production.
@@ -106,74 +106,6 @@ Monitor and analyze application logs and performance over time. You could contin
 
 **7. Backend-as-a-Service**:
 All of Dify's offerings come with corresponding APIs, so you could effortlessly integrate Dify into your own business logic.
-
-## Feature Comparison
-
-<table style="width: 100%;">
-  <tr>
-    <th align="center">Feature</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">Programming Approach</td>
-    <td align="center">API + App-oriented</td>
-    <td align="center">Python Code</td>
-    <td align="center">App-oriented</td>
-    <td align="center">API-oriented</td>
-  </tr>
-  <tr>
-    <td align="center">Supported LLMs</td>
-    <td align="center">Rich Variety</td>
-    <td align="center">Rich Variety</td>
-    <td align="center">Rich Variety</td>
-    <td align="center">OpenAI-only</td>
-  </tr>
-  <tr>
-    <td align="center">RAG Engine</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Agent</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Workflow</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Observability</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Enterprise Feature (SSO/Access control)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Local Deployment</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
 
 ## Using Dify
 

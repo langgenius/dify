@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from core.model_manager import ModelInstance
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
@@ -24,7 +24,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
     @classmethod
     def from_encoder(
         cls: type[TS],
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
         allowed_special: Union[Literal["all"], Set[str]] = set(),  # noqa: UP037
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",  # noqa: UP037
         **kwargs: Any,
@@ -48,7 +48,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
 
 
 class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter):
-    def __init__(self, fixed_separator: str = "\n\n", separators: Optional[list[str]] = None, **kwargs: Any):
+    def __init__(self, fixed_separator: str = "\n\n", separators: list[str] | None = None, **kwargs: Any):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         self._fixed_separator = fixed_separator

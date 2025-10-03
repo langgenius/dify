@@ -1,6 +1,6 @@
 import contextlib
 from copy import deepcopy
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
@@ -13,15 +13,15 @@ class ProviderConfigCache(Protocol):
     Interface for provider configuration cache operations
     """
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> dict | None:
         """Get cached provider configuration"""
         ...
 
-    def set(self, config: dict[str, Any]) -> None:
+    def set(self, config: dict[str, Any]):
         """Cache provider configuration"""
         ...
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete cached provider configuration"""
         ...
 
@@ -123,11 +123,15 @@ class ProviderConfigEncrypter:
         return data
 
 
-def create_provider_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
+def create_provider_encrypter(
+    tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache
+) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     return ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache), cache
 
 
-def create_tool_provider_encrypter(tenant_id: str, controller: ToolProviderController):
+def create_tool_provider_encrypter(
+    tenant_id: str, controller: ToolProviderController
+) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     cache = SingletonProviderCredentialsCache(
         tenant_id=tenant_id,
         provider_type=controller.provider_type.value,

@@ -84,6 +84,7 @@ const translation = {
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
     dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
+    import: 'Ithalat',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
@@ -273,6 +274,10 @@ const translation = {
       runDesc: 'Hızlı komutlar çalıştır (tema, dil, ...)',
       searchPluginsDesc: 'Eklentilerinizi arayın ve gezinin',
       slashDesc: '/tema, /dil gibi komutları çalıştırın',
+      communityDesc: 'Açık Discord topluluğu',
+      accountDesc: 'Hesap sayfasına gidin',
+      feedbackDesc: 'Açık topluluk geri bildirim tartışmaları',
+      docDesc: 'Yardım belgelerini aç',
     },
     emptyState: {
       noAppsFound: 'Uygulama bulunamadı',
@@ -307,6 +312,11 @@ const translation = {
     inScope: '{{scope}}s içinde',
     tryDifferentSearch: 'Farklı bir arama terimi deneyin',
     noMatchingCommands: 'Eşleşen komut bulunamadı',
+    slashHint: 'Tüm mevcut komutları görmek için / yazın',
+    tips: 'Navigasyon için ↑↓ tuşlarına basın',
+    selectToNavigate: 'Gezinmek için seçin',
+    pressEscToClose: 'Kapatmak için ESC tuşuna basın',
+    startTyping: 'Arama yapmak için yazmaya başlayın',
   },
 }
 

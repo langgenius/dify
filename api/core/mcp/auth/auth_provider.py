@@ -1,5 +1,3 @@
-from typing import Optional
-
 from configs import dify_config
 from core.mcp.types import (
     OAuthClientInformation,
@@ -37,21 +35,21 @@ class OAuthClientProvider:
             client_uri="https://github.com/langgenius/dify",
         )
 
-    def client_information(self) -> Optional[OAuthClientInformation]:
+    def client_information(self) -> OAuthClientInformation | None:
         """Loads information about this OAuth client."""
         client_information = self.mcp_provider.decrypted_credentials.get("client_information", {})
         if not client_information:
             return None
         return OAuthClientInformation.model_validate(client_information)
 
-    def save_client_information(self, client_information: OAuthClientInformationFull) -> None:
+    def save_client_information(self, client_information: OAuthClientInformationFull):
         """Saves client information after dynamic registration."""
         MCPToolManageService.update_mcp_provider_credentials(
             self.mcp_provider,
             {"client_information": client_information.model_dump()},
         )
 
-    def tokens(self) -> Optional[OAuthTokens]:
+    def tokens(self) -> OAuthTokens | None:
         """Loads any existing OAuth tokens for the current session."""
         credentials = self.mcp_provider.decrypted_credentials
         if not credentials:
@@ -63,13 +61,13 @@ class OAuthClientProvider:
             refresh_token=credentials.get("refresh_token", ""),
         )
 
-    def save_tokens(self, tokens: OAuthTokens) -> None:
+    def save_tokens(self, tokens: OAuthTokens):
         """Stores new OAuth tokens for the current session."""
         # update mcp provider credentials
         token_dict = tokens.model_dump()
         MCPToolManageService.update_mcp_provider_credentials(self.mcp_provider, token_dict, authed=True)
 
-    def save_code_verifier(self, code_verifier: str) -> None:
+    def save_code_verifier(self, code_verifier: str):
         """Saves a PKCE code verifier for the current session."""
         MCPToolManageService.update_mcp_provider_credentials(self.mcp_provider, {"code_verifier": code_verifier})
 

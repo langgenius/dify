@@ -1,16 +1,16 @@
 import ssl
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 import pytz
-from celery import Celery, Task  # type: ignore
-from celery.schedules import crontab  # type: ignore
+from celery import Celery, Task
+from celery.schedules import crontab
 
 from configs import dify_config
 from dify_app import DifyApp
 
 
-def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
+def _get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
     # Use REDIS_USE_SSL for consistency with the main Redis client
     # Only apply SSL if we're using Redis as broker/backend
@@ -66,7 +66,6 @@ def init_app(app: DifyApp) -> Celery:
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
-        task_ignore_result=True,
     )
 
     celery_app.conf.update(
@@ -77,6 +76,7 @@ def init_app(app: DifyApp) -> Celery:
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
+        task_ignore_result=True,
     )
 
     # Apply SSL configuration if enabled
@@ -141,12 +141,11 @@ def init_app(app: DifyApp) -> Celery:
         imports.append("schedule.queue_monitor_task")
         beat_schedule["datasets-queue-monitor"] = {
             "task": "schedule.queue_monitor_task.queue_monitor_task",
-            "schedule": timedelta(
-                minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
-            ),
+            "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
+        imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),

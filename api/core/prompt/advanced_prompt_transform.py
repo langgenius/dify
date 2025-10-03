@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Optional, cast
+from typing import cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import file_manager
@@ -30,7 +30,7 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         with_variable_tmpl: bool = False,
         image_detail_config: ImagePromptMessageContent.DETAIL = ImagePromptMessageContent.DETAIL.LOW,
-    ) -> None:
+    ):
         self.with_variable_tmpl = with_variable_tmpl
         self.image_detail_config = image_detail_config
 
@@ -41,11 +41,11 @@ class AdvancedPromptTransform(PromptTransform):
         inputs: Mapping[str, str],
         query: str,
         files: Sequence[File],
-        context: Optional[str],
-        memory_config: Optional[MemoryConfig],
-        memory: Optional[TokenBufferMemory],
+        context: str | None,
+        memory_config: MemoryConfig | None,
+        memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         prompt_messages = []
 
@@ -80,13 +80,13 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         prompt_template: CompletionModelPromptTemplate,
         inputs: Mapping[str, str],
-        query: Optional[str],
+        query: str | None,
         files: Sequence[File],
-        context: Optional[str],
-        memory_config: Optional[MemoryConfig],
-        memory: Optional[TokenBufferMemory],
+        context: str | None,
+        memory_config: MemoryConfig | None,
+        memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         """
         Get completion model prompt messages.
@@ -141,13 +141,13 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         prompt_template: list[ChatModelMessage],
         inputs: Mapping[str, str],
-        query: Optional[str],
+        query: str | None,
         files: Sequence[File],
-        context: Optional[str],
-        memory_config: Optional[MemoryConfig],
-        memory: Optional[TokenBufferMemory],
+        context: str | None,
+        memory_config: MemoryConfig | None,
+        memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         """
         Get chat model prompt messages.

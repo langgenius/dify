@@ -1,10 +1,19 @@
-import { BlockEnum, type NodeDefault } from '../../types'
+import { type NodeDefault, VarType } from '../../types'
 import { type IfElseNodeType, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 1,
+  type: BlockEnum.IfElse,
+  helpLinkUri: 'ifelse',
+})
 const nodeDefault: NodeDefault<IfElseNodeType> = {
+  metaData,
   defaultValue: {
     _targetBranches: [
       {
@@ -23,16 +32,6 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
         conditions: [],
       },
     ],
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: IfElseNodeType, t: any) {
     let errorMessages = ''
@@ -58,13 +57,13 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
               if (isEmptyRelatedOperator(c.comparison_operator!))
                 return true
 
-              return !!c.value
+              return (c.varType === VarType.boolean || c.varType === VarType.arrayBoolean) ? c.value === undefined : !!c.value
             })
             if (!isSet)
               errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
           }
           else {
-            if (!isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
+            if (!isEmptyRelatedOperator(condition.comparison_operator!) && ((condition.varType === VarType.boolean || condition.varType === VarType.arrayBoolean) ? condition.value === undefined : !condition.value))
               errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
           }
         }
