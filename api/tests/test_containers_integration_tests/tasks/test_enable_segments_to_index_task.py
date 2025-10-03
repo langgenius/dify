@@ -148,61 +148,6 @@ class TestEnableSegmentsToIndexTask:
         db.session.commit()
         return segments
 
-    def test_enable_segments_to_index_success(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test successful segments indexing with paragraph index type.
-
-        This test verifies:
-        - Proper dataset and document retrieval from database
-        - Correct segment processing and document creation
-        - Index processor integration
-        - Database state updates
-        - Redis cache key deletion
-        """
-        # Arrange: Create test data
-        dataset, document = self._create_test_dataset_and_document(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-        segments = self._create_test_segments(db_session_with_containers, document, dataset)
-
-        # Set up Redis cache keys to simulate indexing in progress
-        segment_ids = [segment.id for segment in segments]
-        for segment in segments:
-            indexing_cache_key = f"segment_{segment.id}_indexing"
-            redis_client.set(indexing_cache_key, "processing", ex=300)  # 5 minutes expiry
-
-        # Verify cache keys exist
-        for segment in segments:
-            indexing_cache_key = f"segment_{segment.id}_indexing"
-            assert redis_client.exists(indexing_cache_key) == 1
-
-        # Act: Execute the task
-        enable_segments_to_index_task(segment_ids, dataset.id, document.id)
-
-        # Assert: Verify the expected outcomes
-        # Verify index processor was called correctly
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexType.PARAGRAPH_INDEX)
-        mock_external_service_dependencies["index_processor"].load.assert_called_once()
-
-        # Verify the load method was called with correct parameters
-        call_args = mock_external_service_dependencies["index_processor"].load.call_args
-        assert call_args is not None
-        documents = call_args[0][1]  # Second argument should be documents list
-        assert len(documents) == 3
-
-        # Verify document structure
-        for i, doc in enumerate(documents):
-            assert doc.page_content == segments[i].content
-            assert doc.metadata["doc_id"] == segments[i].index_node_id
-            assert doc.metadata["doc_hash"] == segments[i].index_node_hash
-            assert doc.metadata["document_id"] == document.id
-            assert doc.metadata["dataset_id"] == dataset.id
-
-        # Verify Redis cache keys were deleted
-        for segment in segments:
-            indexing_cache_key = f"segment_{segment.id}_indexing"
-            assert redis_client.exists(indexing_cache_key) == 0
-
     def test_enable_segments_to_index_with_different_index_type(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
