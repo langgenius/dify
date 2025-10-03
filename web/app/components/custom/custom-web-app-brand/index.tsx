@@ -38,7 +38,7 @@ const CustomWebAppBrand = () => {
     isCurrentWorkspaceManager,
   } = useAppContext()
   const [fileId, setFileId] = useState('')
-  const [imgKey, setImgKey] = useState(Date.now())
+  const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isSandbox = enableBilling && plan.type === Plan.sandbox

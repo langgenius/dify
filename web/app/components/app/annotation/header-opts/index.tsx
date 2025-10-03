@@ -60,9 +60,11 @@ const HeaderOptions: FC<Props> = ({
     const a = document.createElement('a')
     const content = listTransformer(list).join('\n')
     const file = new Blob([content], { type: 'application/jsonl' })
-    a.href = URL.createObjectURL(file)
+    const url = URL.createObjectURL(file)
+    a.href = url
     a.download = `annotations-${locale}.jsonl`
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   const fetchList = async () => {
@@ -98,7 +100,7 @@ const HeaderOptions: FC<Props> = ({
   const Operations = () => {
     return (
       <div className="w-full py-1">
-        <button className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50' onClick={() => {
+        <button type="button" className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50' onClick={() => {
           setShowBulkImportModal(true)
         }}>
           <FilePlus02 className='h-4 w-4 text-text-tertiary' />
@@ -133,17 +135,17 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button disabled={annotationUnavailable} className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50'>
+                <button type="button" disabled={annotationUnavailable} className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50'>
                   <span className='system-sm-regular grow text-left text-text-secondary'>CSV</span>
                 </button>
               </CSVDownloader>
-              <button disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
+              <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
                 <span className='system-sm-regular grow text-left text-text-secondary'>JSONL</span>
               </button>
             </MenuItems>
           </Transition>
         </Menu>
-        <button
+        <button type="button"
           onClick={handleClearAll}
           className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50'
         >

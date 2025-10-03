@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any
+from typing import Any, overload
 
 from pydantic import BaseModel
 
@@ -9,9 +9,16 @@ from core.variables import Segment
 
 
 class WorkflowRuntimeTypeConverter:
+    @overload
+    def to_json_encodable(self, value: Mapping[str, Any]) -> Mapping[str, Any]: ...
+    @overload
+    def to_json_encodable(self, value: None) -> None: ...
+
     def to_json_encodable(self, value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         result = self._to_json_encodable_recursive(value)
-        return result if isinstance(result, Mapping) or result is None else dict(result)
+        if isinstance(result, Mapping) or result is None:
+            return result
+        return {}
 
     def _to_json_encodable_recursive(self, value: Any):
         if value is None:

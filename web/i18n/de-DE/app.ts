@@ -77,6 +77,7 @@ const translation = {
     agentUserDescription: 'Ein intelligenter Agent, der in der Lage ist, iteratives Denken zu führen und autonome Werkzeuge zu verwenden, um Aufgabenziele zu erreichen.',
     agentShortDescription: 'Intelligenter Agent mit logischem Denken und autonomer Werkzeugnutzung',
     dropDSLToCreateApp: 'Ziehen Sie die DSL-Datei hierher, um die App zu erstellen',
+    import: 'Importieren',
   },
   editApp: 'App bearbeiten',
   editAppTitle: 'App-Informationen bearbeiten',
@@ -318,6 +319,10 @@ const translation = {
     noMatchingCommands: 'Keine übereinstimmenden Befehle gefunden',
     tryDifferentSearch: 'Versuchen Sie es mit einem anderen Suchbegriff',
     slashHint: 'Geben Sie / ein, um alle verfügbaren Befehle anzuzeigen.',
+    tips: 'Drücken Sie ↑↓, um zu navigieren',
+    pressEscToClose: 'Drücken Sie ESC, um zu schließen',
+    startTyping: 'Beginnen Sie mit der Eingabe, um zu suchen',
+    selectToNavigate: 'Auswählen, um zu navigieren',
   },
 }
 

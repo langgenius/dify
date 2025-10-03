@@ -1,6 +1,7 @@
 import json
+import logging
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert
@@ -22,6 +23,8 @@ from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()  # type: Any
 
@@ -160,7 +163,7 @@ class RelytVector(BaseVector):
         else:
             return None
 
-    def delete_by_uuids(self, ids: Optional[list[str]] = None):
+    def delete_by_uuids(self, ids: list[str] | None = None):
         """Delete by vector IDs.
 
         Args:
@@ -187,8 +190,8 @@ class RelytVector(BaseVector):
                 delete_condition = chunks_table.c.id.in_(ids)
                 conn.execute(chunks_table.delete().where(delete_condition))
                 return True
-        except Exception as e:
-            print("Delete operation failed:", str(e))
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
     def delete_by_metadata_field(self, key: str, value: str):
@@ -241,7 +244,7 @@ class RelytVector(BaseVector):
         self,
         embedding: list[float],
         k: int = 4,
-        filter: Optional[dict] = None,
+        filter: dict | None = None,
     ) -> list[tuple[Document, float]]:
         # Add the filter if provided
 
