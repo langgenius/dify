@@ -1,0 +1,37 @@
+model: Qwen/Qwen3-32B-FP8
+label:
+  zh_Hans: Qwen3 32B FP8
+  en_US: Qwen3 32B FP8
+model_type: llm
+features:
+  - agent-thought
+  - tool-call
+model_properties:
+  mode: chat
+  context_size: 32768
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+  - name: max_tokens
+    use_template: max_tokens
+  - name: frequency_penalty
+    use_template: frequency_penalty
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '0.1'
+  output: '0.6'
+  unit: '0.000001'
+  currency: USD
