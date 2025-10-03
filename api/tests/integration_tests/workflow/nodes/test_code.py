@@ -5,6 +5,8 @@ from os import getenv
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.helper import encrypter
+from core.variables import SecretVariable
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
@@ -18,7 +20,7 @@ from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_co
 CODE_MAX_STRING_LENGTH = int(getenv("CODE_MAX_STRING_LENGTH", "10000"))
 
 
-def init_code_node(code_config: dict):
+def init_code_node(code_config: dict, with_defaults=True):
     graph_config = {
         "edges": [
             {
@@ -45,7 +47,7 @@ def init_code_node(code_config: dict):
     variable_pool = VariablePool(
         system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
-        environment_variables=[],
+        environment_variables=[SecretVariable(name="secret_key", value="fake-secret-key")],
         conversation_variables=[],
     )
     variable_pool.add(["code", "args1"], 1)
@@ -394,3 +396,68 @@ def test_execute_code_scientific_notation(setup_code_executor_mock):
     result = node._run()
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+
+
+def test_execute_code_obfuscate_secret_variables(monkeypatch):
+    monkeypatch.setenv("MOCK_SWITCH", "false")
+    code = """
+    def main(argument1: str):
+        return {
+            "result": argument1,
+        }
+    """
+    # trim first 4 spaces at the beginning of each line
+    code = "\n".join([line[4:] for line in code.split("\n")])
+
+    variables = [
+        {
+            "variable": "argument1",
+            "value_selector": ["env", "secret_key"],
+        },
+    ]
+    code_config = {
+        "id": "secret_environment_code",
+        "data": {
+            "type": "code",
+            "outputs": {
+                "result": {
+                    "type": "string",
+                },
+            },
+            "title": "secret_obfus",
+            "variables": variables,
+            "answer": "fake-secret-key",
+            "code_language": "python3",
+            "code": code,
+        },
+    }
+
+    node = init_code_node(code_config, False)
+    # Variable with values replaced with env variables
+    replaced_variables = node.graph_runtime_state.variable_pool.variable_dictionary.get("env", {})
+
+    secret_variable_value_map = {}
+    for var in replaced_variables.values():
+        if isinstance(var, SecretVariable):
+            secret_variable_value_map[var.name] = var.value
+
+    input_variables_argument_map = {
+        var["variable"]: var["value_selector"][1] for var in variables if var.get("value_selector", [None])[0] == "env"
+    }
+
+    input_argument_value_map = {
+        k: secret_variable_value_map[v]
+        for k, v in input_variables_argument_map.items()
+        if v in secret_variable_value_map
+    }
+
+    # execute node
+    result = node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
+    for name, value in result.inputs.items():
+        if input_argument_value_map.get(name):
+            assert value == encrypter.obfuscated_token(input_argument_value_map.get(name))
+    assert result.error == ""
