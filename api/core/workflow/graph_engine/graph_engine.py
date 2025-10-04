@@ -233,7 +233,9 @@ class GraphEngine:
                 self._graph_execution.paused = False
                 self._graph_execution.pause_reason = None
 
-            yield GraphRunStartedEvent()
+            start_event = GraphRunStartedEvent()
+            self._event_manager.notify_layers(start_event)
+            yield start_event
 
             # Start subsystems
             self._start_execution(resume=is_resume)
@@ -243,18 +245,22 @@ class GraphEngine:
 
             # Handle completion
             if self._graph_execution.is_paused:
-                yield GraphRunPausedEvent(
+                paused_event = GraphRunPausedEvent(
                     reason=self._graph_execution.pause_reason,
                     outputs=self._graph_runtime_state.outputs,
                 )
+                self._event_manager.notify_layers(paused_event)
+                yield paused_event
             elif self._graph_execution.aborted:
                 abort_reason = "Workflow execution aborted by user command"
                 if self._graph_execution.error:
                     abort_reason = str(self._graph_execution.error)
-                yield GraphRunAbortedEvent(
+                aborted_event = GraphRunAbortedEvent(
                     reason=abort_reason,
                     outputs=self._graph_runtime_state.outputs,
                 )
+                self._event_manager.notify_layers(aborted_event)
+                yield aborted_event
             elif self._graph_execution.has_error:
                 if self._graph_execution.error:
                     raise self._graph_execution.error
@@ -262,20 +268,26 @@ class GraphEngine:
                 outputs = self._graph_runtime_state.outputs
                 exceptions_count = self._graph_execution.exceptions_count
                 if exceptions_count > 0:
-                    yield GraphRunPartialSucceededEvent(
+                    partial_event = GraphRunPartialSucceededEvent(
                         exceptions_count=exceptions_count,
                         outputs=outputs,
                     )
+                    self._event_manager.notify_layers(partial_event)
+                    yield partial_event
                 else:
-                    yield GraphRunSucceededEvent(
+                    succeeded_event = GraphRunSucceededEvent(
                         outputs=outputs,
                     )
+                    self._event_manager.notify_layers(succeeded_event)
+                    yield succeeded_event
 
         except Exception as e:
-            yield GraphRunFailedEvent(
+            failed_event = GraphRunFailedEvent(
                 error=str(e),
                 exceptions_count=self._graph_execution.exceptions_count,
             )
+            self._event_manager.notify_layers(failed_event)
+            yield failed_event
             raise
 
         finally:
