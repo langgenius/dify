@@ -401,7 +401,6 @@ class TestSendEmailCodeLoginMailTask:
             mock_email_service_instance.send_email.assert_called_once()
 
 
-
     def test_send_email_code_login_mail_task_edge_cases(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
