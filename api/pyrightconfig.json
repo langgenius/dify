@@ -1,8 +1,8 @@
 {
   "include": ["."],
   "exclude": [
-    ".venv",
     "tests/",
+    ".venv",
     "migrations/",
     "core/rag",
     "extensions",
