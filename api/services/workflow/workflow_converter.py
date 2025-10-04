@@ -79,7 +79,6 @@ class WorkflowConverter:
         new_app.updated_by = account.id
         db.session.add(new_app)
         db.session.flush()
-        db.session.commit()
 
         workflow.app_id = new_app.id
         db.session.commit()
