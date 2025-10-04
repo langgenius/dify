@@ -377,7 +377,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   placeholder={t('workflow.comments.placeholder.reply')}
                   disabled={loading}
                   loading={loading}
-                  className='px-2'
                 />
               </div>
             </div>

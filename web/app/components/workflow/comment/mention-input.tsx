@@ -223,7 +223,10 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
     const beforeMention = value.slice(0, mentionPosition)
     const afterMention = value.slice(textarea.selectionStart || 0)
-    const newContent = `${beforeMention}@${user.name} ${afterMention}`
+
+    const needsSpaceBefore = mentionPosition > 0 && !/\s/.test(value[mentionPosition - 1])
+    const prefix = needsSpaceBefore ? ' ' : ''
+    const newContent = `${beforeMention}${prefix}@${user.name} ${afterMention}`
 
     onChange(newContent)
     setShowMentionDropdown(false)
@@ -232,7 +235,8 @@ export const MentionInput: FC<MentionInputProps> = memo(({
     setMentionedUserIds(newMentionedUserIds)
 
     setTimeout(() => {
-      const newCursorPos = mentionPosition + user.name.length + 2 // @ + name + space
+      const extraSpace = needsSpaceBefore ? 1 : 0
+      const newCursorPos = mentionPosition + extraSpace + user.name.length + 2 // (space) + @ + name + space
       textarea.setSelectionRange(newCursorPos, newCursorPos)
       textarea.focus()
     }, 0)
