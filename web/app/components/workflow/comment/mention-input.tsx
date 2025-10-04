@@ -164,12 +164,20 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
   const dropdownPosition = useMemo(() => {
     if (!showMentionDropdown || !textareaRef.current)
-      return { x: 0, y: 0 }
+      return { x: 0, y: 0, placement: 'bottom' as const }
 
     const textareaRect = textareaRef.current.getBoundingClientRect()
+    const dropdownHeight = 160 // max-h-40 = 10rem = 160px
+    const viewportHeight = window.innerHeight
+    const spaceBelow = viewportHeight - textareaRect.bottom
+    const spaceAbove = textareaRect.top
+
+    const shouldPlaceAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+
     return {
       x: textareaRect.left,
-      y: textareaRect.bottom + 4,
+      y: shouldPlaceAbove ? textareaRect.top - 4 : textareaRect.bottom + 4,
+      placement: shouldPlaceAbove ? 'top' as const : 'bottom' as const,
     }
   }, [showMentionDropdown])
 
@@ -391,7 +399,9 @@ export const MentionInput: FC<MentionInputProps> = memo(({
           className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg"
           style={{
             left: dropdownPosition.x,
-            top: dropdownPosition.y,
+            [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'
+              ? window.innerHeight - dropdownPosition.y
+              : dropdownPosition.y,
           }}
           data-mention-dropdown
         >
