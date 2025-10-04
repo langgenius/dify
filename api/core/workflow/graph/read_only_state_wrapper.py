@@ -27,6 +27,10 @@ class ReadOnlyVariablePoolWrapper:
                 variables[key] = deepcopy(var.value)
         return variables
 
+    def get_by_prefix(self, prefix: str) -> Mapping[str, object]:
+        """Get all variables under the specified prefix (already defensive)."""
+        return self._variable_pool.get_by_prefix(prefix)
+
 
 class ReadOnlyGraphRuntimeStateWrapper:
     """
