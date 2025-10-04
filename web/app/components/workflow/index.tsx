@@ -438,7 +438,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
           content={showConfirm.desc}
         />
       )}
-      <LimitTips />
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
         <CommentCursor />
       )}

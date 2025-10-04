@@ -50,9 +50,7 @@ export const useIsChatMode = () => {
 }
 
 export const useWorkflow = () => {
-  const { t } = useTranslation()
   const collaborativeWorkflow = useCollaborativeWorkflow()
-  const workflowStore = useWorkflowStore()
   const { getAvailableBlocks } = useAvailableBlocks()
   const { nodesMap } = useNodesMetaData()
 
@@ -258,18 +256,6 @@ export const useWorkflow = () => {
     return isUsed
   }, [isVarUsedInNodes])
 
-  const checkParallelLimit = useCallback((nodeId: string, nodeHandle = 'source') => {
-    const { edges } = collaborativeWorkflow.getState()
-    const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
-    if (connectedEdges.length > MAX_PARALLEL_LIMIT - 1) {
-      const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: MAX_PARALLEL_LIMIT }))
-      return false
-    }
-
-    return true
-  }, [collaborativeWorkflow, workflowStore, t])
-
   const getRootNodesById = useCallback((nodeId: string) => {
     const { nodes, edges } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)
@@ -373,7 +359,7 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [collaborativeWorkflow, checkParallelLimit, getAvailableBlocks])
+  }, [collaborativeWorkflow, getAvailableBlocks])
 
   return {
     getNodeById,

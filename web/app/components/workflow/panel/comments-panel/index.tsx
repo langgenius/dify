@@ -8,7 +8,7 @@ import cn from '@/utils/classnames'
 import { ControlMode } from '@/app/components/workflow/types'
 import { resolveWorkflowComment } from '@/service/workflow-comment'
 import { useParams } from 'next/navigation'
-import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useAppContext } from '@/context/app-context'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 

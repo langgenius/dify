@@ -8,7 +8,7 @@ import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircl
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
-import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'

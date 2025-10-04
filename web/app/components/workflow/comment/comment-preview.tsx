@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
-import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentList
