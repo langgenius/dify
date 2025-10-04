@@ -15,24 +15,17 @@ const strToKeyValueList = (value: string) => {
   })
 }
 
-const normalizeList = (items: KeyValue[]) => {
-  return items.map(item => ({
-    ...item,
-    id: item.id || uniqueId(UNIQUE_ID_PREFIX),
-  }))
-}
-
-const stringifyList = (items: KeyValue[], noFilter?: boolean) => {
-  const source = noFilter ? items : items.filter(item => item.key && item.value)
-  return source.map(item => `${item.key}:${item.value}`).join('\n')
-}
-
 const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
-  const [list, doSetList] = useState<KeyValue[]>(value ? normalizeList(strToKeyValueList(value)) : [])
-  const setList = useCallback((nextList: KeyValue[]) => {
-    const normalized = normalizeList(nextList)
-    doSetList(normalized)
-
+  const [list, doSetList] = useState<KeyValue[]>(() => value ? strToKeyValueList(value) : [])
+  const setList = (l: KeyValue[]) => {
+    doSetList(l.map((item) => {
+      return {
+        ...item,
+        id: item.id || uniqueId(UNIQUE_ID_PREFIX),
+      }
+    }))
+  }
+  useEffect(() => {
     if (noFilter)
       return
 

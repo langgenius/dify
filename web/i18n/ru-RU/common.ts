@@ -504,6 +504,8 @@ const translation = {
       manageCredentials: 'Управление учетными данными',
       customModelCredentialsDeleteTip: 'Учетные данные используются и не могут быть удалены',
     },
+    parametersInvalidRemoved: 'Некоторые параметры недействительны и были удалены',
+    installDataSourceProvider: 'Установить поставщиков источников данных',
   },
   dataSource: {
     add: 'Добавить источник данных',

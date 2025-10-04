@@ -500,6 +500,8 @@ const translation = {
       addNewModelCredential: '新增模型認證',
       selectModelCredential: '選取模型認證',
     },
+    parametersInvalidRemoved: '一些參數無效，已被移除',
+    installDataSourceProvider: '安裝資料來源提供者',
   },
   dataSource: {
     add: '新增資料來源',

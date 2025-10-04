@@ -504,6 +504,8 @@ const translation = {
       addNewModelCredential: 'Yeni model kimlik bilgisi ekleme',
       customModelCredentialsDeleteTip: 'Kimlik bilgisi kullanımda ve silinemiyor',
     },
+    parametersInvalidRemoved: 'Bazı parametreler geçersizdir ve kaldırılmıştır.',
+    installDataSourceProvider: 'Veri kaynağı sağlayıcılarını yükle',
   },
   dataSource: {
     add: 'Bir veri kaynağı ekle',

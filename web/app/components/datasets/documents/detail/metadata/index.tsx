@@ -107,7 +107,7 @@ const IconButton: FC<{
     <Tooltip
       popupContent={metadataMap[type].text}
     >
-      <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
+      <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}
           className={`group-hover:bg-primary-600 ${isChecked ? '!bg-primary-600' : ''}`}

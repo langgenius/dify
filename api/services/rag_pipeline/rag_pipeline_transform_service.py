@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -16,6 +17,8 @@ from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+
+logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
@@ -35,11 +38,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transfrom_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset)
 
         doc_form = dataset.doc_form
         if not doc_form:
-            return self._transfrom_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset)
         retrieval_model = dataset.retrieval_model
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -257,10 +260,10 @@ class RagPipelineTransformService:
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:
-            print(need_install_plugin_unique_identifiers)
+            logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
-    def _transfrom_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,

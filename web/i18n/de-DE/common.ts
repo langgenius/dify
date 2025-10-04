@@ -500,6 +500,8 @@ const translation = {
       editModelCredential: 'Bearbeiten von Modellanmeldeinformationen',
       customModelCredentialsDeleteTip: 'Anmeldeinformationen werden verwendet und können nicht gelöscht werden',
     },
+    parametersInvalidRemoved: 'Einige Parameter sind ungültig und wurden entfernt.',
+    installDataSourceProvider: 'Datenquellenanbieter installieren',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',

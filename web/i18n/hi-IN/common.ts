@@ -520,6 +520,8 @@ const translation = {
       customModelCredentials: 'कस्टम मॉडल क्रेडेंशियल्स',
       editModelCredential: 'मॉडल की क्रेडेंशियल संपादित करें',
     },
+    parametersInvalidRemoved: 'कुछ पैरामीटर अमान्य हैं और हटा दिए गए हैं',
+    installDataSourceProvider: 'डेटा स्रोत प्रदाताओं को स्थापित करें',
   },
   dataSource: {
     add: 'डेटा स्रोत जोड़ें',

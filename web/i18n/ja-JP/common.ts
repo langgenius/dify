@@ -484,6 +484,7 @@ const translation = {
     emptyProviderTitle: 'モデルプロバイダーが設定されていません',
     discoverMore: 'もっと発見する',
     installProvider: 'モデルプロバイダーをインストールする',
+    installDataSourceProvider: 'データソースプロバイダーをインストールする',
     configureTip: 'API キーを設定するか、使用するモデルを追加してください',
     toBeConfigured: '設定中',
     emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',
@@ -518,6 +519,7 @@ const translation = {
       customModelCredentials: 'カスタムモデルの認証情報',
       selectModelCredential: 'モデルの資格情報を選択する',
     },
+    parametersInvalidRemoved: 'いくつかのパラメータが無効であり、削除されました。',
   },
   dataSource: {
     add: 'データソースの追加',

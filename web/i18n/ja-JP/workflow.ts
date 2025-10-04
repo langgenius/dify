@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: '変数値を設定',
     needConnectTip: '接続されていないステップがあります',
     maxTreeDepth: '1 ブランチあたりの最大ノード数：{{depth}}',
+    needAdd: '{{node}}ノードを追加する必要があります',
     needEndNode: '終了ブロックを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',
     workflowProcess: 'ワークフロー処理',
@@ -985,6 +986,9 @@ const translation = {
       indexMethodIsRequired: 'インデックスメソッドが必要です',
       chunksInput: 'チャンク',
       chunksInputTip: '知識ベースノードの入力変数はチャンクです。変数のタイプは、選択されたチャンク構造と一貫性のある特定のJSONスキーマを持つオブジェクトです。',
+      chunksVariableIsRequired: 'Chunks変数は必須です',
+      embeddingModelIsRequired: '埋め込みモデルが必要です',
+      rerankingModelIsRequired: '再ランキングモデルが必要です',
     },
   },
   tracing: {

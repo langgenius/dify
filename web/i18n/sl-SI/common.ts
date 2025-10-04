@@ -585,6 +585,8 @@ const translation = {
       customModelCredentialsDeleteTip: 'Poverilnice so v uporabi in jih ni mogoče izbrisati',
       customModelCredentials: 'Poverilnice modela po meri',
     },
+    parametersInvalidRemoved: 'Nekateri parametri so neveljavni in so bili odstranjeni.',
+    installDataSourceProvider: 'Namestite ponudnike podatkovnih virov',
   },
   dataSource: {
     notion: {

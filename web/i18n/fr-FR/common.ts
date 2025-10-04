@@ -501,6 +501,8 @@ const translation = {
       removeModel: 'Supprimer le modèle',
       editModelCredential: 'Modifier les informations d’identification du modèle',
     },
+    parametersInvalidRemoved: 'Certains paramètres sont invalides et ont été supprimés.',
+    installDataSourceProvider: 'Installer les fournisseurs de sources de données',
   },
   dataSource: {
     add: 'Ajouter une source de données',

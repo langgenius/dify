@@ -501,6 +501,8 @@ const translation = {
       editModelCredential: 'Редагувати облікові дані моделі',
       customModelCredentialsDeleteTip: 'Облікові дані використовуються і не можуть бути видалені',
     },
+    parametersInvalidRemoved: 'Деякі параметри є недійсними і були видалені',
+    installDataSourceProvider: 'Встановіть постачальників джерел даних',
   },
   dataSource: {
     add: 'Додати джерело даних',

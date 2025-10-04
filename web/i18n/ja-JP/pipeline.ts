@@ -25,13 +25,15 @@ const translation = {
   },
   result: {
     resultPreview: {
-      viewDetails: '詳細を見る',
       loading: '処理中です...お待ちください',
       error: '実行中にエラーが発生しました',
+      viewDetails: '詳細を見る',
+      footerTip: 'テスト実行モードでは、最大{{count}}チャンクまでプレビュー',
     },
   },
   ragToolSuggestions: {
     title: 'RAGのための提案',
+    noRecommendationPluginsInstalled: '推奨プラグインがインストールされていません。<CustomLink>マーケットプレイス</CustomLink>で詳細をご確認ください',
   },
 }
 
