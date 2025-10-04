@@ -133,7 +133,15 @@ export const useWorkflowComment = () => {
     const cachedDetail = commentDetailCacheRef.current[comment.id]
     setActiveComment(cachedDetail || comment)
 
-    reactflow.setCenter(comment.position_x, comment.position_y, { zoom: 1, duration: 600 })
+    let horizontalOffsetPx = 220
+    const maxOffset = Math.max(0, (window.innerWidth / 2) - 60)
+    horizontalOffsetPx = Math.min(horizontalOffsetPx, maxOffset)
+
+    reactflow.setCenter(
+      comment.position_x + horizontalOffsetPx,
+      comment.position_y,
+      { zoom: 1, duration: 600 },
+    )
 
     if (!appId) return
 
