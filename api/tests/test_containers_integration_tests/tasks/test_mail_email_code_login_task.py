@@ -10,7 +10,6 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -400,8 +399,6 @@ class TestSendEmailCodeLoginMailTask:
             # and let the email service handle validation
             mock_email_service_instance.send_email.assert_called_once()
 
-
-
     def test_send_email_code_login_mail_task_edge_cases(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -442,7 +439,7 @@ class TestSendEmailCodeLoginMailTask:
             },
         ]
 
-        for i, test_case in enumerate(edge_cases):
+        for i, test_case in edge_cases:
             # Reset mocks for each test case
             mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
             mock_email_service_instance.reset_mock()
