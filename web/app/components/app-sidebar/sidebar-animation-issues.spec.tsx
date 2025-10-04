@@ -51,7 +51,7 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean; onTogg
         className="shrink-0 px-4 py-3"
         data-testid="toggle-section"
       >
-        <button
+        <button type="button"
           className='flex h-6 w-6 cursor-pointer items-center justify-center'
           onClick={onToggle}
           data-testid="toggle-button"
@@ -66,7 +66,7 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean; onTogg
 const MockAppInfo = ({ expand }: { expand: boolean }) => {
   return (
     <div data-testid="app-info" data-expand={expand}>
-      <button className='block w-full'>
+      <button type="button" className='block w-full'>
         {/* Container with layout mode switching - reproduces issue #3 */}
         <div className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}>
           {/* Icon container with justify-between to flex-col switch - reproduces issue #3 */}

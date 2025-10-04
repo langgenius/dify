@@ -299,7 +299,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
 
   const allPlugins = useMemo(() => {
-    const allPlugins = [...collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))]
+    const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
       for (let i = 0; i < plugins.length; i++) {
@@ -323,15 +323,18 @@ export const useRefreshModel = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const handleRefreshModel = useCallback((provider: ModelProvider, configurationMethod: ConfigurationMethodEnum, CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => {
+  const handleRefreshModel = useCallback((
+    provider: ModelProvider,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    refreshModelList?: boolean,
+  ) => {
     updateModelProviders()
 
     provider.supported_model_types.forEach((type) => {
       updateModelList(type)
     })
 
-    if (configurationMethod === ConfigurationMethodEnum.customizableModel
-        && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
       eventEmitter?.emit({
         type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
         payload: provider.provider,

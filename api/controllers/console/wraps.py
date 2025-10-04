@@ -242,6 +242,19 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
+def email_register_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.is_allow_register:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+
+    return decorated
+
+
 def enable_change_email(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -263,6 +276,17 @@ def is_allow_transfer_owner(view: Callable[P, R]):
             return view(*args, **kwargs)
 
         # otherwise, return 403
+        abort(403)
+
+    return decorated
+
+
+def knowledge_pipeline_publish_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if features.knowledge_pipeline.publish_enabled:
+            return view(*args, **kwargs)
         abort(403)
 
     return decorated

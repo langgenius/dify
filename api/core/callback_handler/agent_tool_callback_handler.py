@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping
-from typing import Any, Optional, TextIO, Union
+from typing import Any, TextIO, Union
 
 from pydantic import BaseModel
 
@@ -23,7 +23,7 @@ def get_colored_text(text: str, color: str) -> str:
     return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
 
 
-def print_text(text: str, color: Optional[str] = None, end: str = "", file: Optional[TextIO] = None):
+def print_text(text: str, color: str | None = None, end: str = "", file: TextIO | None = None):
     """Print text with highlighting and no end characters."""
     text_to_print = get_colored_text(text, color) if color else text
     print(text_to_print, end=end, file=file)
@@ -34,10 +34,10 @@ def print_text(text: str, color: Optional[str] = None, end: str = "", file: Opti
 class DifyAgentCallbackHandler(BaseModel):
     """Callback Handler that prints to std out."""
 
-    color: Optional[str] = ""
+    color: str | None = ""
     current_loop: int = 1
 
-    def __init__(self, color: Optional[str] = None):
+    def __init__(self, color: str | None = None):
         super().__init__()
         """Initialize callback handler."""
         # use a specific color is not specified
@@ -58,9 +58,9 @@ class DifyAgentCallbackHandler(BaseModel):
         tool_name: str,
         tool_inputs: Mapping[str, Any],
         tool_outputs: Iterable[ToolInvokeMessage] | str,
-        message_id: Optional[str] = None,
-        timer: Optional[Any] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        message_id: str | None = None,
+        timer: Any | None = None,
+        trace_manager: TraceQueueManager | None = None,
     ):
         """If not the final action, print out observation."""
         if dify_config.DEBUG:
@@ -98,12 +98,20 @@ class DifyAgentCallbackHandler(BaseModel):
             else:
                 print_text("\n[on_agent_start] \nCurrent Loop: " + str(self.current_loop) + "\n", color=self.color)
 
-    def on_agent_finish(self, color: Optional[str] = None, **kwargs: Any):
+    def on_agent_finish(self, color: str | None = None, **kwargs: Any):
         """Run on agent end."""
         if dify_config.DEBUG:
             print_text("\n[on_agent_finish]\n Loop: " + str(self.current_loop) + "\n", color=self.color)
 
         self.current_loop += 1
+
+    def on_datasource_start(self, datasource_name: str, datasource_inputs: Mapping[str, Any]) -> None:
+        """Run on datasource start."""
+        if dify_config.DEBUG:
+            print_text(
+                "\n[on_datasource_start] DatasourceCall:" + datasource_name + "\n" + str(datasource_inputs) + "\n",
+                color=self.color,
+            )
 
     @property
     def ignore_agent(self) -> bool:

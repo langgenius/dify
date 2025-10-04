@@ -80,6 +80,7 @@ const translation = {
     optional: 'Optionnel',
     advancedShortDescription: 'Workflow amélioré pour conversations multi-tours',
     dropDSLToCreateApp: 'Déposez le fichier DSL ici pour créer une application',
+    import: 'Importation',
   },
   editApp: 'Modifier les informations',
   editAppTitle: 'Modifier les informations de l\'application',
@@ -316,6 +317,10 @@ const translation = {
     noMatchingCommands: 'Aucune commande correspondante n’a été trouvée',
     tryDifferentSearch: 'Essayez un autre terme de recherche',
     slashHint: 'Tapez / pour voir toutes les commandes disponibles',
+    pressEscToClose: 'Appuyez sur Échap pour fermer',
+    tips: 'Appuyez sur ↑↓ pour naviguer',
+    startTyping: 'Commencez à taper pour rechercher',
+    selectToNavigate: 'Sélectionnez pour naviguer',
   },
 }
 

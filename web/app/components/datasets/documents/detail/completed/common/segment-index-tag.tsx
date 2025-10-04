@@ -1,5 +1,5 @@
 import React, { type FC, useMemo } from 'react'
-import { Chunk } from '@/app/components/base/icons/src/public/knowledge'
+import { Chunk } from '@/app/components/base/icons/src/vender/knowledge'
 import cn from '@/utils/classnames'
 
 type ISegmentIndexTagProps = {

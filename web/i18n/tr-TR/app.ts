@@ -84,6 +84,7 @@ const translation = {
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
     dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
+    import: 'Ithalat',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
@@ -312,6 +313,10 @@ const translation = {
     tryDifferentSearch: 'Farklı bir arama terimi deneyin',
     noMatchingCommands: 'Eşleşen komut bulunamadı',
     slashHint: 'Tüm mevcut komutları görmek için / yazın',
+    tips: 'Navigasyon için ↑↓ tuşlarına basın',
+    selectToNavigate: 'Gezinmek için seçin',
+    pressEscToClose: 'Kapatmak için ESC tuşuna basın',
+    startTyping: 'Arama yapmak için yazmaya başlayın',
   },
 }
 

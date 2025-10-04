@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, Union
+from typing import ParamSpec, TypeVar, Union
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
@@ -8,8 +8,11 @@ from libs.login import current_user
 from models import App, AppMode
 from models.account import Account
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def _load_app_model(app_id: str) -> Optional[App]:
+
+def _load_app_model(app_id: str) -> App | None:
     assert isinstance(current_user, Account)
     app_model = (
         db.session.query(App)
@@ -19,10 +22,10 @@ def _load_app_model(app_id: str) -> Optional[App]:
     return app_model
 
 
-def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
-    def decorator(view_func):
+def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
+    def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args, **kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 

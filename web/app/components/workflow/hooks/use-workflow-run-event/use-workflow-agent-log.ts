@@ -20,7 +20,7 @@ export const useWorkflowAgentLog = () => {
 
         if (current.execution_metadata) {
           if (current.execution_metadata.agent_log) {
-            const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.id === data.id)
+            const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.message_id === data.message_id)
             if (currentLogIndex > -1) {
               current.execution_metadata.agent_log[currentLogIndex] = {
                 ...current.execution_metadata.agent_log[currentLogIndex],

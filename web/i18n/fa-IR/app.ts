@@ -88,6 +88,7 @@ const translation = {
     advancedShortDescription: 'گردش‌کار پیشرفته برای گفتگوهای چند مرحله‌ای',
     agentUserDescription: 'یک عامل هوشمند که قادر به استدلال تکراری و استفاده از ابزار مستقل برای دستیابی به اهداف وظیفه است.',
     dropDSLToCreateApp: 'فایل DSL را اینجا رها کنید تا برنامه ساخته شود',
+    import: 'واردات',
   },
   editApp: 'ویرایش اطلاعات',
   editAppTitle: 'ویرایش اطلاعات برنامه',
@@ -316,6 +317,10 @@ const translation = {
     noMatchingCommands: 'هیچ دستوری منطبق یافت نشد',
     tryDifferentSearch: 'عبارت جستجوی دیگری را امتحان کنید',
     slashHint: 'برای مشاهده تمام دستورات موجود / را تایپ کنید',
+    startTyping: 'برای جستجو شروع به تایپ کنید',
+    selectToNavigate: 'انتخاب کنید تا برای حرکت',
+    pressEscToClose: 'برای بستن ESC را فشار دهید',
+    tips: 'برای حرکت به بالا و پایین کلیدهای ↑ و ↓ را فشار دهید',
   },
 }
 

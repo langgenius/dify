@@ -285,8 +285,13 @@ export type WorkflowRunDetailResponse = {
     viewport?: Viewport
   }
   inputs: string
+  inputs_truncated: boolean
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
   outputs?: string
+  outputs_truncated: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   error?: string
   elapsed_time?: number
   total_tokens?: number
