@@ -11,6 +11,7 @@ import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
 import cn from '@/utils/classnames'
 import { type UserProfile, fetchMentionableUsers } from '@/service/workflow-comment'
+import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
   value: string
@@ -42,7 +43,12 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const appId = params.appId as string
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const [mentionUsers, setMentionUsers] = useState<UserProfile[]>([])
+  const workflowStore = useWorkflowStore()
+  const mentionUsersFromStore = useStore(state => (
+    appId ? state.mentionableUsersCache[appId] : undefined
+  ))
+  const mentionUsers = mentionUsersFromStore ?? []
+
   const [showMentionDropdown, setShowMentionDropdown] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionPosition, setMentionPosition] = useState(0)
@@ -121,15 +127,28 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   }, [value, mentionNameList])
 
   const loadMentionableUsers = useCallback(async () => {
-    if (!appId) return
+    if (!appId)
+      return
+
+    const state = workflowStore.getState()
+    if (state.mentionableUsersCache[appId] !== undefined)
+      return
+
+    if (state.mentionableUsersLoading[appId])
+      return
+
+    state.setMentionableUsersLoading(appId, true)
     try {
       const users = await fetchMentionableUsers(appId)
-      setMentionUsers(users)
+      workflowStore.getState().setMentionableUsersCache(appId, users)
     }
     catch (error) {
       console.error('Failed to load mentionable users:', error)
     }
-  }, [appId])
+    finally {
+      workflowStore.getState().setMentionableUsersLoading(appId, false)
+    }
+  }, [appId, workflowStore])
 
   useEffect(() => {
     loadMentionableUsers()

@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
+import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
 
 export type CommentSliceShape = {
   comments: WorkflowCommentList[]
@@ -12,6 +12,10 @@ export type CommentSliceShape = {
   setActiveCommentDetailLoading: (loading: boolean) => void
   commentDetailCache: Record<string, WorkflowCommentDetail>
   setCommentDetailCache: (cache: Record<string, WorkflowCommentDetail>) => void
+  mentionableUsersCache: Record<string, UserProfile[]>
+  setMentionableUsersCache: (appId: string, users: UserProfile[]) => void
+  mentionableUsersLoading: Record<string, boolean>
+  setMentionableUsersLoading: (appId: string, loading: boolean) => void
 }
 
 export const createCommentSlice: StateCreator<CommentSliceShape> = set => ({
@@ -25,4 +29,18 @@ export const createCommentSlice: StateCreator<CommentSliceShape> = set => ({
   setActiveCommentDetailLoading: activeCommentDetailLoading => set({ activeCommentDetailLoading }),
   commentDetailCache: {},
   setCommentDetailCache: commentDetailCache => set({ commentDetailCache }),
+  mentionableUsersCache: {},
+  setMentionableUsersCache: (appId, users) => set(state => ({
+    mentionableUsersCache: {
+      ...state.mentionableUsersCache,
+      [appId]: users,
+    },
+  })),
+  mentionableUsersLoading: {},
+  setMentionableUsersLoading: (appId, loading) => set(state => ({
+    mentionableUsersLoading: {
+      ...state.mentionableUsersLoading,
+      [appId]: loading,
+    },
+  })),
 })
