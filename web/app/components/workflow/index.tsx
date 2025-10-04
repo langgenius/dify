@@ -202,7 +202,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflowComment()
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
-  const mousePosition = useStore(s => s.mousePosition)
   const { t } = useTranslation()
 
   eventEmitter?.useSubscription((v: any) => {
@@ -442,7 +441,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       )}
       <LimitTips />
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
-        <CommentCursor mousePosition={mousePosition} />
+        <CommentCursor />
       )}
       {pendingComment && (
         <CommentInput
