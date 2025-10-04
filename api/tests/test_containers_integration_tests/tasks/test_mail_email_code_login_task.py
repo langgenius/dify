@@ -43,10 +43,10 @@ class TestSendEmailCodeLoginMailTask:
         from extensions.ext_redis import redis_client
 
         # Clear all test data
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Tenant).delete()
-        db.session.query(Account).delete()
-        db.session.commit()
+        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.query(Tenant).delete()
+        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -94,10 +94,8 @@ class TestSendEmailCodeLoginMailTask:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         return account
 
@@ -115,18 +113,8 @@ class TestSendEmailCodeLoginMailTask:
         if fake is None:
             fake = Faker()
 
-        # Create account
-        account = Account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            status="active",
-        )
-
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        # Create account using the existing helper method
+        account = self._create_test_account(db_session_with_containers, fake)
 
         # Create tenant
         tenant = Tenant(
@@ -135,8 +123,8 @@ class TestSendEmailCodeLoginMailTask:
             status="active",
         )
 
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account relationship
         tenant_account_join = TenantAccountJoin(
@@ -145,8 +133,8 @@ class TestSendEmailCodeLoginMailTask:
             role=TenantAccountRole.OWNER,
         )
 
-        db.session.add(tenant_account_join)
-        db.session.commit()
+        db_session_with_containers.add(tenant_account_join)
+        db_session_with_containers.commit()
 
         return account, tenant
 
@@ -441,7 +429,7 @@ class TestSendEmailCodeLoginMailTask:
             },
         ]
 
-        for i, test_case in edge_cases:
+        for test_case in edge_cases:
             # Reset mocks for each test case
             mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
             mock_email_service_instance.reset_mock()
@@ -506,9 +494,7 @@ class TestSendEmailCodeLoginMailTask:
         )
 
         # Verify database state is maintained
-        from extensions.ext_database import db
-
-        db.session.refresh(account)
+        db_session_with_containers.refresh(account)
         assert account.email == test_email
         assert account.status == "active"
 
