@@ -441,7 +441,7 @@ class TestSendEmailCodeLoginMailTask:
             },
         ]
 
-        for i, test_case in enumerate(edge_cases):
+        for i, test_case in edge_cases:
             # Reset mocks for each test case
             mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
             mock_email_service_instance.reset_mock()
