@@ -347,9 +347,7 @@ class WorkflowBasedAppRunner:
         :param event: event
         """
         if isinstance(event, GraphRunStartedEvent):
-            self._publish_event(
-                QueueWorkflowStartedEvent.from_runtime_state(workflow_entry.graph_engine.graph_runtime_state)
-            )
+            self._publish_event(QueueWorkflowStartedEvent())
         elif isinstance(event, GraphRunSucceededEvent):
             self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
         elif isinstance(event, GraphRunPartialSucceededEvent):

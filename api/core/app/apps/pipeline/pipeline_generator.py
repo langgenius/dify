@@ -352,6 +352,8 @@ class PipelineGenerator(BaseAppGenerator):
                     "application_generate_entity": application_generate_entity,
                     "workflow_thread_pool_id": workflow_thread_pool_id,
                     "variable_loader": variable_loader,
+                    "workflow_execution_repository": workflow_execution_repository,
+                    "workflow_node_execution_repository": workflow_node_execution_repository,
                 },
             )
 
@@ -367,8 +369,6 @@ class PipelineGenerator(BaseAppGenerator):
                 workflow=workflow,
                 queue_manager=queue_manager,
                 user=user,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
                 stream=streaming,
                 draft_var_saver_factory=draft_var_saver_factory,
             )
@@ -573,6 +573,8 @@ class PipelineGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -620,6 +622,8 @@ class PipelineGenerator(BaseAppGenerator):
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
+                        workflow_execution_repository=workflow_execution_repository,
+                        workflow_node_execution_repository=workflow_node_execution_repository,
                     )
 
                     runner.run()
@@ -648,8 +652,6 @@ class PipelineGenerator(BaseAppGenerator):
         workflow: Workflow,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -660,7 +662,6 @@ class PipelineGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :param user: account or end user
         :param stream: is stream
-        :param workflow_node_execution_repository: optional repository for workflow node execution
         :return:
         """
         # init generate task pipeline
@@ -670,8 +671,6 @@ class PipelineGenerator(BaseAppGenerator):
             queue_manager=queue_manager,
             user=user,
             stream=stream,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-            workflow_execution_repository=workflow_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
         )
 
