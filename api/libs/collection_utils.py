@@ -9,8 +9,5 @@ def convert_to_lower_and_upper_set(inputs: list[str] | set[str]) -> set[str]:
     """
     if not inputs:
         return set()
-    inputs = {s for s in inputs if s}
-    lowers = {s.lower() for s in inputs}
-    uppers = {s.upper() for s in inputs}
-    result = lowers | uppers
-    return result
+    else:
+        return {case for s in inputs if s for case in (s.lower(), s.upper())}
