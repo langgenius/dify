@@ -137,6 +137,7 @@ def init_app(app: DifyApp):
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
     from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     from opentelemetry.instrumentation.requests import RequestsInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
     from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
@@ -238,6 +239,7 @@ def init_app(app: DifyApp):
     init_sqlalchemy_instrumentor(app)
     RedisInstrumentor().instrument()
     RequestsInstrumentor().instrument()
+    HTTPXClientInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
 

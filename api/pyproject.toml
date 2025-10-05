@@ -49,6 +49,7 @@ dependencies = [
     "opentelemetry-instrumentation==0.48b0",
     "opentelemetry-instrumentation-celery==0.48b0",
     "opentelemetry-instrumentation-flask==0.48b0",
+    "opentelemetry-instrumentation-httpx==0.48b0",
     "opentelemetry-instrumentation-redis==0.48b0",
     "opentelemetry-instrumentation-requests==0.48b0",
     "opentelemetry-instrumentation-sqlalchemy==0.48b0",
