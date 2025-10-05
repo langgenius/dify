@@ -5,8 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
-from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 
 class TestGraphRuntimeState:
