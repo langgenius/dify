@@ -63,5 +63,5 @@ def init_app(app: DifyApp):
             "checked_out_connections": engine.pool.checkedout(),  # type: ignore
             "overflow_connections": engine.pool.overflow(),  # type: ignore
             "connection_timeout": engine.pool.timeout(),  # type: ignore
-            "recycle_time": db.engine.pool._recycle,
+            "recycle_time": db.engine.pool._recycle, # type: ignore
         }
