@@ -79,8 +79,8 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   }
 
   return (
-    <div className="p-4">
-      <div className="mb-3 text-left text-sm font-medium text-text-secondary">
+    <div className="px-4 py-3">
+      <div className="mb-2 text-left text-sm font-medium text-text-secondary">
         {isSlashMode ? t('app.gotoAnything.groups.commands') : t('app.gotoAnything.selectSearchType')}
       </div>
       <Command.Group className="space-y-1">
@@ -89,7 +89,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             key={item.key}
             value={item.shortcut}
             className="flex cursor-pointer items-center rounded-md
-                     p-2.5
+                     p-2
                      transition-all
                      duration-150 hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt"
             onSelect={() => onCommandSelect(item.shortcut)}
@@ -105,7 +105,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                     '/language': 'app.gotoAnything.actions.languageChangeDesc',
                     '/account': 'app.gotoAnything.actions.accountDesc',
                     '/feedback': 'app.gotoAnything.actions.feedbackDesc',
-                    '/doc': 'app.gotoAnything.actions.docDesc',
+                    '/docs': 'app.gotoAnything.actions.docDesc',
                     '/community': 'app.gotoAnything.actions.communityDesc',
                   }
                   return t(slashKeyMap[item.key] || item.description)

@@ -1,12 +1,12 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.base.entities import VariableSelector
 
 
 class ModelConfig(BaseModel):
@@ -18,7 +18,7 @@ class ModelConfig(BaseModel):
 
 class ContextConfig(BaseModel):
     enabled: bool
-    variable_selector: Optional[list[str]] = None
+    variable_selector: list[str] | None = None
 
 
 class VisionConfigOptions(BaseModel):
@@ -51,18 +51,18 @@ class PromptConfig(BaseModel):
 
 class LLMNodeChatModelMessage(ChatModelMessage):
     text: str = ""
-    jinja2_text: Optional[str] = None
+    jinja2_text: str | None = None
 
 
 class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
-    jinja2_text: Optional[str] = None
+    jinja2_text: str | None = None
 
 
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)
-    memory: Optional[MemoryConfig] = None
+    memory: MemoryConfig | None = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
     structured_output: Mapping[str, Any] | None = None

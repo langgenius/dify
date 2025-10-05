@@ -1,27 +1,26 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.loop.entities import LoopStartNodeData
 
 
-class LoopStartNode(BaseNode):
+class LoopStartNode(Node):
     """
     Loop Start Node.
     """
 
-    _node_type = NodeType.LOOP_START
+    node_type = NodeType.LOOP_START
 
     _node_data: LoopStartNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = LoopStartNodeData(**data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -30,7 +29,7 @@ class LoopStartNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:

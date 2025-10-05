@@ -7,6 +7,7 @@ import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import {
+  APP_VERSION,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -49,11 +50,15 @@ export const getMarketplacePluginsByCollectionId = async (collectionId: string, 
 
   try {
     const url = `${MARKETPLACE_API_PREFIX}/collections/${collectionId}/plugins`
+    const headers = new Headers({
+      'X-Dify-Version': APP_VERSION,
+    })
     const marketplaceCollectionPluginsData = await globalThis.fetch(
       url,
       {
         cache: 'no-store',
         method: 'POST',
+        headers,
         body: JSON.stringify({
           category: query?.category,
           exclude: query?.exclude,
@@ -83,7 +88,10 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
       marketplaceUrl += `&condition=${query.condition}`
     if (query?.type)
       marketplaceUrl += `&type=${query.type}`
-    const marketplaceCollectionsData = await globalThis.fetch(marketplaceUrl, { cache: 'no-store' })
+    const headers = new Headers({
+      'X-Dify-Version': APP_VERSION,
+    })
+    const marketplaceCollectionsData = await globalThis.fetch(marketplaceUrl, { headers, cache: 'no-store' })
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
@@ -116,6 +124,9 @@ export const getMarketplaceListCondition = (pluginType: string) => {
 
   if (pluginType === PluginType.extension)
     return 'category=endpoint'
+
+  if (pluginType === PluginType.datasource)
+    return 'category=datasource'
 
   if (pluginType === 'bundle')
     return 'type=bundle'

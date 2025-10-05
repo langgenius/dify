@@ -91,6 +91,7 @@ const translation = {
       waterCrawlNotConfiguredDescription: 'Konfigurasikan Watercrawl dengan kunci API untuk menggunakannya.',
       firecrawlDoc: 'Dokumen Firecrawl',
       configureWatercrawl: 'Konfigurasikan Watercrawl',
+      running: 'Menjalankan',
     },
     pagePreview: 'Pratinjau Halaman',
     notionSyncTitle: 'Notion tidak terhubung',
@@ -181,6 +182,7 @@ const translation = {
     qaSwitchHighQualityTipContent: 'Saat ini, hanya metode indeks berkualitas tinggi yang mendukung pemotongan format Tanya Jawab. Apakah Anda ingin beralih ke mode berkualitas tinggi?',
     general: 'Umum',
     indexSettingTip: 'Untuk mengubah metode indeks & model penyematan, silakan pergi ke',
+    qaTip: 'Saat menggunakan data Tanya Jawab terstruktur, Anda dapat membuat dokumen yang memasangkan pertanyaan dengan jawaban. Dokumen-dokumen ini diindeks berdasarkan bagian pertanyaan, memungkinkan sistem untuk mengambil jawaban yang relevan berdasarkan kesamaan kueri.',
   },
   stepThree: {
     modelTitle: 'Apakah Anda yakin untuk berhenti menyematkan?',

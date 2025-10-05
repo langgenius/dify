@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, Optional, ParamSpec, TypeVar
+from typing import Any, Concatenate, ParamSpec, TypeVar
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -74,7 +74,7 @@ class MatrixoneVector(BaseVector):
             self.client = self._get_client(len(embeddings[0]), True)
         return self.add_texts(texts, embeddings)
 
-    def _get_client(self, dimension: Optional[int] = None, create_table: bool = False) -> MoVectorClient:
+    def _get_client(self, dimension: int | None = None, create_table: bool = False) -> MoVectorClient:
         """
         Create a new client for the collection.
 
@@ -103,7 +103,7 @@ class MatrixoneVector(BaseVector):
             self.client = self._get_client(len(embeddings[0]), True)
         assert self.client is not None
         ids = []
-        for _, doc in enumerate(documents):
+        for doc in documents:
             if doc.metadata is not None:
                 doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
                 ids.append(doc_id)

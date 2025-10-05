@@ -1,9 +1,6 @@
-from typing import Optional
-
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.impl.model import PluginModelClient
 
 
 class RerankModel(AIModel):
@@ -19,9 +16,9 @@ class RerankModel(AIModel):
         credentials: dict,
         query: str,
         docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -36,6 +33,8 @@ class RerankModel(AIModel):
         :return: rerank result
         """
         try:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_rerank(
                 tenant_id=self.tenant_id,

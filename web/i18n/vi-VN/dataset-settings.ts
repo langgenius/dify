@@ -37,6 +37,14 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Không khả dụng để hạ cấp từ HQ xuống ECO',
     upgradeHighQualityTip: 'Sau khi nâng cấp lên chế độ Chất lượng cao, không thể hoàn nguyên về chế độ Tiết kiệm',
     searchModel: 'Tìm kiếm mô hình',
+    chunkStructure: {
+      title: 'Cấu trúc Chunk',
+      description: 'về Cấu trúc khối.',
+      learnMore: 'Tìm hiểu thêm',
+    },
+    numberOfKeywords: 'Số lượng từ khóa',
+    onSearchResults: 'Không có thành viên nào khớp với truy vấn tìm kiếm của bạn.\nHãy thử tìm kiếm lại.',
+    nameAndIcon: 'Tên & Biểu tượng',
   },
 }
 

@@ -1,8 +1,8 @@
 from urllib import parse
 
-from flask import request
+from flask import abort, request
 from flask_login import current_user
-from flask_restx import Resource, abort, marshal_with, reqparse
+from flask_restx import Resource, marshal_with, reqparse
 
 import services
 from configs import dify_config
@@ -41,6 +41,10 @@ class MemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
         return {"result": "success", "accounts": members}, 200
 
@@ -65,7 +69,11 @@ class MemberInviteEmailApi(Resource):
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
 
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         inviter = current_user
+        if not inviter.current_tenant:
+            raise ValueError("No current tenant")
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
@@ -76,6 +84,8 @@ class MemberInviteEmailApi(Resource):
 
         for invitee_email in invitee_emails:
             try:
+                if not inviter.current_tenant:
+                    raise ValueError("No current tenant")
                 token = RegisterService.invite_new_member(
                     inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
                 )
@@ -97,7 +107,7 @@ class MemberInviteEmailApi(Resource):
         return {
             "result": "success",
             "invitation_results": invitation_results,
-            "tenant_id": str(current_user.current_tenant.id),
+            "tenant_id": str(inviter.current_tenant.id) if inviter.current_tenant else "",
         }, 201
 
 
@@ -108,6 +118,10 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         member = db.session.query(Account).where(Account.id == str(member_id)).first()
         if member is None:
             abort(404)
@@ -123,7 +137,10 @@ class MemberCancelInviteApi(Resource):
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {"result": "success", "tenant_id": str(current_user.current_tenant.id)}, 200
+        return {
+            "result": "success",
+            "tenant_id": str(current_user.current_tenant.id) if current_user.current_tenant else "",
+        }, 200
 
 
 class MemberUpdateRoleApi(Resource):
@@ -141,6 +158,10 @@ class MemberUpdateRoleApi(Resource):
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
 
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
@@ -164,6 +185,10 @@ class DatasetOperatorMemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
         return {"result": "success", "accounts": members}, 200
 
@@ -184,6 +209,10 @@ class SendOwnerTransferEmailApi(Resource):
             raise EmailSendIpLimitError()
 
         # check if the current user is the owner of the workspace
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -198,7 +227,7 @@ class SendOwnerTransferEmailApi(Resource):
             account=current_user,
             email=email,
             language=language,
-            workspace_name=current_user.current_tenant.name,
+            workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
         )
 
         return {"result": "success", "data": token}
@@ -215,6 +244,10 @@ class OwnerTransferCheckApi(Resource):
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         # check if the current user is the owner of the workspace
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -256,6 +289,10 @@ class OwnerTransfer(Resource):
         args = parser.parse_args()
 
         # check if the current user is the owner of the workspace
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -274,9 +311,11 @@ class OwnerTransfer(Resource):
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
-        else:
-            member_account = member
-        if not TenantService.is_member(member_account, current_user.current_tenant):
+            return  # Never reached, but helps type checker
+
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
+        if not TenantService.is_member(member, current_user.current_tenant):
             raise MemberNotInTenantError()
 
         try:
@@ -286,13 +325,13 @@ class OwnerTransfer(Resource):
             AccountService.send_new_owner_transfer_notify_email(
                 account=member,
                 email=member.email,
-                workspace_name=current_user.current_tenant.name,
+                workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
             )
 
             AccountService.send_old_owner_transfer_notify_email(
                 account=current_user,
                 email=current_user.email,
-                workspace_name=current_user.current_tenant.name,
+                workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
                 new_owner_email=member.email,
             )
 

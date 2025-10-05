@@ -11,7 +11,6 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from flask import Flask
@@ -25,7 +24,7 @@ from testcontainers.redis import RedisContainer
 from testcontainers.core.network import Network
 
 from app_factory import create_app
-from models import db
+from extensions.ext_database import db
 
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -43,11 +42,11 @@ class DifyTestContainers:
 
     def __init__(self):
         """Initialize container management with default configurations."""
-        self.network: Optional[Network] = None
-        self.postgres: Optional[PostgresContainer] = None
-        self.redis: Optional[RedisContainer] = None
-        self.dify_sandbox: Optional[DockerContainer] = None
-        self.dify_plugin_daemon: Optional[DockerContainer] = None
+        self.network: Network | None = None
+        self.postgres: PostgresContainer | None = None
+        self.redis: RedisContainer | None = None
+        self.dify_sandbox: DockerContainer | None = None
+        self.dify_plugin_daemon: DockerContainer | None = None
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 
@@ -182,12 +181,12 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.2.0-local").with_network(self.network)
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(self.network)
         self.dify_plugin_daemon.with_exposed_ports(5002)
         # Get container internal network addresses
         postgres_container_name = self.postgres.get_wrapped_container().name
         redis_container_name = self.redis.get_wrapped_container().name
-        
+
         self.dify_plugin_daemon.env = {
             "DB_HOST": postgres_container_name,  # Use container name for internal network communication
             "DB_PORT": "5432",  # Use internal port
@@ -366,6 +365,12 @@ def _create_app_with_containers() -> Flask:
         with db.engine.connect() as conn, conn.begin():
             conn.execute(text(_UUIDv7SQL))
         db.create_all()
+        # migration_dir = _get_migration_dir()
+        # alembic_config = Config()
+        # alembic_config.config_file_name = str(migration_dir / "alembic.ini")
+        # alembic_config.set_main_option("sqlalchemy.url", _get_engine_url(db.engine))
+        # alembic_config.set_main_option("script_location", str(migration_dir))
+        # alembic_command.upgrade(revision="head", config=alembic_config)
     logger.info("Database schema created successfully")
 
     logger.info("Flask application configured and ready for testing")

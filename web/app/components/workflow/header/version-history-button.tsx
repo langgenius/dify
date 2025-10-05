@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useKeyPress } from 'ahooks'
 import Button from '../../base/button'
 import Tooltip from '../../base/tooltip'
-import { getKeyboardKeyCodeBySystem } from '../utils'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../utils'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 
@@ -12,7 +12,7 @@ type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown
 }
 
-const VERSION_HISTORY_SHORTCUT = ['⌘', '⇧', 'H']
+const VERSION_HISTORY_SHORTCUT = ['ctrl', '⇧', 'H']
 
 const PopupContent = React.memo(() => {
   const { t } = useTranslation()
@@ -27,7 +27,7 @@ const PopupContent = React.memo(() => {
             key={key}
             className='system-kbd rounded-[4px] bg-components-kbd-bg-white px-[1px] text-text-tertiary'
           >
-            {key}
+            {getKeyboardKeyNameBySystem(key)}
           </span>
         ))}
       </div>
@@ -48,8 +48,7 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.h`, (e) => {
     e.preventDefault()
     handleViewVersionHistory()
-  },
-  { exactMatch: true, useCapture: true })
+  }, { exactMatch: true, useCapture: true })
 
   return <Tooltip
     popupContent={<PopupContent />}
