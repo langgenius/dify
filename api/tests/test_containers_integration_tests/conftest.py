@@ -18,10 +18,10 @@ from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
-from testcontainers.core.network import Network
 
 from app_factory import create_app
 from extensions.ext_database import db
@@ -181,7 +181,9 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(self.network)
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(
+            self.network
+        )
         self.dify_plugin_daemon.with_exposed_ports(5002)
         # Get container internal network addresses
         postgres_container_name = self.postgres.get_wrapped_container().name
