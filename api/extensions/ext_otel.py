@@ -237,9 +237,9 @@ def init_app(app: DifyApp):
         CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
+    HTTPXClientInstrumentor().instrument()
     RedisInstrumentor().instrument()
     RequestsInstrumentor().instrument()
-    HTTPXClientInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
 
