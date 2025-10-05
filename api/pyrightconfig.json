@@ -1,11 +1,10 @@
 {
   "include": ["."],
   "exclude": [
-    ".venv",
     "tests/",
+    ".venv",
     "migrations/",
-    "core/rag",
-    "extensions",
+    "core/rag"
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
