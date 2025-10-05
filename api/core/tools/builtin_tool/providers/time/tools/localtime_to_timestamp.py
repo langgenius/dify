@@ -33,6 +33,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
             return
 
         yield self.create_text_message(f"{timestamp}")
+
     # TODO: this method's type is messy
     @staticmethod
     def localtime_to_timestamp(localtime: str, time_format: str, local_tz=None) -> int | None:
@@ -42,7 +43,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
                 localtime = local_time.astimezone()  # type: ignore
             elif isinstance(local_tz, str):
                 local_tz = pytz.timezone(local_tz)
-                localtime = local_tz.localize(local_time) # type: ignore
+                localtime = local_tz.localize(local_time)  # type: ignore
             timestamp = int(localtime.timestamp())  # type: ignore
             return timestamp
         except Exception as e:
