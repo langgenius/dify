@@ -15,7 +15,6 @@ from flask import Flask, current_app
 
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
-from core.workflow.graph.read_only_state_wrapper import ReadOnlyGraphRuntimeStateWrapper
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphNodeEventBase,
@@ -26,7 +25,7 @@ from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.runtime import GraphRuntimeState
+from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper
 
 from .command_processing import AbortCommandHandler, CommandProcessor, PauseCommandHandler
 from .entities.commands import AbortCommand, PauseCommand

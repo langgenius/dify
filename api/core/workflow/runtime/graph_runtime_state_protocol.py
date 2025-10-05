@@ -16,6 +16,10 @@ class ReadOnlyVariablePool(Protocol):
         """Get all variables for a node (read-only)."""
         ...
 
+    def get_by_prefix(self, prefix: str) -> Mapping[str, object]:
+        """Get all variables stored under a given node prefix (read-only)."""
+        ...
+
 
 class ReadOnlyGraphRuntimeState(Protocol):
     """
