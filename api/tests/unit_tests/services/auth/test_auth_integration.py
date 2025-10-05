@@ -6,8 +6,8 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock, patch
 
+import httpx
 import pytest
-import requests
 
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -26,7 +26,7 @@ class TestAuthIntegration:
         self.watercrawl_credentials = {"auth_type": "x-api-key", "config": {"api_key": "wc_test_key_789"}}
 
     @patch("services.auth.api_key_auth_service.db.session")
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     def test_end_to_end_auth_flow(self, mock_encrypt, mock_http, mock_session):
         """Test complete authentication flow: request → validation → encryption → storage"""
@@ -47,7 +47,7 @@ class TestAuthIntegration:
         mock_session.add.assert_called_once()
         mock_session.commit.assert_called_once()
 
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_cross_component_integration(self, mock_http):
         """Test factory → provider → HTTP call integration"""
         mock_http.return_value = self._create_success_response()
@@ -97,7 +97,7 @@ class TestAuthIntegration:
         assert "another_secret" not in factory_str
 
     @patch("services.auth.api_key_auth_service.db.session")
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     def test_concurrent_creation_safety(self, mock_encrypt, mock_http, mock_session):
         """Test concurrent authentication creation safety"""
@@ -142,31 +142,31 @@ class TestAuthIntegration:
         with pytest.raises((ValueError, KeyError, TypeError, AttributeError)):
             ApiKeyAuthFactory(AuthType.FIRECRAWL, invalid_input)
 
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_http_error_handling(self, mock_http):
         """Test proper HTTP error handling"""
         mock_response = Mock()
         mock_response.status_code = 401
         mock_response.text = '{"error": "Unauthorized"}'
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Unauthorized")
+        mock_response.raise_for_status.side_effect = httpx.HTTPError("Unauthorized")
         mock_http.return_value = mock_response
 
         # PT012: Split into single statement for pytest.raises
         factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, self.firecrawl_credentials)
-        with pytest.raises((requests.exceptions.HTTPError, Exception)):
+        with pytest.raises((httpx.HTTPError, Exception)):
             factory.validate_credentials()
 
     @patch("services.auth.api_key_auth_service.db.session")
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_network_failure_recovery(self, mock_http, mock_session):
         """Test system recovery from network failures"""
-        mock_http.side_effect = requests.exceptions.RequestException("Network timeout")
+        mock_http.side_effect = httpx.RequestError("Network timeout")
         mock_session.add = Mock()
         mock_session.commit = Mock()
 
         args = {"category": self.category, "provider": AuthType.FIRECRAWL, "credentials": self.firecrawl_credentials}
 
-        with pytest.raises(requests.exceptions.RequestException):
+        with pytest.raises(httpx.RequestError):
             ApiKeyAuthService.create_provider_auth(self.tenant_id_1, args)
 
         mock_session.commit.assert_not_called()

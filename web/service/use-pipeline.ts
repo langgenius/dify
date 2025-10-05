@@ -40,8 +40,9 @@ const NAME_SPACE = 'pipeline'
 
 export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
+  const { type, language } = params
   return useQuery<PipelineTemplateListResponse>({
-    queryKey: [...PipelineTemplateListQueryKeyPrefix, params.type],
+    queryKey: [...PipelineTemplateListQueryKeyPrefix, type, language],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
@@ -55,7 +56,7 @@ export const useInvalidCustomizedTemplateList = () => {
 export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, enabled: boolean) => {
   const { template_id, type } = params
   return useQuery<PipelineTemplateByIdResponse>({
-    queryKey: [NAME_SPACE, 'template', template_id],
+    queryKey: [NAME_SPACE, 'template', type, template_id],
     queryFn: () => {
       return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${template_id}`, {
         params: {
@@ -64,6 +65,7 @@ export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, ena
       })
     },
     enabled,
+    staleTime: 0,
   })
 }
 
