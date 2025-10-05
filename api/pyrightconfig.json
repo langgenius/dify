@@ -11,8 +11,11 @@
   "allowedUntypedLibraries": [
     "flask_restx",
     "flask_login",
+    "opendal",
+    "opendal.layers",
     "opentelemetry.instrumentation.celery",
     "opentelemetry.instrumentation.flask",
+    "opentelemetry.instrumentation.httpx",
     "opentelemetry.instrumentation.requests",
     "opentelemetry.instrumentation.sqlalchemy",
     "opentelemetry.instrumentation.redis"
@@ -28,9 +31,10 @@
   "reportUnnecessaryComparison": "hint",
   "reportUnnecessaryCast": "hint",
   "reportUnnecessaryIsInstance": "hint",
-  "reportUntypedFunctionDecorator": "hint",
+    "reportUntypedFunctionDecorator": "hint",
+    "reportMissingModuleSource": "hint",
 
-  "reportAttributeAccessIssue": "hint",
+    "reportAttributeAccessIssue": "hint",
   "pythonVersion": "3.11",
   "pythonPlatform": "All"
 }
