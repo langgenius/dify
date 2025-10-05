@@ -75,6 +75,7 @@ class AgentConfigManager:
                     prompt=agent_prompt_entity,
                     tools=agent_tools,
                     max_iteration=agent_dict.get("max_iteration", 10),
+                    clear_history_tool_response=agent_dict.get("clear_history_tool_response", False),
                 )
 
         return None

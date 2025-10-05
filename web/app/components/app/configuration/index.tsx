@@ -656,6 +656,7 @@ const Configuration: FC = () => {
             dataSets: datasets || [],
             agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
+              clear_history_tool_response: DEFAULT_AGENT_SETTING.clear_history_tool_response,
               ...modelConfig.agent_mode,
               // remove dataset
               enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true

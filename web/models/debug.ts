@@ -125,6 +125,7 @@ export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy
   max_iteration: number
+  clear_history_tool_response: boolean
   tools: ToolItem[]
 }
 // frontend use. Not the same as backend

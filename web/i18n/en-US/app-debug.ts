@@ -562,6 +562,10 @@ const translation = {
         name: 'Maximum Iterations',
         description: 'Limit the number of iterations an agent assistant can execute',
       },
+      clearHistoryToolResponse: {
+        name: 'Clear History Tool Response',
+        description: 'Clear the history of tool responses before next LLM call',
+      },
     },
     buildInPrompt: 'Build-In Prompt',
     firstPrompt: 'First Prompt',
