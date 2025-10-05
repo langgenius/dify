@@ -243,13 +243,15 @@ class CanvasOAuth(OAuth):
         self.install_url = install_url.rstrip("/")
         self._AUTH_URL = f"{self.install_url}/login/oauth2/auth"
         self._TOKEN_URL = f"{self.install_url}/login/oauth2/token"
-        self._user_cache = None  # Cache user info from token response
+        self._USER_INFO_URL = f"{self.install_url}/api/v1/users/self/profile"
 
     def get_authorization_url(self, invite_token: str | None = None):
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "response_type": "code",
+            "purpose": "Dify_Integration",
+            "scope": "url:GET|/api/v1/users/self/profile",
         }
         if invite_token:
             params["state"] = invite_token
@@ -267,12 +269,6 @@ class CanvasOAuth(OAuth):
         response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
         response_json = response.json()
         
-        # Canvas returns user info in the token response
-        # Example: {"access_token": "...", "user": {"id": 42, "name": "Jimi Hendrix"}, ...}
-        user_info = response_json.get("user", {})
-        if user_info:
-            self._user_cache = user_info
-        
         access_token = response_json.get("access_token")
         if not access_token:
             raise ValueError(f"Error in Canvas OAuth: {response_json}")
@@ -280,17 +276,22 @@ class CanvasOAuth(OAuth):
         return access_token
 
     def get_raw_user_info(self, token: str):
-        # Canvas returns user info in the token response, which we cached
-        if self._user_cache:
-            return self._user_cache
-        
-        raise ValueError("Canvas user info not available from token response.")
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        }
+        response = httpx.get(self._USER_INFO_URL, headers=headers)
+        response.raise_for_status()
+        return response.json()
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
-        # Canvas uses 'id' as the primary identifier
         user_id = str(raw_info.get("id", ""))
         if not user_id:
             raise ValueError("`id` not found in Canvas user info response.")
         name = raw_info.get("name", "")
-        email = raw_info.get("email", f"{user_id}@canvas.local")
+        # Use primary_email if available, otherwise fallback to userid-based email
+        email = raw_info.get("primary_email")
+        if not email:
+            email = f"{user_id}@canvas.local"
+        
         return OAuthUserInfo(id=user_id, name=name, email=email)
