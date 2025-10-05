@@ -165,6 +165,8 @@ class HttpRequestNode(Node):
             body_type = typed_node_data.body.type
             data = typed_node_data.body.data
             match body_type:
+                case "none":
+                    pass
                 case "binary":
                     if len(data) != 1:
                         raise RequestBodyError("invalid body data, should have only one item")

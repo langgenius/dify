@@ -37,7 +37,7 @@ const removeEndThink = (children: any): any => {
 
 const useThinkTimer = (children: any) => {
   const { isResponding } = useChatContext()
-  const [startTime] = useState(Date.now())
+  const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const timerRef = useRef<NodeJS.Timeout>()
