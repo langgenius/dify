@@ -944,6 +944,9 @@ const translation = {
       retrievalSettingIsRequired: 'Le paramètre de récupération est requis',
       chunksInput: 'Morceaux',
       chunksInputTip: 'La variable d\'entrée du nœud de la base de connaissances est Chunks. Le type de variable est un objet avec un schéma JSON spécifique qui doit être cohérent avec la structure de morceau sélectionnée.',
+      rerankingModelIsRequired: 'Un modèle de rerankage est requis',
+      embeddingModelIsRequired: 'Un modèle d\'intégration est requis',
+      chunksVariableIsRequired: 'La variable Chunks est requise',
     },
   },
   tracing: {
