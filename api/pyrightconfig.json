@@ -14,7 +14,8 @@
     "opentelemetry.instrumentation.celery",
     "opentelemetry.instrumentation.flask",
     "opentelemetry.instrumentation.sqlalchemy",
-    "opentelemetry.instrumentation.redis"
+    "opentelemetry.instrumentation.redis",
+    "opentelemetry.instrumentation.httpx"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
