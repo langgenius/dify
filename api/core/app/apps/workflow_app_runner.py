@@ -371,7 +371,6 @@ class WorkflowBasedAppRunner:
                     node_title=event.node_title,
                     node_type=event.node_type,
                     start_at=event.start_at,
-                    predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     inputs=inputs,
@@ -392,7 +391,6 @@ class WorkflowBasedAppRunner:
                     node_title=event.node_title,
                     node_type=event.node_type,
                     start_at=event.start_at,
-                    predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     agent_strategy=event.agent_strategy,
@@ -493,7 +491,6 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
-                    predecessor_node_id=event.predecessor_node_id,
                     metadata=event.metadata,
                 )
             )
@@ -535,7 +532,6 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
-                    predecessor_node_id=event.predecessor_node_id,
                     metadata=event.metadata,
                 )
             )
