@@ -342,7 +342,6 @@ class WorkflowResponseConverter:
                 created_at=int(start_at.timestamp()),
                 finished_at=int(finished_at.replace(tzinfo=UTC).timestamp()),
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
-                parallel_id=None,
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
             ),

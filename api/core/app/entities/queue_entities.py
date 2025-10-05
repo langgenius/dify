@@ -81,7 +81,6 @@ class QueueIterationStartEvent(AppQueueEvent):
 
     node_run_index: int
     inputs: Mapping[str, object] = Field(default_factory=dict)
-    predecessor_node_id: str | None = None
     metadata: Mapping[str, object] = Field(default_factory=dict)
 
 
@@ -133,19 +132,10 @@ class QueueLoopStartEvent(AppQueueEvent):
     node_id: str
     node_type: NodeType
     node_title: str
-    parallel_id: str | None = None
-    """parallel id if node is in parallel"""
-    parallel_start_node_id: str | None = None
-    """parallel start node id if node is in parallel"""
-    parent_parallel_id: str | None = None
-    """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: str | None = None
-    """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     node_run_index: int
     inputs: Mapping[str, object] = Field(default_factory=dict)
-    predecessor_node_id: str | None = None
     metadata: Mapping[str, object] = Field(default_factory=dict)
 
 
@@ -161,16 +151,6 @@ class QueueLoopNextEvent(AppQueueEvent):
     node_id: str
     node_type: NodeType
     node_title: str
-    parallel_id: str | None = None
-    """parallel id if node is in parallel"""
-    parallel_start_node_id: str | None = None
-    """parallel start node id if node is in parallel"""
-    parent_parallel_id: str | None = None
-    """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: str | None = None
-    """parent parallel start node id if node is in parallel"""
-    parallel_mode_run_id: str | None = None
-    """iteration run in parallel mode run id"""
     node_run_index: int
     output: Any = None  # output for the current loop
 
@@ -186,14 +166,6 @@ class QueueLoopCompletedEvent(AppQueueEvent):
     node_id: str
     node_type: NodeType
     node_title: str
-    parallel_id: str | None = None
-    """parallel id if node is in parallel"""
-    parallel_start_node_id: str | None = None
-    """parallel start node id if node is in parallel"""
-    parent_parallel_id: str | None = None
-    """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: str | None = None
-    """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     node_run_index: int
@@ -332,15 +304,9 @@ class QueueNodeStartedEvent(AppQueueEvent):
     node_title: str
     node_type: NodeType
     node_run_index: int = 1  # FIXME(-LAN-): may not used
-    predecessor_node_id: str | None = None
-    parallel_id: str | None = None
-    parallel_start_node_id: str | None = None
-    parent_parallel_id: str | None = None
-    parent_parallel_start_node_id: str | None = None
     in_iteration_id: str | None = None
     in_loop_id: str | None = None
     start_at: datetime
-    parallel_mode_run_id: str | None = None
     agent_strategy: AgentNodeStrategyInit | None = None
 
     # FIXME(-LAN-): only for ToolNode, need to refactor
@@ -358,14 +324,6 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
-    parallel_id: str | None = None
-    """parallel id if node is in parallel"""
-    parallel_start_node_id: str | None = None
-    """parallel start node id if node is in parallel"""
-    parent_parallel_id: str | None = None
-    """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: str | None = None
-    """parent parallel start node id if node is in parallel"""
     in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
@@ -421,14 +379,6 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
-    parallel_id: str | None = None
-    """parallel id if node is in parallel"""
-    parallel_start_node_id: str | None = None
-    """parallel start node id if node is in parallel"""
-    parent_parallel_id: str | None = None
-    """parent parallel id if node is in parallel"""
-    parent_parallel_start_node_id: str | None = None
-    """parent parallel start node id if node is in parallel"""
     in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
@@ -453,7 +403,6 @@ class QueueNodeFailedEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
-    parallel_id: str | None = None
     in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
