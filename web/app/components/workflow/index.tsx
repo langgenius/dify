@@ -198,6 +198,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleCommentReply,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
+    handleCommentPositionUpdate,
   } = useWorkflowComment()
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
@@ -461,6 +462,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 comment={comment}
                 onClick={() => handleCommentIconClick(comment)}
                 isActive={true}
+                onPositionUpdate={position => handleCommentPositionUpdate(comment.id, position)}
               />
               <CommentThread
                 key={`${comment.id}-thread`}
@@ -486,6 +488,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
             key={comment.id}
             comment={comment}
             onClick={() => handleCommentIconClick(comment)}
+            onPositionUpdate={position => handleCommentPositionUpdate(comment.id, position)}
           />
         ) : null
       })}

@@ -4,7 +4,7 @@ import { useReactFlow } from 'reactflow'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
-import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
+import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 
 export const useWorkflowComment = () => {
@@ -229,6 +229,69 @@ export const useWorkflowComment = () => {
     }
   }, [appId, comments, handleCommentIconClick, loadComments, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache])
 
+  const handleCommentPositionUpdate = useCallback(async (commentId: string, position: { x: number; y: number }) => {
+    if (!appId) return
+
+    const targetComment = comments.find(c => c.id === commentId)
+    if (!targetComment) return
+
+    const nextPosition = {
+      position_x: position.x,
+      position_y: position.y,
+    }
+
+    const previousComments = comments
+    const updatedComments = comments.map(c =>
+      c.id === commentId
+        ? { ...c, ...nextPosition }
+        : c,
+    )
+    setComments(updatedComments)
+
+    const cachedDetail = commentDetailCacheRef.current[commentId]
+    const updatedDetail = cachedDetail ? { ...cachedDetail, ...nextPosition } : null
+    if (updatedDetail) {
+      commentDetailCacheRef.current = {
+        ...commentDetailCacheRef.current,
+        [commentId]: updatedDetail,
+      }
+      setCommentDetailCache(commentDetailCacheRef.current)
+
+      if (activeCommentIdRef.current === commentId)
+        setActiveComment(updatedDetail)
+    }
+    else if (activeComment?.id === commentId) {
+      setActiveComment({ ...activeComment, ...nextPosition })
+    }
+
+    try {
+      await updateWorkflowComment(appId, commentId, {
+        content: targetComment.content,
+        position_x: nextPosition.position_x,
+        position_y: nextPosition.position_y,
+      })
+      collaborationManager.emitCommentsUpdate(appId)
+    }
+    catch (error) {
+      console.error('Failed to update comment position:', error)
+      setComments(previousComments)
+
+      if (cachedDetail) {
+        commentDetailCacheRef.current = {
+          ...commentDetailCacheRef.current,
+          [commentId]: cachedDetail,
+        }
+        setCommentDetailCache(commentDetailCacheRef.current)
+
+        if (activeCommentIdRef.current === commentId)
+          setActiveComment(cachedDetail)
+      }
+      else if (activeComment?.id === commentId) {
+        setActiveComment(activeComment)
+      }
+    }
+  }, [activeComment, appId, comments, setComments, setCommentDetailCache, setActiveComment])
+
   const handleCommentReply = useCallback(async (commentId: string, content: string, mentionedUserIds: string[] = []) => {
     if (!appId) return
     const trimmed = content.trim()
@@ -336,6 +399,7 @@ export const useWorkflowComment = () => {
     handleCommentReply,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
+    handleCommentPositionUpdate,
     refreshActiveComment,
     handleCreateComment,
     loadComments,
