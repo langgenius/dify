@@ -60,15 +60,15 @@ class TestDocumentIndexingUpdateTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -77,8 +77,8 @@ class TestDocumentIndexingUpdateTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -90,8 +90,8 @@ class TestDocumentIndexingUpdateTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create process rule
         process_rule = DatasetProcessRule(
@@ -101,8 +101,8 @@ class TestDocumentIndexingUpdateTask:
             rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
             created_by=account.id,
         )
-        db.session.add(process_rule)
-        db.session.commit()
+        db_session_with_containers.add(process_rule)
+        db_session_with_containers.commit()
 
         # Create document
         document = Document(
@@ -120,11 +120,11 @@ class TestDocumentIndexingUpdateTask:
             doc_form=IndexType.PARAGRAPH_INDEX,
             dataset_process_rule_id=process_rule.id,
         )
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property works correctly
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, document, process_rule
 
@@ -159,10 +159,10 @@ class TestDocumentIndexingUpdateTask:
                 status="completed",
                 created_by=document.created_by,
             )
-            db.session.add(segment)
+            db_session_with_containers.add(segment)
             segments.append(segment)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         return segments
 
     def test_document_indexing_update_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -183,7 +183,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Assert: Verify the expected outcomes
         # Verify document status was updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
@@ -200,7 +200,7 @@ class TestDocumentIndexingUpdateTask:
         assert clean_call_args[1]["delete_child_chunks"] is True
 
         # Verify segments were deleted
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
@@ -236,8 +236,8 @@ class TestDocumentIndexingUpdateTask:
         )
 
         # Delete the dataset to simulate dataset not found scenario
-        db.session.delete(dataset)
-        db.session.commit()
+        db_session_with_containers.delete(dataset)
+        db_session_with_containers.commit()
 
         # Act: Execute the task
         document_indexing_update_task(dataset.id, document.id)
@@ -259,10 +259,10 @@ class TestDocumentIndexingUpdateTask:
 
         # Update document to use different index type
         document.doc_form = IndexType.QA_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -275,12 +275,12 @@ class TestDocumentIndexingUpdateTask:
         mock_external_service_dependencies["index_processor"].clean.assert_called_once()
 
         # Verify document status was updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
         # Verify segments were deleted
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
@@ -305,7 +305,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Assert: Verify error handling
         # Document status should still be updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
@@ -318,7 +318,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Note: Segments are not deleted when cleanup fails due to exception handling
         # This is expected behavior based on the actual task implementation
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 3  # Segments remain when cleanup fails
 
     def test_document_indexing_update_with_parent_child_index(
@@ -332,10 +332,10 @@ class TestDocumentIndexingUpdateTask:
 
         # Update document to use parent-child index type
         document.doc_form = IndexType.PARENT_CHILD_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -358,12 +358,12 @@ class TestDocumentIndexingUpdateTask:
         assert clean_call_args[1]["delete_child_chunks"] is True
 
         # Verify document status was updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
         # Verify segments were deleted
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
@@ -380,7 +380,7 @@ class TestDocumentIndexingUpdateTask:
         )
 
         # Verify no segments exist
-        existing_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        existing_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(existing_segments) == 0
 
         # Act: Execute the task
@@ -388,7 +388,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Assert: Verify processing continues normally
         # Verify document status was updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
@@ -427,7 +427,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Assert: Verify error handling
         # Document status should still be updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
@@ -439,7 +439,7 @@ class TestDocumentIndexingUpdateTask:
         mock_external_service_dependencies["runner_instance"].run.assert_called_once()
 
         # Verify segments were deleted
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 0
 
     def test_document_indexing_update_general_exception_handling(
@@ -460,7 +460,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Assert: Verify error handling
         # Document status should still be updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
@@ -472,7 +472,7 @@ class TestDocumentIndexingUpdateTask:
         mock_external_service_dependencies["runner_instance"].run.assert_called_once()
 
         # Verify segments were deleted
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 0
 
     def test_document_indexing_update_with_mixed_segment_states(
@@ -504,7 +504,7 @@ class TestDocumentIndexingUpdateTask:
             status="completed",
             created_by=document.created_by,
         )
-        db.session.add(segment1)
+        db_session_with_containers.add(segment1)
         segments.append(segment1)
 
         # Segment 2: Disabled state
@@ -523,7 +523,7 @@ class TestDocumentIndexingUpdateTask:
             status="completed",
             created_by=document.created_by,
         )
-        db.session.add(segment2)
+        db_session_with_containers.add(segment2)
         segments.append(segment2)
 
         # Segment 3: Processing state
@@ -542,17 +542,17 @@ class TestDocumentIndexingUpdateTask:
             status="processing",
             created_by=document.created_by,
         )
-        db.session.add(segment3)
+        db_session_with_containers.add(segment3)
         segments.append(segment3)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Act: Execute the task
         document_indexing_update_task(dataset.id, document.id)
 
         # Assert: Verify all segments were processed
         # Verify document status was updated
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.indexing_status == "parsing"
         assert document.processing_started_at is not None
 
@@ -570,7 +570,7 @@ class TestDocumentIndexingUpdateTask:
         assert "node_2" in index_node_ids
 
         # Verify all segments were deleted
-        remaining_segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
