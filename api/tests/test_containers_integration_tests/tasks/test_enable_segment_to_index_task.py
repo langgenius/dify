@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -475,5 +474,3 @@ class TestEnableSegmentToIndexTask:
 
         # Verify redis cache was still cleared despite error
         assert redis_client.exists(indexing_cache_key) == 0
-
-
