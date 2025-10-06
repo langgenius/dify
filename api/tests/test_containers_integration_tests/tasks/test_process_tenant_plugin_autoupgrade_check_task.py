@@ -6,9 +6,12 @@ from faker import Faker
 from core.helper.marketplace import MarketplacePluginDeclaration
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.tools.entities.common_entities import I18nObject
-from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
-from tasks.process_tenant_plugin_autoupgrade_check_task import process_tenant_plugin_autoupgrade_check_task
+from tasks.process_tenant_plugin_autoupgrade_check_task import (
+    marketplace_batch_fetch_plugin_manifests,
+    process_tenant_plugin_autoupgrade_check_task,
+)
 
 
 class TestProcessTenantPluginAutoupgradeCheckTask:
@@ -21,6 +24,9 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
             patch("tasks.process_tenant_plugin_autoupgrade_check_task.PluginInstaller") as mock_plugin_installer,
             patch("tasks.process_tenant_plugin_autoupgrade_check_task.marketplace") as mock_marketplace,
             patch("tasks.process_tenant_plugin_autoupgrade_check_task.click") as mock_click,
+            patch(
+                "tasks.process_tenant_plugin_autoupgrade_check_task.marketplace_batch_fetch_plugin_manifests"
+            ) as mock_batch_fetch,
         ):
             # Setup mock plugin installer
             mock_installer_instance = MagicMock()
@@ -30,18 +36,20 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
             mock_marketplace.batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = []
             mock_marketplace.record_install_plugin_event.return_value = None
 
+            # Setup mock batch fetch function
+            mock_batch_fetch.return_value = []
+
             # Setup mock click.style to return the input string
             mock_click.style.return_value = "mocked_style"
 
-            # Clear the global cache before each test
-            from tasks.process_tenant_plugin_autoupgrade_check_task import cached_plugin_manifests
-
-            cached_plugin_manifests.clear()
+            # Clear Redis cache before each test
+            redis_client.flushdb()
 
             yield {
                 "plugin_installer": mock_plugin_installer,
                 "installer_instance": mock_installer_instance,
                 "marketplace": mock_marketplace,
+                "batch_fetch": mock_batch_fetch,
                 "click": mock_click,
             }
 
@@ -64,16 +72,16 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -82,8 +90,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         return tenant, account
 
@@ -109,8 +117,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
             exclude_plugins=kwargs.get("exclude_plugins", []),
             include_plugins=kwargs.get("include_plugins", []),
         )
-        db.session.add(strategy)
-        db.session.commit()
+        db_session_with_containers.add(strategy)
+        db_session_with_containers.commit()
         return strategy
 
     def _create_mock_plugin_entity(self, plugin_id: str, version: str, unique_identifier: str):
@@ -183,9 +191,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
 
         # Assert: Verify early return behavior
         mock_external_service_dependencies["installer_instance"].list_plugins.assert_not_called()
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_not_called()
+        mock_external_service_dependencies["batch_fetch"].assert_not_called()
         mock_external_service_dependencies["click"].echo.assert_called()
 
     def test_process_tenant_plugin_autoupgrade_check_task_all_mode_success(
@@ -214,10 +220,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         manifest2 = self._create_mock_marketplace_manifest("plugin2", "1.1.0", "unique_id_2")
         mock_manifests = [manifest1, manifest2]
 
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
+        # Setup batch fetch mock
+        mock_external_service_dependencies["batch_fetch"].return_value = mock_manifests
 
         # Act: Execute the task
         process_tenant_plugin_autoupgrade_check_task(
@@ -231,9 +235,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
 
         # Assert: Verify expected behavior
         mock_external_service_dependencies["installer_instance"].list_plugins.assert_called_once_with(tenant.id)
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(["plugin1", "plugin2"])
+        mock_external_service_dependencies["batch_fetch"].assert_called_once_with(["plugin1", "plugin2"])
 
         # Verify plugin upgrade was called for plugin1 (version difference)
         mock_external_service_dependencies["installer_instance"].upgrade_plugin.assert_called_once_with(
@@ -277,10 +279,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         manifest3 = self._create_mock_marketplace_manifest("plugin3", "2.0.1", "new_unique_id_3")
         mock_manifests = [manifest1, manifest3]
 
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
+        # Setup batch fetch mock
+        mock_external_service_dependencies["batch_fetch"].return_value = mock_manifests
 
         # Act: Execute the task
         process_tenant_plugin_autoupgrade_check_task(
@@ -294,9 +294,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
 
         # Assert: Verify only included plugins were processed
         mock_external_service_dependencies["installer_instance"].list_plugins.assert_called_once_with(tenant.id)
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(["plugin1", "plugin3"])
+        mock_external_service_dependencies["batch_fetch"].assert_called_once_with(["plugin1", "plugin3"])
 
         # Verify both included plugins were upgraded (both have version differences)
         assert mock_external_service_dependencies["installer_instance"].upgrade_plugin.call_count == 2
@@ -329,10 +327,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         manifest3 = self._create_mock_marketplace_manifest("plugin3", "2.0.1", "new_unique_id_3")
         mock_manifests = [manifest1, manifest3]
 
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
+        # Setup batch fetch mock
+        mock_external_service_dependencies["batch_fetch"].return_value = mock_manifests
 
         # Act: Execute the task
         process_tenant_plugin_autoupgrade_check_task(
@@ -346,9 +342,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
 
         # Assert: Verify excluded plugins were not processed
         mock_external_service_dependencies["installer_instance"].list_plugins.assert_called_once_with(tenant.id)
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(["plugin1", "plugin3"])
+        mock_external_service_dependencies["batch_fetch"].assert_called_once_with(["plugin1", "plugin3"])
 
         # Verify both non-excluded plugins were upgraded
         assert mock_external_service_dependencies["installer_instance"].upgrade_plugin.call_count == 2
@@ -381,10 +375,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         manifest3 = self._create_mock_marketplace_manifest("plugin3", "2.0.0", "new_unique_id_3")  # Major
         mock_manifests = [manifest1, manifest2, manifest3]
 
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
+        # Setup batch fetch mock
+        mock_external_service_dependencies["batch_fetch"].return_value = mock_manifests
 
         # Act: Execute the task
         process_tenant_plugin_autoupgrade_check_task(
@@ -432,9 +424,7 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         )
 
         # Assert: Verify no marketplace calls were made
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_not_called()
+        mock_external_service_dependencies["batch_fetch"].assert_not_called()
         mock_external_service_dependencies["installer_instance"].upgrade_plugin.assert_not_called()
 
     def test_process_tenant_plugin_autoupgrade_check_task_no_manifests_found(
@@ -457,10 +447,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         # Setup mock installer
         mock_external_service_dependencies["installer_instance"].list_plugins.return_value = mock_plugins
 
-        # Setup marketplace mock to return empty list
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = []
+        # Setup batch fetch mock to return empty list
+        mock_external_service_dependencies["batch_fetch"].return_value = []
 
         # Act: Execute the task
         process_tenant_plugin_autoupgrade_check_task(
@@ -501,10 +489,8 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         manifest2 = self._create_mock_marketplace_manifest("plugin2", "1.0.1", "new_unique_id_2")
         mock_manifests = [manifest1, manifest2]
 
-        # Setup marketplace mock
-        mock_external_service_dependencies[
-            "marketplace"
-        ].batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
+        # Setup batch fetch mock
+        mock_external_service_dependencies["batch_fetch"].return_value = mock_manifests
 
         # Setup installer to raise exception for first plugin
         mock_external_service_dependencies["installer_instance"].upgrade_plugin.side_effect = [
@@ -529,6 +515,75 @@ class TestProcessTenantPluginAutoupgradeCheckTask:
         # Check if click.echo was called (should be called multiple times for different messages)
         echo_calls = mock_external_service_dependencies["click"].echo.call_args_list
         assert len(echo_calls) >= 1  # At least one call should be made
+
+    def test_marketplace_batch_fetch_plugin_manifests_with_redis_caching(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test the marketplace_batch_fetch_plugin_manifests function with Redis caching."""
+        # Arrange: Setup test data
+        plugin_ids = ["plugin1", "plugin2", "plugin3"]
+
+        # Create mock manifests
+        manifest1 = self._create_mock_marketplace_manifest("plugin1", "1.0.1", "new_unique_id_1")
+        manifest2 = self._create_mock_marketplace_manifest("plugin2", "1.0.1", "new_unique_id_2")
+        mock_manifests = [manifest1, manifest2]
+
+        # Setup marketplace mock to return manifests
+        mock_marketplace = mock_external_service_dependencies["marketplace"]
+        mock_marketplace.batch_fetch_plugin_manifests_ignore_deserialization_error.return_value = mock_manifests
+
+        # Act: Call the function directly
+        result = marketplace_batch_fetch_plugin_manifests(plugin_ids)
+
+        # Assert: Verify function behavior
+        assert len(result) == 2  # Only plugins with manifests should be returned
+        assert result[0].plugin_id == "plugin1"
+        assert result[1].plugin_id == "plugin2"
+
+        # Verify marketplace was called with uncached plugins
+        mock_external_service_dependencies[
+            "marketplace"
+        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(plugin_ids)
+
+        # Verify Redis cache was set
+        cache_key1 = "plugin_autoupgrade_check_task:cached_plugin_manifests:plugin1"
+        cache_key2 = "plugin_autoupgrade_check_task:cached_plugin_manifests:plugin2"
+        cache_key3 = "plugin_autoupgrade_check_task:cached_plugin_manifests:plugin3"
+
+        assert redis_client.exists(cache_key1) == 1
+        assert redis_client.exists(cache_key2) == 1
+        assert redis_client.exists(cache_key3) == 1  # Cached as None (not found)
+
+    def test_marketplace_batch_fetch_plugin_manifests_with_cached_data(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test the marketplace_batch_fetch_plugin_manifests function with cached data."""
+        # Arrange: Pre-populate Redis cache
+        import json
+
+        from tasks.process_tenant_plugin_autoupgrade_check_task import CACHE_REDIS_TTL
+
+        manifest1 = self._create_mock_marketplace_manifest("plugin1", "1.0.1", "new_unique_id_1")
+        cache_key1 = "plugin_autoupgrade_check_task:cached_plugin_manifests:plugin1"
+        redis_client.setex(cache_key1, CACHE_REDIS_TTL, manifest1.model_dump_json())
+
+        # Cache plugin2 as not found
+        cache_key2 = "plugin_autoupgrade_check_task:cached_plugin_manifests:plugin2"
+        redis_client.setex(cache_key2, CACHE_REDIS_TTL, json.dumps(None))
+
+        plugin_ids = ["plugin1", "plugin2", "plugin3"]
+
+        # Act: Call the function
+        result = marketplace_batch_fetch_plugin_manifests(plugin_ids)
+
+        # Assert: Verify cached data was used
+        assert len(result) == 1  # Only plugin1 should be returned
+        assert result[0].plugin_id == "plugin1"
+
+        # Verify marketplace was called only for uncached plugin3
+        mock_external_service_dependencies[
+            "marketplace"
+        ].batch_fetch_plugin_manifests_ignore_deserialization_error.assert_called_once_with(["plugin3"])
 
     def test_process_tenant_plugin_autoupgrade_check_task_general_exception_handling(
         self, db_session_with_containers, mock_external_service_dependencies

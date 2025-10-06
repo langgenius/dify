@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from tasks.document_indexing_task import document_indexing_task
@@ -58,15 +57,15 @@ class TestDocumentIndexingTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -75,8 +74,8 @@ class TestDocumentIndexingTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -88,8 +87,8 @@ class TestDocumentIndexingTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create documents
         documents = []
@@ -107,13 +106,13 @@ class TestDocumentIndexingTask:
                 indexing_status="waiting",
                 enabled=True,
             )
-            db.session.add(document)
+            db_session_with_containers.add(document)
             documents.append(document)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure it's properly loaded
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, documents
 
@@ -140,15 +139,15 @@ class TestDocumentIndexingTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -157,8 +156,8 @@ class TestDocumentIndexingTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -170,8 +169,8 @@ class TestDocumentIndexingTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create documents
         documents = []
@@ -189,10 +188,10 @@ class TestDocumentIndexingTask:
                 indexing_status="waiting",
                 enabled=True,
             )
-            db.session.add(document)
+            db_session_with_containers.add(document)
             documents.append(document)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Configure billing features
         mock_external_service_dependencies["features"].billing.enabled = billing_enabled
@@ -202,7 +201,7 @@ class TestDocumentIndexingTask:
             mock_external_service_dependencies["features"].vector_space.size = 50
 
         # Refresh dataset to ensure it's properly loaded
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, documents
 
@@ -232,7 +231,7 @@ class TestDocumentIndexingTask:
 
         # Verify documents were updated to parsing status
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -298,7 +297,7 @@ class TestDocumentIndexingTask:
 
         # Verify only existing documents were updated
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -341,7 +340,7 @@ class TestDocumentIndexingTask:
 
         # Verify documents were still updated to parsing status before the exception
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -380,7 +379,7 @@ class TestDocumentIndexingTask:
             indexing_status="completed",  # Already completed
             enabled=True,
         )
-        db.session.add(doc1)
+        db_session_with_containers.add(doc1)
         extra_documents.append(doc1)
 
         # Document with disabled status
@@ -397,10 +396,10 @@ class TestDocumentIndexingTask:
             indexing_status="waiting",
             enabled=False,  # Disabled
         )
-        db.session.add(doc2)
+        db_session_with_containers.add(doc2)
         extra_documents.append(doc2)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         all_documents = base_documents + extra_documents
         document_ids = [doc.id for doc in all_documents]
@@ -414,7 +413,7 @@ class TestDocumentIndexingTask:
 
         # Verify all documents were updated to parsing status
         for document in all_documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -461,10 +460,10 @@ class TestDocumentIndexingTask:
                 indexing_status="waiting",
                 enabled=True,
             )
-            db.session.add(document)
+            db_session_with_containers.add(document)
             extra_documents.append(document)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         all_documents = documents + extra_documents
         document_ids = [doc.id for doc in all_documents]
 
@@ -473,7 +472,7 @@ class TestDocumentIndexingTask:
 
         # Assert: Verify error handling
         for document in all_documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "error"
             assert document.error is not None
             assert "batch upload" in document.error
@@ -510,7 +509,7 @@ class TestDocumentIndexingTask:
 
         # Verify documents were updated to parsing status
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -549,6 +548,6 @@ class TestDocumentIndexingTask:
 
         # Verify documents were still updated to parsing status before the exception
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
