@@ -176,8 +176,8 @@ class DingTalkOAuth(OAuth):
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         user_id = raw_info.get("unionId", "")
-        if not user_id:  
-            raise ValueError("`unionId` not found in DingTalk user info response.")  
+        if not user_id:
+            raise ValueError("`unionId` not found in DingTalk user info response.")
         name = raw_info.get("nick", "")
         email = raw_info.get("email", f"{user_id}@dingtalk.local")
         return OAuthUserInfo(id=user_id, name=name, email=email)
@@ -268,7 +268,7 @@ class CanvasOAuth(OAuth):
         headers = {"Accept": "application/json"}
         response = httpx.post(self._TOKEN_URL, data=data, headers=headers)
         response_json = response.json()
-        
+
         access_token = response_json.get("access_token")
         if not access_token:
             raise ValueError(f"Error in Canvas OAuth: {response_json}")
@@ -293,5 +293,5 @@ class CanvasOAuth(OAuth):
         email = raw_info.get("primary_email")
         if not email:
             email = f"{user_id}@canvas.local"
-        
+
         return OAuthUserInfo(id=user_id, name=name, email=email)

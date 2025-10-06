@@ -71,11 +71,7 @@ def get_oauth_providers():
             )
 
         # Canvas
-        if (
-            dify_config.CANVAS_CLIENT_ID
-            and dify_config.CANVAS_CLIENT_SECRET
-            and dify_config.CANVAS_INSTALL_URL
-        ):
+        if dify_config.CANVAS_CLIENT_ID and dify_config.CANVAS_CLIENT_SECRET and dify_config.CANVAS_INSTALL_URL:
             providers["canvas"] = CanvasOAuth(
                 client_id=dify_config.CANVAS_CLIENT_ID,
                 client_secret=dify_config.CANVAS_CLIENT_SECRET,
