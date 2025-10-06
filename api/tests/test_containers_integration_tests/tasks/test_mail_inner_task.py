@@ -15,7 +15,7 @@ class TestMailInnerTask:
         with (
             patch("tasks.mail_inner_task.mail") as mock_mail,
             patch("tasks.mail_inner_task.get_email_i18n_service") as mock_get_email_i18n_service,
-            patch("tasks.mail_inner_task.render_template_string") as mock_render_template,
+            patch("tasks.mail_inner_task._render_template_with_strategy") as mock_render_template,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
@@ -82,7 +82,7 @@ class TestMailInnerTask:
 
         # Verify template rendering was called with correct parameters
         mock_external_service_dependencies["render_template"].assert_called_once_with(
-            email_data["body"], **email_data["substitutions"]
+            email_data["body"], email_data["substitutions"]
         )
 
         # Verify email service was called once with the full recipient list
@@ -156,7 +156,7 @@ class TestMailInnerTask:
         )
 
         # Assert: Verify the expected outcomes
-        mock_external_service_dependencies["render_template"].assert_called_once_with(email_data["body"], **{})
+        mock_external_service_dependencies["render_template"].assert_called_once_with(email_data["body"], {})
 
         mock_email_service = mock_external_service_dependencies["email_service"]
         mock_email_service.send_raw_email.assert_called_once_with(
