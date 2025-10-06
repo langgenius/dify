@@ -445,16 +445,17 @@ wheels = [
 
 [[package]]
 name = "azure-storage-blob"
-version = "12.13.0"
+version = "12.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
     { name = "cryptography" },
-    { name = "msrest" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/93/b13bf390e940a79a399981f75ac8d2e05a70112a95ebb7b41e9b752d2921/azure-storage-blob-12.13.0.zip", hash = "sha256:53f0d4cd32970ac9ff9b9753f83dd2fb3f9ac30e1d01e71638c436c509bfd884", size = 684838, upload-time = "2022-07-07T22:35:44.543Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/95/3e3414491ce45025a1cde107b6ae72bf72049e6021597c201cd6a3029b9a/azure_storage_blob-12.26.0.tar.gz", hash = "sha256:5dd7d7824224f7de00bfeb032753601c982655173061e242f13be6e26d78d71f", size = 583332, upload-time = "2025-07-16T21:34:07.644Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/2a/b8246df35af68d64fb7292c93dbbde63cd25036f2f669a9d9ae59e518c76/azure_storage_blob-12.13.0-py3-none-any.whl", hash = "sha256:280a6ab032845bab9627582bee78a50497ca2f14772929b5c5ee8b4605af0cb3", size = 377309, upload-time = "2022-07-07T22:35:41.905Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/64/63dbfdd83b31200ac58820a7951ddfdeed1fbee9285b0f3eae12d1357155/azure_storage_blob-12.26.0-py3-none-any.whl", hash = "sha256:8c5631b8b22b4f53ec5fff2f3bededf34cfef111e2af613ad42c9e6de00a77fe", size = 412907, upload-time = "2025-07-16T21:34:09.367Z" },
 ]
 
 [[package]]
@@ -1625,7 +1626,7 @@ dev = [
     { name = "types-ujson", specifier = ">=5.10.0" },
 ]
 storage = [
-    { name = "azure-storage-blob", specifier = "==12.13.0" },
+    { name = "azure-storage-blob", specifier = "==12.26.0" },
     { name = "bce-python-sdk", specifier = "~=0.9.23" },
     { name = "cos-python-sdk-v5", specifier = "==1.9.38" },
     { name = "esdk-obs-python", specifier = "==3.24.6.1" },
@@ -3367,22 +3368,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/01/99/5d239b6156eddf761a636bded1118414d161bd6b7b37a9335549ed159396/msal_extensions-1.3.1.tar.gz", hash = "sha256:c5b0fd10f65ef62b5f1d62f4251d51cbcaf003fcedae8c91b040a488614be1a4", size = 23315, upload-time = "2025-03-14T23:51:03.902Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5e/75/bd9b7bb966668920f06b200e84454c8f3566b102183bc55c5473d96cb2b9/msal_extensions-1.3.1-py3-none-any.whl", hash = "sha256:96d3de4d034504e969ac5e85bae8106c8373b5c6568e4c8fa7af2eca9dbe6bca", size = 20583, upload-time = "2025-03-14T23:51:03.016Z" },
-]
-
-[[package]]
-name = "msrest"
-version = "0.7.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "azure-core" },
-    { name = "certifi" },
-    { name = "isodate" },
-    { name = "requests" },
-    { name = "requests-oauthlib" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/68/77/8397c8fb8fc257d8ea0fa66f8068e073278c65f05acb17dcb22a02bfdc42/msrest-0.7.1.zip", hash = "sha256:6e7661f46f3afd88b75667b7187a92829924446c7ea1d169be8c4bb7eeb788b9", size = 175332, upload-time = "2022-06-13T22:41:25.111Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/cf/f2966a2638144491f8696c27320d5219f48a072715075d168b31d3237720/msrest-0.7.1-py3-none-any.whl", hash = "sha256:21120a810e1233e5e6cc7fe40b474eeb4ec6f757a15d7cf86702c369f9567c32", size = 85384, upload-time = "2022-06-13T22:41:22.42Z" },
 ]
 
 [[package]]
