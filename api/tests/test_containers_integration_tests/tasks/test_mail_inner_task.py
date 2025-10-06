@@ -259,4 +259,3 @@ class TestMailInnerTask:
             subject=email_data["subject"],
             html_content="<html>Test email content</html>",
         )
-
