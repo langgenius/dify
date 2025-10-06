@@ -495,7 +495,17 @@ const translation = {
       providerManagedTip: 'تنظیمات فعلی توسط ارائه‌دهنده میزبانی می‌شود.',
       modelCredentials: 'مدل اعتبارنامه',
       manageCredentials: 'مدیریت اعتبارنامه ها',
+      addModel: 'افزودن مدل',
+      removeModel: 'حذف مدل',
+      modelCredential: 'اعتبار مدل',
+      selectModelCredential: 'یک اعتبار مدل را انتخاب کنید',
+      editModelCredential: 'اعتبار مدل را ویرایش کنید',
+      addNewModelCredential: 'افزودن اعتبار مدل جدید',
+      customModelCredentials: 'اعتبار مدل سفارشی',
+      customModelCredentialsDeleteTip: 'اعتبار در حال استفاده است و قابل حذف نیست',
     },
+    parametersInvalidRemoved: 'برخی پارامترها نامعتبر هستند و حذف شده‌اند',
+    installDataSourceProvider: 'نصب ارائه‌دهندگان منبع داده',
   },
   dataSource: {
     add: 'افزودن منبع داده',
@@ -594,6 +604,7 @@ const translation = {
     viewDoc: 'مشاهده مستندات',
     relatedApp: 'برنامه‌های مرتبط',
     noRelatedApp: 'هیچ برنامه پیوندی وجود ندارد',
+    pipeline: 'خط لوله',
   },
   voiceInput: {
     speaking: 'اکنون صحبت کنید...',
@@ -748,6 +759,9 @@ const translation = {
     subtitle: 'لطفاً به ما بگویید که چه مشکلی در این پاسخ پیش آمده است.',
     content: 'محتوای بازخورد',
     placeholder: 'لطفاً توضیح دهید که چه مشکلی پیش آمد یا چگونه می‌توانیم بهبود پیدا کنیم...',
+  },
+  label: {
+    optional: '(اختیاری)',
   },
 }
 

@@ -159,9 +159,7 @@ class ProgressLogger:
 
         if self.logger.use_colors:
             progress_bar = self._create_progress_bar()
-            print(
-                f"\n\033[1m[Step {self.current_step}/{self.total_steps}]\033[0m {progress_bar}"
-            )
+            print(f"\n\033[1m[Step {self.current_step}/{self.total_steps}]\033[0m {progress_bar}")
             self.logger.step(f"{description} (Elapsed: {elapsed:.1f}s)")
         else:
             print(f"\n[Step {self.current_step}/{self.total_steps}]")

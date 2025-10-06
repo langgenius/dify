@@ -3,6 +3,8 @@ const translation = {
   chunkingMode: {
     general: 'General',
     parentChild: 'Parent-child',
+    qa: 'Q&A',
+    graph: 'Graph',
   },
   parentMode: {
     paragraph: 'Paragraph',
@@ -20,11 +22,18 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Learn how to write a good knowledge description',
   externalAPIPanelDescription: 'The external knowledge API is used to connect to a knowledge base outside of Dify and retrieve knowledge from that knowledge base.',
   externalAPIPanelDocumentation: 'Learn how to create an External Knowledge API',
+  externalKnowledgeBase: 'External Knowledge Base',
   localDocs: 'Local Docs',
   documentCount: ' docs',
+  docAllEnabled_one: '{{count}} document enabled',
+  docAllEnabled_other: 'All {{count}} documents enabled',
+  partialEnabled_one: 'Total of {{count}} document, {{num}} available',
+  partialEnabled_other: 'Total of {{count}} documents, {{num}} available',
   wordCount: ' k words',
   appCount: ' linked apps',
+  updated: 'Updated',
   createDataset: 'Create Knowledge',
+  createFromPipeline: 'Create from Knowledge Pipeline',
   createNewExternalAPI: 'Create a new External Knowledge API',
   noExternalKnowledge: 'There is no External Knowledge API yet, click here to create',
   createExternalAPI: 'Add an External Knowledge API',
@@ -117,7 +126,7 @@ const translation = {
       description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Users can choose to set weights or configure to a Rerank model.',
       recommend: 'Recommend',
     },
-    invertedIndex: {
+    keyword_search: {
       title: 'Inverted Index',
       description: 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.',
     },
@@ -215,6 +224,17 @@ const translation = {
       startLabeling: 'Start Labeling',
       documentInformation: 'Document Information',
       technicalParameters: 'Technical Parameters',
+    },
+  },
+  serviceApi: {
+    title: 'Service API',
+    enabled: 'In Service',
+    disabled: 'Disabled',
+    card: {
+      title: 'Backend service api',
+      endpoint: 'Service API Endpoint',
+      apiKey: 'API Key',
+      apiReference: 'API Reference',
     },
   },
 }

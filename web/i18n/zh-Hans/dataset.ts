@@ -3,6 +3,8 @@ const translation = {
   chunkingMode: {
     general: '通用',
     parentChild: '父子',
+    qa: '问答',
+    graph: '图',
   },
   parentMode: {
     paragraph: '段落',
@@ -20,11 +22,18 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: '了解如何编写良好的知识库描述',
   externalAPIPanelDescription: '外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。',
   externalAPIPanelDocumentation: '了解如何创建外部知识库 API',
+  externalKnowledgeBase: '外部知识库',
   localDocs: '本地文档',
   documentCount: ' 文档',
+  docAllEnabled_one: '{{count}} 个文档可用',
+  docAllEnabled_other: '所有 {{count}} 个文档均可用',
+  partialEnabled_one: '共计 {{count}} 个文档, {{num}} 可用',
+  partialEnabled_other: '共计 {{count}} 个文档, {{num}} 可用',
   wordCount: ' 千字符',
   appCount: ' 关联应用',
+  updated: '更新于',
   createDataset: '创建知识库',
+  createFromPipeline: '通过知识流水线创建知识库',
   noExternalKnowledge: '还没有外部知识库 API，点击此处创建',
   createExternalAPI: '添加外部知识库 API',
   createNewExternalAPI: '创建新的外部知识库 API',
@@ -117,7 +126,7 @@ const translation = {
       description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，用户可以选择设置权重或配置重新排序模型。',
       recommend: '推荐',
     },
-    invertedIndex: {
+    keyword_search: {
       title: '倒排索引',
       description: '倒排索引是一种用于高效检索的结构。按术语组织，每个术语指向包含它的文档或网页',
     },
@@ -215,6 +224,17 @@ const translation = {
       startLabeling: '开始标注',
       documentInformation: '文档信息',
       technicalParameters: '技术参数',
+    },
+  },
+  serviceApi: {
+    title: '服务 API',
+    enabled: '运行中',
+    disabled: '已停用',
+    card: {
+      title: '后端服务 API',
+      endpoint: 'API 端点',
+      apiKey: 'API 密钥',
+      apiReference: 'API 文档',
     },
   },
 }

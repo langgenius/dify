@@ -14,6 +14,8 @@ import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 
 import cn from '@/utils/classnames'
+import type { NodeProps } from '../types'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
 export type currentVarType = {
   nodeId: string
@@ -21,6 +23,7 @@ export type currentVarType = {
   title: string
   isValueFetched?: boolean
   var: VarInInspect
+  nodeData: NodeProps['data']
 }
 
 const Panel: FC = () => {
@@ -114,6 +117,7 @@ const Panel: FC = () => {
       title: targetNode.title,
       isSingRunRunning: targetNode.isSingRunRunning,
       isValueFetched: targetNode.isValueFetched,
+      nodeData: targetNode.nodePayload,
       ...(currentVar ? { var: currentVar } : {}),
     }
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
@@ -130,13 +134,15 @@ const Panel: FC = () => {
     setCurrentVarId(node.var.id)
   }, [setCurrentFocusNodeId, setCurrentVarId])
 
+  const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
+
   useEffect(() => {
-    if (currentFocusNodeId && currentVarId) {
+    if (currentFocusNodeId && currentVarId && !isLoading) {
       const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
       if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId])
+        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
     }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue])
+  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
 
   if (isEmpty) {
     return (
