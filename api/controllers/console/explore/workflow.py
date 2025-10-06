@@ -20,15 +20,19 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.login import current_user
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp):
         """
@@ -69,6 +73,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp, task_id: str):
         """
@@ -82,6 +87,11 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
             raise NotWorkflowAppError()
         assert current_user is not None
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}

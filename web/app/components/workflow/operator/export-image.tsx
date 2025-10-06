@@ -10,7 +10,6 @@ import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
 import { RiExportLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -18,19 +17,21 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { useStore } from '@/app/components/workflow/store'
 
 const ExportImage: FC = () => {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const reactFlow = useReactFlow()
 
-  const appDetail = useAppStore(s => s.appDetail)
   const [open, setOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
   const [previewTitle, setPreviewTitle] = useState('')
+  const knowledgeName = useStore(s => s.knowledgeName)
+  const appName = useStore(s => s.appName)
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
-    if (!appDetail)
+    if (!appName && !knowledgeName)
       return
 
     if (getNodesReadOnly())
@@ -41,6 +42,7 @@ const ExportImage: FC = () => {
     if (!flowElement) return
 
     try {
+      let filename = appName || knowledgeName
       const filter = (node: HTMLElement) => {
         if (node instanceof HTMLImageElement)
           return node.complete && node.naturalHeight !== 0
@@ -49,7 +51,6 @@ const ExportImage: FC = () => {
       }
 
       let dataUrl
-      let filename = `${appDetail.name}`
 
       if (currentWorkflow) {
         // Get all nodes and their bounds
@@ -166,7 +167,7 @@ const ExportImage: FC = () => {
     catch (error) {
       console.error('Export image failed:', error)
     }
-  }, [getNodesReadOnly, appDetail, reactFlow])
+  }, [getNodesReadOnly, appName, reactFlow, knowledgeName])
 
   const handleTrigger = useCallback(() => {
     if (getNodesReadOnly())

@@ -1,0 +1,324 @@
+app:
+  description: 'This workflow receive a ''switch'' number.
+
+    If switch == 1, output should be {"1": "Code 1", "2": "Code 2", "3": null},
+
+    otherwise, output should be {"1": null, "2": "Code 2", "3": "Code 3"}.'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: parallel_branch_test
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1754230715804-source-1754230718377-target
+      source: '1754230715804'
+      sourceHandle: source
+      target: '1754230718377'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1754230718377-true-1754230738434-target
+      source: '1754230718377'
+      sourceHandle: 'true'
+      target: '1754230738434'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1754230718377-true-17542307611100-target
+      source: '1754230718377'
+      sourceHandle: 'true'
+      target: '17542307611100'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1754230718377-false-17542307611100-target
+      source: '1754230718377'
+      sourceHandle: 'false'
+      target: '17542307611100'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1754230718377-false-17542307643480-target
+      source: '1754230718377'
+      sourceHandle: 'false'
+      target: '17542307643480'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 1754230738434-source-1754230796033-target
+      source: '1754230738434'
+      sourceHandle: source
+      target: '1754230796033'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 17542307611100-source-1754230796033-target
+      source: '17542307611100'
+      sourceHandle: source
+      target: '1754230796033'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 17542307643480-source-1754230796033-target
+      source: '17542307643480'
+      sourceHandle: source
+      target: '1754230796033'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: switch
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: switch
+      height: 90
+      id: '1754230715804'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: bb59bde2-e97f-4b38-ba77-d2ac7c6805d3
+            value: '1'
+            varType: number
+            variable_selector:
+            - '1754230715804'
+            - switch
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: IF/ELSE
+        type: if-else
+      height: 126
+      id: '1754230718377'
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main() -> dict:\n    return {\n        \"result\": \"Code 1\"\
+          ,\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: Code 1
+        type: code
+        variables: []
+      height: 54
+      id: '1754230738434'
+      position:
+        x: 701
+        y: 225
+      positionAbsolute:
+        x: 701
+        y: 225
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main() -> dict:\n    return {\n        \"result\": \"Code 2\"\
+          ,\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: Code 2
+        type: code
+        variables: []
+      height: 54
+      id: '17542307611100'
+      position:
+        x: 701
+        y: 353
+      positionAbsolute:
+        x: 701
+        y: 353
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main() -> dict:\n    return {\n        \"result\": \"Code 3\"\
+          ,\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: Code 3
+        type: code
+        variables: []
+      height: 54
+      id: '17542307643480'
+      position:
+        x: 701
+        y: 483
+      positionAbsolute:
+        x: 701
+        y: 483
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754230738434'
+          - result
+          value_type: string
+          variable: '1'
+        - value_selector:
+          - '17542307611100'
+          - result
+          value_type: string
+          variable: '2'
+        - value_selector:
+          - '17542307643480'
+          - result
+          value_type: string
+          variable: '3'
+        selected: false
+        title: End
+        type: end
+      height: 142
+      id: '1754230796033'
+      position:
+        x: 1061
+        y: 354
+      positionAbsolute:
+        x: 1061
+        y: 354
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -268.3522609908596
+      y: 37.16616977316119
+      zoom: 0.8271184022267809

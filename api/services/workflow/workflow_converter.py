@@ -79,7 +79,6 @@ class WorkflowConverter:
         new_app.updated_by = account.id
         db.session.add(new_app)
         db.session.flush()
-        db.session.commit()
 
         workflow.app_id = new_app.id
         db.session.commit()
@@ -146,7 +145,7 @@ class WorkflowConverter:
             graph=graph,
             model_config=app_config.model,
             prompt_template=app_config.prompt_template,
-            file_upload=app_config.additional_features.file_upload,
+            file_upload=app_config.additional_features.file_upload if app_config.additional_features else None,
             external_data_variable_node_mapping=external_data_variable_node_mapping,
         )
 

@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'تغییر',
     changeRetrievalMethod: 'تغییر روش بازیابی',
+    keyword_search: {
+      title: 'شاخص معکوس',
+      description: 'شاخص معکوس ساختاری است که برای بازیابی کارآمد استفاده می شود. هر اصطلاح که بر اساس اصطلاحات سازماندهی شده است، به اسناد یا صفحات وب حاوی آن اشاره می کند.',
+    },
   },
   docsFailedNotice: 'اسناد نتوانستند فهرست‌بندی شوند',
   retry: 'تلاش مجدد',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'پدر و مادر و فرزند',
     general: 'عمومی',
+    graph: 'گراف',
+    qa: 'پرسش و پاسخ',
   },
   parentMode: {
     fullDoc: 'مستند کامل',
@@ -217,6 +223,9 @@ const translation = {
     metadata: 'متادیتا',
   },
   embeddingModelNotAvailable: 'مدل جاسازی در دسترس نیست.',
+  updated: 'بروز رسانی',
+  createFromPipeline: 'ایجاد از پایپ لاین دانش',
+  externalKnowledgeBase: 'پایگاه دانش خارجی',
 }
 
 export default translation

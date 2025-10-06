@@ -41,6 +41,10 @@ const translation = {
     },
     change: '변경',
     changeRetrievalMethod: '검색 방법 변경',
+    keyword_search: {
+      title: '반전 인덱스',
+      description: '역인덱스는 효율적인 검색을 위해 사용되는 구조입니다. 용어별로 구성된 각 용어는 해당 용어가 포함된 문서 또는 웹 페이지를 가리킵니다.',
+    },
   },
   docsFailedNotice: '문서 인덱스에 실패했습니다',
   retry: '재시도',
@@ -148,6 +152,8 @@ const translation = {
   chunkingMode: {
     parentChild: '부모 - 자식',
     general: '일반',
+    graph: '그래프',
+    qa: '질문과 답변',
   },
   parentMode: {
     fullDoc: '전체 문서',
@@ -216,6 +222,9 @@ const translation = {
     chooseTime: '시간을 선택하세요...',
   },
   embeddingModelNotAvailable: '임베딩 모델을 사용할 수 없습니다.',
+  updated: '업데이트',
+  externalKnowledgeBase: '외부 기술 자료',
+  createFromPipeline: '지식 파이프라인에서 만들기',
 }
 
 export default translation

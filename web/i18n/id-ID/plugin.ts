@@ -9,6 +9,7 @@ const translation = {
     bundles: 'Bundel',
     agents: 'Strategi Agen',
     tools: 'Perkakas',
+    datasources: 'Sumber Data',
   },
   categorySingle: {
     bundle: 'Bundel',
@@ -16,6 +17,7 @@ const translation = {
     tool: 'Alat',
     model: 'Pola',
     extension: 'Ekstensi',
+    datasource: 'Sumber Data',
   },
   list: {
     source: {
@@ -260,6 +262,9 @@ const translation = {
     authorizationName: 'Nama Otorisasi',
     workspaceDefault: 'Ruang Kerja Default',
     authorization: 'Otorisasi',
+    credentialUnavailableInButton: 'Kredensial tidak tersedia',
+    emptyAuth: 'Silakan konfigurasikan otentikasi',
+    connectedWorkspace: 'Ruang Kerja yang Terhubung',
   },
   searchInMarketplace: 'Cari di Marketplace',
   findMoreInMarketplace: 'Temukan selengkapnya di Marketplace',
