@@ -4,7 +4,6 @@ import pytest
 from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexType
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
@@ -66,15 +65,15 @@ class TestDuplicateDocumentIndexingTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -83,8 +82,8 @@ class TestDuplicateDocumentIndexingTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -96,8 +95,8 @@ class TestDuplicateDocumentIndexingTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create documents
         documents = []
@@ -116,13 +115,13 @@ class TestDuplicateDocumentIndexingTask:
                 enabled=True,
                 doc_form=IndexType.PARAGRAPH_INDEX,
             )
-            db.session.add(document)
+            db_session_with_containers.add(document)
             documents.append(document)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property works correctly
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, documents
 
@@ -159,10 +158,10 @@ class TestDuplicateDocumentIndexingTask:
                 status="completed",
                 created_by=document.created_by,
             )
-            db.session.add(segment)
+            db_session_with_containers.add(segment)
             segments.append(segment)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         return segments
 
     def test_duplicate_document_indexing_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -213,13 +212,15 @@ class TestDuplicateDocumentIndexingTask:
         # Verify segments were deleted from database
         for document in documents:
             remaining_segments = (
-                db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+                db_session_with_containers.query(DocumentSegment)
+                .where(DocumentSegment.document_id == document.id)
+                .all()
             )
             assert len(remaining_segments) == 0
 
         # Verify documents were prepared for re-indexing
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -250,7 +251,7 @@ class TestDuplicateDocumentIndexingTask:
         # Set different index types for documents
         documents[0].doc_form = IndexType.PARAGRAPH_INDEX
         documents[1].doc_form = IndexType.QA_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Create segments for each document
         for document in documents:
@@ -365,7 +366,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Verify documents were prepared for re-indexing
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -405,7 +406,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Assert: Verify error handling
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "error"
             assert document.error is not None
             assert "exceeded the limit" in document.error
@@ -444,7 +445,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Assert: Verify sandbox plan limit enforcement
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "error"
             assert document.error is not None
             assert "does not support batch upload" in document.error
@@ -487,7 +488,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Assert: Verify batch upload limit enforcement
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "error"
             assert document.error is not None
             assert "batch upload limit" in document.error
@@ -537,7 +538,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Verify documents were prepared for re-indexing before the error
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -579,7 +580,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Verify documents were prepared for re-indexing before the error
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
@@ -604,7 +605,7 @@ class TestDuplicateDocumentIndexingTask:
         documents[0].doc_form = IndexType.PARAGRAPH_INDEX
         documents[1].doc_form = IndexType.QA_INDEX
         documents[2].doc_form = IndexType.PARENT_CHILD_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Create segments only for first two documents
         self._create_test_segments(db_session_with_containers, documents[0], dataset)
@@ -632,7 +633,7 @@ class TestDuplicateDocumentIndexingTask:
 
         # Verify all documents were prepared for re-indexing
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.indexing_status == "parsing"
             assert document.processing_started_at is not None
 
