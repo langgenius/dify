@@ -80,6 +80,7 @@ const translation = {
     advancedShortDescription: 'Flusso di lavoro migliorato per conversazioni multiple',
     chooseAppType: 'Scegli un tipo di app',
     dropDSLToCreateApp: 'Trascina il file DSL qui per creare l\'app',
+    import: 'Importazione',
   },
   editApp: 'Modifica Info',
   editAppTitle: 'Modifica Info App',
@@ -322,6 +323,10 @@ const translation = {
     tryDifferentSearch: 'Prova un termine di ricerca diverso',
     noMatchingCommands: 'Nessun comando corrispondente trovato',
     slashHint: 'Digita / per vedere tutti i comandi disponibili',
+    selectToNavigate: 'Seleziona per navigare',
+    startTyping: 'Inizia a digitare per cercare',
+    tips: 'Premi ↑↓ per navigare',
+    pressEscToClose: 'Premi ESC per chiudere',
   },
 }
 

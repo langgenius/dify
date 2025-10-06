@@ -13,10 +13,10 @@ const TestComponent = () => {
 
   return (
     <div>
-      <button onClick={() => notify({ message: 'Notification message', type: 'info' })}>
+      <button type="button" onClick={() => notify({ message: 'Notification message', type: 'info' })}>
         Show Toast
       </button>
-      <button onClick={close}>Close Toast</button>
+      <button type="button" onClick={close}>Close Toast</button>
     </div>
   )
 }

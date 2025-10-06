@@ -1,7 +1,7 @@
 import json
 import logging
 import ssl
-from typing import Any, Optional
+from typing import Any
 
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, model_validator
@@ -28,8 +28,8 @@ def create_ssl_context() -> ssl.SSLContext:
 
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
-    username: str | None
-    password: str | None
+    username: str | None = None
+    password: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -157,8 +157,8 @@ class HuaweiCloudVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict[Any, Any]]] = None,
-        index_params: Optional[dict] = None,
+        metadatas: list[dict[Any, Any]] | None = None,
+        index_params: dict | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

@@ -193,6 +193,16 @@ const translation = {
       confirm: '追加して承認',
       timeout: 'タイムアウト',
       sseReadTimeout: 'SSE 読み取りタイムアウト',
+      headerValuePlaceholder: '例：ベアラートークン123',
+      headerKeyPlaceholder: '例えば、承認',
+      headers: 'ヘッダー',
+      timeoutPlaceholder: '三十',
+      headerKey: 'ヘッダー名',
+      addHeader: 'ヘッダーを追加',
+      headerValue: 'ヘッダーの値',
+      noHeaders: 'カスタムヘッダーは設定されていません',
+      headersTip: 'MCPサーバーへのリクエストに送信する追加のHTTPヘッダー',
+      maskedHeadersTip: 'ヘッダー値はセキュリティのためマスクされています。変更は実際の値を更新します。',
     },
     delete: 'MCP サーバーを削除',
     deleteConfirmTitle: '{{mcp}} を削除しますか？',
@@ -234,6 +244,7 @@ const translation = {
       publishTip: 'アプリが公開されていません。まずアプリを公開してください。',
     },
   },
+  allTools: 'すべての道具',
 }
 
 export default translation

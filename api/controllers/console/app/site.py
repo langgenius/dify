@@ -1,16 +1,16 @@
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from constants.languages import supported_language
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
-from models import Site
+from models import Account, Site
 
 
 def parse_app_site_args():
@@ -36,7 +36,39 @@ def parse_app_site_args():
     return parser.parse_args()
 
 
+@console_ns.route("/apps/<uuid:app_id>/site")
 class AppSite(Resource):
+    @api.doc("update_app_site")
+    @api.doc(description="Update application site configuration")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "AppSiteRequest",
+            {
+                "title": fields.String(description="Site title"),
+                "icon_type": fields.String(description="Icon type"),
+                "icon": fields.String(description="Icon"),
+                "icon_background": fields.String(description="Icon background color"),
+                "description": fields.String(description="Site description"),
+                "default_language": fields.String(description="Default language"),
+                "chat_color_theme": fields.String(description="Chat color theme"),
+                "chat_color_theme_inverted": fields.Boolean(description="Inverted chat color theme"),
+                "customize_domain": fields.String(description="Custom domain"),
+                "copyright": fields.String(description="Copyright text"),
+                "privacy_policy": fields.String(description="Privacy policy"),
+                "custom_disclaimer": fields.String(description="Custom disclaimer"),
+                "customize_token_strategy": fields.String(
+                    enum=["must", "allow", "not_allow"], description="Token strategy"
+                ),
+                "prompt_public": fields.Boolean(description="Make prompt public"),
+                "show_workflow_steps": fields.Boolean(description="Show workflow steps"),
+                "use_icon_as_answer_icon": fields.Boolean(description="Use icon as answer icon"),
+            },
+        )
+    )
+    @api.response(200, "Site configuration updated successfully", app_site_fields)
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -75,6 +107,8 @@ class AppSite(Resource):
             if value is not None:
                 setattr(site, attr_name, value)
 
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
         db.session.commit()
@@ -82,7 +116,14 @@ class AppSite(Resource):
         return site
 
 
+@console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
 class AppSiteAccessTokenReset(Resource):
+    @api.doc("reset_app_site_access_token")
+    @api.doc(description="Reset access token for application site")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Access token reset successfully", app_site_fields)
+    @api.response(403, "Insufficient permissions (admin/owner required)")
+    @api.response(404, "App or site not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -99,12 +140,10 @@ class AppSiteAccessTokenReset(Resource):
             raise NotFound
 
         site.code = Site.generate_code(16)
+        if not isinstance(current_user, Account):
+            raise ValueError("current_user must be an Account instance")
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
         db.session.commit()
 
         return site
-
-
-api.add_resource(AppSite, "/apps/<uuid:app_id>/site")
-api.add_resource(AppSiteAccessTokenReset, "/apps/<uuid:app_id>/site/access-token-reset")

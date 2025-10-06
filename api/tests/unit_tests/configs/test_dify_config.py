@@ -40,8 +40,6 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # annotated field with configured value
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
 
-    assert config.WORKFLOW_PARALLEL_DEPTH_LIMIT == 3
-
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
 
@@ -91,6 +89,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
         "pool_size": 30,
         "pool_use_lifo": False,
         "pool_reset_on_return": None,
+        "pool_timeout": 30,
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"

@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
-import { OptionCard } from '../../create/step-two/option-card'
-import { retrievalIcon } from '../../create/icons'
 import { RETRIEVE_METHOD } from '@/types/app'
 import type { RetrievalConfig } from '@/types/app'
+import OptionCard from '../../settings/option-card'
+import { VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
+import { EffectColor } from '../../settings/chunk-structure/types'
 
 type Props = {
   disabled?: boolean
@@ -23,20 +23,25 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='space-y-2'>
-      <OptionCard
-        disabled={disabled} icon={<Image className='h-4 w-4' src={retrievalIcon.vector} alt='' />}
-        title={t('dataset.retrieval.invertedIndex.title')}
-        description={t('dataset.retrieval.invertedIndex.description')} isActive
-        activeHeaderClassName='bg-dataset-option-card-purple-gradient'
-      >
-        <RetrievalParamConfig
-          type={RETRIEVE_METHOD.invertedIndex}
-          value={value}
-          onChange={onChange}
-        />
-      </OptionCard>
-    </div>
+    <OptionCard
+      id={RETRIEVE_METHOD.keywordSearch}
+      disabled={disabled}
+      icon={<VectorSearch className='size-4' />}
+      iconActiveColor='text-util-colors-purple-purple-600'
+      title={t('dataset.retrieval.keyword_search.title')}
+      description={t('dataset.retrieval.keyword_search.description')}
+      isActive
+      effectColor={EffectColor.purple}
+      showEffectColor
+      showChildren
+      className='gap-x-2'
+    >
+      <RetrievalParamConfig
+        type={RETRIEVE_METHOD.keywordSearch}
+        value={value}
+        onChange={onChange}
+      />
+    </OptionCard>
   )
 }
 export default React.memo(EconomicalRetrievalMethodConfig)
