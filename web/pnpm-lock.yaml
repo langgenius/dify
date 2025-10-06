@@ -242,8 +242,8 @@ importers:
         specifier: 19.1.1
         version: 19.1.1(react@19.1.1)
       react-easy-crop:
-        specifier: ^5.1.0
-        version: 5.5.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        specifier: ^5.5.3
+        version: 5.5.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       react-hook-form:
         specifier: ^7.53.1
         version: 7.60.0(react@19.1.1)
@@ -7300,8 +7300,8 @@ packages:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
 
-  react-easy-crop@5.5.0:
-    resolution: {integrity: sha512-OZzU+yXMhe69vLkDex+5QxcfT94FdcgVCyW2dBUw35ZoC3Is42TUxUy04w8nH1mfMKaizVdC3rh/wUfNW1mK4w==}
+  react-easy-crop@5.5.3:
+    resolution: {integrity: sha512-iKwFTnAsq+IVuyF6N0Q3zjRx9DG1NMySkwWxVfM/xAOeHYH1vhvM+V2kFiq5HOIQGWouITjfltCx54mbDpMpmA==}
     peerDependencies:
       react: '>=16.4.0'
       react-dom: '>=16.4.0'
@@ -17070,7 +17070,7 @@ snapshots:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  react-easy-crop@5.5.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
+  react-easy-crop@5.5.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
     dependencies:
       normalize-wheel: 1.0.1
       react: 19.1.1
