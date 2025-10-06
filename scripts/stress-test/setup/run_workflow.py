@@ -5,9 +5,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import httpx
 import json
-from common import config_helper, Logger
+
+import httpx
+from common import Logger, config_helper
 
 
 def run_workflow(question: str = "fake question", streaming: bool = True) -> None:
@@ -70,9 +71,7 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                                     event = data.get("event")
 
                                     if event == "workflow_started":
-                                        log.progress(
-                                            f"Workflow started: {data.get('data', {}).get('id')}"
-                                        )
+                                        log.progress(f"Workflow started: {data.get('data', {}).get('id')}")
                                     elif event == "node_started":
                                         node_data = data.get("data", {})
                                         log.progress(
@@ -116,9 +115,7 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                                     # Some lines might not be JSON
                                     pass
                     else:
-                        log.error(
-                            f"Workflow run failed with status code: {response.status_code}"
-                        )
+                        log.error(f"Workflow run failed with status code: {response.status_code}")
                         log.debug(f"Response: {response.text}")
             else:
                 # Handle blocking response
@@ -142,9 +139,7 @@ def run_workflow(question: str = "fake question", streaming: bool = True) -> Non
                         log.info("📤 Final Answer:")
                         log.info(outputs.get("answer"), indent=2)
                 else:
-                    log.error(
-                        f"Workflow run failed with status code: {response.status_code}"
-                    )
+                    log.error(f"Workflow run failed with status code: {response.status_code}")
                     log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

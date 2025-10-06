@@ -36,7 +36,6 @@ from core.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -51,6 +50,7 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 
@@ -514,6 +514,21 @@ class ProviderManager:
         return provider_name_to_provider_load_balancing_model_configs_dict
 
     @staticmethod
+    def _get_provider_names(provider_name: str) -> list[str]:
+        """
+        provider_name: `openai` or `langgenius/openai/openai`
+        return: [`openai`, `langgenius/openai/openai`]
+        """
+        provider_names = [provider_name]
+        model_provider_id = ModelProviderID(provider_name)
+        if model_provider_id.is_langgenius():
+            if "/" in provider_name:
+                provider_names.append(model_provider_id.provider_name)
+            else:
+                provider_names.append(str(model_provider_id))
+        return provider_names
+
+    @staticmethod
     def get_provider_available_credentials(tenant_id: str, provider_name: str) -> list[CredentialConfiguration]:
         """
         Get provider all credentials.
@@ -525,7 +540,10 @@ class ProviderManager:
         with Session(db.engine, expire_on_commit=False) as session:
             stmt = (
                 select(ProviderCredential)
-                .where(ProviderCredential.tenant_id == tenant_id, ProviderCredential.provider_name == provider_name)
+                .where(
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
+                )
                 .order_by(ProviderCredential.created_at.desc())
             )
 
@@ -554,7 +572,7 @@ class ProviderManager:
                 select(ProviderModelCredential)
                 .where(
                     ProviderModelCredential.tenant_id == tenant_id,
-                    ProviderModelCredential.provider_name == provider_name,
+                    ProviderModelCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
                     ProviderModelCredential.model_name == model_name,
                     ProviderModelCredential.model_type == model_type,
                 )
@@ -1028,7 +1046,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type == FormType.SECRET_INPUT:
+            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables

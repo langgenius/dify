@@ -15,7 +15,7 @@ type State = {
 
 type Action = {
   setAppDetail: (appDetail?: App & Partial<AppSSO>) => void
-  setAppSiderbarExpand: (state: string) => void
+  setAppSidebarExpand: (state: string) => void
   setCurrentLogItem: (item?: IChatItem) => void
   setCurrentLogModalActiveTab: (tab: string) => void
   setShowPromptLogModal: (showPromptLogModal: boolean) => void
@@ -28,7 +28,7 @@ export const useStore = create<State & Action>(set => ({
   appDetail: undefined,
   setAppDetail: appDetail => set(() => ({ appDetail })),
   appSidebarExpand: '',
-  setAppSiderbarExpand: appSidebarExpand => set(() => ({ appSidebarExpand })),
+  setAppSidebarExpand: appSidebarExpand => set(() => ({ appSidebarExpand })),
   currentLogItem: undefined,
   currentLogModalActiveTab: 'DETAIL',
   setCurrentLogItem: currentLogItem => set(() => ({ currentLogItem })),

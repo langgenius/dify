@@ -454,7 +454,7 @@ class TestToolTransformService:
             name=fake.company(),
             description=I18nObject(en_US=fake.text(max_nb_chars=100)),
             icon='{"background": "#FF6B6B", "content": "🔧"}',
-            icon_dark=None,
+            icon_dark="",
             label=I18nObject(en_US=fake.company()),
             type=ToolProviderType.API,
             masked_credentials={},
@@ -473,8 +473,8 @@ class TestToolTransformService:
         assert provider.icon["background"] == "#FF6B6B"
         assert provider.icon["content"] == "🔧"
 
-        # Verify dark icon remains None
-        assert provider.icon_dark is None
+        # Verify dark icon remains empty string
+        assert provider.icon_dark == ""
 
     def test_builtin_provider_to_user_provider_success(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -628,7 +628,7 @@ class TestToolTransformService:
         assert result is not None
         assert result.is_team_authorization is True
         assert result.allow_delete is False
-        assert result.masked_credentials == {}
+        assert result.masked_credentials == {"api_key": ""}
 
     def test_api_provider_to_controller_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
