@@ -7,7 +7,6 @@ import pytest
 from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexType
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
 from tasks.document_indexing_update_task import document_indexing_update_task
@@ -200,7 +199,9 @@ class TestDocumentIndexingUpdateTask:
         assert clean_call_args[1]["delete_child_chunks"] is True
 
         # Verify segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
@@ -280,7 +281,9 @@ class TestDocumentIndexingUpdateTask:
         assert document.processing_started_at is not None
 
         # Verify segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
@@ -318,7 +321,9 @@ class TestDocumentIndexingUpdateTask:
 
         # Note: Segments are not deleted when cleanup fails due to exception handling
         # This is expected behavior based on the actual task implementation
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 3  # Segments remain when cleanup fails
 
     def test_document_indexing_update_with_parent_child_index(
@@ -363,7 +368,9 @@ class TestDocumentIndexingUpdateTask:
         assert document.processing_started_at is not None
 
         # Verify segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
@@ -380,7 +387,9 @@ class TestDocumentIndexingUpdateTask:
         )
 
         # Verify no segments exist
-        existing_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        existing_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(existing_segments) == 0
 
         # Act: Execute the task
@@ -439,7 +448,9 @@ class TestDocumentIndexingUpdateTask:
         mock_external_service_dependencies["runner_instance"].run.assert_called_once()
 
         # Verify segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 0
 
     def test_document_indexing_update_general_exception_handling(
@@ -472,7 +483,9 @@ class TestDocumentIndexingUpdateTask:
         mock_external_service_dependencies["runner_instance"].run.assert_called_once()
 
         # Verify segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 0
 
     def test_document_indexing_update_with_mixed_segment_states(
@@ -570,7 +583,9 @@ class TestDocumentIndexingUpdateTask:
         assert "node_2" in index_node_ids
 
         # Verify all segments were deleted
-        remaining_segments = db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        remaining_segments = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        )
         assert len(remaining_segments) == 0
 
         # Verify indexing runner was called
