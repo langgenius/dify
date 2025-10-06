@@ -150,7 +150,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_STRING_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for strings in code execution",
-        default=80000,
+        default=400_000,
     )
 
     CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
@@ -591,6 +591,11 @@ class WorkflowConfig(BaseSettings):
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
+    )
+
+    TEMPLATE_TRANSFORM_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters allowed in Template Transform node output",
+        default=400_000,
     )
 
     # GraphEngine Worker Pool Configuration
