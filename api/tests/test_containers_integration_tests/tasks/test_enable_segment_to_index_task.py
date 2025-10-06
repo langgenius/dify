@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DocumentSegment
@@ -32,14 +31,14 @@ class TestEnableSegmentToIndexTask:
     def cleanup_database(self, db_session_with_containers):
         """Clean up database before each test to ensure isolation."""
         # Clear all test data
-        db.session.query(DocumentSegment).delete()
-        db.session.query(DocumentModel).delete()
-        db.session.query(Dataset).delete()
-        db.session.query(UploadFile).delete()
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Tenant).delete()
-        db.session.query(Account).delete()
-        db.session.commit()
+        db_session_with_containers.query(DocumentSegment).delete()
+        db_session_with_containers.query(DocumentModel).delete()
+        db_session_with_containers.query(Dataset).delete()
+        db_session_with_containers.query(UploadFile).delete()
+        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.query(Tenant).delete()
+        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -79,16 +78,16 @@ class TestEnableSegmentToIndexTask:
             status="active",
         )
 
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -97,8 +96,8 @@ class TestEnableSegmentToIndexTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -130,8 +129,8 @@ class TestEnableSegmentToIndexTask:
             created_by=account.id,
         )
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         return dataset
 
@@ -167,8 +166,8 @@ class TestEnableSegmentToIndexTask:
             word_count=0,
         )
 
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         return document
 
@@ -204,8 +203,8 @@ class TestEnableSegmentToIndexTask:
             created_by=account.id,
         )
 
-        db.session.add(segment)
-        db.session.commit()
+        db_session_with_containers.add(segment)
+        db_session_with_containers.commit()
 
         return segment
 
@@ -338,8 +337,8 @@ class TestEnableSegmentToIndexTask:
         segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Delete the dataset to simulate dataset not found scenario
-        db.session.delete(dataset)
-        db.session.commit()
+        db_session_with_containers.delete(dataset)
+        db_session_with_containers.commit()
 
         # Execute the task
         enable_segment_to_index_task(segment.id)
@@ -359,8 +358,8 @@ class TestEnableSegmentToIndexTask:
         segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Delete the document to simulate document not found scenario
-        db.session.delete(document)
-        db.session.commit()
+        db_session_with_containers.delete(document)
+        db_session_with_containers.commit()
 
         # Execute the task
         enable_segment_to_index_task(segment.id)
@@ -430,8 +429,8 @@ class TestEnableSegmentToIndexTask:
         ]
 
         for document in test_cases:
-            db.session.add(document)
-        db.session.commit()
+            db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Test each unavailable document
         for document in test_cases:
@@ -465,7 +464,7 @@ class TestEnableSegmentToIndexTask:
         enable_segment_to_index_task(segment.id)
 
         # Verify error handling
-        db.session.refresh(segment)
+        db_session_with_containers.refresh(segment)
         assert segment.enabled is False
         assert segment.status == "error"
         assert segment.error is not None
