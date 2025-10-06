@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from extensions.ext_database import db
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_change_mail_task import send_change_mail_completed_notification_task, send_change_mail_task
@@ -51,16 +50,16 @@ class TestMailChangeMailTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -69,8 +68,8 @@ class TestMailChangeMailTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         return account
 
