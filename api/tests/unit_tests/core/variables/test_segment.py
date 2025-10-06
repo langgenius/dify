@@ -37,7 +37,7 @@ from core.variables.variables import (
     Variable,
     VariableUnion,
 )
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.system_variable import SystemVariable
 
 

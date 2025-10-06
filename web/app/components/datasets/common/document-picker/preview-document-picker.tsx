@@ -51,7 +51,7 @@ const PreviewDocumentPicker: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
         <div className={cn('flex h-6 select-none items-center rounded-md px-1 hover:bg-state-base-hover', open && 'bg-state-base-hover', className)}>
-          <FileIcon name={name} extension={extension} size='md' />
+          <FileIcon name={name} extension={extension} size='lg' />
           <div className='ml-1 flex flex-col items-start'>
             <div className='flex items-center space-x-0.5'>
               <span className={cn('system-md-semibold max-w-[200px] truncate text-text-primary')}> {name || '--'}</span>

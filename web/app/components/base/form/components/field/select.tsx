@@ -1,31 +1,25 @@
 import cn from '@/utils/classnames'
 import { useFieldContext } from '../..'
+import type { Option, PureSelectProps } from '../../../select/pure'
 import PureSelect from '../../../select/pure'
+import type { LabelProps } from '../label'
 import Label from '../label'
-
-type SelectOption = {
-  value: string
-  label: string
-}
 
 type SelectFieldProps = {
   label: string
-  options: SelectOption[]
-  isRequired?: boolean
-  showOptional?: boolean
-  tooltip?: string
+  labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
+  options: Option[]
+  onChange?: (value: string) => void
   className?: string
-  labelClassName?: string
-}
+} & Omit<PureSelectProps, 'options' | 'value' | 'onChange'>
 
 const SelectField = ({
   label,
+  labelOptions,
   options,
-  isRequired,
-  showOptional,
-  tooltip,
+  onChange,
   className,
-  labelClassName,
+  ...selectProps
 }: SelectFieldProps) => {
   const field = useFieldContext<string>()
 
@@ -34,15 +28,13 @@ const SelectField = ({
       <Label
         htmlFor={field.name}
         label={label}
-        isRequired={isRequired}
-        showOptional={showOptional}
-        tooltip={tooltip}
-        className={labelClassName}
+        {...(labelOptions ?? {})}
       />
       <PureSelect
         value={field.state.value}
         options={options}
         onChange={value => field.handleChange(value)}
+        {...selectProps}
       />
     </div>
   )

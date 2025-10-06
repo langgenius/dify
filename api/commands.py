@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 import secrets
-from typing import Any, Optional
+from typing import Any
 
 import click
 import sqlalchemy as sa
@@ -10,32 +10,41 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from constants.languages import languages
-from core.plugin.entities.plugin import ToolProviderID
+from core.helper import encrypter
+from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
+from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
+from extensions.storage.storage_type import StorageType
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
+from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
+from models.provider_ids import DatasourceProviderID, ToolProviderID
+from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
+from services.plugin.plugin_service import PluginService
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -53,31 +62,30 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        try:
+            valid_password(new_password)
+        except:
+            click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
+            return
 
-    try:
-        valid_password(new_password)
-    except:
-        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
-        return
+        # generate password salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
 
-    # generate password salt
-    salt = secrets.token_bytes(16)
-    base64_salt = base64.b64encode(salt).decode()
-
-    # encrypt password with salt
-    password_hashed = hash_password(new_password, salt)
-    base64_password_hashed = base64.b64encode(password_hashed).decode()
-    account.password = base64_password_hashed
-    account.password_salt = base64_salt
-    db.session.commit()
-    AccountService.reset_login_error_rate_limit(email)
-    click.echo(click.style("Password reset successfully.", fg="green"))
+        # encrypt password with salt
+        password_hashed = hash_password(new_password, salt)
+        base64_password_hashed = base64.b64encode(password_hashed).decode()
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        AccountService.reset_login_error_rate_limit(email)
+        click.echo(click.style("Password reset successfully.", fg="green"))
 
 
 @click.command("reset-email", help="Reset the account email.")
@@ -92,22 +100,21 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        try:
+            email_validate(new_email)
+        except:
+            click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
+            return
 
-    try:
-        email_validate(new_email)
-    except:
-        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
-        return
-
-    account.email = new_email
-    db.session.commit()
-    click.echo(click.style("Email updated successfully.", fg="green"))
+        account.email = new_email
+        click.echo(click.style("Email updated successfully.", fg="green"))
 
 
 @click.command(
@@ -131,25 +138,24 @@ def reset_encrypt_key_pair():
     if dify_config.EDITION != "SELF_HOSTED":
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        tenants = session.query(Tenant).all()
+        for tenant in tenants:
+            if not tenant:
+                click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
+                return
 
-    tenants = db.session.query(Tenant).all()
-    for tenant in tenants:
-        if not tenant:
-            click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
-            return
+            tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-        tenant.encrypt_public_key = generate_key_pair(tenant.id)
+            session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
+            session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
 
-        db.session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-        db.session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
-        db.session.commit()
-
-        click.echo(
-            click.style(
-                f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
-                fg="green",
+            click.echo(
+                click.style(
+                    f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
+                    fg="green",
+                )
             )
-        )
 
 
 @click.command("vdb-migrate", help="Migrate vector db.")
@@ -174,14 +180,15 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            apps = (
-                db.session.query(App)
-                .where(App.status == "normal")
-                .order_by(App.created_at.desc())
-                .limit(per_page)
-                .offset((page - 1) * per_page)
-                .all()
-            )
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                apps = (
+                    session.query(App)
+                    .where(App.status == "normal")
+                    .order_by(App.created_at.desc())
+                    .limit(per_page)
+                    .offset((page - 1) * per_page)
+                    .all()
+                )
             if not apps:
                 break
         except SQLAlchemyError:
@@ -195,26 +202,27 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
-                )
+                with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                    app_annotation_setting = (
+                        session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
+                    )
 
-                if not app_annotation_setting:
-                    skipped_count = skipped_count + 1
-                    click.echo(f"App annotation setting disabled: {app.id}")
-                    continue
-                # get dataset_collection_binding info
-                dataset_collection_binding = (
-                    db.session.query(DatasetCollectionBinding)
-                    .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
-                    .first()
-                )
-                if not dataset_collection_binding:
-                    click.echo(f"App annotation collection binding not found: {app.id}")
-                    continue
-                annotations = db.session.scalars(
-                    select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
-                ).all()
+                    if not app_annotation_setting:
+                        skipped_count = skipped_count + 1
+                        click.echo(f"App annotation setting disabled: {app.id}")
+                        continue
+                    # get dataset_collection_binding info
+                    dataset_collection_binding = (
+                        session.query(DatasetCollectionBinding)
+                        .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                        .first()
+                    )
+                    if not dataset_collection_binding:
+                        click.echo(f"App annotation collection binding not found: {app.id}")
+                        continue
+                    annotations = session.scalars(
+                        select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
+                    ).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -639,7 +647,7 @@ def old_metadata_migration():
 @click.option("--email", prompt=True, help="Tenant account email.")
 @click.option("--name", prompt=True, help="Workspace name.")
 @click.option("--language", prompt=True, help="Account language, default: en-US.")
-def create_tenant(email: str, language: Optional[str] = None, name: Optional[str] = None):
+def create_tenant(email: str, language: str | None = None, name: str | None = None):
     """
     Create tenant account
     """
@@ -731,18 +739,18 @@ where sites.id is null limit 1000"""
                 try:
                     app = db.session.query(App).where(App.id == app_id).first()
                     if not app:
-                        print(f"App {app_id} not found")
+                        logger.info("App %s not found", app_id)
                         continue
 
                     tenant = app.tenant
                     if tenant:
                         accounts = tenant.get_accounts()
                         if not accounts:
-                            print(f"Fix failed for app {app.id}")
+                            logger.info("Fix failed for app %s", app.id)
                             continue
 
                         account = accounts[0]
-                        print(f"Fixing missing site for app {app.id}")
+                        logger.info("Fixing missing site for app %s", app.id)
                         app_was_created.send(app, account=account)
                 except Exception:
                     failed_app_ids.append(app_id)
@@ -953,7 +961,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(sa.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+                conn.execute(sa.text(query), {"ids": tuple(record["id"] for record in orphaned_message_files)})
             click.echo(
                 click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
             )
@@ -1245,15 +1253,17 @@ def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:
 
 def _count_orphaned_draft_variables() -> dict[str, Any]:
     """
-    Count orphaned draft variables by app.
+    Count orphaned draft variables by app, including associated file counts.
 
     Returns:
-        Dictionary with statistics about orphaned variables
+        Dictionary with statistics about orphaned variables and files
     """
-    query = """
+    # Count orphaned variables by app
+    variables_query = """
         SELECT
             wdv.app_id,
-            COUNT(*) as variable_count
+            COUNT(*) as variable_count,
+            COUNT(wdv.file_id) as file_count
         FROM workflow_draft_variables AS wdv
         WHERE NOT EXISTS(
             SELECT 1 FROM apps WHERE apps.id = wdv.app_id
@@ -1263,14 +1273,21 @@ def _count_orphaned_draft_variables() -> dict[str, Any]:
     """
 
     with db.engine.connect() as conn:
-        result = conn.execute(sa.text(query))
-        orphaned_by_app = {row[0]: row[1] for row in result}
+        result = conn.execute(sa.text(variables_query))
+        orphaned_by_app = {}
+        total_files = 0
 
-        total_orphaned = sum(orphaned_by_app.values())
+        for row in result:
+            app_id, variable_count, file_count = row
+            orphaned_by_app[app_id] = {"variables": variable_count, "files": file_count}
+            total_files += file_count
+
+        total_orphaned = sum(app_data["variables"] for app_data in orphaned_by_app.values())
         app_count = len(orphaned_by_app)
 
         return {
             "total_orphaned_variables": total_orphaned,
+            "total_orphaned_files": total_files,
             "orphaned_app_count": app_count,
             "orphaned_by_app": orphaned_by_app,
         }
@@ -1299,6 +1316,7 @@ def cleanup_orphaned_draft_variables(
     stats = _count_orphaned_draft_variables()
 
     logger.info("Found %s orphaned draft variables", stats["total_orphaned_variables"])
+    logger.info("Found %s associated offload files", stats["total_orphaned_files"])
     logger.info("Across %s non-existent apps", stats["orphaned_app_count"])
 
     if stats["total_orphaned_variables"] == 0:
@@ -1307,10 +1325,10 @@ def cleanup_orphaned_draft_variables(
 
     if dry_run:
         logger.info("DRY RUN: Would delete the following:")
-        for app_id, count in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1], reverse=True)[
+        for app_id, data in sorted(stats["orphaned_by_app"].items(), key=lambda x: x[1]["variables"], reverse=True)[
             :10
         ]:  # Show top 10
-            logger.info("  App %s: %s variables", app_id, count)
+            logger.info("  App %s: %s variables, %s files", app_id, data["variables"], data["files"])
         if len(stats["orphaned_by_app"]) > 10:
             logger.info("  ... and %s more apps", len(stats["orphaned_by_app"]) - 10)
         return
@@ -1319,7 +1337,8 @@ def cleanup_orphaned_draft_variables(
     if not force:
         click.confirm(
             f"Are you sure you want to delete {stats['total_orphaned_variables']} "
-            f"orphaned draft variables from {stats['orphaned_app_count']} apps?",
+            f"orphaned draft variables and {stats['total_orphaned_files']} associated files "
+            f"from {stats['orphaned_app_count']} apps?",
             abort=True,
         )
 
@@ -1352,3 +1371,456 @@ def cleanup_orphaned_draft_variables(
                 continue
 
     logger.info("Cleanup completed. Total deleted: %s variables across %s apps", total_deleted, processed_apps)
+
+
+@click.command("setup-datasource-oauth-client", help="Setup datasource oauth client.")
+@click.option("--provider", prompt=True, help="Provider name")
+@click.option("--client-params", prompt=True, help="Client Params")
+def setup_datasource_oauth_client(provider, client_params):
+    """
+    Setup datasource oauth client
+    """
+    provider_id = DatasourceProviderID(provider)
+    provider_name = provider_id.provider_name
+    plugin_id = provider_id.plugin_id
+
+    try:
+        # json validate
+        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
+        click.echo(click.style("Client params validated successfully.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
+        return
+
+    click.echo(click.style(f"Ready to delete existing oauth client params: {provider_name}", fg="yellow"))
+    deleted_count = (
+        db.session.query(DatasourceOauthParamConfig)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
+    if deleted_count > 0:
+        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+
+    click.echo(click.style(f"Ready to setup datasource oauth client: {provider_name}", fg="yellow"))
+    oauth_client = DatasourceOauthParamConfig(
+        provider=provider_name,
+        plugin_id=plugin_id,
+        system_credentials=client_params_dict,
+    )
+    db.session.add(oauth_client)
+    db.session.commit()
+    click.echo(click.style(f"provider: {provider_name}", fg="green"))
+    click.echo(click.style(f"plugin_id: {plugin_id}", fg="green"))
+    click.echo(click.style(f"params: {json.dumps(client_params_dict, indent=2, ensure_ascii=False)}", fg="green"))
+    click.echo(click.style(f"Datasource oauth client setup successfully. id: {oauth_client.id}", fg="green"))
+
+
+@click.command("transform-datasource-credentials", help="Transform datasource credentials.")
+def transform_datasource_credentials():
+    """
+    Transform datasource credentials
+    """
+    try:
+        installer_manager = PluginInstaller()
+        plugin_migration = PluginMigration()
+
+        notion_plugin_id = "langgenius/notion_datasource"
+        firecrawl_plugin_id = "langgenius/firecrawl_datasource"
+        jina_plugin_id = "langgenius/jina_datasource"
+        notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        oauth_credential_type = CredentialType.OAUTH2
+        api_key_credential_type = CredentialType.API_KEY
+
+        # deal notion credentials
+        deal_notion_count = 0
+        notion_credentials = db.session.query(DataSourceOauthBinding).filter_by(provider="notion").all()
+        if notion_credentials:
+            notion_credentials_tenant_mapping: dict[str, list[DataSourceOauthBinding]] = {}
+            for notion_credential in notion_credentials:
+                tenant_id = notion_credential.tenant_id
+                if tenant_id not in notion_credentials_tenant_mapping:
+                    notion_credentials_tenant_mapping[tenant_id] = []
+                notion_credentials_tenant_mapping[tenant_id].append(notion_credential)
+            for tenant_id, notion_tenant_credentials in notion_credentials_tenant_mapping.items():
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                if not tenant:
+                    continue
+                try:
+                    # check notion plugin is installed
+                    installed_plugins = installer_manager.list_plugins(tenant_id)
+                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                    if notion_plugin_id not in installed_plugins_ids:
+                        if notion_plugin_unique_identifier:
+                            # install notion plugin
+                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
+                    auth_count = 0
+                    for notion_tenant_credential in notion_tenant_credentials:
+                        auth_count += 1
+                        # get credential oauth params
+                        access_token = notion_tenant_credential.access_token
+                        # notion info
+                        notion_info = notion_tenant_credential.source_info
+                        workspace_id = notion_info.get("workspace_id")
+                        workspace_name = notion_info.get("workspace_name")
+                        workspace_icon = notion_info.get("workspace_icon")
+                        new_credentials = {
+                            "integration_secret": encrypter.encrypt_token(tenant_id, access_token),
+                            "workspace_id": workspace_id,
+                            "workspace_name": workspace_name,
+                            "workspace_icon": workspace_icon,
+                        }
+                        datasource_provider = DatasourceProvider(
+                            provider="notion_datasource",
+                            tenant_id=tenant_id,
+                            plugin_id=notion_plugin_id,
+                            auth_type=oauth_credential_type.value,
+                            encrypted_credentials=new_credentials,
+                            name=f"Auth {auth_count}",
+                            avatar_url=workspace_icon or "default",
+                            is_default=False,
+                        )
+                        db.session.add(datasource_provider)
+                        deal_notion_count += 1
+                except Exception as e:
+                    click.echo(
+                        click.style(
+                            f"Error transforming notion credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        )
+                    )
+                    continue
+                db.session.commit()
+        # deal firecrawl credentials
+        deal_firecrawl_count = 0
+        firecrawl_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="firecrawl").all()
+        if firecrawl_credentials:
+            firecrawl_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
+            for firecrawl_credential in firecrawl_credentials:
+                tenant_id = firecrawl_credential.tenant_id
+                if tenant_id not in firecrawl_credentials_tenant_mapping:
+                    firecrawl_credentials_tenant_mapping[tenant_id] = []
+                firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
+            for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                if not tenant:
+                    continue
+                try:
+                    # check firecrawl plugin is installed
+                    installed_plugins = installer_manager.list_plugins(tenant_id)
+                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                    if firecrawl_plugin_id not in installed_plugins_ids:
+                        if firecrawl_plugin_unique_identifier:
+                            # install firecrawl plugin
+                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
+
+                    auth_count = 0
+                    for firecrawl_tenant_credential in firecrawl_tenant_credentials:
+                        auth_count += 1
+                        # get credential api key
+                        credentials_json = json.loads(firecrawl_tenant_credential.credentials)
+                        api_key = credentials_json.get("config", {}).get("api_key")
+                        base_url = credentials_json.get("config", {}).get("base_url")
+                        new_credentials = {
+                            "firecrawl_api_key": api_key,
+                            "base_url": base_url,
+                        }
+                        datasource_provider = DatasourceProvider(
+                            provider="firecrawl",
+                            tenant_id=tenant_id,
+                            plugin_id=firecrawl_plugin_id,
+                            auth_type=api_key_credential_type.value,
+                            encrypted_credentials=new_credentials,
+                            name=f"Auth {auth_count}",
+                            avatar_url="default",
+                            is_default=False,
+                        )
+                        db.session.add(datasource_provider)
+                        deal_firecrawl_count += 1
+                except Exception as e:
+                    click.echo(
+                        click.style(
+                            f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        )
+                    )
+                    continue
+                db.session.commit()
+        # deal jina credentials
+        deal_jina_count = 0
+        jina_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="jinareader").all()
+        if jina_credentials:
+            jina_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
+            for jina_credential in jina_credentials:
+                tenant_id = jina_credential.tenant_id
+                if tenant_id not in jina_credentials_tenant_mapping:
+                    jina_credentials_tenant_mapping[tenant_id] = []
+                jina_credentials_tenant_mapping[tenant_id].append(jina_credential)
+            for tenant_id, jina_tenant_credentials in jina_credentials_tenant_mapping.items():
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                if not tenant:
+                    continue
+                try:
+                    # check jina plugin is installed
+                    installed_plugins = installer_manager.list_plugins(tenant_id)
+                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                    if jina_plugin_id not in installed_plugins_ids:
+                        if jina_plugin_unique_identifier:
+                            # install jina plugin
+                            logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
+                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
+
+                    auth_count = 0
+                    for jina_tenant_credential in jina_tenant_credentials:
+                        auth_count += 1
+                        # get credential api key
+                        credentials_json = json.loads(jina_tenant_credential.credentials)
+                        api_key = credentials_json.get("config", {}).get("api_key")
+                        new_credentials = {
+                            "integration_secret": api_key,
+                        }
+                        datasource_provider = DatasourceProvider(
+                            provider="jina",
+                            tenant_id=tenant_id,
+                            plugin_id=jina_plugin_id,
+                            auth_type=api_key_credential_type.value,
+                            encrypted_credentials=new_credentials,
+                            name=f"Auth {auth_count}",
+                            avatar_url="default",
+                            is_default=False,
+                        )
+                        db.session.add(datasource_provider)
+                        deal_jina_count += 1
+                except Exception as e:
+                    click.echo(
+                        click.style(f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red")
+                    )
+                    continue
+                db.session.commit()
+    except Exception as e:
+        click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
+        return
+    click.echo(click.style(f"Transforming notion successfully. deal_notion_count: {deal_notion_count}", fg="green"))
+    click.echo(
+        click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green")
+    )
+    click.echo(click.style(f"Transforming jina successfully. deal_jina_count: {deal_jina_count}", fg="green"))
+
+
+@click.command("install-rag-pipeline-plugins", help="Install rag pipeline plugins.")
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+@click.option(
+    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+)
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_rag_pipeline_plugins(input_file, output_file, workers):
+    """
+    Install rag pipeline plugins
+    """
+    click.echo(click.style("Installing rag pipeline plugins", fg="yellow"))
+    plugin_migration = PluginMigration()
+    plugin_migration.install_rag_pipeline_plugins(
+        input_file,
+        output_file,
+        workers,
+    )
+    click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))
+
+
+@click.command(
+    "migrate-oss",
+    help="Migrate files from Local or OpenDAL source to a cloud OSS storage (destination must NOT be local/opendal).",
+)
+@click.option(
+    "--path",
+    "paths",
+    multiple=True,
+    help="Storage path prefixes to migrate (repeatable). Defaults: privkeys, upload_files, image_files,"
+    " tools, website_files, keyword_files, ops_trace",
+)
+@click.option(
+    "--source",
+    type=click.Choice(["local", "opendal"], case_sensitive=False),
+    default="opendal",
+    show_default=True,
+    help="Source storage type to read from",
+)
+@click.option("--overwrite", is_flag=True, default=False, help="Overwrite destination if file already exists")
+@click.option("--dry-run", is_flag=True, default=False, help="Show what would be migrated without uploading")
+@click.option("-f", "--force", is_flag=True, help="Skip confirmation and run without prompts")
+@click.option(
+    "--update-db/--no-update-db",
+    default=True,
+    help="Update upload_files.storage_type from source type to current storage after migration",
+)
+def migrate_oss(
+    paths: tuple[str, ...],
+    source: str,
+    overwrite: bool,
+    dry_run: bool,
+    force: bool,
+    update_db: bool,
+):
+    """
+    Copy all files under selected prefixes from a source storage
+    (Local filesystem or OpenDAL-backed) into the currently configured
+    destination storage backend, then optionally update DB records.
+
+    Expected usage: set STORAGE_TYPE (and its credentials) to your target backend.
+    """
+    # Ensure target storage is not local/opendal
+    if dify_config.STORAGE_TYPE in (StorageType.LOCAL, StorageType.OPENDAL):
+        click.echo(
+            click.style(
+                "Target STORAGE_TYPE must be a cloud OSS (not 'local' or 'opendal').\n"
+                "Please set STORAGE_TYPE to one of: s3, aliyun-oss, azure-blob, google-storage, tencent-cos, \n"
+                "volcengine-tos, supabase, oci-storage, huawei-obs, baidu-obs, clickzetta-volume.",
+                fg="red",
+            )
+        )
+        return
+
+    # Default paths if none specified
+    default_paths = ("privkeys", "upload_files", "image_files", "tools", "website_files", "keyword_files", "ops_trace")
+    path_list = list(paths) if paths else list(default_paths)
+    is_source_local = source.lower() == "local"
+
+    click.echo(click.style("Preparing migration to target storage.", fg="yellow"))
+    click.echo(click.style(f"Target storage type: {dify_config.STORAGE_TYPE}", fg="white"))
+    if is_source_local:
+        src_root = dify_config.STORAGE_LOCAL_PATH
+        click.echo(click.style(f"Source: local fs, root: {src_root}", fg="white"))
+    else:
+        click.echo(click.style(f"Source: opendal scheme={dify_config.OPENDAL_SCHEME}", fg="white"))
+    click.echo(click.style(f"Paths to migrate: {', '.join(path_list)}", fg="white"))
+    click.echo("")
+
+    if not force:
+        click.confirm("Proceed with migration?", abort=True)
+
+    # Instantiate source storage
+    try:
+        if is_source_local:
+            src_root = dify_config.STORAGE_LOCAL_PATH
+            source_storage = OpenDALStorage(scheme="fs", root=src_root)
+        else:
+            source_storage = OpenDALStorage(scheme=dify_config.OPENDAL_SCHEME)
+    except Exception as e:
+        click.echo(click.style(f"Failed to initialize source storage: {str(e)}", fg="red"))
+        return
+
+    total_files = 0
+    copied_files = 0
+    skipped_files = 0
+    errored_files = 0
+    copied_upload_file_keys: list[str] = []
+
+    for prefix in path_list:
+        click.echo(click.style(f"Scanning source path: {prefix}", fg="white"))
+        try:
+            keys = source_storage.scan(path=prefix, files=True, directories=False)
+        except FileNotFoundError:
+            click.echo(click.style(f"  -> Skipping missing path: {prefix}", fg="yellow"))
+            continue
+        except NotImplementedError:
+            click.echo(click.style("  -> Source storage does not support scanning.", fg="red"))
+            return
+        except Exception as e:
+            click.echo(click.style(f"  -> Error scanning '{prefix}': {str(e)}", fg="red"))
+            continue
+
+        click.echo(click.style(f"Found {len(keys)} files under {prefix}", fg="white"))
+
+        for key in keys:
+            total_files += 1
+
+            # check destination existence
+            if not overwrite:
+                try:
+                    if storage.exists(key):
+                        skipped_files += 1
+                        continue
+                except Exception as e:
+                    # existence check failures should not block migration attempt
+                    # but should be surfaced to user as a warning for visibility
+                    click.echo(
+                        click.style(
+                            f"  -> Warning: failed target existence check for {key}: {str(e)}",
+                            fg="yellow",
+                        )
+                    )
+
+            if dry_run:
+                copied_files += 1
+                continue
+
+            # read from source and write to destination
+            try:
+                data = source_storage.load_once(key)
+            except FileNotFoundError:
+                errored_files += 1
+                click.echo(click.style(f"  -> Missing on source: {key}", fg="yellow"))
+                continue
+            except Exception as e:
+                errored_files += 1
+                click.echo(click.style(f"  -> Error reading {key}: {str(e)}", fg="red"))
+                continue
+
+            try:
+                storage.save(key, data)
+                copied_files += 1
+                if prefix == "upload_files":
+                    copied_upload_file_keys.append(key)
+            except Exception as e:
+                errored_files += 1
+                click.echo(click.style(f"  -> Error writing {key} to target: {str(e)}", fg="red"))
+                continue
+
+    click.echo("")
+    click.echo(click.style("Migration summary:", fg="yellow"))
+    click.echo(click.style(f"  Total:   {total_files}", fg="white"))
+    click.echo(click.style(f"  Copied:  {copied_files}", fg="green"))
+    click.echo(click.style(f"  Skipped: {skipped_files}", fg="white"))
+    if errored_files:
+        click.echo(click.style(f"  Errors:  {errored_files}", fg="red"))
+
+    if dry_run:
+        click.echo(click.style("Dry-run complete. No changes were made.", fg="green"))
+        return
+
+    if errored_files:
+        click.echo(
+            click.style(
+                "Some files failed to migrate. Review errors above before updating DB records.",
+                fg="yellow",
+            )
+        )
+        if update_db and not force:
+            if not click.confirm("Proceed to update DB storage_type despite errors?", default=False):
+                update_db = False
+
+    # Optionally update DB records for upload_files.storage_type (only for successfully copied upload_files)
+    if update_db:
+        if not copied_upload_file_keys:
+            click.echo(click.style("No upload_files copied. Skipping DB storage_type update.", fg="yellow"))
+        else:
+            try:
+                source_storage_type = StorageType.LOCAL if is_source_local else StorageType.OPENDAL
+                updated = (
+                    db.session.query(UploadFile)
+                    .where(
+                        UploadFile.storage_type == source_storage_type,
+                        UploadFile.key.in_(copied_upload_file_keys),
+                    )
+                    .update({UploadFile.storage_type: dify_config.STORAGE_TYPE}, synchronize_session=False)
+                )
+                db.session.commit()
+                click.echo(click.style(f"Updated storage_type for {updated} upload_files records.", fg="green"))
+            except Exception as e:
+                db.session.rollback()
+                click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))

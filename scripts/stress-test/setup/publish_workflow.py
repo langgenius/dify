@@ -5,10 +5,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import httpx
 import json
-from common import config_helper
-from common import Logger
+
+import httpx
+from common import Logger, config_helper
 
 
 def publish_workflow() -> None:
@@ -79,9 +79,7 @@ def publish_workflow() -> None:
                     try:
                         response_data = response.json()
                         if response_data:
-                            log.debug(
-                                f"Response: {json.dumps(response_data, indent=2)}"
-                            )
+                            log.debug(f"Response: {json.dumps(response_data, indent=2)}")
                     except json.JSONDecodeError:
                         # Response might be empty or non-JSON
                         pass
@@ -93,9 +91,7 @@ def publish_workflow() -> None:
                 log.error("Workflow publish failed: App not found")
                 log.info("Make sure the app was imported successfully")
             else:
-                log.error(
-                    f"Workflow publish failed with status code: {response.status_code}"
-                )
+                log.error(f"Workflow publish failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

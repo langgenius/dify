@@ -21,7 +21,7 @@ const Input: FC<Props> = ({
     const value = e.target.value
     if (isNumber) {
       let numberValue = Number.parseInt(value, 10) // integer only
-      if (isNaN(numberValue)) {
+      if (Number.isNaN(numberValue)) {
         onChange('')
         return
       }
