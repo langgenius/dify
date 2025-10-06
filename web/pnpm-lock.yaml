@@ -450,8 +450,8 @@ importers:
         specifier: ^10.4.20
         version: 10.4.21(postcss@8.5.6)
       babel-loader:
-        specifier: ^9.2.1
-        version: 9.2.1(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+        specifier: ^10.0.0
+        version: 10.0.0(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       bing-translate-api:
         specifier: ^4.0.2
         version: 4.1.0
@@ -3935,6 +3935,13 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     peerDependencies:
       '@babel/core': ^7.8.0
+
+  babel-loader@10.0.0:
+    resolution: {integrity: sha512-z8jt+EdS61AMw22nSfoNJAZ0vrtmhPRVi6ghL3rCeRZI8cdNYFiV5xeV3HbE7rlZZNmGH8BVccwWt8/ED0QOHA==}
+    engines: {node: ^18.20.0 || ^20.10.0 || >=22.0.0}
+    peerDependencies:
+      '@babel/core': ^7.12.0
+      webpack: '>=5.61.0'
 
   babel-loader@8.4.1:
     resolution: {integrity: sha512-nXzRChX+Z1GoE6yWavBQg6jDslyFF3SDjl2paADuoQtQW10JqShJt62R6eJQ5m/pjJFDT8xgKIWSP85OY8eXeA==}
@@ -12831,6 +12838,12 @@ snapshots:
       slash: 3.0.0
     transitivePeerDependencies:
       - supports-color
+
+  babel-loader@10.0.0(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
+    dependencies:
+      '@babel/core': 7.28.3
+      find-up: 5.0.0
+      webpack: 5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)
 
   babel-loader@8.4.1(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
