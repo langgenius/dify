@@ -98,6 +98,7 @@ const translation = {
       configureJinaReader: 'Configura Jina Reader',
       configureWatercrawl: 'Configura Watercrawl',
       waterCrawlNotConfigured: 'Watercrawl non è configurato',
+      running: 'Corsa',
     },
     cancel: 'Annulla',
   },
@@ -196,6 +197,7 @@ const translation = {
     previewChunk: 'Blocco di anteprima',
     notAvailableForParentChild: 'Non disponibile per l\'indice padre-figlio',
     qaSwitchHighQualityTipTitle: 'Il formato Domande e risposte richiede un metodo di indicizzazione di alta qualità',
+    qaTip: 'Quando si usano dati strutturati di Domande e risposte, è possibile creare documenti che abbinano domande e risposte. Questi documenti vengono indicizzati in base alla parte della domanda, consentendo al sistema di recuperare le risposte pertinenti in base alla somiglianza della query.',
   },
   stepThree: {
     creationTitle: '🎉 Conoscenza creata',

@@ -2,7 +2,6 @@ from collections.abc import Sequence
 
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
-    GenericProviderID,
     MissingPluginDependency,
     PluginDeclaration,
     PluginEntity,
@@ -16,6 +15,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginListResponse,
 )
 from core.plugin.impl.base import BasePluginClient
+from models.provider_ids import GenericProviderID
 
 
 class PluginInstaller(BasePluginClient):

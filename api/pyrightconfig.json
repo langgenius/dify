@@ -1,18 +1,10 @@
 {
   "include": ["."],
   "exclude": [
-    ".venv",
     "tests/",
+    ".venv",
     "migrations/",
     "core/rag",
-    "extensions",
-    "libs",
-    "controllers/console/datasets",
-    "controllers/service_api/dataset",
-    "core/ops",
-    "core/tools",
-    "core/model_runtime",
-    "core/workflow",
     "core/app/app_config/easy_ui_based_app/dataset"
   ],
   "typeCheckingMode": "strict",

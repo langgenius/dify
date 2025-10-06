@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict
 
 from models.dataset import Document
@@ -11,10 +9,11 @@ class NotionInfo(BaseModel):
     Notion import info.
     """
 
+    credential_id: str | None = None
     notion_workspace_id: str
     notion_obj_id: str
     notion_page_type: str
-    document: Optional[Document] = None
+    document: Document | None = None
     tenant_id: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -43,10 +42,10 @@ class ExtractSetting(BaseModel):
     """
 
     datasource_type: str
-    upload_file: Optional[UploadFile] = None
-    notion_info: Optional[NotionInfo] = None
-    website_info: Optional[WebsiteInfo] = None
-    document_model: Optional[str] = None
+    upload_file: UploadFile | None = None
+    notion_info: NotionInfo | None = None
+    website_info: WebsiteInfo | None = None
+    document_model: str | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data):

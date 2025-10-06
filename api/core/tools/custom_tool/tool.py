@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Optional, Union
+from typing import Any, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -376,9 +376,9 @@ class ApiTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke http request
@@ -396,6 +396,10 @@ class ApiTool(Tool):
         # assemble invoke message based on response type
         if parsed_response.is_json and isinstance(parsed_response.content, dict):
             yield self.create_json_message(parsed_response.content)
+
+            # FIXES: https://github.com/langgenius/dify/pull/23456#issuecomment-3182413088
+            # We need never break the original flows
+            yield self.create_text_message(response.text)
         else:
             # Convert to string if needed and create text message
             text_response = (
