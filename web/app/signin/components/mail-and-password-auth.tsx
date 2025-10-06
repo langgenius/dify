@@ -10,6 +10,7 @@ import { login } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
+import MFAVerification from './mfa-verification'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import type { ResponseError } from '@/service/fetch'
 
@@ -18,6 +19,8 @@ type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
   allowRegistration: boolean
 }
+
+const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
@@ -28,6 +31,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
+  const [showMFAVerification, setShowMFAVerification] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   const handleEmailPasswordLogin = async () => {
@@ -61,7 +65,10 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         url: '/login',
         body: loginData,
       })
-      if (res.result === 'success') {
+      if (res.result === 'fail' && res.code === 'mfa_required') {
+        setShowMFAVerification(true)
+      }
+      else if (res.result === 'success') {
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
@@ -90,6 +97,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     finally {
       setIsLoading(false)
     }
+  }
+
+  if (showMFAVerification) {
+    return (
+      <MFAVerification
+        email={email}
+        password={password}
+        inviteToken={isInvite ? decodeURIComponent(searchParams.get('invite_token') || '') : undefined}
+        isInvite={isInvite}
+        locale={locale}
+      />
+    )
   }
 
   return <form onSubmit={noop}>
