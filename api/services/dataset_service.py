@@ -16,7 +16,6 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
@@ -58,7 +57,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
-    RagPipelineDatasetCreateEntity,
 )
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -206,7 +204,7 @@ class DatasetService:
         retrieval_model: RetrievalModel | None = None,
     ):
         # check if dataset name already exists
-        if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
+        if db.session.scalars(select(Dataset).filter_by(name=name, tenant_id=tenant_id).limit(1)).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
         embedding_model = None
         if indexing_technique == "high_quality":
@@ -316,7 +314,7 @@ class DatasetService:
 
     @staticmethod
     def get_dataset(dataset_id) -> Dataset | None:
-        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        dataset: Dataset | None = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
         return dataset
 
     @staticmethod
@@ -981,9 +979,9 @@ class DatasetService:
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
                 if dataset.created_by != user.id:
-                    user_permission = (
-                        db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
-                    )
+                    user_permission = db.session.scalars(
+                        select(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).limit(1)
+                    ).first()
                     if not user_permission:
                         logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                         raise NoPermissionError("You do not have permission to access this dataset.")
@@ -1177,16 +1175,16 @@ class DocumentService:
     @staticmethod
     def get_document(dataset_id: str, document_id: str | None = None) -> Document | None:
         if document_id:
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
+            document = db.session.scalars(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            ).first()
             return document
         else:
             return None
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Document | None:
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.scalars(select(Document).where(Document.id == document_id).limit(1)).first()
 
         return document
 
@@ -1529,11 +1527,11 @@ class DocumentService:
                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
                     for file_id in upload_file_list:
-                        file = (
-                            db.session.query(UploadFile)
+                        file = db.session.scalars(
+                            select(UploadFile)
                             .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                            .first()
-                        )
+                            .limit(1)
+                        ).first()
 
                         # raise error if file not found
                         if not file:
@@ -2077,11 +2075,11 @@ class DocumentService:
                     raise ValueError("No file info list found.")
                 upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
-                    file = (
-                        db.session.query(UploadFile)
+                    file = db.session.scalars(
+                        select(UploadFile)
                         .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
 
                     # raise error if file not found
                     if not file:
@@ -2097,8 +2095,8 @@ class DocumentService:
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
-                    data_source_binding = (
-                        db.session.query(DataSourceOauthBinding)
+                    data_source_binding = db.session.scalars(
+                        select(DataSourceOauthBinding)
                         .where(
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -2107,8 +2105,8 @@ class DocumentService:
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
                     for page in notion_info.pages:
@@ -2664,7 +2662,9 @@ class SegmentService:
                 segment_document.status = "error"
                 segment_document.error = str(e)
                 db.session.commit()
-            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            segment = db.session.scalars(
+                select(DocumentSegment).where(DocumentSegment.id == segment_document.id).limit(1)
+            ).first()
             return segment
 
     @classmethod
@@ -2828,11 +2828,11 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
+                    processing_rule = db.session.scalars(
+                        select(DatasetProcessRule)
                         .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                     if not processing_rule:
                         raise ValueError("No processing rule found.")
                     VectorService.generate_child_chunks(
@@ -2904,11 +2904,11 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
+                    processing_rule = db.session.scalars(
+                        select(DatasetProcessRule)
                         .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                        .limit(1)
+                    ).first()
                     if not processing_rule:
                         raise ValueError("No processing rule found.")
                     VectorService.generate_child_chunks(
@@ -3254,11 +3254,9 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
-        result = (
-            db.session.query(ChildChunk)
-            .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
-            .first()
-        )
+        result = db.session.scalars(
+            select(ChildChunk).where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).limit(1)
+        ).first()
         return result if isinstance(result, ChildChunk) else None
 
     @classmethod
@@ -3291,11 +3289,11 @@ class SegmentService:
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
         """Get a segment by its ID."""
-        result = (
-            db.session.query(DocumentSegment)
+        result = db.session.scalars(
+            select(DocumentSegment)
             .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         return result if isinstance(result, DocumentSegment) else None
 
 

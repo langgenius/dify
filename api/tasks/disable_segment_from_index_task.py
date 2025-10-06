@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -23,7 +24,7 @@ def disable_segment_from_index_task(segment_id: str):
     logger.info(click.style(f"Start disable segment from index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
-    segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
+    segment = db.session.scalars(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)).first()
     if not segment:
         logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
         db.session.close()

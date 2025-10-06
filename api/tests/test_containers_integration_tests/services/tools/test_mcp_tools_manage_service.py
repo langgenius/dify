@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.tools.entities.tool_entities import ToolProviderType
 from models.account import Account, Tenant
@@ -837,14 +838,14 @@ class TestMCPToolManageService:
         # Verify provider exists
         from extensions.ext_database import db
 
-        assert db.session.query(MCPToolProvider).filter_by(id=mcp_provider.id).first() is not None
+        assert db.session.scalars(select(MCPToolProvider).filter_by(id=mcp_provider.id).limit(1)).first() is not None
 
         # Act: Execute the method under test
         MCPToolManageService.delete_mcp_tool(tenant.id, mcp_provider.id)
 
         # Assert: Verify the expected outcomes
         # Provider should be deleted from database
-        deleted_provider = db.session.query(MCPToolProvider).filter_by(id=mcp_provider.id).first()
+        deleted_provider = db.session.scalars(select(MCPToolProvider).filter_by(id=mcp_provider.id).limit(1)).first()
         assert deleted_provider is None
 
     def test_delete_mcp_tool_not_found(self, db_session_with_containers, mock_external_service_dependencies):
@@ -899,7 +900,7 @@ class TestMCPToolManageService:
         # Verify provider still exists in tenant1
         from extensions.ext_database import db
 
-        assert db.session.query(MCPToolProvider).filter_by(id=mcp_provider1.id).first() is not None
+        assert db.session.scalars(select(MCPToolProvider).filter_by(id=mcp_provider1.id).limit(1)).first() is not None
 
     def test_update_mcp_provider_success(self, db_session_with_containers, mock_external_service_dependencies):
         """

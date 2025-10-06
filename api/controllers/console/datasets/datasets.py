@@ -719,15 +719,15 @@ class DatasetApiDeleteApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalars(
+            select(ApiToken)
             .where(
                 ApiToken.tenant_id == current_user.current_tenant_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if key is None:
             api.abort(404, message="API key not found")

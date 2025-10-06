@@ -1,6 +1,7 @@
 import json
 
 from flask_restx import Resource, reqparse
+from sqlalchemy import select
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
@@ -30,7 +31,7 @@ class EnterpriseWorkspace(Resource):
         parser.add_argument("owner_email", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        account = db.session.query(Account).filter_by(email=args["owner_email"]).first()
+        account = db.session.scalars(select(Account).filter_by(email=args["owner_email"]).limit(1)).first()
         if account is None:
             return {"message": "owner account not found."}, 404
 
