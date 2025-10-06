@@ -43,13 +43,11 @@ class TestMailInviteMemberTask:
     @pytest.fixture(autouse=True)
     def cleanup_database(self, db_session_with_containers):
         """Clean up database before each test to ensure isolation."""
-        from extensions.ext_database import db
-
         # Clear all test data
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Tenant).delete()
-        db.session.query(Account).delete()
-        db.session.commit()
+        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.query(Tenant).delete()
+        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -484,10 +482,8 @@ class TestMailInviteMemberTask:
         mock_email_service.send_email.assert_called_once()
 
         # Verify database state is maintained
-        from extensions.ext_database import db
-
-        db.session.refresh(pending_account)
-        db.session.refresh(tenant)
+        db_session_with_containers.refresh(pending_account)
+        db_session_with_containers.refresh(tenant)
 
         assert pending_account.status == AccountStatus.PENDING.value
         assert pending_account.email == invitee_email
@@ -495,7 +491,9 @@ class TestMailInviteMemberTask:
 
         # Verify tenant relationship exists
         tenant_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=pending_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=pending_account.id)
+            .first()
         )
         assert tenant_join is not None
         assert tenant_join.role == TenantAccountRole.NORMAL.value
