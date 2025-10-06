@@ -53,6 +53,8 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import type { FlowType } from '@/types/common'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
+import { API_PREFIX } from '@/config'
+import { getAccessToken, getBaseOptions } from '@/service/fetch'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -198,6 +200,11 @@ const useOneStepRun = <T>({
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
+  const webhookSingleRunActiveRef = useRef(false)
+  const webhookSingleRunAbortRef = useRef<AbortController | null>(null)
+  const webhookSingleRunTimeoutRef = useRef<number | undefined>(undefined)
+  const webhookSingleRunTokenRef = useRef(0)
+  const webhookSingleRunDelayResolveRef = useRef<(() => void) | null>(null)
   const isPausedRef = useRef(isPaused)
   useEffect(() => {
     isPausedRef.current = isPaused
@@ -239,6 +246,122 @@ const useOneStepRun = <T>({
       },
     })
   }
+
+  const cancelWebhookSingleRun = useCallback(() => {
+    webhookSingleRunActiveRef.current = false
+    webhookSingleRunTokenRef.current += 1
+    if (webhookSingleRunAbortRef.current)
+      webhookSingleRunAbortRef.current.abort()
+    webhookSingleRunAbortRef.current = null
+    if (webhookSingleRunTimeoutRef.current !== undefined) {
+      window.clearTimeout(webhookSingleRunTimeoutRef.current)
+      webhookSingleRunTimeoutRef.current = undefined
+    }
+    if (webhookSingleRunDelayResolveRef.current) {
+      webhookSingleRunDelayResolveRef.current()
+      webhookSingleRunDelayResolveRef.current = null
+    }
+  }, [])
+
+  const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
+    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/debug/webhook/run`
+    const urlWithPrefix = `${API_PREFIX}${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`
+
+    webhookSingleRunActiveRef.current = true
+    const token = ++webhookSingleRunTokenRef.current
+
+    while (webhookSingleRunActiveRef.current && token === webhookSingleRunTokenRef.current) {
+      const controller = new AbortController()
+      webhookSingleRunAbortRef.current = controller
+
+      try {
+        const baseOptions = getBaseOptions()
+        const headers = new Headers(baseOptions.headers as Headers)
+        const accessToken = await getAccessToken()
+        headers.set('Authorization', `Bearer ${accessToken}`)
+        headers.set('Content-Type', 'application/json')
+
+        const response = await fetch(urlWithPrefix, {
+          ...baseOptions,
+          method: 'POST',
+          headers,
+          body: JSON.stringify({}),
+          signal: controller.signal,
+        })
+
+        if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+          return null
+
+        const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
+        const responseData = contentType.includes('application/json') ? await response.json() : undefined
+
+        if (!response.ok) {
+          const message = responseData?.message || 'Webhook debug failed'
+          Toast.notify({ type: 'error', message })
+          cancelWebhookSingleRun()
+          throw new Error(message)
+        }
+
+        if (responseData?.status === 'waiting') {
+          const delay = Number(responseData.retry_in) || 2000
+          webhookSingleRunAbortRef.current = null
+          if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+            return null
+
+          await new Promise<void>((resolve) => {
+            const timeoutId = window.setTimeout(resolve, delay)
+            webhookSingleRunTimeoutRef.current = timeoutId
+            webhookSingleRunDelayResolveRef.current = resolve
+            controller.signal.addEventListener('abort', () => {
+              window.clearTimeout(timeoutId)
+              resolve()
+            }, { once: true })
+          })
+
+          webhookSingleRunTimeoutRef.current = undefined
+          webhookSingleRunDelayResolveRef.current = null
+          continue
+        }
+
+        if (responseData?.status === 'error') {
+          const message = responseData.message || 'Webhook debug failed'
+          Toast.notify({ type: 'error', message })
+          cancelWebhookSingleRun()
+          throw new Error(message)
+        }
+
+        handleNodeDataUpdate({
+          id,
+          data: {
+            ...data,
+            _isSingleRun: false,
+            _singleRunningStatus: NodeRunningStatus.Running,
+          },
+        })
+
+        cancelWebhookSingleRun()
+        return responseData
+      }
+      catch (error) {
+        if (controller.signal.aborted && (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current))
+          return null
+        if (controller.signal.aborted)
+          return null
+
+        console.error('handleRun: webhook debug polling error', error)
+        Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
+        cancelWebhookSingleRun()
+        if (error instanceof Error)
+          throw error
+        throw new Error(String(error))
+      }
+      finally {
+        webhookSingleRunAbortRef.current = null
+      }
+    }
+
+    return null
+  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun])
   const checkValidWrap = () => {
     if (!checkValid)
       return { isValid: true, errorMessage: '' }
@@ -300,33 +423,53 @@ const useOneStepRun = <T>({
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
+    const isWebhookNode = data.type === BlockEnum.TriggerWebhook
+    if (isWebhookNode)
+      cancelWebhookSingleRun()
+
     handleNodeDataUpdate({
       id,
       data: {
         ...data,
         _isSingleRun: false,
-        _singleRunningStatus: NodeRunningStatus.Running,
+        _singleRunningStatus: isWebhookNode ? NodeRunningStatus.Waiting : NodeRunningStatus.Running,
       },
     })
     let res: any
     let hasError = false
     try {
       if (!isIteration && !isLoop) {
-        const isStartNode = data.type === BlockEnum.Start
-        const postData: Record<string, any> = {}
-        if (isStartNode) {
-          const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
-          if (isChatMode)
-            postData.conversation_id = ''
-
-          postData.inputs = inputs
-          postData.query = query
-          postData.files = files || []
+        if (isWebhookNode) {
+          res = await runWebhookSingleRun()
+          if (!res) {
+            handleNodeDataUpdate({
+              id,
+              data: {
+                ...data,
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.NotStart,
+              },
+            })
+            return false
+          }
         }
         else {
-          postData.inputs = submitData
+          const isStartNode = data.type === BlockEnum.Start
+          const postData: Record<string, any> = {}
+          if (isStartNode) {
+            const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
+            if (isChatMode)
+              postData.conversation_id = ''
+
+            postData.inputs = inputs
+            postData.query = query
+            postData.files = files || []
+          }
+          else {
+            postData.inputs = submitData
+          }
+          res = await singleNodeRun(flowType, flowId!, id, postData) as any
         }
-        res = await singleNodeRun(flowType, flowId!, id, postData) as any
       }
       else if (isIteration) {
         setIterationRunResult([])
@@ -557,6 +700,8 @@ const useOneStepRun = <T>({
       }
     }
     finally {
+      if (data.type === BlockEnum.TriggerWebhook)
+        cancelWebhookSingleRun()
       if (!isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
           ...res,
@@ -583,6 +728,7 @@ const useOneStepRun = <T>({
   }
 
   const handleStop = () => {
+    cancelWebhookSingleRun()
     handleNodeDataUpdate({
       id,
       data: {

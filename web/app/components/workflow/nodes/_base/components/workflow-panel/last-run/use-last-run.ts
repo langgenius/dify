@@ -62,6 +62,9 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LoopEnd]: undefined,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
+  [BlockEnum.TriggerWebhook]: undefined,
+  [BlockEnum.TriggerSchedule]: undefined,
+  [BlockEnum.TriggerPlugin]: undefined,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
@@ -97,6 +100,9 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.KnowledgeBase]: undefined,
+  [BlockEnum.TriggerWebhook]: undefined,
+  [BlockEnum.TriggerSchedule]: undefined,
+  [BlockEnum.TriggerPlugin]: undefined,
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {

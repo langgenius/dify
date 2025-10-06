@@ -23,6 +23,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.nodes.trigger_webhook.entities import WebhookData
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -630,10 +631,13 @@ class WorkflowService:
                     app=app_model,
                     workflow=draft_workflow,
                 )
-                start_data = StartNodeData.model_validate(node_data)
-                user_inputs = _rebuild_file_for_user_inputs_in_start_node(
-                    tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
-                )
+                if node_type == NodeType.TRIGGER_WEBHOOK:
+                    start_data = WebhookData.model_validate(node_data)
+                else:
+                    start_data = StartNodeData.model_validate(node_data)
+                    user_inputs = _rebuild_file_for_user_inputs_in_start_node(
+                        tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
+                    )
                 # init variable pool
                 variable_pool = _setup_variable_pool(
                     query=query,

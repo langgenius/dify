@@ -31,7 +31,7 @@ from libs.login import current_user, login_required
 from models import App
 from models.account import Account
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import NodeType, Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
@@ -1232,6 +1232,68 @@ class DraftWorkflowTriggerWebhookRunApi(Resource):
                     "status": "error",
                 }
             ), 500
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/debug/webhook/run")
+class DraftWorkflowNodeWebhookDebugRunApi(Resource):
+    """Single node debug when the node is a webhook trigger."""
+
+    @api.doc("draft_workflow_node_webhook_debug_run")
+    @api.doc(description="Poll for webhook debug payload and execute single node when event arrives")
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @api.response(200, "Node executed successfully")
+    @api.response(403, "Permission denied")
+    @api.response(400, "Invalid node type")
+    @api.response(500, "Internal server error")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+            raise Forbidden()
+
+        event = WebhookDebugService.poll_event(
+            tenant_id=app_model.tenant_id,
+            user_id=current_user.id,
+            app_id=app_model.id,
+            node_id=node_id,
+        )
+
+        if not event:
+            return jsonable_encoder({"status": "waiting", "retry_in": 2000})
+
+        workflow_service = WorkflowService()
+        draft_workflow = workflow_service.get_draft_workflow(app_model=app_model)
+
+        if not draft_workflow:
+            raise DraftWorkflowNotExist()
+
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        if node_type != NodeType.TRIGGER_WEBHOOK:
+            return jsonable_encoder({
+                "status": "error",
+                "message": "node is not webhook trigger",
+            }), 400
+
+        payload = event.payload or {}
+        workflow_inputs = payload.get("inputs")
+        if workflow_inputs is None:
+            webhook_data = payload.get("webhook_data", {})
+            workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
+
+        workflow_node_execution = workflow_service.run_draft_workflow_node(
+            app_model=app_model,
+            draft_workflow=draft_workflow,
+            node_id=node_id,
+            user_inputs=workflow_inputs or {},
+            account=current_user,
+            query="",
+            files=[],
+        )
+
+        return jsonable_encoder(workflow_node_execution)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/schedule/run")
