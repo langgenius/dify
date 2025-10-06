@@ -107,7 +107,7 @@
     "react": "19.1.1",
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "19.1.1",
-    "react-easy-crop": "^5.1.0",
+    "react-easy-crop": "^5.5.3",
     "react-hook-form": "^7.53.1",
     "react-hotkeys-hook": "^4.6.1",
     "react-i18next": "^15.1.0",
