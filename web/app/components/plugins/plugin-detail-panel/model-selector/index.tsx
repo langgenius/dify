@@ -136,6 +136,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           provider,
           model,
           value?.completion_params,
+          isAdvancedMode,
         )
         nextCompletionParams = filtered
 

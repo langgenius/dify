@@ -1,12 +1,9 @@
-from typing import Optional
-
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.impl.model import PluginModelClient
 
 
 class TextEmbeddingModel(AIModel):
@@ -24,7 +21,7 @@ class TextEmbeddingModel(AIModel):
         model: str,
         credentials: dict,
         texts: list[str],
-        user: Optional[str] = None,
+        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
@@ -37,6 +34,8 @@ class TextEmbeddingModel(AIModel):
         :param input_type: input type
         :return: embeddings result
         """
+        from core.plugin.impl.model import PluginModelClient
+
         try:
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_text_embedding(
@@ -61,6 +60,8 @@ class TextEmbeddingModel(AIModel):
         :param texts: texts to embed
         :return:
         """
+        from core.plugin.impl.model import PluginModelClient
+
         plugin_model_manager = PluginModelClient()
         return plugin_model_manager.get_text_embedding_num_tokens(
             tenant_id=self.tenant_id,

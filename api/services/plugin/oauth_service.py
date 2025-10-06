@@ -11,7 +11,13 @@ class OAuthProxyService(BasePluginClient):
     __KEY_PREFIX__ = "oauth_proxy_context:"
 
     @staticmethod
-    def create_proxy_context(user_id: str, tenant_id: str, plugin_id: str, provider: str):
+    def create_proxy_context(
+        user_id: str,
+        tenant_id: str,
+        plugin_id: str,
+        provider: str,
+        credential_id: str | None = None,
+    ):
         """
         Create a proxy context for an OAuth 2.0 authorization request.
 
@@ -31,6 +37,8 @@ class OAuthProxyService(BasePluginClient):
             "tenant_id": tenant_id,
             "provider": provider,
         }
+        if credential_id:
+            data["credential_id"] = credential_id
         redis_client.setex(
             f"{OAuthProxyService.__KEY_PREFIX__}{context_id}",
             OAuthProxyService.__MAX_AGE__,

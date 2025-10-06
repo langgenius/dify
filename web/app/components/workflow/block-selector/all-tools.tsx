@@ -1,3 +1,7 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from 'react'
 import {
   useEffect,
   useMemo,
@@ -21,6 +25,7 @@ import PluginList, { type ListProps } from '@/app/components/workflow/block-sele
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import RAGToolSuggestions from './rag-tool-suggestions'
 
 type AllToolsProps = {
   className?: string
@@ -36,6 +41,8 @@ type AllToolsProps = {
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
+  onTagsChange: Dispatch<SetStateAction<string[]>>
+  isInRAGPipeline?: boolean
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -54,6 +61,8 @@ const AllTools = ({
   mcpTools = [],
   selectedTools,
   canChooseMCPTool,
+  onTagsChange,
+  isInRAGPipeline = false,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
@@ -107,6 +116,8 @@ const AllTools = ({
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
+  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !hasFilter
+
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
       <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
@@ -136,6 +147,13 @@ const AllTools = ({
         className='max-h-[464px] overflow-y-auto'
         onScroll={pluginRef.current?.handleScroll}
       >
+        {isShowRAGRecommendations && (
+          <RAGToolSuggestions
+            viewType={isSupportGroupView ? activeView : ViewType.flat}
+            onSelect={onSelect}
+            onTagsChange={onTagsChange}
+          />
+        )}
         <Tools
           className={toolContentClassName}
           tools={tools}
@@ -147,16 +165,19 @@ const AllTools = ({
           hasSearchText={!!searchText}
           selectedTools={selectedTools}
           canChooseMCPTool={canChooseMCPTool}
+          isShowRAGRecommendations={isShowRAGRecommendations}
         />
         {/* Plugins from marketplace */}
-        {enable_marketplace && <PluginList
-          ref={pluginRef}
-          wrapElemRef={wrapElemRef}
-          list={notInstalledPlugins}
-          searchText={searchText}
-          toolContentClassName={toolContentClassName}
-          tags={tags}
-        />}
+        {enable_marketplace && (
+          <PluginList
+            ref={pluginRef}
+            wrapElemRef={wrapElemRef}
+            list={notInstalledPlugins}
+            searchText={searchText}
+            toolContentClassName={toolContentClassName}
+            tags={tags}
+          />
+        )}
       </div>
     </div>
   )

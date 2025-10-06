@@ -33,14 +33,13 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.EDITION == "SELF_HOSTED"
     assert config.API_COMPRESSION_ENABLED is False
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
+    assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
 
     # annotated field with default value
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 600
 
     # annotated field with configured value
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
-
-    assert config.WORKFLOW_PARALLEL_DEPTH_LIMIT == 3
 
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
@@ -91,6 +90,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
         "pool_size": 30,
         "pool_use_lifo": False,
         "pool_reset_on_return": None,
+        "pool_timeout": 30,
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"
