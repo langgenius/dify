@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from extensions.ext_database import db
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_invite_member_task import send_invite_member_mail_task
@@ -66,16 +65,16 @@ class TestMailInviteMemberTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(inviter_account)
-        db.session.commit()
+        db_session_with_containers.add(inviter_account)
+        db_session_with_containers.commit()
 
         # Create tenant (workspace)
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join for inviter
         join = TenantAccountJoin(
@@ -84,8 +83,8 @@ class TestMailInviteMemberTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Generate invitee email
         invitee_email = fake.email()
