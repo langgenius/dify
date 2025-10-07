@@ -445,20 +445,9 @@ class WorkflowDraftVariableService:
             return
 
         upload_file = variable_file.upload_file
-        if upload_file is None:
-            logger.warning(
-                "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
-                variable_file.upload_file_id,
-            )
-            self._session.delete(variable)
-            self._session.delete(variable_file)
-            return
-
         storage.delete(upload_file.key)
         self._session.delete(upload_file)
-        self._session.delete(upload_file)
+        self._session.delete(variable_file)
         self._session.delete(variable)
 
     def delete_workflow_variables(self, app_id: str):
@@ -487,18 +476,9 @@ class WorkflowDraftVariableService:
                 continue
 
             upload_file = variable_file.upload_file
-            if upload_file is None:
-                logger.warning(
-                    "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
-                    i.draft_var_id,
-                    i.draft_var_file_id,
-                    variable_file.upload_file_id,
-                )
-                self._session.delete(variable_file)
-            else:
-                storage.delete(upload_file.key)
-                self._session.delete(upload_file)
-                self._session.delete(variable_file)
+            storage.delete(upload_file.key)
+            self._session.delete(upload_file)
+            self._session.delete(variable_file)
 
     def delete_node_variables(self, app_id: str, node_id: str):
         return self._delete_node_variables(app_id, node_id)
@@ -666,16 +646,11 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
         "node_execution_id": model.node_execution_id,
         "file_id": model.file_id,
     }
-    if model.visible is not None:
-        d["visible"] = model.visible
-    if model.editable is not None:
-        d["editable"] = model.editable
-    if model.created_at is not None:
-        d["created_at"] = model.created_at
-    if model.updated_at is not None:
-        d["updated_at"] = model.updated_at
-    if model.description is not None:
-        d["description"] = model.description
+    d["visible"] = model.visible
+    d["editable"] = model.editable
+    d["created_at"] = model.created_at
+    d["updated_at"] = model.updated_at
+    d["description"] = model.description
     return d
 
 

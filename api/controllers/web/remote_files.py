@@ -51,7 +51,7 @@ class RemoteFileInfoApi(WebApiResource):
         """
         decoded_url = urllib.parse.unquote(url)
         resp = ssrf_proxy.head(decoded_url)
-        if resp.status_code != httpx.codes.OK:
+        if resp.status_code != 200:
             # failed back to get method
             resp = ssrf_proxy.get(decoded_url, timeout=3)
         resp.raise_for_status()
@@ -105,9 +105,9 @@ class RemoteFileUploadApi(WebApiResource):
 
         try:
             resp = ssrf_proxy.head(url=url)
-            if resp.status_code != httpx.codes.OK:
+            if resp.status_code != 200:
                 resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
-            if resp.status_code != httpx.codes.OK:
+            if resp.status_code != 200:
                 raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
         except httpx.RequestError as e:
             raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")

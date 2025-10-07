@@ -333,7 +333,7 @@ class ToolManager:
 
             controller = ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
             controller_tools: list[WorkflowTool] = controller.get_tools(tenant_id=workflow_provider.tenant_id)
-            if controller_tools is None or len(controller_tools) == 0:
+            if len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
             return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
@@ -388,9 +388,6 @@ class ToolManager:
             identity_id=f"AGENT.{app_id}",
         )
         runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
-        if tool_entity.runtime is None or tool_entity.runtime.runtime_parameters is None:
-            raise ValueError("runtime not found or runtime parameters not found")
-
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity
 

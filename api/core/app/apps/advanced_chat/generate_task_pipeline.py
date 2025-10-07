@@ -410,8 +410,6 @@ class AdvancedChatAppGenerateTaskPipeline:
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
         delta_text = event.text
-        if delta_text is None:
-            return
 
         # Handle output moderation chunk
         should_direct_answer = self._handle_output_moderation_chunk(delta_text)

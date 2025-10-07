@@ -139,7 +139,7 @@ class BuiltinToolProviderController(ToolProviderController):
         returns the credential support type of the provider
         """
         types = []
-        if self.entity.credentials_schema is not None and len(self.entity.credentials_schema) > 0:
+        if len(self.entity.credentials_schema) > 0:
             types.append(CredentialType.API_KEY.value)
         if self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) > 0:
             types.append(CredentialType.OAUTH2.value)
@@ -166,10 +166,8 @@ class BuiltinToolProviderController(ToolProviderController):
 
         :return: whether the provider needs credentials
         """
-        return (
-            self.entity.credentials_schema is not None
-            and len(self.entity.credentials_schema) != 0
-            or (self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) != 0)
+        return len(self.entity.credentials_schema) != 0 or (
+            self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) != 0
         )
 
     @property

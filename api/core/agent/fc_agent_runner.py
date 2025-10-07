@@ -265,14 +265,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     }
 
                 tool_responses.append(tool_response)
-                if tool_response["tool_response"] is not None:
-                    self._current_thoughts.append(
-                        ToolPromptMessage(
-                            content=str(tool_response["tool_response"]),
-                            tool_call_id=tool_call_id,
-                            name=tool_call_name,
-                        )
+                self._current_thoughts.append(
+                    ToolPromptMessage(
+                        content=str(tool_response["tool_response"]),
+                        tool_call_id=tool_call_id,
+                        name=tool_call_name,
                     )
+                )
 
             if len(tool_responses) > 0:
                 # save agent thought

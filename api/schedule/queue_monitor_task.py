@@ -34,12 +34,6 @@ def queue_monitor_task():
         queue_length = celery_redis.llen(f"{queue_name}")
         logger.info(click.style(f"Start monitor {queue_name}", fg="green"))
 
-        if queue_length is None:
-            logger.error(
-                click.style(f"Failed to get queue length for {queue_name} - Redis may be unavailable", fg="red")
-            )
-            return
-
         logger.info(click.style(f"Queue length: {queue_length}", fg="green"))
 
         if queue_length >= threshold:

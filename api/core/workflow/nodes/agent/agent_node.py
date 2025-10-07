@@ -44,6 +44,7 @@ from core.workflow.nodes.agent.entities import AgentNodeData, AgentOldVersionMod
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.entities.parameter_entities import CommonParameterType
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
@@ -241,7 +242,7 @@ class AgentNode(Node):
             else:
                 raise AgentInputTypeError(agent_input.type)
             value = parameter_value
-            if parameter.type == "array[tools]":
+            if parameter.type == CommonParameterType.TOOLS_SELECTOR:
                 value = cast(list[dict[str, Any]], value)
                 value = [tool for tool in value if tool.get("enabled", False)]
                 value = self._filter_mcp_type_tool(strategy, value)
@@ -262,7 +263,7 @@ class AgentNode(Node):
                     tool["parameters"] = parameters
 
             if not for_log:
-                if parameter.type == "array[tools]":
+                if parameter.type == CommonParameterType.TOOLS_SELECTOR:
                     value = cast(list[dict[str, Any]], value)
                     tool_value = []
                     for tool in value:

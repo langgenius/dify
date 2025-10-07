@@ -47,7 +47,7 @@ class BuiltinTool(Tool):
         # invoke model
         return ModelInvocationUtils.invoke(
             user_id=user_id,
-            tenant_id=self.runtime.tenant_id or "",
+            tenant_id=self.runtime.tenant_id,
             tool_type="builtin",
             tool_name=self.entity.identity.name,
             prompt_messages=prompt_messages,
@@ -62,11 +62,8 @@ class BuiltinTool(Tool):
 
         :return: the max tokens
         """
-        if self.runtime is None:
-            raise ValueError("runtime is required")
-
         return ModelInvocationUtils.get_max_llm_context_tokens(
-            tenant_id=self.runtime.tenant_id or "",
+            tenant_id=self.runtime.tenant_id,
         )
 
     def get_prompt_tokens(self, prompt_messages: list[PromptMessage]) -> int:
@@ -76,12 +73,7 @@ class BuiltinTool(Tool):
         :param prompt_messages: the prompt messages
         :return: the tokens
         """
-        if self.runtime is None:
-            raise ValueError("runtime is required")
-
-        return ModelInvocationUtils.calculate_tokens(
-            tenant_id=self.runtime.tenant_id or "", prompt_messages=prompt_messages
-        )
+        return ModelInvocationUtils.calculate_tokens(tenant_id=self.runtime.tenant_id, prompt_messages=prompt_messages)
 
     def summary(self, user_id: str, content: str) -> str:
         max_tokens = self.get_max_tokens()

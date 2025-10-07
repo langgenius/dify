@@ -126,5 +126,5 @@ class RateLimitGenerator:
         if not self.closed:
             self.closed = True
             self.rate_limit.exit(self.request_id)
-            if self.generator is not None and hasattr(self.generator, "close"):
+            if hasattr(self.generator, "close"):
                 self.generator.close()

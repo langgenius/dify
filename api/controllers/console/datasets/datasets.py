@@ -494,9 +494,6 @@ class DatasetIndexingEstimateApi(Resource):
                 )
             ).all()
 
-            if file_details is None:
-                raise NotFound("File not found.")
-
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(

@@ -401,9 +401,8 @@ class IndexingRunner:
 
         # replace doc id to document model id
         for text_doc in text_docs:
-            if text_doc.metadata is not None:
-                text_doc.metadata["document_id"] = dataset_document.id
-                text_doc.metadata["dataset_id"] = dataset_document.dataset_id
+            text_doc.metadata["document_id"] = dataset_document.id
+            text_doc.metadata["dataset_id"] = dataset_document.dataset_id
 
         return text_docs
 
@@ -473,13 +472,12 @@ class IndexingRunner:
 
             split_documents = []
             for document in documents:
-                if document.page_content is None or not document.page_content.strip():
+                if not document.page_content.strip():
                     continue
-                if document.metadata is not None:
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(document.page_content)
-                    document.metadata["doc_id"] = doc_id
-                    document.metadata["doc_hash"] = hash
+                doc_id = str(uuid.uuid4())
+                hash = helper.generate_text_hash(document.page_content)
+                document.metadata["doc_id"] = doc_id
+                document.metadata["doc_hash"] = hash
 
                 split_documents.append(document)
 

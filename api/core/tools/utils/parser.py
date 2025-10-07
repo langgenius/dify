@@ -237,8 +237,6 @@ class ApiBasedToolSchemaParser:
         extra_info = extra_info if extra_info is not None else {}
 
         openapi: dict = safe_load(yaml)
-        if openapi is None:
-            raise ToolApiSchemaError("Invalid openapi yaml.")
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
@@ -286,8 +284,7 @@ class ApiBasedToolSchemaParser:
                 if ("summary" not in operation or len(operation["summary"]) == 0) and (
                     "description" not in operation or len(operation["description"]) == 0
                 ):
-                    if warning is not None:
-                        warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
+                    warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
                 converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],

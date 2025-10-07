@@ -90,13 +90,13 @@ class DatasourceFileMessageTransformer:
                         yield DatasourceMessage(
                             type=DatasourceMessage.MessageType.IMAGE_LINK,
                             message=DatasourceMessage.TextMessage(text=url),
-                            meta=meta.copy() if meta is not None else {},
+                            meta=meta.copy(),
                         )
                     else:
                         yield DatasourceMessage(
                             type=DatasourceMessage.MessageType.BINARY_LINK,
                             message=DatasourceMessage.TextMessage(text=url),
-                            meta=meta.copy() if meta is not None else {},
+                            meta=meta.copy(),
                         )
             elif message.type == DatasourceMessage.MessageType.FILE:
                 meta = message.meta or {}
@@ -109,13 +109,13 @@ class DatasourceFileMessageTransformer:
                             yield DatasourceMessage(
                                 type=DatasourceMessage.MessageType.IMAGE_LINK,
                                 message=DatasourceMessage.TextMessage(text=url),
-                                meta=meta.copy() if meta is not None else {},
+                                meta=meta.copy(),
                             )
                         else:
                             yield DatasourceMessage(
                                 type=DatasourceMessage.MessageType.LINK,
                                 message=DatasourceMessage.TextMessage(text=url),
-                                meta=meta.copy() if meta is not None else {},
+                                meta=meta.copy(),
                             )
                     else:
                         yield message

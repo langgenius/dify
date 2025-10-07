@@ -278,9 +278,7 @@ class BuiltinToolManageService:
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
                         credential_type=api_type.value,
                         name=name,
-                        expires_at=expires_at
-                        if expires_at is not None
-                        else BuiltinToolManageService.__DEFAULT_EXPIRES_AT__,
+                        expires_at=expires_at,
                     )
 
                     session.add(db_provider)

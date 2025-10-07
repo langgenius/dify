@@ -14,9 +14,6 @@ from models.enums import MessageStatus
 from models.model import App, AppMode, Message
 from services.errors.audio import (
     AudioTooLargeServiceError,
-    NoAudioUploadedServiceError,
-    ProviderNotSupportSpeechToTextServiceError,
-    ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
 from services.workflow_service import WorkflowService
@@ -46,9 +43,6 @@ class AudioService:
             if not app_model_config.speech_to_text_dict["enabled"]:
                 raise ValueError("Speech to text is not enabled")
 
-        if file is None:
-            raise NoAudioUploadedServiceError()
-
         extension = file.mimetype
         if extension not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
             raise UnsupportedAudioTypeServiceError()
@@ -64,9 +58,6 @@ class AudioService:
         model_instance = model_manager.get_default_model_instance(
             tenant_id=app_model.tenant_id, model_type=ModelType.SPEECH2TEXT
         )
-        if model_instance is None:
-            raise ProviderNotSupportSpeechToTextServiceError()
-
         buffer = io.BytesIO(file_content)
         buffer.name = "temp.mp3"
 
@@ -159,8 +150,6 @@ class AudioService:
     def transcript_tts_voices(cls, tenant_id: str, language: str):
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.TTS)
-        if model_instance is None:
-            raise ProviderNotSupportTextToSpeechServiceError()
 
         try:
             return model_instance.get_tts_voices(language)
