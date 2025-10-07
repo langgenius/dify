@@ -2,7 +2,8 @@ import base64
 import json
 import logging
 import secrets
-from typing import Any, cast, Iterable
+from collections.abc import Iterable
+from typing import Any, cast
 
 import click
 import sqlalchemy as sa
@@ -11,7 +12,6 @@ from pydantic import TypeAdapter
 from sqlalchemy import Row, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
-from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
 from constants.languages import languages

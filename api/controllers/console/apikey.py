@@ -1,4 +1,3 @@
-
 import flask_restx
 from flask import Response
 from flask_login import current_user
