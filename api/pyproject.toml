@@ -5,7 +5,6 @@ requires-python = ">=3.11,<3.13"
 
 dependencies = [
     "arize-phoenix-otel~=0.9.2",
-    "authlib==1.6.4",
     "azure-identity==1.16.1",
     "beautifulsoup4==4.12.2",
     "boto3==1.35.99",
