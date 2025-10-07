@@ -944,6 +944,9 @@ const translation = {
       chunkIsRequired: 'Se requiere una estructura de fragmentos',
       chunksInput: 'Trozo',
       chunksInputTip: 'La variable de entrada del nodo de la base de conocimientos es Chunks. El tipo de variable es un objeto con un esquema JSON específico que debe ser consistente con la estructura del fragmento seleccionado.',
+      embeddingModelIsRequired: 'Se requiere un modelo de incrustación',
+      rerankingModelIsRequired: 'Se requiere un modelo de reordenamiento',
+      chunksVariableIsRequired: 'La variable Chunks es obligatoria',
     },
   },
   tracing: {

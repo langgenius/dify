@@ -142,6 +142,8 @@ def build_segment(value: Any, /) -> Segment:
     # below
     if value is None:
         return NoneSegment()
+    if isinstance(value, Segment):
+        return value
     if isinstance(value, str):
         return StringSegment(value=value)
     if isinstance(value, bool):
