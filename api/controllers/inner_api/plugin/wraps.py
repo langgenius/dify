@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, cast
+from typing import ParamSpec, TypeVar, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -67,10 +67,22 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view: Callable[P, R] | None = None):
-    def decorator(view_func: Callable[P, R]):
+@overload
+def get_user_tenant(view: Callable[P, R]) -> Callable[P, R]:
+    ...
+
+
+@overload
+def get_user_tenant(view: None = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    ...
+
+
+def get_user_tenant(
+    view: Callable[P, R] | None = None,
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             # fetch json body
             parser = reqparse.RequestParser()
             parser.add_argument("tenant_id", type=str, required=True, location="json")
@@ -119,9 +131,30 @@ def get_user_tenant(view: Callable[P, R] | None = None):
         return decorator(view)
 
 
-def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):
-    def decorator(view_func: Callable[P, R]):
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+@overload
+def plugin_data(
+    view: Callable[P, R],
+    *,
+    payload_type: type[BaseModel],
+) -> Callable[P, R]:
+    ...
+
+
+@overload
+def plugin_data(
+    view: None = None,
+    *,
+    payload_type: type[BaseModel],
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    ...
+
+
+def plugin_data(
+    view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
+        @wraps(view_func)
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 data = request.get_json()
             except Exception:

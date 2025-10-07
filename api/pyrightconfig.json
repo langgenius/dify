@@ -27,7 +27,6 @@
   "reportUnnecessaryComparison": "hint",
   "reportUnnecessaryCast": "hint",
   "reportUnnecessaryIsInstance": "hint",
-  "reportUntypedFunctionDecorator": "hint",
 
   "reportAttributeAccessIssue": "hint",
   "pythonVersion": "3.11",

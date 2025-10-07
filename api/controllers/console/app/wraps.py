@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, Union
+from typing import ParamSpec, TypeVar, Union, overload
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
@@ -22,10 +22,30 @@ def _load_app_model(app_id: str) -> App | None:
     return app_model
 
 
-def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
-    def decorator(view_func: Callable[P, R]):
+@overload
+def get_app_model(
+    view: Callable[P, R],
+    *,
+    mode: Union[AppMode, list[AppMode], None] = None,
+) -> Callable[P, R]:
+    ...
+
+
+@overload
+def get_app_model(
+    view: None = None,
+    *,
+    mode: Union[AppMode, list[AppMode], None] = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    ...
+
+
+def get_app_model(
+    view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None
+) -> Union[Callable[P, R], Callable[[Callable[P, R]], Callable[P, R]]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 
