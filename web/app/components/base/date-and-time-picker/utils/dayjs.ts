@@ -124,7 +124,7 @@ export const parseDateWithFormat = (dateString: string, format?: string): Dayjs 
 }
 
 // Format date output with localization support
-export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, locale: string = 'en-US'): string => {
+export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, _locale: string = 'en-US'): string => {
   if (!date || !date.isValid()) return ''
 
   if (includeTime) {
