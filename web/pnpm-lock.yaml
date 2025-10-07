@@ -245,8 +245,8 @@ importers:
         specifier: 19.1.1
         version: 19.1.1(react@19.1.1)
       react-easy-crop:
-        specifier: ^5.1.0
-        version: 5.5.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        specifier: ^5.5.3
+        version: 5.5.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       react-hook-form:
         specifier: ^7.53.1
         version: 7.60.0(react@19.1.1)
@@ -453,8 +453,8 @@ importers:
         specifier: ^10.4.20
         version: 10.4.21(postcss@8.5.6)
       babel-loader:
-        specifier: ^9.2.1
-        version: 9.2.1(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+        specifier: ^10.0.0
+        version: 10.0.0(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
       bing-translate-api:
         specifier: ^4.0.2
         version: 4.1.0
@@ -3939,6 +3939,13 @@ packages:
     peerDependencies:
       '@babel/core': ^7.8.0
 
+  babel-loader@10.0.0:
+    resolution: {integrity: sha512-z8jt+EdS61AMw22nSfoNJAZ0vrtmhPRVi6ghL3rCeRZI8cdNYFiV5xeV3HbE7rlZZNmGH8BVccwWt8/ED0QOHA==}
+    engines: {node: ^18.20.0 || ^20.10.0 || >=22.0.0}
+    peerDependencies:
+      '@babel/core': ^7.12.0
+      webpack: '>=5.61.0'
+
   babel-loader@8.4.1:
     resolution: {integrity: sha512-nXzRChX+Z1GoE6yWavBQg6jDslyFF3SDjl2paADuoQtQW10JqShJt62R6eJQ5m/pjJFDT8xgKIWSP85OY8eXeA==}
     engines: {node: '>= 8.9'}
@@ -7311,8 +7318,8 @@ packages:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
 
-  react-easy-crop@5.5.0:
-    resolution: {integrity: sha512-OZzU+yXMhe69vLkDex+5QxcfT94FdcgVCyW2dBUw35ZoC3Is42TUxUy04w8nH1mfMKaizVdC3rh/wUfNW1mK4w==}
+  react-easy-crop@5.5.3:
+    resolution: {integrity: sha512-iKwFTnAsq+IVuyF6N0Q3zjRx9DG1NMySkwWxVfM/xAOeHYH1vhvM+V2kFiq5HOIQGWouITjfltCx54mbDpMpmA==}
     peerDependencies:
       react: '>=16.4.0'
       react-dom: '>=16.4.0'
@@ -12843,6 +12850,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  babel-loader@10.0.0(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
+    dependencies:
+      '@babel/core': 7.28.3
+      find-up: 5.0.0
+      webpack: 5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)
+
   babel-loader@8.4.1(@babel/core@7.28.3)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
       '@babel/core': 7.28.3
@@ -17087,7 +17100,7 @@ snapshots:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  react-easy-crop@5.5.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
+  react-easy-crop@5.5.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
     dependencies:
       normalize-wheel: 1.0.1
       react: 19.1.1

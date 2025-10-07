@@ -29,23 +29,10 @@ def priority_rag_pipeline_run_task(
     tenant_id: str,
 ):
     """
-    Async Run rag pipeline
-    :param rag_pipeline_invoke_entities: Rag pipeline invoke entities
-    rag_pipeline_invoke_entities include:
-    :param pipeline_id: Pipeline ID
-    :param user_id: User ID
-    :param tenant_id: Tenant ID
-    :param workflow_id: Workflow ID
-    :param invoke_from: Invoke source (debugger, published, etc.)
-    :param streaming: Whether to stream results
-    :param datasource_type: Type of datasource
-    :param datasource_info: Datasource information dict
-    :param batch: Batch identifier
-    :param document_id: Document ID (optional)
-    :param start_node_id: Starting node ID
-    :param inputs: Input parameters dict
-    :param workflow_execution_id: Workflow execution ID
-    :param workflow_thread_pool_id: Thread pool ID for workflow execution
+    Async Run rag pipeline task using high priority queue.
+
+    :param rag_pipeline_invoke_entities_file_id: File ID containing serialized RAG pipeline invoke entities
+    :param tenant_id: Tenant ID for the pipeline execution
     """
     # run with threading, thread pool size is 10
 

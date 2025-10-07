@@ -9,7 +9,7 @@ import {
 } from '@/app/components/workflow/types'
 import {
   useWorkflowInit,
-} from './hooks'
+} from './hooks/use-workflow-init'
 import { useAppTriggers } from '@/service/use-tools'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { useStore as useAppStore } from '@/app/components/app/store'
