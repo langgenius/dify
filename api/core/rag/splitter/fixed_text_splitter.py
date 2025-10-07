@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-import re
 from core.model_manager import ModelInstance
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 from core.rag.splitter.text_splitter import (
@@ -85,13 +85,13 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
                 break
             if _s in text:
                 separator = _s
-                new_separators = self._separators[i + 1:]
+                new_separators = self._separators[i + 1 :]
                 break
 
         # Now that we have the separator, split the text
         if separator:
             if separator == " ":
-                splits = re.split(r' +', text)
+                splits = re.split(r" +", text)
             else:
                 splits = text.split(separator)
                 splits = [item + separator if i < len(splits) else item for i, item in enumerate(splits)]
