@@ -31,7 +31,7 @@ def rag_pipeline_run_task(
 ):
     """
     Async Run rag pipeline task using regular priority queue.
-    
+
     :param rag_pipeline_invoke_entities_file_id: File ID containing serialized RAG pipeline invoke entities
     :param tenant_id: Tenant ID for the pipeline execution
     """
