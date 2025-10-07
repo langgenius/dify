@@ -16,7 +16,6 @@
     "opentelemetry.instrumentation.sqlalchemy",
     "opentelemetry.instrumentation.redis"
   ],
-  "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
   "reportUnknownArgumentType": "hint",
   "reportUnknownVariableType": "hint",
