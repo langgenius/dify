@@ -4,8 +4,7 @@
     "tests/",
     ".venv",
     "migrations/",
-    "core/rag",
-    "core/app/app_config/easy_ui_based_app/dataset"
+    "core/rag"
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
