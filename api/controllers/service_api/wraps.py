@@ -47,8 +47,7 @@ def validate_app_token(
     view: Callable[P, R],
     *,
     fetch_user_arg: FetchUserArg | None = None,
-) -> Callable[P, R]:
-    ...
+) -> Callable[P, R]: ...
 
 
 @overload
@@ -56,8 +55,7 @@ def validate_app_token(
     view: None = None,
     *,
     fetch_user_arg: FetchUserArg | None = None,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    ...
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def validate_app_token(
@@ -217,13 +215,11 @@ def cloud_edition_billing_rate_limit_check(
 
 
 @overload
-def validate_dataset_token(view: Callable[Concatenate[str, P], R]) -> Callable[P, R]:
-    ...
+def validate_dataset_token(view: Callable[Concatenate[str, P], R]) -> Callable[P, R]: ...
 
 
 @overload
-def validate_dataset_token(view: None = None) -> Callable[[Callable[Concatenate[str, P], R]], Callable[P, R]]:
-    ...
+def validate_dataset_token(view: None = None) -> Callable[[Callable[Concatenate[str, P], R]], Callable[P, R]]: ...
 
 
 def validate_dataset_token(

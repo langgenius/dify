@@ -68,13 +68,11 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
 
 
 @overload
-def get_user_tenant(view: Callable[P, R]) -> Callable[P, R]:
-    ...
+def get_user_tenant(view: Callable[P, R]) -> Callable[P, R]: ...
 
 
 @overload
-def get_user_tenant(view: None = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    ...
+def get_user_tenant(view: None = None) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def get_user_tenant(
@@ -136,8 +134,7 @@ def plugin_data(
     view: Callable[P, R],
     *,
     payload_type: type[BaseModel],
-) -> Callable[P, R]:
-    ...
+) -> Callable[P, R]: ...
 
 
 @overload
@@ -145,8 +142,7 @@ def plugin_data(
     view: None = None,
     *,
     payload_type: type[BaseModel],
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    ...
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def plugin_data(

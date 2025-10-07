@@ -13,13 +13,11 @@ R = TypeVar("R")
 
 
 @overload
-def get_rag_pipeline(view: Callable[P, R]) -> Callable[P, R]:
-    ...
+def get_rag_pipeline(view: Callable[P, R]) -> Callable[P, R]: ...
 
 
 @overload
-def get_rag_pipeline(view: None = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    ...
+def get_rag_pipeline(view: None = None) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def get_rag_pipeline(

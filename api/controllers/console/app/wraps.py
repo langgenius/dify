@@ -27,8 +27,7 @@ def get_app_model(
     view: Callable[P, R],
     *,
     mode: Union[AppMode, list[AppMode], None] = None,
-) -> Callable[P, R]:
-    ...
+) -> Callable[P, R]: ...
 
 
 @overload
@@ -36,8 +35,7 @@ def get_app_model(
     view: None = None,
     *,
     mode: Union[AppMode, list[AppMode], None] = None,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    ...
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def get_app_model(
