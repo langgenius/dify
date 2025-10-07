@@ -104,9 +104,10 @@ const Answer: FC<AnswerProps> = ({
     if (direction === 'prev') {
       if (item.prevSibling)
         switchSibling?.(item.prevSibling)
-      else
-        if (item.nextSibling)
-          switchSibling?.(item.nextSibling)
+    }
+    else {
+      if (item.nextSibling)
+        switchSibling?.(item.nextSibling)
     }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
