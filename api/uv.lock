@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12.4' and sys_platform == 'linux'",
@@ -1281,7 +1281,6 @@ version = "1.9.1"
 source = { virtual = "." }
 dependencies = [
     { name = "arize-phoenix-otel" },
-    { name = "authlib" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
     { name = "boto3" },
@@ -1472,7 +1471,6 @@ vdb = [
 [package.metadata]
 requires-dist = [
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
-    { name = "authlib", specifier = "==1.6.4" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
     { name = "boto3", specifier = "==1.35.99" },
