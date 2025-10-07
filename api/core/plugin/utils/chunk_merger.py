@@ -87,7 +87,7 @@ def merge_blob_chunks(
                     ),
                     meta=resp.meta,
                 )
-                yield merged_message
+                yield merged_message  # type: ignore
                 # Clean up the buffer
                 del files[chunk_id]
         else:
