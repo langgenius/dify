@@ -25,7 +25,6 @@
   "reportMissingTypeArgument": "hint",
   "reportUnnecessaryContains": "hint",
   "reportUnnecessaryComparison": "hint",
-  "reportUnnecessaryCast": "hint",
   "reportUnnecessaryIsInstance": "hint",
   "reportUntypedFunctionDecorator": "hint",
 
