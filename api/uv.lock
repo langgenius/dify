@@ -1629,7 +1629,7 @@ storage = [
     { name = "azure-storage-blob", specifier = "==12.26.0" },
     { name = "bce-python-sdk", specifier = "~=0.9.23" },
     { name = "cos-python-sdk-v5", specifier = "==1.9.38" },
-    { name = "esdk-obs-python", specifier = "==3.24.6.1" },
+    { name = "esdk-obs-python", specifier = "==3.25.8" },
     { name = "google-cloud-storage", specifier = "==2.16.0" },
     { name = "opendal", specifier = "~=0.46.0" },
     { name = "oss2", specifier = "==2.18.5" },
@@ -1780,12 +1780,14 @@ wheels = [
 
 [[package]]
 name = "esdk-obs-python"
-version = "3.24.6.1"
+version = "3.25.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "crcmod" },
     { name = "pycryptodome" },
+    { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/af/d83276f9e288bd6a62f44d67ae1eafd401028ba1b2b643ae4014b51da5bd/esdk-obs-python-3.24.6.1.tar.gz", hash = "sha256:c45fed143e99d9256c8560c1d78f651eae0d2e809d16e962f8b286b773c33bf0", size = 85798, upload-time = "2024-07-26T13:13:22.467Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/99/52362d6e081a642d6de78f6ab53baa5e3f82f2386c48954e18ee7b4ab22b/esdk-obs-python-3.25.8.tar.gz", hash = "sha256:aeded00b27ecd5a25ffaec38a2cc9416b51923d48db96c663f1a735f859b5273", size = 96302, upload-time = "2025-09-01T11:35:20.432Z" }
 
 [[package]]
 name = "et-xmlfile"
