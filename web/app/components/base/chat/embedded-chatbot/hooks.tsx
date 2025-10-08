@@ -196,9 +196,16 @@ export const useEmbeddedChatbot = () => {
         }
       }
       if (item.checkbox) {
+        const preset = initInputs[item.checkbox.variable]
+        let normalizedPreset: boolean
+        if (typeof preset === 'boolean')
+          normalizedPreset = preset
+        else
+          normalizedPreset = false
+
         return {
           ...item.checkbox,
-          default: false,
+          default: normalizedPreset,
           type: 'checkbox',
         }
       }
