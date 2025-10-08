@@ -243,6 +243,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           type: 'checkbox',
         }
       }
+
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {

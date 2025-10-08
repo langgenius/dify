@@ -195,20 +195,16 @@ export const useEmbeddedChatbot = () => {
           type: 'number',
         }
       }
-      if (item.checkbox) {
-        const preset = initInputs[item.checkbox.variable]
-        let normalizedPreset: boolean
-        if (typeof preset === 'boolean')
-          normalizedPreset = preset
-        else
-          normalizedPreset = false
 
+      if (item.checkbox) {
+        const preset = initInputs[item.checkbox.variable] === true
         return {
           ...item.checkbox,
-          default: normalizedPreset,
+          default: preset || item.default || item.checkbox.default,
           type: 'checkbox',
         }
       }
+
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
