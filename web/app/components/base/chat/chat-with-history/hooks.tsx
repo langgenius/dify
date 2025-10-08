@@ -235,13 +235,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         }
       }
 
-      if(item.checkbox) {
+      if (item.checkbox) {
+        const preset = initInputs[item.checkbox.variable] === true
         return {
           ...item.checkbox,
-          default: false,
+          default: preset || item.default || item.checkbox.default,
           type: 'checkbox',
         }
       }
+
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
