@@ -35,7 +35,11 @@ from models.workflow import NodeType, Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
-from services.trigger.trigger_debug_service import TriggerDebugService, WebhookDebugService
+from services.trigger.trigger_debug_service import (
+    PluginTriggerDebugEvent,
+    TriggerDebugService,
+    WebhookDebugEvent,
+)
 from services.trigger.webhook_service import WebhookService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
@@ -1030,13 +1034,18 @@ class DraftWorkflowTriggerNodeApi(Resource):
         trigger_name = args["trigger_name"]
         subscription_id = args["subscription_id"]
 
-        event = TriggerDebugService.poll_event(
+        pool_key = PluginTriggerDebugEvent.build_pool_key(
+            tenant_id=app_model.tenant_id,
+            subscription_id=subscription_id,
+            trigger_name=trigger_name,
+        )
+        event: PluginTriggerDebugEvent | None = TriggerDebugService.poll(
+            event_type=PluginTriggerDebugEvent,
+            pool_key=pool_key,
             tenant_id=app_model.tenant_id,
             user_id=current_user.id,
             app_id=app_model.id,
-            subscription_id=subscription_id,
             node_id=node_id,
-            trigger_name=trigger_name,
         )
         if not event:
             return jsonable_encoder({"status": "waiting"})
@@ -1110,13 +1119,18 @@ class DraftWorkflowTriggerRunApi(Resource):
         trigger_name = args["trigger_name"]
         subscription_id = args["subscription_id"]
 
-        event = TriggerDebugService.poll_event(
+        pool_key = PluginTriggerDebugEvent.build_pool_key(
+            tenant_id=app_model.tenant_id,
+            subscription_id=subscription_id,
+            trigger_name=trigger_name,
+        )
+        event: PluginTriggerDebugEvent | None = TriggerDebugService.poll(
+            event_type=PluginTriggerDebugEvent,
+            pool_key=pool_key,
             tenant_id=app_model.tenant_id,
             user_id=current_user.id,
             app_id=app_model.id,
-            subscription_id=subscription_id,
             node_id=node_id,
-            trigger_name=trigger_name,
         )
         if not event:
             return jsonable_encoder({"status": "waiting"})
@@ -1187,7 +1201,14 @@ class DraftWorkflowTriggerWebhookRunApi(Resource):
         args = parser.parse_args()
         node_id = args["node_id"]
 
-        event = WebhookDebugService.poll_event(
+        pool_key = WebhookDebugEvent.build_pool_key(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            node_id=node_id,
+        )
+        event: WebhookDebugEvent | None = TriggerDebugService.poll(
+            event_type=WebhookDebugEvent,
+            pool_key=pool_key,
             tenant_id=app_model.tenant_id,
             user_id=current_user.id,
             app_id=app_model.id,
@@ -1253,7 +1274,14 @@ class DraftWorkflowNodeWebhookDebugRunApi(Resource):
         if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
 
-        event = WebhookDebugService.poll_event(
+        pool_key = WebhookDebugEvent.build_pool_key(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            node_id=node_id,
+        )
+        event: WebhookDebugEvent | None = TriggerDebugService.poll(
+            event_type=WebhookDebugEvent,
+            pool_key=pool_key,
             tenant_id=app_model.tenant_id,
             user_id=current_user.id,
             app_id=app_model.id,
@@ -1272,10 +1300,12 @@ class DraftWorkflowNodeWebhookDebugRunApi(Resource):
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         if node_type != NodeType.TRIGGER_WEBHOOK:
-            return jsonable_encoder({
-                "status": "error",
-                "message": "node is not webhook trigger",
-            }), 400
+            return jsonable_encoder(
+                {
+                    "status": "error",
+                    "message": "node is not webhook trigger",
+                }
+            ), 400
 
         payload = event.payload or {}
         workflow_inputs = payload.get("inputs")

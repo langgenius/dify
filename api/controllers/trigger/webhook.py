@@ -5,7 +5,7 @@ from flask import jsonify
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
-from services.trigger.trigger_debug_service import WebhookDebugService
+from services.trigger.trigger_debug_service import TriggerDebugService, WebhookDebugEvent
 from services.trigger.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
@@ -70,17 +70,27 @@ def handle_webhook_debug(webhook_id: str):
             return jsonify({"error": "Bad Request", "message": error}), 400
 
         workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
-        WebhookDebugService.dispatch_event(
+
+        # Generate pool key and dispatch debug event
+        pool_key: str = WebhookDebugEvent.build_pool_key(
             tenant_id=webhook_trigger.tenant_id,
             app_id=webhook_trigger.app_id,
             node_id=webhook_trigger.node_id,
+        )
+        event = WebhookDebugEvent(
             request_id=f"webhook_debug_{webhook_trigger.webhook_id}_{int(time.time() * 1000)}",
             timestamp=int(time.time()),
+            node_id=webhook_trigger.node_id,
             payload={
                 "inputs": workflow_inputs,
                 "webhook_data": webhook_data,
                 "method": webhook_data.get("method"),
             },
+        )
+        TriggerDebugService.dispatch(
+            tenant_id=webhook_trigger.tenant_id,
+            event=event,
+            pool_key=pool_key,
         )
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
         return jsonify(response_data), status_code

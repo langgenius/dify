@@ -15,7 +15,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
-from services.trigger.trigger_debug_service import TriggerDebugService
+from services.trigger.trigger_debug_service import PluginTriggerDebugEvent, TriggerDebugService
 from services.trigger.trigger_service import TriggerService
 from services.workflow.entities import PluginTriggerDispatchData
 
@@ -114,13 +114,23 @@ def dispatch_triggered_workflows_async(
             # Dispatch to debug sessions after processing all triggers
             debug_dispatched = 0
             try:
-                debug_dispatched = TriggerDebugService.dispatch_debug_event(
-                    tenant_id=subscription.tenant_id,
-                    subscription_id=subscription_id,
-                    events=events,
-                    timestamp=timestamp,
-                    request_id=request_id,
-                )
+                for event_name in events:
+                    pool_key: str = PluginTriggerDebugEvent.build_pool_key(
+                        tenant_id=subscription.tenant_id,
+                        subscription_id=subscription_id,
+                        trigger_name=event_name,
+                    )
+                    event = PluginTriggerDebugEvent(
+                        subscription_id=subscription_id,
+                        request_id=request_id,
+                        timestamp=timestamp,
+                        event_name=event_name,
+                    )
+                    debug_dispatched += TriggerDebugService.dispatch(
+                        tenant_id=subscription.tenant_id,
+                        event=event,
+                        pool_key=pool_key,
+                    )
             except Exception:
                 # Silent failure for debug dispatch
                 logger.exception("Failed to dispatch to debug sessions")

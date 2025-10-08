@@ -2,7 +2,8 @@
 
 import hashlib
 import logging
-from typing import Any, Optional
+from abc import ABC, abstractmethod
+from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 from redis import RedisError
@@ -13,36 +14,84 @@ logger = logging.getLogger(__name__)
 
 TRIGGER_DEBUG_EVENT_TTL = 300
 
+TEvent = TypeVar("TEvent", bound="BaseDebugEvent")
 
-class TriggerDebugEvent(BaseModel):
+
+class BaseDebugEvent(ABC, BaseModel):
+    """Base class for all debug events."""
+
+    timestamp: int
+
+    @classmethod
+    @abstractmethod
+    def build_pool_key(cls, **kwargs: Any) -> str:
+        """
+        Generate the waiting pool key for this event type.
+
+        Each subclass implements its own pool key strategy based on routing parameters.
+
+        Returns:
+            Redis key for the waiting pool
+        """
+        raise NotImplementedError("Subclasses must implement build_pool_key")
+
+
+class PluginTriggerDebugEvent(BaseDebugEvent):
+    """Debug event for plugin triggers."""
+
+    request_id: str
     subscription_id: str
-    request_id: str
-    timestamp: int
+    event_name: str
+
+    @classmethod
+    def build_pool_key(cls, **kwargs: Any) -> str:
+        """Generate pool key for plugin trigger events.
+
+        Args:
+            tenant_id: Tenant ID
+            subscription_id: Subscription ID
+            trigger_name: Trigger name
+        """
+        tenant_id = kwargs["tenant_id"]
+        subscription_id = kwargs["subscription_id"]
+        trigger_name = kwargs["trigger_name"]
+        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{subscription_id}:{trigger_name}"
 
 
-class WebhookDebugEvent(BaseModel):
+class WebhookDebugEvent(BaseDebugEvent):
+    """Debug event for webhook triggers."""
+
     request_id: str
-    timestamp: int
     node_id: str
     payload: dict[str, Any] = Field(default_factory=dict)
 
+    @classmethod
+    def build_pool_key(cls, **kwargs: Any) -> str:
+        """Generate pool key for webhook events.
 
-def _address(tenant_id: str, user_id: str, app_id: str, node_id: str) -> str:
-    address_id = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
-    return f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
+        Args:
+            tenant_id: Tenant ID
+            app_id: App ID
+            node_id: Node ID
+        """
+        tenant_id = kwargs["tenant_id"]
+        app_id = kwargs["app_id"]
+        node_id = kwargs["node_id"]
+        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{app_id}:{node_id}"
 
 
 class TriggerDebugService:
     """
-    Redis-based trigger debug service with polling support.
+    Unified Redis-based trigger debug service with polling support.
+
     Uses {tenant_id} hash tags for Redis Cluster compatibility.
+    Supports multiple event types through a generic dispatch/poll interface.
     """
 
     # LUA_SELECT: Atomic poll or register for event
     # KEYS[1] = trigger_debug_inbox:{tenant_id}:{address_id}
-    # KEYS[2] = trigger_debug_waiting_pool:{tenant_id}:{subscription_id}:{trigger}
+    # KEYS[2] = trigger_debug_waiting_pool:{tenant_id}:...
     # ARGV[1] = address_id
-    # compressed lua code, you can use LLM to uncompress it
     LUA_SELECT = (
         "local v=redis.call('GET',KEYS[1]);"
         "if v then redis.call('DEL',KEYS[1]);return v end;"
@@ -52,10 +101,9 @@ class TriggerDebugService:
     )
 
     # LUA_DISPATCH: Dispatch event to all waiting addresses
-    # KEYS[1] = trigger_debug_waiting_pool:{tenant_id}:{subscription_id}:{trigger}
+    # KEYS[1] = trigger_debug_waiting_pool:{tenant_id}:...
     # ARGV[1] = tenant_id
     # ARGV[2] = event_json
-    # compressed lua code, you can use LLM to uncompress it
     LUA_DISPATCH = (
         "local a=redis.call('SMEMBERS',KEYS[1]);"
         "if #a==0 then return 0 end;"
@@ -67,127 +115,76 @@ class TriggerDebugService:
     )
 
     @classmethod
-    def waiting_pool(cls, tenant_id: str, subscription_id: str, trigger_name: str) -> str:
-        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{subscription_id}:{trigger_name}"
-
-    @classmethod
-    def dispatch_debug_event(
+    def dispatch(
         cls,
         tenant_id: str,
-        subscription_id: str,
-        events: list[str],
-        request_id: str,
-        timestamp: int,
+        event: BaseDebugEvent,
+        pool_key: str,
     ) -> int:
-        event_json = TriggerDebugEvent(
-            subscription_id=subscription_id,
-            request_id=request_id,
-            timestamp=timestamp,
-        ).model_dump_json()
+        """
+        Dispatch event to all waiting addresses in the pool.
 
-        dispatched = 0
-        if len(events) > 10:
-            logger.warning(
-                "Too many events to dispatch at once: %d events tenant: %s subscription: %s",
-                len(events),
-                tenant_id,
-                subscription_id,
-            )
+        Args:
+            tenant_id: Tenant ID for hash tag
+            event: Event object to dispatch
+            pool_key: Pool key (generate using event_class.build_pool_key(...))
 
-        for trigger_name in events:
-            try:
-                dispatched += redis_client.eval(
-                    cls.LUA_DISPATCH,
-                    1,
-                    cls.waiting_pool(tenant_id, subscription_id, trigger_name),
-                    tenant_id,
-                    event_json,
-                )
-            except RedisError:
-                logger.exception("Failed to dispatch for trigger: %s", trigger_name)
-        return dispatched
-
-    @classmethod
-    def poll_event(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        app_id: str,
-        subscription_id: str,
-        node_id: str,
-        trigger_name: str,
-    ) -> Optional[TriggerDebugEvent]:
-        address_id = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
-
+        Returns:
+            Number of addresses the event was dispatched to
+        """
+        event_json = event.model_dump_json()
         try:
-            event = redis_client.eval(
-                cls.LUA_SELECT,
-                2,
-                _address(tenant_id, user_id, app_id, node_id),
-                cls.waiting_pool(tenant_id, subscription_id, trigger_name),
-                address_id,
-            )
-            return TriggerDebugEvent.model_validate_json(event) if event else None
-        except RedisError:
-            logger.exception("Failed to poll debug event")
-            return None
-
-
-class WebhookDebugService:
-    """Debug helpers dedicated to webhook triggers."""
-
-    @staticmethod
-    def waiting_pool(tenant_id: str, app_id: str, node_id: str) -> str:
-        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{app_id}:{node_id}"
-
-    @classmethod
-    def dispatch_event(
-        cls,
-        tenant_id: str,
-        app_id: str,
-        node_id: str,
-        request_id: str,
-        timestamp: int,
-        payload: dict[str, Any],
-    ) -> int:
-        event_json = WebhookDebugEvent(
-            request_id=request_id,
-            timestamp=timestamp,
-            node_id=node_id,
-            payload=payload,
-        ).model_dump_json()
-
-        try:
-            return redis_client.eval(
-                TriggerDebugService.LUA_DISPATCH,
+            result = redis_client.eval(
+                cls.LUA_DISPATCH,
                 1,
-                cls.waiting_pool(tenant_id, app_id, node_id),
+                pool_key,
                 tenant_id,
                 event_json,
             )
+            return int(result)
         except RedisError:
-            logger.exception("Failed to dispatch webhook debug event")
+            logger.exception("Failed to dispatch event to pool: %s", pool_key)
             return 0
 
     @classmethod
-    def poll_event(
+    def poll(
         cls,
+        event_type: type[TEvent],
+        pool_key: str,
         tenant_id: str,
         user_id: str,
         app_id: str,
         node_id: str,
-    ) -> Optional[WebhookDebugEvent]:
-        address_id = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
+    ) -> Optional[TEvent]:
+        """
+        Poll for an event or register to the waiting pool.
+
+        If an event is available in the inbox, return it immediately.
+        Otherwise, register the address to the waiting pool for future dispatch.
+
+        Args:
+            event_class: Event class for deserialization and type safety
+            pool_key: Pool key (generate using event_class.build_pool_key(...))
+            tenant_id: Tenant ID
+            user_id: User ID for address calculation
+            app_id: App ID for address calculation
+            node_id: Node ID for address calculation
+
+        Returns:
+            Event object if available, None otherwise
+        """
+        address_id: str = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
+        address: str = f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
 
         try:
-            event = redis_client.eval(
-                TriggerDebugService.LUA_SELECT,
+            event_data = redis_client.eval(
+                cls.LUA_SELECT,
                 2,
-                _address(tenant_id, user_id, app_id, node_id),
-                cls.waiting_pool(tenant_id, app_id, node_id),
+                address,
+                pool_key,
                 address_id,
             )
-            return WebhookDebugEvent.model_validate_json(event) if event else None
+            return event_type.model_validate_json(json_data=event_data) if event_data else None
         except RedisError:
-            logger.exception("Failed to poll webhook debug event")
+            logger.exception("Failed to poll event from pool: %s", pool_key)
             return None

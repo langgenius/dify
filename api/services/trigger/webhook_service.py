@@ -44,13 +44,13 @@ class WebhookService:
         Args:
             webhook_id: The webhook ID to look up
             is_debug: If True, use the draft workflow graph and skip the trigger enabled status check
-            
+
         Returns:
             A tuple containing:
                 - WorkflowWebhookTrigger: The webhook trigger object
                 - Workflow: The associated workflow object
                 - Mapping[str, Any]: The node configuration data
-                
+
         Raises:
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
@@ -61,7 +61,7 @@ class WebhookService:
             )
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")
-            
+
             if is_debug:
                 workflow = (
                     session.query(Workflow)
@@ -113,14 +113,14 @@ class WebhookService:
         cls, webhook_trigger: WorkflowWebhookTrigger, node_config: Mapping[str, Any]
     ) -> dict[str, Any]:
         """Extract and validate webhook data in a single unified process.
-        
+
         Args:
             webhook_trigger: The webhook trigger object containing metadata
             node_config: The node configuration containing validation rules
-            
+
         Returns:
             dict[str, Any]: Processed and validated webhook data with correct types
-            
+
         Raises:
             ValueError: If validation fails (HTTP method mismatch, missing required fields, type errors)
         """
@@ -141,10 +141,10 @@ class WebhookService:
     @classmethod
     def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> dict[str, Any]:
         """Extract raw data from incoming webhook request without type conversion.
-        
+
         Args:
             webhook_trigger: The webhook trigger object for file processing context
-            
+
         Returns:
             dict[str, Any]: Raw webhook data containing:
                 - method: HTTP method
@@ -191,14 +191,14 @@ class WebhookService:
     @classmethod
     def _process_and_validate_data(cls, raw_data: dict[str, Any], node_data: dict[str, Any]) -> dict[str, Any]:
         """Process and validate webhook data according to node configuration.
-        
+
         Args:
             raw_data: Raw webhook data from extraction
             node_data: Node configuration containing validation and type rules
-            
+
         Returns:
             dict[str, Any]: Processed data with validated types
-            
+
         Raises:
             ValueError: If validation fails or required fields are missing
         """
@@ -233,7 +233,7 @@ class WebhookService:
     @classmethod
     def _extract_json_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract JSON body from request.
-        
+
         Returns:
             tuple: (body_data, files_data) where:
                 - body_data: Parsed JSON content or empty dict if parsing fails
@@ -249,7 +249,7 @@ class WebhookService:
     @classmethod
     def _extract_form_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract form-urlencoded body from request.
-        
+
         Returns:
             tuple: (body_data, files_data) where:
                 - body_data: Form data as key-value pairs
@@ -260,10 +260,10 @@ class WebhookService:
     @classmethod
     def _extract_multipart_body(cls, webhook_trigger: WorkflowWebhookTrigger) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract multipart/form-data body and files from request.
-        
+
         Args:
             webhook_trigger: Webhook trigger for file processing context
-            
+
         Returns:
             tuple: (body_data, files_data) where:
                 - body_data: Form data as key-value pairs
@@ -278,10 +278,10 @@ class WebhookService:
         cls, webhook_trigger: WorkflowWebhookTrigger
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract binary data as file from request.
-        
+
         Args:
             webhook_trigger: Webhook trigger for file processing context
-            
+
         Returns:
             tuple: (body_data, files_data) where:
                 - body_data: Dict with 'raw' key containing file object or None
@@ -301,7 +301,7 @@ class WebhookService:
     @classmethod
     def _extract_text_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract text/plain body from request.
-        
+
         Returns:
             tuple: (body_data, files_data) where:
                 - body_data: Dict with 'raw' key containing text content
@@ -317,11 +317,11 @@ class WebhookService:
     @classmethod
     def _process_file_uploads(cls, files, webhook_trigger: WorkflowWebhookTrigger) -> dict[str, Any]:
         """Process file uploads using ToolFileManager.
-        
+
         Args:
             files: Flask request files object containing uploaded files
             webhook_trigger: Webhook trigger for tenant and user context
-            
+
         Returns:
             dict[str, Any]: Processed file objects indexed by field name
         """
@@ -345,12 +345,12 @@ class WebhookService:
         cls, file_content: bytes, mimetype: str, webhook_trigger: WorkflowWebhookTrigger
     ) -> Any:
         """Create a file object from binary content using ToolFileManager.
-        
+
         Args:
             file_content: The binary content of the file
             mimetype: The MIME type of the file
             webhook_trigger: Webhook trigger for tenant and user context
-            
+
         Returns:
             Any: A file object built from the binary content
         """
@@ -380,15 +380,15 @@ class WebhookService:
         cls, raw_params: dict[str, str], param_configs: list, is_form_data: bool = False
     ) -> dict[str, Any]:
         """Process parameters with unified validation and type conversion.
-        
+
         Args:
             raw_params: Raw parameter values as strings
             param_configs: List of parameter configuration dictionaries
             is_form_data: Whether the parameters are from form data (requiring string conversion)
-            
+
         Returns:
             dict[str, Any]: Processed parameters with validated types
-            
+
         Raises:
             ValueError: If required parameters are missing or validation fails
         """
@@ -421,15 +421,15 @@ class WebhookService:
         cls, raw_body: dict[str, Any], body_configs: list, content_type: str
     ) -> dict[str, Any]:
         """Process body parameters based on content type and configuration.
-        
+
         Args:
             raw_body: Raw body data from request
             body_configs: List of body parameter configuration dictionaries
             content_type: The request content type
-            
+
         Returns:
             dict[str, Any]: Processed body parameters with validated types
-            
+
         Raises:
             ValueError: If required body parameters are missing or validation fails
         """
@@ -474,16 +474,16 @@ class WebhookService:
     @classmethod
     def _validate_and_convert_value(cls, param_name: str, value: Any, param_type: str, is_form_data: bool) -> Any:
         """Unified validation and type conversion for parameter values.
-        
+
         Args:
             param_name: Name of the parameter for error reporting
             value: The value to validate and convert
             param_type: The expected parameter type (SegmentType)
             is_form_data: Whether the value is from form data (requiring string conversion)
-            
+
         Returns:
             Any: The validated and converted value
-            
+
         Raises:
             ValueError: If validation or conversion fails
         """
@@ -500,15 +500,15 @@ class WebhookService:
     @classmethod
     def _convert_form_value(cls, param_name: str, value: str, param_type: str) -> Any:
         """Convert form data string values to specified types.
-        
+
         Args:
             param_name: Name of the parameter for error reporting
             value: The string value to convert
             param_type: The target type to convert to (SegmentType)
-            
+
         Returns:
             Any: The converted value in the appropriate type
-            
+
         Raises:
             ValueError: If the value cannot be converted to the specified type
         """
@@ -531,15 +531,15 @@ class WebhookService:
     @classmethod
     def _validate_json_value(cls, param_name: str, value: Any, param_type: str) -> Any:
         """Validate JSON values against expected types.
-        
+
         Args:
             param_name: Name of the parameter for error reporting
             value: The value to validate
             param_type: The expected parameter type (SegmentType)
-            
+
         Returns:
             Any: The validated value (unchanged if valid)
-            
+
         Raises:
             ValueError: If the value type doesn't match the expected type
         """
@@ -581,11 +581,11 @@ class WebhookService:
     @classmethod
     def _validate_required_headers(cls, headers: dict[str, Any], header_configs: list) -> None:
         """Validate required headers are present.
-        
+
         Args:
             headers: Request headers dictionary
             header_configs: List of header configuration dictionaries
-            
+
         Raises:
             ValueError: If required headers are missing
         """
@@ -599,11 +599,11 @@ class WebhookService:
     @classmethod
     def _validate_http_metadata(cls, webhook_data: dict[str, Any], node_data: dict[str, Any]) -> dict[str, Any]:
         """Validate HTTP method and content-type.
-        
+
         Args:
             webhook_data: Extracted webhook data containing method and headers
             node_data: Node configuration containing expected method and content-type
-            
+
         Returns:
             dict[str, Any]: Validation result with 'valid' key and optional 'error' key
         """
@@ -627,10 +627,10 @@ class WebhookService:
     @classmethod
     def _extract_content_type(cls, headers: dict[str, Any]) -> str:
         """Extract and normalize content-type from headers.
-        
+
         Args:
             headers: Request headers dictionary
-            
+
         Returns:
             str: Normalized content-type (main type without parameters)
         """
@@ -643,10 +643,10 @@ class WebhookService:
     @classmethod
     def _validation_error(cls, error_message: str) -> dict[str, Any]:
         """Create a standard validation error response.
-        
+
         Args:
             error_message: The error message to include
-            
+
         Returns:
             dict[str, Any]: Validation error response with 'valid' and 'error' keys
         """
@@ -664,10 +664,10 @@ class WebhookService:
     @classmethod
     def build_workflow_inputs(cls, webhook_data: dict[str, Any]) -> dict[str, Any]:
         """Construct workflow inputs payload from webhook data.
-        
+
         Args:
             webhook_data: Processed webhook data containing headers, query params, and body
-            
+
         Returns:
             dict[str, Any]: Workflow inputs formatted for execution
         """
@@ -683,12 +683,12 @@ class WebhookService:
         cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
-        
+
         Args:
             webhook_trigger: The webhook trigger object
             webhook_data: Processed webhook data for workflow inputs
             workflow: The workflow to execute
-            
+
         Raises:
             ValueError: If tenant owner is not found
             Exception: If workflow execution fails
@@ -737,10 +737,10 @@ class WebhookService:
     @classmethod
     def generate_webhook_response(cls, node_config: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
         """Generate HTTP response based on node configuration.
-        
+
         Args:
             node_config: Node configuration containing response settings
-            
+
         Returns:
             tuple[dict[str, Any], int]: Response data and HTTP status code
         """
