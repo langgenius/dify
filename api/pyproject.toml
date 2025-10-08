@@ -37,7 +37,6 @@ dependencies = [
     "mailchimp-transactional~=1.0.50",
     "markdown~=3.5.1",
     "numpy~=1.26.4",
-    "openai~=1.61.0",
     "openpyxl~=3.1.5",
     "opik~=1.7.25",
     "opentelemetry-api==1.27.0",
@@ -178,10 +177,10 @@ dev = [
 # Required for storage clients
 ############################################################
 storage = [
-    "azure-storage-blob==12.13.0",
+    "azure-storage-blob==12.26.0",
     "bce-python-sdk~=0.9.23",
     "cos-python-sdk-v5==1.9.38",
-    "esdk-obs-python==3.24.6.1",
+    "esdk-obs-python==3.25.8",
     "google-cloud-storage==2.16.0",
     "opendal~=0.46.0",
     "oss2==2.18.5",

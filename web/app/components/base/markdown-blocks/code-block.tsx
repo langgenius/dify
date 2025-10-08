@@ -8,12 +8,14 @@ import {
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
-import Flowchart from '@/app/components/base/mermaid'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
+import dynamic from 'next/dynamic'
+
+const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
