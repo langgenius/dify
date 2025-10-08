@@ -6,8 +6,8 @@ from contextlib import contextmanager
 from typing import Any
 
 import psycopg2.errors
-import psycopg2.extras  # type: ignore
-import psycopg2.pool  # type: ignore
+import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config

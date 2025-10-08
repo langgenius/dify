@@ -1,6 +1,6 @@
 from typing import Literal
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from flask_restx import marshal, reqparse
 from werkzeug.exceptions import NotFound
 

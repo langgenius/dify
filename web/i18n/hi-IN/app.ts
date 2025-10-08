@@ -277,6 +277,10 @@ const translation = {
       themeSystemDesc: 'अपने ऑपरेटिंग सिस्टम की उपस्थिति का पालन करें',
       runDesc: 'त्वरित कमांड चलाएँ (थीम, भाषा, ...)',
       slashDesc: 'कमांड्स चलाएं जैसे /theme, /lang',
+      accountDesc: 'खाता पृष्ठ पर जाएं',
+      docDesc: 'सहायता दस्तावेज़ खोलें',
+      communityDesc: 'ओपन डिस्कॉर्ड समुदाय',
+      feedbackDesc: 'खुले समुदाय की फीडबैक चर्चाएँ',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',
@@ -311,6 +315,7 @@ const translation = {
     inScope: '{{scope}}s में',
     tryDifferentSearch: 'एक अलग खोज शब्द आजमाएँ',
     noMatchingCommands: 'कोई मिलती-जुलती कमांड्स नहीं मिलीं',
+    slashHint: 'सभी उपलब्ध कमांड देखने के लिए टाइप करें /',
   },
 }
 
