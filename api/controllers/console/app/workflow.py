@@ -31,6 +31,7 @@ from libs.login import current_user, login_required
 from models import App
 from models.account import Account
 from models.model import AppMode
+from models.provider_ids import TriggerProviderID
 from models.workflow import NodeType, Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
@@ -1091,8 +1092,6 @@ class DraftWorkflowTriggerRunApi(Resource):
             "DraftWorkflowTriggerRunRequest",
             {
                 "node_id": fields.String(required=True, description="Node ID"),
-                "trigger_name": fields.String(required=True, description="Trigger name"),
-                "subscription_id": fields.String(required=True, description="Subscription ID"),
             },
         )
     )
@@ -1112,17 +1111,33 @@ class DraftWorkflowTriggerRunApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
-        parser.add_argument("trigger_name", type=str, required=True, location="json", nullable=False)
-        parser.add_argument("subscription_id", type=str, required=True, location="json", nullable=False)
         args = parser.parse_args()
         node_id = args["node_id"]
-        trigger_name = args["trigger_name"]
-        subscription_id = args["subscription_id"]
+        workflow_service = WorkflowService()
+        workflow: Workflow | None = workflow_service.get_draft_workflow(
+            app_model=app_model,
+            workflow_id=None,
+        )
 
-        pool_key = PluginTriggerDebugEvent.build_pool_key(
+        if not workflow:
+            return jsonable_encoder({"status": "error", "message": "Workflow not found"}), 404
+
+        node_data = workflow.get_node_config_by_id(node_id=node_id).get("data")
+        if not node_data:
+            return jsonable_encoder({"status": "error", "message": "Node config not found"}), 404
+
+        event_name = node_data.get("event_name")
+        subscription_id = node_data.get("subscription_id")
+        if not subscription_id:
+            return jsonable_encoder({"status": "error", "message": "Subscription ID not found"}), 404
+
+        # TODO Frontend data management is completely messy here
+        provider_id = TriggerProviderID(node_data.get("provider_name"))
+        pool_key: str = PluginTriggerDebugEvent.build_pool_key(
             tenant_id=app_model.tenant_id,
+            provider_id=provider_id,
             subscription_id=subscription_id,
-            trigger_name=trigger_name,
+            event_name=event_name,
         )
         event: PluginTriggerDebugEvent | None = TriggerDebugService.poll(
             event_type=PluginTriggerDebugEvent,

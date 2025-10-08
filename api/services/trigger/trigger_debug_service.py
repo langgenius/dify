@@ -49,13 +49,15 @@ class PluginTriggerDebugEvent(BaseDebugEvent):
 
         Args:
             tenant_id: Tenant ID
+            provider_id: Provider ID
             subscription_id: Subscription ID
-            trigger_name: Trigger name
+            event_name: Event name
         """
         tenant_id = kwargs["tenant_id"]
+        provider_id = kwargs["provider_id"]
         subscription_id = kwargs["subscription_id"]
-        trigger_name = kwargs["trigger_name"]
-        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{subscription_id}:{trigger_name}"
+        event_name = kwargs["event_name"]
+        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{str(provider_id)}:{subscription_id}:{event_name}"
 
 
 class WebhookDebugEvent(BaseDebugEvent):
@@ -132,14 +134,14 @@ class TriggerDebugService:
         Returns:
             Number of addresses the event was dispatched to
         """
-        event_json = event.model_dump_json()
+        event_data = event.model_dump_json()
         try:
             result = redis_client.eval(
                 cls.LUA_DISPATCH,
                 1,
                 pool_key,
                 tenant_id,
-                event_json,
+                event_data,
             )
             return int(result)
         except RedisError:

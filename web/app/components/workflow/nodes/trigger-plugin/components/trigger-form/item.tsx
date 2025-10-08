@@ -12,7 +12,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 import { useBoolean } from 'ahooks'
 import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
-import type { Trigger } from '@/app/components/tools/types'
+import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
@@ -22,7 +22,7 @@ type Props = {
   value: PluginTriggerVarInputs
   onChange: (value: PluginTriggerVarInputs) => void
   inPanel?: boolean
-  currentTrigger?: Trigger
+  currentTrigger?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
 }

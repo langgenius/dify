@@ -8,8 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.request import TriggerDispatchResponse
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.entities.entities import EventEntity
+from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
@@ -70,13 +72,13 @@ class TriggerService:
 
     @classmethod
     def dispatch_triggered_workflows(
-        cls, subscription: TriggerSubscription, trigger: EventEntity, request_id: str
+        cls, subscription: TriggerSubscription, event: EventEntity, request_id: str
     ) -> int:
         """Process triggered workflows.
 
         Args:
             subscription: The trigger subscription
-            trigger: The trigger entity that was activated
+            event: The trigger entity that was activated
             request_id: The ID of the stored request in storage system
         """
         request = deserialize_request(storage.load_once(f"triggers/{request_id}"))
@@ -85,12 +87,12 @@ class TriggerService:
             return 0
 
         subscribers: list[WorkflowPluginTrigger] = cls.get_subscriber_triggers(
-            tenant_id=subscription.tenant_id, subscription_id=subscription.id, trigger_name=trigger.identity.name
+            tenant_id=subscription.tenant_id, subscription_id=subscription.id, trigger_name=event.identity.name
         )
         if not subscribers:
             logger.warning(
                 "No workflows found for trigger '%s' in subscription '%s'",
-                trigger.identity.name,
+                event.identity.name,
                 subscription.id,
             )
             return 0
@@ -125,7 +127,7 @@ class TriggerService:
                     tenant_id=subscription.tenant_id,
                     user_id=subscription.user_id,
                     provider_id=TriggerProviderID(subscription.provider_id),
-                    trigger_name=trigger.identity.name,
+                    trigger_name=event.identity.name,
                     parameters=trigger_node.get("config", {}),
                     credentials=subscription.credentials,
                     credential_type=CredentialType.of(subscription.credential_type),
@@ -135,7 +137,7 @@ class TriggerService:
                     logger.info(
                         "Trigger ignored for app %s with trigger %s",
                         plugin_trigger.app_id,
-                        trigger.identity.name,
+                        event.identity.name,
                     )
                     continue
 
@@ -158,7 +160,7 @@ class TriggerService:
                     logger.info(
                         "Triggered workflow for app %s with trigger %s",
                         plugin_trigger.app_id,
-                        trigger.identity.name,
+                        event.identity.name,
                     )
                 except Exception:
                     logger.exception(
@@ -178,16 +180,18 @@ class TriggerService:
             request: Request
         """
         timestamp = int(time.time())
-        subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
+        subscription: TriggerSubscription | None = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
         if not subscription:
             return None
 
         provider_id = TriggerProviderID(subscription.provider_id)
-        controller = TriggerManager.get_trigger_provider(subscription.tenant_id, provider_id)
+        controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id=subscription.tenant_id, provider_id=provider_id
+        )
         if not controller:
             return None
 
-        dispatch_response = controller.dispatch(
+        dispatch_response: TriggerDispatchResponse = controller.dispatch(
             user_id=subscription.user_id, request=request, subscription=subscription.to_entity()
         )
 

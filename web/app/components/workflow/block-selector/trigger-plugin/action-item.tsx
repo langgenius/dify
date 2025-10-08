@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { TriggerWithProvider } from '../types'
-import type { Trigger } from '@/app/components/tools/types'
+import type { Event } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import type { TriggerDefaultValue } from '../types'
 import Tooltip from '@/app/components/base/tooltip'
@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 
 type Props = {
   provider: TriggerWithProvider
-  payload: Trigger
+  payload: Event
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
@@ -63,9 +63,9 @@ const TriggerPluginActionItem: FC<Props> = ({
             provider_id: provider.id,
             provider_type: provider.type as string,
             provider_name: provider.name,
-            trigger_name: payload.name,
-            trigger_label: payload.label[language],
-            trigger_description: payload.description[language],
+            event_name: payload.name,
+            event_label: payload.label[language],
+            event_description: payload.description[language],
             plugin_unique_identifier: provider.plugin_unique_identifier,
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,

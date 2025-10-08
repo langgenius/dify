@@ -33,12 +33,12 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     labels: provider.tags || [],
     plugin_id: provider.plugin_id,
     plugin_unique_identifier: provider.plugin_unique_identifier || '',
-    triggers: provider.events.map(trigger => ({
-      name: trigger.name,
+    events: provider.events.map(event => ({
+      name: event.name,
       author: provider.author,
-      label: trigger.identity.label,
-      description: trigger.description.llm,
-      parameters: trigger.parameters.map(param => ({
+      label: event.identity.label,
+      description: event.description.llm,
+      parameters: event.parameters.map(param => ({
         name: param.name,
         label: param.label,
         human_description: param.description || param.label,
@@ -54,7 +54,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
         multiple: param.multiple || false,
       })),
       labels: provider.tags || [],
-      output_schema: trigger.output_schema || {},
+      output_schema: event.output_schema || {},
     })),
 
     // Trigger-specific schema fields

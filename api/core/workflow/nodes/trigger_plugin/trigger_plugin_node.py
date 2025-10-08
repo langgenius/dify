@@ -43,7 +43,7 @@ class TriggerPluginNode(Node):
             "config": {
                 "plugin_id": "",
                 "provider_id": "",
-                "trigger_name": "",
+                "event_name": "",
                 "subscription_id": "",
                 "parameters": {},
             },
@@ -67,7 +67,7 @@ class TriggerPluginNode(Node):
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
                 **trigger_inputs,
                 "provider_id": self._node_data.provider_id,
-                "trigger_name": self._node_data.trigger_name,
+                "event_name": self._node_data.event_name,
                 "plugin_unique_identifier": self._node_data.plugin_unique_identifier,
             },
         }

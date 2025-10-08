@@ -13,7 +13,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   metaData,
   defaultValue: {
     plugin_id: '',
-    trigger_name: '',
+    event_name: '',
     // event_type: '',
     config: {},
   },

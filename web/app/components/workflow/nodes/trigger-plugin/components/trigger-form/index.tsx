@@ -1,6 +1,6 @@
 'use client'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Trigger } from '@/app/components/tools/types'
+import type { Event } from '@/app/components/tools/types'
 import type { FC } from 'react'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import TriggerFormItem from './item'
@@ -14,7 +14,7 @@ type Props = {
   onChange: (value: PluginTriggerVarInputs) => void
   onOpen?: (index: number) => void
   inPanel?: boolean
-  currentTrigger?: Trigger
+  currentTrigger?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
 }

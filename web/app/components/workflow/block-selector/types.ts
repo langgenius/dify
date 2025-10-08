@@ -1,6 +1,6 @@
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta, SupportedCreationMethods } from '../../plugins/types'
-import type { Collection, Trigger } from '../../tools/types'
+import type { Collection, Event } from '../../tools/types'
 
 export enum TabsEnum {
   Start = 'start',
@@ -32,9 +32,9 @@ type PluginCommonDefaultValue = {
 }
 
 export type TriggerDefaultValue = PluginCommonDefaultValue & {
-  trigger_name: string
-  trigger_label: string
-  trigger_description: string
+  event_name: string
+  event_label: string
+  event_description: string
   title: string
   plugin_unique_identifier: string
   is_team_authorization: boolean
@@ -207,7 +207,7 @@ export type TriggerProviderApiEntity = {
 
 // Frontend types - compatible with ToolWithProvider
 export type TriggerWithProvider = Collection & {
-  triggers: Trigger[]
+  events: Event[]
   meta: PluginMeta
   plugin_unique_identifier: string
   credentials_schema?: TriggerCredentialField[]

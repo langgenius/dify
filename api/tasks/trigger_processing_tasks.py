@@ -87,8 +87,8 @@ def dispatch_triggered_workflows_async(
             dispatched_count = 0
             for event_name in events:
                 try:
-                    trigger = controller.get_event(event_name)
-                    if trigger is None:
+                    event = controller.get_event(event_name)
+                    if event is None:
                         logger.error(
                             "Trigger '%s' not found in provider '%s'",
                             event_name,
@@ -98,7 +98,7 @@ def dispatch_triggered_workflows_async(
 
                     dispatched_count += TriggerService.dispatch_triggered_workflows(
                         subscription=subscription,
-                        trigger=trigger,
+                        event=event,
                         request_id=request_id,
                     )
 
@@ -118,7 +118,8 @@ def dispatch_triggered_workflows_async(
                     pool_key: str = PluginTriggerDebugEvent.build_pool_key(
                         tenant_id=subscription.tenant_id,
                         subscription_id=subscription_id,
-                        trigger_name=event_name,
+                        event_name=event_name,
+                        provider_id=provider_id,
                     )
                     event = PluginTriggerDebugEvent(
                         subscription_id=subscription_id,
@@ -140,11 +141,6 @@ def dispatch_triggered_workflows_async(
                 dispatched_count,
                 len(events),
             )
-
-            # Note: Stored request is not deleted here. It should be handled by:
-            # 1. Storage system's lifecycle policy (e.g., S3 lifecycle rules for triggers/* prefix)
-            # 2. Or periodic cleanup job if using local/persistent storage
-            # This ensures request data is available for debugging/retry purposes
 
             return {
                 "status": "completed",

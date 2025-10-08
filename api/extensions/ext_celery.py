@@ -98,6 +98,7 @@ def init_app(app: DifyApp) -> Celery:
 
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
+        "tasks.trigger_processing_tasks",  # async trigger processing
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 

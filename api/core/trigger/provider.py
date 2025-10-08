@@ -259,9 +259,9 @@ class PluginTriggerProviderController:
         :return: Dispatch response with triggers and raw HTTP response
         """
         manager = PluginTriggerManager()
-        provider_id = self.get_provider_id()
+        provider_id: TriggerProviderID = self.get_provider_id()
 
-        response = manager.dispatch_event(
+        response: TriggerDispatchResponse = manager.dispatch_event(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=str(provider_id),

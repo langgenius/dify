@@ -13,7 +13,7 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { Trigger } from '@/app/components/tools/types'
+import type { Event } from '@/app/components/tools/types'
 
 const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -24,7 +24,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     payload,
   )
 
-  const { provider_id, provider_name, trigger_name, config } = inputs
+  const { provider_id, provider_name, event_name: event_name, config } = inputs
 
   // Construct provider for authentication check
   const authProvider = useMemo(() => {
@@ -45,11 +45,11 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     )
   }, [triggerPlugins, provider_name, provider_id])
 
-  const currentTrigger = useMemo<Trigger | undefined>(() => {
-    return currentProvider?.triggers.find(
-      trigger => trigger.name === trigger_name,
+  const currentEvent = useMemo<Event | undefined>(() => {
+    return currentProvider?.events.find(
+      event => event.name === event_name,
     )
-  }, [currentProvider, trigger_name])
+  }, [currentProvider, event_name])
 
   // Dynamic subscription parameters (from subscription_schema.parameters_schema)
   const subscriptionParameterSchema = useMemo(() => {
@@ -61,9 +61,9 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Dynamic trigger parameters (from specific trigger.parameters)
   const triggerSpecificParameterSchema = useMemo(() => {
-    if (!currentTrigger) return []
-    return toolParametersToFormSchemas(currentTrigger.parameters)
-  }, [currentTrigger])
+    if (!currentEvent) return []
+    return toolParametersToFormSchemas(currentEvent.parameters)
+  }, [currentEvent])
 
   // Combined parameter schema (subscription + trigger specific)
   const triggerParameterSchema = useMemo(() => {
@@ -106,8 +106,8 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Get output schema
   const outputSchema = useMemo(() => {
-    return currentTrigger?.output_schema || {}
-  }, [currentTrigger])
+    return currentEvent?.output_schema || {}
+  }, [currentEvent])
 
   // Check if trigger has complex output structure
   const hasObjectOutput = useMemo(() => {
@@ -151,7 +151,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     readOnly,
     inputs,
     currentProvider,
-    currentTrigger,
+    currentTrigger: currentEvent,
     triggerParameterSchema,
     triggerParameterValue,
     subscriptionParameterSchema,

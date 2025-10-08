@@ -27,7 +27,7 @@ import cn from '@/utils/classnames'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
-import type { Trigger } from '@/app/components/tools/types'
+import type { Event } from '@/app/components/tools/types'
 
 type Props = {
   readOnly: boolean
@@ -36,7 +36,7 @@ type Props = {
   value: ResourceVarInputs
   onChange: (value: any) => void
   inPanel?: boolean
-  currentTool?: Tool | Trigger
+  currentTool?: Tool | Event
   currentProvider?: ToolWithProvider | TriggerWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void

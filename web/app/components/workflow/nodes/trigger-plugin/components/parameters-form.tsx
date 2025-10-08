@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { Trigger } from '@/app/components/tools/types'
+import type { Event } from '@/app/components/tools/types'
 import { toolCredentialToFormSchemas, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import TriggerForm from './trigger-form'
 import Button from '@/app/components/base/button'
@@ -11,7 +11,7 @@ import Input from '@/app/components/base/input'
 
 type ParametersFormProps = {
   provider: TriggerWithProvider
-  trigger?: Trigger
+  trigger?: Event
   builderId: string
   parametersValue: Record<string, any>
   propertiesValue: Record<string, any>

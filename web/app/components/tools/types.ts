@@ -102,7 +102,7 @@ export type TriggerParameter = {
 }
 
 // Action
-export type Trigger = {
+export type Event = {
   name: string
   author: string
   label: TypeWithI18N

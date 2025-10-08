@@ -27,7 +27,7 @@ const TriggerPluginItem: FC<Props> = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const notShowProvider = payload.type === CollectionType.workflow
-  const actions = payload.triggers
+  const actions = payload.events
   const hasAction = !notShowProvider
   const [isFold, setFold] = React.useState<boolean>(true)
   const ref = useRef(null)
@@ -71,10 +71,10 @@ const TriggerPluginItem: FC<Props> = ({
               return
             }
 
-            const trigger = actions[0]
+            const event = actions[0]
             const params: Record<string, string> = {}
-            if (trigger.parameters) {
-              trigger.parameters.forEach((item) => {
+            if (event.parameters) {
+              event.parameters.forEach((item: any) => {
                 params[item.name] = ''
               })
             }
@@ -82,14 +82,14 @@ const TriggerPluginItem: FC<Props> = ({
               provider_id: payload.id,
               provider_type: payload.type,
               provider_name: payload.name,
-              trigger_name: trigger.name,
-              trigger_label: trigger.label[language],
-              trigger_description: trigger.description[language],
-              title: trigger.label[language],
+              event_name: event.name,
+              event_label: event.label[language],
+              event_description: event.description[language],
+              title: event.label[language],
               plugin_unique_identifier: payload.plugin_unique_identifier,
               is_team_authorization: payload.is_team_authorization,
-              output_schema: trigger.output_schema || {},
-              paramSchemas: trigger.parameters,
+              output_schema: event.output_schema || {},
+              paramSchemas: event.parameters,
               params,
             })
           }}

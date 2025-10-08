@@ -251,7 +251,7 @@ class TriggerInvokeResponse(BaseModel):
 
 
 class PluginTriggerDispatchResponse(BaseModel):
-    triggers: list[str]
+    events: list[str]
     raw_http_response: str
 
 

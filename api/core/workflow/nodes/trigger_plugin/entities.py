@@ -13,7 +13,7 @@ class PluginTriggerData(BaseNodeData):
     desc: Optional[str] = None
     plugin_id: str = Field(..., description="Plugin ID")
     provider_id: str = Field(..., description="Provider ID")
-    trigger_name: str = Field(..., description="Trigger name")
+    event_name: str = Field(..., description="Event name")
     subscription_id: str = Field(..., description="Subscription ID")
     plugin_unique_identifier: str = Field(..., description="Plugin unique identifier")
     parameters: dict[str, Any] = Field(default_factory=dict, description="Trigger parameters")
