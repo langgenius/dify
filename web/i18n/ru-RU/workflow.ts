@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Создать контент',
+        reasoning_content: 'Содержимое рассуждений',
         usage: 'Информация об использовании модели',
       },
       singleRun: {
