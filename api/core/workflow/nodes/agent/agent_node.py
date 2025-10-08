@@ -144,11 +144,11 @@ class AgentNode(Node):
         env_vars = self.graph_runtime_state.variable_pool.variable_dictionary.get("env", {})
 
         # get secret variables used
-        secret_variables = [
+        secret_variables = {
             var.name
             for var in env_vars.values()  # iterate over the values directly
             if isinstance(var, SecretVariable)
-        ]
+        }
 
         try:
             message_stream = strategy.invoke(
@@ -500,7 +500,7 @@ class AgentNode(Node):
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
-        secret_variables: list[str] | None = None,
+        secret_variables: set[str] | None = None,
     ) -> Generator[NodeEventBase, None, None]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]

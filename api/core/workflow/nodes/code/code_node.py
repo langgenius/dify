@@ -76,7 +76,7 @@ class CodeNode(Node):
         code = self._node_data.code
 
         # to store secret variables used in the code block.
-        secret_variables = []
+        secret_variables = set()
 
         # Get variables
         variables = {}
@@ -84,7 +84,7 @@ class CodeNode(Node):
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             if isinstance(variable, SecretVariable):
-                secret_variables.append(variable_name)
+                secret_variables.add(variable_name)
 
             if isinstance(variable, ArrayFileSegment):
                 variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None

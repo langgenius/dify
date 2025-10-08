@@ -55,7 +55,7 @@ def decrypt_token_with_decoding(token: str, rsa_key, cipher_rsa):
 @overload
 def encrypt_secret_keys(
     obj: Mapping[str, Any],
-    secret_variables: list[str] | None = None,
+    secret_variables: set[str] | None = None,
     parent_key: str | None = None,
 ) -> Mapping[str, Any]: ...
 
@@ -63,7 +63,7 @@ def encrypt_secret_keys(
 @overload
 def encrypt_secret_keys(
     obj: list[Any],
-    secret_variables: list[str] | None = None,
+    secret_variables: set[str] | None = None,
     parent_key: str | None = None,
 ) -> list[Any]: ...
 
@@ -71,21 +71,22 @@ def encrypt_secret_keys(
 @overload
 def encrypt_secret_keys(
     obj: Any,
-    secret_variables: list[str] | None = None,
+    secret_variables: set[str] | None = None,
     parent_key: str | None = None,
 ) -> Any: ...
 
 
 def encrypt_secret_keys(
     obj: Any,
-    secret_variables: list[str] | None = None,
+    secret_variables: set[str] | None = None,
     parent_key: str | None = None,
 ) -> Any:
     """
     Recursively obfuscate the value if it belongs to a Secret Variable.
     Preserves input type: dict -> dict, list -> list, scalar -> scalar.
     """
-    secret_variables = secret_variables or []
+    if secret_variables is None:
+        secret_variables = set()
 
     if isinstance(obj, dict):
         # recurse into dict
