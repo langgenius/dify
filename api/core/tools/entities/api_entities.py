@@ -47,6 +47,11 @@ class ToolProviderApiEntity(BaseModel):
     sse_read_timeout: float | None = Field(default=300.0, description="The SSE read timeout of the MCP tool")
     masked_headers: dict[str, str] | None = Field(default=None, description="The masked headers of the MCP tool")
     original_headers: dict[str, str] | None = Field(default=None, description="The original headers of the MCP tool")
+    # MCP OAuth credentials
+    client_id: str | None = Field(default=None, description="The masked client ID for OAuth")
+    client_secret: str | None = Field(default=None, description="The masked client secret for OAuth")
+    grant_type: str | None = Field(default=None, description="The OAuth grant type")
+    scope: str | None = Field(default=None, description="The OAuth scope")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -72,6 +77,10 @@ class ToolProviderApiEntity(BaseModel):
             optional_fields.update(self.optional_field("timeout", self.timeout))
             optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
             optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
+            optional_fields.update(self.optional_field("client_id", self.client_id))
+            optional_fields.update(self.optional_field("client_secret", self.client_secret))
+            optional_fields.update(self.optional_field("grant_type", self.grant_type))
+            optional_fields.update(self.optional_field("scope", self.scope))
         return {
             "id": self.id,
             "author": self.author,

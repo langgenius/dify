@@ -106,8 +106,8 @@ def handle_callback(state_key: str, authorization_code: str, mcp_service: "MCPTo
 
 def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
     """Check if the server supports OAuth 2.0 Resource Discovery."""
-    b_scheme, b_netloc, b_path, _, b_query, b_fragment = urlparse(server_url, "", True)
-    url_for_resource_discovery = f"{b_scheme}://{b_netloc}/.well-known/oauth-protected-resource{b_path}"
+    b_scheme, b_netloc, _, _, b_query, b_fragment = urlparse(server_url, "", True)
+    url_for_resource_discovery = f"{b_scheme}://{b_netloc}/.well-known/oauth-protected-resource"
     if b_query:
         url_for_resource_discovery += f"?{b_query}"
     if b_fragment:
@@ -117,7 +117,10 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
         response = httpx.get(url_for_resource_discovery, headers=headers)
         if 200 <= response.status_code < 300:
             body = response.json()
-            if "authorization_server_url" in body:
+            # Support both singular and plural forms
+            if body.get("authorization_servers"):
+                return True, body["authorization_servers"][0]
+            elif body.get("authorization_server_url"):
                 return True, body["authorization_server_url"][0]
             else:
                 return False, ""
@@ -132,27 +135,37 @@ def discover_oauth_metadata(server_url: str, protocol_version: str | None = None
     # First check if the server supports OAuth 2.0 Resource Discovery
     support_resource_discovery, oauth_discovery_url = check_support_resource_discovery(server_url)
     if support_resource_discovery:
-        url = oauth_discovery_url
+        # The oauth_discovery_url is the authorization server base URL
+        # Try OpenID Connect discovery first (more common), then OAuth 2.0
+        urls_to_try = [
+            urljoin(oauth_discovery_url + "/", ".well-known/openid-configuration"),
+            urljoin(oauth_discovery_url + "/", ".well-known/oauth-authorization-server"),
+        ]
     else:
-        url = urljoin(server_url, "/.well-known/oauth-authorization-server")
+        urls_to_try = [urljoin(server_url, "/.well-known/oauth-authorization-server")]
 
-    try:
-        headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION}
-        response = httpx.get(url, headers=headers)
-        if response.status_code == 404:
-            return None
-        if not response.is_success:
-            raise ValueError(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
-        return OAuthMetadata.model_validate(response.json())
-    except httpx.RequestError as e:
-        if isinstance(e, httpx.ConnectError):
-            response = httpx.get(url)
+    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION}
+
+    for url in urls_to_try:
+        try:
+            response = httpx.get(url, headers=headers)
             if response.status_code == 404:
-                return None
+                continue  # Try next URL
             if not response.is_success:
                 raise ValueError(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
             return OAuthMetadata.model_validate(response.json())
-        raise
+        except httpx.RequestError as e:
+            if isinstance(e, httpx.ConnectError):
+                response = httpx.get(url)
+                if response.status_code == 404:
+                    continue  # Try next URL
+                if not response.is_success:
+                    raise ValueError(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
+                return OAuthMetadata.model_validate(response.json())
+            # For other errors, try next URL
+            continue
+
+    return None  # No metadata found
 
 
 def start_authorization(
@@ -276,6 +289,49 @@ def refresh_authorization(
     return OAuthTokens.model_validate(response.json())
 
 
+def client_credentials_flow(
+    server_url: str,
+    metadata: OAuthMetadata | None,
+    client_information: OAuthClientInformation,
+    scope: str | None = None,
+) -> OAuthTokens:
+    """Execute Client Credentials Flow to get access token."""
+    grant_type = "client_credentials"
+
+    if metadata:
+        token_url = metadata.token_endpoint
+        if metadata.grant_types_supported and grant_type not in metadata.grant_types_supported:
+            raise ValueError(f"Incompatible auth server: does not support grant type {grant_type}")
+    else:
+        token_url = urljoin(server_url, "/token")
+
+    # Support both Basic Auth and body parameters for client authentication
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {"grant_type": grant_type}
+
+    if scope:
+        data["scope"] = scope
+
+    # If client_secret is provided, use Basic Auth (preferred method)
+    if client_information.client_secret:
+        credentials = f"{client_information.client_id}:{client_information.client_secret}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        headers["Authorization"] = f"Basic {encoded_credentials}"
+    else:
+        # Fall back to including credentials in the body
+        data["client_id"] = client_information.client_id
+        if client_information.client_secret:
+            data["client_secret"] = client_information.client_secret
+
+    response = httpx.post(token_url, headers=headers, data=data)
+    if not response.is_success:
+        raise ValueError(
+            f"Client credentials token request failed: HTTP {response.status_code}, Response: {response.text}"
+        )
+
+    return OAuthTokens.model_validate(response.json())
+
+
 def register_client(
     server_url: str,
     metadata: OAuthMetadata | None,
@@ -304,6 +360,7 @@ def auth(
     mcp_service: "MCPToolManageService",
     authorization_code: str | None = None,
     state_param: str | None = None,
+    grant_type: str = "authorization_code",
 ) -> dict[str, str]:
     """Orchestrates the full auth flow with a server using secure Redis state storage."""
     server_url = provider.decrypt_server_url()
@@ -314,9 +371,22 @@ def auth(
     client_information = provider.retrieve_client_information()
     redirect_url = provider.redirect_url
 
+    # Check if we should use client credentials flow
+    credentials = provider.decrypt_credentials()
+    stored_grant_type = credentials.get("grant_type", "authorization_code")
+
+    # Use stored grant type if available, otherwise use parameter
+    effective_grant_type = stored_grant_type or grant_type
+
     if not client_information:
         if authorization_code is not None:
             raise ValueError("Existing OAuth client information is required when exchanging an authorization code")
+
+        # For client credentials flow, we don't need to register client dynamically
+        if effective_grant_type == "client_credentials":
+            # Client should provide client_id and client_secret directly
+            raise ValueError("Client credentials flow requires client_id and client_secret to be provided")
+
         try:
             full_information = register_client(server_url, server_metadata, client_metadata)
         except httpx.RequestError as e:
@@ -329,7 +399,28 @@ def auth(
 
         client_information = full_information
 
-    # Exchange authorization code for tokens
+    # Handle client credentials flow
+    if effective_grant_type == "client_credentials":
+        # Direct token request without user interaction
+        try:
+            scope = credentials.get("scope")
+            tokens = client_credentials_flow(
+                server_url,
+                server_metadata,
+                client_information,
+                scope,
+            )
+
+            # Save tokens and grant type
+            token_data = tokens.model_dump()
+            token_data["grant_type"] = "client_credentials"
+            mcp_service.save_oauth_data(provider_id, tenant_id, token_data, "tokens")
+
+            return {"result": "success"}
+        except Exception as e:
+            raise ValueError(f"Client credentials flow failed: {e}")
+
+    # Exchange authorization code for tokens (Authorization Code flow)
     if authorization_code is not None:
         if not state_param:
             raise ValueError("State parameter is required when exchanging authorization code")
@@ -377,7 +468,7 @@ def auth(
         except Exception as e:
             raise ValueError(f"Could not refresh OAuth tokens: {e}")
 
-    # Start new authorization flow
+    # Start new authorization flow (only for authorization code flow)
     authorization_url, code_verifier = start_authorization(
         server_url,
         server_metadata,

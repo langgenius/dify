@@ -2,13 +2,14 @@
 import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDomain } from 'tldts'
-import { RiCloseLine, RiEditLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiCloseLine, RiEditLine } from '@remixicon/react'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Select from '@/app/components/base/select'
 import HeadersInput from './headers-input'
 import type { AppIconType } from '@/types/app'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -31,6 +32,10 @@ export type DuplicateAppModalProps = {
     timeout: number
     sse_read_timeout: number
     headers?: Record<string, string>
+    client_id?: string
+    client_secret?: string
+    grant_type?: string
+    scope?: string
   }) => void
   onHide: () => void
 }
@@ -73,6 +78,12 @@ const MCPModal = ({
   const [headers, setHeaders] = React.useState<Record<string, string>>(
     data?.masked_headers || {},
   )
+  const [clientId, setClientId] = React.useState(data?.client_id || '')
+  const [clientSecret, setClientSecret] = React.useState(data?.client_secret || '')
+  const [grantType, setGrantType] = React.useState(data?.grant_type || 'authorization_code')
+  const [scope, setScope] = React.useState(data?.scope || '')
+  const [authCollapsed, setAuthCollapsed] = React.useState(true)
+  const [configCollapsed, setConfigCollapsed] = React.useState(true)
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
@@ -86,6 +97,10 @@ const MCPModal = ({
       setMcpTimeout(data.timeout || 30)
       setSseReadTimeout(data.sse_read_timeout || 300)
       setHeaders(data.masked_headers || {})
+      setClientId(data.client_id || '')
+      setClientSecret(data.client_secret || '')
+      setGrantType(data.grant_type || 'authorization_code')
+      setScope(data.scope || '')
       setAppIcon(getIcon(data))
     }
     else {
@@ -96,6 +111,10 @@ const MCPModal = ({
       setMcpTimeout(30)
       setSseReadTimeout(300)
       setHeaders({})
+      setClientId('')
+      setClientSecret('')
+      setGrantType('authorization_code')
+      setScope('')
       setAppIcon(DEFAULT_ICON as AppIconSelection)
     }
   }, [data])
@@ -124,7 +143,8 @@ const MCPModal = ({
     setIsFetchingIcon(true)
     try {
       const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
-      setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
+      if ('url' in res)
+        setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
     }
     catch (e) {
       let errorMessage = 'Failed to fetch remote icon'
@@ -158,6 +178,10 @@ const MCPModal = ({
       timeout: timeout || 30,
       sse_read_timeout: sseReadTimeout || 300,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
+      client_id: clientId || undefined,
+      client_secret: clientSecret || undefined,
+      grant_type: grantType,
+      scope: scope || undefined,
     })
     if(isCreate)
       onHide()
@@ -236,41 +260,116 @@ const MCPModal = ({
               </div>
             )}
           </div>
+
           <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
+            <div
+              className='mb-1 flex h-6 cursor-pointer items-center justify-between'
+              onClick={() => setAuthCollapsed(!authCollapsed)}
+            >
+              <span className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.modal.authentication')}</span>
+              <RiArrowDownSLine className={cn('h-4 w-4 text-text-tertiary transition-transform', authCollapsed && '-rotate-90')} />
             </div>
-            <Input
-              type='number'
-              value={timeout}
-              onChange={e => setMcpTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
+            {!authCollapsed && (
+              <div className='mt-3 space-y-5'>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.grantType')}</span>
+                  </div>
+                  <Select
+                    items={[
+                      { value: 'authorization_code', name: t('tools.mcp.modal.grantTypeAuthCode') },
+                      { value: 'client_credentials', name: t('tools.mcp.modal.grantTypeClientCredentials') },
+                    ]}
+                    defaultValue={grantType}
+                    onSelect={item => setGrantType(item.value as string)}
+                    placeholder={t('tools.mcp.modal.grantType')}
+                  />
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientId')}</span>
+                  </div>
+                  <Input
+                    value={clientId}
+                    onChange={e => setClientId(e.target.value)}
+                    placeholder={t('tools.mcp.modal.clientIdPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientSecret')}</span>
+                  </div>
+                  <Input
+                    type='password'
+                    value={clientSecret}
+                    onChange={e => setClientSecret(e.target.value)}
+                    placeholder={t('tools.mcp.modal.clientSecretPlaceholder')}
+                  />
+                </div>
+                {grantType === 'client_credentials' && (
+                  <div>
+                    <div className='mb-1 flex h-6 items-center'>
+                      <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.scope')}</span>
+                    </div>
+                    <Input
+                      value={scope}
+                      onChange={e => setScope(e.target.value)}
+                      placeholder={t('tools.mcp.modal.scopePlaceholder')}
+                    />
+                  </div>
+                )}
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
+                  </div>
+                  <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
+                  <HeadersInput
+                    headers={headers}
+                    onChange={setHeaders}
+                    readonly={false}
+                    isMasked={!isCreate && Object.keys(headers).length > 0}
+                  />
+                </div>
+              </div>
+            )}
           </div>
+
           <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
+            <div
+              className='mb-1 flex h-6 cursor-pointer items-center justify-between'
+              onClick={() => setConfigCollapsed(!configCollapsed)}
+            >
+              <span className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.modal.configuration')}</span>
+              <RiArrowDownSLine className={cn('h-4 w-4 text-text-tertiary transition-transform', configCollapsed && '-rotate-90')} />
             </div>
-            <Input
-              type='number'
-              value={sseReadTimeout}
-              onChange={e => setSseReadTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
-            </div>
-            <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
-            <HeadersInput
-              headers={headers}
-              onChange={setHeaders}
-              readonly={false}
-              isMasked={!isCreate && Object.keys(headers).length > 0}
-            />
+            {!configCollapsed && (
+              <div className='mt-3 space-y-5'>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
+                  </div>
+                  <Input
+                    type='number'
+                    value={timeout}
+                    onChange={e => setMcpTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
+                  </div>
+                  <Input
+                    type='number'
+                    value={sseReadTimeout}
+                    onChange={e => setSseReadTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>

@@ -867,6 +867,12 @@ class ToolProviderMCPApi(Resource):
             "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
         )
         parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
+        parser.add_argument("client_id", type=str, required=False, nullable=True, location="json", default="")
+        parser.add_argument("client_secret", type=str, required=False, nullable=True, location="json", default="")
+        parser.add_argument(
+            "grant_type", type=str, required=False, nullable=True, location="json", default="authorization_code"
+        )
+        parser.add_argument("scope", type=str, required=False, nullable=True, location="json", default="")
         args = parser.parse_args()
         user = current_user
         if not is_valid_url(args["server_url"]):
@@ -885,6 +891,10 @@ class ToolProviderMCPApi(Resource):
                 timeout=args["timeout"],
                 sse_read_timeout=args["sse_read_timeout"],
                 headers=args["headers"],
+                client_id=args["client_id"],
+                client_secret=args["client_secret"],
+                grant_type=args["grant_type"],
+                scope=args["scope"],
             )
             session.commit()
             return jsonable_encoder(result)
@@ -904,6 +914,10 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
         parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
         parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("client_id", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("client_secret", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("grant_type", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("scope", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -924,6 +938,10 @@ class ToolProviderMCPApi(Resource):
                 timeout=args.get("timeout"),
                 sse_read_timeout=args.get("sse_read_timeout"),
                 headers=args.get("headers"),
+                client_id=args.get("client_id"),
+                client_secret=args.get("client_secret"),
+                grant_type=args.get("grant_type"),
+                scope=args.get("scope"),
             )
             session.commit()
             return {"result": "success"}
