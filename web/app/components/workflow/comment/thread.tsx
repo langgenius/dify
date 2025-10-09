@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
@@ -193,6 +193,25 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
+  const messageListRef = useRef<HTMLDivElement>(null)
+  const previousReplyCountRef = useRef(replies.length)
+  const previousCommentIdRef = useRef(comment.id)
+
+  useEffect(() => {
+    const container = messageListRef.current
+    if (!container)
+      return
+
+    const isNewComment = comment.id !== previousCommentIdRef.current
+    const hasNewReply = replies.length > previousReplyCountRef.current
+
+    if (isNewComment || hasNewReply)
+      container.scrollTop = container.scrollHeight
+
+    previousCommentIdRef.current = comment.id
+    previousReplyCountRef.current = replies.length
+  }, [comment.id, replies.length])
+
   const mentionsByTarget = useMemo(() => {
     const map = new Map<string, string[]>()
     for (const mention of comment.mentions || []) {
@@ -272,7 +291,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             </button>
           </div>
         </div>
-        <div className='relative mt-2 flex-1 overflow-y-auto px-4'>
+        <div
+          ref={messageListRef}
+          className='relative mt-2 flex-1 overflow-y-auto px-4'
+        >
           <ThreadMessage
             authorId={comment.created_by_account?.id || ''}
             authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
