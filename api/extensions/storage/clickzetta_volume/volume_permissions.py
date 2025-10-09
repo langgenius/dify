@@ -439,6 +439,11 @@ class VolumePermissionManager:
         self._permission_cache.clear()
         logger.debug("Permission cache cleared")
 
+    @property
+    def volume_type(self) -> str | None:
+        """Get the volume type."""
+        return self._volume_type
+
     def get_permission_summary(self, dataset_id: str | None = None) -> dict[str, bool]:
         """Get permission summary
 
@@ -632,13 +637,13 @@ def check_volume_permission(permission_manager: VolumePermissionManager, operati
         VolumePermissionError: If no permission
     """
     if not permission_manager.validate_operation(operation, dataset_id):
-        error_message = f"Permission denied for operation '{operation}' on {permission_manager._volume_type} volume"
+        error_message = f"Permission denied for operation '{operation}' on {permission_manager.volume_type} volume"
         if dataset_id:
             error_message += f" (dataset: {dataset_id})"
 
         raise VolumePermissionError(
             error_message,
             operation=operation,
-            volume_type=permission_manager._volume_type or "unknown",
+            volume_type=permission_manager.volume_type or "unknown",
             dataset_id=dataset_id,
         )

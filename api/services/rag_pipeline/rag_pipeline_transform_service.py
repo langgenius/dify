@@ -149,8 +149,7 @@ class RagPipelineTransformService:
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
-        file_extensions = [file_extension.lower() for file_extension in file_extensions]
-        node["data"]["fileExtensions"] = DOCUMENT_EXTENSIONS
+        node["data"]["fileExtensions"] = [ext.lower() for ext in file_extensions if ext in DOCUMENT_EXTENSIONS]
         return node
 
     def _deal_knowledge_index(

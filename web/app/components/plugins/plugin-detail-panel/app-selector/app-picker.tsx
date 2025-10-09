@@ -33,7 +33,7 @@ type Props = {
 }
 
 const AppPicker: FC<Props> = ({
-  scope,
+  scope: _scope,
   disabled,
   trigger,
   placement = 'right-start',
@@ -90,7 +90,7 @@ const AppPicker: FC<Props> = ({
     }
 
     // Set up MutationObserver to watch DOM changes
-    mutationObserver = new MutationObserver((mutations) => {
+    mutationObserver = new MutationObserver((_mutations) => {
       if (observerTarget.current) {
         setupIntersectionObserver()
         mutationObserver?.disconnect()

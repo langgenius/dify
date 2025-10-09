@@ -161,6 +161,8 @@ class ListOperatorNode(Node):
             elif isinstance(variable, ArrayFileSegment):
                 if isinstance(condition.value, str):
                     value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                elif isinstance(condition.value, bool):
+                    raise ValueError(f"File filter expects a string value, got {type(condition.value)}")
                 else:
                     value = condition.value
                 filter_func = _get_file_filter_func(

@@ -31,6 +31,7 @@ from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
 from libs.login import login_required
+from libs.validators import validate_description_length
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
@@ -42,12 +43,6 @@ def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError("Name must be between 1 to 40 characters.")
     return name
-
-
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
 
 
 @console_ns.route("/datasets")
@@ -149,7 +144,7 @@ class DatasetListApi(Resource):
         )
         parser.add_argument(
             "description",
-            type=_validate_description_length,
+            type=validate_description_length,
             nullable=True,
             required=False,
             default="",
@@ -290,7 +285,7 @@ class DatasetApi(Resource):
             help="type is required. Name must be between 1 to 40 characters.",
             type=_validate_name,
         )
-        parser.add_argument("description", location="json", store_missing=False, type=_validate_description_length)
+        parser.add_argument("description", location="json", store_missing=False, type=validate_description_length)
         parser.add_argument(
             "indexing_technique",
             type=str,
