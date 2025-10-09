@@ -200,6 +200,8 @@ const translation = {
   comments: {
     panelTitle: 'コメント',
     loading: '読み込み中…',
+    reply: '返信',
+    noComments: 'まだコメントがありません',
     placeholder: {
       add: 'コメントを追加',
       reply: '返信',

@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { RiCheckLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
@@ -13,6 +14,7 @@ import { useAppContext } from '@/context/app-context'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 
 const CommentsPanel = () => {
+  const { t } = useTranslation()
   const activeCommentId = useStore(s => s.activeCommentId)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
   const setControlMode = useStore(s => s.setControlMode)
@@ -63,7 +65,7 @@ const CommentsPanel = () => {
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className='flex items-center justify-between p-4 pb-2'>
-        <div className='system-xl-semibold font-semibold leading-6 text-text-primary'>Comments</div>
+        <div className='system-xl-semibold font-semibold leading-6 text-text-primary'>{t('workflow.comments.panelTitle')}</div>
         <div className='relative flex items-center gap-2'>
           <button
             className='flex h-8 w-8 items-center justify-center rounded-md bg-components-panel-on-panel-item-bg hover:bg-state-base-hover'
@@ -154,7 +156,7 @@ const CommentsPanel = () => {
                 {c.reply_count > 0 && (
                   <div className='mt-2 flex items-center justify-between'>
                     <div className='system-2xs-regular text-text-tertiary'>
-                      {c.reply_count} replies
+                      {c.reply_count} {t('workflow.comments.reply')}
                     </div>
                   </div>
                 )}
@@ -163,7 +165,7 @@ const CommentsPanel = () => {
           )
         })}
         {!loading && filteredSorted.length === 0 && (
-          <div className='system-sm-regular mt-6 text-center text-text-tertiary'>No comments yet</div>
+          <div className='system-sm-regular mt-6 text-center text-text-tertiary'>{t('workflow.comments.noComments')}</div>
         )}
       </div>
     </div>

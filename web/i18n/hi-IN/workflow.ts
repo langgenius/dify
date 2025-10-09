@@ -198,6 +198,8 @@ const translation = {
   comments: {
     panelTitle: 'टिप्पणी',
     loading: 'लोड हो रहा है…',
+    reply: 'जवाब दें',
+    noComments: 'अभी तक कोई टिप्पणी नहीं',
     placeholder: {
       add: 'टिप्पणी जोड़ें',
       reply: 'जवाब दें',

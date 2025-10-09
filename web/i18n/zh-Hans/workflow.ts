@@ -201,6 +201,8 @@ const translation = {
   comments: {
     panelTitle: '评论',
     loading: '加载中…',
+    reply: '回复',
+    noComments: '暂无评论',
     placeholder: {
       add: '添加评论',
       reply: '回复',
