@@ -189,6 +189,8 @@ const translation = {
   comments: {
     panelTitle: 'Komentar',
     loading: 'Memuat…',
+    reply: 'Balas',
+    noComments: 'Belum ada komentar',
     placeholder: {
       add: 'Tambahkan komentar',
       reply: 'Balas',

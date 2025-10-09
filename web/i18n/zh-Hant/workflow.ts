@@ -195,6 +195,8 @@ const translation = {
   comments: {
     panelTitle: '評論',
     loading: '載入中…',
+    reply: '回覆',
+    noComments: '暫無評論',
     placeholder: {
       add: '新增評論',
       reply: '回覆',

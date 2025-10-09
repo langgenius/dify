@@ -203,6 +203,8 @@ const translation = {
   comments: {
     panelTitle: '댓글',
     loading: '불러오는 중…',
+    reply: '답글',
+    noComments: '아직 댓글이 없습니다',
     placeholder: {
       add: '댓글 추가',
       reply: '답글',

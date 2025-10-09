@@ -195,6 +195,8 @@ const translation = {
   comments: {
     panelTitle: 'دیدگاه',
     loading: 'در حال بارگذاری…',
+    reply: 'پاسخ',
+    noComments: 'هنوز دیدگاهی ثبت نشده است',
     placeholder: {
       add: 'افزودن دیدگاه',
       reply: 'پاسخ',

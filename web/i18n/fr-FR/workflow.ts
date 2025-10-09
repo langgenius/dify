@@ -195,6 +195,8 @@ const translation = {
   comments: {
     panelTitle: 'Commentaire',
     loading: 'Chargement…',
+    reply: 'Répondre',
+    noComments: 'Aucun commentaire pour l’instant',
     placeholder: {
       add: 'Ajouter un commentaire',
       reply: 'Répondre',
