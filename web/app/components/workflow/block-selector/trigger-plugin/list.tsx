@@ -24,13 +24,13 @@ const TriggerPluginList = ({
   const triggerPlugins = useMemo(() => {
     // Follow exact same pattern as tools
     return (triggerPluginsData || []).filter((triggerWithProvider) => {
-      if (triggerWithProvider.triggers.length === 0) return false
+      if (triggerWithProvider.events.length === 0) return false
 
       // Filter by search text
       if (searchText) {
         const matchesSearch = triggerWithProvider.name.toLowerCase().includes(searchText.toLowerCase())
-          || triggerWithProvider.triggers.some(tool =>
-            tool.label[language].toLowerCase().includes(searchText.toLowerCase()),
+          || triggerWithProvider.events.some(event =>
+            event.label[language].toLowerCase().includes(searchText.toLowerCase()),
           )
         if (!matchesSearch) return false
       }

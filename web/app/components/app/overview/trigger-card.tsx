@@ -57,15 +57,16 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
       blockType = BlockEnum.TriggerWebhook
   }
 
-  let toolIcon: string | undefined
+  let triggerIcon: string | undefined
   if (trigger_type === 'trigger-plugin' && provider_name) {
-    const targetTools = triggerPlugins || []
-    const foundTool = targetTools.find(toolWithProvider =>
-      canFindTool(toolWithProvider.id, provider_name)
-      || toolWithProvider.id.includes(provider_name)
-      || toolWithProvider.name === provider_name,
+    const targetTriggers = triggerPlugins || []
+    const foundTrigger = targetTriggers.find(triggerWithProvider =>
+      canFindTool(triggerWithProvider.id, provider_name)
+      || triggerWithProvider.id.includes(provider_name)
+      || triggerWithProvider.name === provider_name,
     )
-    toolIcon = foundTool?.icon
+    triggerIcon = foundTrigger?.icon
+    console.log('triggerIcon', triggerIcon)
   }
 
   return (
@@ -73,7 +74,7 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
       <BlockIcon
         type={blockType}
         size="md"
-        toolIcon={toolIcon}
+        toolIcon={triggerIcon}
       />
       {getStatusDot()}
     </div>
