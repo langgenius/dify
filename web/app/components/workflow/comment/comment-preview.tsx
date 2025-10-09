@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -13,6 +13,14 @@ type CommentPreviewProps = {
 
 const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const participants = useMemo(() => {
+    const list = comment.participants ?? []
+    const author = comment.created_by_account
+    if (!author)
+      return [...list]
+    const rest = list.filter(user => user.id !== author.id)
+    return [author, ...rest]
+  }, [comment.created_by_account, comment.participants])
 
   return (
     <div
@@ -21,7 +29,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
     >
       <div className="mb-3 flex items-center justify-between">
         <UserAvatarList
-          users={comment.participants}
+          users={participants}
           maxVisible={3}
           size={24}
         />

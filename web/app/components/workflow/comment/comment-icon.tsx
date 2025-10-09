@@ -137,8 +137,17 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
     setShowPreview(false)
   }, [])
 
+  const participants = useMemo(() => {
+    const list = comment.participants ?? []
+    const author = comment.created_by_account
+    if (!author)
+      return [...list]
+    const rest = list.filter(user => user.id !== author.id)
+    return [author, ...rest]
+  }, [comment.created_by_account, comment.participants])
+
   // Calculate dynamic width based on number of participants
-  const participantCount = comment.participants?.length || 0
+  const participantCount = participants.length
   const maxVisible = Math.min(3, participantCount)
   const showCount = participantCount > 3
   const avatarSize = 24
@@ -184,7 +193,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
             }`}>
               <div className="flex h-full w-full items-center justify-center px-1">
                 <UserAvatarList
-                  users={comment.participants}
+                  users={participants}
                   maxVisible={3}
                   size={24}
                 />
