@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Contenu généré',
+        reasoning_content: 'Contenu de raisonnement',
         usage: 'Informations sur l\'utilisation du modèle',
       },
       singleRun: {
