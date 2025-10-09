@@ -65,7 +65,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   return (
     <div
       ref={bottomPanelRef}
-      className='absolute bottom-0 left-0 right-0 z-10 px-1'
+      className='absolute bottom-0 left-0 right-0 z-[60] px-1'
       style={
         {
           width: bottomPanelWidth,
