@@ -469,6 +469,7 @@ const translation = {
       },
       outputVars: {
         output: '생성된 내용',
+        reasoning_content: '추론 내용',
         usage: '모델 사용 정보',
       },
       singleRun: {
