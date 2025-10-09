@@ -33,6 +33,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.EDITION == "SELF_HOSTED"
     assert config.API_COMPRESSION_ENABLED is False
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
+    assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
 
     # annotated field with default value
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 600
