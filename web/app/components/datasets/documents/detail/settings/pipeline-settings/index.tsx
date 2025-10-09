@@ -148,7 +148,10 @@ const PipelineSettings = ({
   }, [])
 
   const handleSubmit = useCallback((data: Record<string, any>) => {
-    isPreview.current ? handlePreviewChunks(data) : handleProcess(data)
+    if (isPreview.current)
+      handlePreviewChunks(data)
+    else
+      handleProcess(data)
   }, [handlePreviewChunks, handleProcess])
 
   if (isFetchingLastRunData) {
