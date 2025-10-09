@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'สร้างเนื้อหา',
+        reasoning_content: 'เนื้อหาการให้เหตุผล',
         usage: 'ข้อมูลการใช้งานรุ่น',
       },
       singleRun: {
@@ -944,6 +945,9 @@ const translation = {
       chunkIsRequired: 'จําเป็นต้องมีโครงสร้างก้อน',
       chunksInput: 'ชิ้นส่วน',
       chunksInputTip: 'ตัวแปรนำเข้าของโหนดฐานความรู้คือ Chunks ตัวแปรประเภทเป็นอ็อบเจ็กต์ที่มี JSON Schema เฉพาะซึ่งต้องสอดคล้องกับโครงสร้างชิ้นส่วนที่เลือกไว้.',
+      chunksVariableIsRequired: 'ตัวแปร Chunks เป็นสิ่งจำเป็น',
+      embeddingModelIsRequired: 'จำเป็นต้องใช้โมเดลฝัง',
+      rerankingModelIsRequired: 'จำเป็นต้องมีโมเดลการจัดอันดับใหม่',
     },
   },
   tracing: {

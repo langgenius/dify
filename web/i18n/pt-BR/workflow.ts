@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Conteúdo gerado',
+        reasoning_content: 'Conteúdo de raciocínio',
         usage: 'Informações de uso do modelo',
       },
       singleRun: {
@@ -944,6 +945,9 @@ const translation = {
       indexMethodIsRequired: 'O método de índice é necessário',
       chunksInput: 'Pedaços',
       chunksInputTip: 'A variável de entrada do nó da base de conhecimento é Chunks. O tipo da variável é um objeto com um esquema JSON específico que deve ser consistente com a estrutura de chunk selecionada.',
+      chunksVariableIsRequired: 'A variável \'chunks\' é obrigatória',
+      embeddingModelIsRequired: 'Modelo de incorporação é necessário',
+      rerankingModelIsRequired: 'Um modelo de reclassificação é necessário',
     },
   },
   tracing: {

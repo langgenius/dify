@@ -10,7 +10,7 @@ x-shared-env: &shared-api-worker-env
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   APP_API_URL: ${APP_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
-  FILES_URL: ${FILES_URL:-http://api:5001}
+  FILES_URL: ${FILES_URL:-}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
   LANG: ${LANG:-en_US.UTF-8}
   LC_ALL: ${LC_ALL:-en_US.UTF-8}
@@ -390,14 +390,14 @@ x-shared-env: &shared-api-worker-env
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
   CODE_MAX_DEPTH: ${CODE_MAX_DEPTH:-5}
   CODE_MAX_PRECISION: ${CODE_MAX_PRECISION:-20}
-  CODE_MAX_STRING_LENGTH: ${CODE_MAX_STRING_LENGTH:-80000}
+  CODE_MAX_STRING_LENGTH: ${CODE_MAX_STRING_LENGTH:-400000}
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
   CODE_MAX_OBJECT_ARRAY_LENGTH: ${CODE_MAX_OBJECT_ARRAY_LENGTH:-30}
   CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
   CODE_EXECUTION_CONNECT_TIMEOUT: ${CODE_EXECUTION_CONNECT_TIMEOUT:-10}
   CODE_EXECUTION_READ_TIMEOUT: ${CODE_EXECUTION_READ_TIMEOUT:-60}
   CODE_EXECUTION_WRITE_TIMEOUT: ${CODE_EXECUTION_WRITE_TIMEOUT:-10}
-  TEMPLATE_TRANSFORM_MAX_LENGTH: ${TEMPLATE_TRANSFORM_MAX_LENGTH:-80000}
+  TEMPLATE_TRANSFORM_MAX_LENGTH: ${TEMPLATE_TRANSFORM_MAX_LENGTH:-400000}
   WORKFLOW_MAX_EXECUTION_STEPS: ${WORKFLOW_MAX_EXECUTION_STEPS:-500}
   WORKFLOW_MAX_EXECUTION_TIME: ${WORKFLOW_MAX_EXECUTION_TIME:-1200}
   WORKFLOW_CALL_MAX_DEPTH: ${WORKFLOW_CALL_MAX_DEPTH:-5}
@@ -599,7 +599,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.9.0
+    image: langgenius/dify-api:1.9.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -628,7 +628,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.9.0
+    image: langgenius/dify-api:1.9.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -655,7 +655,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.9.0
+    image: langgenius/dify-api:1.9.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -673,7 +673,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.9.0
+    image: langgenius/dify-web:1.9.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
