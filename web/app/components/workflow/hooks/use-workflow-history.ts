@@ -16,23 +16,25 @@ import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
  * - InputChange events in Node Panels do not trigger state changes.
  * - Resizing UI elements does not trigger state changes.
  */
-export enum WorkflowHistoryEvent {
-  NodeTitleChange = 'NodeTitleChange',
-  NodeDescriptionChange = 'NodeDescriptionChange',
-  NodeDragStop = 'NodeDragStop',
-  NodeChange = 'NodeChange',
-  NodeConnect = 'NodeConnect',
-  NodePaste = 'NodePaste',
-  NodeDelete = 'NodeDelete',
-  EdgeDelete = 'EdgeDelete',
-  EdgeDeleteByDeleteBranch = 'EdgeDeleteByDeleteBranch',
-  NodeAdd = 'NodeAdd',
-  NodeResize = 'NodeResize',
-  NoteAdd = 'NoteAdd',
-  NoteChange = 'NoteChange',
-  NoteDelete = 'NoteDelete',
-  LayoutOrganize = 'LayoutOrganize',
-}
+export const WorkflowHistoryEvent = {
+  NodeTitleChange: 'NodeTitleChange',
+  NodeDescriptionChange: 'NodeDescriptionChange',
+  NodeDragStop: 'NodeDragStop',
+  NodeChange: 'NodeChange',
+  NodeConnect: 'NodeConnect',
+  NodePaste: 'NodePaste',
+  NodeDelete: 'NodeDelete',
+  EdgeDelete: 'EdgeDelete',
+  EdgeDeleteByDeleteBranch: 'EdgeDeleteByDeleteBranch',
+  NodeAdd: 'NodeAdd',
+  NodeResize: 'NodeResize',
+  NoteAdd: 'NoteAdd',
+  NoteChange: 'NoteChange',
+  NoteDelete: 'NoteDelete',
+  LayoutOrganize: 'LayoutOrganize',
+} as const
+
+export type WorkflowHistoryEventT = keyof typeof WorkflowHistoryEvent
 
 export const useWorkflowHistory = () => {
   const store = useStoreApi()
@@ -65,7 +67,7 @@ export const useWorkflowHistory = () => {
   // Some events may be triggered multiple times in a short period of time.
   // We debounce the history state update to avoid creating multiple history states
   // with minimal changes.
-  const saveStateToHistoryRef = useRef(debounce((event: WorkflowHistoryEvent, meta?: WorkflowHistoryEventMeta) => {
+  const saveStateToHistoryRef = useRef(debounce((event: WorkflowHistoryEventT, meta?: WorkflowHistoryEventMeta) => {
     workflowHistoryStore.setState({
       workflowHistoryEvent: event,
       workflowHistoryEventMeta: meta,
@@ -74,7 +76,7 @@ export const useWorkflowHistory = () => {
     })
   }, 500))
 
-  const saveStateToHistory = useCallback((event: WorkflowHistoryEvent, meta?: WorkflowHistoryEventMeta) => {
+  const saveStateToHistory = useCallback((event: WorkflowHistoryEventT, meta?: WorkflowHistoryEventMeta) => {
     switch (event) {
       case WorkflowHistoryEvent.NoteChange:
         // Hint: Note change does not trigger when note text changes,
@@ -105,7 +107,7 @@ export const useWorkflowHistory = () => {
     }
   }, [])
 
-  const getHistoryLabel = useCallback((event: WorkflowHistoryEvent) => {
+  const getHistoryLabel = useCallback((event: WorkflowHistoryEventT) => {
     switch (event) {
       case WorkflowHistoryEvent.NodeTitleChange:
         return t('workflow.changeHistory.nodeTitleChange')

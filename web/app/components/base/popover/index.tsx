@@ -37,13 +37,16 @@ export default function CustomPopover({
   const timeOutRef = useRef<number | null>(null)
 
   const onMouseEnter = (isOpen: boolean) => {
-    timeOutRef.current && window.clearTimeout(timeOutRef.current)
-    !isOpen && buttonRef.current?.click()
+    if (timeOutRef.current != null)
+      window.clearTimeout(timeOutRef.current)
+    if (!isOpen)
+      buttonRef.current?.click()
   }
 
   const onMouseLeave = (isOpen: boolean) => {
     timeOutRef.current = window.setTimeout(() => {
-      isOpen && buttonRef.current?.click()
+      if (isOpen)
+        buttonRef.current?.click()
     }, timeoutDuration)
   }
 
