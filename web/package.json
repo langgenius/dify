@@ -2,7 +2,7 @@
   "name": "dify-web",
   "version": "1.9.1",
   "private": true,
-  "packageManager": "pnpm@10.17.1",
+  "packageManager": "pnpm@10.18.2",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -43,7 +43,6 @@
     "knip": "knip"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^1.1.4",
     "@emoji-mart/data": "^1.2.1",
     "@floating-ui/react": "^0.26.25",
     "@formatjs/intl-localematcher": "^0.5.6",
@@ -162,7 +161,6 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.0.1",
-    "@types/dagre": "^0.7.52",
     "@types/jest": "^29.5.13",
     "@types/js-cookie": "^3.0.6",
     "@types/lodash-es": "^4.17.12",

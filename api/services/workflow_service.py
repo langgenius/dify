@@ -1006,7 +1006,7 @@ def _setup_variable_pool(
         )
 
         # Only add chatflow-specific variables for non-workflow types
-        if workflow.type != WorkflowType.WORKFLOW.value:
+        if workflow.type != WorkflowType.WORKFLOW:
             system_variable.query = query
             system_variable.conversation_id = conversation_id
             system_variable.dialogue_count = 1
