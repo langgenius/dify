@@ -1044,7 +1044,7 @@ class Message(Base):
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1055,7 +1055,7 @@ class Message(Base):
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             elif "image-preview" in url:
                 # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1731,7 +1731,7 @@ class MessageChain(Base):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input = mapped_column(sa.Text, nullable=True)
     output = mapped_column(sa.Text, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class MessageAgentThought(Base):
@@ -1769,7 +1769,7 @@ class MessageAgentThought(Base):
     latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
     @property
     def files(self) -> list[Any]:
@@ -1872,7 +1872,7 @@ class DatasetRetrieverResource(Base):
     index_node_hash = mapped_column(sa.Text, nullable=True)
     retriever_from = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class Tag(Base):

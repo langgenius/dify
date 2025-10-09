@@ -182,7 +182,7 @@ const handleStream = (
     let hasError = false
     reader?.read().then((result: any) => {
       if (result.done) {
-        onCompleted && onCompleted()
+        onCompleted?.()
         return
       }
       buffer += decoder.decode(result.value, { stream: true })

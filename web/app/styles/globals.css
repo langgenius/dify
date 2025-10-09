@@ -1,11 +1,17 @@
 @import "preflight.css";
-@tailwind base;
-@tailwind components;
+
 
 @import '../../themes/light.css';
 @import '../../themes/dark.css';
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
+
+@import "../components/base/button/index.css";
+@import "../components/base/action-button/index.css";
+@import "../components/base/modal/index.css";
+
+@tailwind base;
+@tailwind components;
 
 html {
   color-scheme: light;
@@ -679,10 +685,6 @@ button:focus-within {
 [data-theme="light"] [data-hide-on-theme="light"] {
   display: none;
 }
-
-@import "../components/base/button/index.css";
-@import "../components/base/action-button/index.css";
-@import "../components/base/modal/index.css";
 
 @tailwind utilities;
 
