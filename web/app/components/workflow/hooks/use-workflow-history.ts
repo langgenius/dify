@@ -41,27 +41,33 @@ export const useWorkflowHistory = () => {
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { t } = useTranslation()
 
-  const [undoCallbacks, setUndoCallbacks] = useState<any[]>([])
-  const [redoCallbacks, setRedoCallbacks] = useState<any[]>([])
+  const [undoCallbacks, setUndoCallbacks] = useState<unknown[]>([])
+  const [redoCallbacks, setRedoCallbacks] = useState<unknown[]>([])
 
   const onUndo = useCallback((callback: unknown) => {
-    setUndoCallbacks((prev: any) => [...prev, callback])
+    setUndoCallbacks((prev: unknown[]) => [...prev, callback])
     return () => setUndoCallbacks(prev => prev.filter(cb => cb !== callback))
   }, [])
 
   const onRedo = useCallback((callback: unknown) => {
-    setRedoCallbacks((prev: any) => [...prev, callback])
+    setRedoCallbacks((prev: unknown[]) => [...prev, callback])
     return () => setRedoCallbacks(prev => prev.filter(cb => cb !== callback))
   }, [])
 
   const undo = useCallback(() => {
     workflowHistoryStore.temporal.getState().undo()
-    undoCallbacks.forEach(callback => callback())
+    undoCallbacks.forEach((callback) => {
+      if (typeof callback === 'function')
+        callback()
+    })
   }, [undoCallbacks, workflowHistoryStore.temporal])
 
   const redo = useCallback(() => {
     workflowHistoryStore.temporal.getState().redo()
-    redoCallbacks.forEach(callback => callback())
+    redoCallbacks.forEach((callback) => {
+      if (typeof callback === 'function')
+        callback()
+    })
   }, [redoCallbacks, workflowHistoryStore.temporal])
 
   // Some events may be triggered multiple times in a short period of time.
