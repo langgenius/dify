@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from 'react'
 
 import type { PopupProps } from './config-popup'
 import ConfigPopup from './config-popup'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -45,7 +46,7 @@ const ConfigBtn: FC<Props> = ({
       offset={12}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <div className="select-none">
+        <div className={cn('select-none', className)}>
           {children}
         </div>
       </PortalToFollowElemTrigger>

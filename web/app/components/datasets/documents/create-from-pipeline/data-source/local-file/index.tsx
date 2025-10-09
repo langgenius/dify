@@ -7,7 +7,6 @@ import DocumentFileIcon from '@/app/components/datasets/common/document-file-ico
 import cn from '@/utils/classnames'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { upload } from '@/service/base'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -17,6 +16,9 @@ import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import produce from 'immer'
+import dynamic from 'next/dynamic'
+
+const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })
 
 const FILES_NUMBER_LIMIT = 20
 
@@ -198,7 +200,8 @@ const LocalFile = ({
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target !== dragRef.current && setDragging(true)
+    if (e.target !== dragRef.current)
+      setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -207,7 +210,8 @@ const LocalFile = ({
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target === dragRef.current && setDragging(false)
+    if (e.target === dragRef.current)
+      setDragging(false)
   }
 
   const handleDrop = useCallback((e: DragEvent) => {

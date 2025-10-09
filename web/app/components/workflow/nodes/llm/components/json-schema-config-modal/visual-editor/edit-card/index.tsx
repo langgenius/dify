@@ -87,8 +87,10 @@ const EditCard: FC<EditCardProps> = ({
   })
 
   useSubscribe('fieldChangeSuccess', () => {
-    isAddingNewField && setIsAddingNewField(false)
-    advancedEditing && setAdvancedEditing(false)
+    if (isAddingNewField)
+      setIsAddingNewField(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
   })
 
   const emitPropertyNameChange = useCallback(() => {
