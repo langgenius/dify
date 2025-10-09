@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from sqlalchemy import update
 from sqlalchemy.orm import Session
