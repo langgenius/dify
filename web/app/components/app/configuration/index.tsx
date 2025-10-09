@@ -480,7 +480,7 @@ const Configuration: FC = () => {
         Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
       setCompletionParams(filtered)
     }
-    catch (e) {
+    catch {
       Toast.notify({ type: 'error', message: t('common.error') })
       setCompletionParams({})
     }
