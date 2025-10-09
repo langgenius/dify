@@ -407,7 +407,10 @@ const VarReferencePicker: FC<Props> = ({
         <WrapElem onClick={() => {
           if (readonly)
             return
-          !isConstant ? setOpen(!open) : setControlFocus(Date.now())
+          if (!isConstant)
+            setOpen(!open)
+          else
+            setControlFocus(Date.now())
         }} className='group/picker-trigger-wrap relative !flex'>
           <>
             {isAddBtnTrigger
@@ -457,7 +460,10 @@ const VarReferencePicker: FC<Props> = ({
                       onClick={() => {
                         if (readonly)
                           return
-                        !isConstant ? setOpen(!open) : setControlFocus(Date.now())
+                        if (!isConstant)
+                          setOpen(!open)
+                        else
+                          setControlFocus(Date.now())
                       }}
                       className='h-full grow'
                     >

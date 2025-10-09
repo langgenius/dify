@@ -79,7 +79,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     try {
       return JSON.stringify(JSON.parse(tempPayload.json_schema).properties, null, 2)
     }
-    catch (_e) {
+    catch {
       return ''
     }
   }, [tempPayload.json_schema])
@@ -123,7 +123,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }
       handlePayloadChange('json_schema')(JSON.stringify(res, null, 2))
     }
-    catch (_e) {
+    catch {
       return null
     }
   }, [handlePayloadChange])
