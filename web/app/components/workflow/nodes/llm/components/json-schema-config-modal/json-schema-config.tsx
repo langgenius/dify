@@ -139,8 +139,10 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const handleResetDefaults = useCallback(() => {
     if (currentTab === SchemaView.VisualEditor) {
       setHoveringProperty(null)
-      advancedEditing && setAdvancedEditing(false)
-      isAddingNewField && setIsAddingNewField(false)
+      if (advancedEditing)
+        setAdvancedEditing(false)
+      if (isAddingNewField)
+        setIsAddingNewField(false)
     }
     setJsonSchema(DEFAULT_SCHEMA)
     setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
