@@ -43,7 +43,7 @@ const InputField: FC<{
           else {
             const parsedValue = Number.parseInt(inputValue, 10)
             if (!Number.isNaN(parsedValue)) {
-              const value = Math.max(min, Math.min(max, parsedValue))
+              const value = Math.max(min, parsedValue)
               onChange(value)
             }
           }
