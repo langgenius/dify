@@ -88,7 +88,8 @@ const OptionCard = memo(({
       )}
       onClick={(e) => {
         e.stopPropagation()
-        !readonly && enableSelect && id && onClick?.(id)
+        if (!readonly && enableSelect && id)
+          onClick?.(id)
       }}
     >
       <div className={cn(

@@ -474,6 +474,7 @@ const translation = {
       },
       outputVars: {
         output: 'تولید محتوا',
+        reasoning_content: 'محتوای استدلال',
         usage: 'اطلاعات استفاده از مدل',
       },
       singleRun: {

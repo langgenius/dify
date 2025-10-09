@@ -108,7 +108,8 @@ export const useShortcuts = (): void => {
     const { showDebugAndPreviewPanel } = workflowStore.getState()
     if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
       e.preventDefault()
-      workflowHistoryShortcutsEnabled && handleHistoryBack()
+      if (workflowHistoryShortcutsEnabled)
+        handleHistoryBack()
     }
   }, { exactMatch: true, useCapture: true })
 
@@ -117,7 +118,8 @@ export const useShortcuts = (): void => {
     (e) => {
       if (shouldHandleShortcut(e)) {
         e.preventDefault()
-        workflowHistoryShortcutsEnabled && handleHistoryForward()
+        if (workflowHistoryShortcutsEnabled)
+          handleHistoryForward()
       }
     },
     { exactMatch: true, useCapture: true },
