@@ -45,14 +45,18 @@ const Avatar = ({
 
   if (avatar && !imgError) {
     return (
-      <img
+      <span
         className={cn(avatarClassName, className)}
         style={style}
-        alt={name}
-        src={avatar}
-        onError={handleError}
-        onLoad={() => onError?.(false)}
-      />
+      >
+        <img
+          className='h-full w-full rounded-full object-cover'
+          alt={name}
+          src={avatar}
+          onError={handleError}
+          onLoad={() => onError?.(false)}
+        />
+      </span>
     )
   }
 
