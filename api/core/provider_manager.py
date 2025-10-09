@@ -620,7 +620,7 @@ class ProviderManager:
             for quota in configuration.quotas:
                 if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
                     # Init trial provider records if not exists
-                    if quota.quota_type not in provider_quota_to_provider_record_dict:                        
+                    if quota.quota_type not in provider_quota_to_provider_record_dict:
                         try:
                             # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
                             new_provider_record = Provider(
@@ -652,7 +652,7 @@ class ProviderManager:
                                 existed_provider_record.is_valid = True
                                 db.session.commit()
 
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)                        
+                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
 
