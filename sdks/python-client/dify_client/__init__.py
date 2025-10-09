@@ -4,6 +4,7 @@ from dify_client.client import (
     DifyClient,
     KnowledgeBaseClient,
     WorkflowClient,
+    WorkspaceClient,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "DifyClient",
     "KnowledgeBaseClient",
     "WorkflowClient",
+    "WorkspaceClient",
 ]

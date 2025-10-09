@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generierter Inhalt',
+        reasoning_content: 'Reasoning-Inhalt',
         usage: 'Nutzungsinformationen des Modells',
       },
       singleRun: {
@@ -944,6 +945,9 @@ const translation = {
       chunkIsRequired: 'Chunk-Struktur ist erforderlich',
       chunksInput: 'Stücke',
       chunksInputTip: 'Die Eingangsvariable des Wissensbasis-Knotens sind Chunks. Der Variablentyp ist ein Objekt mit einem spezifischen JSON-Schema, das konsistent mit der ausgewählten Chunk-Struktur sein muss.',
+      embeddingModelIsRequired: 'Ein Einbettungsmodell ist erforderlich',
+      chunksVariableIsRequired: 'Die Variable \'Chunks\' ist erforderlich',
+      rerankingModelIsRequired: 'Ein Reranking-Modell ist erforderlich',
     },
   },
   tracing: {
