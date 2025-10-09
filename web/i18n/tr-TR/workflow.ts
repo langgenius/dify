@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'İçerik Üret',
+        reasoning_content: 'Akıl yürütme içeriği',
         usage: 'Model Kullanım Bilgileri',
       },
       singleRun: {

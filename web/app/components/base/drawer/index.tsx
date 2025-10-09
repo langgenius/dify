@@ -47,7 +47,10 @@ export default function Drawer({
     <Dialog
       unmount={unmount}
       open={isOpen}
-      onClose={() => !clickOutsideNotOpen && onClose()}
+      onClose={() => {
+        if (!clickOutsideNotOpen)
+          onClose()
+      }}
       className={cn('fixed inset-0 z-[30] overflow-y-auto', dialogClassName)}
     >
       <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center')}>
@@ -55,7 +58,8 @@ export default function Drawer({
         <DialogBackdrop
           className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
           onClick={() => {
-            !clickOutsideNotOpen && onClose()
+            if (!clickOutsideNotOpen)
+              onClose()
           }}
         />
         <div className={cn('relative z-[50] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
@@ -80,11 +84,11 @@ export default function Drawer({
               <Button
                 className='mr-2'
                 onClick={() => {
-                  onCancel && onCancel()
+                  onCancel?.()
                 }}>{t('common.operation.cancel')}</Button>
               <Button
                 onClick={() => {
-                  onOk && onOk()
+                  onOk?.()
                 }}>{t('common.operation.save')}</Button>
             </div>)}
         </div>

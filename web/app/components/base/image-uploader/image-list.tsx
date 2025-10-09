@@ -62,7 +62,7 @@ const ImageList: FC<ImageListProps> = ({
                 {item.progress === -1 && (
                   <RefreshCcw01
                     className="h-5 w-5 text-white"
-                    onClick={() => onReUpload && onReUpload(item._id)}
+                    onClick={() => onReUpload?.(item._id)}
                   />
                 )}
               </div>
@@ -122,7 +122,7 @@ const ImageList: FC<ImageListProps> = ({
                 'rounded-2xl shadow-lg hover:bg-state-base-hover',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
-              onClick={() => onRemove && onRemove(item._id)}
+              onClick={() => onRemove?.(item._id)}
             >
               <RiCloseLine className="h-3 w-3 text-text-tertiary" />
             </button>
