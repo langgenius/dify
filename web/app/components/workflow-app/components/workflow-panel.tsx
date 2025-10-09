@@ -7,7 +7,6 @@ import { useStore } from '@/app/components/workflow/store'
 import {
   useIsChatMode,
 } from '../hooks'
-import VersionHistoryPanel from '@/app/components/workflow/panel/version-history-panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { PanelProps } from '@/app/components/workflow/panel'
@@ -69,7 +68,6 @@ const WorkflowPanelOnRight = () => {
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
-  const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
   const controlMode = useStore(s => s.controlMode)
 
   return (
@@ -102,11 +100,6 @@ const WorkflowPanelOnRight = () => {
       {
         showGlobalVariablePanel && (
           <GlobalVariablePanel />
-        )
-      }
-      {
-        showWorkflowVersionHistoryPanel && (
-          <VersionHistoryPanel/>
         )
       }
       {controlMode === 'comment' && <CommentsPanel />}
