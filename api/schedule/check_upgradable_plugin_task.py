@@ -6,7 +6,7 @@ import click
 import app
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
-from tasks.process_tenant_plugin_autoupgrade_check_task import process_tenant_plugin_autoupgrade_check_task
+from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
 AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL = 15 * 60  # 15 minutes
 MAX_CONCURRENT_CHECK_TASKS = 20
@@ -43,7 +43,7 @@ def check_upgradable_plugin_task():
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
         for strategy in batch_strategies:
-            process_tenant_plugin_autoupgrade_check_task.delay(
+            check_task.process_tenant_plugin_autoupgrade_check_task.delay(
                 strategy.tenant_id,
                 strategy.strategy_setting,
                 strategy.upgrade_time_of_day,
@@ -52,7 +52,8 @@ def check_upgradable_plugin_task():
                 strategy.include_plugins,
             )
 
-        if batch_interval_time > 0.0001:  # if lower than 1ms, skip
+        # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one
+        if batch_interval_time > 0.0001 and i + MAX_CONCURRENT_CHECK_TASKS < total_strategies:
             time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()

@@ -15,7 +15,8 @@ const Header = () => {
       isPreparingDataSource,
       setIsPreparingDataSource,
     } = workflowStore.getState()
-    isPreparingDataSource && setIsPreparingDataSource?.(false)
+    if (isPreparingDataSource)
+      setIsPreparingDataSource?.(false)
     handleCancelDebugAndPreviewPanel()
   }, [workflowStore])
 

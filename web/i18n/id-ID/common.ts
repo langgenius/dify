@@ -501,6 +501,7 @@ const translation = {
     callTimes: 'Waktu panggilan',
     getFreeTokens: 'Dapatkan Token gratis',
     parametersInvalidRemoved: 'Beberapa parameter tidak valid dan telah dihapus',
+    installDataSourceProvider: 'Pasang penyedia sumber data',
   },
   dataSource: {
     notion: {

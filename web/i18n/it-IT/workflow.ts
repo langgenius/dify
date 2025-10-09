@@ -461,6 +461,7 @@ const translation = {
       },
       outputVars: {
         output: 'Genera contenuto',
+        reasoning_content: 'Contenuto del ragionamento',
         usage: 'Informazioni sull\'utilizzo del modello',
       },
       singleRun: {
@@ -970,6 +971,9 @@ const translation = {
       retrievalSettingIsRequired: 'È richiesta l\'impostazione di recupero',
       chunksInputTip: 'La variabile di input del nodo della base di conoscenza è Chunks. Il tipo di variabile è un oggetto con uno specifico schema JSON che deve essere coerente con la struttura del chunk selezionato.',
       chunksInput: 'Pezzetti',
+      chunksVariableIsRequired: 'La variabile Chunks è richiesta',
+      rerankingModelIsRequired: 'È richiesto un modello di riordinamento',
+      embeddingModelIsRequired: 'È necessario un modello di embedding',
     },
   },
   tracing: {
