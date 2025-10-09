@@ -307,12 +307,13 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <div className='mt-2 space-y-3 pt-3'>
               {replies.map((reply) => {
                 const isReplyEditing = editingReply?.id === reply.id
+                const isOwnReply = reply.created_by_account?.id === userProfile?.id
                 return (
                   <div
                     key={reply.id}
                     className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
                   >
-                    {!isReplyEditing && (
+                    {isOwnReply && !isReplyEditing && (
                       <div className='absolute right-1 top-1 hidden gap-1 group-hover:flex'>
                         <button
                           type='button'
