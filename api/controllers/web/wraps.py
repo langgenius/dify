@@ -38,9 +38,10 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
     return decorator
 
 
-def decode_jwt_token():
+def decode_jwt_token(app_code: str | None = None):
     system_features = FeatureService.get_system_features()
-    app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
+    if not app_code:
+        app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
     try:
         tk = extract_webapp_passport(app_code, request)
         if not tk:

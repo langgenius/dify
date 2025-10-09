@@ -39,11 +39,9 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   // call login api only to login the user, call fetchAccessToken to login the app
   const isUserLoggedIn = isWebAppLoginData?.logged_in
   const isAppLoggedIn = isWebAppLoginData?.app_logged_in
-  console.log(`isUserLoggedIn: ${isUserLoggedIn}, isAppLoggedIn: ${isAppLoggedIn}`)
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    if(needCheckIsLogin && !isWebAppLoginLoading) {
-      setIsLoading(false)
+    if(needCheckIsLogin && isWebAppLoginLoading) {
       return
     }
 
@@ -57,15 +55,22 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
           await fetchAccessToken({ appCode: shareCode! })
           if (redirectUrl)
             router.replace(decodeURIComponent(redirectUrl))
+          else
+            setIsLoading(false)
         }
-        finally {
+        catch (error) {
           setIsLoading(false)
         }
+        // passport exchange finished, return here to avoid extra checks
+        return
       }
 
-      if ((isAppLoggedIn || webAppAccessMode === AccessMode.PUBLIC) && redirectUrl) {
-        setIsLoading(false)
-        router.replace(decodeURIComponent(redirectUrl))
+      // app is logged in from the beginning
+      if ((isAppLoggedIn || webAppAccessMode === AccessMode.PUBLIC)) {
+        if (redirectUrl)
+          router.replace(decodeURIComponent(redirectUrl))
+        else
+          setIsLoading(false)
       }
     })()
   }, [shareCode, redirectUrl, router, message, webAppAccessMode, needCheckIsLogin, isWebAppLoginLoading, isAppLoggedIn])
