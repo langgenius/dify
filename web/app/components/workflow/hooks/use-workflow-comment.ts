@@ -124,6 +124,11 @@ export const useWorkflowComment = () => {
     setPendingComment(null)
   }, [setPendingComment])
 
+  useEffect(() => {
+    if (controlMode !== ControlMode.Comment)
+      setPendingComment(null)
+  }, [controlMode, setPendingComment])
+
   const handleCommentIconClick = useCallback(async (comment: WorkflowCommentList) => {
     setPendingComment(null)
 
