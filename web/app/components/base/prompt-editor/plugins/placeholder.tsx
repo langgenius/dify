@@ -15,9 +15,9 @@ const Placeholder = ({
 
   return (
     <div className={cn(
-      className,
       'pointer-events-none absolute left-0 top-0 h-full w-full select-none text-sm text-components-input-text-placeholder',
       compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+      className,
     )}>
       {value || t('common.promptEditor.placeholder')}
     </div>

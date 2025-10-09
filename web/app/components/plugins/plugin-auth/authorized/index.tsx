@@ -155,9 +155,9 @@ const Authorized = ({
   }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
-      credential_id: string
-      name: string
-    }) => {
+    credential_id: string
+    name: string
+  }) => {
     if (doingActionRef.current)
       return
     try {
@@ -174,6 +174,7 @@ const Authorized = ({
     }
   }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
   const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
+  const unavailableCredential = credentials.find(credential => credential.not_allowed_to_use && credential.is_default)
 
   return (
     <>
@@ -197,7 +198,7 @@ const Authorized = ({
                     'w-full',
                     isOpen && 'bg-components-button-secondary-bg-hover',
                   )}>
-                  <Indicator className='mr-2' />
+                  <Indicator className='mr-2' color={unavailableCredential ? 'gray' : 'green'} />
                   {credentials.length}&nbsp;
                   {
                     credentials.length > 1
@@ -306,17 +307,17 @@ const Authorized = ({
               !notAllowCustomCredential && (
                 <>
                   <div className='h-[1px] bg-divider-subtle'></div>
-                    <div className='p-2'>
-                      <Authorize
-                        pluginPayload={pluginPayload}
-                        theme='secondary'
-                        showDivider={false}
-                        canOAuth={canOAuth}
-                        canApiKey={canApiKey}
-                        disabled={disabled}
-                        onUpdate={onUpdate}
-                      />
-                    </div>
+                  <div className='p-2'>
+                    <Authorize
+                      pluginPayload={pluginPayload}
+                      theme='secondary'
+                      showDivider={false}
+                      canOAuth={canOAuth}
+                      canApiKey={canApiKey}
+                      disabled={disabled}
+                      onUpdate={onUpdate}
+                    />
+                  </div>
                 </>
               )
             }

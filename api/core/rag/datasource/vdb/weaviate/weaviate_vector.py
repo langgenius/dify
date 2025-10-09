@@ -41,7 +41,7 @@ class WeaviateConfig(BaseModel):
         batch_size: Number of objects to batch per insert operation
     """
     endpoint: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     batch_size: int = 100
 
     @model_validator(mode="before")

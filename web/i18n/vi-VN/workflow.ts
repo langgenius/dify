@@ -86,7 +86,6 @@ const translation = {
       limit: 'Song song được giới hạn trong các nhánh {{num}}.',
       depthLimit: 'Giới hạn lớp lồng song song của {{num}} layer',
     },
-    parallelRun: 'Chạy song song',
     disconnect: 'Ngắt kết nối',
     jumpToNode: 'Chuyển đến nút này',
     addParallelNode: 'Thêm nút song song',
@@ -218,6 +217,8 @@ const translation = {
     back: 'Quay lại',
     iteration: 'Lặp',
     loop: 'Vòng',
+    reRun: 'Chạy lại',
+    preparingDataSource: 'Chuẩn bị nguồn dữ liệu',
   },
   tabs: {
     'tools': 'Công cụ',
@@ -236,6 +237,8 @@ const translation = {
     'searchBlock': 'Tìm kiếm nút',
     'allAdded': 'Tất cả đã được thêm vào',
     'addAll': 'Thêm tất cả',
+    'sources': 'Nguồn',
+    'searchDataSource': 'Tìm kiếm nguồn dữ liệu',
   },
   blocks: {
     'start': 'Bắt đầu',
@@ -260,6 +263,8 @@ const translation = {
     'loop': 'Vòng',
     'loop-end': 'Thoát vòng lặp',
     'loop-start': 'Bắt đầu vòng lặp',
+    'datasource': 'Nguồn dữ liệu',
+    'knowledge-index': 'Cơ sở kiến thức',
   },
   blocksAbout: {
     'start': 'Định nghĩa các tham số ban đầu để khởi chạy quy trình làm việc',
@@ -282,6 +287,8 @@ const translation = {
     'agent': 'Gọi các mô hình ngôn ngữ lớn để trả lời câu hỏi hoặc xử lý ngôn ngữ tự nhiên',
     'loop': 'Thực hiện một vòng lặp logic cho đến khi điều kiện dừng được đáp ứng hoặc số lần lặp tối đa được đạt.',
     'loop-end': 'Tương đương với "dừng lại". Nút này không có các mục cấu hình. Khi thân vòng lặp đến nút này, vòng lặp sẽ kết thúc.',
+    'datasource': 'Nguồn dữ liệu Giới thiệu',
+    'knowledge-index': 'Cơ sở kiến thức về',
   },
   operator: {
     zoomIn: 'Phóng to',
@@ -382,6 +389,7 @@ const translation = {
         input: 'Giá trị đầu vào',
         variable: 'Sử dụng biến',
       },
+      inputVars: 'Biến đầu vào',
     },
     start: {
       required: 'bắt buộc',
@@ -436,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Nội dung được tạo',
+        reasoning_content: 'Nội dung lập luận',
         usage: 'Thông tin sử dụng mô hình',
       },
       singleRun: {
@@ -469,6 +478,12 @@ const translation = {
         apply: 'Áp dụng',
         addChildField: 'Thêm trường trẻ em',
         title: 'Sơ đồ đầu ra có cấu trúc',
+      },
+      reasoningFormat: {
+        tagged: 'Giữ lại thẻ suy nghĩ',
+        tooltip: 'Trích xuất nội dung từ các thẻ think và lưu nó vào trường reasoning_content.',
+        separated: 'Tách biệt các thẻ suy nghĩ',
+        title: 'Bật chế độ phân tách nhãn lý luận',
       },
     },
     knowledgeRetrieval: {
@@ -910,6 +925,30 @@ const translation = {
       error_one: '{{count}} Lỗi',
       loopNode: 'Nút Lặp',
     },
+    dataSource: {
+      supportedFileFormats: 'Các định dạng tệp được hỗ trợ',
+      supportedFileFormatsPlaceholder: 'Phần mở rộng tệp, e.g. doc',
+      add: 'Thêm nguồn dữ liệu',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Tìm hiểu thêm',
+        message: 'Cơ sở kiến thức Dify hỗ trợ ba cấu trúc phân đoạn: General, Parent-child và Q&A. Mỗi cơ sở tri thức chỉ có thể có một cấu trúc. Đầu ra từ nút trước đó phải phù hợp với cấu trúc chunk đã chọn. Lưu ý rằng việc lựa chọn cấu trúc chunking ảnh hưởng đến các phương thức index có sẵn.',
+        title: 'Vui lòng chọn cấu trúc chunk',
+      },
+      chunkIsRequired: 'Cấu trúc chunk là bắt buộc',
+      chunkStructure: 'Cấu trúc Chunk',
+      aboutRetrieval: 'về phương pháp truy xuất.',
+      retrievalSettingIsRequired: 'Cài đặt truy xuất là bắt buộc',
+      changeChunkStructure: 'Thay đổi cấu trúc chunk',
+      chooseChunkStructure: 'Chọn cấu trúc chunk',
+      indexMethodIsRequired: 'Phương pháp chỉ mục là bắt buộc',
+      chunksInput: 'Mảnh',
+      chunksInputTip: 'Biến đầu vào của nút cơ sở tri thức là Chunks. Loại biến là một đối tượng với một JSON Schema cụ thể mà phải nhất quán với cấu trúc chunk đã chọn.',
+      chunksVariableIsRequired: 'Biến Chunks là bắt buộc',
+      embeddingModelIsRequired: 'Cần có mô hình nhúng',
+      rerankingModelIsRequired: 'Cần có mô hình sắp xếp lại',
+    },
   },
   tracing: {
     stopBy: 'Dừng bởi {{user}}',
@@ -980,6 +1019,10 @@ const translation = {
       clearNode: 'Xóa biến đã được lưu trong bộ nhớ cache',
       emptyLink: 'Tìm hiểu thêm',
       emptyTip: 'Sau khi bước qua một nút trên canvas hoặc chạy một nút từng bước, bạn có thể xem giá trị hiện tại của biến nút trong Variable Inspect.',
+      export: 'xuất khẩu',
+      exportToolTip: 'Xuất biến dưới dạng tệp',
+      largeData: 'Dữ liệu lớn, xem trước chỉ đọc. Xuất để xem tất cả.',
+      largeDataNoExport: 'Dữ liệu lớn - chỉ xem trước một phần',
     },
     settingsTab: 'Cài đặt',
     lastRunTab: 'Chạy Lần Cuối',
@@ -997,6 +1040,10 @@ const translation = {
     copyLastRun: 'Sao chép lần chạy cuối',
     copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
     lastOutput: 'Đầu ra cuối cùng',
+  },
+  sidebar: {
+    exportWarning: 'Xuất Phiên Bản Đã Lưu Hiện Tại',
+    exportWarningDesc: 'Điều này sẽ xuất phiên bản hiện tại đã được lưu của quy trình làm việc của bạn. Nếu bạn có những thay đổi chưa được lưu trong trình soạn thảo, vui lòng lưu chúng trước bằng cách sử dụng tùy chọn xuất trong bản vẽ quy trình.',
   },
 }
 

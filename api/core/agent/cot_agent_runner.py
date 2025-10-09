@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -70,10 +70,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._prompt_messages_tools = prompt_messages_tools
 
         function_call_state = True
-        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
+        llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
+        agent_thought_id = ""  # Initialize agent_thought_id
 
-        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -120,7 +122,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 callbacks=[],
             )
 
-            usage_dict: dict[str, Optional[LLMUsage]] = {}
+            usage_dict: dict[str, LLMUsage | None] = {}
             react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response="",
@@ -272,7 +274,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         action: AgentScratchpadUnit.Action,
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
-        trace_manager: Optional[TraceQueueManager] = None,
+        trace_manager: TraceQueueManager | None = None,
     ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
@@ -338,7 +340,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return instruction
 
-    def _init_react_state(self, query) -> None:
+    def _init_react_state(self, query):
         """
         init agent scratchpad
         """

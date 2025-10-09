@@ -404,7 +404,7 @@ wheels = [
 
 [[package]]
 name = "authlib"
-version = "1.3.1"
+version = "1.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -416,7 +416,7 @@ wheels = [
 
 [[package]]
 name = "azure-core"
-version = "1.35.0"
+version = "1.35.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
@@ -445,12 +445,13 @@ wheels = [
 
 [[package]]
 name = "azure-storage-blob"
-version = "12.13.0"
+version = "12.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
     { name = "cryptography" },
-    { name = "msrest" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b1/93/b13bf390e940a79a399981f75ac8d2e05a70112a95ebb7b41e9b752d2921/azure-storage-blob-12.13.0.zip", hash = "sha256:53f0d4cd32970ac9ff9b9753f83dd2fb3f9ac30e1d01e71638c436c509bfd884", size = 684838, upload-time = "2022-07-07T22:35:44.543Z" }
 wheels = [
@@ -599,7 +600,7 @@ wheels = [
 
 [[package]]
 name = "botocore-stubs"
-version = "1.38.46"
+version = "1.40.29"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-awscrt" },
@@ -611,7 +612,7 @@ wheels = [
 
 [[package]]
 name = "bottleneck"
-version = "1.5.0"
+version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -770,7 +771,7 @@ wheels = [
 
 [[package]]
 name = "cffi"
-version = "1.17.1"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pycparser" },
@@ -1062,7 +1063,7 @@ wheels = [
 
 [[package]]
 name = "cos-python-sdk-v5"
-version = "1.9.30"
+version = "1.9.38"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "crcmod" },
@@ -1259,11 +1260,10 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.8.0"
+version = "1.9.1"
 source = { virtual = "." }
 dependencies = [
     { name = "arize-phoenix-otel" },
-    { name = "authlib" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
     { name = "boto3" },
@@ -1294,10 +1294,8 @@ dependencies = [
     { name = "json-repair" },
     { name = "langfuse" },
     { name = "langsmith" },
-    { name = "mailchimp-transactional" },
     { name = "markdown" },
     { name = "numpy" },
-    { name = "openai" },
     { name = "openpyxl" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-distro" },
@@ -1308,6 +1306,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-flask" },
+    { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-redis" },
     { name = "opentelemetry-instrumentation-requests" },
     { name = "opentelemetry-instrumentation-sqlalchemy" },
@@ -1317,8 +1316,8 @@ dependencies = [
     { name = "opentelemetry-semantic-conventions" },
     { name = "opentelemetry-util-http" },
     { name = "opik" },
+    { name = "packaging" },
     { name = "pandas", extra = ["excel", "output-formatting", "performance"] },
-    { name = "pandoc" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
     { name = "pycryptodome" },
@@ -1348,12 +1347,14 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "basedpyright" },
     { name = "boto3-stubs" },
     { name = "celery-types" },
     { name = "coverage" },
     { name = "dotenv-linter" },
     { name = "faker" },
     { name = "hypothesis" },
+    { name = "import-linter" },
     { name = "lxml-stubs" },
     { name = "mypy" },
     { name = "pandas-stubs" },
@@ -1364,7 +1365,9 @@ dev = [
     { name = "pytest-mock" },
     { name = "ruff" },
     { name = "scipy-stubs" },
+    { name = "sseclient-py" },
     { name = "testcontainers" },
+    { name = "ty" },
     { name = "types-aiofiles" },
     { name = "types-beautifulsoup4" },
     { name = "types-cachetools" },
@@ -1452,7 +1455,6 @@ vdb = [
 [package.metadata]
 requires-dist = [
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
-    { name = "authlib", specifier = "==1.3.1" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
     { name = "boto3", specifier = "==1.35.99" },
@@ -1466,9 +1468,9 @@ requires-dist = [
     { name = "flask-login", specifier = "~=0.6.3" },
     { name = "flask-migrate", specifier = "~=4.0.7" },
     { name = "flask-orjson", specifier = "~=2.0.0" },
-    { name = "flask-restx", specifier = ">=1.3.0" },
+    { name = "flask-restx", specifier = "~=1.3.0" },
     { name = "flask-sqlalchemy", specifier = "~=3.1.1" },
-    { name = "gevent", specifier = "~=24.11.1" },
+    { name = "gevent", specifier = "~=25.9.1" },
     { name = "gmpy2", specifier = "~=2.2.1" },
     { name = "google-api-core", specifier = "==2.18.0" },
     { name = "google-api-python-client", specifier = "==2.90.0" },
@@ -1478,15 +1480,13 @@ requires-dist = [
     { name = "googleapis-common-protos", specifier = "==1.63.0" },
     { name = "gunicorn", specifier = "~=23.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "~=0.27.0" },
-    { name = "httpx-sse", specifier = ">=0.4.0" },
+    { name = "httpx-sse", specifier = "~=0.4.0" },
     { name = "jieba", specifier = "==0.42.1" },
     { name = "json-repair", specifier = ">=0.41.1" },
     { name = "langfuse", specifier = "~=2.51.3" },
     { name = "langsmith", specifier = "~=0.1.77" },
-    { name = "mailchimp-transactional", specifier = "~=1.0.50" },
     { name = "markdown", specifier = "~=3.5.1" },
     { name = "numpy", specifier = "~=1.26.4" },
-    { name = "openai", specifier = "~=1.61.0" },
     { name = "openpyxl", specifier = "~=3.1.5" },
     { name = "opentelemetry-api", specifier = "==1.27.0" },
     { name = "opentelemetry-distro", specifier = "==0.48b0" },
@@ -1497,6 +1497,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-celery", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-flask", specifier = "==0.48b0" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-redis", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-requests", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = "==0.48b0" },
@@ -1506,8 +1507,8 @@ requires-dist = [
     { name = "opentelemetry-semantic-conventions", specifier = "==0.48b0" },
     { name = "opentelemetry-util-http", specifier = "==0.48b0" },
     { name = "opik", specifier = "~=1.7.25" },
+    { name = "packaging", specifier = "~=23.2" },
     { name = "pandas", extras = ["excel", "output-formatting", "performance"], specifier = "~=2.2.2" },
-    { name = "pandoc", specifier = "~=2.4" },
     { name = "psycogreen", specifier = "~=1.0.2" },
     { name = "psycopg2-binary", specifier = "~=2.9.6" },
     { name = "pycryptodome", specifier = "==3.19.1" },
@@ -1525,10 +1526,10 @@ requires-dist = [
     { name = "sendgrid", specifier = "~=6.12.3" },
     { name = "sentry-sdk", extras = ["flask"], specifier = "~=2.28.0" },
     { name = "sqlalchemy", specifier = "~=2.0.29" },
-    { name = "sseclient-py", specifier = ">=1.8.0" },
+    { name = "sseclient-py", specifier = "~=1.8.0" },
     { name = "starlette", specifier = "==0.47.2" },
     { name = "tiktoken", specifier = "~=0.9.0" },
-    { name = "transformers", specifier = "~=4.53.0" },
+    { name = "transformers", specifier = "~=4.56.1" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
     { name = "weave", specifier = "~=0.51.0" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
@@ -1537,12 +1538,14 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "basedpyright", specifier = "~=1.31.0" },
     { name = "boto3-stubs", specifier = ">=1.38.20" },
     { name = "celery-types", specifier = ">=0.23.0" },
     { name = "coverage", specifier = "~=7.2.4" },
     { name = "dotenv-linter", specifier = "~=0.5.0" },
     { name = "faker", specifier = "~=32.1.0" },
     { name = "hypothesis", specifier = ">=6.131.15" },
+    { name = "import-linter", specifier = ">=2.3" },
     { name = "lxml-stubs", specifier = "~=0.5.1" },
     { name = "mypy", specifier = "~=1.17.1" },
     { name = "pandas-stubs", specifier = "~=2.2.3" },
@@ -1553,7 +1556,9 @@ dev = [
     { name = "pytest-mock", specifier = "~=3.14.0" },
     { name = "ruff", specifier = "~=0.12.3" },
     { name = "scipy-stubs", specifier = ">=1.15.3.0" },
+    { name = "sseclient-py", specifier = ">=1.8.0" },
     { name = "testcontainers", specifier = "~=4.10.0" },
+    { name = "ty", specifier = "~=0.0.1a19" },
     { name = "types-aiofiles", specifier = "~=24.1.0" },
     { name = "types-beautifulsoup4", specifier = "~=4.12.0" },
     { name = "types-cachetools", specifier = "~=5.5.0" },
@@ -1598,12 +1603,12 @@ dev = [
     { name = "types-ujson", specifier = ">=5.10.0" },
 ]
 storage = [
-    { name = "azure-storage-blob", specifier = "==12.13.0" },
+    { name = "azure-storage-blob", specifier = "==12.26.0" },
     { name = "bce-python-sdk", specifier = "~=0.9.23" },
-    { name = "cos-python-sdk-v5", specifier = "==1.9.30" },
-    { name = "esdk-obs-python", specifier = "==3.24.6.1" },
+    { name = "cos-python-sdk-v5", specifier = "==1.9.38" },
+    { name = "esdk-obs-python", specifier = "==3.25.8" },
     { name = "google-cloud-storage", specifier = "==2.16.0" },
-    { name = "opendal", specifier = "~=0.45.16" },
+    { name = "opendal", specifier = "~=0.46.0" },
     { name = "oss2", specifier = "==2.18.5" },
     { name = "supabase", specifier = "~=2.18.1" },
     { name = "tos", specifier = "~=2.7.1" },
@@ -1622,11 +1627,11 @@ vdb = [
     { name = "elasticsearch", specifier = "==8.14.0" },
     { name = "mo-vector", specifier = "~=0.1.13" },
     { name = "opensearch-py", specifier = "==2.4.0" },
-    { name = "oracledb", specifier = "==3.0.0" },
+    { name = "oracledb", specifier = "==3.3.0" },
     { name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=0.2.1" },
     { name = "pgvector", specifier = "==0.2.5" },
     { name = "pymilvus", specifier = "~=2.5.0" },
-    { name = "pymochow", specifier = "==1.3.1" },
+    { name = "pymochow", specifier = "==2.2.9" },
     { name = "pyobvector", specifier = "~=0.2.15" },
     { name = "qdrant-client", specifier = "==1.9.0" },
     { name = "tablestore", specifier = "==6.2.0" },
@@ -1752,10 +1757,12 @@ wheels = [
 
 [[package]]
 name = "esdk-obs-python"
-version = "3.24.6.1"
+version = "3.25.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "crcmod" },
     { name = "pycryptodome" },
+    { name = "requests" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f7/af/d83276f9e288bd6a62f44d67ae1eafd401028ba1b2b643ae4014b51da5bd/esdk-obs-python-3.24.6.1.tar.gz", hash = "sha256:c45fed143e99d9256c8560c1d78f651eae0d2e809d16e962f8b286b773c33bf0", size = 85798, upload-time = "2024-07-26T13:13:22.467Z" }
 
@@ -2021,7 +2028,7 @@ wheels = [
 
 [[package]]
 name = "gevent"
-version = "24.11.1"
+version = "25.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi", marker = "platform_python_implementation == 'CPython' and sys_platform == 'win32'" },
@@ -2584,7 +2591,7 @@ wheels = [
 
 [[package]]
 name = "httplib2"
-version = "0.22.0"
+version = "0.31.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyparsing" },
@@ -2740,6 +2747,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/50/fb/396d568039d21344639db96d940d40eb62befe704ef849b27949ded5c3bb/intervaltree-3.1.0.tar.gz", hash = "sha256:902b1b88936918f9b2a19e0e5eb7ccb430ae45cde4f39ea4b36932920d33952d", size = 32861, upload-time = "2020-08-03T08:01:11.392Z" }
 
 [[package]]
 name = "intervaltree"
@@ -2862,7 +2870,7 @@ wheels = [
 
 [[package]]
 name = "jsonschema-specifications"
-version = "2025.4.1"
+version = "2025.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "referencing" },
@@ -3445,7 +3453,7 @@ wheels = [
 
 [[package]]
 name = "numexpr"
-version = "2.11.0"
+version = "2.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -3573,7 +3581,7 @@ wheels = [
 
 [[package]]
 name = "opendal"
-version = "0.45.20"
+version = "0.46.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2f/3f/927dfe1349ae58b9238b8eafba747af648d660a9425f486dda01a10f0b78/opendal-0.45.20.tar.gz", hash = "sha256:9f6f90d9e9f9d6e9e5a34aa7729169ef34d2f1869ad1e01ddc39b1c0ce0c9405", size = 990267, upload-time = "2025-05-26T07:02:11.819Z" }
 wheels = [
@@ -3595,6 +3603,7 @@ dependencies = [
     { name = "openinference-semantic-conventions" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
+    { name = "wrapt" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/26/e0/9d3fe148d27602f794840ba7e2353ba1f25ff6f43ad32fe4390fba393ba4/openinference_instrumentation-0.1.37.tar.gz", hash = "sha256:67fe1c83a864c0cb38a19165b63f28b7287f5c0d7924c47dad599e006a934fd1", size = 23012, upload-time = "2025-08-06T00:29:46.227Z" }
 wheels = [
@@ -3972,7 +3981,7 @@ numpy = [
 
 [[package]]
 name = "oracledb"
-version = "3.0.0"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -4122,18 +4131,18 @@ wheels = [
 ]
 
 [[package]]
-name = "pandoc"
-version = "2.4"
+name = "pathspec"
+version = "0.12.1"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "plumbum" },
-    { name = "ply" },
+sdist = { url = "https://files.pythonhosted.org/packages/ca/bc/f35b8446f4531a7cb215605d100cd88b7ac6f44ab3fc94870c120ab3adbf/pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712", size = 51043, upload-time = "2023-12-10T22:30:45Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cc/20/ff623b09d963f88bfde16306a54e12ee5ea43e9b597108672ff3a408aad6/pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08", size = 31191, upload-time = "2023-12-10T22:30:43.14Z" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/10/9a/e3186e760c57ee5f1c27ea5cea577a0ff9abfca51eefcb4d9a4cd39aff2e/pandoc-2.4.tar.gz", hash = "sha256:ecd1f8cbb7f4180c6b5db4a17a7c1a74df519995f5f186ef81ce72a9cbd0dd9a", size = 34635, upload-time = "2024-08-07T14:33:58.016Z" }
 
 [[package]]
-name = "pathspec"
-version = "0.12.1"
+name = "pdfminer-six"
+version = "20240706"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ca/bc/f35b8446f4531a7cb215605d100cd88b7ac6f44ab3fc94870c120ab3adbf/pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712", size = 51043, upload-time = "2023-12-10T22:30:45Z" }
 wheels = [
@@ -4238,8 +4247,8 @@ wheels = [
 ]
 
 [[package]]
-name = "plumbum"
-version = "1.9.0"
+name = "ply"
+version = "3.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pywin32", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
@@ -4250,8 +4259,8 @@ wheels = [
 ]
 
 [[package]]
-name = "ply"
-version = "3.11"
+name = "polyfile-weave"
+version = "0.5.6"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e5/69/882ee5c9d017149285cab114ebeab373308ef0f874fcdac9beb90e0ac4da/ply-3.11.tar.gz", hash = "sha256:00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3", size = 159130, upload-time = "2018-02-15T19:01:31.097Z" }
 wheels = [
@@ -4524,7 +4533,7 @@ wheels = [
 
 [[package]]
 name = "pycparser"
-version = "2.22"
+version = "2.23"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1d/b2/31537cf4b1ca988837256c910a668b553fceb8f069bedc4b1c826024b52c/pycparser-2.22.tar.gz", hash = "sha256:491c8be9c040f5390f5bf44a5b07752bd07f56edf992381b05c701439eec10f6", size = 172736, upload-time = "2024-03-30T13:22:22.564Z" }
 wheels = [
@@ -4682,7 +4691,7 @@ wheels = [
 
 [[package]]
 name = "pymochow"
-version = "1.3.1"
+version = "2.2.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "future" },
@@ -4705,7 +4714,7 @@ wheels = [
 
 [[package]]
 name = "pyobvector"
-version = "0.2.15"
+version = "0.2.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiomysql" },
@@ -4858,7 +4867,7 @@ wheels = [
 
 [[package]]
 name = "python-calamine"
-version = "0.4.0"
+version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
@@ -5947,7 +5956,7 @@ wheels = [
 
 [[package]]
 name = "transformers"
-version = "4.53.3"
+version = "4.56.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -6354,7 +6363,7 @@ wheels = [
 
 [[package]]
 name = "types-s3transfer"
-version = "0.13.0"
+version = "0.13.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/42/c1/45038f259d6741c252801044e184fec4dbaeff939a58f6160d7c32bf4975/types_s3transfer-0.13.0.tar.gz", hash = "sha256:203dadcb9865c2f68fb44bc0440e1dc05b79197ba4a641c0976c26c9af75ef52", size = 14175, upload-time = "2025-05-28T02:16:07.614Z" }
 wheels = [
@@ -6958,7 +6967,7 @@ wheels = [
 
 [[package]]
 name = "xmltodict"
-version = "0.14.2"
+version = "0.15.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/50/05/51dcca9a9bf5e1bce52582683ce50980bcadbc4fa5143b9f2b19ab99958f/xmltodict-0.14.2.tar.gz", hash = "sha256:201e7c28bb210e374999d1dde6382923ab0ed1a8a5faeece48ab525b7810a553", size = 51942, upload-time = "2024-10-16T06:10:29.683Z" }
 wheels = [
@@ -7034,7 +7043,7 @@ wheels = [
 
 [[package]]
 name = "zope-interface"
-version = "7.2"
+version = "8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "setuptools" },

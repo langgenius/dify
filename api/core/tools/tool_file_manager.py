@@ -6,7 +6,7 @@ import os
 import time
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Optional, Union
+from typing import Union
 from uuid import uuid4
 
 import httpx
@@ -72,10 +72,10 @@ class ToolFileManager:
         *,
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str],
+        conversation_id: str | None,
         file_binary: bytes,
         mimetype: str,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> ToolFile:
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
@@ -98,6 +98,7 @@ class ToolFileManager:
                 mimetype=mimetype,
                 name=present_filename,
                 size=len(file_binary),
+                original_url=None,
             )
 
             session.add(tool_file)
@@ -111,7 +112,7 @@ class ToolFileManager:
         user_id: str,
         tenant_id: str,
         file_url: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> ToolFile:
         # try to download image
         try:
@@ -131,7 +132,6 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
-
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file = ToolFile(
                 user_id=user_id,
@@ -217,7 +217,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Optional[Generator], Optional[ToolFile]]:
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]:
         """
         get file binary
 

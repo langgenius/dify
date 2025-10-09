@@ -11,12 +11,12 @@ class TestSupabaseStorage:
 
     def test_init_success_with_all_config(self):
         """Test successful initialization when all required config is provided."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -31,7 +31,7 @@ class TestSupabaseStorage:
 
     def test_init_raises_error_when_url_missing(self):
         """Test initialization raises ValueError when SUPABASE_URL is None."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = None
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
@@ -41,7 +41,7 @@ class TestSupabaseStorage:
 
     def test_init_raises_error_when_api_key_missing(self):
         """Test initialization raises ValueError when SUPABASE_API_KEY is None."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = None
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
@@ -51,7 +51,7 @@ class TestSupabaseStorage:
 
     def test_init_raises_error_when_bucket_name_missing(self):
         """Test initialization raises ValueError when SUPABASE_BUCKET_NAME is None."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = None
@@ -61,12 +61,12 @@ class TestSupabaseStorage:
 
     def test_create_bucket_when_not_exists(self):
         """Test create_bucket creates bucket when it doesn't exist."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -77,12 +77,12 @@ class TestSupabaseStorage:
 
     def test_create_bucket_when_exists(self):
         """Test create_bucket does not create bucket when it already exists."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -94,12 +94,12 @@ class TestSupabaseStorage:
     @pytest.fixture
     def storage_with_mock_client(self):
         """Fixture providing SupabaseStorage with mocked client."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -172,73 +172,31 @@ class TestSupabaseStorage:
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
         mock_client.storage.from_().download.assert_called_with("test.txt")
 
-    def test_exists_with_list_containing_items(self, storage_with_mock_client):
-        """Test exists returns True when list() returns items (using len() > 0)."""
+    def test_exists_returns_true_when_file_found(self, storage_with_mock_client):
+        """Test exists returns True when list() returns items."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with special object that has count() method
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 1
-        mock_client.storage.from_().list.return_value = mock_list_result
+        mock_client.storage.from_().list.return_value = [{"name": "test.txt"}]
 
         result = storage.exists("test.txt")
 
         assert result is True
-        # from_ gets called during init too, so just check it was called with the right bucket
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
+        mock_client.storage.from_().list.assert_called_with(path="test.txt")
 
-    def test_exists_with_count_method_greater_than_zero(self, storage_with_mock_client):
-        """Test exists returns True when list result has count() > 0."""
+    def test_exists_returns_false_when_file_not_found(self, storage_with_mock_client):
+        """Test exists returns False when list() returns an empty list."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with count() method
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 1
-        mock_client.storage.from_().list.return_value = mock_list_result
-
-        result = storage.exists("test.txt")
-
-        assert result is True
-        # Verify the correct calls were made
-        assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
-        mock_list_result.count.assert_called()
-
-    def test_exists_with_count_method_zero(self, storage_with_mock_client):
-        """Test exists returns False when list result has count() == 0."""
-        storage, mock_client = storage_with_mock_client
-
-        # Mock list return with count() method returning 0
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 0
-        mock_client.storage.from_().list.return_value = mock_list_result
+        mock_client.storage.from_().list.return_value = []
 
         result = storage.exists("test.txt")
 
         assert result is False
-        # Verify the correct calls were made
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
-        mock_list_result.count.assert_called()
+        mock_client.storage.from_().list.assert_called_with(path="test.txt")
 
-    def test_exists_with_empty_list(self, storage_with_mock_client):
-        """Test exists returns False when list() returns empty list."""
-        storage, mock_client = storage_with_mock_client
-
-        # Mock list return with special object that has count() method returning 0
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 0
-        mock_client.storage.from_().list.return_value = mock_list_result
-
-        result = storage.exists("test.txt")
-
-        assert result is False
-        # Verify the correct calls were made
-        assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
-
-    def test_delete_calls_remove_with_filename(self, storage_with_mock_client):
+    def test_delete_calls_remove_with_filename_in_list(self, storage_with_mock_client):
         """Test delete calls remove([...]) (some client versions require a list)."""
         storage, mock_client = storage_with_mock_client
 
@@ -247,16 +205,16 @@ class TestSupabaseStorage:
         storage.delete(filename)
 
         mock_client.storage.from_.assert_called_once_with("test-bucket")
-        mock_client.storage.from_().remove.assert_called_once_with(filename)
+        mock_client.storage.from_().remove.assert_called_once_with([filename])
 
     def test_bucket_exists_returns_true_when_bucket_found(self):
         """Test bucket_exists returns True when bucket is found in list."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -271,12 +229,12 @@ class TestSupabaseStorage:
 
     def test_bucket_exists_returns_false_when_bucket_not_found(self):
         """Test bucket_exists returns False when bucket is not found in list."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 
@@ -294,12 +252,12 @@ class TestSupabaseStorage:
 
     def test_bucket_exists_returns_false_when_no_buckets(self):
         """Test bucket_exists returns False when no buckets exist."""
-        with patch("extensions.storage.supabase_storage.dify_config") as mock_config:
+        with patch("extensions.storage.supabase_storage.dify_config", autospec=True) as mock_config:
             mock_config.SUPABASE_URL = "https://test.supabase.co"
             mock_config.SUPABASE_API_KEY = "test-api-key"
             mock_config.SUPABASE_BUCKET_NAME = "test-bucket"
 
-            with patch("extensions.storage.supabase_storage.Client") as mock_client_class:
+            with patch("extensions.storage.supabase_storage.Client", autospec=True) as mock_client_class:
                 mock_client = Mock()
                 mock_client_class.return_value = mock_client
 

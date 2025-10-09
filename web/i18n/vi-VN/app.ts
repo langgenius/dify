@@ -80,6 +80,7 @@ const translation = {
     completionShortDescription: 'Trợ lý AI cho các tác vụ tạo văn bản',
     completionUserDescription: 'Nhanh chóng xây dựng trợ lý AI cho các tác vụ tạo văn bản với cấu hình đơn giản.',
     dropDSLToCreateApp: 'Kéo tệp DSL vào đây để tạo ứng dụng',
+    import: 'Nhập khẩu',
   },
   editApp: 'Chỉnh sửa thông tin',
   editAppTitle: 'Chỉnh sửa thông tin ứng dụng',
@@ -316,6 +317,10 @@ const translation = {
     tryDifferentSearch: 'Thử một cụm từ tìm kiếm khác',
     noMatchingCommands: 'Không tìm thấy lệnh phù hợp',
     slashHint: 'Gõ / để xem tất cả các lệnh có sẵn',
+    selectToNavigate: 'Chọn để điều hướng',
+    startTyping: 'Bắt đầu gõ để tìm kiếm',
+    pressEscToClose: 'Nhấn ESC để đóng',
+    tips: 'Nhấn ↑↓ để duyệt',
   },
 }
 

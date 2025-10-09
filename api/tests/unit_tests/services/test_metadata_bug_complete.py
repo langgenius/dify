@@ -1,9 +1,11 @@
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from flask_restx import reqparse
 from werkzeug.exceptions import BadRequest
 
+from models.account import Account
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 
@@ -35,19 +37,21 @@ class TestMetadataBugCompleteValidation:
         mock_metadata_args.name = None
         mock_metadata_args.type = "string"
 
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
 
+        with patch("services.metadata_service.current_user", mock_user):
             # Should crash with TypeError
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
         # Test update method as well
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
 
+        with patch("services.metadata_service.current_user", mock_user):
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
@@ -143,19 +147,17 @@ class TestMetadataBugCompleteValidation:
         # Console API create
         console_create_file = "api/controllers/console/datasets/metadata.py"
         if os.path.exists(console_create_file):
-            with open(console_create_file) as f:
-                content = f.read()
-                # Should contain nullable=False, not nullable=True
-                assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
+            content = Path(console_create_file).read_text()
+            # Should contain nullable=False, not nullable=True
+            assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
 
         # Service API create
         service_create_file = "api/controllers/service_api/dataset/metadata.py"
         if os.path.exists(service_create_file):
-            with open(service_create_file) as f:
-                content = f.read()
-                # Should contain nullable=False, not nullable=True
-                create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
-                assert "nullable=True" not in create_api_section
+            content = Path(service_create_file).read_text()
+            # Should contain nullable=False, not nullable=True
+            create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
+            assert "nullable=True" not in create_api_section
 
 
 class TestMetadataValidationSummary:

@@ -103,7 +103,7 @@ def init_app(app: DifyApp):
     def shutdown_tracer():
         provider = trace.get_tracer_provider()
         if hasattr(provider, "force_flush"):
-            provider.force_flush()
+            provider.force_flush()  # ty: ignore [call-non-callable]
 
     class ExceptionLoggingHandler(logging.Handler):
         """Custom logging handler that creates spans for logging.exception() calls"""
@@ -136,6 +136,7 @@ def init_app(app: DifyApp):
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     from opentelemetry.instrumentation.redis import RedisInstrumentor
     from opentelemetry.instrumentation.requests import RequestsInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -238,6 +239,7 @@ def init_app(app: DifyApp):
     init_sqlalchemy_instrumentor(app)
     RedisInstrumentor().instrument()
     RequestsInstrumentor().instrument()
+    HTTPXClientInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
 
