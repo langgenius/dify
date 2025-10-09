@@ -1788,7 +1788,7 @@ class MessageChain(Base):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input = mapped_column(sa.Text, nullable=True)
     output = mapped_column(sa.Text, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class MessageAgentThought(Base):
@@ -1826,7 +1826,7 @@ class MessageAgentThought(Base):
     latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
     @property
     def files(self) -> list[Any]:
@@ -1929,7 +1929,7 @@ class DatasetRetrieverResource(Base):
     index_node_hash = mapped_column(sa.Text, nullable=True)
     retriever_from = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class Tag(Base):

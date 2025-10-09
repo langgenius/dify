@@ -11,6 +11,7 @@ import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
 import cn from '@/utils/classnames'
 import { type UserProfile, fetchMentionableUsers } from '@/service/workflow-comment'
+import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
   value: string
@@ -42,7 +43,12 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const appId = params.appId as string
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const [mentionUsers, setMentionUsers] = useState<UserProfile[]>([])
+  const workflowStore = useWorkflowStore()
+  const mentionUsersFromStore = useStore(state => (
+    appId ? state.mentionableUsersCache[appId] : undefined
+  ))
+  const mentionUsers = mentionUsersFromStore ?? []
+
   const [showMentionDropdown, setShowMentionDropdown] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionPosition, setMentionPosition] = useState(0)
@@ -121,15 +127,28 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   }, [value, mentionNameList])
 
   const loadMentionableUsers = useCallback(async () => {
-    if (!appId) return
+    if (!appId)
+      return
+
+    const state = workflowStore.getState()
+    if (state.mentionableUsersCache[appId] !== undefined)
+      return
+
+    if (state.mentionableUsersLoading[appId])
+      return
+
+    state.setMentionableUsersLoading(appId, true)
     try {
       const users = await fetchMentionableUsers(appId)
-      setMentionUsers(users)
+      workflowStore.getState().setMentionableUsersCache(appId, users)
     }
     catch (error) {
       console.error('Failed to load mentionable users:', error)
     }
-  }, [appId])
+    finally {
+      workflowStore.getState().setMentionableUsersLoading(appId, false)
+    }
+  }, [appId, workflowStore])
 
   useEffect(() => {
     loadMentionableUsers()
@@ -145,12 +164,20 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
   const dropdownPosition = useMemo(() => {
     if (!showMentionDropdown || !textareaRef.current)
-      return { x: 0, y: 0 }
+      return { x: 0, y: 0, placement: 'bottom' as const }
 
     const textareaRect = textareaRef.current.getBoundingClientRect()
+    const dropdownHeight = 160 // max-h-40 = 10rem = 160px
+    const viewportHeight = window.innerHeight
+    const spaceBelow = viewportHeight - textareaRect.bottom
+    const spaceAbove = textareaRect.top
+
+    const shouldPlaceAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+
     return {
       x: textareaRect.left,
-      y: textareaRect.bottom + 4,
+      y: shouldPlaceAbove ? textareaRect.top - 4 : textareaRect.bottom + 4,
+      placement: shouldPlaceAbove ? 'top' as const : 'bottom' as const,
     }
   }, [showMentionDropdown])
 
@@ -204,7 +231,10 @@ export const MentionInput: FC<MentionInputProps> = memo(({
 
     const beforeMention = value.slice(0, mentionPosition)
     const afterMention = value.slice(textarea.selectionStart || 0)
-    const newContent = `${beforeMention}@${user.name} ${afterMention}`
+
+    const needsSpaceBefore = mentionPosition > 0 && !/\s/.test(value[mentionPosition - 1])
+    const prefix = needsSpaceBefore ? ' ' : ''
+    const newContent = `${beforeMention}${prefix}@${user.name} ${afterMention}`
 
     onChange(newContent)
     setShowMentionDropdown(false)
@@ -213,7 +243,8 @@ export const MentionInput: FC<MentionInputProps> = memo(({
     setMentionedUserIds(newMentionedUserIds)
 
     setTimeout(() => {
-      const newCursorPos = mentionPosition + user.name.length + 2 // @ + name + space
+      const extraSpace = needsSpaceBefore ? 1 : 0
+      const newCursorPos = mentionPosition + extraSpace + user.name.length + 2 // (space) + @ + name + space
       textarea.setSelectionRange(newCursorPos, newCursorPos)
       textarea.focus()
     }, 0)
@@ -368,7 +399,9 @@ export const MentionInput: FC<MentionInputProps> = memo(({
           className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg"
           style={{
             left: dropdownPosition.x,
-            top: dropdownPosition.y,
+            [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'
+              ? window.innerHeight - dropdownPosition.y
+              : dropdownPosition.y,
           }}
           data-mention-dropdown
         >

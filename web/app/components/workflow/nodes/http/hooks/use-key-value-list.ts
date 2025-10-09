@@ -49,7 +49,8 @@ const useKeyValueList = (value: string, onChange: (value: string) => void, noFil
         return prev
       return normalizeList(targetItems)
     })
-  }, [value, noFilter])
+  }, [noFilter, onChange, value])
+
   const addItem = useCallback(() => {
     setList([...list, {
       id: uniqueId(UNIQUE_ID_PREFIX),

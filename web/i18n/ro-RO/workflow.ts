@@ -944,6 +944,9 @@ const translation = {
       changeChunkStructure: 'Modificați structura bucății',
       chunksInput: 'Bucăți',
       chunksInputTip: 'Variabila de intrare a nodului bazei de cunoștințe este Chunks. Tipul variabilei este un obiect cu un Șchema JSON specific care trebuie să fie coerent cu structura de chunk selectată.',
+      chunksVariableIsRequired: 'Variabila Chunks este obligatorie',
+      embeddingModelIsRequired: 'Este necesar un model de încorporare',
+      rerankingModelIsRequired: 'Este necesar un model de reordonare',
     },
   },
   tracing: {

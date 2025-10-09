@@ -74,7 +74,6 @@ import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
-import LimitTips from './limit-tips'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
@@ -199,10 +198,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleCommentReply,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
+    handleCommentPositionUpdate,
   } = useWorkflowComment()
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
-  const mousePosition = useStore(s => s.mousePosition)
   const { t } = useTranslation()
 
   eventEmitter?.useSubscription((v: any) => {
@@ -440,9 +439,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
           content={showConfirm.desc}
         />
       )}
-      <LimitTips />
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
-        <CommentCursor mousePosition={mousePosition} />
+        <CommentCursor />
       )}
       {pendingComment && (
         <CommentInput
@@ -464,6 +462,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 comment={comment}
                 onClick={() => handleCommentIconClick(comment)}
                 isActive={true}
+                onPositionUpdate={position => handleCommentPositionUpdate(comment.id, position)}
               />
               <CommentThread
                 key={`${comment.id}-thread`}
@@ -489,6 +488,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
             key={comment.id}
             comment={comment}
             onClick={() => handleCommentIconClick(comment)}
+            onPositionUpdate={position => handleCommentPositionUpdate(comment.id, position)}
           />
         ) : null
       })}

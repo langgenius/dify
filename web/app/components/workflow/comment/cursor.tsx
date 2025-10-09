@@ -4,12 +4,9 @@ import { useStore } from '../store'
 import { ControlMode } from '../types'
 import { Comment } from '@/app/components/base/icons/src/public/other'
 
-type CommentCursorProps = {
-  mousePosition: { elementX: number; elementY: number }
-}
-
-export const CommentCursor: FC<CommentCursorProps> = memo(({ mousePosition }) => {
+export const CommentCursor: FC = memo(() => {
   const controlMode = useStore(s => s.controlMode)
+  const mousePosition = useStore(s => s.mousePosition)
 
   if (controlMode !== ControlMode.Comment)
     return null

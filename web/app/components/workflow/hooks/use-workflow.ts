@@ -2,7 +2,6 @@ import {
   useCallback,
 } from 'react'
 import { uniqBy } from 'lodash-es'
-import { useTranslation } from 'react-i18next'
 import {
   getIncomers,
   getOutgoers,
@@ -23,9 +22,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import { getParallelInfo } from '../utils'
 import {
-  PARALLEL_DEPTH_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import type { IterationNodeType } from '../nodes/iteration/types'
@@ -44,7 +41,6 @@ import {
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
-import { MAX_PARALLEL_LIMIT } from '@/config'
 import { useNodesMetaData } from '.'
 
 export const useIsChatMode = () => {
@@ -54,9 +50,7 @@ export const useIsChatMode = () => {
 }
 
 export const useWorkflow = () => {
-  const { t } = useTranslation()
   const collaborativeWorkflow = useCollaborativeWorkflow()
-  const workflowStore = useWorkflowStore()
   const { getAvailableBlocks } = useAvailableBlocks()
   const { nodesMap } = useNodesMetaData()
 
@@ -262,18 +256,6 @@ export const useWorkflow = () => {
     return isUsed
   }, [isVarUsedInNodes])
 
-  const checkParallelLimit = useCallback((nodeId: string, nodeHandle = 'source') => {
-    const { edges } = collaborativeWorkflow.getState()
-    const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
-    if (connectedEdges.length > MAX_PARALLEL_LIMIT - 1) {
-      const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: MAX_PARALLEL_LIMIT }))
-      return false
-    }
-
-    return true
-  }, [collaborativeWorkflow, workflowStore, t])
-
   const getRootNodesById = useCallback((nodeId: string) => {
     const { nodes, edges } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)
@@ -340,40 +322,10 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], targetNode?: Node) => {
-    const startNodes = getStartNodes(nodes, targetNode)
-
-    for (let i = 0; i < startNodes.length; i++) {
-      const {
-        parallelList,
-        hasAbnormalEdges,
-      } = getParallelInfo(startNodes[i], nodes, edges)
-      const { workflowConfig } = workflowStore.getState()
-
-      if (hasAbnormalEdges)
-        return false
-
-      for (let i = 0; i < parallelList.length; i++) {
-        const parallel = parallelList[i]
-
-        if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
-          const { setShowTips } = workflowStore.getState()
-          setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
-          return false
-        }
-      }
-    }
-
-    return true
-  }, [t, workflowStore, getStartNodes])
-
   const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const { nodes, edges } = collaborativeWorkflow.getState()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
-
-    if (!checkParallelLimit(source!, sourceHandle || 'source'))
-      return false
 
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
       return false
@@ -407,7 +359,7 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [collaborativeWorkflow, checkParallelLimit, getAvailableBlocks])
+  }, [collaborativeWorkflow, getAvailableBlocks])
 
   return {
     getNodeById,
@@ -419,8 +371,6 @@ export const useWorkflow = () => {
     isVarUsedInNodes,
     removeUsedVarInNodes,
     isNodeVarsUsedInNodes,
-    checkParallelLimit,
-    checkNestedParallelLimit,
     isValidConnection,
     getBeforeNodeById,
     getIterationNodeChildren,

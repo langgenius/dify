@@ -1,3 +1,5 @@
+from importlib import import_module
+
 from flask import Blueprint
 from flask_restx import Namespace
 
@@ -45,23 +47,23 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 
-# Create namespace
 console_ns = Namespace("console", description="Console management API operations", path="/")
 
-# File
-api.add_resource(FileApi, "/files/upload")
-api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")
-api.add_resource(FileSupportTypeApi, "/files/support-type")
+RESOURCE_MODULES = (
+    "controllers.console.app.app_import",
+    "controllers.console.explore.audio",
+    "controllers.console.explore.completion",
+    "controllers.console.explore.conversation",
+    "controllers.console.explore.message",
+    "controllers.console.explore.workflow",
+    "controllers.console.files",
+    "controllers.console.remote_files",
+)
 
-# Remote files
-api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
-api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
+for module_name in RESOURCE_MODULES:
+    import_module(module_name)
 
-# Import App
-api.add_resource(AppImportApi, "/apps/imports")
-api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm")
-api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
-
+# Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
 from . import (
     admin,

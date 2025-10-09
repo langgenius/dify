@@ -1,7 +1,7 @@
 'use client'
 
-import type { FC } from 'react'
-import { memo, useMemo, useState } from 'react'
+import type { FC, PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import CommentPreview from './comment-preview'
@@ -11,17 +11,22 @@ type CommentIconProps = {
   comment: WorkflowCommentList
   onClick: () => void
   isActive?: boolean
+  onPositionUpdate?: (position: { x: number; y: number }) => void
 }
 
-export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isActive = false }) => {
-  const { flowToScreenPosition } = useReactFlow()
+export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isActive = false, onPositionUpdate }) => {
+  const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
   const viewport = useViewport()
   const [showPreview, setShowPreview] = useState(false)
-
-  const handlePreviewClick = () => {
-    setShowPreview(false)
-    onClick()
-  }
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStateRef = useRef<{
+    offsetX: number
+    offsetY: number
+    startX: number
+    startY: number
+    hasMoved: boolean
+  } | null>(null)
 
   const screenPosition = useMemo(() => {
     return flowToScreenPosition({
@@ -29,6 +34,108 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
       y: comment.position_y,
     })
   }, [comment.position_x, comment.position_y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
+
+  const effectivePosition = dragPosition ?? screenPosition
+
+  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0)
+      return
+
+    event.stopPropagation()
+    event.preventDefault()
+
+    dragStateRef.current = {
+      offsetX: event.clientX - screenPosition.x,
+      offsetY: event.clientY - screenPosition.y,
+      startX: event.clientX,
+      startY: event.clientY,
+      hasMoved: false,
+    }
+
+    setDragPosition(screenPosition)
+    setIsDragging(false)
+
+    if (event.currentTarget.dataset.role !== 'comment-preview')
+      setShowPreview(false)
+
+    if (event.currentTarget.setPointerCapture)
+      event.currentTarget.setPointerCapture(event.pointerId)
+  }, [screenPosition])
+
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current
+    if (!dragState)
+      return
+
+    event.stopPropagation()
+    event.preventDefault()
+
+    const nextX = event.clientX - dragState.offsetX
+    const nextY = event.clientY - dragState.offsetY
+
+    if (!dragState.hasMoved) {
+      const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY)
+      if (distance > 4) {
+        dragState.hasMoved = true
+        setIsDragging(true)
+      }
+    }
+
+    setDragPosition({ x: nextX, y: nextY })
+  }, [])
+
+  const finishDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current
+    if (!dragState)
+      return false
+
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId)
+
+    dragStateRef.current = null
+    setDragPosition(null)
+    setIsDragging(false)
+    return dragState.hasMoved
+  }, [])
+
+  const handlePointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    event.preventDefault()
+
+    const finalScreenPosition = dragPosition ?? screenPosition
+    const didDrag = finishDrag(event)
+
+    setShowPreview(false)
+
+    if (didDrag) {
+      if (onPositionUpdate) {
+        const flowPosition = screenToFlowPosition({
+          x: finalScreenPosition.x,
+          y: finalScreenPosition.y,
+        })
+        onPositionUpdate(flowPosition)
+      }
+    }
+    else if (!isActive) {
+      onClick()
+    }
+  }, [dragPosition, finishDrag, isActive, onClick, onPositionUpdate, screenPosition, screenToFlowPosition])
+
+  const handlePointerCancel = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    event.preventDefault()
+    finishDrag(event)
+  }, [finishDrag])
+
+  const handleMouseEnter = useCallback(() => {
+    if (isActive || isDragging)
+      return
+    setShowPreview(true)
+  }, [isActive, isDragging])
+
+  const handleMouseLeave = useCallback(() => {
+    setShowPreview(false)
+  }, [])
 
   // Calculate dynamic width based on number of participants
   const participantCount = comment.participants?.length || 0
@@ -42,21 +149,29 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
     8 + avatarSize + Math.max(0, (showCount ? 2 : maxVisible - 1)) * (avatarSize - avatarSpacing) + 8,
   )
 
+  const pointerEventHandlers = useMemo(() => ({
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+    onPointerCancel: handlePointerCancel,
+  }), [handlePointerCancel, handlePointerDown, handlePointerMove, handlePointerUp])
+
   return (
     <>
       <div
         className="absolute z-10"
         style={{
-          left: screenPosition.x,
-          top: screenPosition.y,
+          left: effectivePosition.x,
+          top: effectivePosition.y,
           transform: 'translate(-50%, -50%)',
         }}
+        data-role='comment-marker'
+        {...pointerEventHandlers}
       >
         <div
-          className={isActive ? '' : 'cursor-pointer'}
-          onClick={isActive ? undefined : onClick}
-          onMouseEnter={isActive ? undefined : () => setShowPreview(true)}
-          onMouseLeave={isActive ? undefined : () => setShowPreview(false)}
+          className={isActive ? (isDragging ? 'cursor-grabbing' : '') : isDragging ? 'cursor-grabbing' : 'cursor-pointer'}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           <div
             className={'relative h-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full'}
@@ -84,14 +199,19 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
         <div
           className="absolute z-20"
           style={{
-            left: screenPosition.x - dynamicWidth / 2,
-            top: screenPosition.y + 20,
+            left: (dragPosition ?? screenPosition).x - dynamicWidth / 2,
+            top: (dragPosition ?? screenPosition).y + 20,
             transform: 'translateY(-100%)',
           }}
+          data-role='comment-preview'
+          {...pointerEventHandlers}
           onMouseEnter={() => setShowPreview(true)}
           onMouseLeave={() => setShowPreview(false)}
         >
-          <CommentPreview comment={comment} onClick={handlePreviewClick} />
+          <CommentPreview comment={comment} onClick={() => {
+            setShowPreview(false)
+            onClick()
+          }} />
         </div>
       )}
     </>
@@ -103,6 +223,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
     && prevProps.comment.position_y === nextProps.comment.position_y
     && prevProps.onClick === nextProps.onClick
     && prevProps.isActive === nextProps.isActive
+    && prevProps.onPositionUpdate === nextProps.onPositionUpdate
   )
 })
 
