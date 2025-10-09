@@ -1,3 +1,10 @@
+"""
+Weaviate vector database implementation for Dify's RAG system.
+
+This module provides integration with Weaviate vector database for storing and retrieving
+document embeddings used in retrieval-augmented generation workflows.
+"""
+
 import datetime
 import json
 from typing import Any, Optional
@@ -25,6 +32,14 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 class WeaviateConfig(BaseModel):
+    """
+    Configuration model for Weaviate connection settings.
+    
+    Attributes:
+        endpoint: Weaviate server endpoint URL
+        api_key: Optional API key for authentication
+        batch_size: Number of objects to batch per insert operation
+    """
     endpoint: str
     api_key: Optional[str] = None
     batch_size: int = 100
@@ -32,17 +47,38 @@ class WeaviateConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict) -> dict:
+        """Validates that required configuration values are present."""
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
         return values
 
 class WeaviateVector(BaseVector):
+    """
+    Weaviate vector database implementation for document storage and retrieval.
+    
+    Handles creation, insertion, deletion, and querying of document embeddings
+    in a Weaviate collection.
+    """
+    
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
+        """
+        Initializes the Weaviate vector store.
+        
+        Args:
+            collection_name: Name of the Weaviate collection
+            config: Weaviate configuration settings
+            attributes: List of metadata attributes to store
+        """
         super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
+        """
+        Initializes and returns a connected Weaviate client.
+        
+        Configures both HTTP and gRPC connections with proper authentication.
+        """
         p = urlparse(config.endpoint)
         host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
         http_secure = (p.scheme == "https")
@@ -68,9 +104,15 @@ class WeaviateVector(BaseVector):
         return client
 
     def get_type(self) -> str:
+        """Returns the vector database type identifier."""
         return VectorType.WEAVIATE
 
     def get_collection_name(self, dataset: Dataset) -> str:
+        """
+        Retrieves or generates the collection name for a dataset.
+        
+        Uses existing index structure if available, otherwise generates from dataset ID.
+        """
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             if not class_prefix.endswith("_Node"):
@@ -81,13 +123,22 @@ class WeaviateVector(BaseVector):
         return Dataset.gen_collection_name_by_id(dataset_id)
 
     def to_index_struct(self) -> dict:
+        """Returns the index structure dictionary for persistence."""
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+        """
+        Creates a new collection and adds initial documents with embeddings.
+        """
         self._create_collection()
         self.add_texts(texts, embeddings)
 
     def _create_collection(self):
+        """
+        Creates the Weaviate collection with required schema if it doesn't exist.
+        
+        Uses Redis locking to prevent concurrent creation attempts.
+        """
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             cache_key = f"vector_indexing_{self._collection_name}"
@@ -118,6 +169,11 @@ class WeaviateVector(BaseVector):
                 raise
 
     def _ensure_properties(self) -> None:
+        """
+        Ensures all required properties exist in the collection schema.
+        
+        Adds missing properties if the collection exists but lacks them.
+        """
         if not self._client.collections.exists(self._collection_name):
             return
 
@@ -140,7 +196,11 @@ class WeaviateVector(BaseVector):
                 print(f"Warning: Could not add property {prop.name}: {e}")
 
     def _get_uuids(self, documents: list[Document]) -> list[str]:
-
+        """
+        Generates deterministic UUIDs for documents based on their content.
+        
+        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
+        """
         URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
         
         uuids = []
@@ -151,6 +211,11 @@ class WeaviateVector(BaseVector):
         return uuids
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+        """
+        Adds documents with their embeddings to the collection.
+        
+        Batches insertions for efficiency and returns the list of inserted object IDs.
+        """
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -191,6 +256,7 @@ class WeaviateVector(BaseVector):
         return ids_out
 
     def _is_uuid(self, val: str) -> bool:
+        """Validates whether a string is a valid UUID format."""
         try:
             _uuid.UUID(str(val))
             return True
@@ -198,6 +264,7 @@ class WeaviateVector(BaseVector):
             return False
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
+        """Deletes all objects matching a specific metadata field value."""
         if not self._client.collections.exists(self._collection_name):
             return
 
@@ -205,10 +272,12 @@ class WeaviateVector(BaseVector):
         col.data.delete_many(where=Filter.by_property(key).equal(value))
 
     def delete(self):
+        """Deletes the entire collection from Weaviate."""
         if self._client.collections.exists(self._collection_name):
             self._client.collections.delete(self._collection_name)
 
     def text_exists(self, id: str) -> bool:
+        """Checks if a document with the given doc_id exists in the collection."""
         if not self._client.collections.exists(self._collection_name):
             return False
 
@@ -222,6 +291,11 @@ class WeaviateVector(BaseVector):
         return len(res.objects) > 0
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        """
+        Deletes objects by their UUID identifiers.
+        
+        Silently ignores 404 errors for non-existent IDs.
+        """
         if not self._client.collections.exists(self._collection_name):
             return
 
@@ -235,6 +309,12 @@ class WeaviateVector(BaseVector):
                     raise
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        """
+        Performs vector similarity search using the provided query vector.
+        
+        Filters by document IDs if provided and applies score threshold.
+        Returns documents sorted by relevance score.
+        """
         if not self._client.collections.exists(self._collection_name):
             return []
 
@@ -277,6 +357,11 @@ class WeaviateVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        """
+        Performs BM25 full-text search on document content.
+        
+        Filters by document IDs if provided and returns matching documents with vectors.
+        """
         if not self._client.collections.exists(self._collection_name):
             return []
 
@@ -315,12 +400,21 @@ class WeaviateVector(BaseVector):
         return docs
 
     def _json_serializable(self, value: Any) -> Any:
+        """Converts values to JSON-serializable format, handling datetime objects."""
         if isinstance(value, datetime.datetime):
             return value.isoformat()
         return value
 
 class WeaviateVectorFactory(AbstractVectorFactory):
+    """Factory class for creating WeaviateVector instances."""
+    
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
+        """
+        Initializes a WeaviateVector instance for the given dataset.
+        
+        Uses existing collection name from dataset index structure or generates a new one.
+        Updates dataset index structure if not already set.
+        """
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix
