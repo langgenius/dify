@@ -42,7 +42,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   console.log(`isUserLoggedIn: ${isUserLoggedIn}, isAppLoggedIn: ${isAppLoggedIn}`)
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    if(needCheckIsLogin && isWebAppLoginLoading) {
+    if(needCheckIsLogin && !isWebAppLoginLoading) {
       setIsLoading(false)
       return
     }
