@@ -237,7 +237,6 @@ def init_app(app: DifyApp):
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
     RedisInstrumentor().instrument()
-    RequestsInstrumentor().instrument()
     HTTPXClientInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
