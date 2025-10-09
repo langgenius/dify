@@ -5,39 +5,6 @@ from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
-from .app.app_import import AppImportApi, AppImportCheckDependenciesApi, AppImportConfirmApi
-from .explore.audio import ChatAudioApi, ChatTextApi
-from .explore.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
-from .explore.conversation import (
-    ConversationApi,
-    ConversationListApi,
-    ConversationPinApi,
-    ConversationRenameApi,
-    ConversationUnPinApi,
-)
-from .explore.message import (
-    MessageFeedbackApi,
-    MessageListApi,
-    MessageMoreLikeThisApi,
-    MessageSuggestedQuestionApi,
-)
-from .explore.trial import (
-    AppApi,
-    TrialAppParameterApi,
-    TrialChatApi,
-    TrialChatAudioApi,
-    TrialChatTextApi,
-    TrialCompletionApi,
-    TrialMessageSuggestedQuestionApi,
-    TrialSitApi,
-)
-from .explore.workflow import (
-    InstalledAppWorkflowRunApi,
-    InstalledAppWorkflowTaskStopApi,
-)
-from .files import FileApi, FilePreviewApi, FileSupportTypeApi
-from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
-
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
 api = ExternalApi(
@@ -165,97 +132,6 @@ from .workspace import (
     tool_providers,
     workspace,
 )
-
-# Explore Audio
-api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
-api.add_resource(ChatTextApi, "/installed-apps/<uuid:installed_app_id>/text-to-audio", endpoint="installed_app_text")
-
-# Explore Completion
-api.add_resource(
-    CompletionApi, "/installed-apps/<uuid:installed_app_id>/completion-messages", endpoint="installed_app_completion"
-)
-api.add_resource(
-    CompletionStopApi,
-    "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
-    endpoint="installed_app_stop_completion",
-)
-api.add_resource(
-    ChatApi, "/installed-apps/<uuid:installed_app_id>/chat-messages", endpoint="installed_app_chat_completion"
-)
-api.add_resource(
-    ChatStopApi,
-    "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
-    endpoint="installed_app_stop_chat_completion",
-)
-
-# Explore Conversation
-api.add_resource(
-    ConversationRenameApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/name",
-    endpoint="installed_app_conversation_rename",
-)
-api.add_resource(
-    ConversationListApi, "/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations"
-)
-api.add_resource(
-    ConversationApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>",
-    endpoint="installed_app_conversation",
-)
-api.add_resource(
-    ConversationPinApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin",
-    endpoint="installed_app_conversation_pin",
-)
-api.add_resource(
-    ConversationUnPinApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin",
-    endpoint="installed_app_conversation_unpin",
-)
-
-
-# Explore Message
-api.add_resource(MessageListApi, "/installed-apps/<uuid:installed_app_id>/messages", endpoint="installed_app_messages")
-api.add_resource(
-    MessageFeedbackApi,
-    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks",
-    endpoint="installed_app_message_feedback",
-)
-api.add_resource(
-    MessageMoreLikeThisApi,
-    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this",
-    endpoint="installed_app_more_like_this",
-)
-api.add_resource(
-    MessageSuggestedQuestionApi,
-    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions",
-    endpoint="installed_app_suggested_question",
-)
-# Explore Workflow
-api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_app_id>/workflows/run")
-api.add_resource(
-    InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
-)
-
-# Explore trial
-api.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
-
-api.add_resource(
-    TrialMessageSuggestedQuestionApi,
-    "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
-    endpoint="trial_app_suggested_question",
-)
-
-api.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
-api.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
-
-api.add_resource(TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion")
-
-api.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
-
-api.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
-
-api.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
 
 api.add_namespace(console_ns)
 
