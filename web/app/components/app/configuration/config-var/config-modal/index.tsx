@@ -32,6 +32,19 @@ import { TransferMethod } from '@/types/app'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 const TEXT_MAX_LENGTH = 256
+const CHECKBOX_DEFAULT_TRUE_VALUE = 'true'
+const CHECKBOX_DEFAULT_FALSE_VALUE = 'false'
+
+const getCheckboxDefaultSelectValue = (value: InputVar['default']) => {
+  if (typeof value === 'boolean')
+    return value ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
+  if (typeof value === 'string')
+    return value.toLowerCase() === CHECKBOX_DEFAULT_TRUE_VALUE ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
+  return CHECKBOX_DEFAULT_FALSE_VALUE
+}
+
+const parseCheckboxSelectValue = (value: string) =>
+  value === CHECKBOX_DEFAULT_TRUE_VALUE
 
 export type IConfigModalProps = {
   isCreate?: boolean
@@ -198,6 +211,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
     handlePayloadChange('variable')(e.target.value)
   }, [handlePayloadChange, t])
 
+  const checkboxDefaultSelectValue = useMemo(() => getCheckboxDefaultSelectValue(tempPayload.default), [tempPayload.default])
+
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
@@ -320,6 +335,23 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 value={tempPayload.default || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {type === InputVarType.checkbox && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <SimpleSelect
+                className="w-full"
+                optionWrapClassName="max-h-[140px] overflow-y-auto"
+                items={[
+                  { value: CHECKBOX_DEFAULT_TRUE_VALUE, name: t('appDebug.variableConfig.startChecked') },
+                  { value: CHECKBOX_DEFAULT_FALSE_VALUE, name: t('appDebug.variableConfig.noDefaultSelected') },
+                ]}
+                defaultValue={checkboxDefaultSelectValue}
+                onSelect={item => handlePayloadChange('default')(parseCheckboxSelectValue(String(item.value)))}
+                placeholder={t('appDebug.variableConfig.selectDefaultValue')}
+                allowSearch={false}
               />
             </Field>
           )}
