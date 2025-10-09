@@ -43,7 +43,7 @@ export default function Select({
                     className={'group flex w-full items-center rounded-lg px-3 py-2 text-sm text-text-secondary data-[active]:bg-state-base-hover'}
                     onClick={(evt) => {
                       evt.preventDefault()
-                      onChange && onChange(item.value)
+                      onChange?.(item.value)
                     }}
                   >
                     {item.name}
