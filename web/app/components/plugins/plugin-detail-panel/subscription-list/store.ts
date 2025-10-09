@@ -1,29 +1,16 @@
 import { create } from 'zustand'
+import type { PluginDetail } from '../../types'
 
-export type SubscriptionListDetail = {
-  plugin_id: string
-  // name: string
-  provider: string
-  declaration: {
-    tool?: any
-    endpoint?: any
-    trigger?: any
-    name?: string
-    meta?: {
-      version?: string
-    }
-  }
-  version?: string
-}
+type SimpleDetail = Pick<PluginDetail, 'plugin_id' | 'declaration'> & { provider: string }
 
 type Shape = {
-  detail: SubscriptionListDetail | undefined
-  setDetail: (detail: SubscriptionListDetail) => void
+  detail: SimpleDetail | undefined
+  setDetail: (detail: SimpleDetail) => void
 }
 
 export const usePluginStore = create<Shape>(set => ({
   detail: undefined,
-  setDetail: (detail: SubscriptionListDetail) => set({ detail }),
+  setDetail: (detail: SimpleDetail) => set({ detail }),
 }))
 
 type ShapeSubscription = {

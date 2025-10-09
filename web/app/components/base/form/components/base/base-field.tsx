@@ -196,7 +196,7 @@ const BaseField = ({
           )
         }
         {
-          formItemType === FormTypeEnum.select && multiple && (
+          formItemType === FormTypeEnum.checkbox /* && multiple */ && (
             <CheckboxList
               title={name}
               value={value}

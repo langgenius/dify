@@ -55,8 +55,8 @@ const Modal = ({
       >
         <div
           className={cn(
-            'max-h-[80%] w-[480px] overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs',
-            size === 'sm' && 'w-[480px',
+            'max-h-[80%] overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs',
+            size === 'sm' && 'w-[480px]',
             size === 'md' && 'w-[640px]',
           )}
           onClick={e => e.stopPropagation()}

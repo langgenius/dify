@@ -15,7 +15,7 @@ import {
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { RiLoader2Line } from '@remixicon/react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LogViewer from '../log-viewer'
 import { usePluginStore, usePluginSubscriptionStore } from '../store'
@@ -67,55 +67,65 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
   const [verificationError, setVerificationError] = useState<string>('')
+  const isInitializedRef = useRef(false)
 
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyTriggerSubscriptionBuilder()
-  const { mutate: createBuilder /* isPending: isCreatingBuilder */ } = useCreateTriggerSubscriptionBuilder()
+  const { mutateAsync: createBuilder /* isPending: isCreatingBuilder */ } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
 
-  const propertiesSchema = detail?.declaration.trigger.subscription_schema.properties_schema || [] // manual
+  const manualPropertiesSchema = detail?.declaration.trigger.subscription_schema || [] // manual
+  const manualPropertiesFormRef = React.useRef<FormRefObject>(null)
+
   const subscriptionFormRef = React.useRef<FormRefObject>(null)
-  const propertiesFormRef = React.useRef<FormRefObject>(null)
-  const parametersSchema = detail?.declaration.trigger?.subscription_schema?.parameters_schema || [] // apikey and oauth
-  const parametersFormRef = React.useRef<FormRefObject>(null)
-  const credentialsSchema = detail?.declaration.trigger?.credentials_schema || []
-  const credentialsFormRef = React.useRef<FormRefObject>(null)
+
+  const autoCommonParametersSchema = detail?.declaration.trigger?.subscription_constructor?.parameters || [] // apikey and oauth
+  const autoCommonParametersFormRef = React.useRef<FormRefObject>(null)
+
+  const apiKeyCredentialsSchema = detail?.declaration.trigger?.subscription_constructor?.credentials_schema || []
+  const apiKeyCredentialsFormRef = React.useRef<FormRefObject>(null)
 
   const { data: logData } = useTriggerSubscriptionBuilderLogs(
     detail?.provider || '',
     subscriptionBuilder?.id || '',
     {
-      enabled: createType === SupportedCreationMethods.MANUAL && !!subscriptionBuilder?.id,
+      enabled: createType === SupportedCreationMethods.MANUAL,
       refetchInterval: 3000,
     },
   )
 
   useEffect(() => {
-    if (!subscriptionBuilder) {
-      createBuilder(
-        {
+    const initializeBuilder = async () => {
+      isInitializedRef.current = true
+      try {
+        const response = await createBuilder({
           provider: detail?.provider || '',
           credential_type: CREDENTIAL_TYPE_MAP[createType],
-        },
-        {
-          onSuccess: (response) => {
-            const builder = response.subscription_builder
-            setSubscriptionBuilder(builder)
-          },
-          onError: (error) => {
-            Toast.notify({
-              type: 'error',
-              message: t('pluginTrigger.modal.errors.createFailed'),
-            })
-            console.error('Failed to create subscription builder:', error)
-          },
-        },
-      )
+        })
+        setSubscriptionBuilder(response.subscription_builder)
+      }
+      catch (error) {
+        console.error('createBuilder error:', error)
+        Toast.notify({
+          type: 'error',
+          message: t('pluginTrigger.modal.errors.createFailed'),
+        })
+      }
     }
-  }, [createBuilder, detail?.provider, subscriptionBuilder, t])
+    if (!isInitializedRef.current && !subscriptionBuilder && detail?.provider)
+      initializeBuilder()
+  }, [subscriptionBuilder, detail?.provider, createType, createBuilder, t])
+
+  useEffect(() => {
+    if (subscriptionBuilder?.endpoint && subscriptionFormRef.current) {
+      const form = subscriptionFormRef.current.getForm()
+      if (form)
+        form.setFieldValue('callback_url', subscriptionBuilder.endpoint)
+    }
+  }, [subscriptionBuilder?.endpoint])
 
   const handleVerify = () => {
-    const credentialsFormValues = credentialsFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
-    const credentials = credentialsFormValues.values
+    const apiKeyCredentialsFormValues = apiKeyCredentialsFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+    const credentials = apiKeyCredentialsFormValues.values
 
     if (!Object.keys(credentials).length) {
       Toast.notify({
@@ -149,24 +159,24 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   }
 
   const handleCreate = () => {
-    const parameterForm = parametersFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
-    const subscriptionForm = subscriptionFormRef.current?.getFormValues({})
+    const autoCommonParametersFormValues = autoCommonParametersFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+    const subscriptionFormValues = subscriptionFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
     // console.log('parameterForm', parameterForm)
 
-    if (!subscriptionForm?.isCheckValidated || !parameterForm?.isCheckValidated)
+    if (!subscriptionFormValues?.isCheckValidated || !autoCommonParametersFormValues?.isCheckValidated)
       return
 
     if (!subscriptionBuilder)
       return
 
-    const subscriptionNameValue = subscriptionForm.values.subscription_name as string
+    const subscriptionNameValue = subscriptionFormValues?.values.subscription_name as string
 
     buildSubscription(
       {
         provider: detail?.provider || '',
         subscriptionBuilderId: subscriptionBuilder.id,
         name: subscriptionNameValue,
-        parameters: { ...parameterForm.values, events: ['*'] },
+        parameters: autoCommonParametersFormValues.values,
         // properties: formValues.values,
       },
       {
@@ -210,11 +220,11 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       {createType === SupportedCreationMethods.APIKEY && <MultiSteps currentStep={currentStep} />}
       {currentStep === ApiKeyStep.Verify && (
         <>
-          {credentialsSchema.length > 0 && (
+          {apiKeyCredentialsSchema.length > 0 && (
             <div className='mb-4'>
               <BaseForm
-                formSchemas={credentialsSchema}
-                ref={credentialsFormRef}
+                formSchemas={apiKeyCredentialsSchema}
+                ref={apiKeyCredentialsFormRef}
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
                 preventDefaultSubmit={true}
                 formClassName='space-y-4'
@@ -264,9 +274,9 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         {/* <div className='system-xs-regular mb-6 mt-[-1rem] text-text-tertiary'>
           {t('pluginTrigger.modal.form.callbackUrl.description')}
         </div> */}
-        {createType !== SupportedCreationMethods.MANUAL && parametersSchema.length > 0 && (
+        {createType !== SupportedCreationMethods.MANUAL && autoCommonParametersSchema.length > 0 && (
           <BaseForm
-            formSchemas={parametersSchema.map((schema: { type: FormTypeEnum; name: any }) => ({
+            formSchemas={autoCommonParametersSchema.map(schema => ({
               ...schema,
               dynamicSelectParams: schema.type === FormTypeEnum.dynamicSelect ? {
                 plugin_id: detail?.plugin_id || '',
@@ -276,17 +286,17 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 credential_id: subscriptionBuilder?.id || '',
               } : undefined,
             }))}
-            ref={parametersFormRef}
+            ref={autoCommonParametersFormRef}
             labelClassName='system-sm-medium mb-2 block text-text-primary'
             formClassName='space-y-4'
           />
         )}
         {createType === SupportedCreationMethods.MANUAL && <>
-          {propertiesSchema.length > 0 && (
+          {manualPropertiesSchema.length > 0 && (
             <div className='mb-6'>
               <BaseForm
-                formSchemas={propertiesSchema}
-                ref={propertiesFormRef}
+                formSchemas={manualPropertiesSchema}
+                ref={manualPropertiesFormRef}
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
                 formClassName='space-y-4'
               />

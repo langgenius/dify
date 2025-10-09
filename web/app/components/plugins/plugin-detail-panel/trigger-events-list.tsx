@@ -83,7 +83,7 @@ export const TriggerEventsList = () => {
   const locale = useContextSelector(I18n, state => state.locale)
   const language = getLanguage(locale)
   const detail = usePluginStore(state => state.detail)
-  const triggers = detail?.declaration.trigger?.triggers || []
+  const events = detail?.declaration.trigger?.events || []
   const providerKey = useMemo(() => {
     if (!detail?.plugin_id || !detail?.declaration?.name)
       return ''
@@ -98,7 +98,7 @@ export const TriggerEventsList = () => {
 
     const tools = (providerInfo.events || []).map((trigger: any) => toTool(trigger, providerInfo.author))
 
-    const metaVersion = detail.declaration.meta?.version || detail.version || '1.0'
+    const metaVersion = detail.declaration.meta?.version || detail.declaration.version || '1.0'
 
     return {
       id: providerInfo.plugin_id || providerInfo.name,
@@ -118,19 +118,19 @@ export const TriggerEventsList = () => {
     }
   }, [detail, providerInfo])
 
-  if (!triggers.length)
+  if (!events.length)
     return null
 
   return (
     <div className='px-4 pb-4 pt-2'>
       <div className='mb-1 py-1'>
         <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary'>
-          {t('pluginTrigger.events.actionNum', { num: triggers.length, event: t(`pluginTrigger.events.${triggers.length > 1 ? 'events' : 'event'}`) })}
+          {t('pluginTrigger.events.actionNum', { num: events.length, event: t(`pluginTrigger.events.${events.length > 1 ? 'events' : 'event'}`) })}
         </div>
       </div>
       <div className='flex flex-col gap-2'>
         {collection
-          ? triggers.map((triggerEvent: Trigger) => {
+          ? events.map((triggerEvent: Trigger) => {
             const triggerName = triggerEvent.identity?.name || ''
             const tool = collection.tools.find(item => item.name === triggerName)
               || toTool(triggerEvent, collection.author)
@@ -146,7 +146,7 @@ export const TriggerEventsList = () => {
               />
             )
           })
-          : triggers.map((triggerEvent: Trigger) => (
+          : events.map((triggerEvent: Trigger) => (
             <div
               key={`${detail?.plugin_id}${triggerEvent.identity?.name || ''}`}
               className='bg-components-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs'

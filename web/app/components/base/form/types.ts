@@ -52,6 +52,7 @@ export type FormSchema = {
   required: boolean
   multiple?: boolean
   default?: any
+  description?: string | TypeWithI18N | Record<Locale, string>
   tooltip?: string | TypeWithI18N | Record<Locale, string>
   show_on?: FormShowOnObject[]
   url?: string
