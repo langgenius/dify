@@ -107,7 +107,8 @@ const Chart: React.FC<IChartProps> = ({
   const { t } = useTranslation()
   const statistics = chartData.data
   const statisticsLen = statistics.length
-  const extraDataForMarkLine = new Array(statisticsLen >= 2 ? statisticsLen - 2 : statisticsLen).fill('1')
+  const markLineLength = statisticsLen >= 2 ? statisticsLen - 2 : statisticsLen
+  const extraDataForMarkLine = Array.from({ length: markLineLength }, () => '1')
   extraDataForMarkLine.push('')
   extraDataForMarkLine.unshift('')
 

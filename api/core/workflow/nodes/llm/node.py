@@ -128,7 +128,7 @@ class LLMNode(Node):
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -166,6 +166,7 @@ class LLMNode(Node):
         node_inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         result_text = ""
+        clean_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
         reasoning_content = None
