@@ -473,10 +473,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             prompt_message
             for prompt_message in prompt_messages
             if not (
-                (
-                    isinstance(prompt_message, AssistantPromptMessage)
-                    and len(prompt_message.tool_calls) > 0
-                )
+                (isinstance(prompt_message, AssistantPromptMessage) and len(prompt_message.tool_calls) > 0)
                 or (isinstance(prompt_message, ToolPromptMessage))
             )
         ]
