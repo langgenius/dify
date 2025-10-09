@@ -39,6 +39,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   // call login api only to login the user, call fetchAccessToken to login the app
   const isUserLoggedIn = isWebAppLoginData?.logged_in
   const isAppLoggedIn = isWebAppLoginData?.app_logged_in
+  console.log(`isUserLoggedIn: ${isUserLoggedIn}, isAppLoggedIn: ${isAppLoggedIn}`)
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     if(needCheckIsLogin && isWebAppLoginLoading) {
