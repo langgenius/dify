@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.agent import AgentNode
+from core.workflow.nodes.agent import AgentNodeV1 as AgentNode
 from core.workflow.nodes.code import CodeNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.http_request import HttpRequestNode

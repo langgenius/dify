@@ -125,13 +125,20 @@ class Node:
 
         from typing import cast
 
-        from core.workflow.nodes.agent.agent_node import AgentNode
-        from core.workflow.nodes.agent.entities import AgentNodeData
+        from core.workflow.nodes.agent.v1.agent_node import AgentNode
+        from core.workflow.nodes.agent.v1.entities import AgentNodeData
+        from core.workflow.nodes.agent.v2.agent_node import AgentNode as AgentNodeV2
 
         if isinstance(self, AgentNode):
             start_event.agent_strategy = AgentNodeStrategyInit(
                 name=cast(AgentNodeData, self.get_base_node_data()).agent_strategy_name,
                 icon=self.agent_strategy_icon,
+            )
+        # TODO: remove the code
+        elif isinstance(self, AgentNodeV2):
+            start_event.agent_strategy = AgentNodeStrategyInit(
+                name="function_calling",
+                icon="e74e644589f5d78cd6019be7b92050c2b54b2645139af705fe610649a73282cf.svg",
             )
 
         # ===
