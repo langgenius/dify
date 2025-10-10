@@ -284,7 +284,8 @@ const Completed: FC<ICompletedProps> = ({
       onSuccess: () => {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         resetList()
-        !segId && setSelectedSegmentIds([])
+        if (!segId)
+          setSelectedSegmentIds([])
       },
       onError: () => {
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
@@ -438,7 +439,8 @@ const Completed: FC<ICompletedProps> = ({
     }
     else {
       resetList()
-      currentPage !== totalPages && setCurrentPage(totalPages)
+      if (currentPage !== totalPages)
+        setCurrentPage(totalPages)
     }
   }, [segmentListData, limit, currentPage, resetList])
 
@@ -491,7 +493,8 @@ const Completed: FC<ICompletedProps> = ({
     }
     else {
       resetChildList()
-      currentPage !== totalPages && setCurrentPage(totalPages)
+      if (currentPage !== totalPages)
+        setCurrentPage(totalPages)
     }
   }, [childChunkListData, limit, currentPage, resetChildList])
 
