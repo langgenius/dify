@@ -362,11 +362,11 @@ class HttpConfig(BaseSettings):
     )
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: int = Field(
-        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=60
+        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=600
     )
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = Field(
-        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=20
+        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=600
     )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
@@ -771,7 +771,7 @@ class MailConfig(BaseSettings):
 
     MAIL_TEMPLATING_TIMEOUT: int = Field(
         description="""
-        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. 
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates.
         Only available in sandbox mode.""",
         default=3,
     )
