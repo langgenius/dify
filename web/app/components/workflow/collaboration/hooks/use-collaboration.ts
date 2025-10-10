@@ -19,13 +19,24 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     if (!appId) return
 
     let connectionId: string | null = null
+    let isUnmounted = false
 
     if (!cursorServiceRef.current)
       cursorServiceRef.current = new CursorService()
 
     const initCollaboration = async () => {
-      connectionId = await collaborationManager.connect(appId, reactFlowStore)
-      setState((prev: any) => ({ ...prev, appId, isConnected: collaborationManager.isConnected() }))
+      try {
+        const id = await collaborationManager.connect(appId, reactFlowStore)
+        if (isUnmounted) {
+          collaborationManager.disconnect(id)
+          return
+        }
+        connectionId = id
+        setState((prev: any) => ({ ...prev, appId, isConnected: collaborationManager.isConnected() }))
+      }
+      catch (error) {
+        console.error('Failed to initialize collaboration:', error)
+      }
     }
 
     initCollaboration()
@@ -54,6 +65,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     })
 
     return () => {
+      isUnmounted = true
       unsubscribeStateChange()
       unsubscribeCursors()
       unsubscribeUsers()
