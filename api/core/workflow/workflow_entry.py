@@ -423,7 +423,7 @@ class WorkflowEntry:
 
                     # Support for a single node to reference multiple structured_output variables
                     current_variable = variable_pool.get([variable_node_id] + variable_key_list)
-                    if current_variable and current_variable.value:
+                    if current_variable and isinstance(current_variable.value, dict):
                         input_value = current_variable.value | input_value
 
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
