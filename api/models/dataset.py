@@ -754,7 +754,7 @@ class DocumentSegment(Base):
         if process_rule and process_rule.mode == "hierarchical":
             rules_dict = process_rule.rules_dict
             if rules_dict:
-                rules = Rule(**rules_dict)
+                rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
                     child_chunks = (
                         db.session.query(ChildChunk)
@@ -772,7 +772,7 @@ class DocumentSegment(Base):
         if process_rule and process_rule.mode == "hierarchical":
             rules_dict = process_rule.rules_dict
             if rules_dict:
-                rules = Rule(**rules_dict)
+                rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode:
                     child_chunks = (
                         db.session.query(ChildChunk)

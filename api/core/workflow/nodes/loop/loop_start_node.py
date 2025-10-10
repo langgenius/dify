@@ -18,7 +18,7 @@ class LoopStartNode(Node):
     _node_data: LoopStartNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = LoopStartNodeData(**data)
+        self._node_data = LoopStartNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
