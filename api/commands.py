@@ -1824,3 +1824,294 @@ def migrate_oss(
             except Exception as e:
                 db.session.rollback()
                 click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
+
+
+# Elasticsearch Migration Commands
+@click.group()
+def elasticsearch():
+    """Elasticsearch migration and management commands."""
+    pass
+
+
+@elasticsearch.command()
+@click.option(
+    "--tenant-id",
+    help="Migrate data for specific tenant only",
+)
+@click.option(
+    "--start-date",
+    help="Start date for migration (YYYY-MM-DD format)",
+)
+@click.option(
+    "--end-date",
+    help="End date for migration (YYYY-MM-DD format)",
+)
+@click.option(
+    "--data-type",
+    type=click.Choice(["workflow_runs", "app_logs", "node_executions", "all"]),
+    default="all",
+    help="Type of data to migrate",
+)
+@click.option(
+    "--batch-size",
+    type=int,
+    default=1000,
+    help="Number of records to process in each batch",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Perform a dry run without actually migrating data",
+)
+def migrate(
+    tenant_id: str | None,
+    start_date: str | None,
+    end_date: str | None,
+    data_type: str,
+    batch_size: int,
+    dry_run: bool,
+):
+    """
+    Migrate workflow log data from PostgreSQL to Elasticsearch.
+    """
+    from datetime import datetime
+    from extensions.ext_elasticsearch import elasticsearch as es_extension
+    from services.elasticsearch_migration_service import ElasticsearchMigrationService
+    
+    if not es_extension.is_available():
+        click.echo("Error: Elasticsearch is not available. Please check your configuration.", err=True)
+        return
+
+    # Parse dates
+    start_dt = None
+    end_dt = None
+    
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        except ValueError:
+            click.echo(f"Error: Invalid start date format '{start_date}'. Use YYYY-MM-DD.", err=True)
+            return
+    
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        except ValueError:
+            click.echo(f"Error: Invalid end date format '{end_date}'. Use YYYY-MM-DD.", err=True)
+            return
+
+    # Initialize migration service
+    migration_service = ElasticsearchMigrationService(batch_size=batch_size)
+    
+    click.echo(f"Starting {'dry run' if dry_run else 'migration'} to Elasticsearch...")
+    click.echo(f"Tenant ID: {tenant_id or 'All tenants'}")
+    click.echo(f"Date range: {start_date or 'No start'} to {end_date or 'No end'}")
+    click.echo(f"Data type: {data_type}")
+    click.echo(f"Batch size: {batch_size}")
+    click.echo()
+
+    total_stats = {
+        "workflow_runs": {},
+        "app_logs": {},
+        "node_executions": {},
+    }
+
+    try:
+        # Migrate workflow runs
+        if data_type in ["workflow_runs", "all"]:
+            click.echo("Migrating WorkflowRun data...")
+            stats = migration_service.migrate_workflow_runs(
+                tenant_id=tenant_id,
+                start_date=start_dt,
+                end_date=end_dt,
+                dry_run=dry_run,
+            )
+            total_stats["workflow_runs"] = stats
+            
+            click.echo(f"  Total records: {stats['total_records']}")
+            click.echo(f"  Migrated: {stats['migrated_records']}")
+            click.echo(f"  Failed: {stats['failed_records']}")
+            if stats.get("duration"):
+                click.echo(f"  Duration: {stats['duration']:.2f}s")
+            click.echo()
+
+        # Migrate app logs
+        if data_type in ["app_logs", "all"]:
+            click.echo("Migrating WorkflowAppLog data...")
+            stats = migration_service.migrate_workflow_app_logs(
+                tenant_id=tenant_id,
+                start_date=start_dt,
+                end_date=end_dt,
+                dry_run=dry_run,
+            )
+            total_stats["app_logs"] = stats
+            
+            click.echo(f"  Total records: {stats['total_records']}")
+            click.echo(f"  Migrated: {stats['migrated_records']}")
+            click.echo(f"  Failed: {stats['failed_records']}")
+            if stats.get("duration"):
+                click.echo(f"  Duration: {stats['duration']:.2f}s")
+            click.echo()
+
+        # Migrate node executions
+        if data_type in ["node_executions", "all"]:
+            click.echo("Migrating WorkflowNodeExecution data...")
+            stats = migration_service.migrate_workflow_node_executions(
+                tenant_id=tenant_id,
+                start_date=start_dt,
+                end_date=end_dt,
+                dry_run=dry_run,
+            )
+            total_stats["node_executions"] = stats
+            
+            click.echo(f"  Total records: {stats['total_records']}")
+            click.echo(f"  Migrated: {stats['migrated_records']}")
+            click.echo(f"  Failed: {stats['failed_records']}")
+            if stats.get("duration"):
+                click.echo(f"  Duration: {stats['duration']:.2f}s")
+            click.echo()
+
+        # Summary
+        total_migrated = sum(stats.get("migrated_records", 0) for stats in total_stats.values())
+        total_failed = sum(stats.get("failed_records", 0) for stats in total_stats.values())
+        
+        click.echo("Migration Summary:")
+        click.echo(f"  Total migrated: {total_migrated}")
+        click.echo(f"  Total failed: {total_failed}")
+        
+        # Show errors if any
+        all_errors = []
+        for stats in total_stats.values():
+            all_errors.extend(stats.get("errors", []))
+        
+        if all_errors:
+            click.echo(f"  Errors ({len(all_errors)}):")
+            for error in all_errors[:10]:  # Show first 10 errors
+                click.echo(f"    - {error}")
+            if len(all_errors) > 10:
+                click.echo(f"    ... and {len(all_errors) - 10} more errors")
+
+        if dry_run:
+            click.echo("\nThis was a dry run. No data was actually migrated.")
+        else:
+            click.echo(f"\nMigration {'completed successfully' if total_failed == 0 else 'completed with errors'}!")
+
+    except Exception as e:
+        click.echo(f"Error: Migration failed: {str(e)}", err=True)
+        logger.exception("Migration failed")
+
+
+@elasticsearch.command()
+@click.option(
+    "--tenant-id",
+    required=True,
+    help="Tenant ID to validate",
+)
+@click.option(
+    "--sample-size",
+    type=int,
+    default=100,
+    help="Number of records to sample for validation",
+)
+def validate(tenant_id: str, sample_size: int):
+    """
+    Validate migrated data by comparing samples from PostgreSQL and Elasticsearch.
+    """
+    from extensions.ext_elasticsearch import elasticsearch as es_extension
+    from services.elasticsearch_migration_service import ElasticsearchMigrationService
+    
+    if not es_extension.is_available():
+        click.echo("Error: Elasticsearch is not available. Please check your configuration.", err=True)
+        return
+
+    migration_service = ElasticsearchMigrationService()
+    
+    click.echo(f"Validating migration for tenant: {tenant_id}")
+    click.echo(f"Sample size: {sample_size}")
+    click.echo()
+
+    try:
+        results = migration_service.validate_migration(tenant_id, sample_size)
+        
+        click.echo("Validation Results:")
+        
+        for data_type, stats in results.items():
+            if data_type == "errors":
+                continue
+                
+            click.echo(f"\n{data_type.replace('_', ' ').title()}:")
+            click.echo(f"  Total sampled: {stats['total']}")
+            click.echo(f"  Matched: {stats['matched']}")
+            click.echo(f"  Mismatched: {stats['mismatched']}")
+            click.echo(f"  Missing in ES: {stats['missing']}")
+            
+            if stats['total'] > 0:
+                accuracy = (stats['matched'] / stats['total']) * 100
+                click.echo(f"  Accuracy: {accuracy:.1f}%")
+
+        if results["errors"]:
+            click.echo(f"\nValidation Errors ({len(results['errors'])}):")
+            for error in results["errors"][:10]:
+                click.echo(f"  - {error}")
+            if len(results["errors"]) > 10:
+                click.echo(f"  ... and {len(results['errors']) - 10} more errors")
+
+    except Exception as e:
+        click.echo(f"Error: Validation failed: {str(e)}", err=True)
+        logger.exception("Validation failed")
+
+
+@elasticsearch.command()
+def status():
+    """
+    Check Elasticsearch connection and index status.
+    """
+    from extensions.ext_elasticsearch import elasticsearch as es_extension
+    
+    if not es_extension.is_available():
+        click.echo("Error: Elasticsearch is not available. Please check your configuration.", err=True)
+        return
+
+    try:
+        es_client = es_extension.client
+        
+        # Cluster health
+        health = es_client.cluster.health()
+        click.echo("Elasticsearch Cluster Status:")
+        click.echo(f"  Status: {health['status']}")
+        click.echo(f"  Nodes: {health['number_of_nodes']}")
+        click.echo(f"  Data nodes: {health['number_of_data_nodes']}")
+        click.echo()
+
+        # Index information
+        index_pattern = "dify-*"
+        
+        try:
+            indices = es_client.indices.get(index=index_pattern)
+            
+            click.echo(f"Indices matching '{index_pattern}':")
+            total_docs = 0
+            total_size = 0
+            
+            for index_name, index_info in indices.items():
+                stats = es_client.indices.stats(index=index_name)
+                docs = stats['indices'][index_name]['total']['docs']['count']
+                size_bytes = stats['indices'][index_name]['total']['store']['size_in_bytes']
+                size_mb = size_bytes / (1024 * 1024)
+                
+                total_docs += docs
+                total_size += size_mb
+                
+                click.echo(f"  {index_name}: {docs:,} docs, {size_mb:.1f} MB")
+            
+            click.echo(f"\nTotal: {total_docs:,} documents, {total_size:.1f} MB")
+            
+        except Exception as e:
+            if "index_not_found_exception" in str(e):
+                click.echo(f"No indices found matching pattern '{index_pattern}'")
+            else:
+                raise
+
+    except Exception as e:
+        click.echo(f"Error: Failed to get Elasticsearch status: {str(e)}", err=True)
+        logger.exception("Status check failed")

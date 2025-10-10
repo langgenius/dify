@@ -659,6 +659,67 @@ class RepositoryConfig(BaseSettings):
     )
 
 
+class ElasticsearchConfig(BaseSettings):
+    """
+    Configuration for Elasticsearch integration
+    """
+
+    ELASTICSEARCH_ENABLED: bool = Field(
+        description="Enable Elasticsearch for workflow logs storage",
+        default=False,
+    )
+
+    ELASTICSEARCH_HOSTS: list[str] = Field(
+        description="List of Elasticsearch hosts",
+        default=["http://localhost:9200"],
+    )
+
+    ELASTICSEARCH_USERNAME: str | None = Field(
+        description="Elasticsearch username for authentication",
+        default=None,
+    )
+
+    ELASTICSEARCH_PASSWORD: str | None = Field(
+        description="Elasticsearch password for authentication",
+        default=None,
+    )
+
+    ELASTICSEARCH_USE_SSL: bool = Field(
+        description="Use SSL/TLS for Elasticsearch connections",
+        default=False,
+    )
+
+    ELASTICSEARCH_VERIFY_CERTS: bool = Field(
+        description="Verify SSL certificates for Elasticsearch connections",
+        default=True,
+    )
+
+    ELASTICSEARCH_CA_CERTS: str | None = Field(
+        description="Path to CA certificates file for Elasticsearch SSL verification",
+        default=None,
+    )
+
+    ELASTICSEARCH_TIMEOUT: int = Field(
+        description="Elasticsearch request timeout in seconds",
+        default=30,
+    )
+
+    ELASTICSEARCH_MAX_RETRIES: int = Field(
+        description="Maximum number of retries for Elasticsearch requests",
+        default=3,
+    )
+
+    ELASTICSEARCH_INDEX_PREFIX: str = Field(
+        description="Prefix for Elasticsearch indices",
+        default="dify",
+    )
+
+    ELASTICSEARCH_RETENTION_DAYS: int = Field(
+        description="Number of days to retain data in Elasticsearch",
+        default=30,
+    )
+
+
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth
@@ -1108,6 +1169,7 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    ElasticsearchConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,

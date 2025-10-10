@@ -1,0 +1,33 @@
+# ====================================
+# Elasticsearch 最终配置
+# 请将以下内容添加到您的 dify/api/.env 文件
+# ====================================
+
+# Elasticsearch 连接配置
+ELASTICSEARCH_ENABLED=true
+ELASTICSEARCH_HOSTS=["https://localhost:9200"]
+ELASTICSEARCH_USERNAME=elastic
+ELASTICSEARCH_PASSWORD=2gYvv6+O36PGwaVD6yzE
+ELASTICSEARCH_USE_SSL=true
+ELASTICSEARCH_VERIFY_CERTS=false
+ELASTICSEARCH_TIMEOUT=30
+ELASTICSEARCH_MAX_RETRIES=3
+ELASTICSEARCH_INDEX_PREFIX=dify
+ELASTICSEARCH_RETENTION_DAYS=30
+
+# Factory 模式配置 - 选择 Elasticsearch 实现
+CORE_WORKFLOW_EXECUTION_REPOSITORY=core.repositories.elasticsearch_workflow_execution_repository.ElasticsearchWorkflowExecutionRepository
+CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY=core.repositories.elasticsearch_workflow_node_execution_repository.ElasticsearchWorkflowNodeExecutionRepository
+API_WORKFLOW_RUN_REPOSITORY=repositories.elasticsearch_api_workflow_run_repository.ElasticsearchAPIWorkflowRunRepository
+
+# ====================================
+# 修复的问题总结：
+# ====================================
+# 1. SSL/HTTPS 配置：使用 HTTPS 和正确认证
+# 2. 构造函数兼容：修改为接受 session_factory 参数
+# 3. 导入修复：添加必要的 SQLAlchemy 导入
+# 4. 实体属性：使用正确的 WorkflowExecution 属性名
+#    - id_ (不是 id)
+#    - started_at (不是 created_at)  
+#    - error_message (不是 error)
+# ====================================
