@@ -724,9 +724,9 @@ export class CollaborationManager {
         }
 
         requestAnimationFrame(() => {
-          // Get ReactFlow's native setters, not the collaborative ones
           const state = this.reactFlowStore.getState()
           const previousNodes: Node[] = state.getNodes()
+          const previousNodeMap = new Map(previousNodes.map(node => [node.id, node]))
           const selectedIds = new Set(
             previousNodes
               .filter(node => node.data?.selected)
@@ -741,6 +741,16 @@ export class CollaborationManager {
                 data: {
                   ...(node.data || {}),
                 },
+              }
+              // Keep the previous node's private data properties (starting with _)
+              const previousNode = previousNodeMap.get(clonedNode.id)
+              if (previousNode?.data) {
+                Object.entries(previousNode.data)
+                  .filter(([key]) => key.startsWith('_'))
+                  .forEach(([key, value]) => {
+                    if (!(key in clonedNode.data))
+                      clonedNode.data[key] = value
+                  })
               }
 
               if (selectedIds.has(clonedNode.id))
