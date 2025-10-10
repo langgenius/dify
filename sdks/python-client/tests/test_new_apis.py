@@ -412,5 +412,253 @@ class TestNewServiceAPIs(unittest.TestCase):
             self.assertTrue(hasattr(workspace_client, method), f"WorkspaceClient missing method: {method}")
 
 
+    @patch("dify_client.client.requests.request")
+    def test_missing_core_apis_dataset(self, mock_request):
+        """Test missing core dataset APIs - get_dataset and update_dataset."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_request.return_value = mock_response
+
+        dataset_id = "test-dataset-id"
+        client = KnowledgeBaseClient(self.api_key, self.base_url, dataset_id)
+
+        # Test get_dataset
+        client.get_dataset()
+        mock_request.assert_called_with(
+            "GET",
+            f"{self.base_url}/datasets/{dataset_id}",
+            json=None,
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test get_dataset with explicit dataset_id
+        other_dataset_id = "other-dataset-id"
+        client.get_dataset(other_dataset_id)
+        mock_request.assert_called_with(
+            "GET",
+            f"{self.base_url}/datasets/{other_dataset_id}",
+            json=None,
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test update_dataset with all parameters
+        client.update_dataset(
+            name="Updated Dataset",
+            description="New description",
+            indexing_technique="high_quality",
+            embedding_model="text-embedding-ada-002",
+            embedding_model_provider="openai",
+            retrieval_model={"search_method": "semantic_search", "reranking_enable": True},
+        )
+        expected_data = {
+            "name": "Updated Dataset",
+            "description": "New description",
+            "indexing_technique": "high_quality",
+            "embedding_model": "text-embedding-ada-002",
+            "embedding_model_provider": "openai",
+            "retrieval_model": {"search_method": "semantic_search", "reranking_enable": True},
+        }
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{dataset_id}",
+            json=expected_data,
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test update_dataset with partial parameters
+        client.update_dataset(name="Just Name Change")
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{dataset_id}",
+            json={"name": "Just Name Change"},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+    @patch("dify_client.client.requests.request")
+    def test_missing_core_apis_conversation_variables(self, mock_request):
+        """Test missing core conversation variable APIs."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_request.return_value = mock_response
+
+        client = ChatClient(self.api_key, self.base_url)
+        conversation_id = "test-conversation-id"
+        variable_id = "test-variable-id"
+        user = "test-user"
+
+        # Test get_conversation_variables
+        client.get_conversation_variables(conversation_id, user)
+        mock_request.assert_called_with(
+            "GET",
+            f"{self.base_url}/conversations/{conversation_id}/variables",
+            json=None,
+            params={"user": user},
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test update_conversation_variable with string value
+        client.update_conversation_variable(conversation_id, variable_id, "new_value", user)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
+            json={"value": "new_value", "user": user},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test update_conversation_variable with dict value
+        client.update_conversation_variable(conversation_id, variable_id, {"key": "value"}, user)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
+            json={"value": {"key": "value"}, "user": user},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test update_conversation_variable with list value
+        client.update_conversation_variable(conversation_id, variable_id, ["item1", "item2"], user)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
+            json={"value": ["item1", "item2"], "user": user},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+    @patch("dify_client.client.requests.request")
+    def test_missing_core_apis_document_batch_status(self, mock_request):
+        """Test missing core document batch status update API."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_request.return_value = mock_response
+
+        dataset_id = "test-dataset-id"
+        client = KnowledgeBaseClient(self.api_key, self.base_url, dataset_id)
+        document_ids = ["doc-1", "doc-2", "doc-3"]
+
+        # Test enable action
+        client.batch_update_document_status("enable", document_ids)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{dataset_id}/documents/status/enable",
+            json={"document_ids": document_ids},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test disable action
+        client.batch_update_document_status("disable", document_ids)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{dataset_id}/documents/status/disable",
+            json={"document_ids": document_ids},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test archive action
+        client.batch_update_document_status("archive", document_ids)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{dataset_id}/documents/status/archive",
+            json={"document_ids": document_ids},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test un_archive action
+        client.batch_update_document_status("un_archive", document_ids)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{dataset_id}/documents/status/un_archive",
+            json={"document_ids": document_ids},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+        # Test with explicit dataset_id
+        other_dataset_id = "other-dataset-id"
+        client.batch_update_document_status("enable", document_ids, dataset_id=other_dataset_id)
+        mock_request.assert_called_with(
+            "PATCH",
+            f"{self.base_url}/datasets/{other_dataset_id}/documents/status/enable",
+            json={"document_ids": document_ids},
+            params=None,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            stream=False,
+        )
+
+    def test_comprehensive_coverage_extended(self):
+        """Test that all newly added missing core APIs are implemented."""
+
+        # Test ChatClient conversation variable methods
+        chat_methods = ["get_conversation_variables", "update_conversation_variable"]
+        chat_client = ChatClient(self.api_key)
+        for method in chat_methods:
+            self.assertTrue(hasattr(chat_client, method), f"ChatClient missing method: {method}")
+
+        # Test KnowledgeBaseClient dataset management methods
+        kb_methods = ["get_dataset", "update_dataset", "batch_update_document_status"]
+        kb_client = KnowledgeBaseClient(self.api_key)
+        for method in kb_methods:
+            self.assertTrue(hasattr(kb_client, method), f"KnowledgeBaseClient missing method: {method}")
+
+
 if __name__ == "__main__":
     unittest.main()

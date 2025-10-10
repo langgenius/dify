@@ -202,6 +202,41 @@ class ChatClient(DifyClient):
         """Delete an annotation."""
         return self._send_request("DELETE", f"/apps/annotations/{annotation_id}")
 
+    # Conversation Variables APIs
+    def get_conversation_variables(self, conversation_id: str, user: str):
+        """Get all variables for a specific conversation.
+
+        Args:
+            conversation_id: The conversation ID to query variables for
+            user: User identifier
+
+        Returns:
+            Response from the API containing:
+            - variables: List of conversation variables with their values
+            - conversation_id: The conversation ID
+        """
+        params = {"user": user}
+        url = f"/conversations/{conversation_id}/variables"
+        return self._send_request("GET", url, params=params)
+
+    def update_conversation_variable(
+        self, conversation_id: str, variable_id: str, value: Any, user: str
+    ):
+        """Update a specific conversation variable.
+
+        Args:
+            conversation_id: The conversation ID
+            variable_id: The variable ID to update
+            value: New value for the variable
+            user: User identifier
+
+        Returns:
+            Response from the API with updated variable information
+        """
+        data = {"value": value, "user": user}
+        url = f"/conversations/{conversation_id}/variables/{variable_id}"
+        return self._send_request("PATCH", url, json=data)
+
 
 class WorkflowClient(DifyClient):
     def run(self, inputs: dict, response_mode: Literal["blocking", "streaming"] = "streaming", user: str = "abc-123"):
@@ -664,3 +699,95 @@ class KnowledgeBaseClient(DifyClient):
         with open(file_path, "rb") as f:
             files = {"file": f}
             return self._send_request_with_files("POST", "/datasets/pipeline/file-upload", {}, files)
+
+    # Dataset Management APIs
+    def get_dataset(self, dataset_id: str | None = None):
+        """Get detailed information about a specific dataset.
+
+        Args:
+            dataset_id: Dataset ID (optional, uses current dataset_id if not provided)
+
+        Returns:
+            Response from the API containing dataset details including:
+            - name, description, permission
+            - indexing_technique, embedding_model, embedding_model_provider
+            - retrieval_model configuration
+            - document_count, word_count, app_count
+            - created_at, updated_at
+        """
+        ds_id = dataset_id or self._get_dataset_id()
+        url = f"/datasets/{ds_id}"
+        return self._send_request("GET", url)
+
+    def update_dataset(
+        self,
+        dataset_id: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        indexing_technique: str | None = None,
+        embedding_model: str | None = None,
+        embedding_model_provider: str | None = None,
+        retrieval_model: Dict[str, Any] | None = None,
+        **kwargs,
+    ):
+        """Update dataset configuration.
+
+        Args:
+            dataset_id: Dataset ID (optional, uses current dataset_id if not provided)
+            name: New dataset name
+            description: New dataset description
+            indexing_technique: Indexing technique ('high_quality' or 'economy')
+            embedding_model: Embedding model name
+            embedding_model_provider: Embedding model provider
+            retrieval_model: Retrieval model configuration dict
+            **kwargs: Additional parameters to pass to the API
+
+        Returns:
+            Response from the API with updated dataset information
+        """
+        ds_id = dataset_id or self._get_dataset_id()
+        url = f"/datasets/{ds_id}"
+
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+        if indexing_technique is not None:
+            data["indexing_technique"] = indexing_technique
+        if embedding_model is not None:
+            data["embedding_model"] = embedding_model
+        if embedding_model_provider is not None:
+            data["embedding_model_provider"] = embedding_model_provider
+        if retrieval_model is not None:
+            data["retrieval_model"] = retrieval_model
+
+        # Merge additional kwargs
+        data.update(kwargs)
+
+        return self._send_request("PATCH", url, json=data)
+
+    def batch_update_document_status(
+        self,
+        action: Literal["enable", "disable", "archive", "un_archive"],
+        document_ids: List[str],
+        dataset_id: str | None = None,
+    ):
+        """Batch update document status (enable/disable/archive/unarchive).
+
+        Args:
+            action: Action to perform on documents
+                - 'enable': Enable documents for retrieval
+                - 'disable': Disable documents from retrieval
+                - 'archive': Archive documents
+                - 'un_archive': Unarchive documents
+            document_ids: List of document IDs to update
+            dataset_id: Dataset ID (optional, uses current dataset_id if not provided)
+
+        Returns:
+            Response from the API with operation result
+        """
+        ds_id = dataset_id or self._get_dataset_id()
+        url = f"/datasets/{ds_id}/documents/status/{action}"
+        data = {"document_ids": document_ids}
+        return self._send_request("PATCH", url, json=data)

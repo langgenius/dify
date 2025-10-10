@@ -221,3 +221,66 @@ answer = result.get("data").get("outputs")
 print(answer["answer"])
 
 ```
+
+- Dataset Management
+
+```python
+from dify_client import KnowledgeBaseClient
+
+api_key = "your_api_key"
+dataset_id = "your_dataset_id"
+
+# Initialize KnowledgeBase Client
+kb_client = KnowledgeBaseClient(api_key, dataset_id)
+
+# Get dataset information
+dataset_info = kb_client.get_dataset()
+dataset_info.raise_for_status()
+print(dataset_info.json())
+
+# Update dataset configuration
+update_response = kb_client.update_dataset(
+    name="Updated Dataset Name",
+    description="Updated description",
+    indexing_technique="high_quality"
+)
+update_response.raise_for_status()
+print(update_response.json())
+
+# Batch update document status
+batch_response = kb_client.batch_update_document_status(
+    action="enable",
+    document_ids=["doc_id_1", "doc_id_2", "doc_id_3"]
+)
+batch_response.raise_for_status()
+print(batch_response.json())
+```
+
+- Conversation Variables Management
+
+```python
+from dify_client import ChatClient
+
+api_key = "your_api_key"
+
+# Initialize Chat Client
+chat_client = ChatClient(api_key)
+
+# Get all conversation variables
+variables = chat_client.get_conversation_variables(
+    conversation_id="conversation_id",
+    user="user_id"
+)
+variables.raise_for_status()
+print(variables.json())
+
+# Update a specific conversation variable
+update_var = chat_client.update_conversation_variable(
+    conversation_id="conversation_id",
+    variable_id="variable_id",
+    value="new_value",
+    user="user_id"
+)
+update_var.raise_for_status()
+print(update_var.json())
+```
