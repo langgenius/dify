@@ -147,8 +147,6 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        if not tenant:
-            raise ValueError("No tenant available")
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
