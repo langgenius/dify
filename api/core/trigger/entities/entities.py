@@ -242,19 +242,19 @@ class SubscriptionBuilderUpdater(BaseModel):
     expires_at: int | None = Field(default=None, description="The expires at of the subscription builder")
 
     def update(self, subscription_builder: SubscriptionBuilder) -> None:
-        if self.name:
+        if self.name is not None:
             subscription_builder.name = self.name
-        if self.parameters:
+        if self.parameters is not None:
             subscription_builder.parameters = self.parameters
-        if self.properties:
+        if self.properties is not None:
             subscription_builder.properties = self.properties
-        if self.credentials:
+        if self.credentials is not None:
             subscription_builder.credentials = self.credentials
-        if self.credential_type:
+        if self.credential_type is not None:
             subscription_builder.credential_type = self.credential_type
-        if self.credential_expires_at:
+        if self.credential_expires_at is not None:
             subscription_builder.credential_expires_at = self.credential_expires_at
-        if self.expires_at:
+        if self.expires_at is not None:
             subscription_builder.expires_at = self.expires_at
 
 
