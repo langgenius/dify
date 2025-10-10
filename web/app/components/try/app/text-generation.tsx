@@ -124,7 +124,7 @@ const TextGeneration: FC<Props> = ({
     isCallBatchAPI={false}
     isPC={isPC}
     isMobile={!isPC}
-    appSourceType={AppSourceType.installedApp}
+    appSourceType={AppSourceType.tryApp}
     appId={appId}
     isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}

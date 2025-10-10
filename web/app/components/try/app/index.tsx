@@ -25,7 +25,6 @@ const TryApp: FC<Props> = ({
       </div>
     )
   }
-  console.log(appInfo)
   return (
     <div className='flex h-full'>
       {isChat && (
