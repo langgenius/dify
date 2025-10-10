@@ -14,7 +14,7 @@ const Footer = ({
   currentCategory,
 }: FooterProps) => {
   const { t } = useTranslation()
-  console.log('Footer 渲染 - currentCategory:', currentCategory, 'CategoryEnum.CLOUD:', CategoryEnum.CLOUD, '相等?:', currentCategory === CategoryEnum.CLOUD)
+
   return (
     <div className='flex min-h-16 w-full justify-center border-t border-divider-accent px-10'>
       <div className='flex max-w-[1680px] grow justify-between border-x border-divider-accent p-6'>
