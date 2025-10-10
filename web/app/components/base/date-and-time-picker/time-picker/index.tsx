@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import type { Dayjs } from 'dayjs'
 import type { Period, TimePickerProps } from '../types'
 import dayjs, { cloneTime, getDateWithTimezone, getHourIn12Hour } from '../utils/dayjs'
 import {
@@ -12,6 +13,23 @@ import Header from './header'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+
+// Helper function: Check if a value is a valid dayjs object
+const isDayjsObject = (value: any): value is Dayjs => {
+  return value && typeof value === 'object' && typeof value.format === 'function'
+}
+
+// Helper function: Convert string or dayjs object to dayjs object
+const toDayjs = (value: string | Dayjs | undefined): Dayjs | undefined => {
+  if (!value) return undefined
+
+  if (typeof value === 'string') {
+    const parsedDate = dayjs(value)
+    return parsedDate.isValid() ? parsedDate : undefined
+  }
+
+  return value
+}
 
 const TimePicker = ({
   value,
@@ -28,7 +46,12 @@ const TimePicker = ({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isInitial = useRef(true)
-  const [selectedTime, setSelectedTime] = useState(() => value ? getDateWithTimezone({ timezone, date: value }) : undefined)
+
+  // Initialize selectedTime
+  const [selectedTime, setSelectedTime] = useState(() => {
+    const dayjsValue = toDayjs(value)
+    return dayjsValue ? getDateWithTimezone({ timezone, date: dayjsValue }) : undefined
+  })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,20 +62,52 @@ const TimePicker = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Track previous values to avoid unnecessary updates
+  const prevValueRef = useRef(value)
+  const prevTimezoneRef = useRef(timezone)
+
   useEffect(() => {
     if (isInitial.current) {
       isInitial.current = false
+      // Save initial values on first render
+      prevValueRef.current = value
+      prevTimezoneRef.current = timezone
       return
     }
+
+    // Only update when timezone changes but value doesn't
+    const valueChanged = prevValueRef.current !== value
+    const timezoneChanged = prevTimezoneRef.current !== timezone
+
+    // Update reference values
+    prevValueRef.current = value
+    prevTimezoneRef.current = timezone
+
+    // Skip if neither timezone changed nor value changed
+    if (!timezoneChanged && !valueChanged) return
+
     if (value) {
-      const newValue = getDateWithTimezone({ date: value, timezone })
+      // Process value using helper function
+      const dayjsValue = toDayjs(value)
+      if (!dayjsValue) return
+
+      const newValue = getDateWithTimezone({ date: dayjsValue, timezone })
+
+      // Only update internal state to avoid triggering extra onChange calls
       setSelectedTime(newValue)
-      onChange(newValue)
+
+      // Only call onChange when timezone changes but value doesn't
+      if (timezoneChanged && !valueChanged) {
+        // Use setTimeout to avoid potential render loops
+        setTimeout(() => {
+          onChange(newValue)
+        }, 0)
+      }
     }
     else {
       setSelectedTime(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
     }
-  }, [timezone])
+  }, [timezone, value])
 
   const handleClickTrigger = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -61,8 +116,16 @@ const TimePicker = ({
       return
     }
     setIsOpen(true)
-    if (value)
-      setSelectedTime(value)
+
+    if (value) {
+      const dayjsValue = toDayjs(value)
+      const needsUpdate = dayjsValue && (
+        !selectedTime
+        || !isDayjsObject(selectedTime)
+        || !dayjsValue.isSame(selectedTime, 'minute')
+      )
+      if (needsUpdate) setSelectedTime(dayjsValue)
+    }
   }
 
   const handleClear = (e: React.MouseEvent) => {
@@ -79,36 +142,58 @@ const TimePicker = ({
     })
   }
 
-  const handleSelectHour = useCallback((hour: string) => {
-    const time = selectedTime || dayjs().startOf('day')
-    handleTimeSelect(hour, time.minute().toString().padStart(2, '0'), time.format('A') as Period)
+  const getSafeTimeObject = useCallback(() => {
+    return isDayjsObject(selectedTime) ? selectedTime : dayjs().startOf('day')
   }, [selectedTime])
+
+  const handleSelectHour = useCallback((hour: string) => {
+    const time = getSafeTimeObject()
+    handleTimeSelect(hour, time.minute().toString().padStart(2, '0'), time.format('A') as Period)
+  }, [getSafeTimeObject])
 
   const handleSelectMinute = useCallback((minute: string) => {
-    const time = selectedTime || dayjs().startOf('day')
+    const time = getSafeTimeObject()
     handleTimeSelect(getHourIn12Hour(time).toString().padStart(2, '0'), minute, time.format('A') as Period)
-  }, [selectedTime])
+  }, [getSafeTimeObject])
 
   const handleSelectPeriod = useCallback((period: Period) => {
-    const time = selectedTime || dayjs().startOf('day')
+    const time = getSafeTimeObject()
     handleTimeSelect(getHourIn12Hour(time).toString().padStart(2, '0'), time.minute().toString().padStart(2, '0'), period)
-  }, [selectedTime])
+  }, [getSafeTimeObject])
 
   const handleSelectCurrentTime = useCallback(() => {
     const newDate = getDateWithTimezone({ timezone })
     setSelectedTime(newDate)
-    onChange(newDate)
+    setTimeout(() => {
+      onChange(newDate)
+    }, 0)
     setIsOpen(false)
-  }, [onChange, timezone])
+  }, [timezone])
 
   const handleConfirm = useCallback(() => {
-    onChange(selectedTime)
+    if (isDayjsObject(selectedTime)) {
+      const timeVal = selectedTime
+      setTimeout(() => {
+        onChange(timeVal)
+      }, 0)
+    }
     setIsOpen(false)
-  }, [onChange, selectedTime])
+  }, [selectedTime])
 
   const timeFormat = 'hh:mm A'
-  const displayValue = value?.format(timeFormat) || ''
-  const placeholderDate = isOpen && selectedTime ? selectedTime.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
+
+  const formatTimeValue = useCallback((timeValue: string | Dayjs | undefined): string => {
+    if (!timeValue) return ''
+
+    const dayjsValue = toDayjs(timeValue)
+    return dayjsValue?.format(timeFormat) || ''
+  }, [])
+
+  const displayValue = formatTimeValue(value)
+
+  const placeholderDate = isOpen && isDayjsObject(selectedTime)
+    ? selectedTime.format(timeFormat)
+    : (placeholder || t('time.defaultPlaceholder'))
 
   const inputElem = (
     <input
