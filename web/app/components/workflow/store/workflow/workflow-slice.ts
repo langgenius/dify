@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type {
   Node,
+  TriggerNodeType,
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
@@ -15,6 +16,10 @@ export type WorkflowSliceShape = {
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   isListening: boolean
   setIsListening: (listening: boolean) => void
+  listeningTriggerType: TriggerNodeType | null
+  setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
+  listeningTriggerNodeId: string | null
+  setListeningTriggerNodeId: (nodeId: string | null) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
@@ -40,6 +45,10 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
   isListening: false,
   setIsListening: listening => set(() => ({ isListening: listening })),
+  listeningTriggerType: null,
+  setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
+  listeningTriggerNodeId: null,
+  setListeningTriggerNodeId: nodeId => set(() => ({ listeningTriggerNodeId: nodeId })),
   clipboardElements: [],
   setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
   selection: null,

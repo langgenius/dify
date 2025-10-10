@@ -237,6 +237,8 @@ export const useWorkflowRun = () => {
       setWorkflowRunningData,
       setIsListening,
       setShowVariableInspectPanel,
+      setListeningTriggerType,
+      setListeningTriggerNodeId,
     } = workflowStore.getState()
 
     if (runMode === 'webhook') {
@@ -267,6 +269,8 @@ export const useWorkflowRun = () => {
     }
     else {
       setIsListening(false)
+      setListeningTriggerType(null)
+      setListeningTriggerNodeId(null)
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Running,
@@ -302,6 +306,8 @@ export const useWorkflowRun = () => {
     const clearListeningState = () => {
       const state = workflowStore.getState()
       state.setIsListening(false)
+      state.setListeningTriggerType(null)
+      state.setListeningTriggerNodeId(null)
     }
 
     const wrappedOnError = (params: any) => {
@@ -625,7 +631,7 @@ export const useWorkflowRun = () => {
       abortControllerRef.current.abort()
 
     abortControllerRef.current = null
-    const { setWorkflowRunningData, setIsListening, setShowVariableInspectPanel } = workflowStore.getState()
+    const { setWorkflowRunningData, setIsListening, setShowVariableInspectPanel, setListeningTriggerType, setListeningTriggerNodeId } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
         status: WorkflowRunningStatus.Stopped,
@@ -637,6 +643,8 @@ export const useWorkflowRun = () => {
       resultText: '',
     })
     setIsListening(false)
+    setListeningTriggerType(null)
+    setListeningTriggerNodeId(null)
     setShowVariableInspectPanel(true)
   }, [workflowStore])
 

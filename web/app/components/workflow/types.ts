@@ -507,6 +507,9 @@ export const TRIGGER_NODE_TYPES = [
   BlockEnum.TriggerPlugin,
 ] as const
 
+// Type-safe trigger node type extracted from TRIGGER_NODE_TYPES array
+export type TriggerNodeType = typeof TRIGGER_NODE_TYPES[number]
+
 export function isTriggerNode(nodeType: BlockEnum): boolean {
   return TRIGGER_NODE_TYPES.includes(nodeType as any)
 }
