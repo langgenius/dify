@@ -45,7 +45,7 @@ class DifyClient:
 
     def close(self):
         """Close the HTTP client and release resources."""
-        if hasattr(self, '_client'):
+        if hasattr(self, "_client"):
             self._client.close()
 
     def _send_request(

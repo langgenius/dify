@@ -66,7 +66,7 @@ class AsyncDifyClient:
 
     async def aclose(self):
         """Close the async HTTP client and release resources."""
-        if hasattr(self, '_client'):
+        if hasattr(self, "_client"):
             await self._client.aclose()
 
     async def _send_request(
