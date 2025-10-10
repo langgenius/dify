@@ -18,6 +18,10 @@ from libs.passport import PassportService
 logger = logging.getLogger(__name__)
 
 
+# server is behind a reverse proxy, so we need to check the url
+def is_secure() -> bool:
+    return dify_config.CONSOLE_WEB_URL.startswith("https")
+
 def _try_extract_from_header(request: Request) -> str | None:
     """
     Try to extract access token from header
@@ -87,7 +91,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str,
         COOKIE_NAME_ACCESS_TOKEN,
         value=token,
         httponly=True,
-        secure=request.is_secure,
+        secure=is_secure(),
         samesite=samesite,
         max_age=int(dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60),
         path="/",
@@ -99,7 +103,7 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         COOKIE_NAME_REFRESH_TOKEN,
         value=token,
         httponly=True,
-        secure=request.is_secure,
+        secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
         path="/",
@@ -107,12 +111,17 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
 
 
 def set_passport_to_cookie(app_code: str, request: Request, response: Response, token: str):
+    samesite = "None"
+    if not is_secure():
+        # since None is only supported in secure env, we use lax for basic usability
+        # for embedded chat ui, use https instead.
+        samesite = "Lax"
     response.set_cookie(
         COOKIE_NAME_PASSPORT + "-" + app_code,
         value=token,
         httponly=True,
-        secure=request.is_secure,
-        samesite="None",
+        secure=is_secure(),
+        samesite=samesite,
         max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
         path="/",
     )
@@ -123,7 +132,7 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
         COOKIE_NAME_CSRF_TOKEN,
         value=token,
         httponly=False,
-        secure=request.is_secure,
+        secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
         path="/",
@@ -136,7 +145,7 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str, samesi
         "",
         expires=0,
         path="/",
-        secure=request.is_secure,
+        secure=is_secure(),
         httponly=True,
         samesite=samesite,
     )
