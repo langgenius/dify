@@ -1,5 +1,5 @@
 import { LoroDoc, UndoManager } from 'loro-crdt'
-import { isEqual } from 'lodash-es'
+import { cloneDeep, isEqual } from 'lodash-es'
 import { webSocketClient } from './websocket-manager'
 import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
@@ -582,7 +582,7 @@ export class CollaborationManager {
         }
 
         if (value !== null && typeof value === 'object')
-          target[prop as string] = JSON.parse(JSON.stringify(value))
+          target[prop as string] = cloneDeep(value)
         else
           target[prop as string] = value
       })
@@ -609,7 +609,7 @@ export class CollaborationManager {
         // Clone data properties, excluding private ones
         Object.entries(newNode.data).forEach(([key, value]) => {
           if (shouldSyncDataKey(key) && value !== undefined)
-            nodeData.data[key] = JSON.parse(JSON.stringify(value))
+            nodeData.data[key] = cloneDeep(value)
         })
 
         this.nodesMap.set(newNode.id, nodeData)
@@ -620,7 +620,7 @@ export class CollaborationManager {
 
         if (existingNode) {
           // Create a deep copy to modify
-          const updatedNode = JSON.parse(JSON.stringify(existingNode))
+          const updatedNode = cloneDeep(existingNode)
 
           // Update position only if changed
           if (oldNode.position.x !== newNode.position.x || oldNode.position.y !== newNode.position.y)
@@ -649,7 +649,7 @@ export class CollaborationManager {
             if (shouldSyncDataKey(key)) {
               const oldValue = (oldData as any)[key]
               if (!isEqual(oldValue, value))
-                updatedNode.data[key] = JSON.parse(JSON.stringify(value))
+                updatedNode.data[key] = cloneDeep(value)
             }
           })
 
@@ -680,7 +680,7 @@ export class CollaborationManager {
 
           Object.entries(newNode.data).forEach(([key, value]) => {
             if (shouldSyncDataKey(key) && value !== undefined)
-              nodeData.data[key] = JSON.parse(JSON.stringify(value))
+              nodeData.data[key] = cloneDeep(value)
           })
 
           this.nodesMap.set(newNode.id, nodeData)
@@ -703,11 +703,11 @@ export class CollaborationManager {
     newEdges.forEach((newEdge) => {
       const oldEdge = oldEdgesMap.get(newEdge.id)
       if (!oldEdge) {
-        const clonedEdge = JSON.parse(JSON.stringify(newEdge))
+        const clonedEdge = cloneDeep(newEdge)
         this.edgesMap.set(newEdge.id, clonedEdge)
       }
       else if (!isEqual(oldEdge, newEdge)) {
-        const clonedEdge = JSON.parse(JSON.stringify(newEdge))
+        const clonedEdge = cloneDeep(newEdge)
         this.edgesMap.set(newEdge.id, clonedEdge)
       }
     })
