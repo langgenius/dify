@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useEmbeddedChatbotContext } from '../context'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { PortalSelect } from '@/app/components/base/select'
+import Select from '@/app/components/base/select'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { InputVarType } from '@/app/components/workflow/types'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
@@ -84,12 +84,13 @@ const InputsFormContent = ({ showTip }: Props) => {
             />
           )}
           {form.type === InputVarType.select && (
-            <PortalSelect
-              popupClassName='w-[200px]'
-              value={inputsFormValue?.[form.variable] ?? form.default ?? ''}
+            <Select
+              className='w-full'
+              defaultValue={inputsFormValue?.[form.variable] ?? form.default ?? ''}
               items={form.options.map((option: string) => ({ value: option, name: option }))}
               onSelect={item => handleFormChange(form.variable, item.value as string)}
               placeholder={form.label}
+              allowSearch={true}
             />
           )}
           {form.type === InputVarType.singleFile && (
