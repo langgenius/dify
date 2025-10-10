@@ -217,17 +217,11 @@ class EventHandler:
             except (AttributeError, KeyError) as e:
                 # Node structure may vary or outputs may be missing
                 logger.warning(
-                    "Failed to process AnswerNode include_in_memory for node %s: %s",
-                    event.node_id,
-                    e,
-                    exc_info=False
+                    "Failed to process AnswerNode include_in_memory for node %s: %s", event.node_id, e, exc_info=False
                 )
             except Exception:
                 # Catch any unexpected errors but log them for debugging
-                logger.exception(
-                    "Unexpected error processing AnswerNode include_in_memory for node %s",
-                    event.node_id
-                )
+                logger.exception("Unexpected error processing AnswerNode include_in_memory for node %s", event.node_id)
 
         # Collect the event
         self._event_collector.collect(event)
