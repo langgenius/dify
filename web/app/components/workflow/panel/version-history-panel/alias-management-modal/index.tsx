@@ -26,15 +26,13 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
   onAliasChange,
 }) => {
   const aliasT = workflowAliasTranslation
-  const appDetail = useAppStore.getState().appDetail
-
+  const [isCreating, setIsCreating] = useState(false)
   const [newAliasName, setNewAliasName] = useState('')
   const [isAddingNew, setIsAddingNew] = useState(false)
+  const appDetail = useAppStore(s => s.appDetail)
 
-  const [isCreating, setIsCreating] = useState(false)
-
-  const { mutateAsync: createAlias } = useCreateWorkflowAlias(appDetail!.id)
-  const { mutateAsync: deleteAlias } = useDeleteWorkflowAlias(appDetail!.id)
+  const { mutateAsync: createAlias } = useCreateWorkflowAlias(appDetail?.id || '')
+  const { mutateAsync: deleteAlias } = useDeleteWorkflowAlias(appDetail?.id || '')
 
   const resetForm = useCallback(() => {
     setNewAliasName('')

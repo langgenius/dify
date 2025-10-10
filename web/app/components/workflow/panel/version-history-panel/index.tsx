@@ -22,6 +22,7 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import AliasManagementModal from './alias-management-modal'
 import Toast from '@/app/components/base/toast'
 import { useHooksStore } from '../../hooks-store'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
@@ -59,6 +60,7 @@ export const VersionHistoryPanel = ({
     deleteAllInspectVars,
   } = workflowStore.getState()
   const { t } = useTranslation()
+  const appDetail = useAppStore(s => s.appDetail)
 
   const {
     data: versionHistory,
@@ -80,7 +82,7 @@ export const VersionHistoryPanel = ({
 
   // Batch query aliases for all workflow versions (only when we have workflow IDs)
   const { data: allAliases, refetch: refetchAliases, fetchNextPage: fetchNextAliasesPage, hasNextPage: hasNextAliasesPage } = useWorkflowAliasListPaginated({
-    appId: appDetail!.id,
+    appId: appDetail?.id || '',
     workflowIds: allWorkflowIds,
     limit: 100,
   })
