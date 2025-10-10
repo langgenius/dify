@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import React from 'react'
-import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import type { AssignerNodeType } from './types'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import {
   VariableLabelInNode,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import Badge from '@/app/components/base/badge'
+import OperationItem from './components/operation-item'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
@@ -16,7 +16,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const nodes: Node[] = useNodes()
+  const node = useFindNode((data as any).assigned_variable_selector)
   if (data.version === '2') {
     const { items: operationItems } = data
     const validOperationItems = operationItems?.filter(item =>
@@ -37,22 +37,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
     return (
       <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
         {operationItems.map((value, index) => {
-          const variable = value.variable_selector
-          if (!variable || variable.length === 0)
-            return null
-          const isSystem = isSystemVar(variable)
-          const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
-          return (
-            <VariableLabelInNode
-              key={index}
-              variables={variable}
-              nodeType={node?.data.type}
-              nodeTitle={node?.data.title}
-              rightSlot={
-                value.operation && <Badge className='!ml-auto shrink-0' text={t(`${i18nPrefix}.operations.${value.operation}`)} />
-              }
-            />
-          )
+          return <OperationItem key={index} value={value} />
         })}
       </div>
     )
@@ -62,8 +47,6 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
 
   if (!variable || variable.length === 0)
     return null
-  const isSystem = isSystemVar(variable)
-  const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
 
   return (
     <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>

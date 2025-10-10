@@ -3,11 +3,8 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
-import { BlockEnum } from '../../../types'
 import type {
-  Node,
   ValueSelector,
   VarType,
 } from '../../../types'
@@ -18,12 +15,8 @@ import {
 } from '../hooks'
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import cn from '@/utils/classnames'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import {
-  VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import VariableLabelItem from './variable-label-item'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {
@@ -44,7 +37,6 @@ const NodeGroupItem = ({
   const { t } = useTranslation()
   const enteringNodePayload = useStore(s => s.enteringNodePayload)
   const hoveringAssignVariableGroupId = useStore(s => s.hoveringAssignVariableGroupId)
-  const nodes: Node[] = useNodes()
   const {
     handleGroupItemMouseEnter,
     handleGroupItemMouseLeave,
@@ -128,21 +120,7 @@ const NodeGroupItem = ({
           <div className='space-y-0.5'>
             {
               item.variables.map((variable = [], index) => {
-                const isSystem = isSystemVar(variable)
-
-                const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
-                const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
-                const isException = isExceptionVariable(varName, node?.data.type)
-
-                return (
-                  <VariableLabelInNode
-                    key={index}
-                    variables={variable}
-                    nodeType={node?.data.type}
-                    nodeTitle={node?.data.title}
-                    isExceptionVariable={isException}
-                  />
-                )
+                return <VariableLabelItem key={index} variable={variable} />
               })
             }
           </div>

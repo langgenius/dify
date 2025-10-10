@@ -2,27 +2,25 @@ import {
   memo,
   useCallback,
 } from 'react'
-import { useNodes } from 'reactflow'
 import { useStore } from './store'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useNodesSyncDraft,
 } from './hooks'
-import { type CommonNodeType, type InputVar, InputVarType, type Node } from './types'
+import { type InputVar, InputVarType, type Node } from './types'
 import useConfig from './nodes/start/use-config'
 import type { StartNodeType } from './nodes/start/types'
 import type { PromptVariable } from '@/models/debug'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const nodes = useNodes<CommonNodeType>()
-
-  const startNode = nodes.find(node => node.data.type === 'start')
+  const startNode = useFindNode(['sys'])
   const { id, data } = startNode as Node<StartNodeType>
   const { handleAddVariable } = useConfig(id, data)
 

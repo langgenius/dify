@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
-import { useNodes } from 'reactflow'
-import { BlockEnum } from '../../types'
+import type { Node } from '../../types'
 import {
   useStore,
   useWorkflowStore,
@@ -23,6 +22,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -42,8 +42,7 @@ const ChatWrapper = (
     ref: React.RefObject<ChatWrapperRefType>;
   },
 ) => {
-  const nodes = useNodes<StartNodeType>()
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startNode = useFindNode(['sys']) as Node<StartNodeType>
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()

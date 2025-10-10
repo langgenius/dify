@@ -1,21 +1,20 @@
 import {
   memo,
 } from 'react'
-import { useNodes } from 'reactflow'
 import FormItem from '../../nodes/_base/components/before-run-form/form-item'
-import { BlockEnum } from '../../types'
+import type { Node } from '../../types'
 import {
   useStore,
   useWorkflowStore,
 } from '../../store'
 import type { StartNodeType } from '../../nodes/start/types'
 import cn from '@/utils/classnames'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 const UserInput = () => {
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
-  const nodes = useNodes<StartNodeType>()
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startNode = useFindNode(['sys']) as Node<StartNodeType>
   const variables = startNode?.data.variables || []
   const visibleVariables = variables.filter(v => v.hide !== true)
 

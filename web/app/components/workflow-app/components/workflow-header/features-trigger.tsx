@@ -3,7 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useEdges, useNodes, useStore as useReactflowStore } from 'reactflow'
+import { useStore as useReactflowStore } from 'reactflow'
 import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -11,7 +11,6 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import {
-  useChecklist,
   useChecklistBeforePublish,
   useNodesReadOnly,
   useNodesSyncDraft,
@@ -19,10 +18,6 @@ import {
 import Button from '@/app/components/base/button'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import type {
-  CommonEdgeType,
-  CommonNodeType,
-} from '@/app/components/workflow/types'
 import {
   BlockEnum,
   InputVarType,
@@ -97,18 +92,9 @@ const FeaturesTrigger = () => {
     }
   }, [appID, setAppDetail])
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
-  const nodes = useNodes<CommonNodeType>()
-  const edges = useEdges<CommonEdgeType>()
-  const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
-    // First check if there are any items in the checklist
-    if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
-      throw new Error('Checklist has unresolved items')
-    }
-
     // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
@@ -128,7 +114,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory])
+  }, [handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)

@@ -4,10 +4,8 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
 import {
-  BlockEnum,
   InputVarType,
   WorkflowRunningStatus,
 } from '../types'
@@ -16,7 +14,6 @@ import {
   useWorkflowStore,
 } from '../store'
 import { useWorkflowRun } from '../hooks'
-import type { StartNodeType } from '../nodes/start/types'
 import { TransferMethod } from '../../base/text-generation/types'
 import Button from '@/app/components/base/button'
 import {
@@ -24,6 +21,7 @@ import {
 } from '@/app/components/base/chat/chat/utils'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import { useHooksStore } from '../hooks-store'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 type Props = {
   onRun: () => void
@@ -37,19 +35,18 @@ const InputsPanel = ({ onRun }: Props) => {
     setInputs: s.setInputs,
   }))
   const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
-  const nodes = useNodes<StartNodeType>()
+  const startNode = useFindNode(['sys'])
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const {
     handleRun,
   } = useWorkflowRun()
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
   const { checkInputsForm } = useCheckInputsForms()
 
   const initialInputs = { ...inputs }
   if (startVariables) {
-    startVariables.forEach((variable) => {
+    startVariables.forEach((variable: any) => {
       if (variable.default)
         initialInputs[variable.variable] = variable.default
       if (inputs[variable.variable] !== undefined)
@@ -110,7 +107,7 @@ const InputsPanel = ({ onRun }: Props) => {
     <>
       <div className='px-4 pb-2 pt-3'>
         {
-          variables.map((variable, index) => (
+          variables.map((variable: any, index: number) => (
             <div
               key={variable.variable}
               className='mb-2 last-of-type:mb-0'

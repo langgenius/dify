@@ -1,12 +1,11 @@
 import {
   useCallback,
 } from 'react'
-import { useNodes } from 'reactflow'
+import { useStore as useReactFlowStore } from 'reactflow'
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import type { StartNodeType } from '../nodes/start/types'
 import {
   useNodesInteractions,
   useNodesReadOnly,
@@ -39,8 +38,7 @@ const HeaderInNormal = ({
   const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
-  const nodes = useNodes<StartNodeType>()
-  const selectedNode = nodes.find(node => node.data.selected)
+  const selectedNode = useReactFlowStore(s => s.getNodes().find(node => node.data.selected))
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 

@@ -61,7 +61,6 @@ import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
 import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
 import Operator from './operator'
-import { useWorkflowSearch } from './hooks/use-workflow-search'
 import Control from './operator/control'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -290,7 +289,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   useShortcuts()
   // Initialize workflow node search functionality
-  useWorkflowSearch()
+  // useWorkflowSearch()
 
   // Set up scroll to node event listener using the utility function
   useEffect(() => {
