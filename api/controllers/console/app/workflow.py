@@ -1152,7 +1152,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             node_id=node_id,
         )
         if not event:
-            return jsonable_encoder({"status": "waiting"})
+            return jsonable_encoder({"status": "waiting", "retry_in": 2000})
 
         workflow_args = {
             "inputs": event.model_dump(),
