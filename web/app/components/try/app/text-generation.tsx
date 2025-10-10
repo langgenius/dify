@@ -9,7 +9,18 @@ import Loading from '@/app/components/base/loading'
 import { appDefaultIconBackground } from '@/config'
 import RunOnce from '../../share/text-generation/run-once'
 import { useWebAppStore } from '@/context/web-app-context'
-import type { AppData } from '@/models/share'
+import type { AppData, SiteInfo } from '@/models/share'
+import { useGetTryAppParams } from '@/service/use-try-app'
+import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
+import { useBoolean } from 'ahooks'
+import { noop } from 'lodash'
+import type { Task } from '../../share/text-generation/types'
+import Res from '@/app/components/share/text-generation/result'
+import { AppSourceType } from '@/service/share'
+import { TaskStatus } from '@/app/components/share/text-generation/types'
 
 type Props = {
   appId: string
@@ -33,130 +44,127 @@ const TextGeneration: FC<Props> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
-  console.log(isPC, setInputs)
+  // console.log(isPC, setInputs)
 
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
-  // const { data: tryAppParams } = useGetTryAppParams()
-  // const updateAppParams = useWebAppStore(s => s.updateAppParams)
-  // const appParams = useWebAppStore(s => s.appParams)
-  // const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
-  // const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  // const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
-  // const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
-  // const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
-  // const [controlSend, setControlSend] = useState(0)
-  // const [visionConfig, setVisionConfig] = useState<VisionSettings>({
-  //   enabled: false,
-  //   number_limits: 2,
-  //   detail: Resolution.low,
-  //   transfer_methods: [TransferMethod.local_file],
-  // })
-  // const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
-  // const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
-  // const showResultPanel = () => {
-  //   // fix: useClickAway hideResSidebar will close sidebar
-  //   setTimeout(() => {
-  //     doShowResultPanel()
-  //   }, 0)
-  // }
+  const { data: tryAppParams } = useGetTryAppParams(appId)
 
-  // const handleSend = () => {
-  //   setControlSend(Date.now())
-  //   showResultPanel()
-  // }
+  const updateAppParams = useWebAppStore(s => s.updateAppParams)
+  const appParams = useWebAppStore(s => s.appParams)
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
+  const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
+  const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
+  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
+  const [controlSend, setControlSend] = useState(0)
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
+  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
+  const showResultPanel = () => {
+    // fix: useClickAway hideResSidebar will close sidebar
+    setTimeout(() => {
+      doShowResultPanel()
+    }, 0)
+  }
 
-  // const [resultExisted, setResultExisted] = useState(false)
+  const handleSend = () => {
+    setControlSend(Date.now())
+    showResultPanel()
+  }
+
+  const [resultExisted, setResultExisted] = useState(false)
 
   useEffect(() => {
     if (!appData) return
     updateAppInfo(appData)
   }, [appData, updateAppInfo])
 
-  // useEffect(() => {
-  //   if (!tryAppParams) return
-  //   updateAppParams(tryAppParams)
-  // }, [tryAppParams, updateAppParams])
+  useEffect(() => {
+    if (!tryAppParams) return
+    updateAppParams(tryAppParams)
+  }, [tryAppParams, updateAppParams])
 
-  // useEffect(() => {
-  //   (async () => {
-  //     if (!appData || !appParams)
-  //       return
-  //     const { site: siteInfo, custom_config } = appData
-  //     setSiteInfo(siteInfo as SiteInfo)
-  //     setCustomConfig(custom_config)
+  useEffect(() => {
+    (async () => {
+      if (!appData || !appParams)
+        return
+      const { site: siteInfo, custom_config } = appData
+      setSiteInfo(siteInfo as SiteInfo)
+      setCustomConfig(custom_config)
 
-  //     const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
-  //     setVisionConfig({
-  //         // legacy of image upload compatible
-  //       ...file_upload,
-  //       transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
-  //         // legacy of image upload compatible
-  //       image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
-  //       fileUploadConfig: appParams?.system_parameters,
-  //     } as any)
-  //     const prompt_variables = userInputsFormToPromptVariables(user_input_form)
-  //     setPromptConfig({
-  //       prompt_template: '', // placeholder for future
-  //       prompt_variables,
-  //     } as PromptConfig)
-  //     setMoreLikeThisConfig(more_like_this)
-  //     setTextToSpeechConfig(text_to_speech)
-  //   })()
-  // }, [appData, appParams])
+      const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
+      setVisionConfig({
+          // legacy of image upload compatible
+        ...file_upload,
+        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
+          // legacy of image upload compatible
+        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
+        fileUploadConfig: appParams?.system_parameters,
+      } as any)
+      const prompt_variables = userInputsFormToPromptVariables(user_input_form)
+      setPromptConfig({
+        prompt_template: '', // placeholder for future
+        prompt_variables,
+      } as PromptConfig)
+      setMoreLikeThisConfig(more_like_this)
+      setTextToSpeechConfig(text_to_speech)
+    })()
+  }, [appData, appParams])
 
-  // const handleCompleted = noop
+  const handleCompleted = noop
 
-  // const renderRes = (task?: Task) => (<Res
-  //   key={task?.id}
-  //   isWorkflow={isWorkflow}
-  //   isCallBatchAPI={false}
-  //   isPC={isPC}
-  //   isMobile={!isPC}
-  //   appSourceType={AppSourceType.installedApp}
-  //   appId={appId}
-  //   isError={task?.status === TaskStatus.failed}
-  //   promptConfig={promptConfig}
-  //   moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-  //   inputs={inputs}
-  //   controlSend={controlSend}
-  //   onShowRes={showResultPanel}
-  //   handleSaveMessage={noop}
-  //   taskId={task?.id}
-  //   onCompleted={handleCompleted}
-  //   visionConfig={visionConfig}
-  //   completionFiles={completionFiles}
-  //   isShowTextToSpeech={!!textToSpeechConfig?.enabled}
-  //   siteInfo={siteInfo}
-  //   onRunStart={() => setResultExisted(true)}
-  // />)
+  const renderRes = (task?: Task) => (<Res
+    key={task?.id}
+    isWorkflow={!!isWorkflow}
+    isCallBatchAPI={false}
+    isPC={isPC}
+    isMobile={!isPC}
+    appSourceType={AppSourceType.installedApp}
+    appId={appId}
+    isError={task?.status === TaskStatus.failed}
+    promptConfig={promptConfig}
+    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+    inputs={inputs}
+    controlSend={controlSend}
+    onShowRes={showResultPanel}
+    handleSaveMessage={noop}
+    taskId={task?.id}
+    onCompleted={handleCompleted}
+    visionConfig={visionConfig}
+    completionFiles={completionFiles}
+    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+    siteInfo={siteInfo}
+    onRunStart={() => setResultExisted(true)}
+  />)
 
-  // const renderResWrap = (
-  //   <div
-  //     className={cn(
-  //       'relative flex h-full flex-col',
-  //       !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
-  //       !isPC
-  //         ? isShowResultPanel
-  //           ? 'bg-background-default-burn'
-  //           : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg'
-  //         : 'bg-chatbot-bg',
-  //     )}
-  //   >
-  //     <div className={cn(
-  //       'flex h-0 grow flex-col overflow-y-auto',
-  //       isPC && 'px-14 py-8',
-  //       !isPC && 'p-0 pb-2',
-  //     )}>
-  //       {renderRes()}
-  //     </div>
-  //   </div>
-  // )
+  const renderResWrap = (
+    <div
+      className={cn(
+        'relative flex h-full flex-col',
+        !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
+        !isPC
+          ? isShowResultPanel
+            ? 'bg-background-default-burn'
+            : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg'
+          : 'bg-chatbot-bg',
+      )}
+    >
+      <div className={cn(
+        'flex h-0 grow flex-col overflow-y-auto',
+        isPC && 'px-14 py-8',
+        !isPC && 'p-0 pb-2',
+      )}>
+        {renderRes()}
+      </div>
+    </div>
+  )
 
-  return (<div>xxxx</div>)
-
-  // console.log(siteInfo, promptConfig)
-
-  if(isFetchingAppInfo || !siteInfo || !promptConfig) {
+  if(!siteInfo || !promptConfig) {
     return (
       <div className={cn('flex h-screen items-center', className)}>
         <Loading type='app' />

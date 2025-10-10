@@ -13,11 +13,11 @@ export const useGetTryAppInfo = (appId: string) => {
   })
 }
 
-export const useGetTryAppParams = () => {
+export const useGetTryAppParams = (appId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'appParams'],
     queryFn: () => {
-      return fetchAppParams(AppSourceType.webApp) // todo: wait api
+      return fetchAppParams(AppSourceType.tryApp, appId)
     },
   })
 }

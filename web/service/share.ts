@@ -39,7 +39,7 @@ export enum AppSourceType {
 const apiPrefix = {
   [AppSourceType.webApp]: '',
   [AppSourceType.installedApp]: 'installed-apps',
-  [AppSourceType.tryApp]: 'installed-apps', // 'trial-apps', use 'installed-apps' for test
+  [AppSourceType.tryApp]: 'trial-apps',
 }
 
 function getIsPublicAPI(appSourceType: AppSourceType) {
