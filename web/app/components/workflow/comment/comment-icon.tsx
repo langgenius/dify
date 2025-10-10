@@ -6,6 +6,7 @@ import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import CommentPreview from './comment-preview'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
+import { useAppContext } from '@/context/app-context'
 
 type CommentIconProps = {
   comment: WorkflowCommentList
@@ -17,6 +18,8 @@ type CommentIconProps = {
 export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isActive = false, onPositionUpdate }) => {
   const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
   const viewport = useViewport()
+  const { userProfile } = useAppContext()
+  const isAuthor = comment.created_by_account?.id === userProfile?.id
   const [showPreview, setShowPreview] = useState(false)
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -36,6 +39,13 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
   }, [comment.position_x, comment.position_y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
 
   const effectivePosition = dragPosition ?? screenPosition
+  const cursorClass = useMemo(() => {
+    if (!isAuthor)
+      return 'cursor-pointer'
+    if (isActive)
+      return isDragging ? 'cursor-grabbing' : ''
+    return isDragging ? 'cursor-grabbing' : 'cursor-pointer'
+  }, [isActive, isAuthor, isDragging])
 
   const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0)
@@ -43,6 +53,12 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
 
     event.stopPropagation()
     event.preventDefault()
+
+    if (!isAuthor) {
+      if (event.currentTarget.dataset.role !== 'comment-preview')
+        setShowPreview(false)
+      return
+    }
 
     dragStateRef.current = {
       offsetX: event.clientX - screenPosition.x,
@@ -60,7 +76,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
 
     if (event.currentTarget.setPointerCapture)
       event.currentTarget.setPointerCapture(event.pointerId)
-  }, [screenPosition])
+  }, [isAuthor, screenPosition])
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const dragState = dragStateRef.current
@@ -178,7 +194,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
         {...pointerEventHandlers}
       >
         <div
-          className={isActive ? (isDragging ? 'cursor-grabbing' : '') : isDragging ? 'cursor-grabbing' : 'cursor-pointer'}
+          className={cursorClass}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
