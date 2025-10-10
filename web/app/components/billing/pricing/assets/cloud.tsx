@@ -1,5 +1,5 @@
 type CloudProps = {
-  isActive: boolean
+  readonly isActive: boolean
 }
 
 const Cloud = ({

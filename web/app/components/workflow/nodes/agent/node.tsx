@@ -11,6 +11,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { ModelBar } from './components/model-bar'
 
+// eslint-disable-next-line @eslint-react/prefer-read-only-props
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { inputs, currentStrategy, currentStrategyStatus, pluginDetail } = useConfig(props.id, props.data)
   const renderI18nObject = useRenderI18nObject()

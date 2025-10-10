@@ -10,7 +10,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type Props = {
-  searchText: string
+  readonly searchText: string
 }
 
 function renderDefaultCard() {

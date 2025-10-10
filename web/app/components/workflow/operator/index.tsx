@@ -7,8 +7,8 @@ import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
 
 export type OperatorProps = {
-  handleUndo: () => void
-  handleRedo: () => void
+  readonly handleUndo: () => void
+  readonly handleRedo: () => void
 }
 
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {

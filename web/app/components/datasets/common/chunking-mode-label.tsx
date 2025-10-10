@@ -6,8 +6,8 @@ import Badge from '@/app/components/base/badge'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 
 type Props = {
-  isGeneralMode: boolean
-  isQAMode: boolean
+  readonly isGeneralMode: boolean
+  readonly isQAMode: boolean
 }
 
 const ChunkingModeLabel: FC<Props> = ({
