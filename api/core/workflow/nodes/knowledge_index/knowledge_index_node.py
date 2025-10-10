@@ -2,7 +2,7 @@ import datetime
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import func, select
 
@@ -62,7 +62,7 @@ class KnowledgeIndexNode(Node):
         return self._node_data
 
     def _run(self) -> NodeRunResult:  # type: ignore
-        node_data = cast(KnowledgeIndexNodeData, self._node_data)
+        node_data = self._node_data
         variable_pool = self.graph_runtime_state.variable_pool
         dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
         if not dataset_id:

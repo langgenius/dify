@@ -26,7 +26,6 @@
   "reportMissingParameterType": "hint",
   "reportMissingTypeArgument": "hint",
   "reportUnnecessaryComparison": "hint",
-  "reportUnnecessaryCast": "hint",
   "reportUnnecessaryIsInstance": "hint",
   "reportUntypedFunctionDecorator": "hint",
 
