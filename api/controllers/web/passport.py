@@ -173,7 +173,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         db.session.add(end_user)
         db.session.commit()
 
-    exp = int(datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES).timestamp())
+    exp = int((datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp())
     if exchanged_token_expires_unix:
         exp = int(exchanged_token_expires_unix)
 
