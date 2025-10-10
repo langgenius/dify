@@ -26,12 +26,12 @@ import { useConfigsMap } from './use-configs-map'
 import { API_PREFIX } from '@/config'
 import { ContentType, getAccessToken, getBaseOptions } from '@/service/fetch'
 
-type HandleRunMode = 'default' | 'schedule' | 'webhook'
-
+type HandleRunMode = 'default' | 'schedule' | 'webhook' | 'plugin'
 type HandleRunOptions = {
   mode?: HandleRunMode
   scheduleNodeId?: string
   webhookNodeId?: string
+  pluginNodeId?: string
 }
 
 export const useWorkflowRun = () => {
@@ -184,6 +184,13 @@ export const useWorkflowRun = () => {
       }
       url = `/apps/${appDetail.id}/workflows/draft/trigger/webhook/run`
     }
+    else if (runMode === 'plugin') {
+      if (!appDetail?.id) {
+        console.error('handleRun: missing app id for trigger plugin run')
+        return
+      }
+      url = `/apps/${appDetail.id}/workflows/draft/trigger/run`
+    }
     else if (appDetail?.mode === 'advanced-chat') {
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
     }
@@ -191,11 +198,19 @@ export const useWorkflowRun = () => {
       url = `/apps/${appDetail.id}/workflows/draft/run`
     }
 
-    const requestBody = runMode === 'schedule'
-      ? { node_id: options?.scheduleNodeId }
-      : runMode === 'webhook'
-        ? { node_id: options?.webhookNodeId }
-        : resolvedParams
+    let requestBody = {}
+
+    if (runMode === 'schedule')
+      requestBody = { node_id: options?.scheduleNodeId }
+
+    else if (runMode === 'webhook')
+      requestBody = { node_id: options?.webhookNodeId }
+
+    else if (runMode === 'plugin')
+      requestBody = { node_id: options?.pluginNodeId }
+
+    else
+      requestBody = resolvedParams
 
     if (!url)
       return
@@ -207,6 +222,11 @@ export const useWorkflowRun = () => {
 
     if (runMode === 'webhook' && !options?.webhookNodeId) {
       console.error('handleRun: webhook trigger run requires node id')
+      return
+    }
+
+    if (runMode === 'plugin' && !options?.pluginNodeId) {
+      console.error('handleRun: plugin trigger run requires node id')
       return
     }
 
@@ -231,6 +251,18 @@ export const useWorkflowRun = () => {
         },
         tracing: [],
         resultText: '',
+      })
+    }
+    else if (runMode === 'plugin') {
+      setIsListening(true)
+      setShowVariableInspectPanel(true)
+      setWorkflowRunningData({
+        result: {
+          status: WorkflowRunningStatus.Running,
+          inputs_truncated: false,
+          process_data_truncated: false,
+          outputs_truncated: false,
+        },
       })
     }
     else {
@@ -263,6 +295,8 @@ export const useWorkflowRun = () => {
 
     const clearAbortController = () => {
       abortControllerRef.current = null
+      delete (window as any).__webhookDebugAbortController
+      delete (window as any).__pluginDebugAbortController
     }
 
     const clearListeningState = () => {
@@ -416,7 +450,7 @@ export const useWorkflowRun = () => {
       }, { once: true })
     })
 
-    const runWebhookDebug = async () => {
+    const runTriggerDebug = async (debugType: 'webhook' | 'plugin') => {
       const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
         ? url
         : `${API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`
@@ -424,8 +458,13 @@ export const useWorkflowRun = () => {
       const controller = new AbortController()
       abortControllerRef.current = controller
 
-      // Store controller in global variable as fallback
-      ;(window as any).__webhookDebugAbortController = controller
+      const controllerKey = debugType === 'webhook'
+        ? '__webhookDebugAbortController'
+        : '__pluginDebugAbortController'
+
+      ;(window as any)[controllerKey] = controller
+
+      const debugLabel = debugType === 'webhook' ? 'Webhook' : 'Plugin'
 
       const poll = async (): Promise<void> => {
         try {
@@ -447,7 +486,7 @@ export const useWorkflowRun = () => {
             return
 
           if (!response.ok) {
-            const message = `Webhook debug request failed (${response.status})`
+            const message = `${debugLabel} debug request failed (${response.status})`
             Toast.notify({ type: 'error', message })
             clearAbortController()
             return
@@ -468,7 +507,7 @@ export const useWorkflowRun = () => {
               return
             }
 
-            const errorMessage = data.message || 'Webhook debug failed'
+            const errorMessage = data.message || `${debugLabel} debug failed`
             Toast.notify({ type: 'error', message: errorMessage })
             clearAbortController()
             setWorkflowRunningData({
@@ -520,13 +559,13 @@ export const useWorkflowRun = () => {
         catch (error) {
           if (controller.signal.aborted)
             return
-          console.error('handleRun: webhook debug polling error', error)
-          Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
+          console.error(`handleRun: ${debugLabel.toLowerCase()} debug polling error`, error)
+          Toast.notify({ type: 'error', message: `${debugLabel} debug request failed` })
           clearAbortController()
           setWorkflowRunningData({
             result: {
               status: WorkflowRunningStatus.Failed,
-              error: 'Webhook debug request failed',
+              error: `${debugLabel} debug request failed`,
               inputs_truncated: false,
               process_data_truncated: false,
               outputs_truncated: false,
@@ -541,7 +580,12 @@ export const useWorkflowRun = () => {
     }
 
     if (runMode === 'webhook') {
-      await runWebhookDebug()
+      await runTriggerDebug('webhook')
+      return
+    }
+
+    if (runMode === 'plugin') {
+      await runTriggerDebug('plugin')
       return
     }
 
@@ -571,6 +615,10 @@ export const useWorkflowRun = () => {
     const webhookController = (window as any).__webhookDebugAbortController
     if (webhookController)
       webhookController.abort()
+
+    const pluginController = (window as any).__pluginDebugAbortController
+    if (pluginController)
+      pluginController.abort()
 
     // Also try the ref
     if (abortControllerRef.current)

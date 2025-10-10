@@ -24,6 +24,7 @@ const RunMode = ({
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const { validateBeforeRun } = useWorkflowRunValidation()
@@ -65,6 +66,9 @@ const RunMode = ({
     else if (option.type === 'webhook') {
       if (option.nodeId)
         handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId })
+    }
+    else if (option.type === 'plugin') {
+      handleWorkflowTriggerPluginRunInWorkflow(option.nodeId)
     }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types

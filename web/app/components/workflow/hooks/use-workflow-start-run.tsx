@@ -6,6 +6,7 @@ export const useWorkflowStartRun = () => {
   const handleWorkflowStartRunInChatflow = useHooksStore(s => s.handleWorkflowStartRunInChatflow)
   const handleWorkflowTriggerScheduleRunInWorkflow = useHooksStore(s => s.handleWorkflowTriggerScheduleRunInWorkflow)
   const handleWorkflowTriggerWebhookRunInWorkflow = useHooksStore(s => s.handleWorkflowTriggerWebhookRunInWorkflow)
+  const handleWorkflowTriggerPluginRunInWorkflow = useHooksStore(s => s.handleWorkflowTriggerPluginRunInWorkflow)
 
   return {
     handleStartWorkflowRun,
@@ -13,5 +14,6 @@ export const useWorkflowStartRun = () => {
     handleWorkflowStartRunInChatflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
   }
 }

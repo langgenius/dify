@@ -147,6 +147,47 @@ export const useWorkflowStartRun = () => {
     )
   }, [store, workflowStore, handleRun, doSyncWorkflowDraft])
 
+  const handleWorkflowTriggerPluginRunInWorkflow = useCallback(async (nodeId?: string) => {
+    if (!nodeId)
+      return
+    const {
+      workflowRunningData,
+      showDebugAndPreviewPanel,
+      setShowDebugAndPreviewPanel,
+      setShowInputsPanel,
+      setShowEnvPanel,
+    } = workflowStore.getState()
+
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
+      return
+
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const pluginNode = nodes.find(node => node.id === nodeId && node.data.type === BlockEnum.TriggerPlugin)
+
+    if (!pluginNode) {
+      console.warn('handleWorkflowTriggerPluginRunInWorkflow: plugin node not found', nodeId)
+      return
+    }
+
+    setShowEnvPanel(false)
+
+    if (!showDebugAndPreviewPanel)
+      setShowDebugAndPreviewPanel(true)
+
+    setShowInputsPanel(false)
+
+    await doSyncWorkflowDraft()
+    handleRun(
+      { node_id: nodeId },
+      undefined,
+      {
+        mode: 'plugin',
+        pluginNodeId: nodeId,
+      },
+    )
+  }, [store, workflowStore, handleRun, doSyncWorkflowDraft])
+
   const handleWorkflowStartRunInChatflow = useCallback(async () => {
     const {
       showDebugAndPreviewPanel,
@@ -180,5 +221,6 @@ export const useWorkflowStartRun = () => {
     handleWorkflowStartRunInChatflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
   }
 }

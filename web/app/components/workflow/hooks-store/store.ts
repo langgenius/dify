@@ -47,6 +47,7 @@ export type CommonHooksFnMap = {
   handleWorkflowStartRunInChatflow: () => void
   handleWorkflowTriggerScheduleRunInWorkflow: (nodeId?: string) => void
   handleWorkflowTriggerWebhookRunInWorkflow: (params: { nodeId: string }) => void
+  handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
@@ -91,6 +92,7 @@ export const createHooksStore = ({
   handleWorkflowStartRunInChatflow = noop,
   handleWorkflowTriggerScheduleRunInWorkflow = noop,
   handleWorkflowTriggerWebhookRunInWorkflow = noop,
+  handleWorkflowTriggerPluginRunInWorkflow = noop,
   availableNodesMetaData = {
     nodes: [],
   },
@@ -131,6 +133,7 @@ export const createHooksStore = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
     availableNodesMetaData,
     getWorkflowRunAndTraceUrl,
     exportCheck,
