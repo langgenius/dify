@@ -390,16 +390,20 @@ asyncio.run(main())
 ```
 
 **Benefits of Async Usage:**
+
 - **Better Performance**: Handle multiple concurrent API requests efficiently
 - **Non-blocking I/O**: Don't block the event loop during network operations
 - **Scalability**: Ideal for applications handling many simultaneous requests
 - **Modern Python**: Leverages Python's native async/await syntax
 
 **Available Async Clients:**
+
 - `AsyncDifyClient` - Base async client
 - `AsyncChatClient` - Async chat operations
 - `AsyncCompletionClient` - Async completion operations
 - `AsyncWorkflowClient` - Async workflow operations
 - `AsyncKnowledgeBaseClient` - Async dataset/knowledge base operations
 - `AsyncWorkspaceClient` - Async workspace operations
+
+```
 ```
