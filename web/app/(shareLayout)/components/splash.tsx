@@ -41,9 +41,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   const isAppLoggedIn = isWebAppLoginData?.app_logged_in
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    if(needCheckIsLogin && isWebAppLoginLoading) {
+    if(needCheckIsLogin && isWebAppLoginLoading)
       return
-    }
 
     (async () => {
       if (message) {
@@ -58,7 +57,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
           else
             setIsLoading(false)
         }
-        catch (error) {
+        finally {
           setIsLoading(false)
         }
         // passport exchange finished, return here to avoid extra checks
