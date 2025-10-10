@@ -1,8 +1,8 @@
 """add_workflow_alias_management
 
 Revision ID: 398394623b7b
-Revises: cf7c38a32b2d
-Create Date: 2025-09-15 09:08:07.344942
+Revises: 68519ad5cd18
+Create Date: 2025-10-10 09:08:07.344942
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '398394623b7b'
-down_revision = 'cf7c38a32b2d'
+down_revision = '68519ad5cd18'
 branch_labels = None
 depends_on = None
 
