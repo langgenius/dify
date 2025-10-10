@@ -321,11 +321,9 @@ class AsyncChatClient(AsyncDifyClient):
         """Get the status of an annotation reply action job."""
         return await self._send_request("GET", f"/apps/annotation-reply/{action}/status/{job_id}")
 
-    async def list_annotations(self, page: int = 1, limit: int = 20, keyword: str = ""):
+    async def list_annotations(self, page: int = 1, limit: int = 20, keyword: str | None = None):
         """List annotations for the application."""
-        params = {"page": page, "limit": limit}
-        if keyword:
-            params["keyword"] = keyword
+        params = {"page": page, "limit": limit, "keyword": keyword}
         return await self._send_request("GET", "/apps/annotations", params=params)
 
     async def create_annotation(self, question: str, answer: str):
@@ -594,7 +592,18 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         status: str | None = None,
         **kwargs,
     ):
-        """Query segments in this document."""
+        """Query segments in this document.
+
+        Args:
+            document_id: ID of the document
+            keyword: Query keyword (optional)
+            status: Status of the segment (optional, e.g., 'completed')
+            **kwargs: Additional parameters to pass to the API.
+                     Can include a 'params' dict for extra query parameters.
+
+        Returns:
+            Response from the API
+        """
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments"
         params = {
             "keyword": keyword,
@@ -754,7 +763,21 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         retrieval_model: Dict[str, Any] | None = None,
         **kwargs,
     ):
-        """Update dataset configuration."""
+        """Update dataset configuration.
+
+        Args:
+            dataset_id: Dataset ID (optional, uses current dataset_id if not provided)
+            name: New dataset name
+            description: New dataset description
+            indexing_technique: Indexing technique ('high_quality' or 'economy')
+            embedding_model: Embedding model name
+            embedding_model_provider: Embedding model provider
+            retrieval_model: Retrieval model configuration dict
+            **kwargs: Additional parameters to pass to the API
+
+        Returns:
+            Response from the API with updated dataset information
+        """
         ds_id = dataset_id or self._get_dataset_id()
         url = f"/datasets/{ds_id}"
 

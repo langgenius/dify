@@ -263,11 +263,9 @@ class ChatClient(DifyClient):
         """Get the status of an annotation reply action job."""
         return self._send_request("GET", f"/apps/annotation-reply/{action}/status/{job_id}")
 
-    def list_annotations(self, page: int = 1, limit: int = 20, keyword: str = ""):
+    def list_annotations(self, page: int = 1, limit: int = 20, keyword: str | None = None):
         """List annotations for the application."""
-        params = {"page": page, "limit": limit}
-        if keyword:
-            params["keyword"] = keyword
+        params = {"page": page, "limit": limit, "keyword": keyword}
         return self._send_request("GET", "/apps/annotations", params=params)
 
     def create_annotation(self, question: str, answer: str):
@@ -649,6 +647,8 @@ class KnowledgeBaseClient(DifyClient):
         :param document_id: ID of the document
         :param keyword: query keyword, optional
         :param status: status of the segment, optional, e.g. completed
+        :param kwargs: Additional parameters to pass to the API.
+                      Can include a 'params' dict for extra query parameters.
         """
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments"
         params = {}
