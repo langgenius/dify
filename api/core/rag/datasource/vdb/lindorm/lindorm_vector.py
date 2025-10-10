@@ -297,7 +297,7 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY: query}}]}}}
+        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         filters = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
