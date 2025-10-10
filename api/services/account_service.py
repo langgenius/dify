@@ -246,10 +246,8 @@ class AccountService:
                 )
             )
 
-        account = Account()
-        account.email = email
-        account.name = name
-
+        password_to_set = None
+        salt_to_set = None
         if password:
             valid_password(password)
 
@@ -261,14 +259,18 @@ class AccountService:
             password_hashed = hash_password(password, salt)
             base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
+            password_to_set = base64_password_hashed
+            salt_to_set = base64_salt
 
-        account.interface_language = interface_language
-        account.interface_theme = interface_theme
-
-        # Set timezone based on language
-        account.timezone = language_timezone_mapping.get(interface_language, "UTC")
+        account = Account(
+            name=name,
+            email=email,
+            password=password_to_set,
+            password_salt=salt_to_set,
+            interface_language=interface_language,
+            interface_theme=interface_theme,
+            timezone=language_timezone_mapping.get(interface_language, "UTC"),
+        )
 
         db.session.add(account)
         db.session.commit()
