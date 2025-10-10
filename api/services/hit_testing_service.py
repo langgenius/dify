@@ -46,7 +46,7 @@ class HitTestingService:
 
             from core.app.app_config.entities import MetadataFilteringCondition
 
-            metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
+            metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],
