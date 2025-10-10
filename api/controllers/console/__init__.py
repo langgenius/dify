@@ -11,10 +11,6 @@ if TYPE_CHECKING:
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
 
-# App import routes are defined using @console_ns.route decorators in app_import.py
-# All explore routes are defined using @console_ns.route decorators in their respective files
-# File routes are defined using @console_ns.route decorators in their respective files
-
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
 api: "Api" = ExternalApi(
