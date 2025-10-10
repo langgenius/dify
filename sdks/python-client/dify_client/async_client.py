@@ -202,7 +202,7 @@ class AsyncCompletionClient(AsyncDifyClient):
             "POST",
             "/completion-messages",
             data,
-            stream=True if response_mode == "streaming" else False,
+            stream=(response_mode == "streaming"),
         )
 
 
@@ -245,7 +245,7 @@ class AsyncChatClient(AsyncDifyClient):
             "POST",
             "/chat-messages",
             data,
-            stream=True if response_mode == "streaming" else False,
+            stream=(response_mode == "streaming"),
         )
 
     async def get_suggested(self, message_id: str, user: str):
@@ -435,7 +435,7 @@ class AsyncWorkflowClient(AsyncDifyClient):
             "POST",
             f"/workflows/{workflow_id}/run",
             data,
-            stream=True if response_mode == "streaming" else False,
+            stream=(response_mode == "streaming"),
         )
 
 

@@ -163,7 +163,7 @@ class CompletionClient(DifyClient):
             "POST",
             "/completion-messages",
             data,
-            stream=True if response_mode == "streaming" else False,
+            stream=(response_mode == "streaming"),
         )
 
 
@@ -191,7 +191,7 @@ class ChatClient(DifyClient):
             "POST",
             "/chat-messages",
             data,
-            stream=True if response_mode == "streaming" else False,
+            stream=(response_mode == "streaming"),
         )
 
     def get_suggested(self, message_id: str, user: str):
@@ -375,7 +375,7 @@ class WorkflowClient(DifyClient):
             "POST",
             f"/workflows/{workflow_id}/run",
             data,
-            stream=True if response_mode == "streaming" else False,
+            stream=(response_mode == "streaming"),
         )
 
 
