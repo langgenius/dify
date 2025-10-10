@@ -58,9 +58,7 @@ class TestAsyncAPIParity(unittest.TestCase):
         sync_methods.discard("close")
         async_methods.discard("aclose")
 
-        self.assertEqual(
-            sync_methods, async_methods, "API parity mismatch for CompletionClient"
-        )
+        self.assertEqual(sync_methods, async_methods, "API parity mismatch for CompletionClient")
 
     def test_workflow_client_api_parity(self):
         """Test AsyncWorkflowClient has same methods as WorkflowClient."""
@@ -72,9 +70,7 @@ class TestAsyncAPIParity(unittest.TestCase):
         sync_methods.discard("close")
         async_methods.discard("aclose")
 
-        self.assertEqual(
-            sync_methods, async_methods, "API parity mismatch for WorkflowClient"
-        )
+        self.assertEqual(sync_methods, async_methods, "API parity mismatch for WorkflowClient")
 
     def test_workspace_client_api_parity(self):
         """Test AsyncWorkspaceClient has same methods as WorkspaceClient."""
@@ -86,25 +82,19 @@ class TestAsyncAPIParity(unittest.TestCase):
         sync_methods.discard("close")
         async_methods.discard("aclose")
 
-        self.assertEqual(
-            sync_methods, async_methods, "API parity mismatch for WorkspaceClient"
-        )
+        self.assertEqual(sync_methods, async_methods, "API parity mismatch for WorkspaceClient")
 
     def test_knowledge_base_client_api_parity(self):
         """Test AsyncKnowledgeBaseClient has same methods as KnowledgeBaseClient."""
         from dify_client import KnowledgeBaseClient
 
         sync_methods = {name for name in dir(KnowledgeBaseClient) if not name.startswith("_")}
-        async_methods = {
-            name for name in dir(AsyncKnowledgeBaseClient) if not name.startswith("_")
-        }
+        async_methods = {name for name in dir(AsyncKnowledgeBaseClient) if not name.startswith("_")}
 
         sync_methods.discard("close")
         async_methods.discard("aclose")
 
-        self.assertEqual(
-            sync_methods, async_methods, "API parity mismatch for KnowledgeBaseClient"
-        )
+        self.assertEqual(sync_methods, async_methods, "API parity mismatch for KnowledgeBaseClient")
 
 
 class TestAsyncClientMocked(unittest.IsolatedAsyncioTestCase):
@@ -185,9 +175,7 @@ class TestAsyncClientMocked(unittest.IsolatedAsyncioTestCase):
         mock_httpx_async_client.return_value = mock_client_instance
 
         async with AsyncCompletionClient("test-key") as client:
-            response = await client.create_completion_message(
-                {"query": "test"}, "blocking", "user123"
-            )
+            response = await client.create_completion_message({"query": "test"}, "blocking", "user123")
             self.assertIn("answer", response.text)
 
     @patch("dify_client.async_client.httpx.AsyncClient")
