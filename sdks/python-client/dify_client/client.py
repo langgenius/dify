@@ -55,6 +55,7 @@ class DifyClient:
         json: dict | None = None,
         params: dict | None = None,
         stream: bool = False,
+        **kwargs,
     ):
         """Send an HTTP request to the Dify API.
 
@@ -64,6 +65,7 @@ class DifyClient:
             json: JSON request body
             params: Query parameters
             stream: Whether to stream the response
+            **kwargs: Additional arguments to pass to httpx.request
 
         Returns:
             httpx.Response object
@@ -80,6 +82,7 @@ class DifyClient:
             json=json,
             params=params,
             headers=headers,
+            **kwargs,
         )
 
         return response
@@ -526,17 +529,18 @@ class KnowledgeBaseClient(DifyClient):
         }
         :return: Response from the API
         """
-        files = {"file": open(file_path, "rb")}
-        data = {
-            "process_rule": {"mode": "automatic"},
-            "indexing_technique": "high_quality",
-        }
-        if extra_params is not None and isinstance(extra_params, dict):
-            data.update(extra_params)
-        if original_document_id is not None:
-            data["original_document_id"] = original_document_id
-        url = f"/datasets/{self._get_dataset_id()}/document/create_by_file"
-        return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
+        with open(file_path, "rb") as f:
+            files = {"file": f}
+            data = {
+                "process_rule": {"mode": "automatic"},
+                "indexing_technique": "high_quality",
+            }
+            if extra_params is not None and isinstance(extra_params, dict):
+                data.update(extra_params)
+            if original_document_id is not None:
+                data["original_document_id"] = original_document_id
+            url = f"/datasets/{self._get_dataset_id()}/document/create_by_file"
+            return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
     def update_document_by_file(self, document_id: str, file_path: str, extra_params: dict | None = None):
         """
@@ -564,12 +568,13 @@ class KnowledgeBaseClient(DifyClient):
         }
         :return:
         """
-        files = {"file": open(file_path, "rb")}
-        data = {}
-        if extra_params is not None and isinstance(extra_params, dict):
-            data.update(extra_params)
-        url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
-        return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
+        with open(file_path, "rb") as f:
+            files = {"file": f}
+            data = {}
+            if extra_params is not None and isinstance(extra_params, dict):
+                data.update(extra_params)
+            url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
+            return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
     def batch_indexing_status(self, batch_id: str, **kwargs):
         """
