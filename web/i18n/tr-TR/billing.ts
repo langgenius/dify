@@ -94,6 +94,8 @@ const translation = {
     teamWorkspace: '{{count,number}} Takım Çalışma Alanı',
     documentsRequestQuotaTooltip: 'Bir çalışma alanının bilgi tabanında, veri seti oluşturma, silme, güncellemeler, belge yüklemeleri, değişiklikler, arşivleme ve bilgi tabanı sorguları dahil olmak üzere, dakikada gerçekleştirebileceği toplam işlem sayısını belirtir. Bu ölçüt, bilgi tabanı taleplerinin performansını değerlendirmek için kullanılır. Örneğin, bir Sandbox kullanıcısı bir dakika içinde ardışık 10 vurma testi gerçekleştirirse, çalışma alanı bir sonraki dakika için aşağıdaki işlemleri gerçekleştirmesi geçici olarak kısıtlanacaktır: veri seti oluşturma, silme, güncellemeler ve belge yüklemeleri veya değişiklikler.',
     startBuilding: 'İnşa Etmeye Başlayın',
+    taxTip: 'Tüm abonelik fiyatları (aylık/yıllık) geçerli vergiler (ör. KDV, satış vergisi) hariçtir.',
+    taxTipSecond: 'Bölgenizde geçerli vergi gereksinimleri yoksa, ödeme sayfanızda herhangi bir vergi görünmeyecek ve tüm abonelik süresi boyunca ek bir ücret tahsil edilmeyecektir.',
   },
   plans: {
     sandbox: {
