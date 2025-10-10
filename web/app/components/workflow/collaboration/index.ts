@@ -1,5 +1,5 @@
 export { collaborationManager } from './core/collaboration-manager'
-export { webSocketClient, fetchAppsOnlineUsers } from './core/websocket-manager'
+export { webSocketClient } from './core/websocket-manager'
 export { CursorService } from './services/cursor-service'
 export { useCollaboration } from './hooks/use-collaboration'
 export * from './types'
