@@ -62,6 +62,10 @@ export type Collection = {
   sse_read_timeout?: number
   headers?: Record<string, string>
   masked_headers?: Record<string, string>
+  client_id?: string
+  client_secret?: string
+  grant_type?: string
+  scope?: string
   is_authorized?: boolean
   provider?: string
 }
