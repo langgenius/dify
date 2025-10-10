@@ -20,6 +20,7 @@ Example:
 """
 
 import json
+import os
 from typing import Literal, Dict, List, Any, IO
 
 import aiofiles
@@ -307,14 +308,11 @@ class AsyncChatClient(AsyncDifyClient):
     async def annotation_reply_action(
         self,
         action: Literal["enable", "disable"],
-        score_threshold: float | None,
-        embedding_provider_name: str | None,
-        embedding_model_name: str | None,
+        score_threshold: float,
+        embedding_provider_name: str,
+        embedding_model_name: str,
     ):
         """Enable or disable annotation reply feature."""
-        if score_threshold is None or embedding_provider_name is None or embedding_model_name is None:
-            raise ValueError("score_threshold, embedding_provider_name, and embedding_model_name cannot be None")
-
         data = {
             "score_threshold": score_threshold,
             "embedding_provider_name": embedding_provider_name,
@@ -537,7 +535,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         """Create a document by file."""
         async with aiofiles.open(file_path, "rb") as f:
             file_content = await f.read()
-            files = {"file": (file_path.split("/")[-1], file_content)}
+            files = {"file": (os.path.basename(file_path), file_content)}
             data = {
                 "process_rule": {"mode": "automatic"},
                 "indexing_technique": "high_quality",
@@ -553,7 +551,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         """Update a document by file."""
         async with aiofiles.open(file_path, "rb") as f:
             file_content = await f.read()
-            files = {"file": (file_path.split("/")[-1], file_content)}
+            files = {"file": (os.path.basename(file_path), file_content)}
             data = {}
             if extra_params is not None and isinstance(extra_params, dict):
                 data.update(extra_params)
@@ -747,7 +745,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         """Upload file for RAG pipeline."""
         async with aiofiles.open(file_path, "rb") as f:
             file_content = await f.read()
-            files = {"file": (file_path.split("/")[-1], file_content)}
+            files = {"file": (os.path.basename(file_path), file_content)}
             return await self._send_request_with_files("POST", "/datasets/pipeline/file-upload", {}, files)
 
     # Dataset Management APIs

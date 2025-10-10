@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Literal, Dict, List, Any, IO
 
 import httpx
@@ -246,15 +247,11 @@ class ChatClient(DifyClient):
     def annotation_reply_action(
         self,
         action: Literal["enable", "disable"],
-        score_threshold: float | None,
-        embedding_provider_name: str | None,
-        embedding_model_name: str | None,
+        score_threshold: float,
+        embedding_provider_name: str,
+        embedding_model_name: str,
     ):
         """Enable or disable annotation reply feature."""
-        # Backend API requires these fields to be non-None values
-        if score_threshold is None or embedding_provider_name is None or embedding_model_name is None:
-            raise ValueError("score_threshold, embedding_provider_name, and embedding_model_name cannot be None")
-
         data = {
             "score_threshold": score_threshold,
             "embedding_provider_name": embedding_provider_name,
