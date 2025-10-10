@@ -778,21 +778,18 @@ class KnowledgeBaseClient(DifyClient):
         ds_id = dataset_id or self._get_dataset_id()
         url = f"/datasets/{ds_id}"
 
-        data = {}
-        if name is not None:
-            data["name"] = name
-        if description is not None:
-            data["description"] = description
-        if indexing_technique is not None:
-            data["indexing_technique"] = indexing_technique
-        if embedding_model is not None:
-            data["embedding_model"] = embedding_model
-        if embedding_model_provider is not None:
-            data["embedding_model_provider"] = embedding_model_provider
-        if retrieval_model is not None:
-            data["retrieval_model"] = retrieval_model
+        # Build data dictionary with all possible parameters
+        payload = {
+            "name": name,
+            "description": description,
+            "indexing_technique": indexing_technique,
+            "embedding_model": embedding_model,
+            "embedding_model_provider": embedding_model_provider,
+            "retrieval_model": retrieval_model,
+        }
 
-        # Merge additional kwargs
+        # Filter out None values and merge with additional kwargs
+        data = {k: v for k, v in payload.items() if v is not None}
         data.update(kwargs)
 
         return self._send_request("PATCH", url, json=data)
