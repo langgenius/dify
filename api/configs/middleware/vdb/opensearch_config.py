@@ -18,6 +18,7 @@ class OpenSearchConfig(BaseSettings):
     """
     Configuration settings for OpenSearch
     """
+
     OPENSEARCH_HOST: str | None = Field(
         description="Hostname or IP address of the OpenSearch server (e.g., 'localhost' or 'opensearch.example.com')",
         default=None,
