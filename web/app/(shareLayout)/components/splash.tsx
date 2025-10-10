@@ -41,14 +41,14 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   const isAppLoggedIn = isWebAppLoginData?.app_logged_in
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
+    if (message) {
+      setIsLoading(false)
+      return
+    }
     if(needCheckIsLogin && isWebAppLoginLoading)
       return
 
     (async () => {
-      if (message) {
-        setIsLoading(false)
-        return
-      }
       if(isUserLoggedIn && !isAppLoggedIn) {
         try {
           await fetchAccessToken({ appCode: shareCode! })
