@@ -269,7 +269,7 @@ class PluginMigration:
                     for tool in agent_config["tools"]:
                         if isinstance(tool, dict):
                             try:
-                                tool_entity = AgentToolEntity(**tool)
+                                tool_entity = AgentToolEntity.model_validate(tool)
                                 if (
                                     tool_entity.provider_type == ToolProviderType.BUILT_IN.value
                                     and tool_entity.provider_id not in excluded_providers

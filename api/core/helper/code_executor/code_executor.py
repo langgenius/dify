@@ -131,7 +131,7 @@ class CodeExecutor:
         if (code := response_data.get("code")) != 0:
             raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response_data.get('message')}")
 
-        response_code = CodeExecutionResponse(**response_data)
+        response_code = CodeExecutionResponse.model_validate(response_data)
 
         if response_code.data.error:
             raise CodeExecutionError(response_code.data.error)

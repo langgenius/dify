@@ -94,7 +94,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -104,13 +104,13 @@ class BasePluginClient:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            yield type(**json.loads(line))  # type: ignore
+            yield type_(**json.loads(line))  # type: ignore
 
     def _request_with_model(
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | None = None,
         params: dict | None = None,
@@ -120,13 +120,13 @@ class BasePluginClient:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type(**response.json())  # type: ignore
+        return type_(**response.json())  # type: ignore
 
     def _request_with_plugin_daemon_response(
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -140,22 +140,22 @@ class BasePluginClient:
             response = self._request(method, path, headers, data, params, files)
             response.raise_for_status()
         except HTTPError as e:
-            msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
-            logger.exception(msg)
+            logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
             raise e
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
-            logger.exception(msg)
+            logger.exception("Failed to request plugin daemon, url: %s", path)
             raise ValueError(msg) from e
 
         try:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type](**json_response)  # type: ignore
+            # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception:
             msg = (
-                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
+                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
                 f" url: {path}"
             )
             logger.exception(msg)
@@ -163,7 +163,7 @@ class BasePluginClient:
 
         if rep.code != 0:
             try:
-                error = PluginDaemonError(**json.loads(rep.message))
+                error = PluginDaemonError.model_validate(json.loads(rep.message))
             except Exception:
                 raise ValueError(f"{rep.message}, code: {rep.code}")
 
@@ -178,7 +178,7 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        type: type[T],
+        type_: type[T],
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
@@ -189,7 +189,7 @@ class BasePluginClient:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type].model_validate_json(line)  # type: ignore
+                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:
@@ -204,7 +204,7 @@ class BasePluginClient:
             if rep.code != 0:
                 if rep.code == -500:
                     try:
-                        error = PluginDaemonError(**json.loads(rep.message))
+                        error = PluginDaemonError.model_validate(json.loads(rep.message))
                     except Exception:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
 
