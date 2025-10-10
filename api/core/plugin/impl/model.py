@@ -162,7 +162,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/llm/invoke",
-            type=LLMResultChunk,
+            type_=LLMResultChunk,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -208,7 +208,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/llm/num_tokens",
-            type=PluginLLMNumTokensResponse,
+            type_=PluginLLMNumTokensResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -250,7 +250,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/text_embedding/invoke",
-            type=TextEmbeddingResult,
+            type_=TextEmbeddingResult,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -291,7 +291,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/text_embedding/num_tokens",
-            type=PluginTextEmbeddingNumTokensResponse,
+            type_=PluginTextEmbeddingNumTokensResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -334,7 +334,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/rerank/invoke",
-            type=RerankResult,
+            type_=RerankResult,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -378,7 +378,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/tts/invoke",
-            type=PluginStringResultResponse,
+            type_=PluginStringResultResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -422,7 +422,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/tts/model/voices",
-            type=PluginVoicesResponse,
+            type_=PluginVoicesResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -466,7 +466,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/speech2text/invoke",
-            type=PluginStringResultResponse,
+            type_=PluginStringResultResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -506,7 +506,7 @@ class PluginModelClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/moderation/invoke",
-            type=PluginBasicBooleanResponse,
+            type_=PluginBasicBooleanResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,

@@ -70,7 +70,7 @@ class EnterpriseService:
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
             if not data:
                 raise ValueError("No data found.")
-            return WebAppSettings(**data)
+            return WebAppSettings.model_validate(data)
 
         @classmethod
         def batch_get_app_access_mode_by_id(cls, app_ids: list[str]) -> dict[str, WebAppSettings]:
@@ -100,7 +100,7 @@ class EnterpriseService:
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/code", params=params)
             if not data:
                 raise ValueError("No data found.")
-            return WebAppSettings(**data)
+            return WebAppSettings.model_validate(data)
 
         @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):
