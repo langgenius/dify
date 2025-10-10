@@ -1170,6 +1170,7 @@ class DraftWorkflowTriggerRunApi(Resource):
                 args=workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
+                root_node_id=node_id,
             )
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
