@@ -12,6 +12,8 @@ class AuthMethod(StrEnum):
 
     BASIC = "basic"
     AWS_MANAGED_IAM = "aws_managed_iam"
+
+
 class OpenSearchConfig(BaseSettings):
     """
     Configuration settings for OpenSearch
