@@ -611,9 +611,35 @@ export const useWorkflowRun = () => {
   )
 
   const handleStopRun = useCallback((taskId: string) => {
+    const setStoppedState = () => {
+      const {
+        setWorkflowRunningData,
+        setIsListening,
+        setShowVariableInspectPanel,
+        setListeningTriggerType,
+        setListeningTriggerNodeId,
+      } = workflowStore.getState()
+
+      setWorkflowRunningData({
+        result: {
+          status: WorkflowRunningStatus.Stopped,
+          inputs_truncated: false,
+          process_data_truncated: false,
+          outputs_truncated: false,
+        },
+        tracing: [],
+        resultText: '',
+      })
+      setIsListening(false)
+      setListeningTriggerType(null)
+      setListeningTriggerNodeId(null)
+      setShowVariableInspectPanel(true)
+    }
+
     if (taskId) {
       const appId = useAppStore.getState().appDetail?.id
       stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+      setStoppedState()
       return
     }
 
@@ -631,21 +657,7 @@ export const useWorkflowRun = () => {
       abortControllerRef.current.abort()
 
     abortControllerRef.current = null
-    const { setWorkflowRunningData, setIsListening, setShowVariableInspectPanel, setListeningTriggerType, setListeningTriggerNodeId } = workflowStore.getState()
-    setWorkflowRunningData({
-      result: {
-        status: WorkflowRunningStatus.Stopped,
-        inputs_truncated: false,
-        process_data_truncated: false,
-        outputs_truncated: false,
-      },
-      tracing: [],
-      resultText: '',
-    })
-    setIsListening(false)
-    setListeningTriggerType(null)
-    setListeningTriggerNodeId(null)
-    setShowVariableInspectPanel(true)
+    setStoppedState()
   }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
