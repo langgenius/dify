@@ -112,47 +112,46 @@ const Select: FC<ISelectProps> = ({
           }
         }
       }}>
-      <div className={classNames('relative')}>
-        <div className='group text-text-secondary'>
-          {allowSearch
-            ? <>
-                <ComboboxInput
-                  className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                  onChange={(event) => {
-                    if (!disabled) {
-                      const val = event.target.value
-                      setQuery(val)
-                      setOpen(true) // Open on input
-                    }
-                  }}
-                  displayValue={(item: Item | null) => item?.name || ''}
-                  onBlur={handleBlur} // Bind blur handler
-                />
-                {/* ✅ Fix 4: Overlay button to make entire input clickable */}
-                <ComboboxButton 
-                  className={`absolute inset-0 rounded-lg ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                  onClick={() => {
-                    if (!disabled) {
-                      setOpen(!open)
-                    }
-                  }}
-                >
-                  <span className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-                    {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-                  </span>
-                </ComboboxButton>
-              </>
-            : <ComboboxButton
-                onClick={() => {
-                  if (!disabled) setOpen(!open)
+    <div className={classNames('relative')}>
+      <div className='group text-text-secondary'>
+        {allowSearch
+          ? <>
+              <ComboboxInput
+                className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onChange={(event) => {
+                  if (!disabled) {
+                    const val = event.target.value
+                    setQuery(val)
+                    setOpen(true) // Open on input
+                  }
                 }}
-                className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}
+                displayValue={(item: Item | null) => item?.name || ''}
+                onBlur={handleBlur} // Bind blur handler
+              />
+              {/* ✅ Fix 4: Overlay button to make entire input clickable */}
+              <ComboboxButton
+                className={`absolute inset-0 rounded-lg ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onClick={() => {
+                  if (!disabled) 
+                    setOpen(!open)
+                }}
               >
-                <div className='w-0 grow truncate text-left' title={selectedItem?.name || ''}>{selectedItem?.name || ''}</div>
                 <span className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
                   {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
                 </span>
               </ComboboxButton>
+            </>
+          : <ComboboxButton
+              onClick={() => {
+                if (!disabled) setOpen(!open)
+              }}
+              className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}
+            >
+              <div className='w-0 grow truncate text-left' title={selectedItem?.name || ''}>{selectedItem?.name || ''}</div>
+              <span className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+                {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+              </span>
+            </ComboboxButton>
           }
         </div>
 
