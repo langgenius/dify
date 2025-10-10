@@ -445,16 +445,17 @@ wheels = [
 
 [[package]]
 name = "azure-storage-blob"
-version = "12.13.0"
+version = "12.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
     { name = "cryptography" },
-    { name = "msrest" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/93/b13bf390e940a79a399981f75ac8d2e05a70112a95ebb7b41e9b752d2921/azure-storage-blob-12.13.0.zip", hash = "sha256:53f0d4cd32970ac9ff9b9753f83dd2fb3f9ac30e1d01e71638c436c509bfd884", size = 684838, upload-time = "2022-07-07T22:35:44.543Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/95/3e3414491ce45025a1cde107b6ae72bf72049e6021597c201cd6a3029b9a/azure_storage_blob-12.26.0.tar.gz", hash = "sha256:5dd7d7824224f7de00bfeb032753601c982655173061e242f13be6e26d78d71f", size = 583332, upload-time = "2025-07-16T21:34:07.644Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/2a/b8246df35af68d64fb7292c93dbbde63cd25036f2f669a9d9ae59e518c76/azure_storage_blob-12.13.0-py3-none-any.whl", hash = "sha256:280a6ab032845bab9627582bee78a50497ca2f14772929b5c5ee8b4605af0cb3", size = 377309, upload-time = "2022-07-07T22:35:41.905Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/64/63dbfdd83b31200ac58820a7951ddfdeed1fbee9285b0f3eae12d1357155/azure_storage_blob-12.26.0-py3-none-any.whl", hash = "sha256:8c5631b8b22b4f53ec5fff2f3bededf34cfef111e2af613ad42c9e6de00a77fe", size = 412907, upload-time = "2025-07-16T21:34:09.367Z" },
 ]
 
 [[package]]
@@ -1280,7 +1281,6 @@ version = "1.9.1"
 source = { virtual = "." }
 dependencies = [
     { name = "arize-phoenix-otel" },
-    { name = "authlib" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
     { name = "boto3" },
@@ -1311,10 +1311,8 @@ dependencies = [
     { name = "json-repair" },
     { name = "langfuse" },
     { name = "langsmith" },
-    { name = "mailchimp-transactional" },
     { name = "markdown" },
     { name = "numpy" },
-    { name = "openai" },
     { name = "openpyxl" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-distro" },
@@ -1325,6 +1323,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-flask" },
+    { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-redis" },
     { name = "opentelemetry-instrumentation-requests" },
     { name = "opentelemetry-instrumentation-sqlalchemy" },
@@ -1336,7 +1335,6 @@ dependencies = [
     { name = "opik" },
     { name = "packaging" },
     { name = "pandas", extra = ["excel", "output-formatting", "performance"] },
-    { name = "pandoc" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
     { name = "pycryptodome" },
@@ -1474,7 +1472,6 @@ vdb = [
 [package.metadata]
 requires-dist = [
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
-    { name = "authlib", specifier = "==1.6.4" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
     { name = "boto3", specifier = "==1.35.99" },
@@ -1505,10 +1502,8 @@ requires-dist = [
     { name = "json-repair", specifier = ">=0.41.1" },
     { name = "langfuse", specifier = "~=2.51.3" },
     { name = "langsmith", specifier = "~=0.1.77" },
-    { name = "mailchimp-transactional", specifier = "~=1.0.50" },
     { name = "markdown", specifier = "~=3.5.1" },
     { name = "numpy", specifier = "~=1.26.4" },
-    { name = "openai", specifier = "~=1.61.0" },
     { name = "openpyxl", specifier = "~=3.1.5" },
     { name = "opentelemetry-api", specifier = "==1.27.0" },
     { name = "opentelemetry-distro", specifier = "==0.48b0" },
@@ -1519,6 +1514,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-celery", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-flask", specifier = "==0.48b0" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-redis", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-requests", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = "==0.48b0" },
@@ -1530,7 +1526,6 @@ requires-dist = [
     { name = "opik", specifier = "~=1.7.25" },
     { name = "packaging", specifier = "~=23.2" },
     { name = "pandas", extras = ["excel", "output-formatting", "performance"], specifier = "~=2.2.2" },
-    { name = "pandoc", specifier = "~=2.4" },
     { name = "psycogreen", specifier = "~=1.0.2" },
     { name = "psycopg2-binary", specifier = "~=2.9.6" },
     { name = "pycryptodome", specifier = "==3.19.1" },
@@ -1625,10 +1620,10 @@ dev = [
     { name = "types-ujson", specifier = ">=5.10.0" },
 ]
 storage = [
-    { name = "azure-storage-blob", specifier = "==12.13.0" },
+    { name = "azure-storage-blob", specifier = "==12.26.0" },
     { name = "bce-python-sdk", specifier = "~=0.9.23" },
     { name = "cos-python-sdk-v5", specifier = "==1.9.38" },
-    { name = "esdk-obs-python", specifier = "==3.24.6.1" },
+    { name = "esdk-obs-python", specifier = "==3.25.8" },
     { name = "google-cloud-storage", specifier = "==2.16.0" },
     { name = "opendal", specifier = "~=0.46.0" },
     { name = "oss2", specifier = "==2.18.5" },
@@ -1779,12 +1774,14 @@ wheels = [
 
 [[package]]
 name = "esdk-obs-python"
-version = "3.24.6.1"
+version = "3.25.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "crcmod" },
     { name = "pycryptodome" },
+    { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/af/d83276f9e288bd6a62f44d67ae1eafd401028ba1b2b643ae4014b51da5bd/esdk-obs-python-3.24.6.1.tar.gz", hash = "sha256:c45fed143e99d9256c8560c1d78f651eae0d2e809d16e962f8b286b773c33bf0", size = 85798, upload-time = "2024-07-26T13:13:22.467Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/99/52362d6e081a642d6de78f6ab53baa5e3f82f2386c48954e18ee7b4ab22b/esdk-obs-python-3.25.8.tar.gz", hash = "sha256:aeded00b27ecd5a25ffaec38a2cc9416b51923d48db96c663f1a735f859b5273", size = 96302, upload-time = "2025-09-01T11:35:20.432Z" }
 
 [[package]]
 name = "et-xmlfile"
@@ -3170,21 +3167,6 @@ wheels = [
 ]
 
 [[package]]
-name = "mailchimp-transactional"
-version = "1.0.56"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-    { name = "six" },
-    { name = "urllib3" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/bc/cb60d02c00996839bbd87444a97d0ba5ac271b1a324001562afb8f685251/mailchimp_transactional-1.0.56-py3-none-any.whl", hash = "sha256:a76ea88b90a2d47d8b5134586aabbd3a96c459f6066d8886748ab59e50de36eb", size = 31660, upload-time = "2024-02-01T18:39:19.717Z" },
-]
-
-[[package]]
 name = "mako"
 version = "1.3.10"
 source = { registry = "https://pypi.org/simple" }
@@ -3367,22 +3349,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/01/99/5d239b6156eddf761a636bded1118414d161bd6b7b37a9335549ed159396/msal_extensions-1.3.1.tar.gz", hash = "sha256:c5b0fd10f65ef62b5f1d62f4251d51cbcaf003fcedae8c91b040a488614be1a4", size = 23315, upload-time = "2025-03-14T23:51:03.902Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5e/75/bd9b7bb966668920f06b200e84454c8f3566b102183bc55c5473d96cb2b9/msal_extensions-1.3.1-py3-none-any.whl", hash = "sha256:96d3de4d034504e969ac5e85bae8106c8373b5c6568e4c8fa7af2eca9dbe6bca", size = 20583, upload-time = "2025-03-14T23:51:03.016Z" },
-]
-
-[[package]]
-name = "msrest"
-version = "0.7.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "azure-core" },
-    { name = "certifi" },
-    { name = "isodate" },
-    { name = "requests" },
-    { name = "requests-oauthlib" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/68/77/8397c8fb8fc257d8ea0fa66f8068e073278c65f05acb17dcb22a02bfdc42/msrest-0.7.1.zip", hash = "sha256:6e7661f46f3afd88b75667b7187a92829924446c7ea1d169be8c4bb7eeb788b9", size = 175332, upload-time = "2022-06-13T22:41:25.111Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/cf/f2966a2638144491f8696c27320d5219f48a072715075d168b31d3237720/msrest-0.7.1-py3-none-any.whl", hash = "sha256:21120a810e1233e5e6cc7fe40b474eeb4ec6f757a15d7cf86702c369f9567c32", size = 85384, upload-time = "2022-06-13T22:41:22.42Z" },
 ]
 
 [[package]]
@@ -3915,6 +3881,21 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-instrumentation-httpx"
+version = "0.48b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-http" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/d9/c65d818607c16d1b7ea8d2de6111c6cecadf8d2fd38c1885a72733a7c6d3/opentelemetry_instrumentation_httpx-0.48b0.tar.gz", hash = "sha256:ee977479e10398931921fb995ac27ccdeea2e14e392cb27ef012fc549089b60a", size = 16931, upload-time = "2024-08-28T21:28:03.794Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/fe/f2daa9d6d988c093b8c7b1d35df675761a8ece0b600b035dc04982746c9d/opentelemetry_instrumentation_httpx-0.48b0-py3-none-any.whl", hash = "sha256:d94f9d612c82d09fe22944d1904a30a464c19bea2ba76be656c99a28ad8be8e5", size = 13900, upload-time = "2024-08-28T21:27:01.566Z" },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation-redis"
 version = "0.48b0"
 source = { registry = "https://pypi.org/simple" }
@@ -4232,16 +4213,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pandoc"
-version = "2.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "plumbum" },
-    { name = "ply" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/10/9a/e3186e760c57ee5f1c27ea5cea577a0ff9abfca51eefcb4d9a4cd39aff2e/pandoc-2.4.tar.gz", hash = "sha256:ecd1f8cbb7f4180c6b5db4a17a7c1a74df519995f5f186ef81ce72a9cbd0dd9a", size = 34635, upload-time = "2024-08-07T14:33:58.016Z" }
-
-[[package]]
 name = "pathspec"
 version = "0.12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4345,18 +4316,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
-]
-
-[[package]]
-name = "plumbum"
-version = "1.9.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pywin32", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/5d/49ba324ad4ae5b1a4caefafbce7a1648540129344481f2ed4ef6bb68d451/plumbum-1.9.0.tar.gz", hash = "sha256:e640062b72642c3873bd5bdc3effed75ba4d3c70ef6b6a7b907357a84d909219", size = 319083, upload-time = "2024-10-05T05:59:27.059Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/9d/d03542c93bb3d448406731b80f39c3d5601282f778328c22c77d270f4ed4/plumbum-1.9.0-py3-none-any.whl", hash = "sha256:9fd0d3b0e8d86e4b581af36edf3f3bbe9d1ae15b45b8caab28de1bcb27aaa7f5", size = 127970, upload-time = "2024-10-05T05:59:25.102Z" },
 ]
 
 [[package]]
