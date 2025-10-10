@@ -995,6 +995,11 @@ class TenantService:
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         db.session.commit()
+
+        from services.credit_pool_service import CreditPoolService
+
+        CreditPoolService.create_default_pool(tenant.id)
+
         return tenant
 
     @staticmethod
