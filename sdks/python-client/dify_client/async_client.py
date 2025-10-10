@@ -277,15 +277,12 @@ class AsyncChatClient(AsyncDifyClient):
         limit: int | None = None,
     ):
         """Get messages from a conversation."""
-        params = {"user": user}
-
-        if conversation_id:
-            params["conversation_id"] = conversation_id
-        if first_id:
-            params["first_id"] = first_id
-        if limit:
-            params["limit"] = limit
-
+        params = {
+            "user": user,
+            "conversation_id": conversation_id,
+            "first_id": first_id,
+            "limit": limit,
+        }
         return await self._send_request("GET", "/messages", params=params)
 
     async def rename_conversation(self, conversation_id: str, name: str, auto_generate: bool, user: str):
@@ -413,19 +410,16 @@ class AsyncWorkflowClient(AsyncDifyClient):
         created_by_account: str = None,
     ):
         """Get workflow execution logs with optional filtering."""
-        params = {"page": page, "limit": limit}
-        if keyword:
-            params["keyword"] = keyword
-        if status:
-            params["status"] = status
-        if created_at__before:
-            params["created_at__before"] = created_at__before
-        if created_at__after:
-            params["created_at__after"] = created_at__after
-        if created_by_end_user_session_id:
-            params["created_by_end_user_session_id"] = created_by_end_user_session_id
-        if created_by_account:
-            params["created_by_account"] = created_by_account
+        params = {
+            "page": page,
+            "limit": limit,
+            "keyword": keyword,
+            "status": status,
+            "created_at__before": created_at__before,
+            "created_at__after": created_at__after,
+            "created_by_end_user_session_id": created_by_end_user_session_id,
+            "created_by_account": created_by_account,
+        }
         return await self._send_request("GET", "/workflows/logs", params=params)
 
     async def run_specific_workflow(
@@ -534,8 +528,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
     ):
         """Create a document by file."""
         async with aiofiles.open(file_path, "rb") as f:
-            file_content = await f.read()
-            files = {"file": (os.path.basename(file_path), file_content)}
+            files = {"file": (os.path.basename(file_path), f)}
             data = {
                 "process_rule": {"mode": "automatic"},
                 "indexing_technique": "high_quality",
@@ -550,8 +543,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
     async def update_document_by_file(self, document_id: str, file_path: str, extra_params: dict | None = None):
         """Update a document by file."""
         async with aiofiles.open(file_path, "rb") as f:
-            file_content = await f.read()
-            files = {"file": (os.path.basename(file_path), file_content)}
+            files = {"file": (os.path.basename(file_path), f)}
             data = {}
             if extra_params is not None and isinstance(extra_params, dict):
                 data.update(extra_params)
@@ -581,13 +573,11 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         **kwargs,
     ):
         """Get a list of documents in this dataset."""
-        params = {}
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["limit"] = page_size
-        if keyword is not None:
-            params["keyword"] = keyword
+        params = {
+            "page": page,
+            "limit": page_size,
+            "keyword": keyword,
+        }
         url = f"/datasets/{self._get_dataset_id()}/documents"
         return await self._send_request("GET", url, params=params, **kwargs)
 
@@ -606,11 +596,10 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
     ):
         """Query segments in this document."""
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments"
-        params = {}
-        if keyword is not None:
-            params["keyword"] = keyword
-        if status is not None:
-            params["status"] = status
+        params = {
+            "keyword": keyword,
+            "status": status,
+        }
         if "params" in kwargs:
             params.update(kwargs.pop("params"))
         return await self._send_request("GET", url, params=params, **kwargs)
@@ -744,8 +733,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
     async def upload_pipeline_file(self, file_path: str):
         """Upload file for RAG pipeline."""
         async with aiofiles.open(file_path, "rb") as f:
-            file_content = await f.read()
-            files = {"file": (os.path.basename(file_path), file_content)}
+            files = {"file": (os.path.basename(file_path), f)}
             return await self._send_request_with_files("POST", "/datasets/pipeline/file-upload", {}, files)
 
     # Dataset Management APIs

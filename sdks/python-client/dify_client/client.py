@@ -527,7 +527,7 @@ class KnowledgeBaseClient(DifyClient):
         :return: Response from the API
         """
         with open(file_path, "rb") as f:
-            files = {"file": f}
+            files = {"file": (os.path.basename(file_path), f)}
             data = {
                 "process_rule": {"mode": "automatic"},
                 "indexing_technique": "high_quality",
@@ -566,7 +566,7 @@ class KnowledgeBaseClient(DifyClient):
         :return:
         """
         with open(file_path, "rb") as f:
-            files = {"file": f}
+            files = {"file": (os.path.basename(file_path), f)}
             data = {}
             if extra_params is not None and isinstance(extra_params, dict):
                 data.update(extra_params)
@@ -802,7 +802,7 @@ class KnowledgeBaseClient(DifyClient):
     def upload_pipeline_file(self, file_path: str):
         """Upload file for RAG pipeline."""
         with open(file_path, "rb") as f:
-            files = {"file": f}
+            files = {"file": (os.path.basename(file_path), f)}
             return self._send_request_with_files("POST", "/datasets/pipeline/file-upload", {}, files)
 
     # Dataset Management APIs
