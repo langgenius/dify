@@ -189,7 +189,7 @@ class TestOAuthDiscovery:
     def test_discover_oauth_metadata_with_resource_discovery(self, mock_get):
         """Test OAuth metadata discovery with resource discovery support."""
         with patch("core.mcp.auth.auth_flow.check_support_resource_discovery") as mock_check:
-            mock_check.return_value = (True, "https://auth.example.com/.well-known/oauth-authorization-server")
+            mock_check.return_value = (True, "https://auth.example.com")
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -207,7 +207,7 @@ class TestOAuthDiscovery:
             assert metadata.authorization_endpoint == "https://auth.example.com/authorize"
             assert metadata.token_endpoint == "https://auth.example.com/token"
             mock_get.assert_called_once_with(
-                "https://auth.example.com/.well-known/oauth-authorization-server",
+                "https://auth.example.com/.well-known/openid-configuration",
                 headers={"MCP-Protocol-Version": "2025-03-26"},
             )
 
