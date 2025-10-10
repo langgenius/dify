@@ -11,28 +11,9 @@ if TYPE_CHECKING:
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
 
-from .app.app_import import AppImportApi, AppImportCheckDependenciesApi, AppImportConfirmApi
-from .explore.audio import ChatAudioApi, ChatTextApi
-from .explore.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
-from .explore.conversation import (
-    ConversationApi,
-    ConversationListApi,
-    ConversationPinApi,
-    ConversationRenameApi,
-    ConversationUnPinApi,
-)
-from .explore.message import (
-    MessageFeedbackApi,
-    MessageListApi,
-    MessageMoreLikeThisApi,
-    MessageSuggestedQuestionApi,
-)
-from .explore.workflow import (
-    InstalledAppWorkflowRunApi,
-    InstalledAppWorkflowTaskStopApi,
-)
-from .files import FileApi, FilePreviewApi, FileSupportTypeApi
-from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
+# App import routes are defined using @console_ns.route decorators in app_import.py
+# All explore routes are defined using @console_ns.route decorators in their respective files
+# File routes are defined using @console_ns.route decorators in their respective files
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
@@ -95,6 +76,9 @@ from .app import (
     workflow_statistic,
 )
 
+# Register workflow alias routes
+from .app.workflow_alias import WorkflowAliasApi
+
 # Import auth controllers
 from .auth import (
     activate,
@@ -155,10 +139,6 @@ from .workspace import (
     tool_providers,
     workspace,
 )
-
-
-# Register workflow alias routes
-from .app.workflow_alias import WorkflowAliasApi
 
 api.add_resource(
     WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases", "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
