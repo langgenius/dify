@@ -8,7 +8,6 @@ that were added to the Python SDK to achieve complete coverage.
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-import json
 
 from dify_client import (
     DifyClient,
