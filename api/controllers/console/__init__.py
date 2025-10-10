@@ -5,6 +5,39 @@ from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
+from .app.app_import import AppImportApi, AppImportCheckDependenciesApi, AppImportConfirmApi
+from .explore.audio import ChatAudioApi, ChatTextApi
+from .explore.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
+from .explore.conversation import (
+    ConversationApi,
+    ConversationListApi,
+    ConversationPinApi,
+    ConversationRenameApi,
+    ConversationUnPinApi,
+)
+from .explore.message import (
+    MessageFeedbackApi,
+    MessageListApi,
+    MessageMoreLikeThisApi,
+    MessageSuggestedQuestionApi,
+)
+from .explore.trial import (
+    AppApi,
+    TrialAppParameterApi,
+    TrialChatApi,
+    TrialChatAudioApi,
+    TrialChatTextApi,
+    TrialCompletionApi,
+    TrialMessageSuggestedQuestionApi,
+    TrialSitApi,
+)
+from .explore.workflow import (
+    InstalledAppWorkflowRunApi,
+    InstalledAppWorkflowTaskStopApi,
+)
+from .files import FileApi, FilePreviewApi, FileSupportTypeApi
+from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
+
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
 api = ExternalApi(
