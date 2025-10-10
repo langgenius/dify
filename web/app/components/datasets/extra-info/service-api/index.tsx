@@ -52,7 +52,7 @@ const ServiceApi = ({
             />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
+        <PortalToFollowElemContent className='z-[10]'>
           <Card
             apiEnabled={apiEnabled}
             apiBaseUrl={apiBaseUrl}
