@@ -71,7 +71,7 @@ const WorkflowAppWithAdditionalContext = () => {
       fileUploadConfig: fileUploadConfigResponse,
     },
     opening: {
-      enabled: !!features.opening_statement,
+      enabled: !!features.opening_statement || !!(features.suggested_questions && features.suggested_questions.length > 0),
       opening_statement: features.opening_statement,
       suggested_questions: features.suggested_questions,
     },
