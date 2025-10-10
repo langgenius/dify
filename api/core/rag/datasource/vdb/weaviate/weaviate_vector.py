@@ -31,6 +31,10 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class WeaviateConfig(BaseModel):
     """
     Configuration model for Weaviate connection settings.
@@ -165,7 +169,7 @@ class WeaviateVector(BaseVector):
                 self._ensure_properties()
                 redis_client.set(cache_key, 1, ex=3600)
             except Exception as e:
-                print(f"Error creating collection {self._collection_name}: {e}")
+                logger.exception(f"Error creating collection {self._collection_name}: {e}")
                 raise
 
     def _ensure_properties(self) -> None:
@@ -193,7 +197,7 @@ class WeaviateVector(BaseVector):
             try:
                 col.config.add_property(prop)
             except Exception as e:
-                print(f"Warning: Could not add property {prop.name}: {e}")
+                logger.warning(f"Could not add property {prop.name}: {e}")
 
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
@@ -249,9 +253,13 @@ class WeaviateVector(BaseVector):
         
         
         batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
-        with col.data.batch.dynamic(batch_size=batch_size) as batch:
+        with col.batch.dynamic() as batch:
             for obj in objs:
-                batch.add_object(obj)
+                batch.add_object(
+                    properties=obj.properties,
+                    uuid=obj.uuid,
+                    vector=obj.vector
+                )
 
         return ids_out
 

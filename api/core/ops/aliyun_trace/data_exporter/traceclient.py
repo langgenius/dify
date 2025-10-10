@@ -199,7 +199,8 @@ def convert_to_trace_id(uuid_v4: str | None) -> int:
         raise ValueError("UUID cannot be None")
     try:
         uuid_obj = uuid.UUID(uuid_v4)
-        return uuid_obj.int
+        return int(uuid_obj)
+        # return uuid_obj.int
     except ValueError as e:
         raise ValueError(f"Invalid UUID input: {uuid_v4}") from e
 
