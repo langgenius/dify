@@ -222,8 +222,10 @@ const TimePicker = ({
             <RiCloseCircleFill
               className={cn(
                 'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                (displayValue || (isOpen && selectedTime)) && 'hover:text-text-secondary group-hover:inline-block',
+                (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
               )}
+              role='button'
+              aria-label={t('common.operation.clear')}
               onClick={handleClear}
             />
           </div>
