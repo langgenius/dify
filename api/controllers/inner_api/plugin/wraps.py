@@ -128,7 +128,7 @@ def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseMo
                 raise ValueError("invalid json")
 
             try:
-                payload = payload_type(**data)
+                payload = payload_type.model_validate(data)
             except Exception as e:
                 raise ValueError(f"invalid payload: {str(e)}")
 

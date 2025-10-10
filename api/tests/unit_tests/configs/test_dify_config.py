@@ -15,13 +15,13 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("HTTP_REQUEST_MAX_WRITE_TIMEOUT", "30")
+    monkeypatch.setenv("HTTP_REQUEST_MAX_WRITE_TIMEOUT", "30")  # Custom value for testing
     monkeypatch.setenv("DB_USERNAME", "postgres")
     monkeypatch.setenv("DB_PASSWORD", "postgres")
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "600")
+    monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "300")  # Custom value for testing
 
     # load dotenv file with pydantic-settings
     config = DifyConfig()
@@ -35,14 +35,34 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
 
-    # annotated field with default value
-    assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 600
+    # annotated field with custom configured value
+    assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 300
 
-    # annotated field with configured value
+    # annotated field with custom configured value
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
 
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
+
+
+def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
+    """Test that HTTP timeout defaults are correctly set"""
+    # clear system environment variables
+    os.environ.clear()
+
+    # Set minimal required env vars
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    config = DifyConfig()
+
+    # Verify default timeout values
+    assert config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT == 10
+    assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 600
+    assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 600
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
@@ -55,7 +75,6 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("HTTP_REQUEST_MAX_WRITE_TIMEOUT", "30")
     monkeypatch.setenv("DB_USERNAME", "postgres")
     monkeypatch.setenv("DB_PASSWORD", "postgres")
     monkeypatch.setenv("DB_HOST", "localhost")
@@ -105,7 +124,6 @@ def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("HTTP_REQUEST_MAX_WRITE_TIMEOUT", "30")
     monkeypatch.setenv("DB_USERNAME", "postgres")
     monkeypatch.setenv("DB_PASSWORD", "postgres")
     monkeypatch.setenv("DB_HOST", "localhost")
