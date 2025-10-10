@@ -112,10 +112,10 @@ const Select: FC<ISelectProps> = ({
           }
         }
       }}>
-    <div className={classNames('relative')}>
-      <div className='group text-text-secondary'>
-        {allowSearch
-          ? <>
+      <div className={classNames('relative')}>
+        <div className='group text-text-secondary'>
+          {allowSearch
+            ? <>
               <ComboboxInput
                 className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 onChange={(event) => {
@@ -132,7 +132,7 @@ const Select: FC<ISelectProps> = ({
               <ComboboxButton
                 className={`absolute inset-0 rounded-lg ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 onClick={() => {
-                  if (!disabled) 
+                  if (!disabled)
                     setOpen(!open)
                 }}
               >
@@ -141,7 +141,7 @@ const Select: FC<ISelectProps> = ({
                 </span>
               </ComboboxButton>
             </>
-          : <ComboboxButton
+            : <ComboboxButton
               onClick={() => {
                 if (!disabled) setOpen(!open)
               }}
