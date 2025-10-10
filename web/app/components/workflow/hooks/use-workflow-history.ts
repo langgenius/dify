@@ -41,16 +41,16 @@ export const useWorkflowHistory = () => {
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { t } = useTranslation()
 
-  const [undoCallbacks, setUndoCallbacks] = useState<any[]>([])
-  const [redoCallbacks, setRedoCallbacks] = useState<any[]>([])
+  const [undoCallbacks, setUndoCallbacks] = useState<(() => void)[]>([])
+  const [redoCallbacks, setRedoCallbacks] = useState<(() => void)[]>([])
 
-  const onUndo = useCallback((callback: unknown) => {
-    setUndoCallbacks((prev: any) => [...prev, callback])
+  const onUndo = useCallback((callback: () => void) => {
+    setUndoCallbacks(prev => [...prev, callback])
     return () => setUndoCallbacks(prev => prev.filter(cb => cb !== callback))
   }, [])
 
-  const onRedo = useCallback((callback: unknown) => {
-    setRedoCallbacks((prev: any) => [...prev, callback])
+  const onRedo = useCallback((callback: () => void) => {
+    setRedoCallbacks(prev => [...prev, callback])
     return () => setRedoCallbacks(prev => prev.filter(cb => cb !== callback))
   }, [])
 

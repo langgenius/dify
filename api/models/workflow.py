@@ -367,7 +367,9 @@ class Workflow(Base):
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
-        # _environment_variables is guaranteed to be non-None due to server_default="{}"
+        # TODO: find some way to init `self._environment_variables` when instance created.
+        if self._environment_variables is None:
+            self._environment_variables = "{}"
 
         # Use workflow.tenant_id to avoid relying on request user in background threads
         tenant_id = self.tenant_id
@@ -450,7 +452,9 @@ class Workflow(Base):
 
     @property
     def conversation_variables(self) -> Sequence[Variable]:
-        # _conversation_variables is guaranteed to be non-None due to server_default="{}"
+        # TODO: find some way to init `self._conversation_variables` when instance created.
+        if self._conversation_variables is None:
+            self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
         results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
