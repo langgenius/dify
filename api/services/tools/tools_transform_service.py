@@ -233,7 +233,7 @@ class ToolTransformService:
             is_team_authorization=db_provider.authed,
             server_url=db_provider.masked_server_url,
             tools=ToolTransformService.mcp_tool_to_user_tool(
-                db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
+                db_provider, [MCPTool.model_validate(tool) for tool in json.loads(db_provider.tools)]
             ),
             updated_at=int(db_provider.updated_at.timestamp()),
             label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
@@ -378,6 +378,7 @@ class ToolTransformService:
                 labels=labels or [],
             )
         else:
+            assert tool.operation_id
             return ToolApiEntity(
                 author=tool.author,
                 name=tool.operation_id or "",

@@ -667,31 +667,31 @@ class AppDslService:
                 typ = node.get("data", {}).get("type")
                 match typ:
                     case NodeType.TOOL.value:
-                        tool_entity = ToolNodeData(**node["data"])
+                        tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
                     case NodeType.LLM.value:
-                        llm_entity = LLMNodeData(**node["data"])
+                        llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
                     case NodeType.QUESTION_CLASSIFIER.value:
-                        question_classifier_entity = QuestionClassifierNodeData(**node["data"])
+                        question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
                     case NodeType.PARAMETER_EXTRACTOR.value:
-                        parameter_extractor_entity = ParameterExtractorNodeData(**node["data"])
+                        parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
                     case NodeType.KNOWLEDGE_RETRIEVAL.value:
-                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData(**node["data"])
+                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:
                                 if (
@@ -781,7 +781,7 @@ class AppDslService:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency(**dep) for dep in dsl_dependencies]
+        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
         if not dependencies:
             return []
 

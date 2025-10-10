@@ -86,15 +86,15 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
 
         for i in range(len(v)):
             if v[i]["role"] == PromptMessageRole.USER.value:
-                v[i] = UserPromptMessage(**v[i])
+                v[i] = UserPromptMessage.model_validate(v[i])
             elif v[i]["role"] == PromptMessageRole.ASSISTANT.value:
-                v[i] = AssistantPromptMessage(**v[i])
+                v[i] = AssistantPromptMessage.model_validate(v[i])
             elif v[i]["role"] == PromptMessageRole.SYSTEM.value:
-                v[i] = SystemPromptMessage(**v[i])
+                v[i] = SystemPromptMessage.model_validate(v[i])
             elif v[i]["role"] == PromptMessageRole.TOOL.value:
-                v[i] = ToolPromptMessage(**v[i])
+                v[i] = ToolPromptMessage.model_validate(v[i])
             else:
-                v[i] = PromptMessage(**v[i])
+                v[i] = PromptMessage.model_validate(v[i])
 
         return v
 

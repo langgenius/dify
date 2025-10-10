@@ -59,12 +59,11 @@ def session():
 @pytest.fixture
 def mock_user():
     """Create a user instance for testing."""
-    user = Account()
+    user = Account(name="test", email="test@example.com")
     user.id = "test-user-id"
 
-    tenant = Tenant()
+    tenant = Tenant(name="Test Workspace")
     tenant.id = "test-tenant"
-    tenant.name = "Test Workspace"
     user._current_tenant = MagicMock()
     user._current_tenant.id = "test-tenant"
 
