@@ -5,13 +5,11 @@ This module provides Elasticsearch-based storage for WorkflowAppLog entities,
 offering better performance and scalability for log data management.
 """
 
-import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import NotFoundError
 
 from models.workflow import WorkflowAppLog
 
@@ -93,12 +91,12 @@ class ElasticsearchWorkflowAppLogRepository:
                 name=template_name,
                 body=template_body
             )
-            logger.info(f"Index template {template_name} created/updated successfully")
+            logger.info("Index template %s created/updated successfully", template_name)
         except Exception as e:
-            logger.error(f"Failed to create index template {template_name}: {e}")
+            logger.error("Failed to create index template %s: %s", template_name, e)
             raise
 
-    def _to_es_document(self, app_log: WorkflowAppLog) -> Dict[str, Any]:
+    def _to_es_document(self, app_log: WorkflowAppLog) -> dict[str, Any]:
         """
         Convert WorkflowAppLog model to Elasticsearch document.
         
@@ -120,7 +118,7 @@ class ElasticsearchWorkflowAppLogRepository:
             "created_at": app_log.created_at.isoformat() if app_log.created_at else None,
         }
 
-    def _from_es_document(self, doc: Dict[str, Any]) -> WorkflowAppLog:
+    def _from_es_document(self, doc: dict[str, Any]) -> WorkflowAppLog:
         """
         Convert Elasticsearch document to WorkflowAppLog model.
         
@@ -207,7 +205,7 @@ class ElasticsearchWorkflowAppLogRepository:
             return None
 
         except Exception as e:
-            logger.error(f"Failed to get workflow app log {log_id}: {e}")
+            logger.error("Failed to get workflow app log %s: %s", log_id, e)
             raise
 
     def get_paginated_logs(
@@ -219,7 +217,7 @@ class ElasticsearchWorkflowAppLogRepository:
         created_from: Optional[str] = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get paginated workflow app logs with filtering.
         
@@ -283,7 +281,7 @@ class ElasticsearchWorkflowAppLogRepository:
             }
 
         except Exception as e:
-            logger.error(f"Failed to get paginated workflow app logs: {e}")
+            logger.error("Failed to get paginated workflow app logs: %s", e)
             raise
 
     def delete_by_app(self, tenant_id: str, app_id: str) -> int:
@@ -316,11 +314,11 @@ class ElasticsearchWorkflowAppLogRepository:
             )
 
             deleted_count = response.get("deleted", 0)
-            logger.info(f"Deleted {deleted_count} workflow app logs for app {app_id}")
+            logger.info("Deleted %s workflow app logs for app %s", deleted_count, app_id)
             return deleted_count
 
         except Exception as e:
-            logger.error(f"Failed to delete workflow app logs for app {app_id}: {e}")
+            logger.error("Failed to delete workflow app logs for app %s: %s", app_id, e)
             raise
 
     def delete_expired_logs(self, tenant_id: str, before_date: datetime) -> int:
@@ -353,11 +351,11 @@ class ElasticsearchWorkflowAppLogRepository:
             )
 
             deleted_count = response.get("deleted", 0)
-            logger.info(f"Deleted {deleted_count} expired workflow app logs for tenant {tenant_id}")
+            logger.info("Deleted %s expired workflow app logs for tenant %s", deleted_count, tenant_id)
             return deleted_count
 
         except Exception as e:
-            logger.error(f"Failed to delete expired workflow app logs: {e}")
+            logger.error("Failed to delete expired workflow app logs: %s", e)
             raise
 
     def cleanup_old_indices(self, tenant_id: str, retention_days: int = 30) -> None:
@@ -388,8 +386,8 @@ class ElasticsearchWorkflowAppLogRepository:
             
             if indices_to_delete:
                 self._es_client.indices.delete(index=','.join(indices_to_delete))
-                logger.info(f"Deleted old indices: {indices_to_delete}")
+                logger.info("Deleted old indices: %s", indices_to_delete)
             
         except Exception as e:
-            logger.error(f"Failed to cleanup old indices: {e}")
+            logger.error("Failed to cleanup old indices: %s", e)
             raise

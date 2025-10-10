@@ -5,14 +5,12 @@ This implementation stores workflow node execution logs in Elasticsearch for bet
 performance and scalability compared to PostgreSQL storage.
 """
 
-import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
-from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import NotFoundError, RequestError
+from elasticsearch.exceptions import NotFoundError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -85,7 +83,7 @@ class ElasticsearchWorkflowNodeExecutionRepository(WorkflowNodeExecutionReposito
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # In-memory cache for workflow node executions
-        self._execution_cache: Dict[str, WorkflowNodeExecution] = {}
+        self._execution_cache: dict[str, WorkflowNodeExecution] = {}
 
         # Ensure index template exists
         self._ensure_index_template()
@@ -154,9 +152,9 @@ class ElasticsearchWorkflowNodeExecutionRepository(WorkflowNodeExecutionReposito
                 name=template_name,
                 body=template_body
             )
-            logger.info(f"Index template {template_name} created/updated successfully")
+            logger.info("Index template %s created/updated successfully", template_name)
         except Exception as e:
-            logger.error(f"Failed to create index template {template_name}: {e}")
+            logger.error("Failed to create index template %s: %s", template_name, e)
             raise
 
     def _serialize_complex_data(self, data: Any) -> Any:
@@ -178,10 +176,10 @@ class ElasticsearchWorkflowNodeExecutionRepository(WorkflowNodeExecutionReposito
         try:
             return jsonable_encoder(data)
         except Exception as e:
-            logger.warning(f"Failed to serialize complex data, using string representation: {e}")
+            logger.warning("Failed to serialize complex data, using string representation: %s", e)
             return str(data)
 
-    def _to_es_document(self, execution: WorkflowNodeExecution) -> Dict[str, Any]:
+    def _to_es_document(self, execution: WorkflowNodeExecution) -> dict[str, Any]:
         """
         Convert WorkflowNodeExecution domain entity to Elasticsearch document.
         
@@ -220,7 +218,7 @@ class ElasticsearchWorkflowNodeExecutionRepository(WorkflowNodeExecutionReposito
         # Remove None values to reduce storage size
         return {k: v for k, v in doc.items() if v is not None}
 
-    def _from_es_document(self, doc: Dict[str, Any]) -> WorkflowNodeExecution:
+    def _from_es_document(self, doc: dict[str, Any]) -> WorkflowNodeExecution:
         """
         Convert Elasticsearch document to WorkflowNodeExecution domain entity.
         
@@ -401,5 +399,5 @@ class ElasticsearchWorkflowNodeExecutionRepository(WorkflowNodeExecutionReposito
             return executions
             
         except Exception as e:
-            logger.error(f"Failed to retrieve executions for workflow run {workflow_run_id}: {e}")
+            logger.error("Failed to retrieve executions for workflow run %s: %s", workflow_run_id, e)
             raise

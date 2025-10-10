@@ -1875,6 +1875,7 @@ def migrate(
     Migrate workflow log data from PostgreSQL to Elasticsearch.
     """
     from datetime import datetime
+
     from extensions.ext_elasticsearch import elasticsearch as es_extension
     from services.elasticsearch_migration_service import ElasticsearchMigrationService
     

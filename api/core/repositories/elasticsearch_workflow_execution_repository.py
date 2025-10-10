@@ -5,13 +5,10 @@ This implementation stores workflow execution data in Elasticsearch for better
 performance and scalability compared to PostgreSQL storage.
 """
 
-import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
-from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import NotFoundError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -141,9 +138,9 @@ class ElasticsearchWorkflowExecutionRepository(WorkflowExecutionRepository):
                 name=template_name,
                 body=template_body
             )
-            logger.info(f"Index template {template_name} created/updated successfully")
+            logger.info("Index template %s created/updated successfully", template_name)
         except Exception as e:
-            logger.error(f"Failed to create index template {template_name}: {e}")
+            logger.error("Failed to create index template %s: %s", template_name, e)
             raise
 
     def _serialize_complex_data(self, data: Any) -> Any:
@@ -165,10 +162,10 @@ class ElasticsearchWorkflowExecutionRepository(WorkflowExecutionRepository):
         try:
             return jsonable_encoder(data)
         except Exception as e:
-            logger.warning(f"Failed to serialize complex data, using string representation: {e}")
+            logger.warning("Failed to serialize complex data, using string representation: %s", e)
             return str(data)
 
-    def _to_workflow_run_document(self, execution: WorkflowExecution) -> Dict[str, Any]:
+    def _to_workflow_run_document(self, execution: WorkflowExecution) -> dict[str, Any]:
         """
         Convert WorkflowExecution domain entity to WorkflowRun-compatible document.
         This follows the same logic as SQLAlchemy implementation.

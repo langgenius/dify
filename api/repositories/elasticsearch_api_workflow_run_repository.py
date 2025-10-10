@@ -13,14 +13,11 @@ Key Features:
 - Efficient pagination and filtering
 """
 
-import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import NotFoundError
 from sqlalchemy.orm import sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -125,12 +122,12 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 name=template_name,
                 body=template_body
             )
-            logger.info(f"Index template {template_name} created/updated successfully")
+            logger.info("Index template %s created/updated successfully", template_name)
         except Exception as e:
-            logger.error(f"Failed to create index template {template_name}: {e}")
+            logger.error("Failed to create index template %s: %s", template_name, e)
             raise
 
-    def _to_es_document(self, workflow_run: WorkflowRun) -> Dict[str, Any]:
+    def _to_es_document(self, workflow_run: WorkflowRun) -> dict[str, Any]:
         """
         Convert WorkflowRun model to Elasticsearch document.
         
@@ -166,7 +163,7 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Remove None values to reduce storage size
         return {k: v for k, v in doc.items() if v is not None}
 
-    def _from_es_document(self, doc: Dict[str, Any]) -> WorkflowRun:
+    def _from_es_document(self, doc: dict[str, Any]) -> WorkflowRun:
         """
         Convert Elasticsearch document to WorkflowRun model.
         
@@ -295,7 +292,7 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
         except Exception as e:
-            logger.error(f"Failed to get paginated workflow runs: {e}")
+            logger.error("Failed to get paginated workflow runs: %s", e)
             raise
 
     def get_workflow_run_by_id(
@@ -335,7 +332,7 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             return None
 
         except Exception as e:
-            logger.error(f"Failed to get workflow run {run_id}: {e}")
+            logger.error("Failed to get workflow run %s: %s", run_id, e)
             raise
 
     def get_expired_runs_batch(
@@ -376,7 +373,7 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             return workflow_runs
 
         except Exception as e:
-            logger.error(f"Failed to get expired runs batch: {e}")
+            logger.error("Failed to get expired runs batch: %s", e)
             raise
 
     def delete_runs_by_ids(
@@ -405,11 +402,11 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             deleted_count = response.get("deleted", 0)
-            logger.info(f"Deleted {deleted_count} workflow runs by IDs")
+            logger.info("Deleted %s workflow runs by IDs", deleted_count)
             return deleted_count
 
         except Exception as e:
-            logger.error(f"Failed to delete workflow runs by IDs: {e}")
+            logger.error("Failed to delete workflow runs by IDs: %s", e)
             raise
 
     def delete_runs_by_app(
@@ -441,11 +438,11 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             deleted_count = response.get("deleted", 0)
-            logger.info(f"Deleted {deleted_count} workflow runs for app {app_id}")
+            logger.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
             return deleted_count
 
         except Exception as e:
-            logger.error(f"Failed to delete workflow runs for app {app_id}: {e}")
+            logger.error("Failed to delete workflow runs for app %s: %s", app_id, e)
             raise
 
     def cleanup_old_indices(self, tenant_id: str, retention_days: int = 30) -> None:
@@ -476,10 +473,10 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             
             if indices_to_delete:
                 self._es_client.indices.delete(index=','.join(indices_to_delete))
-                logger.info(f"Deleted old indices: {indices_to_delete}")
+                logger.info("Deleted old indices: %s", indices_to_delete)
             
         except Exception as e:
-            logger.error(f"Failed to cleanup old indices: {e}")
+            logger.error("Failed to cleanup old indices: %s", e)
             raise
 
     def search_workflow_runs(
@@ -492,7 +489,7 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
         created_at_before: datetime | None = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Advanced search for workflow runs with full-text search capabilities.
         
@@ -566,5 +563,5 @@ class ElasticsearchAPIWorkflowRunRepository(APIWorkflowRunRepository):
             }
 
         except Exception as e:
-            logger.error(f"Failed to search workflow runs: {e}")
+            logger.error("Failed to search workflow runs: %s", e)
             raise

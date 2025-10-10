@@ -7,14 +7,13 @@ to Elasticsearch, including data validation, progress tracking, and rollback cap
 
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Optional
 
 from elasticsearch import Elasticsearch
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_elasticsearch import elasticsearch
 from models.workflow import (
@@ -66,7 +65,7 @@ class ElasticsearchMigrationService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         dry_run: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Migrate WorkflowRun data from PostgreSQL to Elasticsearch.
         
@@ -157,7 +156,7 @@ class ElasticsearchMigrationService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         dry_run: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Migrate WorkflowAppLog data from PostgreSQL to Elasticsearch.
         
@@ -248,7 +247,7 @@ class ElasticsearchMigrationService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         dry_run: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Migrate WorkflowNodeExecution data from PostgreSQL to Elasticsearch.
         
@@ -355,7 +354,7 @@ class ElasticsearchMigrationService:
         
         return stats
 
-    def _convert_node_execution_to_es_doc(self, node_execution: WorkflowNodeExecutionModel) -> Dict[str, Any]:
+    def _convert_node_execution_to_es_doc(self, node_execution: WorkflowNodeExecutionModel) -> dict[str, Any]:
         """
         Convert WorkflowNodeExecutionModel to Elasticsearch document format.
         
@@ -415,7 +414,7 @@ class ElasticsearchMigrationService:
         # Remove None values to reduce storage size
         return {k: v for k, v in doc.items() if v is not None}
 
-    def validate_migration(self, tenant_id: str, sample_size: int = 100) -> Dict[str, Any]:
+    def validate_migration(self, tenant_id: str, sample_size: int = 100) -> dict[str, Any]:
         """
         Validate migrated data by comparing samples from PostgreSQL and Elasticsearch.
         
@@ -426,7 +425,7 @@ class ElasticsearchMigrationService:
         Returns:
             Validation results and statistics
         """
-        logger.info(f"Starting migration validation for tenant {tenant_id}")
+        logger.info("Starting migration validation for tenant %s", tenant_id)
         
         validation_results = {
             "workflow_runs": {"total": 0, "matched": 0, "mismatched": 0, "missing": 0},
@@ -492,7 +491,7 @@ class ElasticsearchMigrationService:
             logger.error(error_msg)
             validation_results["errors"].append(error_msg)
 
-        logger.info(f"Migration validation completed for tenant {tenant_id}")
+        logger.info("Migration validation completed for tenant %s", tenant_id)
         return validation_results
 
     def _compare_workflow_runs(self, pg_run: WorkflowRun, es_run: WorkflowRun) -> bool:
@@ -517,7 +516,7 @@ class ElasticsearchMigrationService:
         tenant_id: str,
         before_date: datetime,
         dry_run: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Clean up old PostgreSQL data after successful migration to Elasticsearch.
         
@@ -529,7 +528,7 @@ class ElasticsearchMigrationService:
         Returns:
             Cleanup statistics
         """
-        logger.info(f"Starting PostgreSQL data cleanup for tenant {tenant_id}")
+        logger.info("Starting PostgreSQL data cleanup for tenant %s", tenant_id)
         
         stats = {
             "workflow_runs_deleted": 0,

@@ -72,7 +72,7 @@ class ElasticsearchExtension:
                 self._client = None
 
         except Exception as e:
-            logger.error(f"Failed to initialize Elasticsearch client: {e}")
+            logger.error("Failed to initialize Elasticsearch client: %s", e)
             self._client = None
 
         # Store client in app context
