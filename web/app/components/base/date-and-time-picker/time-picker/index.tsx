@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dayjs } from 'dayjs'
-import type { Period, TimePickerProps } from '../types'
-import dayjs, { cloneTime, getDateWithTimezone, getHourIn12Hour } from '../utils/dayjs'
+import { Period } from '../types'
+import type { TimePickerProps } from '../types'
+import dayjs, {
+  getDateWithTimezone,
+  getHourIn12Hour,
+  isDayjsObject,
+  toDayjs,
+} from '../utils/dayjs'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -14,21 +20,9 @@ import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 
-// Helper function: Check if a value is a valid dayjs object
-const isDayjsObject = (value: any): value is Dayjs => {
-  return value && typeof value === 'object' && typeof value.format === 'function'
-}
-
-// Helper function: Convert string or dayjs object to dayjs object
-const toDayjs = (value: string | Dayjs | undefined): Dayjs | undefined => {
-  if (!value) return undefined
-
-  if (typeof value === 'string') {
-    const parsedDate = dayjs(value)
-    return parsedDate.isValid() ? parsedDate : undefined
-  }
-
-  return value
+const to24Hour = (hour12: string, period: Period) => {
+  const normalized = Number.parseInt(hour12, 10) % 12
+  return period === Period.PM ? normalized + 12 : normalized
 }
 
 const TimePicker = ({
@@ -49,8 +43,7 @@ const TimePicker = ({
 
   // Initialize selectedTime
   const [selectedTime, setSelectedTime] = useState(() => {
-    const dayjsValue = toDayjs(value)
-    return dayjsValue ? getDateWithTimezone({ timezone, date: dayjsValue }) : undefined
+    return toDayjs(value, { timezone })
   })
 
   useEffect(() => {
@@ -86,27 +79,22 @@ const TimePicker = ({
     // Skip if neither timezone changed nor value changed
     if (!timezoneChanged && !valueChanged) return
 
-    if (value) {
-      // Process value using helper function
-      const dayjsValue = toDayjs(value)
+    if (value !== undefined && value !== null) {
+      const dayjsValue = toDayjs(value, { timezone })
       if (!dayjsValue) return
 
-      const newValue = getDateWithTimezone({ date: dayjsValue, timezone })
+      setSelectedTime(dayjsValue)
 
-      // Only update internal state to avoid triggering extra onChange calls
-      setSelectedTime(newValue)
+      if (timezoneChanged && !valueChanged)
+        onChange(dayjsValue)
+      return
+    }
 
-      // Only call onChange when timezone changes but value doesn't
-      if (timezoneChanged && !valueChanged) {
-        // Use setTimeout to avoid potential render loops
-        setTimeout(() => {
-          onChange(newValue)
-        }, 0)
-      }
-    }
-    else {
-      setSelectedTime(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
-    }
+    setSelectedTime((prev) => {
+      if (!isDayjsObject(prev))
+        return undefined
+      return timezone ? getDateWithTimezone({ date: prev, timezone }) : prev
+    })
   }, [timezone, value, onChange])
 
   const handleClickTrigger = (e: React.MouseEvent) => {
@@ -118,7 +106,7 @@ const TimePicker = ({
     setIsOpen(true)
 
     if (value) {
-      const dayjsValue = toDayjs(value)
+      const dayjsValue = toDayjs(value, { timezone })
       const needsUpdate = dayjsValue && (
         !selectedTime
         || !isDayjsObject(selectedTime)
@@ -136,15 +124,25 @@ const TimePicker = ({
   }
 
   const handleTimeSelect = (hour: string, minute: string, period: Period) => {
-    const newTime = cloneTime(dayjs(), dayjs(`1/1/2000 ${hour}:${minute} ${period}`))
+    const periodAdjustedHour = to24Hour(hour, period)
+    const nextMinute = Number.parseInt(minute, 10)
     setSelectedTime((prev) => {
-      return prev ? cloneTime(prev, newTime) : newTime
+      const reference = isDayjsObject(prev)
+        ? prev
+        : (timezone ? getDateWithTimezone({ timezone }) : dayjs()).startOf('minute')
+      return reference
+        .set('hour', periodAdjustedHour)
+        .set('minute', nextMinute)
+        .set('second', 0)
+        .set('millisecond', 0)
     })
   }
 
   const getSafeTimeObject = useCallback(() => {
-    return isDayjsObject(selectedTime) ? selectedTime : dayjs().startOf('day')
-  }, [selectedTime])
+    if (isDayjsObject(selectedTime))
+      return selectedTime
+    return (timezone ? getDateWithTimezone({ timezone }) : dayjs()).startOf('day')
+  }, [selectedTime, timezone])
 
   const handleSelectHour = useCallback((hour: string) => {
     const time = getSafeTimeObject()
@@ -164,19 +162,13 @@ const TimePicker = ({
   const handleSelectCurrentTime = useCallback(() => {
     const newDate = getDateWithTimezone({ timezone })
     setSelectedTime(newDate)
-    setTimeout(() => {
-      onChange(newDate)
-    }, 0)
+    onChange(newDate)
     setIsOpen(false)
   }, [timezone, onChange])
 
   const handleConfirm = useCallback(() => {
-    if (isDayjsObject(selectedTime)) {
-      const timeVal = selectedTime
-      setTimeout(() => {
-        onChange(timeVal)
-      }, 0)
-    }
+    const valueToEmit = isDayjsObject(selectedTime) ? selectedTime : undefined
+    onChange(valueToEmit)
     setIsOpen(false)
   }, [selectedTime, onChange])
 
@@ -185,9 +177,9 @@ const TimePicker = ({
   const formatTimeValue = useCallback((timeValue: string | Dayjs | undefined): string => {
     if (!timeValue) return ''
 
-    const dayjsValue = toDayjs(timeValue)
+    const dayjsValue = toDayjs(timeValue, { timezone })
     return dayjsValue?.format(timeFormat) || ''
-  }, [])
+  }, [timezone])
 
   const displayValue = formatTimeValue(value)
 
@@ -231,6 +223,8 @@ const TimePicker = ({
                 'hidden h-4 w-4 shrink-0 text-text-quaternary',
                 (displayValue || (isOpen && selectedTime)) && 'hover:text-text-secondary group-hover:inline-block',
               )}
+              role='button'
+              aria-label={t('common.operation.clear')}
               onClick={handleClear}
             />
           </div>
