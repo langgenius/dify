@@ -210,7 +210,7 @@ const MCPModal = ({
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-4/5 w-4/5 text-text-primary-on-surface' /> : undefined}
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-8 w-8 text-text-primary-on-surface' /> : undefined}
                 size='xxl'
                 className='relative cursor-pointer rounded-2xl'
                 coverElement={

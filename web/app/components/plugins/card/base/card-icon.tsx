@@ -37,7 +37,7 @@ const Icon = ({
           icon={src.content}
           background={src.background}
           className='rounded-md'
-          innerIcon={shouldUseMcpIcon(src) ? <Mcp className='h-4/5 w-4/5 text-text-primary-on-surface' /> : undefined}
+          innerIcon={shouldUseMcpIcon(src) ? <Mcp className='h-8 w-8 text-text-primary-on-surface' /> : undefined}
         />
       </div>
     )
