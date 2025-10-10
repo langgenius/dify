@@ -107,7 +107,7 @@ const TimePicker = ({
     else {
       setSelectedTime(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
     }
-  }, [timezone, value])
+  }, [timezone, value, onChange])
 
   const handleClickTrigger = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -168,7 +168,7 @@ const TimePicker = ({
       onChange(newDate)
     }, 0)
     setIsOpen(false)
-  }, [timezone])
+  }, [timezone, onChange])
 
   const handleConfirm = useCallback(() => {
     if (isDayjsObject(selectedTime)) {
