@@ -1,13 +1,52 @@
 import json
 from typing import Literal, Dict, List, Any, IO
 
-import requests
+import httpx
 
 
 class DifyClient:
-    def __init__(self, api_key, base_url: str = "https://api.dify.ai/v1"):
+    """Synchronous Dify API client.
+
+    This client uses httpx.Client for efficient connection pooling and resource management.
+    It's recommended to use this client as a context manager:
+
+    Example:
+        with DifyClient(api_key="your-key") as client:
+            response = client.get_app_info()
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.dify.ai/v1",
+        timeout: float = 60.0,
+    ):
+        """Initialize the Dify client.
+
+        Args:
+            api_key: Your Dify API key
+            base_url: Base URL for the Dify API
+            timeout: Request timeout in seconds (default: 60.0)
+        """
         self.api_key = api_key
         self.base_url = base_url
+        self._client = httpx.Client(
+            base_url=base_url,
+            timeout=httpx.Timeout(timeout, connect=5.0),
+        )
+
+    def __enter__(self):
+        """Support context manager protocol."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Clean up resources when exiting context."""
+        self.close()
+
+    def close(self):
+        """Close the HTTP client and release resources."""
+        if hasattr(self, '_client'):
+            self._client.close()
 
     def _send_request(
         self,
@@ -17,21 +56,55 @@ class DifyClient:
         params: dict | None = None,
         stream: bool = False,
     ):
+        """Send an HTTP request to the Dify API.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE)
+            endpoint: API endpoint path
+            json: JSON request body
+            params: Query parameters
+            stream: Whether to stream the response
+
+        Returns:
+            httpx.Response object
+        """
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
-        url = f"{self.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers, stream=stream)
+        # httpx.Client automatically prepends base_url
+        response = self._client.request(
+            method,
+            endpoint,
+            json=json,
+            params=params,
+            headers=headers,
+        )
 
         return response
 
-    def _send_request_with_files(self, method, endpoint, data, files):
+    def _send_request_with_files(self, method: str, endpoint: str, data: dict, files: dict):
+        """Send an HTTP request with file uploads.
+
+        Args:
+            method: HTTP method (POST, PUT, etc.)
+            endpoint: API endpoint path
+            data: Form data
+            files: Files to upload
+
+        Returns:
+            httpx.Response object
+        """
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
-        url = f"{self.base_url}{endpoint}"
-        response = requests.request(method, url, data=data, headers=headers, files=files)
+        response = self._client.request(
+            method,
+            endpoint,
+            data=data,
+            headers=headers,
+            files=files,
+        )
 
         return response
 
