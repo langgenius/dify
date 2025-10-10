@@ -120,8 +120,8 @@ class WorkspaceListApi(Resource):
         }, 200
 
 
-@console_ns.route("/workspaces/current")
-@console_ns.route("/info")  # Deprecated
+@console_ns.route("/workspaces/current", endpoint="workspaces_current")
+@console_ns.route("/info", endpoint="info")  # Deprecated
 class TenantApi(Resource):
     @setup_required
     @login_required
