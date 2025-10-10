@@ -142,9 +142,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         client.create_annotation("Test question?", "Test answer.")
 
         # Test update_annotation
-        client.update_annotation(
-            "annotation-123", "Updated question?", "Updated answer."
-        )
+        client.update_annotation("annotation-123", "Updated question?", "Updated answer.")
 
         # Test delete_annotation
         client.delete_annotation("annotation-123")
@@ -182,9 +180,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         client.update_dataset_metadata("meta-123", {"key": "new_value"})
         client.get_built_in_metadata()
         client.manage_built_in_metadata("enable", {"type": "built_in"})
-        client.update_documents_metadata(
-            [{"document_id": "doc1", "metadata": {"key": "value"}}]
-        )
+        client.update_documents_metadata([{"document_id": "doc1", "metadata": {"key": "value"}}])
 
         # Test tag operations
         client.list_dataset_tags()
@@ -371,9 +367,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         dify_methods = ["get_app_info", "get_app_site_info", "get_file_preview"]
         client = DifyClient(self.api_key)
         for method in dify_methods:
-            self.assertTrue(
-                hasattr(client, method), f"DifyClient missing method: {method}"
-            )
+            self.assertTrue(hasattr(client, method), f"DifyClient missing method: {method}")
 
         # Test ChatClient annotation methods
         chat_methods = [
@@ -386,9 +380,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         ]
         chat_client = ChatClient(self.api_key)
         for method in chat_methods:
-            self.assertTrue(
-                hasattr(chat_client, method), f"ChatClient missing method: {method}"
-            )
+            self.assertTrue(hasattr(chat_client, method), f"ChatClient missing method: {method}")
 
         # Test WorkflowClient advanced methods
         workflow_methods = ["get_workflow_logs", "run_specific_workflow"]
@@ -548,9 +540,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         )
 
         # Test update_conversation_variable with string value
-        client.update_conversation_variable(
-            conversation_id, variable_id, "new_value", user
-        )
+        client.update_conversation_variable(conversation_id, variable_id, "new_value", user)
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
@@ -564,9 +554,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         )
 
         # Test update_conversation_variable with dict value
-        client.update_conversation_variable(
-            conversation_id, variable_id, {"key": "value"}, user
-        )
+        client.update_conversation_variable(conversation_id, variable_id, {"key": "value"}, user)
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
@@ -580,9 +568,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         )
 
         # Test update_conversation_variable with list value
-        client.update_conversation_variable(
-            conversation_id, variable_id, ["item1", "item2"], user
-        )
+        client.update_conversation_variable(conversation_id, variable_id, ["item1", "item2"], user)
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
@@ -664,9 +650,7 @@ class TestNewServiceAPIs(unittest.TestCase):
 
         # Test with explicit dataset_id
         other_dataset_id = "other-dataset-id"
-        client.batch_update_document_status(
-            "enable", document_ids, dataset_id=other_dataset_id
-        )
+        client.batch_update_document_status("enable", document_ids, dataset_id=other_dataset_id)
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/datasets/{other_dataset_id}/documents/status/enable",
@@ -686,9 +670,7 @@ class TestNewServiceAPIs(unittest.TestCase):
         chat_methods = ["get_conversation_variables", "update_conversation_variable"]
         chat_client = ChatClient(self.api_key)
         for method in chat_methods:
-            self.assertTrue(
-                hasattr(chat_client, method), f"ChatClient missing method: {method}"
-            )
+            self.assertTrue(hasattr(chat_client, method), f"ChatClient missing method: {method}")
 
         # Test KnowledgeBaseClient dataset management methods
         kb_methods = ["get_dataset", "update_dataset", "batch_update_document_status"]
