@@ -35,7 +35,7 @@ def list_operator_node():
         "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
     }
-    node_data = ListOperatorNodeData(**config)
+    node_data = ListOperatorNodeData.model_validate(config)
     node_config = {
         "id": "test_node_id",
         "data": node_data.model_dump(),
