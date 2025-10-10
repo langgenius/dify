@@ -6,6 +6,7 @@ import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../t
 import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
+import Switch from '@/app/components/base/switch'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
@@ -48,6 +49,8 @@ const Installed: FC<Props> = ({
   const hasInstalled = !!installedVersion
 
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const [blueGreen, setBlueGreen] = React.useState(false)
+  const [blueGreenMode, setBlueGreenMode] = React.useState<'auto' | 'manual'>('auto')
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
   const [isInstalling, setIsInstalling] = React.useState(false)
   const {
@@ -74,21 +77,17 @@ const Installed: FC<Props> = ({
       let taskId
       let isInstalled
       if (hasInstalled) {
-        const {
-          all_installed,
-          task_id,
-        } = await updatePackageFromMarketPlace({
+        const { all_installed, task_id } = await updatePackageFromMarketPlace({
           original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
           new_plugin_unique_identifier: uniqueIdentifier,
+          blue_green: blueGreen,
+          blue_green_mode: blueGreen ? blueGreenMode : undefined,
         })
         taskId = task_id
         isInstalled = all_installed
       }
       else {
-        const {
-          all_installed,
-          task_id,
-        } = await installPackageFromMarketPlace(uniqueIdentifier)
+        const { all_installed, task_id } = await installPackageFromMarketPlace({ uniqueIdentifier, blueGreen, blueGreenMode })
         taskId = task_id
         isInstalled = all_installed
       }
@@ -149,6 +148,31 @@ const Installed: FC<Props> = ({
             />}
             limitedInstall={!canInstall}
           />
+        </div>
+      </div>
+      <div className='flex w-full items-center justify-between px-8'>
+        <div className='system-md-regular text-text-secondary'>
+          {t('plugin.installModal.blueGreenInstall')}
+        </div>
+        <div className='flex items-center gap-4'>
+          <Switch defaultValue={blueGreen} onChange={setBlueGreen} size='md' />
+          {blueGreen && (
+            <div className='flex items-center gap-2'>
+              <label className='system-md-regular text-text-secondary'>
+                {t('plugin.runtimeTraffic.modePrefix')}
+              </label>
+              <div className='flex items-center gap-2'>
+                <label className='flex items-center gap-1'>
+                  <input type='radio' name='bg-mode' checked={blueGreenMode === 'auto'} onChange={() => setBlueGreenMode('auto')} />
+                  {t('plugin.runtimeTraffic.modeAuto')}
+                </label>
+                <label className='flex items-center gap-1'>
+                  <input type='radio' name='bg-mode' checked={blueGreenMode === 'manual'} onChange={() => setBlueGreenMode('manual')} />
+                  {t('plugin.runtimeTraffic.modeManual')}
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {/* Action Buttons */}

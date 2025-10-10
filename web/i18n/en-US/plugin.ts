@@ -218,6 +218,7 @@ const translation = {
     next: 'Next',
     pluginLoadError: 'Plugin load error',
     pluginLoadErrorDesc: 'This plugin will not be installed',
+    blueGreenInstall: 'Blue-Green Install',
     installWarning: 'This plugin is not allowed to be installed.',
   },
   installFromGitHub: {
@@ -232,6 +233,20 @@ const translation = {
     installNote: 'Please make sure that you only install plugins from a trusted source.',
     selectPackage: 'Select package',
     selectPackagePlaceholder: 'Please select a package',
+  },
+  runtimeTraffic: {
+    title: 'Traffic',
+    modePrefix: 'Mode: ',
+    modeAuto: 'Auto',
+    modeManual: 'Manual',
+    modeRollback: 'Rollback',
+    approve: 'Approve',
+    cancel: 'Cancel',
+    newVersion: 'New',
+    oldVersion: 'Old',
+    connections: 'Conn.',
+    toastCompleted: 'Blue-Green completed: old version is offline',
+    toastRolledBack: 'Canceled release and rolled back to old version',
   },
   upgrade: {
     title: 'Install Plugin',

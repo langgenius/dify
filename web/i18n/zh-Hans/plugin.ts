@@ -218,6 +218,7 @@ const translation = {
     next: '下一步',
     pluginLoadError: '插件加载错误',
     pluginLoadErrorDesc: '此插件将不会被安装',
+    blueGreenInstall: '蓝绿安装',
     installWarning: '此插件不允许安装。',
   },
   installFromGitHub: {
@@ -232,6 +233,20 @@ const translation = {
     installNote: '请确保只从可信源安装插件。',
     selectPackage: '选择包',
     selectPackagePlaceholder: '请选择一个包',
+  },
+  runtimeTraffic: {
+    title: '流量观察（蓝绿）',
+    modePrefix: '模式：',
+    modeAuto: '自动',
+    modeManual: '手动',
+    modeRollback: '回滚',
+    approve: '通过',
+    cancel: '取消',
+    newVersion: '新版本',
+    oldVersion: '旧版本',
+    connections: '连接',
+    toastCompleted: '蓝绿发布完成：旧版本已下线',
+    toastRolledBack: '已取消发布并回滚至旧版本',
   },
   upgrade: {
     title: '安装插件',
