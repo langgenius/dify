@@ -1009,8 +1009,9 @@ class DraftWorkflowTriggerNodeApi(Resource):
         api.model(
             "DraftWorkflowTriggerNodeRequest",
             {
-                "trigger_name": fields.String(required=True, description="Trigger name"),
+                "event_name": fields.String(required=True, description="Event name"),
                 "subscription_id": fields.String(required=True, description="Subscription ID"),
+                "provider_id": fields.String(required=True, description="Provider ID"),
             },
         )
     )
@@ -1029,16 +1030,19 @@ class DraftWorkflowTriggerNodeApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("trigger_name", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("event_name", type=str, required=True, location="json", nullable=False)
         parser.add_argument("subscription_id", type=str, required=True, location="json", nullable=False)
+        parser.add_argument("provider_id", type=str, required=True, location="json", nullable=False)
         args = parser.parse_args()
-        trigger_name = args["trigger_name"]
+        event_name = args["event_name"]
         subscription_id = args["subscription_id"]
+        provider_id = args["provider_id"]
 
         pool_key = PluginTriggerDebugEvent.build_pool_key(
             tenant_id=app_model.tenant_id,
+            provider_id=provider_id,
             subscription_id=subscription_id,
-            trigger_name=trigger_name,
+            event_name=event_name,
         )
         event: PluginTriggerDebugEvent | None = TriggerDebugService.poll(
             event_type=PluginTriggerDebugEvent,

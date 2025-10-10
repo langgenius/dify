@@ -57,7 +57,7 @@ class PluginTriggerDebugEvent(BaseDebugEvent):
         provider_id = kwargs["provider_id"]
         subscription_id = kwargs["subscription_id"]
         event_name = kwargs["event_name"]
-        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{str(provider_id)}:{subscription_id}:{event_name}"
+        return f"trigger_debug_waiting_pool:{tenant_id}:{str(provider_id)}:{subscription_id}:{event_name}"
 
 
 class WebhookDebugEvent(BaseDebugEvent):
@@ -79,7 +79,7 @@ class WebhookDebugEvent(BaseDebugEvent):
         tenant_id = kwargs["tenant_id"]
         app_id = kwargs["app_id"]
         node_id = kwargs["node_id"]
-        return f"trigger_debug_waiting_pool:{{{tenant_id}}}:{app_id}:{node_id}"
+        return f"trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
 
 
 class TriggerDebugService:
@@ -111,7 +111,7 @@ class TriggerDebugService:
         "if #a==0 then return 0 end;"
         "redis.call('DEL',KEYS[1]);"
         "for i=1,#a do "
-        f"redis.call('SET','trigger_debug_inbox:{{'..ARGV[1]..'}}'..':'..a[i],ARGV[2],'EX',{TRIGGER_DEBUG_EVENT_TTL});"
+        f"redis.call('SET','trigger_debug_inbox:'..ARGV[1]..':'..a[i],ARGV[2],'EX',{TRIGGER_DEBUG_EVENT_TTL});"
         "end;"
         "return #a"
     )
@@ -176,7 +176,7 @@ class TriggerDebugService:
             Event object if available, None otherwise
         """
         address_id: str = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
-        address: str = f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
+        address: str = f"trigger_debug_inbox:{tenant_id}:{address_id}"
 
         try:
             event_data = redis_client.eval(
