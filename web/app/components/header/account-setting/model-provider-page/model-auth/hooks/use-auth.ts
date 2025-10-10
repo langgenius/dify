@@ -90,7 +90,7 @@ export const useAuth = (
         type: 'success',
         message: t('common.api.actionSuccess'),
       })
-      handleRefreshModel(provider, configurationMethod, undefined)
+      handleRefreshModel(provider, undefined, true)
     }
     finally {
       handleSetDoingAction(false)
@@ -125,7 +125,7 @@ export const useAuth = (
         type: 'success',
         message: t('common.api.actionSuccess'),
       })
-      handleRefreshModel(provider, configurationMethod, undefined)
+      handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
     }
@@ -147,7 +147,7 @@ export const useAuth = (
 
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        handleRefreshModel(provider, configurationMethod, undefined)
+        handleRefreshModel(provider, undefined, !payload.credential_id)
       }
     }
     finally {

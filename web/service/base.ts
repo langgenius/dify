@@ -185,9 +185,9 @@ const handleStream = (
   let isFirstMessage = true
   function read() {
     let hasError = false
-    reader?.read().then((result: any) => {
+    reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
       if (result.done) {
-        onCompleted && onCompleted()
+        onCompleted?.()
         return
       }
       buffer += decoder.decode(result.value, { stream: true })
@@ -327,7 +327,21 @@ const handleStream = (
 
 const baseFetch = base
 
-export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
+type UploadOptions = {
+  xhr: XMLHttpRequest
+  method: string
+  url?: string
+  headers?: Record<string, string>
+  data: FormData
+  onprogress?: (this: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => void
+}
+
+type UploadResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<UploadResponse> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   const defaultOptions = {
     method: 'POST',
@@ -335,18 +349,18 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
     },
-    data: {},
   }
-  options = {
+  const mergedOptions = {
     ...defaultOptions,
     ...options,
-    headers: { ...defaultOptions.headers, ...options.headers },
+    url: options.url || defaultOptions.url,
+    headers: { ...defaultOptions.headers, ...options.headers } as Record<string, string>,
   }
   return new Promise((resolve, reject) => {
-    const xhr = options.xhr
-    xhr.open(options.method, options.url)
-    for (const key in options.headers)
-      xhr.setRequestHeader(key, options.headers[key])
+    const xhr = mergedOptions.xhr
+    xhr.open(mergedOptions.method, mergedOptions.url)
+    for (const key in mergedOptions.headers)
+      xhr.setRequestHeader(key, mergedOptions.headers[key])
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
@@ -358,8 +372,9 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
           reject(xhr)
       }
     }
-    xhr.upload.onprogress = options.onprogress
-    xhr.send(options.data)
+    if (mergedOptions.onprogress)
+      xhr.upload.onprogress = mergedOptions.onprogress
+    xhr.send(mergedOptions.data)
   })
 }
 
@@ -434,7 +449,7 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: any) => {
+            res.json().then((data: { code?: string; message?: string }) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)

@@ -9,13 +9,17 @@ import {
   ChunkStructureEnum,
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
+  WeightedScoreEnum,
 } from '../types'
 import type {
-  HybridSearchModeEnum,
   KnowledgeBaseNodeType,
   RerankingModel,
 } from '../types'
+import {
+  HybridSearchModeEnum,
+} from '../types'
 import { isHighQualitySearchMethod } from '../utils'
+import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum } from '@/models/datasets'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()
@@ -34,6 +38,25 @@ export const useConfig = (id: string) => {
       data,
     })
   }, [id, handleNodeDataUpdateWithSyncDraft])
+
+  const getDefaultWeights = useCallback(({
+    embeddingModel,
+    embeddingModelProvider,
+  }: {
+    embeddingModel: string
+    embeddingModelProvider: string
+  }) => {
+    return {
+      vector_setting: {
+        vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+        embedding_provider_name: embeddingModelProvider || '',
+        embedding_model_name: embeddingModel,
+      },
+      keyword_setting: {
+        keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+      },
+    }
+  }, [])
 
   const handleChunkStructureChange = useCallback((chunkStructure: ChunkStructureEnum) => {
     const nodeData = getNodeData()
@@ -80,39 +103,72 @@ export const useConfig = (id: string) => {
     embeddingModelProvider: string
   }) => {
     const nodeData = getNodeData()
-    handleNodeDataUpdate({
+    const defaultWeights = getDefaultWeights({
+      embeddingModel,
+      embeddingModelProvider,
+    })
+    const changeData = {
       embedding_model: embeddingModel,
       embedding_model_provider: embeddingModelProvider,
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
-        vector_setting: {
-          ...nodeData?.data.retrieval_model.vector_setting,
-          embedding_provider_name: embeddingModelProvider,
-          embedding_model_name: embeddingModel,
-        },
       },
-    })
-  }, [getNodeData, handleNodeDataUpdate])
+    }
+    if (changeData.retrieval_model.weights) {
+      changeData.retrieval_model = {
+        ...changeData.retrieval_model,
+        weights: {
+          ...changeData.retrieval_model.weights,
+          vector_setting: {
+            ...changeData.retrieval_model.weights.vector_setting,
+            embedding_provider_name: embeddingModelProvider,
+            embedding_model_name: embeddingModel,
+          },
+        },
+      }
+    }
+    else {
+      changeData.retrieval_model = {
+        ...changeData.retrieval_model,
+        weights: defaultWeights,
+      }
+    }
+    handleNodeDataUpdate(changeData)
+  }, [getNodeData, getDefaultWeights, handleNodeDataUpdate])
 
   const handleRetrievalSearchMethodChange = useCallback((searchMethod: RetrievalSearchMethodEnum) => {
     const nodeData = getNodeData()
-    handleNodeDataUpdate({
+    const changeData = {
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
         search_method: searchMethod,
+        reranking_mode: nodeData?.data.retrieval_model.reranking_mode || RerankingModeEnum.RerankingModel,
       },
-    })
+    }
+    if (searchMethod === RetrievalSearchMethodEnum.hybrid) {
+      changeData.retrieval_model = {
+        ...changeData.retrieval_model,
+        reranking_enable: changeData.retrieval_model.reranking_mode === RerankingModeEnum.RerankingModel,
+      }
+    }
+    handleNodeDataUpdate(changeData)
   }, [getNodeData, handleNodeDataUpdate])
 
   const handleHybridSearchModeChange = useCallback((hybridSearchMode: HybridSearchModeEnum) => {
     const nodeData = getNodeData()
+    const defaultWeights = getDefaultWeights({
+      embeddingModel: nodeData?.data.embedding_model || '',
+      embeddingModelProvider: nodeData?.data.embedding_model_provider || '',
+    })
     handleNodeDataUpdate({
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
         reranking_mode: hybridSearchMode,
+        reranking_enable: hybridSearchMode === HybridSearchModeEnum.RerankingModel,
+        weights: nodeData?.data.retrieval_model.weights || defaultWeights,
       },
     })
-  }, [getNodeData, handleNodeDataUpdate])
+  }, [getNodeData, getDefaultWeights, handleNodeDataUpdate])
 
   const handleRerankingModelEnabledChange = useCallback((rerankingModelEnabled: boolean) => {
     const nodeData = getNodeData()
@@ -130,11 +186,10 @@ export const useConfig = (id: string) => {
       retrieval_model: {
         ...nodeData?.data.retrieval_model,
         weights: {
-          weight_type: 'weighted_score',
+          weight_type: WeightedScoreEnum.Customized,
           vector_setting: {
+            ...nodeData?.data.retrieval_model.weights?.vector_setting,
             vector_weight: weightedScore.value[0],
-            embedding_provider_name: '',
-            embedding_model_name: '',
           },
           keyword_setting: {
             keyword_weight: weightedScore.value[1],

@@ -55,7 +55,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
-  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
+  const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
@@ -120,7 +120,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       setJson(JSON.stringify(schema, null, 2))
   }, [currentTab])
 
-  const handleSubmit = useCallback((schema: any) => {
+  const handleSubmit = useCallback((schema: Record<string, unknown>) => {
     const jsonSchema = jsonToSchema(schema) as SchemaRoot
     if (currentTab === SchemaView.VisualEditor)
       setJsonSchema(jsonSchema)
@@ -139,8 +139,10 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const handleResetDefaults = useCallback(() => {
     if (currentTab === SchemaView.VisualEditor) {
       setHoveringProperty(null)
-      advancedEditing && setAdvancedEditing(false)
-      isAddingNewField && setIsAddingNewField(false)
+      if (advancedEditing)
+        setAdvancedEditing(false)
+      if (isAddingNewField)
+        setIsAddingNewField(false)
     }
     setJsonSchema(DEFAULT_SCHEMA)
     setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
