@@ -18,6 +18,9 @@ from .types import StringUUID
 
 if TYPE_CHECKING:
     from core.entities.mcp_provider import MCPProviderEntity
+    from core.tools.entities.common_entities import I18nObject
+    from core.tools.entities.tool_bundle import ApiToolBundle
+    from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 
 
 # system level tool oauth client params (client_id, client_secret, etc.)
@@ -137,11 +140,15 @@ class ApiToolProvider(Base):
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def schema_type(self) -> ApiProviderSchemaType:
+    def schema_type(self) -> "ApiProviderSchemaType":
+        from core.tools.entities.tool_entities import ApiProviderSchemaType
+
         return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
-    def tools(self) -> list[ApiToolBundle]:
+    def tools(self) -> list["ApiToolBundle"]:
+        from core.tools.entities.tool_bundle import ApiToolBundle
+
         return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
 
     @property
@@ -229,7 +236,9 @@ class WorkflowToolProvider(Base):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
+    def parameter_configurations(self) -> list["WorkflowToolParameterConfiguration"]:
+        from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+
         return [WorkflowToolParameterConfiguration(**config) for config in json.loads(self.parameter_configuration)]
 
     @property
@@ -448,5 +457,7 @@ class DeprecatedPublishedAppTool(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
 
     @property
-    def description_i18n(self) -> I18nObject:
+    def description_i18n(self) -> "I18nObject":
+        from core.tools.entities.common_entities import I18nObject
+
         return I18nObject(**json.loads(self.description))

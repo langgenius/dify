@@ -45,6 +45,7 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]) => {
     return {
       ...parameter,
       variable: parameter.name,
+      type: toType(parameter.type),
       label: parameter.label,
       tooltip: parameter.help,
       show_on: [],
@@ -153,7 +154,7 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
       const value = formSchema.default
       newValues[formSchema.variable] = {
         type: 'constant',
-        value: formSchema.default,
+        value: typeof formSchema.default === 'string' ? formSchema.default.replace(/\n/g, '\\n') : formSchema.default,
       }
       newValues[formSchema.variable] = correctInitialData(formSchema.type, newValues[formSchema.variable], value)
     }

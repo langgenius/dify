@@ -78,6 +78,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           model.provider,
           model.modelId,
           inputs.model.completion_params,
+          true,
         )
         const keys = Object.keys(removedDetails)
         if (keys.length)
@@ -291,6 +292,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             name='text'
             type='string'
             description={t(`${i18nPrefix}.outputVars.output`)}
+          />
+          <VarItem
+            name='reasoning_content'
+            type='string'
+            description={t(`${i18nPrefix}.outputVars.reasoning_content`)}
           />
           <VarItem
             name='usage'

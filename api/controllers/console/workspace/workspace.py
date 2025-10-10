@@ -227,7 +227,7 @@ class WebappLogoWorkspaceApi(Resource):
             raise UnsupportedFileTypeError()
 
         try:
-            upload_file = FileService.upload_file(
+            upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
                 content=file.read(),
                 mimetype=file.mimetype,

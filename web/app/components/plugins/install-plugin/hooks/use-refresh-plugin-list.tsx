@@ -6,6 +6,7 @@ import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/s
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { PluginType } from '../../types'
+import { useInvalidDataSourceList } from '@/service/use-pipeline'
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -16,6 +17,7 @@ const useRefreshPluginList = () => {
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateAllDataSources = useInvalidDataSourceList()
 
   const invalidateStrategyProviders = useInvalidateStrategyProviders()
   return {
@@ -29,6 +31,9 @@ const useRefreshPluginList = () => {
         invalidateAllBuiltInTools()
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
+
+      if ((manifest && PluginType.datasource.includes(manifest.category)) || refreshAllType)
+        invalidateAllDataSources()
 
       // model select
       if ((manifest && PluginType.model.includes(manifest.category)) || refreshAllType) {

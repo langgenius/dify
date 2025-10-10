@@ -3,7 +3,7 @@ import json
 import logging
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
@@ -415,7 +415,7 @@ class MCPToolManageService:
         server_url: str,
         headers: dict[str, str],
         provider_entity: MCPProviderEntity,
-        auth_callback: Callable[[MCPProviderEntity, "MCPToolManageService", Optional[str]], dict[str, str]],
+        auth_callback: Callable[[MCPProviderEntity, "MCPToolManageService", str | None], dict[str, str]],
     ):
         """Retrieve tools from remote MCP server."""
         with MCPClientWithAuthRetry(

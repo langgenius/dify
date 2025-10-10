@@ -73,7 +73,7 @@ const Tool: FC<Props> = ({
     if (isHovering && !isAllSelected) {
       return (
         <span className='system-xs-regular text-components-button-secondary-accent-text'
-          onClick={(e) => {
+          onClick={() => {
             onSelectMultiple?.(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
               const params: Record<string, string> = {}
               if (tool.parameters) {
@@ -90,7 +90,6 @@ const Tool: FC<Props> = ({
                 tool_description: tool.description[language],
                 title: tool.label[language],
                 is_team_authorization: payload.is_team_authorization,
-                output_schema: tool.output_schema,
                 paramSchemas: tool.parameters,
                 params,
               }
@@ -170,7 +169,6 @@ const Tool: FC<Props> = ({
               tool_description: tool.description[language],
               title: tool.label[language],
               is_team_authorization: payload.is_team_authorization,
-              output_schema: tool.output_schema,
               paramSchemas: tool.parameters,
               params,
             })
