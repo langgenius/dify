@@ -88,14 +88,16 @@ export type PluginDeclaration = {
   trigger: PluginTriggerDefinition
 }
 
+export type PluginTriggerSubscriptionConstructor = {
+  credentials_schema: CredentialsSchema[]
+  oauth_schema: OauthSchema
+  parameters: ParametersSchema[]
+}
+
 export type PluginTriggerDefinition = {
   events: Trigger[]
   identity: Identity
-  subscription_constructor: {
-    credentials_schema: CredentialsSchema[]
-    oauth_schema: OauthSchema
-    parameters: ParametersSchema[]
-  }
+  subscription_constructor: PluginTriggerSubscriptionConstructor
   subscription_schema: ParametersSchema[]
 }
 

@@ -22,13 +22,10 @@ export const SubscriptionMenu = memo(({ payload, selectedSubscriptionId, onSubsc
         provider: currentProvider.name,
         declaration: {
           tool: undefined,
-          endpoint: undefined,
+          // @ts-expect-error just remain the necessary fields
           trigger: {
-            subscription_schema: currentProvider.subscription_schema,
-            credentials_schema: currentProvider.credentials_schema,
-            oauth_schema: {
-              client_schema: currentProvider.oauth_client_schema,
-            },
+            subscription_schema: currentProvider.subscription_schema || [],
+            subscription_constructor: currentProvider.subscription_constructor,
           },
         },
       })

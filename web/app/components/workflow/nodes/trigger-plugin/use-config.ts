@@ -51,14 +51,6 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     )
   }, [currentProvider, event_name])
 
-  // Dynamic subscription parameters (from subscription_schema.parameters_schema)
-  const subscriptionParameterSchema = useMemo(() => {
-    if (!currentProvider?.subscription_schema?.parameters_schema) return []
-    return toolParametersToFormSchemas(
-      currentProvider.subscription_schema.parameters_schema as any,
-    )
-  }, [currentProvider])
-
   // Dynamic trigger parameters (from specific trigger.parameters)
   const triggerSpecificParameterSchema = useMemo(() => {
     if (!currentEvent) return []
@@ -126,27 +118,6 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   const showAuthRequired = !isAuthenticated && !!currentProvider
 
-  // Check supported authentication methods
-  const supportedAuthMethods = useMemo(() => {
-    if (!currentProvider) return []
-
-    const methods = []
-
-    if (
-      currentProvider.oauth_client_schema
-      && currentProvider.oauth_client_schema.length > 0
-    )
-      methods.push('oauth')
-
-    if (
-      currentProvider.credentials_schema
-      && currentProvider.credentials_schema.length > 0
-    )
-      methods.push('api_key')
-
-    return methods
-  }, [currentProvider])
-
   return {
     readOnly,
     inputs,
@@ -154,14 +125,12 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     currentTrigger: currentEvent,
     triggerParameterSchema,
     triggerParameterValue,
-    subscriptionParameterSchema,
     setTriggerParameterValue,
     setInputVar,
     outputSchema,
     hasObjectOutput,
     isAuthenticated,
     showAuthRequired,
-    supportedAuthMethods,
   }
 }
 

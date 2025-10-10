@@ -58,9 +58,9 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     })),
 
     // Trigger-specific schema fields
-    credentials_schema: provider.credentials_schema,
-    oauth_client_schema: provider.oauth_client_schema,
+    subscription_constructor: provider.subscription_constructor,
     subscription_schema: provider.subscription_schema,
+    supported_creation_methods: provider.supported_creation_methods,
 
     meta: {
       version: '1.0',

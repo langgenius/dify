@@ -17,7 +17,7 @@ import {
   RiClipboardLine,
   RiInformation2Fill,
 } from '@remixicon/react'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../store'
 
@@ -48,9 +48,8 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
   const clientFormRef = React.useRef<FormRefObject>(null)
 
-  const providerName = useMemo(() => !detail ? '' : `${detail?.plugin_id}/${detail?.declaration.name}`, [detail])
-  const clientSchema = detail?.declaration.trigger?.oauth_schema?.client_schema || []
-
+  const oauthClientSchema = detail?.declaration.trigger?.subscription_constructor?.oauth_schema?.client_schema || []
+  const providerName = detail?.provider || ''
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
   const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
@@ -226,9 +225,9 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           </div>
         </div>
       )}
-      {clientType === ClientTypeEnum.Custom && clientSchema.length > 0 && (
+      {clientType === ClientTypeEnum.Custom && oauthClientSchema.length > 0 && (
         <Form
-          formSchemas={clientSchema}
+          formSchemas={oauthClientSchema}
           ref={clientFormRef}
           defaultValues={oauthConfig?.params}
         />

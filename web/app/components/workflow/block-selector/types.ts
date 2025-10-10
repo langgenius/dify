@@ -1,5 +1,5 @@
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { PluginMeta, SupportedCreationMethods } from '../../plugins/types'
+import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 
 export enum TabsEnum {
@@ -200,8 +200,8 @@ export type TriggerProviderApiEntity = {
   plugin_unique_identifier: string
   supported_creation_methods: SupportedCreationMethods[]
   credentials_schema: TriggerCredentialField[]
-  oauth_client_schema: TriggerCredentialField[]
-  subscription_schema: TriggerSubscriptionSchema
+  subscription_constructor: PluginTriggerSubscriptionConstructor
+  subscription_schema: ParametersSchema[]
   events: TriggerApiEntity[]
 }
 
@@ -211,8 +211,9 @@ export type TriggerWithProvider = Collection & {
   meta: PluginMeta
   plugin_unique_identifier: string
   credentials_schema?: TriggerCredentialField[]
-  oauth_client_schema?: TriggerCredentialField[]
-  subscription_schema?: TriggerSubscriptionSchema
+  subscription_constructor: PluginTriggerSubscriptionConstructor
+  subscription_schema?: ParametersSchema[]
+  supported_creation_methods: SupportedCreationMethods[]
 }
 
 // ===== API Service Types =====
