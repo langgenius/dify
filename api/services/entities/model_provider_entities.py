@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -13,6 +12,7 @@ from core.entities.provider_entities import (
     CustomModelConfiguration,
     ProviderQuotaType,
     QuotaConfiguration,
+    UnaddedModelConfiguration,
 )
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
@@ -41,10 +41,11 @@ class CustomConfigurationResponse(BaseModel):
     """
 
     status: CustomConfigurationStatus
-    current_credential_id: Optional[str] = None
-    current_credential_name: Optional[str] = None
-    available_credentials: Optional[list[CredentialConfiguration]] = None
-    custom_models: Optional[list[CustomModelConfiguration]] = None
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    available_credentials: list[CredentialConfiguration] | None = None
+    custom_models: list[CustomModelConfiguration] | None = None
+    can_added_models: list[UnaddedModelConfiguration] | None = None
 
 
 class SystemConfigurationResponse(BaseModel):
@@ -53,7 +54,7 @@ class SystemConfigurationResponse(BaseModel):
     """
 
     enabled: bool
-    current_quota_type: Optional[ProviderQuotaType] = None
+    current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
 
 
@@ -65,15 +66,15 @@ class ProviderResponse(BaseModel):
     tenant_id: str
     provider: str
     label: I18nObject
-    description: Optional[I18nObject] = None
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
-    background: Optional[str] = None
-    help: Optional[ProviderHelpEntity] = None
+    description: I18nObject | None = None
+    icon_small: I18nObject | None = None
+    icon_large: I18nObject | None = None
+    background: str | None = None
+    help: ProviderHelpEntity | None = None
     supported_model_types: list[ModelType]
     configurate_methods: list[ConfigurateMethod]
-    provider_credential_schema: Optional[ProviderCredentialSchema] = None
-    model_credential_schema: Optional[ModelCredentialSchema] = None
+    provider_credential_schema: ProviderCredentialSchema | None = None
+    model_credential_schema: ModelCredentialSchema | None = None
     preferred_provider_type: ProviderType
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
@@ -81,7 +82,7 @@ class ProviderResponse(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -106,12 +107,12 @@ class ProviderWithModelsResponse(BaseModel):
     tenant_id: str
     provider: str
     label: I18nObject
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
+    icon_small: I18nObject | None = None
+    icon_large: I18nObject | None = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -135,7 +136,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
 
     tenant_id: str
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data):
         super().__init__(**data)
 
         url_prefix = (
@@ -172,7 +173,7 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
 
     provider: SimpleProviderEntityResponse
 
-    def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
+    def __init__(self, tenant_id: str, model: ModelWithProviderEntity):
         dump_model = model.model_dump()
         dump_model["provider"]["tenant_id"] = tenant_id
         super().__init__(**dump_model)

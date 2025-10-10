@@ -93,6 +93,7 @@ const translation = {
     freeTrialTipPrefix: 'Regístrate y obtén un',
     apiRateLimitTooltip: 'El límite de tasa de la API se aplica a todas las solicitudes realizadas a través de la API de Dify, incluidos la generación de texto, las conversaciones de chat, las ejecuciones de flujo de trabajo y el procesamiento de documentos.',
     documentsRequestQuotaTooltip: 'Especifica el número total de acciones que un espacio de trabajo puede realizar por minuto dentro de la base de conocimientos, incluyendo la creación, eliminación, actualización de conjuntos de datos, carga de documentos, modificaciones, archivo y consultas a la base de conocimientos. Esta métrica se utiliza para evaluar el rendimiento de las solicitudes a la base de conocimientos. Por ejemplo, si un usuario de Sandbox realiza 10 pruebas consecutivas en un minuto, su espacio de trabajo será temporalmente restringido de realizar las siguientes acciones durante el siguiente minuto: creación de conjuntos de datos, eliminación, actualizaciones y carga o modificaciones de documentos.',
+    startBuilding: 'Empezar a construir',
   },
   plans: {
     sandbox: {

@@ -57,12 +57,19 @@ class TestOpenDAL:
     def test_load_stream(self):
         """Test loading data as a stream."""
         filename = get_example_filename()
-        data = get_example_data()
+        chunks = 5
+        chunk_size = 4096
+        data = get_example_data(length=chunk_size * chunks)
 
         self.storage.save(filename, data)
         generator = self.storage.load_stream(filename)
         assert isinstance(generator, Generator)
-        assert next(generator) == data
+        for i in range(chunks):
+            fetched = next(generator)
+            assert len(fetched) == chunk_size
+            assert fetched == data[i * chunk_size : (i + 1) * chunk_size]
+        with pytest.raises(StopIteration):
+            next(generator)
 
     def test_download(self):
         """Test downloading data to a file."""

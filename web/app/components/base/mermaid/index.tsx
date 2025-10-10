@@ -107,10 +107,13 @@ const initMermaid = () => {
   return isMermaidInitialized
 }
 
-const Flowchart = React.forwardRef((props: {
+type FlowchartProps = {
   PrimitiveCode: string
   theme?: 'light' | 'dark'
-}, ref) => {
+  ref?: React.Ref<HTMLDivElement>
+}
+
+const Flowchart = (props: FlowchartProps) => {
   const { t } = useTranslation()
   const [svgString, setSvgString] = useState<string | null>(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
@@ -490,7 +493,7 @@ const Flowchart = React.forwardRef((props: {
   }
 
   return (
-    <div ref={ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
+    <div ref={props.ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
       <div className={themeClasses.segmented}>
         <div className="msh-segmented-group">
           <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
@@ -529,16 +532,16 @@ const Flowchart = React.forwardRef((props: {
       {isLoading && !svgString && (
         <div className='px-[26px] py-4'>
           <LoadingAnim type='text'/>
-            <div className="mt-2 text-sm text-gray-500">
-              {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
-            </div>
+          <div className="mt-2 text-sm text-gray-500">
+            {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
+          </div>
         </div>
       )}
 
       {svgString && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={handlePreviewClick}>
           <div className="absolute bottom-2 left-2 z-[100]">
-            <button
+            <button type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 toggleTheme()
@@ -572,7 +575,7 @@ const Flowchart = React.forwardRef((props: {
       )}
     </div>
   )
-})
+}
 
 Flowchart.displayName = 'Flowchart'
 

@@ -95,10 +95,9 @@ export class DifyClient {
     headerParams = {}
   ) {
     const headers = {
-      ...{
+      
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
-      },
       ...headerParams
     };
 

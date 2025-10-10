@@ -1,9 +1,7 @@
 name: Style check
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_call:
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -13,7 +11,6 @@ permissions:
   checks: write
   statuses: write
   contents: read
-
 
 jobs:
   python-style:
@@ -46,20 +43,21 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
-      - name: Ruff check
+      - name: Run Import Linter
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          uv run --directory api ruff --version
-          uv run --directory api ruff check ./
-          uv run --directory api ruff format --check ./
+        run: uv run --directory api --dev lint-imports
+
+      - name: Run Basedpyright Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: dev/basedpyright-check
+
+      - name: Run Mypy Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
-
-      - name: Lint hints
-        if: failure()
-        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
   web-style:
     name: Web Style
@@ -102,7 +100,8 @@ jobs:
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run lint
+        run: |
+          pnpm run lint
 
   docker-compose-template:
     name: Docker Compose Template

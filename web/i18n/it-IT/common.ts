@@ -209,8 +209,6 @@ const translation = {
     delete: 'Elimina Account',
     deleteTip:
       'Eliminando il tuo account cancellerai permanentemente tutti i tuoi dati e non sarà possibile recuperarli.',
-    deleteConfirmTip:
-      'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
     myAccount: 'Il mio account',
     account: 'Conto',
     studio: 'Dify Studio',
@@ -518,7 +516,18 @@ const translation = {
       unAuthorized: 'Non autorizzato',
       specifyModelCredentialTip: 'Usa una credenziale di modello configurato.',
       configModel: 'Configura modello',
+      addNewModelCredential: 'Aggiungere nuove credenziali del modello',
+      selectModelCredential: 'Seleziona una credenziale del modello',
+      customModelCredentials: 'Credenziali del modello personalizzato',
+      manageCredentials: 'Gestisci credenziali',
+      customModelCredentialsDeleteTip: 'La credenziale è in uso e non può essere eliminata',
+      addModel: 'Aggiungi modello',
+      modelCredential: 'Credenziale del modello',
+      removeModel: 'Rimuovi modello',
+      editModelCredential: 'Modificare le credenziali del modello',
     },
+    parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
+    installDataSourceProvider: 'Installa i fornitori di sorgenti dati',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
@@ -620,6 +629,7 @@ const translation = {
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
     noRelatedApp: 'Nessuna app collegata',
+    pipeline: 'Oleodotto',
   },
   voiceInput: {
     speaking: 'Parla ora...',
@@ -773,6 +783,15 @@ const translation = {
   avatar: {
     deleteTitle: 'Rimuovi avatar',
     deleteDescription: 'Sei sicuro di voler rimuovere la tua immagine del profilo? Il tuo account utilizzerà l\'avatar iniziale predefinito.',
+  },
+  feedback: {
+    title: 'Fornire feedback',
+    content: 'Contenuto del feedback',
+    subtitle: 'Per favore, dicci cosa è andato storto con questa risposta.',
+    placeholder: 'Per favore descrivi cosa è andato storto o come possiamo migliorare...',
+  },
+  label: {
+    optional: '(Facoltativo)',
   },
 }
 

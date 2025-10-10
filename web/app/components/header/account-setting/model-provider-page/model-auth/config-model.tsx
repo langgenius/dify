@@ -25,7 +25,7 @@ const ConfigModel = ({
   if (loadBalancingInvalid) {
     return (
       <div
-        className='system-2xs-medium-uppercase relative flex h-[18px] items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 text-text-warning'
+        className='system-2xs-medium-uppercase relative flex h-[18px] cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 text-text-warning'
         onClick={onClick}
       >
         <RiScales3Line className='mr-0.5 h-3 w-3' />

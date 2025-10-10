@@ -30,7 +30,6 @@ const translation = {
       sync: '同步',
       resume: '恢復',
       pause: '暫停',
-      download: '下載檔案',
     },
     index: {
       enable: '啟用中',
@@ -99,6 +98,9 @@ const translation = {
       upload_file: '檔案上傳',
       notion: '從 Notion 同步的文件',
       github: '從 Github 同步的程式碼',
+      local_file: '本機檔案',
+      website_crawl: '網站抓取',
+      online_document: '線上文件',
     },
     type: {
       book: '書籍',
@@ -336,6 +338,7 @@ const translation = {
     parentMaxTokens: '父母',
     childMaxTokens: '孩子',
     pause: '暫停',
+    waiting: '嵌入等待中...',
   },
   segment: {
     paragraphs: '段落',
