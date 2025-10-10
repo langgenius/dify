@@ -4,6 +4,35 @@ import type { PluginTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import useConfig from './use-config'
 
+const formatConfigValue = (rawValue: any): string => {
+  if (rawValue === null || rawValue === undefined)
+    return ''
+
+  if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean')
+    return String(rawValue)
+
+  if (Array.isArray(rawValue))
+    return rawValue.join('.')
+
+  if (typeof rawValue === 'object') {
+    const { value } = rawValue as { value?: any }
+    if (value === null || value === undefined)
+      return ''
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+      return String(value)
+    if (Array.isArray(value))
+      return value.join('.')
+    try {
+      return JSON.stringify(value)
+    }
+    catch {
+      return ''
+    }
+  }
+
+  return ''
+}
+
 const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   id,
   data,
@@ -31,12 +60,15 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
               {key}
             </div>
             <div
-              title={String(config[key] || '')}
+              title={formatConfigValue(config[key])}
               className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
             >
-              {typeof config[key] === 'string' && config[key].includes('secret')
-                ? '********'
-                : String(config[key] || '')}
+              {(() => {
+                const displayValue = formatConfigValue(config[key])
+                if (displayValue.includes('secret'))
+                  return '********'
+                return displayValue
+              })()}
             </div>
           </div>
         ))}
