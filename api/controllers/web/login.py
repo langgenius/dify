@@ -25,7 +25,6 @@ from libs.token import (
 from services.account_service import AccountService
 from services.app_service import AppService
 from services.webapp_auth_service import WebAppAuthService
-from constants import HEADER_NAME_APP_CODE
 
 
 @web_ns.route("/login")
