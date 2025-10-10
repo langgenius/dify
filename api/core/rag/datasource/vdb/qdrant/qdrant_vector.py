@@ -150,9 +150,7 @@ class QdrantVector(BaseVector):
                     collection_name, Field.GROUP_KEY, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create doc_id payload index
-                self._client.create_payload_index(
-                    collection_name, Field.DOC_ID, field_schema=PayloadSchemaType.KEYWORD
-                )
+                self._client.create_payload_index(collection_name, Field.DOC_ID, field_schema=PayloadSchemaType.KEYWORD)
                 # create document_id payload index
                 self._client.create_payload_index(
                     collection_name, Field.DOCUMENT_ID, field_schema=PayloadSchemaType.KEYWORD
@@ -165,9 +163,7 @@ class QdrantVector(BaseVector):
                     max_token_len=20,
                     lowercase=True,
                 )
-                self._client.create_payload_index(
-                    collection_name, Field.CONTENT_KEY, field_schema=text_index_params
-                )
+                self._client.create_payload_index(collection_name, Field.CONTENT_KEY, field_schema=text_index_params)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):

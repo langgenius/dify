@@ -795,9 +795,7 @@ class ClickzettaVector(BaseVector):
             safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
             # Use json_extract_string function for ClickZetta compatibility
-            filter_clauses.append(
-                f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})"
-            )
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})")
 
         # No need for dataset_id filter since each dataset has its own table
 
@@ -808,9 +806,7 @@ class ClickzettaVector(BaseVector):
             distance_func = "COSINE_DISTANCE"
             if score_threshold > 0:
                 query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
-                filter_clauses.append(
-                    f"{distance_func}({Field.VECTOR}, {query_vector_str}) < {2 - score_threshold}"
-                )
+                filter_clauses.append(f"{distance_func}({Field.VECTOR}, {query_vector_str}) < {2 - score_threshold}")
         else:
             # For L2 distance, smaller is better
             distance_func = "L2_DISTANCE"
@@ -887,9 +883,7 @@ class ClickzettaVector(BaseVector):
             safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
             # Use json_extract_string function for ClickZetta compatibility
-            filter_clauses.append(
-                f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})"
-            )
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})")
 
         # No need for dataset_id filter since each dataset has its own table
 
@@ -986,9 +980,7 @@ class ClickzettaVector(BaseVector):
             safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
             # Use json_extract_string function for ClickZetta compatibility
-            filter_clauses.append(
-                f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})"
-            )
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})")
 
         # No need for dataset_id filter since each dataset has its own table
 
