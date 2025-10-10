@@ -10,7 +10,6 @@ from pymochow.model.database import Database
 from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState
 from pymochow.model.schema import HNSWParams, VectorIndex
 from pymochow.model.table import Table
-from requests.adapters import HTTPAdapter
 
 
 class AttrDict(UserDict):
