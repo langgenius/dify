@@ -219,9 +219,7 @@ class ChatClient(DifyClient):
         url = f"/conversations/{conversation_id}/variables"
         return self._send_request("GET", url, params=params)
 
-    def update_conversation_variable(
-        self, conversation_id: str, variable_id: str, value: Any, user: str
-    ):
+    def update_conversation_variable(self, conversation_id: str, variable_id: str, value: Any, user: str):
         """Update a specific conversation variable.
 
         Args:

@@ -411,7 +411,6 @@ class TestNewServiceAPIs(unittest.TestCase):
         for method in workspace_methods:
             self.assertTrue(hasattr(workspace_client, method), f"WorkspaceClient missing method: {method}")
 
-
     @patch("dify_client.client.requests.request")
     def test_missing_core_apis_dataset(self, mock_request):
         """Test missing core dataset APIs - get_dataset and update_dataset."""
