@@ -57,4 +57,3 @@ jobs:
         env:
           DEBUG: true
         run: uv run --directory api flask upgrade-db
-
