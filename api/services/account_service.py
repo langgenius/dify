@@ -1315,7 +1315,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
             )
-            account.status = AccountStatus.ACTIVE if not status else status
+            account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
             if open_id is not None and provider is not None:
