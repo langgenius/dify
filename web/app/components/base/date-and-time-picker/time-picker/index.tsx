@@ -178,7 +178,7 @@ const TimePicker = ({
       }, 0)
     }
     setIsOpen(false)
-  }, [selectedTime])
+  }, [selectedTime, onChange])
 
   const timeFormat = 'hh:mm A'
 
