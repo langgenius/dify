@@ -22,6 +22,7 @@ Example:
 import json
 from typing import Literal, Dict, List, Any, IO
 
+import aiofiles
 import httpx
 
 
@@ -306,9 +307,9 @@ class AsyncChatClient(AsyncDifyClient):
     async def annotation_reply_action(
         self,
         action: Literal["enable", "disable"],
-        score_threshold: float,
-        embedding_provider_name: str,
-        embedding_model_name: str,
+        score_threshold: float | None,
+        embedding_provider_name: str | None,
+        embedding_model_name: str | None,
     ):
         """Enable or disable annotation reply feature."""
         if score_threshold is None or embedding_provider_name is None or embedding_model_name is None:
@@ -488,7 +489,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
 
     async def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs):
         """List all datasets."""
-        return await self._send_request("GET", f"/datasets?page={page}&limit={page_size}", **kwargs)
+        return await self._send_request("GET", "/datasets", params={"page": page, "limit": page_size}, **kwargs)
 
     async def create_document_by_text(self, name: str, text: str, extra_params: dict | None = None, **kwargs):
         """Create a document by text.
@@ -534,8 +535,9 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         extra_params: dict | None = None,
     ):
         """Create a document by file."""
-        with open(file_path, "rb") as f:
-            files = {"file": f}
+        async with aiofiles.open(file_path, "rb") as f:
+            file_content = await f.read()
+            files = {"file": (file_path.split("/")[-1], file_content)}
             data = {
                 "process_rule": {"mode": "automatic"},
                 "indexing_technique": "high_quality",
@@ -549,8 +551,9 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
 
     async def update_document_by_file(self, document_id: str, file_path: str, extra_params: dict | None = None):
         """Update a document by file."""
-        with open(file_path, "rb") as f:
-            files = {"file": f}
+        async with aiofiles.open(file_path, "rb") as f:
+            file_content = await f.read()
+            files = {"file": (file_path.split("/")[-1], file_content)}
             data = {}
             if extra_params is not None and isinstance(extra_params, dict):
                 data.update(extra_params)
@@ -611,7 +614,7 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
         if status is not None:
             params["status"] = status
         if "params" in kwargs:
-            params.update(kwargs["params"])
+            params.update(kwargs.pop("params"))
         return await self._send_request("GET", url, params=params, **kwargs)
 
     async def delete_document_segment(self, document_id: str, segment_id: str):
@@ -742,8 +745,9 @@ class AsyncKnowledgeBaseClient(AsyncDifyClient):
 
     async def upload_pipeline_file(self, file_path: str):
         """Upload file for RAG pipeline."""
-        with open(file_path, "rb") as f:
-            files = {"file": f}
+        async with aiofiles.open(file_path, "rb") as f:
+            file_content = await f.read()
+            files = {"file": (file_path.split("/")[-1], file_content)}
             return await self._send_request_with_files("POST", "/datasets/pipeline/file-upload", {}, files)
 
     # Dataset Management APIs

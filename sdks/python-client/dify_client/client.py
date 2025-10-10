@@ -246,9 +246,9 @@ class ChatClient(DifyClient):
     def annotation_reply_action(
         self,
         action: Literal["enable", "disable"],
-        score_threshold: float,
-        embedding_provider_name: str,
-        embedding_model_name: str,
+        score_threshold: float | None,
+        embedding_provider_name: str | None,
+        embedding_model_name: str | None,
     ):
         """Enable or disable annotation reply feature."""
         # Backend API requires these fields to be non-None values
@@ -419,7 +419,7 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", "/datasets", {"name": name}, **kwargs)
 
     def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs):
-        return self._send_request("GET", f"/datasets?page={page}&limit={page_size}", **kwargs)
+        return self._send_request("GET", "/datasets", params={"page": page, "limit": page_size}, **kwargs)
 
     def create_document_by_text(self, name, text, extra_params: dict | None = None, **kwargs):
         """
@@ -660,7 +660,7 @@ class KnowledgeBaseClient(DifyClient):
         if status is not None:
             params["status"] = status
         if "params" in kwargs:
-            params.update(kwargs["params"])
+            params.update(kwargs.pop("params"))
         return self._send_request("GET", url, params=params, **kwargs)
 
     def delete_document_segment(self, document_id: str, segment_id: str):
