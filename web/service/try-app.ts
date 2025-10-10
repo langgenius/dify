@@ -7,7 +7,7 @@ import type {
 
 type TryAppInfo = {
   name: string
-  mode: 'chat' | 'text-generation' | 'workflow'
+  mode: 'chat' | 'advanced-chat' | 'text-generation' | 'workflow'
   site: SiteInfo
 }
 

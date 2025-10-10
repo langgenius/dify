@@ -16,7 +16,7 @@ const TryApp: FC<Props> = ({
 }) => {
   const { isFetching: isFetchingAppInfo, data: appInfo } = useGetTryAppInfo(appId)
   const mode = appInfo?.mode
-  const isChat = mode === 'chat'
+  const isChat = mode === 'chat' || mode === 'advanced-chat'
   const isCompletion = !isChat
   if (isFetchingAppInfo) {
     return (

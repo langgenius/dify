@@ -32,7 +32,7 @@ const TryApp: FC<Props> = ({
       disableFeedback: true,
       isMobile,
       themeBuilder,
-    }}>
+    } as any}>
       <div className={cn('bg-background-section-burn', className)}>
         <ChatWrapper />
       </div>

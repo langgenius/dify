@@ -14,7 +14,6 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import {
-  AppSourceType,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
@@ -53,9 +52,9 @@ const ChatWrapper = () => {
     setIsResponding,
     allInputsHidden,
     initUserVariables,
+    appSourceType,
   } = useEmbeddedChatbotContext()
 
-  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const appConfig = useMemo(() => {
     const config = appParams || {}
 
