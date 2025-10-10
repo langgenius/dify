@@ -256,7 +256,7 @@ class DataSourceNotionApi(Resource):
             credential_id = notion_info.get("credential_id")
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.NOTION.value,
+                    datasource_type=DatasourceType.NOTION,
                     notion_info=NotionInfo.model_validate(
                         {
                             "credential_id": credential_id,

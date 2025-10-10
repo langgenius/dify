@@ -304,7 +304,7 @@ class AppCopyApi(Resource):
             account = cast(Account, current_user)
             result = import_service.import_app(
                 account=account,
-                import_mode=ImportMode.YAML_CONTENT.value,
+                import_mode=ImportMode.YAML_CONTENT,
                 yaml_content=yaml_content,
                 name=args.get("name"),
                 description=args.get("description"),

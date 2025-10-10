@@ -343,7 +343,7 @@ class IndexingRunner:
 
             if file_detail:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value,
+                    datasource_type=DatasourceType.FILE,
                     upload_file=file_detail,
                     document_model=dataset_document.doc_form,
                 )
@@ -356,7 +356,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.NOTION.value,
+                datasource_type=DatasourceType.NOTION,
                 notion_info=NotionInfo.model_validate(
                     {
                         "credential_id": data_source_info["credential_id"],
@@ -379,7 +379,7 @@ class IndexingRunner:
             ):
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.WEBSITE.value,
+                datasource_type=DatasourceType.WEBSITE,
                 website_info=WebsiteInfo.model_validate(
                     {
                         "provider": data_source_info["provider"],

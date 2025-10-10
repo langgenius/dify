@@ -556,7 +556,7 @@ class RagPipelineDslService:
 
         graph = workflow_data.get("graph", {})
         for node in graph.get("nodes", []):
-            if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
+            if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     decrypted_id
@@ -613,7 +613,7 @@ class RagPipelineDslService:
                 tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 features="{}",
-                type=WorkflowType.RAG_PIPELINE.value,
+                type=WorkflowType.RAG_PIPELINE,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
@@ -689,17 +689,17 @@ class RagPipelineDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL.value:
+            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     self.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=pipeline.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL.value:
+            if not include_secret and data_type == NodeType.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT.value:
+            if not include_secret and data_type == NodeType.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
 
@@ -733,35 +733,35 @@ class RagPipelineDslService:
             try:
                 typ = node.get("data", {}).get("type")
                 match typ:
-                    case NodeType.TOOL.value:
+                    case NodeType.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
-                    case NodeType.DATASOURCE.value:
+                    case NodeType.DATASOURCE:
                         datasource_entity = DatasourceNodeData.model_validate(node["data"])
                         if datasource_entity.provider_type != "local_file":
                             dependencies.append(datasource_entity.plugin_id)
-                    case NodeType.LLM.value:
+                    case NodeType.LLM:
                         llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER.value:
+                    case NodeType.QUESTION_CLASSIFIER:
                         question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR.value:
+                    case NodeType.PARAMETER_EXTRACTOR:
                         parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_INDEX.value:
+                    case NodeType.KNOWLEDGE_INDEX:
                         knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
                         if knowledge_index_entity.indexing_technique == "high_quality":
                             if knowledge_index_entity.embedding_model_provider:
@@ -782,7 +782,7 @@ class RagPipelineDslService:
                                                 knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name
                                             ),
                                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL.value:
+                    case NodeType.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:
@@ -927,7 +927,7 @@ class RagPipelineDslService:
         account = cast(Account, current_user)
         rag_pipeline_import_info: RagPipelineImportInfo = self.import_rag_pipeline(
             account=account,
-            import_mode=ImportMode.YAML_CONTENT.value,
+            import_mode=ImportMode.YAML_CONTENT,
             yaml_content=rag_pipeline_dataset_create_entity.yaml_content,
             dataset=None,
             dataset_name=rag_pipeline_dataset_create_entity.name,

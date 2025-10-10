@@ -141,15 +141,15 @@ class TidbOnQdrantVector(BaseVector):
 
                 # create group_id payload index
                 self._client.create_payload_index(
-                    collection_name, Field.GROUP_KEY.value, field_schema=PayloadSchemaType.KEYWORD
+                    collection_name, Field.GROUP_KEY, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create doc_id payload index
                 self._client.create_payload_index(
-                    collection_name, Field.DOC_ID.value, field_schema=PayloadSchemaType.KEYWORD
+                    collection_name, Field.DOC_ID, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create document_id payload index
                 self._client.create_payload_index(
-                    collection_name, Field.DOCUMENT_ID.value, field_schema=PayloadSchemaType.KEYWORD
+                    collection_name, Field.DOCUMENT_ID, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create full text index
                 text_index_params = TextIndexParams(
@@ -160,7 +160,7 @@ class TidbOnQdrantVector(BaseVector):
                     lowercase=True,
                 )
                 self._client.create_payload_index(
-                    collection_name, Field.CONTENT_KEY.value, field_schema=text_index_params
+                    collection_name, Field.CONTENT_KEY, field_schema=text_index_params
                 )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
@@ -211,10 +211,10 @@ class TidbOnQdrantVector(BaseVector):
                     self._build_payloads(
                         batch_texts,
                         batch_metadatas,
-                        Field.CONTENT_KEY.value,
-                        Field.METADATA_KEY.value,
+                        Field.CONTENT_KEY,
+                        Field.METADATA_KEY,
                         group_id or "",
-                        Field.GROUP_KEY.value,
+                        Field.GROUP_KEY,
                     ),
                 )
             ]
@@ -349,13 +349,13 @@ class TidbOnQdrantVector(BaseVector):
         for result in results:
             if result.payload is None:
                 continue
-            metadata = result.payload.get(Field.METADATA_KEY.value) or {}
+            metadata = result.payload.get(Field.METADATA_KEY) or {}
             # duplicate check score threshold
             score_threshold = kwargs.get("score_threshold") or 0.0
             if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
-                    page_content=result.payload.get(Field.CONTENT_KEY.value, ""),
+                    page_content=result.payload.get(Field.CONTENT_KEY, ""),
                     metadata=metadata,
                 )
                 docs.append(doc)
@@ -392,7 +392,7 @@ class TidbOnQdrantVector(BaseVector):
         documents = []
         for result in results:
             if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY.value, Field.METADATA_KEY.value)
+                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
                 documents.append(document)
 
         return documents

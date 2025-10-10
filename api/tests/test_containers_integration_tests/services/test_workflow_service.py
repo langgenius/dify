@@ -130,7 +130,7 @@ class TestWorkflowService:
             id=fake.uuid4(),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps({"nodes": [], "edges": []}),
             features=json.dumps({"features": []}),
@@ -176,7 +176,7 @@ class TestWorkflowService:
         node_execution.node_type = "test_node"
         node_execution.title = "Test Node"  # Required field
         node_execution.status = "succeeded"
-        node_execution.created_by_role = CreatorUserRole.ACCOUNT.value  # Required field
+        node_execution.created_by_role = CreatorUserRole.ACCOUNT  # Required field
         node_execution.created_by = account.id  # Required field
         node_execution.created_at = fake.date_time_this_year()
 

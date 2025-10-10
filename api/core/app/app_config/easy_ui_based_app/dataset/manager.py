@@ -197,12 +197,12 @@ class DatasetConfigManager:
 
         # strategy
         if "strategy" not in config["agent_mode"] or not config["agent_mode"].get("strategy"):
-            config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
+            config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER
 
         has_datasets = False
         if config.get("agent_mode", {}).get("strategy") in {
-            PlanningStrategy.ROUTER.value,
-            PlanningStrategy.REACT_ROUTER.value,
+            PlanningStrategy.ROUTER,
+            PlanningStrategy.REACT_ROUTER,
         }:
             for tool in config.get("agent_mode", {}).get("tools", []):
                 key = list(tool.keys())[0]

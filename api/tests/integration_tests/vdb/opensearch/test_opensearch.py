@@ -129,8 +129,8 @@ class TestOpenSearchVector:
                 "hits": [
                     {
                         "_source": {
-                            Field.CONTENT_KEY.value: get_example_text(),
-                            Field.METADATA_KEY.value: {"document_id": self.example_doc_id},
+                            Field.CONTENT_KEY: get_example_text(),
+                            Field.METADATA_KEY: {"document_id": self.example_doc_id},
                         },
                         "_score": 1.0,
                     }

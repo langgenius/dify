@@ -53,7 +53,7 @@ def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:
 
     # fetch all knowledge retrieval nodes
     knowledge_retrieval_nodes = [
-        node for node in nodes if node.get("data", {}).get("type") == NodeType.KNOWLEDGE_RETRIEVAL.value
+        node for node in nodes if node.get("data", {}).get("type") == NodeType.KNOWLEDGE_RETRIEVAL
     ]
 
     if not knowledge_retrieval_nodes:

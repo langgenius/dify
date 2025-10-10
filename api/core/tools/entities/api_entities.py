@@ -61,7 +61,7 @@ class ToolProviderApiEntity(BaseModel):
         for tool in tools:
             if tool.get("parameters"):
                 for parameter in tool.get("parameters"):
-                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
+                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
                     if parameter.get("input_schema") is None:
                         parameter.pop("input_schema", None)
