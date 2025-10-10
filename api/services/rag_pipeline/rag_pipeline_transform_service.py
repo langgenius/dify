@@ -126,9 +126,11 @@ class RagPipelineTransformService:
                     raise ValueError(f"Unsupported doc form {doc_form}")
             if not file_name:
                 raise ValueError(f"Unsupported doc form {doc_form} with {datasource_type}")
-        except KeyError:
+        except KeyError as e:
+            missing_key = e.args[0] if e.args else "unknown"
             raise ValueError(
-                f"Unsupported datasource type {datasource_type} or indexing technique {indexing_technique or ''}"
+                f"Missing key '{missing_key}' in yaml_map. "
+                f"doc_form: {doc_form}, datasource_type: {datasource_type}, indexing_technique: {indexing_technique or ''}"
             )
         file_path = Path(__file__).parent / f"transform/{file_name}"
         with open(file_path) as f:
