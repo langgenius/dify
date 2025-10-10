@@ -90,7 +90,7 @@ class BuiltinToolProviderController(ToolProviderController):
             tools.append(
                 assistant_tool_class(
                     provider=provider,
-                    entity=ToolEntity(**tool),
+                    entity=ToolEntity.model_validate(tool),
                     runtime=ToolRuntime(tenant_id=""),
                 )
             )
