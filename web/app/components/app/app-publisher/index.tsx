@@ -348,7 +348,8 @@ const AppPublisher = ({
                     <SuggestedAction
                       className='flex-1'
                       onClick={() => {
-                        publishedAt && handleOpenInExplore()
+                        if (publishedAt)
+                          handleOpenInExplore()
                       }}
                       disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
                       icon={<RiPlanetLine className='h-4 w-4' />}

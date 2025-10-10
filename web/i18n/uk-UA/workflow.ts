@@ -442,6 +442,7 @@ const translation = {
       },
       outputVars: {
         output: 'Генерований вміст',
+        reasoning_content: 'Зміст міркування',
         usage: 'Інформація про використання моделі',
       },
       singleRun: {

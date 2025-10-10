@@ -442,6 +442,7 @@ const translation = {
       },
       outputVars: {
         output: 'Nội dung được tạo',
+        reasoning_content: 'Nội dung lập luận',
         usage: 'Thông tin sử dụng mô hình',
       },
       singleRun: {

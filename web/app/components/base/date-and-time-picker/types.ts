@@ -55,7 +55,7 @@ export type TriggerParams = {
   onClick: (e: React.MouseEvent) => void
 }
 export type TimePickerProps = {
-  value: Dayjs | undefined
+  value: Dayjs | string | undefined
   timezone?: string
   placeholder?: string
   onChange: (date: Dayjs | undefined) => void
