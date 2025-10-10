@@ -134,15 +134,14 @@ const List = () => {
   )
 
   useEffect(() => {
-    if (!workflowIds.length)
-      return
-
     const timer = window.setInterval(() => {
-      refreshOnlineUsers()
+      mutate()
+      if (workflowIds.length)
+        refreshOnlineUsers()
     }, 10000)
 
     return () => window.clearInterval(timer)
-  }, [workflowIds.join(','), refreshOnlineUsers])
+  }, [workflowIds.join(','), mutate, refreshOnlineUsers])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [

@@ -116,10 +116,3 @@ export class WebSocketClient {
 }
 
 export const webSocketClient = new WebSocketClient()
-
-export const fetchAppsOnlineUsers = async (appIds: string[]) => {
-  const response = await fetch(`/api/online-users?${new URLSearchParams({
-    app_ids: appIds.join(','),
-  })}`)
-  return response.json()
-}
