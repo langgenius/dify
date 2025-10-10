@@ -95,6 +95,9 @@ from .app import (
     workflow_statistic,
 )
 
+# Register workflow alias routes
+from .app.workflow_alias import WorkflowAliasApi
+
 # Import auth controllers
 from .auth import (
     activate,
@@ -155,10 +158,6 @@ from .workspace import (
     tool_providers,
     workspace,
 )
-
-
-# Register workflow alias routes
-from .app.workflow_alias import WorkflowAliasApi
 
 api.add_resource(
     WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases", "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
