@@ -46,8 +46,10 @@ class TestSendEmailCodeLoginMailTask:
         db_session_with_containers.query(Account).delete()
         db_session_with_containers.commit()
 
-        # Clear Redis cache
-        redis_client.flushdb()
+        # Clear Redis cache - only clean test-related keys to avoid affecting other tests
+        keys = list(redis_client.scan_iter("email_code_login_test_*"))
+        if keys:
+            redis_client.delete(*keys)
 
     @pytest.fixture
     def mock_external_service_dependencies(self):

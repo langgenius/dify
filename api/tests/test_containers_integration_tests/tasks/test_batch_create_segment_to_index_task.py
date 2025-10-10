@@ -44,8 +44,10 @@ class TestBatchCreateSegmentToIndexTask:
         db.session.query(Account).delete()
         db.session.commit()
 
-        # Clear Redis cache
-        redis_client.flushdb()
+        # Clear Redis cache - only clean test-related keys to avoid affecting other tests
+        keys = list(redis_client.scan_iter("segment_batch_import_*"))
+        if keys:
+            redis_client.delete(*keys)
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
