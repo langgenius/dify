@@ -181,7 +181,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             attributes={
                 SpanAttributes.INPUT_VALUE: json.dumps(trace_info.workflow_run_inputs, ensure_ascii=False),
                 SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.workflow_run_outputs, ensure_ascii=False),
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(workflow_metadata, ensure_ascii=False),
                 SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
             },
@@ -241,7 +241,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     attributes={
                         SpanAttributes.INPUT_VALUE: node_execution.inputs or "{}",
                         SpanAttributes.OUTPUT_VALUE: node_execution.outputs or "{}",
-                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind,
+                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.METADATA: json.dumps(node_metadata, ensure_ascii=False),
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },
@@ -317,7 +317,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         attributes = {
             SpanAttributes.INPUT_VALUE: trace_info.message_data.query,
             SpanAttributes.OUTPUT_VALUE: trace_info.message_data.answer,
-            SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN,
+            SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
             SpanAttributes.METADATA: json.dumps(message_metadata, ensure_ascii=False),
             SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
         }
@@ -359,7 +359,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 outputs_str = str(trace_info.outputs)
 
             llm_attributes = {
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
                 SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
                 SpanAttributes.OUTPUT_VALUE: outputs_str,
                 SpanAttributes.METADATA: json.dumps(message_metadata, ensure_ascii=False),
@@ -441,7 +441,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     },
                     ensure_ascii=False,
                 ),
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
@@ -495,7 +495,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             attributes={
                 SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
                 SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.suggested_question, ensure_ascii=False),
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
             },
             start_time=datetime_to_nanos(start_time),
@@ -548,7 +548,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             attributes={
                 SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
                 SpanAttributes.OUTPUT_VALUE: json.dumps({"documents": trace_info.documents}, ensure_ascii=False),
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.RETRIEVER,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.RETRIEVER.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
                 "start_time": start_time.isoformat() if start_time else "",
                 "end_time": end_time.isoformat() if end_time else "",
@@ -606,7 +606,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             attributes={
                 SpanAttributes.INPUT_VALUE: json.dumps(trace_info.tool_inputs, ensure_ascii=False),
                 SpanAttributes.OUTPUT_VALUE: trace_info.tool_outputs,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
                 SpanAttributes.TOOL_NAME: trace_info.tool_name,
                 SpanAttributes.TOOL_PARAMETERS: tool_params_str,
@@ -656,7 +656,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             attributes={
                 SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
                 SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.outputs, ensure_ascii=False),
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN,
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
                 "start_time": trace_info.start_time.isoformat() if trace_info.start_time else "",
