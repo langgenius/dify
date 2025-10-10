@@ -15,7 +15,6 @@ from yarl import URL
 
 import contexts
 from core.helper.provider_cache import ToolProviderCredentialsCache
-from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -27,6 +26,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.workflow.entities.variable_pool import VariablePool
 from extensions.ext_database import db
+from models.provider_ids import ToolProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
