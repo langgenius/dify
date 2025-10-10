@@ -94,6 +94,8 @@ const translation = {
     documentsRequestQuotaTooltip: 'Specificați numărul total de acțiuni pe care un spațiu de lucru le poate efectua pe minut în cadrul bazei de cunoștințe, inclusiv crearea, ștergerea, actualizările setului de date, încărcările de documente, modificările, arhivarea și interogările bazei de cunoștințe. Acest metric este utilizat pentru a evalua performanța cererilor din baza de cunoștințe. De exemplu, dacă un utilizator Sandbox efectuează 10 teste consecutive de hituri într-un minut, spațiul său de lucru va fi restricționat temporar de la efectuarea următoarelor acțiuni pentru minutul următor: crearea setului de date, ștergerea, actualizările și încărcările sau modificările documentelor.',
     apiRateLimitTooltip: 'Limita de rată API se aplică tuturor cererilor efectuate prin API-ul Dify, inclusiv generarea de texte, conversațiile de chat, execuțiile fluxului de lucru și procesarea documentelor.',
     startBuilding: 'Începeți să construiți',
+    taxTip: 'Toate prețurile abonamentelor (lunare/anuale) nu includ taxele aplicabile (de exemplu, TVA, taxa pe vânzări).',
+    taxTipSecond: 'Dacă regiunea dumneavoastră nu are cerințe fiscale aplicabile, niciun impozit nu va apărea la finalizarea comenzii și nu vi se vor percepe taxe suplimentare pe întreaga durată a abonamentului.',
   },
   plans: {
     sandbox: {

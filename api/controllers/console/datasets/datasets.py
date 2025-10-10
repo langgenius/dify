@@ -24,13 +24,14 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
 from libs.login import login_required
+from libs.validators import validate_description_length
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
@@ -42,12 +43,6 @@ def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError("Name must be between 1 to 40 characters.")
     return name
-
-
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
 
 
 @console_ns.route("/datasets")
@@ -149,7 +144,7 @@ class DatasetListApi(Resource):
         )
         parser.add_argument(
             "description",
-            type=_validate_description_length,
+            type=validate_description_length,
             nullable=True,
             required=False,
             default="",
@@ -290,7 +285,7 @@ class DatasetApi(Resource):
             help="type is required. Name must be between 1 to 40 characters.",
             type=_validate_name,
         )
-        parser.add_argument("description", location="json", store_missing=False, type=_validate_description_length)
+        parser.add_argument("description", location="json", store_missing=False, type=validate_description_length)
         parser.add_argument(
             "indexing_technique",
             type=str,
@@ -518,13 +513,15 @@ class DatasetIndexingEstimateApi(Resource):
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.NOTION.value,
-                        notion_info={
-                            "credential_id": credential_id,
-                            "notion_workspace_id": workspace_id,
-                            "notion_obj_id": page["page_id"],
-                            "notion_page_type": page["type"],
-                            "tenant_id": current_user.current_tenant_id,
-                        },
+                        notion_info=NotionInfo.model_validate(
+                            {
+                                "credential_id": credential_id,
+                                "notion_workspace_id": workspace_id,
+                                "notion_obj_id": page["page_id"],
+                                "notion_page_type": page["type"],
+                                "tenant_id": current_user.current_tenant_id,
+                            }
+                        ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
@@ -533,14 +530,16 @@ class DatasetIndexingEstimateApi(Resource):
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE.value,
-                    website_info={
-                        "provider": website_info_list["provider"],
-                        "job_id": website_info_list["job_id"],
-                        "url": url,
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": "crawl",
-                        "only_main_content": website_info_list["only_main_content"],
-                    },
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": website_info_list["provider"],
+                            "job_id": website_info_list["job_id"],
+                            "url": url,
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": "crawl",
+                            "only_main_content": website_info_list["only_main_content"],
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)

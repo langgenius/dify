@@ -118,7 +118,7 @@ class TestMetadataBugCompleteValidation:
 
             # But would crash when trying to create MetadataArgs
             with pytest.raises((ValueError, TypeError)):
-                MetadataArgs(**args)
+                MetadataArgs.model_validate(args)
 
     def test_7_end_to_end_validation_layers(self):
         """Test all validation layers work together correctly."""
@@ -131,7 +131,7 @@ class TestMetadataBugCompleteValidation:
         valid_data = {"type": "string", "name": "test_metadata"}
 
         # Should create valid Pydantic object
-        metadata_args = MetadataArgs(**valid_data)
+        metadata_args = MetadataArgs.model_validate(valid_data)
         assert metadata_args.type == "string"
         assert metadata_args.name == "test_metadata"
 
