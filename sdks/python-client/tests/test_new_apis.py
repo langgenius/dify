@@ -142,7 +142,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         client.create_annotation("Test question?", "Test answer.")
 
         # Test update_annotation
-        client.update_annotation("annotation-123", "Updated question?", "Updated answer.")
+        client.update_annotation(
+            "annotation-123", "Updated question?", "Updated answer."
+        )
 
         # Test delete_annotation
         client.delete_annotation("annotation-123")
@@ -180,7 +182,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         client.update_dataset_metadata("meta-123", {"key": "new_value"})
         client.get_built_in_metadata()
         client.manage_built_in_metadata("enable", {"type": "built_in"})
-        client.update_documents_metadata([{"document_id": "doc1", "metadata": {"key": "value"}}])
+        client.update_documents_metadata(
+            [{"document_id": "doc1", "metadata": {"key": "value"}}]
+        )
 
         # Test tag operations
         client.list_dataset_tags()
@@ -251,7 +255,10 @@ class TestNewServiceAPIs(unittest.TestCase):
         """Test workspace APIs."""
         mock_response = Mock()
         mock_response.json.return_value = {
-            "data": [{"name": "gpt-3.5-turbo", "type": "llm"}, {"name": "gpt-4", "type": "llm"}]
+            "data": [
+                {"name": "gpt-3.5-turbo", "type": "llm"},
+                {"name": "gpt-4", "type": "llm"},
+            ]
         }
         mock_request.return_value = mock_response
 
@@ -307,7 +314,10 @@ class TestNewServiceAPIs(unittest.TestCase):
 
         # Test run_specific_workflow
         client.run_specific_workflow(
-            workflow_id="workflow-123", inputs={"param": "value"}, response_mode="streaming", user="user-123"
+            workflow_id="workflow-123",
+            inputs={"param": "value"},
+            response_mode="streaming",
+            user="user-123",
         )
 
         self.assertEqual(mock_request.call_count, 3)
@@ -361,7 +371,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         dify_methods = ["get_app_info", "get_app_site_info", "get_file_preview"]
         client = DifyClient(self.api_key)
         for method in dify_methods:
-            self.assertTrue(hasattr(client, method), f"DifyClient missing method: {method}")
+            self.assertTrue(
+                hasattr(client, method), f"DifyClient missing method: {method}"
+            )
 
         # Test ChatClient annotation methods
         chat_methods = [
@@ -374,13 +386,18 @@ class TestNewServiceAPIs(unittest.TestCase):
         ]
         chat_client = ChatClient(self.api_key)
         for method in chat_methods:
-            self.assertTrue(hasattr(chat_client, method), f"ChatClient missing method: {method}")
+            self.assertTrue(
+                hasattr(chat_client, method), f"ChatClient missing method: {method}"
+            )
 
         # Test WorkflowClient advanced methods
         workflow_methods = ["get_workflow_logs", "run_specific_workflow"]
         workflow_client = WorkflowClient(self.api_key)
         for method in workflow_methods:
-            self.assertTrue(hasattr(workflow_client, method), f"WorkflowClient missing method: {method}")
+            self.assertTrue(
+                hasattr(workflow_client, method),
+                f"WorkflowClient missing method: {method}",
+            )
 
         # Test KnowledgeBaseClient advanced methods
         kb_methods = [
@@ -402,13 +419,19 @@ class TestNewServiceAPIs(unittest.TestCase):
         ]
         kb_client = KnowledgeBaseClient(self.api_key)
         for method in kb_methods:
-            self.assertTrue(hasattr(kb_client, method), f"KnowledgeBaseClient missing method: {method}")
+            self.assertTrue(
+                hasattr(kb_client, method),
+                f"KnowledgeBaseClient missing method: {method}",
+            )
 
         # Test WorkspaceClient methods
         workspace_methods = ["get_available_models"]
         workspace_client = WorkspaceClient(self.api_key)
         for method in workspace_methods:
-            self.assertTrue(hasattr(workspace_client, method), f"WorkspaceClient missing method: {method}")
+            self.assertTrue(
+                hasattr(workspace_client, method),
+                f"WorkspaceClient missing method: {method}",
+            )
 
     @patch("dify_client.client.requests.request")
     def test_missing_core_apis_dataset(self, mock_request):
@@ -456,7 +479,10 @@ class TestNewServiceAPIs(unittest.TestCase):
             indexing_technique="high_quality",
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
-            retrieval_model={"search_method": "semantic_search", "reranking_enable": True},
+            retrieval_model={
+                "search_method": "semantic_search",
+                "reranking_enable": True,
+            },
         )
         expected_data = {
             "name": "Updated Dataset",
@@ -464,7 +490,10 @@ class TestNewServiceAPIs(unittest.TestCase):
             "indexing_technique": "high_quality",
             "embedding_model": "text-embedding-ada-002",
             "embedding_model_provider": "openai",
-            "retrieval_model": {"search_method": "semantic_search", "reranking_enable": True},
+            "retrieval_model": {
+                "search_method": "semantic_search",
+                "reranking_enable": True,
+            },
         }
         mock_request.assert_called_with(
             "PATCH",
@@ -519,7 +548,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         )
 
         # Test update_conversation_variable with string value
-        client.update_conversation_variable(conversation_id, variable_id, "new_value", user)
+        client.update_conversation_variable(
+            conversation_id, variable_id, "new_value", user
+        )
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
@@ -533,7 +564,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         )
 
         # Test update_conversation_variable with dict value
-        client.update_conversation_variable(conversation_id, variable_id, {"key": "value"}, user)
+        client.update_conversation_variable(
+            conversation_id, variable_id, {"key": "value"}, user
+        )
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
@@ -547,7 +580,9 @@ class TestNewServiceAPIs(unittest.TestCase):
         )
 
         # Test update_conversation_variable with list value
-        client.update_conversation_variable(conversation_id, variable_id, ["item1", "item2"], user)
+        client.update_conversation_variable(
+            conversation_id, variable_id, ["item1", "item2"], user
+        )
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/conversations/{conversation_id}/variables/{variable_id}",
@@ -629,7 +664,9 @@ class TestNewServiceAPIs(unittest.TestCase):
 
         # Test with explicit dataset_id
         other_dataset_id = "other-dataset-id"
-        client.batch_update_document_status("enable", document_ids, dataset_id=other_dataset_id)
+        client.batch_update_document_status(
+            "enable", document_ids, dataset_id=other_dataset_id
+        )
         mock_request.assert_called_with(
             "PATCH",
             f"{self.base_url}/datasets/{other_dataset_id}/documents/status/enable",
@@ -649,13 +686,18 @@ class TestNewServiceAPIs(unittest.TestCase):
         chat_methods = ["get_conversation_variables", "update_conversation_variable"]
         chat_client = ChatClient(self.api_key)
         for method in chat_methods:
-            self.assertTrue(hasattr(chat_client, method), f"ChatClient missing method: {method}")
+            self.assertTrue(
+                hasattr(chat_client, method), f"ChatClient missing method: {method}"
+            )
 
         # Test KnowledgeBaseClient dataset management methods
         kb_methods = ["get_dataset", "update_dataset", "batch_update_document_status"]
         kb_client = KnowledgeBaseClient(self.api_key)
         for method in kb_methods:
-            self.assertTrue(hasattr(kb_client, method), f"KnowledgeBaseClient missing method: {method}")
+            self.assertTrue(
+                hasattr(kb_client, method),
+                f"KnowledgeBaseClient missing method: {method}",
+            )
 
 
 if __name__ == "__main__":
