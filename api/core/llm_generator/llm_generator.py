@@ -589,12 +589,9 @@ class LLMGenerator:
                 "instruction": filled_instruction,
             }
         )
-        llm_result = cast(
-            LLMResult,
-            model_instance.invoke_llm(
-                prompt_messages=[UserPromptMessage(content=formatted_prompt)],
-                model_parameters=memory_spec.model.completion_params,
-                stream=False,
-            )
+        llm_result = model_instance.invoke_llm(
+            prompt_messages=[UserPromptMessage(content=formatted_prompt)],
+            model_parameters=memory_spec.model.completion_params,
+            stream=False,
         )
         return llm_result.message.get_text_content()
