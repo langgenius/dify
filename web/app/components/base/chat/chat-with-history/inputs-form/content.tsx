@@ -85,13 +85,13 @@ const InputsFormContent = ({ showTip }: Props) => {
           )}
           {form.type === InputVarType.select && (
             <Select
-                placeholder={form.label}
-                className='w-full'
-                defaultValue={inputsFormValue?.[form.variable] ?? form.default ?? ''}
-                onSelect={item => handleFormChange(form.variable, item.value as string)}
-                items={form.options.map((option: string) => ({ value: option, name: option }))}
-                allowSearch={true}
-              />
+              placeholder={form.label}
+              className='w-full'
+              defaultValue={inputsFormValue?.[form.variable] ?? form.default ?? ''}
+              onSelect={item => handleFormChange(form.variable, item.value as string)}
+              items={form.options.map((option: string) => ({ value: option, name: option }))}
+              allowSearch={true}
+            />
           )}
           {form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
