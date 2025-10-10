@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
 
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
@@ -8,6 +8,7 @@ from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
+from configs.middleware.vdb.opensearch_config import AuthMethod
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -25,7 +26,7 @@ class OpenSearchConfig(BaseModel):
     port: int
     secure: bool = False  # use_ssl
     verify_certs: bool = True
-    auth_method: Literal["basic", "aws_managed_iam"] = "basic"
+    auth_method: AuthMethod = AuthMethod.BASIC
     user: str | None = None
     password: str | None = None
     aws_region: str | None = None
@@ -218,7 +219,7 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY: query}}]}}}
+        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
             full_text_query["query"]["bool"]["filter"] = [{"terms": {"metadata.document_id": document_ids_filter}}]
