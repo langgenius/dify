@@ -90,7 +90,7 @@ class ModelConfigResource(Resource):
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
 
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity.model_validate(tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
@@ -124,7 +124,7 @@ class ModelConfigResource(Resource):
             # encrypt agent tool parameters if it's secret-input
             agent_mode = new_app_model_config.agent_mode_dict
             for tool in agent_mode.get("tools") or []:
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity.model_validate(tool)
 
                 # get tool
                 key = f"{agent_tool_entity.provider_id}.{agent_tool_entity.provider_type}.{agent_tool_entity.tool_name}"

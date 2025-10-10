@@ -17,6 +17,7 @@ from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import build_dataset_tag_fields
 from libs.login import current_user
+from libs.validators import validate_description_length
 from models.account import Account
 from models.dataset import Dataset, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
@@ -31,12 +32,6 @@ def _validate_name(name):
     return name
 
 
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
 # Define parsers for dataset operations
 dataset_create_parser = reqparse.RequestParser()
 dataset_create_parser.add_argument(
@@ -48,7 +43,7 @@ dataset_create_parser.add_argument(
 )
 dataset_create_parser.add_argument(
     "description",
-    type=_validate_description_length,
+    type=validate_description_length,
     nullable=True,
     required=False,
     default="",
@@ -101,7 +96,7 @@ dataset_update_parser.add_argument(
     type=_validate_name,
 )
 dataset_update_parser.add_argument(
-    "description", location="json", store_missing=False, type=_validate_description_length
+    "description", location="json", store_missing=False, type=validate_description_length
 )
 dataset_update_parser.add_argument(
     "indexing_technique",
@@ -285,7 +280,7 @@ class DatasetListApi(DatasetApiResource):
                 external_knowledge_id=args["external_knowledge_id"],
                 embedding_model_provider=args["embedding_model_provider"],
                 embedding_model_name=args["embedding_model"],
-                retrieval_model=RetrievalModel(**args["retrieval_model"])
+                retrieval_model=RetrievalModel.model_validate(args["retrieval_model"])
                 if args["retrieval_model"] is not None
                 else None,
             )

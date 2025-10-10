@@ -88,7 +88,7 @@ class CustomizedPipelineTemplateApi(Resource):
             nullable=True,
         )
         args = parser.parse_args()
-        pipeline_template_info = PipelineTemplateInfoEntity(**args)
+        pipeline_template_info = PipelineTemplateInfoEntity.model_validate(args)
         RagPipelineService.update_customized_pipeline_template(template_id, pipeline_template_info)
         return 200
 
