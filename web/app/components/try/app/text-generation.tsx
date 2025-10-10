@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import AppIcon from '@/app/components/base/app-icon'
-import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import Loading from '@/app/components/base/loading'
 import { appDefaultIconBackground } from '@/config'
 import RunOnce from '../../share/text-generation/run-once'
@@ -21,6 +20,7 @@ import type { Task } from '../../share/text-generation/types'
 import Res from '@/app/components/share/text-generation/result'
 import { AppSourceType } from '@/service/share'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 type Props = {
   appId: string
@@ -37,6 +37,7 @@ const TextGeneration: FC<Props> = ({
 }) => {
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
+  useDocumentTitle(appData?.site?.title || '')
 
   const [inputs, doSetInputs] = useState<Record<string, any>>({})
   const inputsRef = useRef<Record<string, any>>(inputs)
@@ -187,7 +188,7 @@ const TextGeneration: FC<Props> = ({
         'rounded-l-2xl',
       )}>
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
           <div className='flex items-center gap-3'>
             <AppIcon
               size={isPC ? 'large' : 'small'}
@@ -197,7 +198,6 @@ const TextGeneration: FC<Props> = ({
               imageUrl={siteInfo.icon_url}
             />
             <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
-            <MenuDropdown hideLogout />
           </div>
           {siteInfo.description && (
             <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
