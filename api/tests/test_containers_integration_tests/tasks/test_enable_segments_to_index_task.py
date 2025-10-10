@@ -4,7 +4,6 @@ import pytest
 from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -49,15 +48,15 @@ class TestEnableSegmentsToIndexTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -66,8 +65,8 @@ class TestEnableSegmentsToIndexTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -79,8 +78,8 @@ class TestEnableSegmentsToIndexTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create document
         document = Document(
@@ -97,11 +96,11 @@ class TestEnableSegmentsToIndexTask:
             enabled=True,
             doc_form=IndexType.PARAGRAPH_INDEX,
         )
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property works correctly
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, document
 
@@ -142,10 +141,10 @@ class TestEnableSegmentsToIndexTask:
                 status=status,
                 created_by=document.created_by,
             )
-            db.session.add(segment)
+            db_session_with_containers.add(segment)
             segments.append(segment)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         return segments
 
     def test_enable_segments_to_index_with_different_index_type(
@@ -167,10 +166,10 @@ class TestEnableSegmentsToIndexTask:
 
         # Update document to use different index type
         document.doc_form = IndexType.QA_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -280,12 +279,12 @@ class TestEnableSegmentsToIndexTask:
             document.enabled = True
             document.archived = False
             document.indexing_status = "completed"
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Set invalid status
             for attr, value in status_attrs.items():
                 setattr(document, attr, value)
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Create segments
             segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -300,8 +299,8 @@ class TestEnableSegmentsToIndexTask:
 
             # Clean up segments for next iteration
             for segment in segments:
-                db.session.delete(segment)
-            db.session.commit()
+                db_session_with_containers.delete(segment)
+            db_session_with_containers.commit()
 
     def test_enable_segments_to_index_segments_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -351,10 +350,10 @@ class TestEnableSegmentsToIndexTask:
 
         # Update document to use parent-child index type
         document.doc_form = IndexType.PARENT_CHILD_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments with mock child chunks
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -437,7 +436,7 @@ class TestEnableSegmentsToIndexTask:
 
         # Assert: Verify error handling
         for segment in segments:
-            db.session.refresh(segment)
+            db_session_with_containers.refresh(segment)
             assert segment.enabled is False
             assert segment.status == "error"
             assert segment.error is not None

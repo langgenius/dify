@@ -14,7 +14,6 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -53,8 +52,8 @@ class TestDisableSegmentFromIndexTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant
         tenant = Tenant(
@@ -62,8 +61,8 @@ class TestDisableSegmentFromIndexTask:
             status="normal",
             plan="basic",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join with owner role
         join = TenantAccountJoin(
@@ -72,15 +71,15 @@ class TestDisableSegmentFromIndexTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
 
         return account, tenant
 
-    def _create_test_dataset(self, tenant: Tenant, account: Account) -> Dataset:
+    def _create_test_dataset(self, db_session_with_containers, tenant: Tenant, account: Account) -> Dataset:
         """
         Helper method to create a test dataset.
 
@@ -101,13 +100,18 @@ class TestDisableSegmentFromIndexTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         return dataset
 
     def _create_test_document(
-        self, dataset: Dataset, tenant: Tenant, account: Account, doc_form: str = "text_model"
+        self,
+        db_session_with_containers,
+        dataset: Dataset,
+        tenant: Tenant,
+        account: Account,
+        doc_form: str = "text_model",
     ) -> Document:
         """
         Helper method to create a test document.
@@ -140,13 +144,14 @@ class TestDisableSegmentFromIndexTask:
             tokens=500,
             completed_at=datetime.now(UTC),
         )
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         return document
 
     def _create_test_segment(
         self,
+        db_session_with_containers,
         document: Document,
         dataset: Dataset,
         tenant: Tenant,
@@ -185,8 +190,8 @@ class TestDisableSegmentFromIndexTask:
             created_by=account.id,
             completed_at=datetime.now(UTC) if status == "completed" else None,
         )
-        db.session.add(segment)
-        db.session.commit()
+        db_session_with_containers.add(segment)
+        db_session_with_containers.commit()
 
         return segment
 
@@ -202,9 +207,9 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Set up Redis cache
         indexing_cache_key = f"segment_{segment.id}_indexing"
@@ -226,7 +231,7 @@ class TestDisableSegmentFromIndexTask:
         assert redis_client.get(indexing_cache_key) is None
 
         # Verify segment is still in database
-        db.session.refresh(segment)
+        db_session_with_containers.refresh(segment)
         assert segment.id is not None
 
     def test_disable_segment_not_found(self, db_session_with_containers, mock_index_processor):
@@ -262,9 +267,11 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data with non-completed segment
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account, status="indexing", enabled=True)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(
+            db_session_with_containers, document, dataset, tenant, account, status="indexing", enabled=True
+        )
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -286,13 +293,13 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Manually remove dataset association
         segment.dataset_id = "00000000-0000-0000-0000-000000000000"
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -314,13 +321,13 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Manually remove document association
         segment.document_id = "00000000-0000-0000-0000-000000000000"
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -342,12 +349,12 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data with disabled document
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
         document.enabled = False
-        db.session.commit()
+        db_session_with_containers.commit()
 
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -369,12 +376,12 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data with archived document
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
         document.archived = True
-        db.session.commit()
+        db_session_with_containers.commit()
 
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -396,12 +403,12 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data with incomplete indexing
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
         document.indexing_status = "indexing"
-        db.session.commit()
+        db_session_with_containers.commit()
 
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -424,9 +431,9 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Set up Redis cache
         indexing_cache_key = f"segment_{segment.id}_indexing"
@@ -449,7 +456,7 @@ class TestDisableSegmentFromIndexTask:
         assert call_args[0][1] == [segment.index_node_id]  # Check index node IDs
 
         # Verify segment was re-enabled
-        db.session.refresh(segment)
+        db_session_with_containers.refresh(segment)
         assert segment.enabled is True
 
         # Verify Redis cache was still cleared
@@ -470,9 +477,11 @@ class TestDisableSegmentFromIndexTask:
         for doc_form in doc_forms:
             # Arrange: Create test data for each form
             account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-            dataset = self._create_test_dataset(tenant, account)
-            document = self._create_test_document(dataset, tenant, account, doc_form=doc_form)
-            segment = self._create_test_segment(document, dataset, tenant, account)
+            dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+            document = self._create_test_document(
+                db_session_with_containers, dataset, tenant, account, doc_form=doc_form
+            )
+            segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
             # Reset mock for each iteration
             mock_index_processor.reset_mock()
@@ -500,9 +509,9 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Test with cache present
         indexing_cache_key = f"segment_{segment.id}_indexing"
@@ -517,7 +526,7 @@ class TestDisableSegmentFromIndexTask:
         assert redis_client.get(indexing_cache_key) is None
 
         # Test with no cache present
-        segment2 = self._create_test_segment(document, dataset, tenant, account)
+        segment2 = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
         result2 = disable_segment_from_index_task(segment2.id)
 
         # Assert: Verify task still works without cache
@@ -534,9 +543,9 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Act: Execute the task and measure time
         start_time = time.perf_counter()
@@ -559,9 +568,9 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
-        segment = self._create_test_segment(document, dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
+        segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
         # Act: Execute the task
         result = disable_segment_from_index_task(segment.id)
@@ -570,7 +579,7 @@ class TestDisableSegmentFromIndexTask:
         assert result is None
 
         # Verify segment is still accessible (session was properly managed)
-        db.session.refresh(segment)
+        db_session_with_containers.refresh(segment)
         assert segment.id is not None
 
     def test_disable_segment_concurrent_execution(self, db_session_with_containers, mock_index_processor):
@@ -584,12 +593,12 @@ class TestDisableSegmentFromIndexTask:
         """
         # Arrange: Create multiple test segments
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(tenant, account)
-        document = self._create_test_document(dataset, tenant, account)
+        dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
+        document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
 
         segments = []
         for i in range(3):
-            segment = self._create_test_segment(document, dataset, tenant, account)
+            segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
             segments.append(segment)
 
         # Act: Execute tasks concurrently (simulated)

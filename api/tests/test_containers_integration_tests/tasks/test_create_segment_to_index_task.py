@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -24,16 +25,15 @@ class TestCreateSegmentToIndexTask:
     @pytest.fixture(autouse=True)
     def cleanup_database(self, db_session_with_containers):
         """Clean up database and Redis before each test to ensure isolation."""
-        from extensions.ext_database import db
 
         # Clear all test data
-        db.session.query(DocumentSegment).delete()
-        db.session.query(Document).delete()
-        db.session.query(Dataset).delete()
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Tenant).delete()
-        db.session.query(Account).delete()
-        db.session.commit()
+        db_session_with_containers.query(DocumentSegment).delete()
+        db_session_with_containers.query(Document).delete()
+        db_session_with_containers.query(Dataset).delete()
+        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.query(Tenant).delete()
+        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -73,10 +73,8 @@ class TestCreateSegmentToIndexTask:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant
         tenant = Tenant(
@@ -84,8 +82,8 @@ class TestCreateSegmentToIndexTask:
             status="normal",
             plan="basic",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join with owner role
         join = TenantAccountJoin(
@@ -94,8 +92,8 @@ class TestCreateSegmentToIndexTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -747,7 +745,6 @@ class TestCreateSegmentToIndexTask:
         )
 
         # Mock global database session to simulate transaction issues
-        from extensions.ext_database import db
 
         original_commit = db.session.commit
         commit_called = False

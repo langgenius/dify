@@ -67,11 +67,9 @@ class TestDisableSegmentsFromIndexTask:
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-        from extensions.ext_database import db
-
-        db.session.add(tenant)
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Set the current tenant for the account
         account.current_tenant = tenant
@@ -106,10 +104,8 @@ class TestDisableSegmentsFromIndexTask:
         dataset.embedding_model_provider = "openai"
         dataset.built_in_field_enabled = False
 
-        from extensions.ext_database import db
-
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         return dataset
 
@@ -154,10 +150,8 @@ class TestDisableSegmentsFromIndexTask:
         document.doc_form = "text_model"  # Use text_model form for testing
         document.doc_language = "en"
 
-        from extensions.ext_database import db
-
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         return document
 
@@ -207,11 +201,9 @@ class TestDisableSegmentsFromIndexTask:
 
             segments.append(segment)
 
-        from extensions.ext_database import db
-
         for segment in segments:
-            db.session.add(segment)
-        db.session.commit()
+            db_session_with_containers.add(segment)
+        db_session_with_containers.commit()
 
         return segments
 
@@ -244,10 +236,8 @@ class TestDisableSegmentsFromIndexTask:
         process_rule.created_by = dataset.created_by
         process_rule.updated_by = dataset.updated_by
 
-        from extensions.ext_database import db
-
-        db.session.add(process_rule)
-        db.session.commit()
+        db_session_with_containers.add(process_rule)
+        db_session_with_containers.commit()
 
         return process_rule
 
@@ -365,9 +355,8 @@ class TestDisableSegmentsFromIndexTask:
 
         # Test case 1: Document not enabled
         document.enabled = False
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         segment_ids = [segment.id for segment in segments]
 
@@ -384,7 +373,7 @@ class TestDisableSegmentsFromIndexTask:
         # Test case 2: Document archived
         document.enabled = True
         document.archived = True
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
             # Act
@@ -398,7 +387,7 @@ class TestDisableSegmentsFromIndexTask:
         document.enabled = True
         document.archived = False
         document.indexing_status = "indexing"
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
             # Act
@@ -469,13 +458,14 @@ class TestDisableSegmentsFromIndexTask:
                 assert result is None  # Task should complete without returning a value
 
                 # Verify segments were rolled back to enabled state
-                from extensions.ext_database import db
 
-                db.session.refresh(segments[0])
-                db.session.refresh(segments[1])
+                db_session_with_containers.refresh(segments[0])
+                db_session_with_containers.refresh(segments[1])
 
                 # Check that segments are re-enabled after error
-                updated_segments = db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
+                updated_segments = (
+                    db_session_with_containers.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
+                )
 
                 for segment in updated_segments:
                     assert segment.enabled is True
@@ -508,9 +498,8 @@ class TestDisableSegmentsFromIndexTask:
         for doc_form in doc_forms:
             # Update document form
             document.doc_form = doc_form
-            from extensions.ext_database import db
 
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Mock the index processor factory
             with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
