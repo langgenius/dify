@@ -1081,7 +1081,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
             ), 500
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/plugin/run")
 class DraftWorkflowTriggerRunApi(Resource):
     """
     Full workflow debug - Polling API for trigger events
