@@ -184,7 +184,7 @@ class WorkflowToolProviderController(ToolProviderController):
         :param tenant_id: the tenant id
         :return: the tools
         """
-        if self.tools is not None:
+        if self.tools:
             return self.tools
 
         db_providers: WorkflowToolProvider | None = (
@@ -213,9 +213,6 @@ class WorkflowToolProviderController(ToolProviderController):
         :param tool_name: the name of the tool
         :return: the tool
         """
-        if self.tools is None:
-            return None
-
         for tool in self.tools:
             if tool.entity.identity.name == tool_name:
                 return tool

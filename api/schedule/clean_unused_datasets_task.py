@@ -92,7 +92,7 @@ def clean_unused_datasets_task():
             except SQLAlchemyError:
                 raise
 
-            if datasets is None or datasets.items is None or len(datasets.items) == 0:
+            if not datasets.items:
                 break
 
             for dataset in datasets:

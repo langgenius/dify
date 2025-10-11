@@ -330,8 +330,7 @@ class OpsTraceManager:
         """
         # auth check
         try:
-            if enabled or tracing_provider is not None:
-                provider_config_map[tracing_provider]
+            provider_config_map[tracing_provider]
         except KeyError:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 

@@ -34,36 +34,32 @@ class PluginParameterService:
         """
         credentials: Mapping[str, Any] = {}
 
-        match provider_type:
-            case "tool":
-                provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                # init tool configuration
-                encrypter, _ = create_tool_provider_encrypter(
-                    tenant_id=tenant_id,
-                    controller=provider_controller,
+        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        # init tool configuration
+        encrypter, _ = create_tool_provider_encrypter(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+        )
+
+        # check if credentials are required
+        if not provider_controller.need_credentials:
+            credentials = {}
+        else:
+            # fetch credentials from db
+            with Session(db.engine) as session:
+                db_record = (
+                    session.query(BuiltinToolProvider)
+                    .where(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        BuiltinToolProvider.provider == provider,
+                    )
+                    .first()
                 )
 
-                # check if credentials are required
-                if not provider_controller.need_credentials:
-                    credentials = {}
-                else:
-                    # fetch credentials from db
-                    with Session(db.engine) as session:
-                        db_record = (
-                            session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.provider == provider,
-                            )
-                            .first()
-                        )
+            if db_record is None:
+                raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
 
-                    if db_record is None:
-                        raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
-
-                    credentials = encrypter.decrypt(db_record.credentials)
-            case _:
-                raise ValueError(f"Invalid provider type: {provider_type}")
+            credentials = encrypter.decrypt(db_record.credentials)
 
         return (
             DynamicSelectClient()

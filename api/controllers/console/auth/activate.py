@@ -53,7 +53,7 @@ class ActivateCheckApi(Resource):
             workspace_id = tenant.id if tenant else None
             invitee_email = data.get("email") if data else None
             return {
-                "is_valid": invitation is not None,
+                "is_valid": True,
                 "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email},
             }
         else:

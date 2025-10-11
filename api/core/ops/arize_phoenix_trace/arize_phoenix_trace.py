@@ -366,11 +366,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
             }
             llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
-            if trace_info.total_tokens is not None and trace_info.total_tokens > 0:
+            if trace_info.total_tokens > 0:
                 llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_TOTAL] = trace_info.total_tokens
-            if trace_info.message_tokens is not None and trace_info.message_tokens > 0:
+            if trace_info.message_tokens > 0:
                 llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_PROMPT] = trace_info.message_tokens
-            if trace_info.answer_tokens is not None and trace_info.answer_tokens > 0:
+            if trace_info.answer_tokens > 0:
                 llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_COMPLETION] = trace_info.answer_tokens
 
             if trace_info.message_data.model_id is not None:

@@ -107,8 +107,6 @@ class AppGeneratorTTSPublisher:
                 elif isinstance(message.event, QueueTextChunkEvent):
                     self.msg_text += message.event.text
                 elif isinstance(message.event, QueueNodeSucceededEvent):
-                    if message.event.outputs is None:
-                        continue
                     output = message.event.outputs.get("output", "")
                     if isinstance(output, str):
                         self.msg_text += output
