@@ -32,6 +32,7 @@ type PluginCommonDefaultValue = {
 }
 
 export type TriggerDefaultValue = PluginCommonDefaultValue & {
+  plugin_id?: string
   event_name: string
   event_label: string
   event_description: string

@@ -33,6 +33,7 @@ export enum CollectionType {
   workflow = 'workflow',
   mcp = 'mcp',
   datasource = 'datasource',
+  trigger = 'trigger',
 }
 
 export type Emoji = {

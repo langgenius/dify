@@ -46,8 +46,8 @@ const getTriggerPluginNodeData = (
   fallbackDesc?: string,
 ) => {
   return {
-    plugin_id: triggerConfig.provider_id,
-    provider_id: triggerConfig.provider_id,
+    plugin_id: triggerConfig.plugin_id,
+    provider_id: triggerConfig.provider_name,
     provider_type: triggerConfig.provider_type,
     provider_name: triggerConfig.provider_name,
     event_name: triggerConfig.event_name,
