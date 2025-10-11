@@ -4,8 +4,8 @@ from json import loads as json_loads
 from json.decoder import JSONDecodeError
 from typing import Any
 
+import httpx
 from flask import request
-from requests import get
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
@@ -334,14 +334,19 @@ class ApiBasedToolSchemaParser:
             raise ToolNotSupportedError("Only openapi is supported now.")
 
         # get openapi yaml
-        response = get(api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5)
-
-        if response.status_code != 200:
-            raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
-
-        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
-            response.text, extra_info=extra_info, warning=warning
+        response = httpx.get(
+            api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5
         )
+
+        try:
+            if response.status_code != 200:
+                raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
+
+            return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
+                response.text, extra_info=extra_info, warning=warning
+            )
+        finally:
+            response.close()
 
     @staticmethod
     def auto_parse_to_tool_bundle(
@@ -388,7 +393,7 @@ class ApiBasedToolSchemaParser:
             openapi = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.OPENAPI.value
+            schema_type = ApiProviderSchemaType.OPENAPI
             return openapi, schema_type
         except ToolApiSchemaError as e:
             openapi_error = e
@@ -398,7 +403,7 @@ class ApiBasedToolSchemaParser:
             converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.SWAGGER.value
+            schema_type = ApiProviderSchemaType.SWAGGER
             return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 converted_swagger, extra_info=extra_info, warning=warning
             ), schema_type
@@ -410,7 +415,7 @@ class ApiBasedToolSchemaParser:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                 json_dumps(loaded_content), extra_info=extra_info, warning=warning
             )
-            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN.value
+            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN
         except ToolNotSupportedError as e:
             # maybe it's not plugin at all
             openapi_plugin_error = e

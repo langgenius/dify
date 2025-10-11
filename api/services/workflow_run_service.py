@@ -74,7 +74,7 @@ class WorkflowRunService:
         return self._workflow_run_repo.get_paginated_workflow_runs(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING.value,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             limit=limit,
             last_id=last_id,
         )

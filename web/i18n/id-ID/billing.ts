@@ -87,6 +87,8 @@ const translation = {
     modelProviders: 'Mendukung OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replite',
     member: 'Anggota',
     startBuilding: 'Mulai Membangun',
+    taxTip: 'Semua harga langganan (bulanan/tahunan) belum termasuk pajak yang berlaku (misalnya, PPN, pajak penjualan).',
+    taxTipSecond: 'Jika wilayah Anda tidak memiliki persyaratan pajak yang berlaku, tidak akan ada pajak yang muncul saat checkout, dan Anda tidak akan dikenakan biaya tambahan apa pun selama masa langganan.',
   },
   plans: {
     sandbox: {

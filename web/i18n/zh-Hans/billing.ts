@@ -36,6 +36,8 @@ const translation = {
     save: '节省',
     free: '免费',
     annualBilling: '按年计费节省 {{percent}}%',
+    taxTip: '所有订阅价格（按月/按年）均不含适用税费（如增值税、销售税）。',
+    taxTipSecond: '如果您所在地区无适用税费要求，结账时将不会显示税费，且在整个订阅周期内您都无需支付任何额外费用。',
     comparePlanAndFeatures: '对比套餐 & 功能特性',
     priceTip: '每个团队空间/',
     currentPlan: '当前计划',

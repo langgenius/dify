@@ -16,7 +16,7 @@ class EndNode(Node):
     _node_data: EndNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = EndNodeData(**data)
+        self._node_data = EndNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
