@@ -264,16 +264,18 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const buildInTools = useStore(s => s.buildInTools)
   const currCollection = useMemo(() => {
-    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
-  }, [buildInTools, data.provider_id])
+    return buildInTools.find(item => canFindTool(item.id, data.plugin_id))
+  }, [buildInTools, data.plugin_id])
 
   // For trigger plugins, get basic provider info
   const { data: triggerProviders = [] } = useAllTriggerPlugins()
   const currentTriggerProvider = useMemo(() => {
-    if (data.type !== BlockEnum.TriggerPlugin || !data.provider_id || !data.provider_name)
+    console.log('data', data)
+    console.log('triggerProviders', triggerProviders)
+    if (!data.plugin_id || !data.provider_name)
       return undefined
-    return triggerProviders.find(p => p.plugin_id === data.provider_id && p.name === data.provider_name)
-  }, [data.type, data.provider_id, data.provider_name, triggerProviders])
+    return triggerProviders.find(p => p.plugin_id === data.plugin_id && p.name === data.provider_name)
+  }, [data.type, data.plugin_id, data.provider_name, triggerProviders])
 
   // const supportedAuthMethods = useMemo(() => {
   //   if (!currentTriggerProvider) return []
