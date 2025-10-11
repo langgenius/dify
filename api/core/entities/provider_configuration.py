@@ -1414,7 +1414,7 @@ class ProviderConfiguration(BaseModel):
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
