@@ -70,23 +70,23 @@ class Dataset(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    embedding_model: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
-    embedding_model_provider: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     keyword_number: Mapped[int | None] = mapped_column(
-        sa.Integer, nullable=True, server_default=db.text("10"), init=False
+        sa.Integer, nullable=True, server_default=sa.text("10"), init=False
     )
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     retrieval_model: Mapped[dict | None] = mapped_column(JSONB, nullable=True, init=False)
     built_in_field_enabled: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=db.text("false"), init=False
+        sa.Boolean, nullable=False, server_default=sa.text("false"), init=False
     )
     icon_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True, init=False)
     runtime_mode: Mapped[str | None] = mapped_column(
-        db.String(255), nullable=True, server_default=db.text("'general'::character varying"), init=False
+        sa.String(255), nullable=True, server_default=sa.text("'general'::character varying"), init=False
     )
     pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
-    chunk_structure: Mapped[str | None] = mapped_column(db.String(255), nullable=True, init=False)
-    enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=db.text("true"), init=False)
+    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, init=False)
+    enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), init=False)
 
     @property
     def total_documents(self):
@@ -1029,9 +1029,9 @@ class TidbAuthBinding(TypeBase):
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     status: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=db.text("'CREATING'::character varying")
+        String(255), nullable=False, server_default=sa.text("'CREATING'::character varying")
     )
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1289,13 +1289,13 @@ class Pipeline(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    name: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    description: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default=db.text("''::character varying"))
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    description: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default=sa.text("''::character varying"))
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
-    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
+    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -1312,12 +1312,12 @@ class DocumentPipelineExecutionLog(TypeBase):
         db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     pipeline_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    datasource_type: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    datasource_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     datasource_info: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    datasource_node_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    datasource_node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     input_data: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1327,7 +1327,7 @@ class PipelineRecommendedPlugin(TypeBase):
     __tablename__ = "pipeline_recommended_plugins"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     plugin_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
     provider_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
