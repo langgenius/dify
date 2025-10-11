@@ -77,7 +77,6 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from models import UserFrom, Workflow
 from models.engine import db
-from services.chatflow_memory_service import ChatflowMemoryService
 
 from . import llm_utils
 from .entities import (
@@ -1251,6 +1250,7 @@ class LLMNode(Node):
 
             if memory_block_spec and memory_block_spec.scope == MemoryScope.NODE:
                 is_draft = (self.invoke_from == InvokeFrom.DEBUGGER)
+                from services.chatflow_memory_service import ChatflowMemoryService
                 ChatflowMemoryService.update_node_memory_if_needed(
                     tenant_id=self.tenant_id,
                     app_id=self.app_id,
