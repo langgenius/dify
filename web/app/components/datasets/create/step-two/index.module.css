@@ -385,7 +385,7 @@
   max-width: 524px;
 }
 
-/* 
+/*
  * `fixed` must under `previewHeader` because of style override would not work
  */
 .fixed {

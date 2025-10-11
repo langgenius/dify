@@ -2,7 +2,7 @@ import Toast from '@/app/components/base/toast'
 import { textToAudioStream } from '@/service/share'
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  // eslint-disable-next-line ts/consistent-type-definitions
   interface Window {
     ManagedMediaSource: any
   }
@@ -21,9 +21,9 @@ export default class AudioPlayer {
   isLoadData = false
   url: string
   isPublic: boolean
-  callback: ((event: string) => {}) | null
+  callback: ((event: string) => void) | null
 
-  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => {}) | null) {
+  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => void) | null) {
     this.audioContext = new AudioContext()
     this.msgId = msgId
     this.msgContent = msgContent
@@ -68,7 +68,7 @@ export default class AudioPlayer {
     })
   }
 
-  public setCallback(callback: ((event: string) => {}) | null) {
+  public setCallback(callback: ((event: string) => void) | null) {
     this.callback = callback
     if (callback) {
       this.audio.addEventListener('ended', () => {
@@ -125,9 +125,9 @@ export default class AudioPlayer {
         this.receiveAudioData(value)
       }
     }
-    catch (error) {
+    catch {
       this.isLoadData = false
-      this.callback && this.callback('error')
+      this.callback?.('error')
     }
   }
 
@@ -137,15 +137,14 @@ export default class AudioPlayer {
       if (this.audioContext.state === 'suspended') {
         this.audioContext.resume().then((_) => {
           this.audio.play()
-          this.callback && this.callback('play')
+          this.callback?.('play')
         })
       }
       else if (this.audio.ended) {
         this.audio.play()
-        this.callback && this.callback('play')
+        this.callback?.('play')
       }
-      if (this.callback)
-        this.callback('play')
+      this.callback?.('play')
     }
     else {
       this.isLoadData = true
@@ -189,30 +188,26 @@ export default class AudioPlayer {
       if (this.audio.paused) {
         this.audioContext.resume().then((_) => {
           this.audio.play()
-          this.callback && this.callback('play')
+          this.callback?.('play')
         })
       }
       else if (this.audio.ended) {
         this.audio.play()
-        this.callback && this.callback('play')
+        this.callback?.('play')
       }
       else if (this.audio.played) { /* empty */ }
 
       else {
         this.audio.play()
-        this.callback && this.callback('play')
+        this.callback?.('play')
       }
     }
   }
 
   public pauseAudio() {
-    this.callback && this.callback('paused')
+    this.callback?.('paused')
     this.audio.pause()
     this.audioContext.suspend()
-  }
-
-  private cancer() {
-
   }
 
   private receiveAudioData(unit8Array: Uint8Array) {

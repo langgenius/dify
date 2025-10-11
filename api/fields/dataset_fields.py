@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restx import fields
 
 from libs.helper import TimestampField
 
@@ -24,6 +24,7 @@ vector_setting_fields = {
 }
 
 weighted_score_fields = {
+    "weight_type": fields.String,
     "keyword_setting": fields.Nested(keyword_setting_fields),
     "vector_setting": fields.Nested(vector_setting_fields),
 }
@@ -53,6 +54,15 @@ external_knowledge_info_fields = {
     "external_knowledge_api_endpoint": fields.String,
 }
 
+doc_metadata_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
+
+icon_info_fields = {
+    "icon_type": fields.String,
+    "icon": fields.String,
+    "icon_background": fields.String,
+    "icon_url": fields.String,
+}
+
 dataset_detail_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -76,6 +86,16 @@ dataset_detail_fields = {
     "doc_form": fields.String,
     "external_knowledge_info": fields.Nested(external_knowledge_info_fields),
     "external_retrieval_model": fields.Nested(external_retrieval_model_fields, allow_null=True),
+    "doc_metadata": fields.List(fields.Nested(doc_metadata_fields)),
+    "built_in_field_enabled": fields.Boolean,
+    "pipeline_id": fields.String,
+    "runtime_mode": fields.String,
+    "chunk_structure": fields.String,
+    "icon_info": fields.Nested(icon_info_fields),
+    "is_published": fields.Boolean,
+    "total_documents": fields.Integer,
+    "total_available_documents": fields.Integer,
+    "enable_api": fields.Boolean,
 }
 
 dataset_query_detail_fields = {
@@ -86,4 +106,10 @@ dataset_query_detail_fields = {
     "created_by_role": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+}
+
+dataset_metadata_fields = {
+    "id": fields.String,
+    "type": fields.String,
+    "name": fields.String,
 }

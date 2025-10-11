@@ -41,7 +41,7 @@ export type Condition = {
   variable_selector?: ValueSelector
   key?: string // sub variable key
   comparison_operator?: ComparisonOperator
-  value: string | string[]
+  value: string | string[] | boolean
   numberVarType?: NumberVarType
   sub_variable_condition?: CaseItem
 }
@@ -57,6 +57,7 @@ export type IfElseNodeType = CommonNodeType & {
   conditions?: Condition[]
   cases: CaseItem[]
   isInIteration: boolean
+  isInLoop: boolean
 }
 
 export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, varItem: Var) => void

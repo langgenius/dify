@@ -15,7 +15,7 @@ import { VarType } from '@/app/components/workflow/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
@@ -89,6 +89,7 @@ const VarGroupItem: FC<Props> = ({
   }] = useBoolean(false)
 
   const handleGroupNameChange = useCallback((e: ChangeEvent<any>) => {
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
@@ -107,17 +108,17 @@ const VarGroupItem: FC<Props> = ({
       title={groupEnabled
         ? <div className='flex items-center'>
           <div className='flex items-center !normal-case'>
-            <Folder className='mr-0.5 w-3.5 h-3.5' />
+            <Folder className='mr-0.5 h-3.5 w-3.5' />
             {(!isEditGroupName)
               ? (
-                <div className='flex items-center h-6 px-1 rounded-lg cursor-text text-text-secondary system-sm-semibold hover:bg-gray-100' onClick={setEditGroupName}>
+                <div className='system-sm-semibold flex h-6 cursor-text items-center rounded-lg px-1 text-text-secondary hover:bg-gray-100' onClick={setEditGroupName}>
                   {payload.group_name}
                 </div>
               )
               : (
                 <input
                   type='text'
-                  className='h-6 px-1 rounded-lg bg-white border border-gray-300 focus:outline-none'
+                  className='h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-none'
                   // style={{
                   //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
                   // }}
@@ -132,20 +133,20 @@ const VarGroupItem: FC<Props> = ({
           </div>
           {canRemove && (
             <div
-              className='group-hover:block hidden ml-0.5 p-1 rounded-md text-gray-500 cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
+              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block'
               onClick={onRemove}
             >
               <RiDeleteBinLine
-                className='w-4 h-4'
+                className='h-4 w-4'
               />
             </div>
           )}
         </div>
         : t(`${i18nPrefix}.title`)!}
       operations={
-        <div className='flex items-center h-6  space-x-2'>
+        <div className='flex h-6 items-center  space-x-2'>
           {payload.variables.length > 0 && (
-            <div className='flex items-center h-[18px] px-1 border border-divider-deep rounded-[5px] text-text-tertiary system-2xs-medium-uppercase'>{payload.output_type}</div>
+            <div className='system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary'>{payload.output_type}</div>
           )}
           {
             !readOnly

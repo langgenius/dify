@@ -30,7 +30,7 @@ const getIcon = (toolName: string, allToolIcons: Record<string, string | Emoji>)
     typeof icon === 'string'
       ? (
         <div
-          className='w-3 h-3 bg-cover bg-center rounded-[3px] shrink-0'
+          className='h-3 w-3 shrink-0 rounded-[3px] bg-cover bg-center'
           style={{
             backgroundImage: `url(${icon})`,
           }}
@@ -38,7 +38,7 @@ const getIcon = (toolName: string, allToolIcons: Record<string, string | Emoji>)
       )
       : (
         <AppIcon
-          className='rounded-[3px] shrink-0'
+          className='shrink-0 rounded-[3px]'
           size='xs'
           icon={icon?.content}
           background={icon?.background}
@@ -58,35 +58,35 @@ const Tool: FC<Props> = ({
   const icon = getIcon(name, allToolIcons) as any
   return (
     <div>
-      <div className={cn(!isShowDetail && 'shadow-sm', !isShowDetail && 'inline-block', 'max-w-full overflow-x-auto bg-white rounded-md')}>
+      <div className={cn(!isShowDetail && 'shadow-sm', !isShowDetail && 'inline-block', 'max-w-full overflow-x-auto rounded-md bg-white')}>
         <div
-          className={cn('flex items-center h-7 px-2 cursor-pointer')}
+          className={cn('flex h-7 cursor-pointer items-center px-2')}
           onClick={() => setIsShowDetail(!isShowDetail)}
         >
           {!isFinished && (
-            <RiLoader2Line className='w-3 h-3 text-gray-500 animate-spin shrink-0' />
+            <RiLoader2Line className='h-3 w-3 shrink-0 animate-spin text-gray-500' />
           )}
           {isFinished && !isShowDetail && (
-            <CheckCircle className='w-3 h-3 text-[#12B76A] shrink-0' />
+            <CheckCircle className='h-3 w-3 shrink-0 text-[#12B76A]' />
           )}
           {isFinished && isShowDetail && (
             icon
           )}
-          <span className='mx-1 text-xs font-medium text-gray-500 shrink-0'>
+          <span className='mx-1 shrink-0 text-xs font-medium text-gray-500'>
             {t(`tools.thought.${isFinished ? 'used' : 'using'}`)}
           </span>
           <span
-            className='text-xs font-medium text-gray-700 truncate'
+            className='truncate text-xs font-medium text-gray-700'
             title={toolLabel}
           >
             {toolLabel}
           </span>
           <RiArrowDownSLine
-            className={cn(isShowDetail && 'rotate-180', 'ml-1 w-3 h-3 text-gray-500 select-none cursor-pointer shrink-0')}
+            className={cn(isShowDetail && 'rotate-180', 'ml-1 h-3 w-3 shrink-0 cursor-pointer select-none text-gray-500')}
           />
         </div>
         {isShowDetail && (
-          <div className='border-t border-black/5 p-2 space-y-2 '>
+          <div className='space-y-2 border-t border-black/5 p-2 '>
             <Panel
               isRequest={true}
               toolName={toolName}

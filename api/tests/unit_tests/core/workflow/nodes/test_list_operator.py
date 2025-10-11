@@ -2,19 +2,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.list_operator.entities import (
     ExtractConfig,
     FilterBy,
     FilterCondition,
     Limit,
     ListOperatorNodeData,
-    OrderBy,
+    Order,
+    OrderByConfig,
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
 from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
-from models.workflow import WorkflowNodeExecutionStatus
+from models.enums import UserFrom
 
 
 @pytest.fixture
@@ -27,22 +30,35 @@ def list_operator_node():
                 FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])
             ],
         ),
-        "order_by": OrderBy(enabled=False, value="asc"),
+        "order_by": OrderByConfig(enabled=False, value=Order.ASC),
         "limit": Limit(enabled=False, size=0),
         "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
     }
-    node_data = ListOperatorNodeData(**config)
+    node_data = ListOperatorNodeData.model_validate(config)
+    node_config = {
+        "id": "test_node_id",
+        "data": node_data.model_dump(),
+    }
+    # Create properly configured mock for graph_init_params
+    graph_init_params = MagicMock()
+    graph_init_params.tenant_id = "test_tenant"
+    graph_init_params.app_id = "test_app"
+    graph_init_params.workflow_id = "test_workflow"
+    graph_init_params.graph_config = {}
+    graph_init_params.user_id = "test_user"
+    graph_init_params.user_from = UserFrom.ACCOUNT
+    graph_init_params.invoke_from = InvokeFrom.SERVICE_API
+    graph_init_params.call_depth = 0
+
     node = ListOperatorNode(
         id="test_node_id",
-        config={
-            "id": "test_node_id",
-            "data": node_data.model_dump(),
-        },
-        graph_init_params=MagicMock(),
-        graph=MagicMock(),
+        config=node_config,
+        graph_init_params=graph_init_params,
         graph_runtime_state=MagicMock(),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node
@@ -115,7 +131,7 @@ def test_filter_files_by_type(list_operator_node):
         },
     ]
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    for expected_file, result_file in zip(expected_files, result.outputs["result"]):
+    for expected_file, result_file in zip(expected_files, result.outputs["result"].value):
         assert expected_file["filename"] == result_file.filename
         assert expected_file["type"] == result_file.type
         assert expected_file["tenant_id"] == result_file.tenant_id

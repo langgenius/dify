@@ -5,7 +5,7 @@ import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { get } from 'lodash-es'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
@@ -58,15 +58,15 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   const readAlignTop = !showEdit && textNeedWrap
 
   return (
-    <div className={cn('flex items-center gap-1 py-0.5 min-h-5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
-      <div className={cn('w-[200px] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap shrink-0', editAlignTop && 'pt-1')}>{label}</div>
-      <div className="grow flex items-center gap-1 text-text-secondary">
+    <div className={cn('flex min-h-5 items-center gap-1 py-0.5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
+      <div className={cn('w-[200px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary', editAlignTop && 'pt-1')}>{label}</div>
+      <div className="flex grow items-center gap-1 text-text-secondary">
         {valueIcon}
         {!showEdit
           ? displayedValue
           : inputType === 'select'
             ? <SimpleSelect
-              onSelect={({ value }) => onUpdate && onUpdate(value as string)}
+              onSelect={({ value }) => onUpdate?.(value as string)}
               items={selectOptions}
               defaultValue={value}
               className={s.select}
@@ -75,7 +75,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
             />
             : inputType === 'textarea'
               ? <AutoHeightTextarea
-                onChange={e => onUpdate && onUpdate(e.target.value)}
+                onChange={e => onUpdate?.(e.target.value)}
                 value={value}
                 className={s.textArea}
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
@@ -107,7 +107,7 @@ const IconButton: FC<{
     <Tooltip
       popupContent={metadataMap[type].text}
     >
-      <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
+      <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}
           className={`group-hover:bg-primary-600 ${isChecked ? '!bg-primary-600' : ''}`}
@@ -285,7 +285,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   }
 
   const onCancel = () => {
-    setMetadataParams({ documentType: doc_type || '', metadata: { ...(docDetail?.doc_metadata || {}) } })
+    setMetadataParams({ documentType: doc_type || '', metadata: { ...docDetail?.doc_metadata } })
     setEditStatus(!doc_type)
     if (!doc_type)
       setShowDocTypes(true)
@@ -348,7 +348,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                   {metadataParams.documentType && <>
                     <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
                     {metadataMap[metadataParams.documentType || 'book'].text}
-                    {editStatus && <div className='inline-flex items-center gap-1 ml-1'>
+                    {editStatus && <div className='ml-1 inline-flex items-center gap-1'>
                       ·
                       <div
                         onClick={() => { setShowDocTypes(true) }}

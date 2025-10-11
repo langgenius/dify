@@ -8,9 +8,10 @@ import {
   RiMoreFill,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
+import cn from '@/utils/classnames'
 
 type OperateProps = {
   payload: {
@@ -23,13 +24,6 @@ export default function Operate({
   payload,
   onAuthAgain,
 }: OperateProps) {
-  const itemClassName = `
-    flex px-3 py-2 hover:bg-gray-50 text-sm text-gray-700
-    cursor-pointer
-  `
-  const itemIconClassName = `
-  mr-2 mt-[2px] w-4 h-4 text-gray-500
-  `
   const { t } = useTranslation()
   const { mutate } = useSWRConfig()
 
@@ -54,9 +48,9 @@ export default function Operate({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={`flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 ${open && 'bg-gray-100'}`}>
-              <RiMoreFill className='w-4 h-4' />
-            </Menu.Button>
+            <MenuButton className={cn('flex h-8 w-8 items-center justify-center rounded-lg hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+              <RiMoreFill className='h-4 w-4 text-text-secondary' />
+            </MenuButton>
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -66,44 +60,38 @@ export default function Operate({
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items
-                className="
-                  absolute right-0 top-9 w-60 max-w-80
-                  divide-y divide-gray-100 origin-top-right rounded-lg bg-white
-                  shadow-lg
-                "
-              >
+              <MenuItems className="absolute right-0 top-9 w-60 max-w-80 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
                 <div className="px-1 py-1">
-                  <Menu.Item>
+                  <MenuItem>
                     <div
-                      className={itemClassName}
+                      className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover'
                       onClick={onAuthAgain}
                     >
-                      <RiStickyNoteAddLine className={itemIconClassName} />
+                      <RiStickyNoteAddLine className='mr-2 mt-[2px] h-4 w-4 text-text-tertiary' />
                       <div>
-                        <div className='leading-5'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
-                        <div className='leading-5 text-xs text-gray-500'>
+                        <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
+                        <div className='system-xs-regular text-text-tertiary'>
                           {payload.total} {t('common.dataSource.notion.pagesAuthorized')}
                         </div>
                       </div>
                     </div>
-                  </Menu.Item>
-                  <Menu.Item>
-                    <div className={itemClassName} onClick={handleSync}>
-                      <RiLoopLeftLine className={itemIconClassName} />
-                      <div className='leading-5'>{t('common.dataSource.notion.sync')}</div>
+                  </MenuItem>
+                  <MenuItem>
+                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={handleSync}>
+                      <RiLoopLeftLine className='mr-2 mt-[2px] h-4 w-4 text-text-tertiary' />
+                      <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.sync')}</div>
                     </div>
-                  </Menu.Item>
+                  </MenuItem>
                 </div>
-                <Menu.Item>
-                  <div className='p-1'>
-                    <div className={itemClassName} onClick={handleRemove}>
-                      <RiDeleteBinLine className={itemIconClassName} />
-                      <div className='leading-5'>{t('common.dataSource.notion.remove')}</div>
+                <MenuItem>
+                  <div className='border-t border-divider-subtle p-1'>
+                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={handleRemove}>
+                      <RiDeleteBinLine className='mr-2 mt-[2px] h-4 w-4 text-text-tertiary' />
+                      <div className='system-sm-semibold text-text-secondary'>{t('common.dataSource.notion.remove')}</div>
                     </div>
                   </div>
-                </Menu.Item>
-              </Menu.Items>
+                </MenuItem>
+              </MenuItems>
             </Transition>
           </>
         )

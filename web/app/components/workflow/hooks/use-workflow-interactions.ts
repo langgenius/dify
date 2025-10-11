@@ -1,41 +1,39 @@
 import {
   useCallback,
-  useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import produce from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
-  CUSTOM_NODE, DSL_EXPORT_CHECK,
+  CUSTOM_NODE,
+  NODE_LAYOUT_HORIZONTAL_PADDING,
+  NODE_LAYOUT_VERTICAL_PADDING,
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
-import type { Node, WorkflowDataUpdater } from '../types'
-import { ControlMode } from '../types'
+import type { WorkflowDataUpdater } from '../types'
+import { BlockEnum, ControlMode } from '../types'
 import {
   getLayoutByDagre,
+  getLayoutForChildNodes,
   initialEdges,
   initialNodes,
 } from '../utils'
+import type { LayoutResult } from '../utils'
 import {
   useNodesReadOnly,
   useSelectionInteractions,
   useWorkflowReadOnly,
 } from '../hooks'
-import { useEdgesInteractions } from './use-edges-interactions'
-import { useNodesInteractions } from './use-nodes-interactions'
+import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { exportAppConfig } from '@/service/apps'
-import { useToastContext } from '@/app/components/base/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
-  const { handleNodeCancelRunningStatus } = useNodesInteractions()
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const handleCancelDebugAndPreviewPanel = useCallback(() => {
     workflowStore.setState({
@@ -98,35 +96,131 @@ export const useWorkflowOrganize = () => {
     } = store.getState()
     const { setViewport } = reactflow
     const nodes = getNodes()
-    const layout = getLayoutByDagre(nodes, edges)
-    const rankMap = {} as Record<string, Node>
 
-    nodes.forEach((node) => {
-      if (!node.parentId && node.type === CUSTOM_NODE) {
-        const rank = layout.node(node.id).rank!
+    const loopAndIterationNodes = nodes.filter(
+      node => (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
+              && !node.parentId
+              && node.type === CUSTOM_NODE,
+    )
 
-        if (!rankMap[rank]) {
-          rankMap[rank] = node
-        }
-        else {
-          if (rankMap[rank].position.y > node.position.y)
-            rankMap[rank] = node
-        }
+    const childLayoutEntries = await Promise.all(
+      loopAndIterationNodes.map(async node => [
+        node.id,
+        await getLayoutForChildNodes(node.id, nodes, edges),
+      ] as const),
+    )
+    const childLayoutsMap = childLayoutEntries.reduce((acc, [nodeId, layout]) => {
+      if (layout)
+        acc[nodeId] = layout
+      return acc
+    }, {} as Record<string, LayoutResult>)
+
+    const containerSizeChanges: Record<string, { width: number, height: number }> = {}
+
+    loopAndIterationNodes.forEach((parentNode) => {
+      const childLayout = childLayoutsMap[parentNode.id]
+      if (!childLayout) return
+
+      const {
+        bounds,
+        nodes: layoutNodes,
+      } = childLayout
+
+      if (!layoutNodes.size)
+        return
+
+      const requiredWidth = (bounds.maxX - bounds.minX) + NODE_LAYOUT_HORIZONTAL_PADDING * 2
+      const requiredHeight = (bounds.maxY - bounds.minY) + NODE_LAYOUT_VERTICAL_PADDING * 2
+
+      containerSizeChanges[parentNode.id] = {
+        width: Math.max(parentNode.width || 0, requiredWidth),
+        height: Math.max(parentNode.height || 0, requiredHeight),
       }
     })
 
-    const newNodes = produce(nodes, (draft) => {
+    const nodesWithUpdatedSizes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        if (!node.parentId && node.type === CUSTOM_NODE) {
-          const nodeWithPosition = layout.node(node.id)
+        if ((node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
+            && containerSizeChanges[node.id]) {
+          node.width = containerSizeChanges[node.id].width
+          node.height = containerSizeChanges[node.id].height
 
-          node.position = {
-            x: nodeWithPosition.x - node.width! / 2,
-            y: nodeWithPosition.y - node.height! / 2 + rankMap[nodeWithPosition.rank!].height! / 2,
+          if (node.data.type === BlockEnum.Loop) {
+            node.data.width = containerSizeChanges[node.id].width
+            node.data.height = containerSizeChanges[node.id].height
+          }
+          else if (node.data.type === BlockEnum.Iteration) {
+            node.data.width = containerSizeChanges[node.id].width
+            node.data.height = containerSizeChanges[node.id].height
           }
         }
       })
     })
+
+    const layout = await getLayoutByDagre(nodesWithUpdatedSizes, edges)
+
+    // Build layer map for vertical alignment - nodes in the same layer should align
+    const layerMap = new Map<number, { minY: number; maxHeight: number }>()
+    layout.nodes.forEach((layoutInfo) => {
+      if (layoutInfo.layer !== undefined) {
+        const existing = layerMap.get(layoutInfo.layer)
+        const newLayerInfo = {
+          minY: existing ? Math.min(existing.minY, layoutInfo.y) : layoutInfo.y,
+          maxHeight: existing ? Math.max(existing.maxHeight, layoutInfo.height) : layoutInfo.height,
+        }
+        layerMap.set(layoutInfo.layer, newLayerInfo)
+      }
+    })
+
+    const newNodes = produce(nodesWithUpdatedSizes, (draft) => {
+      draft.forEach((node) => {
+        if (!node.parentId && node.type === CUSTOM_NODE) {
+          const layoutInfo = layout.nodes.get(node.id)
+          if (!layoutInfo)
+            return
+
+          // Calculate vertical position with layer alignment
+          let yPosition = layoutInfo.y
+          if (layoutInfo.layer !== undefined) {
+            const layerInfo = layerMap.get(layoutInfo.layer)
+            if (layerInfo) {
+              // Align to the center of the tallest node in this layer
+              const layerCenterY = layerInfo.minY + layerInfo.maxHeight / 2
+              yPosition = layerCenterY - layoutInfo.height / 2
+            }
+          }
+
+          node.position = {
+            x: layoutInfo.x,
+            y: yPosition,
+          }
+        }
+      })
+
+      loopAndIterationNodes.forEach((parentNode) => {
+        const childLayout = childLayoutsMap[parentNode.id]
+        if (!childLayout)
+          return
+
+        const childNodes = draft.filter(node => node.parentId === parentNode.id)
+        const {
+          bounds,
+          nodes: layoutNodes,
+        } = childLayout
+
+        childNodes.forEach((childNode) => {
+          const layoutInfo = layoutNodes.get(childNode.id)
+          if (!layoutInfo)
+            return
+
+          childNode.position = {
+            x: NODE_LAYOUT_HORIZONTAL_PADDING + (layoutInfo.x - bounds.minX),
+            y: NODE_LAYOUT_VERTICAL_PADDING + (layoutInfo.y - bounds.minY),
+          }
+        })
+      })
+    })
+
     setNodes(newNodes)
     const zoom = 0.7
     setViewport({
@@ -139,6 +233,7 @@ export const useWorkflowOrganize = () => {
       handleSyncWorkflowDraft()
     })
   }, [getNodesReadOnly, store, reactflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+
   return {
     handleLayout,
   }
@@ -205,7 +300,6 @@ export const useWorkflowZoom = () => {
 
 export const useWorkflowUpdate = () => {
   const reactflow = useReactFlow()
-  const workflowStore = useWorkflowStore()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleUpdateWorkflowCanvas = useCallback((payload: WorkflowDataUpdater) => {
@@ -225,96 +319,33 @@ export const useWorkflowUpdate = () => {
     setViewport(viewport)
   }, [eventEmitter, reactflow])
 
-  const handleRefreshWorkflowDraft = useCallback(() => {
-    const {
-      appId,
-      setSyncWorkflowDraftHash,
-      setIsSyncingWorkflowDraft,
-      setEnvironmentVariables,
-      setEnvSecrets,
-      setConversationVariables,
-    } = workflowStore.getState()
-    setIsSyncingWorkflowDraft(true)
-    fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
-      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
-      setSyncWorkflowDraftHash(response.hash)
-      setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-        acc[env.id] = env.value
-        return acc
-      }, {} as Record<string, string>))
-      setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
-      // #TODO chatVar sync#
-      setConversationVariables(response.conversation_variables || [])
-    }).finally(() => setIsSyncingWorkflowDraft(false))
-  }, [handleUpdateWorkflowCanvas, workflowStore])
-
   return {
     handleUpdateWorkflowCanvas,
-    handleRefreshWorkflowDraft,
   }
 }
 
-export const useDSL = () => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
+export const useWorkflowCanvasMaximize = () => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const [exporting, setExporting] = useState(false)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  const appDetail = useAppStore(s => s.appDetail)
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+  const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
+  const {
+    getNodesReadOnly,
+  } = useNodesReadOnly()
 
-  const handleExportDSL = useCallback(async (include = false) => {
-    if (!appDetail)
+  const handleToggleMaximizeCanvas = useCallback(() => {
+    if (getNodesReadOnly())
       return
 
-    if (exporting)
-      return
-
-    try {
-      setExporting(true)
-      await doSyncWorkflowDraft()
-      const { data } = await exportAppConfig({
-        appID: appDetail.id,
-        include,
-      })
-      const a = document.createElement('a')
-      const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
-      a.download = `${appDetail.name}.yml`
-      a.click()
-    }
-    catch (e) {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-    finally {
-      setExporting(false)
-    }
-  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
-
-  const exportCheck = useCallback(async () => {
-    if (!appDetail)
-      return
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
-      if (list.length === 0) {
-        handleExportDSL()
-        return
-      }
-      eventEmitter?.emit({
-        type: DSL_EXPORT_CHECK,
-        payload: {
-          data: list,
-        },
-      } as any)
-    }
-    catch (e) {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
+    setMaximizeCanvas(!maximizeCanvas)
+    localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
+    eventEmitter?.emit({
+      type: 'workflow-canvas-maximize',
+      payload: !maximizeCanvas,
+    } as any)
+  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
 
   return {
-    exportCheck,
-    handleExportDSL,
+    handleToggleMaximizeCanvas,
   }
 }

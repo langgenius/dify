@@ -1,16 +1,17 @@
 'use client'
 import {
-  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiDeleteBinLine } from '@remixicon/react'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import useSWR, { useSWRConfig } from 'swr'
-import copy from 'copy-to-clipboard'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
+import ActionButton from '@/app/components/base/action-button'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import CopyFeedback from '@/app/components/base/copy-feedback'
 import {
   createApikey as createAppApikey,
   delApikey as delAppApikey,
@@ -22,7 +23,6 @@ import {
   fetchApiKeysList as fetchDatasetApiKeysList,
 } from '@/service/datasets'
 import type { CreateApiKeyResponse } from '@/models/app'
-import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -54,20 +54,6 @@ const SecretKeyModal = ({
 
   const [delKeyID, setDelKeyId] = useState('')
 
-  const [copyValue, setCopyValue] = useState('')
-
-  useEffect(() => {
-    if (copyValue) {
-      const timeout = setTimeout(() => {
-        setCopyValue('')
-      }, 1000)
-
-      return () => {
-        clearTimeout(timeout)
-      }
-    }
-  }, [copyValue])
-
   const onDel = async () => {
     setShowConfirmDelete(false)
     if (!delKeyID)
@@ -97,43 +83,39 @@ const SecretKeyModal = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} px-8 flex flex-col`}>
-      <XMarkIcon className={`w-6 h-6 absolute cursor-pointer text-gray-500 ${s.close}`} onClick={onClose} />
-      <p className='mt-1 text-[13px] text-gray-500 font-normal leading-5 flex-shrink-0'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
+    <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} flex flex-col px-8`}>
+      <div className="-mr-2 -mt-6 mb-4 flex justify-end">
+        <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
+      </div>
+      <p className='mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
       {!apiKeysList && <div className='mt-4'><Loading /></div>}
       {
         !!apiKeysList?.data?.length && (
-          <div className='flex flex-col flex-grow mt-4 overflow-hidden'>
-            <div className='flex items-center flex-shrink-0 text-xs font-semibold text-gray-500 border-b border-solid h-9'>
-              <div className='flex-shrink-0 w-64 px-3'>{t('appApi.apiKeyModal.secretKey')}</div>
-              <div className='flex-shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.created')}</div>
-              <div className='flex-shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.lastUsed')}</div>
-              <div className='flex-grow px-3'></div>
+          <div className='mt-4 flex grow flex-col overflow-hidden'>
+            <div className='flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary'>
+              <div className='w-64 shrink-0 px-3'>{t('appApi.apiKeyModal.secretKey')}</div>
+              <div className='w-[200px] shrink-0 px-3'>{t('appApi.apiKeyModal.created')}</div>
+              <div className='w-[200px] shrink-0 px-3'>{t('appApi.apiKeyModal.lastUsed')}</div>
+              <div className='grow px-3'></div>
             </div>
-            <div className='flex-grow overflow-auto'>
+            <div className='grow overflow-auto'>
               {apiKeysList.data.map(api => (
-                <div className='flex items-center text-sm font-normal text-gray-700 border-b border-solid h-9' key={api.id}>
-                  <div className='flex-shrink-0 w-64 px-3 font-mono truncate'>{generateToken(api.token)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
-                  <div className='flex flex-grow px-3'>
-                    <Tooltip
-                      popupContent={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
-                      popupClassName='mr-1'
-                    >
-                      <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 mr-1 rounded-lg cursor-pointer hover:bg-gray-100 ${s.copyIcon} ${copyValue === api.token ? s.copied : ''}`} onClick={() => {
-                        // setIsCopied(true)
-                        copy(api.token)
-                        setCopyValue(api.token)
-                      }}></div>
-                    </Tooltip>
-                    {isCurrentWorkspaceManager
-                      && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
-                        setDelKeyId(api.id)
-                        setShowConfirmDelete(true)
-                      }}>
-                      </div>
-                    }
+                <div className='flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary' key={api.id}>
+                  <div className='w-64 shrink-0 truncate px-3 font-mono'>{generateToken(api.token)}</div>
+                  <div className='w-[200px] shrink-0 truncate px-3'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
+                  <div className='w-[200px] shrink-0 truncate px-3'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
+                  <div className='flex grow space-x-2 px-3'>
+                    <CopyFeedback content={api.token} />
+                    {isCurrentWorkspaceManager && (
+                      <ActionButton
+                        onClick={() => {
+                          setDelKeyId(api.id)
+                          setShowConfirmDelete(true)
+                        }}
+                      >
+                        <RiDeleteBinLine className='h-4 w-4' />
+                      </ActionButton>
+                    )}
                   </div>
                 </div>
               ))}
@@ -142,12 +124,12 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-          <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
-          <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
+        <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
+          <PlusIcon className='mr-1 flex h-4 w-4 shrink-0' />
+          <div className='text-xs font-medium text-text-secondary'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>
       </div>
-      <SecretKeyGenerateModal className='flex-shrink-0' isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
+      <SecretKeyGenerateModal className='shrink-0' isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
       {showConfirmDelete && (
         <Confirm
           title={`${t('appApi.actionMsg.deleteConfirmTitle')}`}

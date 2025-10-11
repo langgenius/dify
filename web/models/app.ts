@@ -1,5 +1,6 @@
-import type { LangFuseConfig, LangSmithConfig, TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppSSO, AppTemplate, SiteConfig } from '@/types/app'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
+import type { App, AppMode, AppTemplate, SiteConfig } from '@/types/app'
+import type { Dependency } from '@/app/components/plugins/types'
 
 /* export type App = {
   id: string
@@ -83,13 +84,13 @@ export type AppDetailResponse = App
 export type DSLImportResponse = {
   id: string
   status: DSLImportStatus
+  app_mode: AppMode
   app_id?: string
   current_dsl_version?: string
   imported_dsl_version?: string
   error: string
+  leaked_dependencies: Dependency[]
 }
-
-export type AppSSOResponse = { enabled: AppSSO['enable_sso'] }
 
 export type AppTemplatesResponse = {
   data: AppTemplate[]
@@ -165,5 +166,5 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config: LangSmithConfig | LangFuseConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig
 }

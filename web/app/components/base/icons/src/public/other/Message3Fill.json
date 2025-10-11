@@ -1,0 +1,173 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "24",
+			"height": "24",
+			"viewBox": "0 0 24 24",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "message-3-fill"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "g",
+						"attributes": {
+							"id": "Vector",
+							"filter": "url(#filter0_d_1071_49501)"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"d": "M2 8.99374C2 5.68349 4.67654 3 8.00066 3H15.9993C19.3134 3 22 5.69478 22 8.99374V21H8.00066C4.68659 21 2 18.3052 2 15.0063V8.99374ZM14 11V13H16V11H14ZM8 11V13H10V11H8Z",
+									"fill": "url(#paint0_linear_1071_49501)"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "filter",
+						"attributes": {
+							"id": "filter0_d_1071_49501",
+							"x": "1.5",
+							"y": "2.75",
+							"width": "21",
+							"height": "19",
+							"filterUnits": "userSpaceOnUse",
+							"color-interpolation-filters": "sRGB"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "feFlood",
+								"attributes": {
+									"flood-opacity": "0",
+									"result": "BackgroundImageFix"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feColorMatrix",
+								"attributes": {
+									"in": "SourceAlpha",
+									"type": "matrix",
+									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+									"result": "hardAlpha"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feOffset",
+								"attributes": {
+									"dy": "0.25"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feGaussianBlur",
+								"attributes": {
+									"stdDeviation": "0.25"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feComposite",
+								"attributes": {
+									"in2": "hardAlpha",
+									"operator": "out"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feColorMatrix",
+								"attributes": {
+									"type": "matrix",
+									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in2": "BackgroundImageFix",
+									"result": "effect1_dropShadow_1071_49501"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in": "SourceGraphic",
+									"in2": "effect1_dropShadow_1071_49501",
+									"result": "shape"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint0_linear_1071_49501",
+							"x1": "12",
+							"y1": "3",
+							"x2": "12",
+							"y2": "21",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "#296DFF"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "#0BA5EC"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Message3Fill"
+}

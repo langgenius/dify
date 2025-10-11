@@ -1,6 +1,7 @@
 import json
+import logging
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert
@@ -23,6 +24,8 @@ from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
+logger = logging.getLogger(__name__)
+
 Base = declarative_base()  # type: Any
 
 
@@ -35,7 +38,7 @@ class RelytConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config RELYT_HOST is required")
         if not values["port"]:
@@ -64,17 +67,15 @@ class RelytVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.RELYT
 
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs) -> None:
-        index_params: dict[str, Any] = {}
-        metadatas = [d.metadata for d in texts]
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))
         self.embedding_dimension = len(embeddings[0])
         self.add_texts(texts, embeddings)
 
     def create_collection(self, dimension: int):
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             index_name = f"{self._collection_name}_embedding_index"
@@ -162,7 +163,7 @@ class RelytVector(BaseVector):
         else:
             return None
 
-    def delete_by_uuids(self, ids: Optional[list[str]] = None):
+    def delete_by_uuids(self, ids: list[str] | None = None):
         """Delete by vector IDs.
 
         Args:
@@ -189,8 +190,8 @@ class RelytVector(BaseVector):
                 delete_condition = chunks_table.c.id.in_(ids)
                 conn.execute(chunks_table.delete().where(delete_condition))
                 return True
-        except Exception as e:
-            print("Delete operation failed:", str(e))
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
     def delete_by_metadata_field(self, key: str, value: str):
@@ -198,7 +199,7 @@ class RelytVector(BaseVector):
         if ids:
             self.delete_by_uuids(ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         with Session(self.client) as session:
             ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
@@ -209,7 +210,7 @@ class RelytVector(BaseVector):
             ids = [item[0] for item in result]
             self.delete_by_uuids(ids)
 
-    def delete(self) -> None:
+    def delete(self):
         with Session(self.client) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}";"""))
             session.commit()
@@ -223,15 +224,19 @@ class RelytVector(BaseVector):
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = kwargs.get("filter", {})
+        if document_ids_filter:
+            filter["document_id"] = document_ids_filter
         results = self.similarity_search_with_score_by_vector(
-            k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=kwargs.get("filter")
+            k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=filter
         )
 
         # Organize results.
         docs = []
         for document, score in results:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if 1 - score > score_threshold:
+            if 1 - score >= score_threshold:
                 docs.append(document)
         return docs
 
@@ -239,16 +244,16 @@ class RelytVector(BaseVector):
         self,
         embedding: list[float],
         k: int = 4,
-        filter: Optional[dict] = None,
+        filter: dict | None = None,
     ) -> list[tuple[Document, float]]:
         # Add the filter if provided
 
         filter_condition = ""
         if filter is not None:
             conditions = [
-                f"metadata->>{key!r} in ({', '.join(map(repr, value))})"
+                f"metadata->>'{key!r}' in ({', '.join(map(repr, value))})"
                 if len(value) > 1
-                else f"metadata->>{key!r} = {value[0]!r}"
+                else f"metadata->>'{key!r}' = {value[0]!r}"
                 for key, value in filter.items()
             ]
             filter_condition = f"WHERE {' AND '.join(conditions)}"

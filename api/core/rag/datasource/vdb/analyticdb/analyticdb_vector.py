@@ -46,19 +46,19 @@ class AnalyticdbVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         return self.analyticdb_vector.text_exists(id)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         self.analyticdb_vector.delete_by_ids(ids)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         self.analyticdb_vector.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        return self.analyticdb_vector.search_by_vector(query_vector)
+        return self.analyticdb_vector.search_by_vector(query_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self.analyticdb_vector.search_by_full_text(query, **kwargs)
 
-    def delete(self) -> None:
+    def delete(self):
         self.analyticdb_vector.delete()
 
 

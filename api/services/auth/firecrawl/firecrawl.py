@@ -1,6 +1,6 @@
 import json
 
-import requests
+import httpx
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase
 
@@ -21,10 +21,12 @@ class FirecrawlAuth(ApiKeyAuthBase):
         headers = self._prepare_headers()
         options = {
             "url": "https://example.com",
-            "crawlerOptions": {"excludes": [], "includes": [], "limit": 1},
-            "pageOptions": {"onlyMainContent": True},
+            "includePaths": [],
+            "excludePaths": [],
+            "limit": 1,
+            "scrapeOptions": {"onlyMainContent": True},
         }
-        response = self._post_request(f"{self.base_url}/v0/crawl", options, headers)
+        response = self._post_request(f"{self.base_url}/v1/crawl", options, headers)
         if response.status_code == 200:
             return True
         else:
@@ -34,7 +36,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
     def _post_request(self, url, data, headers):
-        return requests.post(url, headers=headers, json=data)
+        return httpx.post(url, headers=headers, json=data)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:

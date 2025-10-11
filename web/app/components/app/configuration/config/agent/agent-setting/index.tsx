@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
 import ItemPanel from './item-panel'
 import Button from '@/app/components/base/button'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
 import type { AgentConfig } from '@/models/debug'
-import { DEFAULT_AGENT_PROMPT } from '@/config'
+import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 
 type Props = {
   isChatModel: boolean
@@ -20,7 +21,6 @@ type Props = {
 }
 
 const maxIterationsMin = 1
-const maxIterationsMax = 5
 
 const AgentSetting: FC<Props> = ({
   isChatModel,
@@ -31,52 +31,65 @@ const AgentSetting: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState(payload)
+  const ref = useRef(null)
+  const [mounted, setMounted] = useState(false)
+
+  useClickAway(() => {
+    if (mounted)
+      onCancel()
+  }, ref)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const handleSave = () => {
     onSave(tempPayload)
   }
 
   return (
-    <div className='fixed z-[100] inset-0 overflow-hidden flex justify-end p-2'
+    <div className='fixed inset-0 z-[100] flex justify-end overflow-hidden p-2'
       style={{
         backgroundColor: 'rgba(16, 24, 40, 0.20)',
       }}
     >
       <div
-        className='w-[640px] flex flex-col h-full overflow-hidden bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+        ref={ref}
+        className='flex h-full w-[640px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
       >
-        <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
-          <div className='flex flex-col text-base font-semibold text-gray-900'>
+        <div className='flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5'>
+          <div className='flex flex-col text-base font-semibold text-text-primary'>
             <div className='leading-6'>{t('appDebug.agent.setting.name')}</div>
           </div>
           <div className='flex items-center'>
             <div
               onClick={onCancel}
-              className='flex justify-center items-center w-6 h-6 cursor-pointer'
+              className='flex h-6 w-6 cursor-pointer items-center justify-center'
             >
-              <RiCloseLine className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
             </div>
           </div>
         </div>
         {/* Body */}
-        <div className='grow p-6 pt-5 border-b overflow-y-auto pb-[68px]' style={{
+        <div className='grow overflow-y-auto border-b p-6 pb-[68px] pt-5' style={{
           borderBottom: 'rgba(0, 0, 0, 0.05)',
         }}>
           {/* Agent Mode */}
           <ItemPanel
             className='mb-4'
             icon={
-              <CuteRobot className='w-4 h-4 text-indigo-600' />
+              <CuteRobot className='h-4 w-4 text-indigo-600' />
             }
             name={t('appDebug.agent.agentMode')}
             description={t('appDebug.agent.agentModeDes')}
           >
-            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</div>
+            <div className='text-[13px] font-medium leading-[18px] text-text-primary'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</div>
           </ItemPanel>
 
           <ItemPanel
             className='mb-4'
             icon={
-              <Unblur className='w-4 h-4 text-[#FB6514]' />
+              <Unblur className='h-4 w-4 text-[#FB6514]' />
             }
             name={t('appDebug.agent.setting.maximumIterations.name')}
             description={t('appDebug.agent.setting.maximumIterations.description')}
@@ -85,7 +98,7 @@ const AgentSetting: FC<Props> = ({
               <Slider
                 className='mr-3 w-[156px]'
                 min={maxIterationsMin}
-                max={maxIterationsMax}
+                max={MAX_ITERATIONS_NUM}
                 value={tempPayload.max_iteration}
                 onChange={(value) => {
                   setTempPayload({
@@ -98,16 +111,16 @@ const AgentSetting: FC<Props> = ({
               <input
                 type="number"
                 min={maxIterationsMin}
-                max={maxIterationsMax} step={1}
-                className="block w-11 h-7 leading-7 rounded-lg border-0 pl-1 px-1.5 bg-gray-100 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600"
+                max={MAX_ITERATIONS_NUM} step={1}
+                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-inset focus:ring-primary-600"
                 value={tempPayload.max_iteration}
                 onChange={(e) => {
-                  let value = parseInt(e.target.value, 10)
+                  let value = Number.parseInt(e.target.value, 10)
                   if (value < maxIterationsMin)
                     value = maxIterationsMin
 
-                  if (value > maxIterationsMax)
-                    value = maxIterationsMax
+                  if (value > MAX_ITERATIONS_NUM)
+                    value = MAX_ITERATIONS_NUM
                   setTempPayload({
                     ...tempPayload,
                     max_iteration: value,
@@ -117,23 +130,20 @@ const AgentSetting: FC<Props> = ({
           </ItemPanel>
 
           {!isFunctionCall && (
-            <div className='py-2 bg-gray-50 rounded-xl shadow-xs'>
-              <div className='flex items-center h-8 px-4 leading-6 text-sm font-semibold text-gray-700'>{t('tools.builtInPromptTitle')}</div>
-              <div className='h-[396px] px-4 overflow-y-auto leading-5 text-sm font-normal text-gray-700 whitespace-pre-line'>
+            <div className='rounded-xl bg-background-section-burn py-2 shadow-xs'>
+              <div className='flex h-8 items-center px-4 text-sm font-semibold leading-6 text-text-secondary'>{t('tools.builtInPromptTitle')}</div>
+              <div className='h-[396px] overflow-y-auto whitespace-pre-line px-4 text-sm font-normal leading-5 text-text-secondary'>
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
               <div className='px-4'>
-                <div className='inline-flex items-center h-5 px-1 rounded-md bg-gray-100 leading-[18px] text-xs font-medium text-gray-500'>{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
+                <div className='inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs font-medium leading-[18px] text-text-tertiary'>{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
               </div>
             </div>
           )}
 
         </div>
         <div
-          className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
-          style={{
-            borderColor: 'rgba(0, 0, 0, 0.05)',
-          }}
+          className='sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4'
         >
           <Button
             onClick={onCancel}

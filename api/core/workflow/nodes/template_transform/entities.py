@@ -1,10 +1,10 @@
-from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.base.entities import VariableSelector
 
 
 class TemplateTransformNodeData(BaseNodeData):
     """
-    Code Node Data.
+    Template Transform Node Data.
     """
 
     variables: list[VariableSelector]

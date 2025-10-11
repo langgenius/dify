@@ -55,3 +55,47 @@ export async function fetchWithRetry<T = any>(fn: Promise<T>, retries = 3): Prom
     return [null, res]
   }
 }
+
+export const correctModelProvider = (provider: string) => {
+  if (!provider)
+    return ''
+
+  if (provider.includes('/'))
+    return provider
+
+  if (['google'].includes(provider))
+    return 'langgenius/gemini/google'
+
+  return `langgenius/${provider}/${provider}`
+}
+
+export const correctToolProvider = (provider: string, toolInCollectionList?: boolean) => {
+  if (!provider)
+    return ''
+
+  if (toolInCollectionList)
+    return provider
+
+  if (provider.includes('/'))
+    return provider
+
+  if (['stepfun', 'jina', 'siliconflow', 'gitee_ai'].includes(provider))
+    return `langgenius/${provider}_tool/${provider}`
+
+  return `langgenius/${provider}/${provider}`
+}
+
+export const canFindTool = (providerId: string, oldToolId?: string) => {
+  return providerId === oldToolId
+    || providerId === `langgenius/${oldToolId}/${oldToolId}`
+    || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
+}
+
+export const removeSpecificQueryParam = (key: string | string[]) => {
+  const url = new URL(window.location.href)
+  if (Array.isArray(key))
+    key.forEach(k => url.searchParams.delete(k))
+  else
+    url.searchParams.delete(key)
+  window.history.replaceState(null, '', url.toString())
+}

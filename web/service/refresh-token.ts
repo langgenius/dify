@@ -1,11 +1,11 @@
-import { apiPrefix } from '@/config'
+import { API_PREFIX } from '@/config'
 import { fetchWithRetry } from '@/utils'
 
 const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
 
 let isRefreshing = false
 function waitUntilTokenRefreshed() {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve) => {
     function _check() {
       const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
       if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
@@ -21,16 +21,23 @@ function waitUntilTokenRefreshed() {
   })
 }
 
+const isRefreshingSignAvailable = function (delta: number) {
+  const nowTime = new Date().getTime()
+  const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
+  return nowTime - Number.parseInt(lastTime) <= delta
+}
+
 // only one request can send
-async function getNewAccessToken(): Promise<void> {
+async function getNewAccessToken(timeout: number): Promise<void> {
   try {
     const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-    if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
+    if ((isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) || isRefreshing) {
       await waitUntilTokenRefreshed()
     }
     else {
       isRefreshing = true
       globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
+      globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
       globalThis.addEventListener('beforeunload', releaseRefreshLock)
       const refresh_token = globalThis.localStorage.getItem('refresh_token')
 
@@ -39,7 +46,7 @@ async function getNewAccessToken(): Promise<void> {
       // it can lead to an infinite loop if the refresh attempt also returns 401.
       // To avoid this, handle token refresh separately in a dedicated function
       // that does not call baseFetch and uses a single retry mechanism.
-      const [error, ret] = await fetchWithRetry(globalThis.fetch(`${apiPrefix}/refresh-token`, {
+      const [error, ret] = await fetchWithRetry(globalThis.fetch(`${API_PREFIX}/refresh-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json;utf-8',
@@ -72,6 +79,7 @@ function releaseRefreshLock() {
   if (isRefreshing) {
     isRefreshing = false
     globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+    globalThis.localStorage.removeItem('last_refresh_time')
     globalThis.removeEventListener('beforeunload', releaseRefreshLock)
   }
 }
@@ -80,5 +88,5 @@ export async function refreshAccessTokenOrRelogin(timeout: number) {
   return Promise.race([new Promise<void>((resolve, reject) => setTimeout(() => {
     releaseRefreshLock()
     reject(new Error('request timeout'))
-  }, timeout)), getNewAccessToken()])
+  }, timeout)), getNewAccessToken(timeout)])
 }

@@ -37,7 +37,7 @@ const FileUploadSettings = ({
         {children}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-[360px] p-4 bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-2xl'>
+        <div className='w-[360px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl'>
           <SettingContent
             imageUpload={imageUpload}
             onClose={() => onOpen(false)}

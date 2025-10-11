@@ -1,0 +1,41 @@
+name: Deploy Enterprise
+
+permissions:
+  contents: read
+
+on:
+  workflow_run:
+    workflows: ["Build and Push API & Web"]
+    branches:
+      - "deploy/enterprise"
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'deploy/enterprise'
+
+    steps:
+      - name: trigger deployments
+        env:
+          DEV_ENV_ADDRS: ${{ vars.DEV_ENV_ADDRS }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+        run: |
+          IFS=',' read -ra ENDPOINTS <<< "${DEV_ENV_ADDRS:-}"
+          BODY='{"project":"dify-api","tag":"deploy-enterprise"}'
+
+          for ENDPOINT in "${ENDPOINTS[@]}"; do
+            ENDPOINT="$(echo "$ENDPOINT" | xargs)"
+            [ -z "$ENDPOINT" ] && continue
+
+            API_SIGNATURE=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$DEPLOY_SECRET" | awk '{print "sha256="$2}')
+
+            curl -sSf -X POST \
+              -H "Content-Type: application/json" \
+              -H "X-Hub-Signature-256: $API_SIGNATURE" \
+              -d "$BODY" \
+              "$ENDPOINT"
+          done

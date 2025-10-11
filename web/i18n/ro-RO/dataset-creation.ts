@@ -1,8 +1,7 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Creați Cunoștințe',
-      update: 'Adăugați date',
+      fallbackRoute: 'Cunoaștere',
     },
     one: 'Alegeți sursa de date',
     two: 'Prelucrarea și curățarea textului',
@@ -21,7 +20,8 @@ const translation = {
     },
     uploader: {
       title: 'Încărcați fișier text',
-      button: 'Trageți și fixați fișierul, sau',
+      button: 'Trageți și plasați fișiere sau foldere sau',
+      buttonSingleFile: 'Trageți și plasați un fișier sau',
       browse: 'Răsfoire',
       tip: 'Acceptă {{supportTypes}}. Maxim {{size}}MB fiecare.',
       validation: {
@@ -64,7 +64,6 @@ const translation = {
       firecrawlTitle: 'Extrageți conținut web cu 🔥Firecrawl',
       unknownError: 'Eroare necunoscută',
       scrapTimeInfo: 'Pagini răzuite {{total}} în total în {{timp}}s',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
       excludePaths: 'Excluderea căilor',
       resetAll: 'Resetați toate',
       extractOnlyMainContent: 'Extrageți doar conținutul principal (fără anteturi, navigări, subsoluri etc.)',
@@ -81,6 +80,14 @@ const translation = {
       jinaReaderTitle: 'Convertiți întregul site în Markdown',
       jinaReaderNotConfigured: 'Jina Reader nu este configurat',
       useSitemapTooltip: 'Urmați harta site-ului pentru a accesa cu crawlere site-ul. Dacă nu, Jina Reader va accesa cu crawlere iterativ în funcție de relevanța paginii, producând mai puține pagini, dar de calitate superioară.',
+      waterCrawlNotConfigured: 'Watercrawl nu este configurat',
+      watercrawlTitle: 'Extrageți conținut web cu Watercrawl',
+      configureJinaReader: 'Configurează Jina Reader',
+      waterCrawlNotConfiguredDescription: 'Configurează Watercrawl cu cheia API pentru a-l folosi.',
+      configureFirecrawl: 'Configurează Firecrawl',
+      watercrawlDoc: 'Documentele Watercrawl',
+      configureWatercrawl: 'Configurează Watercrawl',
+      running: 'Rulează',
     },
     cancel: 'Anula',
   },
@@ -166,6 +173,7 @@ const translation = {
     qaSwitchHighQualityTipContent: 'În prezent, numai metoda de index de înaltă calitate acceptă fragmentarea formatului de întrebări și răspunsuri. Doriți să treceți la modul de înaltă calitate?',
     parentChildChunkDelimiterTip: 'Un delimitator este caracterul folosit pentru a separa textul. \\n este recomandat pentru împărțirea bucăților părinte în bucăți copii mici. De asemenea, puteți utiliza delimitatori speciali definiți de dvs.',
     useQALanguage: 'Fragmentați folosind formatul Întrebări și răspunsuri în',
+    qaTip: 'Când utilizați date structurate de întrebări și răspunsuri, puteți crea documente care asociază întrebări cu răspunsuri. Aceste documente sunt indexate pe baza porțiunii de întrebare, permițând sistemului să preia răspunsuri relevante pe baza similitudinii interogărilor.',
   },
   stepThree: {
     creationTitle: '🎉 Cunoștință creată',
@@ -198,6 +206,11 @@ const translation = {
     title: 'Conectați-vă la alte surse de date?',
     description: 'În prezent, baza de cunoștințe a Dify are doar surse de date limitate. Contribuția cu o sursă de date la baza de cunoștințe Dify este o modalitate fantastică de a ajuta la îmbunătățirea flexibilității și puterii platformei pentru toți utilizatorii. Ghidul nostru de contribuție vă ajută să începeți. Vă rugăm să faceți clic pe linkul de mai jos pentru a afla mai multe.',
     learnMore: 'Află mai multe',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'Obțineți cheia dvs. API de la watercrawl.dev',
+    apiKeyPlaceholder: 'Cheia API de la watercrawl.dev',
+    configWatercrawl: 'Configurează Watercrawl',
   },
 }
 

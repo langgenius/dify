@@ -37,6 +37,7 @@ const translation = {
     HR: 'İK',
     Agent: 'Aracı',
     Workflow: 'İş Akışı',
+    Entertainment: 'Eğlence',
   },
 }
 

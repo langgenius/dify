@@ -7,32 +7,38 @@ import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { ActionButton } from '@/app/components/base/action-button'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { AppType } from '@/types/app'
-import type { AutomaticRes } from '@/service/debug'
+import type { GenRes } from '@/service/debug'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import type { Model } from '@/types/app'
+import { useHooksStore } from '../../../hooks-store'
 
 type Props = {
   className?: string
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
+  nodeId: string
+  editorId?: string
+  currentPrompt?: string
 }
 
 const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
-  modelConfig,
+  nodeId,
+  editorId,
+  currentPrompt,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = useCallback((res: AutomaticRes) => {
-    onGenerated?.(res.prompt)
+  const handleAutomaticRes = useCallback((res: GenRes) => {
+    onGenerated?.(res.modified)
     showAutomaticFalse()
   }, [onGenerated, showAutomaticFalse])
+  const configsMap = useHooksStore(s => s.configsMap)
   return (
     <div className={cn(className)}>
       <ActionButton
         className='hover:bg-[#155EFF]/8'
         onClick={showAutomaticTrue}>
-        <Generator className='w-4 h-4 text-primary-600' />
+        <Generator className='h-4 w-4 text-primary-600' />
       </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal
@@ -40,8 +46,10 @@ const PromptGeneratorBtn: FC<Props> = ({
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
-          model={modelConfig as Model}
-          isInLLMNode
+          flowId={configsMap?.flowId || ''}
+          nodeId={nodeId}
+          editorId={editorId}
+          currentPrompt={currentPrompt}
         />
       )}
     </div>

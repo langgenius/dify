@@ -2,8 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import {
-  RiBox3Fill,
-  RiBox3Line,
+  RiBrain2Fill,
+  RiBrain2Line,
   RiCloseLine,
   RiColorFilterFill,
   RiColorFilterLine,
@@ -17,26 +17,23 @@ import {
   RiPuzzle2Line,
   RiTranslate2,
 } from '@remixicon/react'
+import Button from '../../base/button'
 import MembersPage from './members-page'
 import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
-import DataSourcePage from './data-source-page'
+import DataSourcePage from './data-source-page-new'
 import ModelProviderPage from './model-provider-page'
-import s from './index.module.css'
 import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
-import Modal from '@/app/components/base/modal'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
+import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import Input from '@/app/components/base/input'
 
 const iconClassName = `
-  w-4 h-4 ml-3 mr-2
-`
-
-const scrolledClassName = `
-  border-b shadow-xs bg-white/[.98]
+  w-5 h-5 mr-2
 `
 
 type IAccountSettingProps = {
@@ -48,8 +45,8 @@ type GroupItem = {
   key: string
   name: string
   description?: string
-  icon: JSX.Element
-  activeIcon: JSX.Element
+  icon: React.JSX.Element
+  activeIcon: React.JSX.Element
 }
 
 export default function AccountSetting({
@@ -68,8 +65,8 @@ export default function AccountSetting({
       {
         key: 'provider',
         name: t('common.settings.provider'),
-        icon: <RiBox3Line className={iconClassName} />,
-        activeIcon: <RiBox3Fill className={iconClassName} />,
+        icon: <RiBrain2Line className={iconClassName} />,
+        activeIcon: <RiBrain2Fill className={iconClassName} />,
       },
       {
         key: 'members',
@@ -117,7 +114,7 @@ export default function AccountSetting({
     },
     {
       key: 'account-group',
-      name: t('common.settings.accountGroup'),
+      name: t('common.settings.generalGroup'),
       items: [
         {
           key: 'language',
@@ -144,32 +141,31 @@ export default function AccountSetting({
 
   const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
 
+  const [searchValue, setSearchValue] = useState<string>('')
+
   return (
-    <Modal
-      isShow
-      onClose={() => { }}
-      className={s.modal}
-      wrapperClassName='pt-[60px]'
+    <MenuDialog
+      show
+      onClose={onCancel}
     >
-      <div className='flex'>
-        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-divider-burn shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
-          <div className='mb-8 ml-0 sm:ml-2 sm:text-base title-2xl-semi-bold text-text-primary'>{t('common.userProfile.settings')}</div>
+      <div className='mx-auto flex h-[100vh] max-w-[1048px]'>
+        <div className='flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]'>
+          <div className='title-2xl-semi-bold mb-8 mt-6 px-3 py-2 text-text-primary'>{t('common.userProfile.settings')}</div>
           <div className='w-full'>
             {
               menuItems.map(menuItem => (
-                <div key={menuItem.key} className='mb-4'>
+                <div key={menuItem.key} className='mb-2'>
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className='px-2 mb-[6px] sm:text-xs system-xs-medium-uppercase text-text-tertiary'>{menuItem.name}</div>
+                    <div className='system-xs-medium-uppercase mb-0.5 py-2 pb-1 pl-3 text-text-tertiary'>{menuItem.name}</div>
                   )}
                   <div>
                     {
                       menuItem.items.map(item => (
                         <div
                           key={item.key}
-                          className={`
-                            flex items-center h-[37px] mb-[2px] text-sm cursor-pointer rounded-lg
-                            ${activeMenu === item.key ? 'system-sm-semibold text-components-menu-item-text-active bg-state-base-active' : 'system-sm-medium text-components-menu-item-text'}
-                          `}
+                          className={cn(
+                            'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
+                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text')}
                           title={item.name}
                           onClick={() => setActiveMenu(item.key)}
                         >
@@ -184,31 +180,50 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-components-panel-bg title-2xl-semi-bold text-text-primary z-20', scrolled && scrolledClassName)}>
-            <div className='shrink-0'>{activeItem?.name}</div>
-            {
-              activeItem?.description && (
-                <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
-              )
-            }
-            <div className='grow flex justify-end'>
-              <div className='z-[10] flex items-center justify-center -mr-4 p-2 cursor-pointer rounded-[10px] hover:bg-components-button-tertiary-bg' onClick={onCancel}>
-                <RiCloseLine className='w-5 h-5 text-components-button-tertiary-text' />
-              </div>
-            </div>
+        <div className='relative flex w-[824px]'>
+          <div className='fixed right-6 top-6 z-[9999] flex flex-col items-center'>
+            <Button
+              variant='tertiary'
+              size='large'
+              className='px-2'
+              onClick={onCancel}
+            >
+              <RiCloseLine className='h-5 w-5' />
+            </Button>
+            <div className='system-2xs-medium-uppercase mt-1 text-text-tertiary'>ESC</div>
           </div>
-          <div className='px-4 sm:px-8 pt-2'>
-            {activeMenu === 'members' && <MembersPage />}
-            {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'language' && <LanguagePage />}
-            {activeMenu === 'provider' && <ModelProviderPage />}
-            {activeMenu === 'data-source' && <DataSourcePage />}
-            {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
-            {activeMenu === 'custom' && <CustomPage />}
+          <div ref={scrollRef} className='w-full overflow-y-auto bg-components-panel-bg pb-4'>
+            <div className={cn('sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
+              <div className='title-2xl-semi-bold shrink-0 text-text-primary'>
+                {activeItem?.name}
+                {activeItem?.description && (
+                  <div className='system-sm-regular mt-1 text-text-tertiary'>{activeItem?.description}</div>
+                )}
+              </div>
+              {activeItem?.key === 'provider' && (
+                <div className='flex grow justify-end'>
+                  <Input
+                    showLeftIcon
+                    wrapperClassName='!w-[200px]'
+                    className='!h-8 !text-[13px]'
+                    onChange={e => setSearchValue(e.target.value)}
+                    value={searchValue}
+                  />
+                </div>
+              )}
+            </div>
+            <div className='px-4 pt-2 sm:px-8'>
+              {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === 'members' && <MembersPage />}
+              {activeMenu === 'billing' && <BillingPage />}
+              {activeMenu === 'data-source' && <DataSourcePage />}
+              {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
+              {activeMenu === 'custom' && <CustomPage />}
+              {activeMenu === 'language' && <LanguagePage />}
+            </div>
           </div>
         </div>
       </div>
-    </Modal>
+    </MenuDialog>
   )
 }

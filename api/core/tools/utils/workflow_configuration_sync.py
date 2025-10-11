@@ -27,7 +27,7 @@ class WorkflowToolConfigurationUtils:
     @classmethod
     def check_is_synced(
         cls, variables: list[VariableEntity], tool_configurations: list[WorkflowToolParameterConfiguration]
-    ) -> bool:
+    ):
         """
         check is synced
 
@@ -41,5 +41,3 @@ class WorkflowToolConfigurationUtils:
         for parameter in tool_configurations:
             if parameter.name not in variable_names:
                 raise ValueError("parameter configuration mismatch, please republish the tool to update")
-
-        return True

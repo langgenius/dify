@@ -1,8 +1,8 @@
 #!/bin/bash
-# used to start couchbase server - can't get around this as docker compose only allows you to start one command - so we have to start couchbase like the standard couchbase Dockerfile would 
+# used to start couchbase server - can't get around this as docker compose only allows you to start one command - so we have to start couchbase like the standard couchbase Dockerfile would
 # https://github.com/couchbase/docker/blob/master/enterprise/couchbase-server/7.2.0/Dockerfile#L88
 
-/entrypoint.sh couchbase-server & 
+/entrypoint.sh couchbase-server &
 
 # track if setup is complete so we don't try to setup again
 FILE=/opt/couchbase/init/setupComplete.txt
@@ -36,9 +36,9 @@ if ! [ -f "$FILE" ]; then
   --bucket-ramsize $COUCHBASE_BUCKET_RAMSIZE \
   --bucket-type couchbase
 
-  # create file so we know that the cluster is setup and don't run the setup again 
+  # create file so we know that the cluster is setup and don't run the setup again
   touch $FILE
-fi 
+fi
   # docker compose will stop the container from running unless we do this
   # known issue and workaround
   tail -f /dev/null

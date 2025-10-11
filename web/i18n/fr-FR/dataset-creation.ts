@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'Créer des Connaissances',
       update: 'Ajouter des données',
+      fallbackRoute: 'Connaissance',
     },
     one: 'Choisissez la source de données',
     two: 'Prétraitement et Nettoyage du Texte',
@@ -21,7 +22,8 @@ const translation = {
     },
     uploader: {
       title: 'Télécharger le fichier texte',
-      button: 'Glisser et déposer le fichier, ou',
+      button: 'Faites glisser et déposez des fichiers ou des dossiers, ou',
+      buttonSingleFile: 'Faites glisser et déposez un fichier, ou',
       browse: 'Parcourir',
       tip: 'Prend en charge {{supportTypes}}. Max {{size}}MB chacun.',
       validation: {
@@ -60,7 +62,6 @@ const translation = {
       preview: 'Aperçu',
       crawlSubPage: 'Explorer les sous-pages',
       configure: 'Configurer',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
       maxDepth: 'Profondeur maximale',
       fireCrawlNotConfigured: 'Firecrawl n’est pas configuré',
       firecrawlTitle: 'Extraire du contenu web avec 🔥Firecrawl',
@@ -81,6 +82,14 @@ const translation = {
       jinaReaderNotConfigured: 'Jina Reader n’est pas configuré',
       chooseProvider: 'Sélectionnez un fournisseur',
       jinaReaderTitle: 'Convertir l’intégralité du site en Markdown',
+      watercrawlTitle: 'Extraire du contenu web avec Watercrawl',
+      watercrawlDoc: 'Documents Watercrawl',
+      waterCrawlNotConfiguredDescription: 'Configurez Watercrawl avec la clé API pour l\'utiliser.',
+      configureJinaReader: 'Configurer le lecteur Jina',
+      configureWatercrawl: 'Configurer Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl n\'est pas configuré',
+      configureFirecrawl: 'Configurer Firecrawl',
+      running: 'Course',
     },
     cancel: 'Annuler',
   },
@@ -154,7 +163,7 @@ const translation = {
     general: 'Généralités',
     fullDocTip: 'L’intégralité du document est utilisée comme morceau parent et récupérée directement. Veuillez noter que pour des raisons de performance, le texte dépassant 10000 jetons sera automatiquement tronqué.',
     fullDoc: 'Doc complet',
-    previewChunkCount: '{{compte}} Tronçons estimés',
+    previewChunkCount: '{{count}} Tronçons estimés',
     childChunkForRetrieval: 'Child-chunk pour l’extraction',
     parentChildDelimiterTip: 'Un délimiteur est le caractère utilisé pour séparer le texte. \\n\\n est recommandé pour diviser le document d’origine en gros morceaux parents. Vous pouvez également utiliser des délimiteurs spéciaux définis par vous-même.',
     qaSwitchHighQualityTipTitle: 'Le format Q&R nécessite une méthode d’indexation de haute qualité',
@@ -166,6 +175,7 @@ const translation = {
     previewChunkTip: 'Cliquez sur le bouton « Preview Chunk » sur la gauche pour charger l’aperçu',
     parentChildChunkDelimiterTip: 'Un délimiteur est le caractère utilisé pour séparer le texte. \\n est recommandé pour diviser les blocs parents en petits blocs enfants. Vous pouvez également utiliser des délimiteurs spéciaux définis par vous-même.',
     generalTip: 'Mode général de segmentation du texte, les morceaux récupérés et rappelés sont les mêmes.',
+    qaTip: 'Lorsque vous utilisez des données de questions-réponses structurées, vous pouvez créer des documents qui associent des questions et des réponses. Ces documents sont indexés en fonction de la partie question, ce qui permet au système de récupérer des réponses pertinentes en fonction de la similarité des requêtes.',
   },
   stepThree: {
     creationTitle: '🎉 Connaissance créée',
@@ -198,6 +208,11 @@ const translation = {
     learnMore: 'Pour en savoir plus',
     description: 'Actuellement, la base de connaissances de Dify ne dispose que de sources de données limitées. Contribuer à une source de données dans la base de connaissances Dify est un moyen fantastique d’améliorer la flexibilité et la puissance de la plateforme pour tous les utilisateurs. Notre guide de contribution facilite la prise en main. Veuillez cliquer sur le lien ci-dessous pour en savoir plus.',
     title: 'Se connecter à d’autres sources de données ?',
+  },
+  watercrawl: {
+    apiKeyPlaceholder: 'Clé API de watercrawl.dev',
+    configWatercrawl: 'Configurer Watercrawl',
+    getApiKeyLinkText: 'Obtenez votre clé API sur watercrawl.dev',
   },
 }
 

@@ -23,6 +23,7 @@ import cn from '@/utils/classnames'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { PreviewMode } from '@/app/components/base/features/types'
 
 type FileInAttachmentItemProps = {
   file: FileEntity
@@ -31,6 +32,7 @@ type FileInAttachmentItemProps = {
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
   canPreview?: boolean
+  previewMode?: PreviewMode
 }
 const FileInAttachmentItem = ({
   file,
@@ -39,6 +41,7 @@ const FileInAttachmentItem = ({
   onRemove,
   onReUpload,
   canPreview,
+  previewMode = PreviewMode.CurrentPage,
 }: FileInAttachmentItemProps) => {
   const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
@@ -47,14 +50,20 @@ const FileInAttachmentItem = ({
   return (
     <>
       <div className={cn(
-        'flex items-center pr-3 h-12 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs',
-        progress === -1 && 'bg-state-destructive-hover border-state-destructive-border',
-      )}>
-        <div className='flex items-center justify-center w-12 h-12'>
+        'flex h-12 items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pr-3 shadow-xs',
+        progress === -1 && 'border-state-destructive-border bg-state-destructive-hover',
+        canPreview && previewMode === PreviewMode.NewPage && 'cursor-pointer',
+      )}
+      onClick={() => {
+        if (canPreview && previewMode === PreviewMode.NewPage)
+          window.open(url || base64Url || '', '_blank')
+      }}
+      >
+        <div className='flex h-12 w-12 items-center justify-center'>
           {
             isImageFile && (
               <FileImageRender
-                className='w-8 h-8'
+                className='h-8 w-8'
                 imageUrl={base64Url || url || ''}
               />
             )
@@ -63,19 +72,19 @@ const FileInAttachmentItem = ({
             !isImageFile && (
               <FileTypeIcon
                 type={getFileAppearanceType(name, type)}
-                size='lg'
+                size='xl'
               />
             )
           }
         </div>
-        <div className='grow w-0 mr-1'>
+        <div className='mr-1 w-0 grow'>
           <div
-            className='flex items-center mb-0.5 system-xs-medium text-text-secondary truncate'
+            className='system-xs-medium mb-0.5 flex items-center truncate text-text-secondary'
             title={file.name}
           >
             <div className='truncate'>{name}</div>
           </div>
-          <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
+          <div className='system-2xs-medium-uppercase flex items-center text-text-tertiary'>
             {
               ext && (
                 <span>{ext.toLowerCase()}</span>
@@ -83,7 +92,7 @@ const FileInAttachmentItem = ({
             }
             {
               ext && (
-                <span className='mx-1 system-2xs-medium'>•</span>
+                <span className='system-2xs-medium mx-1'>•</span>
               )
             }
             {
@@ -93,7 +102,7 @@ const FileInAttachmentItem = ({
             }
           </div>
         </div>
-        <div className='shrink-0 flex items-center'>
+        <div className='flex shrink-0 items-center'>
           {
             progress >= 0 && !fileIsUploaded(file) && (
               <ProgressCircle
@@ -108,21 +117,21 @@ const FileInAttachmentItem = ({
                 className='mr-1'
                 onClick={() => onReUpload?.(id)}
               >
-                <ReplayLine className='w-4 h-4 text-text-tertiary' />
+                <ReplayLine className='h-4 w-4 text-text-tertiary' />
               </ActionButton>
             )
           }
           {
             showDeleteAction && (
               <ActionButton onClick={() => onRemove?.(id)}>
-                <RiDeleteBinLine className='w-4 h-4' />
+                <RiDeleteBinLine className='h-4 w-4' />
               </ActionButton>
             )
           }
           {
             canPreview && isImageFile && (
               <ActionButton className='mr-1' onClick={() => setImagePreviewUrl(url || '')}>
-                <RiEyeLine className='w-4 h-4' />
+                <RiEyeLine className='h-4 w-4' />
               </ActionButton>
             )
           }
@@ -132,7 +141,7 @@ const FileInAttachmentItem = ({
                 e.stopPropagation()
                 downloadFile(url || base64Url || '', name)
               }}>
-                <RiDownloadLine className='w-4 h-4' />
+                <RiDownloadLine className='h-4 w-4' />
               </ActionButton>
             )
           }

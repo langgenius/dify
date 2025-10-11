@@ -5,7 +5,7 @@ import type { RoleName } from './index'
 
 export type SerializedNode = SerializedLexicalNode & { roleName: RoleName; onEditRole: () => void }
 
-export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
+export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
   __roleName: RoleName
   __onEditRole: () => void
 
@@ -14,7 +14,7 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   static clone(node: HistoryBlockNode): HistoryBlockNode {
-    return new HistoryBlockNode(node.__roleName, node.__onEditRole)
+    return new HistoryBlockNode(node.__roleName, node.__onEditRole, node.__key)
   }
 
   constructor(roleName: RoleName, onEditRole: () => void, key?: NodeKey) {
@@ -38,7 +38,7 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     return false
   }
 
-  decorate(): JSX.Element {
+  decorate(): React.JSX.Element {
     return (
       <HistoryBlockComponent
         nodeKey={this.getKey()}

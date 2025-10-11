@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { basePath } from '@/utils/var'
 
 type LogoEmbeddedChatAvatarProps = {
   className?: string
@@ -8,8 +9,8 @@ const LogoEmbeddedChatAvatar: FC<LogoEmbeddedChatAvatarProps> = ({
 }) => {
   return (
     <img
-      src='/logo/logo-embedded-chat-avatar.png'
-      className={`block w-10 h-10 ${className}`}
+      src={`${basePath}/logo/logo-embedded-chat-avatar.png`}
+      className={`block h-10 w-10 ${className}`}
       alt='logo'
     />
   )

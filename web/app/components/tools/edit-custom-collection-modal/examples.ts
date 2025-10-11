@@ -75,7 +75,7 @@ const examples = [
                   schema:
                     type: string
               content:
-                application/json:    
+                application/json:
                   schema:
                     $ref: "#/components/schemas/Pets"
             default:

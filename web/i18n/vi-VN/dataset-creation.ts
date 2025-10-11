@@ -1,8 +1,7 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Tạo Kiến thức',
-      update: 'Thêm dữ liệu',
+      fallbackRoute: 'Kiến thức',
     },
     one: 'Chọn nguồn dữ liệu',
     two: 'Tiền xử lý và làm sạch văn bản',
@@ -21,7 +20,8 @@ const translation = {
     },
     uploader: {
       title: 'Tải lên tệp văn bản',
-      button: 'Kéo và thả tệp, hoặc',
+      button: 'Kéo và thả các tập tin hoặc thư mục, hoặc',
+      buttonSingleFile: 'Kéo và thả tệp hoặc',
       browse: 'Chọn tệp',
       tip: 'Hỗ trợ {{supportTypes}}. Tối đa {{size}}MB mỗi tệp.',
       validation: {
@@ -62,7 +62,6 @@ const translation = {
       unknownError: 'Lỗi không xác định',
       extractOnlyMainContent: 'Chỉ trích xuất nội dung chính (không có đầu trang, điều hướng, chân trang, v.v.)',
       exceptionErrorTitle: 'Một ngoại lệ xảy ra trong khi chạy tác vụ Firecrawl:',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
       selectAll: 'Chọn tất cả',
       firecrawlTitle: 'Trích xuất nội dung web bằng 🔥Firecrawl',
       totalPageScraped: 'Tổng số trang được cạo:',
@@ -81,6 +80,14 @@ const translation = {
       jinaReaderNotConfigured: 'Jina Reader không được cấu hình',
       jinaReaderNotConfiguredDescription: 'Thiết lập Jina Reader bằng cách nhập khóa API miễn phí của bạn để truy cập.',
       useSitemapTooltip: 'Thực hiện theo sơ đồ trang web để thu thập dữ liệu trang web. Nếu không, Jina Reader sẽ thu thập dữ liệu lặp đi lặp lại dựa trên mức độ liên quan của trang, mang lại ít trang hơn nhưng chất lượng cao hơn.',
+      configureWatercrawl: 'Cấu hình Watercrawl',
+      configureFirecrawl: 'Cấu hình Firecrawl',
+      configureJinaReader: 'Cấu hình Jina Reader',
+      waterCrawlNotConfiguredDescription: 'Cấu hình Watercrawl với khóa API để sử dụng nó.',
+      watercrawlTitle: 'Trích xuất nội dung web bằng Watercrawl',
+      watercrawlDoc: 'Tài liệu Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl chưa được cấu hình',
+      running: 'Chạy',
     },
     cancel: 'Hủy',
   },
@@ -166,6 +173,7 @@ const translation = {
     parentChildDelimiterTip: 'Dấu phân cách là ký tự được sử dụng để phân tách văn bản. \\n\\n được khuyến nghị để chia tài liệu gốc thành các phần lớn của cha mẹ. Bạn cũng có thể sử dụng các dấu phân cách đặc biệt do chính bạn xác định.',
     parentChildChunkDelimiterTip: 'Dấu phân cách là ký tự được sử dụng để phân tách văn bản. \\n được khuyến nghị để chia các chunk cha thành các chunk con nhỏ. Bạn cũng có thể sử dụng các dấu phân cách đặc biệt do chính bạn xác định.',
     paragraphTip: 'Chế độ này chia văn bản thành các đoạn văn dựa trên dấu phân cách và độ dài khối tối đa, sử dụng văn bản được tách làm phần gốc để truy xuất.',
+    qaTip: 'Khi sử dụng dữ liệu Hỏi đáp có cấu trúc, bạn có thể tạo tài liệu ghép câu hỏi với câu trả lời. Các tài liệu này được lập chỉ mục dựa trên phần câu hỏi, cho phép hệ thống truy xuất các câu trả lời có liên quan dựa trên sự tương đồng của truy vấn.',
   },
   stepThree: {
     creationTitle: '🎉 Kiến thức đã được tạo',
@@ -198,6 +206,11 @@ const translation = {
     title: 'Kết nối với các nguồn dữ liệu khác?',
     description: 'Hiện tại, cơ sở tri thức của Dify chỉ có nguồn dữ liệu hạn chế. Đóng góp nguồn dữ liệu vào cơ sở kiến thức Dify là một cách tuyệt vời để giúp nâng cao tính linh hoạt và sức mạnh của nền tảng cho tất cả người dùng. Hướng dẫn đóng góp của chúng tôi giúp bạn dễ dàng bắt đầu. Vui lòng nhấp vào liên kết bên dưới để tìm hiểu thêm.',
     learnMore: 'Tìm hiểu thêm',
+  },
+  watercrawl: {
+    configWatercrawl: 'Cấu hình Watercrawl',
+    apiKeyPlaceholder: 'Khóa API từ watercrawl.dev',
+    getApiKeyLinkText: 'Lấy mã API của bạn từ watercrawl.dev',
   },
 }
 

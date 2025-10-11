@@ -1,61 +1,78 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { useContext } from 'use-context-selector'
 import React, { useCallback, useState } from 'react'
-import AppIcon from '../base/app-icon'
-import SwitchAppModal from '../app/switch-app-modal'
-import s from './style.module.css'
-import cn from '@/utils/classnames'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Divider from '@/app/components/base/divider'
-import Confirm from '@/app/components/base/confirm'
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiExchange2Line,
+  RiFileCopy2Line,
+  RiFileDownloadLine,
+  RiFileUploadLine,
+} from '@remixicon/react'
+import AppIcon from '../base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import AppsContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
-import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import ContentDialog from '@/app/components/base/content-dialog'
+import Button from '@/app/components/base/button'
+import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
+import Divider from '../base/divider'
+import type { Operation } from './app-operations'
+import AppOperations from './app-operations'
+import dynamic from 'next/dynamic'
+import cn from '@/utils/classnames'
+
+const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
+  ssr: false,
+})
+const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
+  ssr: false,
+})
+const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
+  ssr: false,
+})
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
+  ssr: false,
+})
+const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
+  ssr: false,
+})
+const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
+  ssr: false,
+})
 
 export type IAppInfoProps = {
   expand: boolean
+  onlyShowDetail?: boolean
+  openState?: boolean
+  onDetailExpand?: (expand: boolean) => void
 }
 
-const AppInfo = ({ expand }: IAppInfoProps) => {
+const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(openState)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [showSwitchTip, setShowSwitchTip] = useState<string>('')
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-
-  const mutateApps = useContextSelector(
-    AppsContext,
-    state => state.mutateApps,
-  )
+  const [showExportWarning, setShowExportWarning] = useState(false)
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -64,6 +81,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     icon_background,
     description,
     use_icon_as_answer_icon,
+    max_active_requests,
   }) => {
     if (!appDetail)
       return
@@ -76,6 +94,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         icon_background,
         description,
         use_icon_as_answer_icon,
+        max_active_requests,
       })
       setShowEditModal(false)
       notify({
@@ -83,12 +102,11 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         message: t('app.editDone'),
       })
       setAppDetail(app)
-      mutateApps()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.editFailed') })
     }
-  }, [appDetail, mutateApps, notify, setAppDetail, t])
+  }, [appDetail, notify, setAppDetail, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -108,11 +126,10 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      mutateApps()
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
@@ -127,11 +144,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${appDetail.name}.yml`
       a.click()
+      URL.revokeObjectURL(url)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
   }
@@ -143,6 +162,14 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       onExport()
       return
     }
+
+    setShowExportWarning(true)
+  }
+
+  const handleConfirmExport = async () => {
+    if (!appDetail)
+      return
+    setShowExportWarning(false)
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -152,7 +179,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       }
       setSecretEnvList(list)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
   }
@@ -163,7 +190,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     try {
       await deleteApp(appDetail.id)
       notify({ type: 'success', message: t('app.appDeleted') })
-      mutateApps()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -175,299 +201,234 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, t])
+  }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   if (!appDetail)
     return null
 
+  const operations = [
+    {
+      id: 'edit',
+      title: t('app.editApp'),
+      icon: <RiEditLine />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowEditModal(true)
+      },
+    },
+    {
+      id: 'duplicate',
+      title: t('app.duplicate'),
+      icon: <RiFileCopy2Line />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowDuplicateModal(true)
+      },
+    },
+    {
+      id: 'export',
+      title: t('app.export'),
+      icon: <RiFileDownloadLine />,
+      onClick: exportCheck,
+    },
+    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
+      id: 'import',
+      title: t('workflow.common.importDSL'),
+      icon: <RiFileUploadLine />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowImportDSLModal(true)
+      },
+    } : undefined,
+    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
+      id: 'switch',
+      title: t('app.switch'),
+      icon: <RiExchange2Line />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowSwitchModal(true)
+      },
+    } : undefined,
+  ].filter((op): op is Operation => Boolean(op))
+
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement='bottom-start'
-      offset={4}
-    >
-      <div className='relative'>
-        <PortalToFollowElemTrigger
+    <div>
+      {!onlyShowDetail && (
+        <button type="button"
           onClick={() => {
             if (isCurrentWorkspaceEditor)
               setOpen(v => !v)
           }}
-          className='block'
+          className='block w-full'
         >
-          <div className={cn('flex p-1 rounded-lg', open && 'bg-gray-100', isCurrentWorkspaceEditor && 'hover:bg-gray-100 cursor-pointer')}>
-            <div className='relative shrink-0 mr-2'>
-              <AppIcon
-                size={expand ? 'large' : 'small'}
-                iconType={appDetail.icon_type}
-                icon={appDetail.icon}
-                background={appDetail.icon_background}
-                imageUrl={appDetail.icon_url}
-              />
-              <span className={cn(
-                'absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
-                !expand && '!w-3.5 !h-3.5 !bottom-[-2px] !right-[-2px]',
-              )}>
-                {appDetail.mode === 'advanced-chat' && (
-                  <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />
-                )}
-                {appDetail.mode === 'agent-chat' && (
-                  <CuteRobot className={cn('w-3 h-3 text-indigo-600', !expand && '!w-2.5 !h-2.5')} />
-                )}
-                {appDetail.mode === 'chat' && (
-                  <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />
-                )}
-                {appDetail.mode === 'completion' && (
-                  <AiText className={cn('w-3 h-3 text-[#0E9384]', !expand && '!w-2.5 !h-2.5')} />
-                )}
-                {appDetail.mode === 'workflow' && (
-                  <Route className={cn('w-3 h-3 text-[#f79009]', !expand && '!w-2.5 !h-2.5')} />
-                )}
-              </span>
-            </div>
-            {expand && (
-              <div className="grow w-0">
-                <div className='flex justify-between items-center text-sm leading-5 font-medium text-text-secondary'>
-                  <div className='truncate' title={appDetail.name}>{appDetail.name}</div>
-                  {isCurrentWorkspaceEditor && <RiArrowDownSLine className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
-                </div>
-                <div className='flex items-center text-[10px] leading-[18px] font-medium text-gray-500 gap-1'>
-                  {appDetail.mode === 'advanced-chat' && (
-                    <>
-                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.types.advanced') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.advanced').toUpperCase()}</div>
-                    </>
-                  )}
-                  {appDetail.mode === 'agent-chat' && (
-                    <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.agent').toUpperCase()}</div>
-                  )}
-                  {appDetail.mode === 'chat' && (
-                    <>
-                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
-                    </>
-                  )}
-                  {appDetail.mode === 'completion' && (
-                    <>
-                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
-                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
-                    </>
-                  )}
-                  {appDetail.mode === 'workflow' && (
-                    <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.workflow').toUpperCase()}</div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[320px] bg-white rounded-2xl shadow-xl'>
-            {/* header */}
-            <div className={cn('flex pl-4 pt-3 pr-3', !appDetail.description && 'pb-2')}>
-              <div className='relative shrink-0 mr-2'>
+          <div className='flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover'>
+            <div className='flex items-center gap-1'>
+              <div className={cn(!expand && 'ml-1')}>
                 <AppIcon
-                  size="large"
+                  size={expand ? 'large' : 'small'}
                   iconType={appDetail.icon_type}
                   icon={appDetail.icon}
                   background={appDetail.icon_background}
                   imageUrl={appDetail.icon_url}
                 />
-                <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
-                  {appDetail.mode === 'advanced-chat' && (
-                    <ChatBot className='w-3 h-3 text-[#1570EF]' />
-                  )}
-                  {appDetail.mode === 'agent-chat' && (
-                    <CuteRobot className='w-3 h-3 text-indigo-600' />
-                  )}
-                  {appDetail.mode === 'chat' && (
-                    <ChatBot className='w-3 h-3 text-[#1570EF]' />
-                  )}
-                  {appDetail.mode === 'completion' && (
-                    <AiText className='w-3 h-3 text-[#0E9384]' />
-                  )}
-                  {appDetail.mode === 'workflow' && (
-                    <Route className='w-3 h-3 text-[#f79009]' />
-                  )}
-                </span>
               </div>
-              <div className='grow w-0'>
-                <div title={appDetail.name} className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900 truncate'>{appDetail.name}</div>
-                <div className='flex items-center text-[10px] leading-[18px] font-medium text-gray-500 gap-1'>
-                  {appDetail.mode === 'advanced-chat' && (
-                    <>
-                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.types.advanced') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.advanced').toUpperCase()}</div>
-                    </>
-                  )}
-                  {appDetail.mode === 'agent-chat' && (
-                    <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.agent').toUpperCase()}</div>
-                  )}
-                  {appDetail.mode === 'chat' && (
-                    <>
-                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
-                    </>
-                  )}
-                  {appDetail.mode === 'completion' && (
-                    <>
-                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
-                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
-                    </>
-                  )}
-                  {appDetail.mode === 'workflow' && (
-                    <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.workflow').toUpperCase()}</div>
-                  )}
+              {expand && (
+                <div className='ml-auto flex items-center justify-center rounded-md p-0.5'>
+                  <div className='flex h-5 w-5 items-center justify-center'>
+                    <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                  </div>
+                </div>
+              )}
+            </div>
+            {!expand && (
+              <div className='flex items-center justify-center'>
+                <div className='flex h-5 w-5 items-center justify-center rounded-md p-0.5'>
+                  <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
                 </div>
               </div>
-            </div>
-            {/* description */}
-            {appDetail.description && (
-              <div className='px-4 py-2 text-gray-500 text-xs leading-[18px]'>{appDetail.description}</div>
             )}
-            {/* operations */}
-            <Divider className="!my-1" />
-            <div className="w-full py-1">
-              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={() => {
-                setOpen(false)
-                setShowEditModal(true)
-              }}>
-                <span className='text-gray-700 text-sm leading-5'>{t('app.editApp')}</span>
-              </div>
-              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={() => {
-                setOpen(false)
-                setShowDuplicateModal(true)
-              }}>
-                <span className='text-gray-700 text-sm leading-5'>{t('app.duplicate')}</span>
-              </div>
-              {(appDetail.mode === 'completion' || appDetail.mode === 'chat') && (
-                <>
-                  <Divider className="!my-1" />
-                  <div
-                    className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
-                    onMouseEnter={() => setShowSwitchTip(appDetail.mode)}
-                    onMouseLeave={() => setShowSwitchTip('')}
-                    onClick={() => {
-                      setOpen(false)
-                      setShowSwitchModal(true)
-                    }}
-                  >
-                    <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
-                  </div>
-                </>
-              )}
-              <Divider className="!my-1" />
-              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={exportCheck}>
-                <span className='text-gray-700 text-sm leading-5'>{t('app.export')}</span>
-              </div>
-              {
-                (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (
-                  <div
-                    className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
-                    onClick={() => {
-                      setOpen(false)
-                      setShowImportDSLModal(true)
-                    }}>
-                    <span className='text-gray-700 text-sm leading-5'>{t('workflow.common.importDSL')}</span>
-                  </div>
-                )
-              }
-              <Divider className="!my-1" />
-              <div className='group h-9 py-2 px-3 mx-1 flex items-center hover:bg-red-50 rounded-lg cursor-pointer' onClick={() => {
-                setOpen(false)
-                setShowConfirmDelete(true)
-              }}>
-                <span className='text-gray-700 text-sm leading-5 group-hover:text-red-500'>
-                  {t('common.operation.delete')}
-                </span>
-              </div>
-            </div>
-            {/* switch tip */}
-            <div
-              className={cn(
-                'hidden absolute left-[324px] top-0 w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg',
-                showSwitchTip && '!block',
-              )}
-            >
-              <div className={cn(
-                'w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl',
-                showSwitchTip === 'chat' && s.expertPic,
-                showSwitchTip === 'completion' && s.completionPic,
-              )} />
-              <div className='px-4 pb-2'>
-                <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
-                  {showSwitchTip === 'chat' ? t('app.types.advanced') : t('app.types.workflow')}
-                  <span className='px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
+            {expand && (
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex w-full'>
+                  <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
                 </div>
-                <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.advancedFor').toLocaleUpperCase()}</div>
-                <div className='mt-1 text-gray-500 text-sm leading-5'>{t('app.newApp.advancedDescription')}</div>
+                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
               </div>
+            )}
+          </div>
+        </button>
+      )}
+      <ContentDialog
+        show={onlyShowDetail ? openState : open}
+        onClose={() => {
+          setOpen(false)
+          onDetailExpand?.(false)
+        }}
+        className='absolute bottom-2 left-2 top-2 flex w-[420px] flex-col rounded-2xl !p-0'
+      >
+        <div className='flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4'>
+          <div className='flex items-center gap-3 self-stretch'>
+            <AppIcon
+              size='large'
+              iconType={appDetail.icon_type}
+              icon={appDetail.icon}
+              background={appDetail.icon_background}
+              imageUrl={appDetail.icon_url}
+            />
+            <div className='flex flex-1 flex-col items-start justify-center overflow-hidden'>
+              <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
+              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>
           </div>
-        </PortalToFollowElemContent>
-        {showSwitchModal && (
-          <SwitchAppModal
-            inAppDetail
-            show={showSwitchModal}
-            appDetail={appDetail}
-            onClose={() => setShowSwitchModal(false)}
-            onSuccess={() => setShowSwitchModal(false)}
+          {/* description */}
+          {appDetail.description && (
+            <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
+          )}
+          {/* operations */}
+          <AppOperations
+            gap={4}
+            operations={operations}
           />
-        )}
-        {showEditModal && (
-          <CreateAppModal
-            isEditModal
-            appName={appDetail.name}
-            appIconType={appDetail.icon_type}
-            appIcon={appDetail.icon}
-            appIconBackground={appDetail.icon_background}
-            appIconUrl={appDetail.icon_url}
-            appDescription={appDetail.description}
-            appMode={appDetail.mode}
-            appUseIconAsAnswerIcon={appDetail.use_icon_as_answer_icon}
-            show={showEditModal}
-            onConfirm={onEdit}
-            onHide={() => setShowEditModal(false)}
-          />
-        )}
-        {showDuplicateModal && (
-          <DuplicateAppModal
-            appName={appDetail.name}
-            icon_type={appDetail.icon_type}
-            icon={appDetail.icon}
-            icon_background={appDetail.icon_background}
-            icon_url={appDetail.icon_url}
-            show={showDuplicateModal}
-            onConfirm={onCopy}
-            onHide={() => setShowDuplicateModal(false)}
-          />
-        )}
-        {showConfirmDelete && (
-          <Confirm
-            title={t('app.deleteAppConfirmTitle')}
-            content={t('app.deleteAppConfirmContent')}
-            isShow={showConfirmDelete}
-            onConfirm={onConfirmDelete}
-            onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
-        {showImportDSLModal && (
-          <UpdateDSLModal
-            onCancel={() => setShowImportDSLModal(false)}
-            onBackup={exportCheck}
-          />
-        )}
-        {secretEnvList.length > 0 && (
-          <DSLExportConfirmModal
-            envList={secretEnvList}
-            onConfirm={onExport}
-            onClose={() => setSecretEnvList([])}
-          />
-        )}
-      </div>
-    </PortalToFollowElem>
+        </div>
+        <CardView
+          appId={appDetail.id}
+          isInPanel={true}
+          className='flex flex-1 flex-col gap-2 overflow-auto px-2 py-1'
+        />
+        <Divider />
+        <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
+          <Button
+            size={'medium'}
+            variant={'ghost'}
+            className='gap-0.5'
+            onClick={() => {
+              setOpen(false)
+              onDetailExpand?.(false)
+              setShowConfirmDelete(true)
+            }}
+          >
+            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
+            <span className='system-sm-medium text-text-tertiary'>{t('common.operation.deleteApp')}</span>
+          </Button>
+        </div>
+      </ContentDialog>
+      {showSwitchModal && (
+        <SwitchAppModal
+          inAppDetail
+          show={showSwitchModal}
+          appDetail={appDetail}
+          onClose={() => setShowSwitchModal(false)}
+          onSuccess={() => setShowSwitchModal(false)}
+        />
+      )}
+      {showEditModal && (
+        <CreateAppModal
+          isEditModal
+          appName={appDetail.name}
+          appIconType={appDetail.icon_type}
+          appIcon={appDetail.icon}
+          appIconBackground={appDetail.icon_background}
+          appIconUrl={appDetail.icon_url}
+          appDescription={appDetail.description}
+          appMode={appDetail.mode}
+          appUseIconAsAnswerIcon={appDetail.use_icon_as_answer_icon}
+          max_active_requests={appDetail.max_active_requests ?? null}
+          show={showEditModal}
+          onConfirm={onEdit}
+          onHide={() => setShowEditModal(false)}
+        />
+      )}
+      {showDuplicateModal && (
+        <DuplicateAppModal
+          appName={appDetail.name}
+          icon_type={appDetail.icon_type}
+          icon={appDetail.icon}
+          icon_background={appDetail.icon_background}
+          icon_url={appDetail.icon_url}
+          show={showDuplicateModal}
+          onConfirm={onCopy}
+          onHide={() => setShowDuplicateModal(false)}
+        />
+      )}
+      {showConfirmDelete && (
+        <Confirm
+          title={t('app.deleteAppConfirmTitle')}
+          content={t('app.deleteAppConfirmContent')}
+          isShow={showConfirmDelete}
+          onConfirm={onConfirmDelete}
+          onCancel={() => setShowConfirmDelete(false)}
+        />
+      )}
+      {showImportDSLModal && (
+        <UpdateDSLModal
+          onCancel={() => setShowImportDSLModal(false)}
+          onBackup={exportCheck}
+        />
+      )}
+      {secretEnvList.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvList}
+          onConfirm={onExport}
+          onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showExportWarning && (
+        <Confirm
+          type="info"
+          isShow={showExportWarning}
+          title={t('workflow.sidebar.exportWarning')}
+          content={t('workflow.sidebar.exportWarningDesc')}
+          onConfirm={handleConfirmExport}
+          onCancel={() => setShowExportWarning(false)}
+        />
+      )}
+    </div>
   )
 }
 

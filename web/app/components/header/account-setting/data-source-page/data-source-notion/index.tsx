@@ -8,6 +8,9 @@ import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
 import { fetchNotionConnection } from '@/service/common'
 import NotionIcon from '@/app/components/base/notion-icon'
+import { noop } from 'lodash-es'
+import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 
 const Icon: FC<{
   src: string
@@ -32,6 +35,7 @@ const DataSourceNotion: FC<Props> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
   const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
+  const { t } = useTranslation()
 
   const connected = !!workspaces.length
 
@@ -50,9 +54,19 @@ const DataSourceNotion: FC<Props> = ({
   }
 
   useEffect(() => {
-    if (data?.data)
-      window.location.href = data.data
-  }, [data])
+    if (data && 'data' in data) {
+      if (data.data && typeof data.data === 'string' && data.data.startsWith('http')) {
+        window.location.href = data.data
+      }
+      else if (data.data === 'internal') {
+        Toast.notify({
+          type: 'info',
+          message: t('common.dataSource.notion.integratedAlert'),
+        })
+      }
+    }
+  }, [data, t])
+
   return (
     <Panel
       type={DataSourceType.notion}
@@ -74,7 +88,7 @@ const DataSourceNotion: FC<Props> = ({
           total: workspace.source_info.total || 0,
         },
       }))}
-      onRemove={() => { }} // handled in operation/index.tsx
+      onRemove={noop} // handled in operation/index.tsx
       notionActions={{
         onChangeAuthorizedPage: handleAuthAgain,
       }}

@@ -1,0 +1,14 @@
+identity:
+  author: Dify
+  name: code
+  label:
+    en_US: Code Interpreter
+    zh_Hans: 代码解释器
+    pt_BR: Interpretador de Código
+  description:
+    en_US: Run a piece of code and get the result back.
+    zh_Hans: 运行一段代码并返回结果。
+    pt_BR: Execute um trecho de código e obtenha o resultado de volta.
+  icon: icon.svg
+  tags:
+    - productivity

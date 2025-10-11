@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Nastavite barvno temo klepetalnega bota',
         chatColorThemeInverted: 'Inverzna',
         invalidHexMessage: 'Neveljavna vrednost heksa',
+        invalidPrivacyPolicy: 'Neveljavna povezava do pravilnika o zasebnosti. Uporabite veljavno povezavo, ki se začne z http ali https',
         sso: {
           label: 'SSO avtentikacija',
           title: 'SSO spletne aplikacije',
@@ -71,7 +72,10 @@ const translation = {
           customDisclaimer: 'Prilagojena izjava o omejitvi odgovornosti',
           customDisclaimerPlaceholder: 'Vnesite prilagojeno izjavo o omejitvi odgovornosti',
           customDisclaimerTip: 'Prilagojeno izjavo o omejitvi odgovornosti bo prikazano na strani za stranke, ki bo zagotavljala dodatne informacije o aplikaciji',
+          copyrightTip: 'Prikaz informacij o avtorskih pravicah v spletni aplikaciji',
+          copyrightTooltip: 'Prosimo, nadgradite na paket Professional ali višji',
         },
+        modalTip: 'Nastavitve spletne aplikacije na strani odjemalca.',
       },
       embedded: {
         entry: 'Vdelano',
@@ -109,6 +113,7 @@ const translation = {
           operation: 'Dokumentacija',
         },
       },
+      launch: 'Začetek',
     },
     apiInfo: {
       title: 'API storitev v ozadju',

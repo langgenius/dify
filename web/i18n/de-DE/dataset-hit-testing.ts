@@ -1,8 +1,7 @@
 const translation = {
   title: 'Abruf-Test',
   desc: 'Testen Sie die Treffereffektivität des Wissens anhand des gegebenen Abfragetextes.',
-  dateTimeFormat: 'MM/TT/JJJJ hh:mm A',
-  recents: 'Kürzlich',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
       source: 'Quelle',

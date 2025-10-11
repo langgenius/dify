@@ -2,11 +2,14 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.rag.datasource.vdb.vector_factory import Vector
+from extensions.ext_database import db
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -14,7 +17,7 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
     """
     Async delete annotation index task
     """
-    logging.info(click.style("Start delete app annotation index: {}".format(app_id), fg="green"))
+    logger.info(click.style(f"Start delete app annotation index: {app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
@@ -32,10 +35,10 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
             vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
             vector.delete_by_metadata_field("annotation_id", annotation_id)
         except Exception:
-            logging.exception("Delete annotation index failed when annotation deleted.")
+            logger.exception("Delete annotation index failed when annotation deleted.")
         end_at = time.perf_counter()
-        logging.info(
-            click.style("App annotations index deleted : {} latency: {}".format(app_id, end_at - start_at), fg="green")
-        )
-    except Exception as e:
-        logging.exception("Annotation deleted index failed")
+        logger.info(click.style(f"App annotations index deleted : {app_id} latency: {end_at - start_at}", fg="green"))
+    except Exception:
+        logger.exception("Annotation deleted index failed")
+    finally:
+        db.session.close()

@@ -1,8 +1,7 @@
 import datetime
 import json
-from typing import Any, Optional
+from typing import Any
 
-import requests
 import weaviate  # type: ignore
 from pydantic import BaseModel, model_validator
 
@@ -19,12 +18,12 @@ from models.dataset import Dataset
 
 class WeaviateConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     batch_size: int = 100
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
         return values
@@ -37,16 +36,16 @@ class WeaviateVector(BaseVector):
         self._attributes = attributes
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
-        auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
+        auth_config = weaviate.AuthApiKey(api_key=config.api_key or "")
 
-        weaviate.connect.connection.has_grpc = False
+        weaviate.connect.connection.has_grpc = False  # ty: ignore [unresolved-attribute]
 
         try:
             client = weaviate.Client(
                 url=config.endpoint, auth_client_secret=auth_config, timeout_config=(5, 60), startup_period=None
             )
-        except requests.exceptions.ConnectionError:
-            raise ConnectionError("Vector database connection error")
+        except Exception as exc:
+            raise ConnectionError("Vector database connection error") from exc
 
         client.batch.configure(
             # `batch_size` takes an `int` value to enable auto-batching
@@ -75,7 +74,7 @@ class WeaviateVector(BaseVector):
         dataset_id = dataset.id
         return Dataset.gen_collection_name_by_id(dataset_id)
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -85,9 +84,9 @@ class WeaviateVector(BaseVector):
         self.add_texts(texts, embeddings)
 
     def _create_collection(self):
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             schema = self._default_schema(self._collection_name)
@@ -105,7 +104,7 @@ class WeaviateVector(BaseVector):
 
         with self._client.batch as batch:
             for i, text in enumerate(texts):
-                data_properties = {Field.TEXT_KEY.value: text}
+                data_properties = {Field.TEXT_KEY: text}
                 if metadatas is not None:
                     # metadata maybe None
                     for key, val in (metadatas[i] or {}).items():
@@ -164,7 +163,7 @@ class WeaviateVector(BaseVector):
 
         return True
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
@@ -183,12 +182,17 @@ class WeaviateVector(BaseVector):
         """Look up similar documents by embedding vector in Weaviate."""
         collection_name = self._collection_name
         properties = self._attributes
-        properties.append(Field.TEXT_KEY.value)
+        properties.append(Field.TEXT_KEY)
         query_obj = self._client.query.get(collection_name, properties)
 
         vector = {"vector": query_vector}
-        if kwargs.get("where_filter"):
-            query_obj = query_obj.with_where(kwargs.get("where_filter"))
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            operands = []
+            for document_id_filter in document_ids_filter:
+                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
+            where_filter = {"operator": "Or", "operands": operands}
+            query_obj = query_obj.with_where(where_filter)
         result = (
             query_obj.with_near_vector(vector)
             .with_limit(kwargs.get("top_k", 4))
@@ -200,7 +204,7 @@ class WeaviateVector(BaseVector):
 
         docs_and_scores = []
         for res in result["data"]["Get"][collection_name]:
-            text = res.pop(Field.TEXT_KEY.value)
+            text = res.pop(Field.TEXT_KEY)
             score = 1 - res["_additional"]["distance"]
             docs_and_scores.append((Document(page_content=text, metadata=res), score))
 
@@ -208,7 +212,7 @@ class WeaviateVector(BaseVector):
         for doc, score in docs_and_scores:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
             # check score threshold
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
                     docs.append(doc)
@@ -221,7 +225,6 @@ class WeaviateVector(BaseVector):
 
         Args:
             query: Text to look up documents similar to.
-            k: Number of Documents to return. Defaults to 4.
 
         Returns:
             List of Documents most similar to the query.
@@ -229,12 +232,17 @@ class WeaviateVector(BaseVector):
         collection_name = self._collection_name
         content: dict[str, Any] = {"concepts": [query]}
         properties = self._attributes
-        properties.append(Field.TEXT_KEY.value)
+        properties.append(Field.TEXT_KEY)
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
         query_obj = self._client.query.get(collection_name, properties)
-        if kwargs.get("where_filter"):
-            query_obj = query_obj.with_where(kwargs.get("where_filter"))
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            operands = []
+            for document_id_filter in document_ids_filter:
+                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
+            where_filter = {"operator": "Or", "operands": operands}
+            query_obj = query_obj.with_where(where_filter)
         query_obj = query_obj.with_additional(["vector"])
         properties = ["text"]
         result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 4)).do()
@@ -242,7 +250,7 @@ class WeaviateVector(BaseVector):
             raise ValueError(f"Error during query: {result['errors']}")
         docs = []
         for res in result["data"]["Get"][collection_name]:
-            text = res.pop(Field.TEXT_KEY.value)
+            text = res.pop(Field.TEXT_KEY)
             additional = res.pop("_additional")
             docs.append(Document(page_content=text, vector=additional["vector"], metadata=res))
         return docs
@@ -266,7 +274,7 @@ class WeaviateVector(BaseVector):
                 ],
             }
 
-    def _json_serializable(self, value: Any) -> Any:
+    def _json_serializable(self, value: Any):
         if isinstance(value, datetime.datetime):
             return value.isoformat()
         return value

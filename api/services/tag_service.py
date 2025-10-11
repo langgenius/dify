@@ -1,8 +1,8 @@
 import uuid
-from typing import Optional
 
-from flask_login import current_user  # type: ignore
-from sqlalchemy import func
+import sqlalchemy as sa
+from flask_login import current_user
+from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
@@ -12,44 +12,58 @@ from models.model import App, Tag, TagBinding
 
 class TagService:
     @staticmethod
-    def get_tags(tag_type: str, current_tenant_id: str, keyword: Optional[str] = None) -> list:
+    def get_tags(tag_type: str, current_tenant_id: str, keyword: str | None = None):
         query = (
             db.session.query(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
+            .where(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
         )
         if keyword:
-            query = query.filter(db.and_(Tag.name.ilike(f"%{keyword}%")))
-        query = query.group_by(Tag.id)
+            query = query.where(sa.and_(Tag.name.ilike(f"%{keyword}%")))
+        query = query.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
         results: list = query.order_by(Tag.created_at.desc()).all()
         return results
 
     @staticmethod
-    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list) -> list:
-        tags = (
-            db.session.query(Tag)
-            .filter(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
-            .all()
-        )
+    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list):
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if not tag_ids or len(tag_ids) == 0:
+            return []
+        tags = db.session.scalars(
+            select(Tag).where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+        ).all()
         if not tags:
             return []
         tag_ids = [tag.id for tag in tags]
-        tag_bindings = (
-            db.session.query(TagBinding.target_id)
-            .filter(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
-            .all()
-        )
-        if not tag_bindings:
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if not tag_ids or len(tag_ids) == 0:
             return []
-        results = [tag_binding.target_id for tag_binding in tag_bindings]
-        return results
+        tag_bindings = db.session.scalars(
+            select(TagBinding.target_id).where(
+                TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id
+            )
+        ).all()
+        return tag_bindings
 
     @staticmethod
-    def get_tags_by_target_id(tag_type: str, current_tenant_id: str, target_id: str) -> list:
+    def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str):
+        if not tag_type or not tag_name:
+            return []
+        tags = list(
+            db.session.scalars(
+                select(Tag).where(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+            ).all()
+        )
+        if not tags:
+            return []
+        return tags
+
+    @staticmethod
+    def get_tags_by_target_id(tag_type: str, current_tenant_id: str, target_id: str):
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(
+            .where(
                 TagBinding.target_id == target_id,
                 TagBinding.tenant_id == current_tenant_id,
                 Tag.tenant_id == current_tenant_id,
@@ -62,6 +76,8 @@ class TagService:
 
     @staticmethod
     def save_tags(args: dict) -> Tag:
+        if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
+            raise ValueError("Tag name already exists")
         tag = Tag(
             id=str(uuid.uuid4()),
             name=args["name"],
@@ -75,7 +91,9 @@ class TagService:
 
     @staticmethod
     def update_tags(args: dict, tag_id: str) -> Tag:
-        tag = db.session.query(Tag).filter(Tag.id == tag_id).first()
+        if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
+            raise ValueError("Tag name already exists")
+        tag = db.session.query(Tag).where(Tag.id == tag_id).first()
         if not tag:
             raise NotFound("Tag not found")
         tag.name = args["name"]
@@ -84,17 +102,17 @@ class TagService:
 
     @staticmethod
     def get_tag_binding_count(tag_id: str) -> int:
-        count = db.session.query(TagBinding).filter(TagBinding.tag_id == tag_id).count()
+        count = db.session.query(TagBinding).where(TagBinding.tag_id == tag_id).count()
         return count
 
     @staticmethod
     def delete_tag(tag_id: str):
-        tag = db.session.query(Tag).filter(Tag.id == tag_id).first()
+        tag = db.session.query(Tag).where(Tag.id == tag_id).first()
         if not tag:
             raise NotFound("Tag not found")
         db.session.delete(tag)
         # delete tag binding
-        tag_bindings = db.session.query(TagBinding).filter(TagBinding.tag_id == tag_id).all()
+        tag_bindings = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag_id)).all()
         if tag_bindings:
             for tag_binding in tag_bindings:
                 db.session.delete(tag_binding)
@@ -108,7 +126,7 @@ class TagService:
         for tag_id in args["tag_ids"]:
             tag_binding = (
                 db.session.query(TagBinding)
-                .filter(TagBinding.tag_id == tag_id, TagBinding.target_id == args["target_id"])
+                .where(TagBinding.tag_id == tag_id, TagBinding.target_id == args["target_id"])
                 .first()
             )
             if tag_binding:
@@ -129,7 +147,7 @@ class TagService:
         # delete tag binding
         tag_bindings = (
             db.session.query(TagBinding)
-            .filter(TagBinding.target_id == args["target_id"], TagBinding.tag_id == (args["tag_id"]))
+            .where(TagBinding.target_id == args["target_id"], TagBinding.tag_id == (args["tag_id"]))
             .first()
         )
         if tag_bindings:
@@ -141,7 +159,7 @@ class TagService:
         if type == "knowledge":
             dataset = (
                 db.session.query(Dataset)
-                .filter(Dataset.tenant_id == current_user.current_tenant_id, Dataset.id == target_id)
+                .where(Dataset.tenant_id == current_user.current_tenant_id, Dataset.id == target_id)
                 .first()
             )
             if not dataset:
@@ -149,7 +167,7 @@ class TagService:
         elif type == "app":
             app = (
                 db.session.query(App)
-                .filter(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
+                .where(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
                 .first()
             )
             if not app:

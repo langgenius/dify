@@ -5,21 +5,24 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiClipboardLine,
+  RiResetLeftLine,
+  RiThumbDownLine,
+  RiThumbUpLine,
+} from '@remixicon/react'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
-import RegenerateBtn from '@/app/components/base/regenerate-btn'
-import cn from '@/utils/classnames'
-import CopyBtn from '@/app/components/base/copy-btn'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import AudioBtn from '@/app/components/base/audio-btn'
-import AnnotationCtrlBtn from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-btn'
+import copy from 'copy-to-clipboard'
+import Toast from '@/app/components/base/toast'
+import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
-import {
-  ThumbsDown,
-  ThumbsUp,
-} from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
 import Log from '@/app/components/base/chat/chat/log'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import NewAudioButton from '@/app/components/base/new-audio-button'
+import Modal from '@/app/components/base/modal/modal'
+import Textarea from '@/app/components/base/textarea'
+import cn from '@/utils/classnames'
 
 type OperationProps = {
   item: ChatItem
@@ -31,6 +34,7 @@ type OperationProps = {
   hasWorkflowProcess: boolean
   noChatInput?: boolean
 }
+
 const Operation: FC<OperationProps> = ({
   item,
   question,
@@ -51,6 +55,8 @@ const Operation: FC<OperationProps> = ({
     onRegenerate,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
+  const [isShowFeedbackModal, setIsShowFeedbackModal] = useState(false)
+  const [feedbackContent, setFeedbackContent] = useState('')
   const {
     id,
     isOpeningStatement,
@@ -60,7 +66,6 @@ const Operation: FC<OperationProps> = ({
     adminFeedback,
     agent_thoughts,
   } = item
-  const hasAnnotation = !!annotation?.id
   const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
 
   const content = useMemo(() => {
@@ -70,24 +75,39 @@ const Operation: FC<OperationProps> = ({
     return messageContent
   }, [agent_thoughts, messageContent])
 
-  const handleFeedback = async (rating: 'like' | 'dislike' | null) => {
+  const handleFeedback = async (rating: 'like' | 'dislike' | null, content?: string) => {
     if (!config?.supportFeedback || !onFeedback)
       return
 
-    await onFeedback?.(id, { rating })
+    await onFeedback?.(id, { rating, content })
     setLocalFeedback({ rating })
+  }
+
+  const handleThumbsDown = () => {
+    setIsShowFeedbackModal(true)
+  }
+
+  const handleFeedbackSubmit = async () => {
+    await handleFeedback('dislike', feedbackContent)
+    setFeedbackContent('')
+    setIsShowFeedbackModal(false)
+  }
+
+  const handleFeedbackCancel = () => {
+    setFeedbackContent('')
+    setIsShowFeedbackModal(false)
   }
 
   const operationWidth = useMemo(() => {
     let width = 0
     if (!isOpeningStatement)
-      width += 28
+      width += 26
     if (!isOpeningStatement && showPromptLog)
-      width += 102 + 8
+      width += 28 + 8
     if (!isOpeningStatement && config?.text_to_speech?.enabled)
-      width += 33
+      width += 26
     if (!isOpeningStatement && config?.supportAnnotation && config?.annotation_reply?.enabled)
-      width += 56 + 8
+      width += 26
     if (config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement)
       width += 60 + 8
     if (config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement)
@@ -102,121 +122,78 @@ const Operation: FC<OperationProps> = ({
       <div
         className={cn(
           'absolute flex justify-end gap-1',
-          hasWorkflowProcess && '-top-3.5 -right-3.5',
-          !positionRight && '-top-3.5 -right-3.5',
+          hasWorkflowProcess && '-bottom-4 right-2',
+          !positionRight && '-bottom-4 right-2',
           !hasWorkflowProcess && positionRight && '!top-[9px]',
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {!isOpeningStatement && (
-          <CopyBtn
-            value={content}
-            className='hidden group-hover:block'
-          />
+        {showPromptLog && !isOpeningStatement && (
+          <div className='hidden group-hover:block'>
+            <Log logItem={item} />
+          </div>
         )}
-
-        {!isOpeningStatement && (showPromptLog || config?.text_to_speech?.enabled) && (
-          <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md shrink-0'>
-            {showPromptLog && (
-              <>
-                <Log logItem={item} />
-                <div className='mx-1 w-[1px] h-[14px] bg-gray-200' />
-              </>
-            )}
-
+        {!isOpeningStatement && (
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {(config?.text_to_speech?.enabled) && (
+              <NewAudioButton
+                id={id}
+                value={content}
+                voice={config?.text_to_speech?.voice}
+              />
+            )}
+            <ActionButton onClick={() => {
+              copy(content)
+              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+            }}>
+              <RiClipboardLine className='h-4 w-4' />
+            </ActionButton>
+            {!noChatInput && (
+              <ActionButton onClick={() => onRegenerate?.(item)}>
+                <RiResetLeftLine className='h-4 w-4' />
+              </ActionButton>
+            )}
+            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
+              <AnnotationCtrlButton
+                appId={config?.appId || ''}
+                messageId={id}
+                cached={!!annotation?.id}
+                query={question}
+                answer={content}
+                onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
+                onEdit={() => setIsShowReplyModal(true)}
+              />
+            )}
+          </div>
+        )}
+        {!isOpeningStatement && config?.supportFeedback && !localFeedback?.rating && onFeedback && (
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
+            {!localFeedback?.rating && (
               <>
-                <AudioBtn
-                  id={id}
-                  value={content}
-                  noCache={false}
-                  voice={config?.text_to_speech?.voice}
-                  className='hidden group-hover:block'
-                />
+                <ActionButton onClick={() => handleFeedback('like')}>
+                  <RiThumbUpLine className='h-4 w-4' />
+                </ActionButton>
+                <ActionButton onClick={handleThumbsDown}>
+                  <RiThumbDownLine className='h-4 w-4' />
+                </ActionButton>
               </>
             )}
           </div>
         )}
-
-        {(!isOpeningStatement && config?.supportAnnotation && config.annotation_reply?.enabled) && (
-          <AnnotationCtrlBtn
-            appId={config?.appId || ''}
-            messageId={id}
-            annotationId={annotation?.id || ''}
-            className='hidden group-hover:block ml-1 shrink-0'
-            cached={hasAnnotation}
-            query={question}
-            answer={content}
-            onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
-            onEdit={() => setIsShowReplyModal(true)}
-            onRemoved={() => onAnnotationRemoved?.(index)}
-          />
+        {!isOpeningStatement && config?.supportFeedback && localFeedback?.rating && onFeedback && (
+          <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
+            {localFeedback?.rating === 'like' && (
+              <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
+                <RiThumbUpLine className='h-4 w-4' />
+              </ActionButton>
+            )}
+            {localFeedback?.rating === 'dislike' && (
+              <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
+                <RiThumbDownLine className='h-4 w-4' />
+              </ActionButton>
+            )}
+          </div>
         )}
-        {
-          annotation?.id && (
-            <div
-              className='relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
-            >
-              <div className='p-1 rounded-lg bg-[#EEF4FF] '>
-                <MessageFast className='w-4 h-4' />
-              </div>
-            </div>
-          )
-        }
-        {
-          !isOpeningStatement && !noChatInput && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
-        }
-        {
-          config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <div className='hidden group-hover:flex shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
-              <Tooltip popupContent={t('appDebug.operation.agree')}>
-                <div
-                  className='flex items-center justify-center mr-0.5 w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'
-                  onClick={() => handleFeedback('like')}
-                >
-                  <ThumbsUp className='w-4 h-4' />
-                </div>
-              </Tooltip>
-              <Tooltip
-                popupContent={t('appDebug.operation.disagree')}
-              >
-                <div
-                  className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'
-                  onClick={() => handleFeedback('dislike')}
-                >
-                  <ThumbsDown className='w-4 h-4' />
-                </div>
-              </Tooltip>
-            </div>
-          )
-        }
-        {
-          config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <Tooltip
-              popupContent={localFeedback.rating === 'like' ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree')}
-            >
-              <div
-                className={`
-                  flex items-center justify-center w-7 h-7 rounded-[10px] border-[2px] border-white cursor-pointer
-                  ${localFeedback.rating === 'like' && 'bg-blue-50 text-blue-600'}
-                  ${localFeedback.rating === 'dislike' && 'bg-red-100 text-red-600'}
-                `}
-                onClick={() => handleFeedback(null)}
-              >
-                {
-                  localFeedback.rating === 'like' && (
-                    <ThumbsUp className='w-4 h-4' />
-                  )
-                }
-                {
-                  localFeedback.rating === 'dislike' && (
-                    <ThumbsDown className='w-4 h-4' />
-                  )
-                }
-              </div>
-            </Tooltip>
-          )
-        }
       </div>
       <EditReplyModal
         isShow={isShowReplyModal}
@@ -231,6 +208,32 @@ const Operation: FC<OperationProps> = ({
         createdAt={annotation?.created_at}
         onRemove={() => onAnnotationRemoved?.(index)}
       />
+      {isShowFeedbackModal && (
+        <Modal
+          title={t('common.feedback.title') || 'Provide Feedback'}
+          subTitle={t('common.feedback.subtitle') || 'Please tell us what went wrong with this response'}
+          onClose={handleFeedbackCancel}
+          onConfirm={handleFeedbackSubmit}
+          onCancel={handleFeedbackCancel}
+          confirmButtonText={t('common.operation.submit') || 'Submit'}
+          cancelButtonText={t('common.operation.cancel') || 'Cancel'}
+        >
+          <div className='space-y-3'>
+            <div>
+              <label className='system-sm-semibold mb-2 block text-text-secondary'>
+                {t('common.feedback.content') || 'Feedback Content'}
+              </label>
+              <Textarea
+                value={feedbackContent}
+                onChange={e => setFeedbackContent(e.target.value)}
+                placeholder={t('common.feedback.placeholder') || 'Please describe what went wrong or how we can improve...'}
+                rows={4}
+                className='w-full'
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

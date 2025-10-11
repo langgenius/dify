@@ -1,4 +1,4 @@
-import random
+import secrets
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -34,7 +34,7 @@ def test_retry_logic_success(mock_request):
     side_effects = []
 
     for _ in range(SSRF_DEFAULT_MAX_RETRIES):
-        status_code = random.choice(STATUS_FORCELIST)
+        status_code = secrets.choice(STATUS_FORCELIST)
         mock_response = MagicMock()
         mock_response.status_code = status_code
         side_effects.append(mock_response)

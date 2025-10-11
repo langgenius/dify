@@ -9,9 +9,7 @@ import AdvancedSetting from './components/advanced-setting'
 import type { QuestionClassifierNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
@@ -37,29 +35,22 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     availableVars,
     availableNodesWithParent,
     handleInstructionChange,
-    inputVarValues,
-    varInputs,
-    setInputVarValues,
     handleMemoryChange,
     isVisionModel,
     handleVisionResolutionChange,
     handleVisionResolutionEnabledChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
     filterVar,
+    handleSortTopic,
   } = useConfig(id, data)
 
   const model = inputs.model
 
   return (
     <div className='pt-2'>
-      <div className='px-4 space-y-4'>
+      <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
+          required
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
@@ -78,6 +69,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
+          required
         >
           <VarReferencePicker
             readonly={readOnly}
@@ -100,12 +92,15 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         />
         <Field
           title={t(`${i18nPrefix}.class`)}
+          required
         >
           <ClassList
-            id={id}
+            nodeId={id}
             list={inputs.classes}
             onChange={handleTopicsChange}
             readonly={readOnly}
+            filterVar={filterVar}
+            handleSortTopic={handleSortTopic}
           />
         </Field>
         <Split />
@@ -136,31 +131,14 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
               type='string'
               description={t(`${i18nPrefix}.outputVars.className`)}
             />
+            <VarItem
+              name='usage'
+              type='object'
+              description={t(`${i18nPrefix}.outputVars.usage`)}
+            />
           </>
         </OutputVars>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: [{
-                label: t(`${i18nPrefix}.inputVars`)!,
-                variable: 'query',
-                type: InputVarType.paragraph,
-                required: true,
-              }, ...varInputs],
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
 }

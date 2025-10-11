@@ -7,7 +7,7 @@ import { omit } from 'lodash-es'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
 import { FieldInfo } from '../metadata'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import { IndexingType } from '../../../create/step-two'
 import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
 import EmbeddingSkeleton from './skeleton'
@@ -15,6 +15,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast'
+import type { IndexingStatusResponse } from '@/models/datasets'
 import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe, sleep } from '@/utils'
@@ -100,7 +101,6 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
         break
     }
     return value
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceData])
 
   return <div className='py-3'>
@@ -131,7 +131,7 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
     />
     <FieldInfo
       label={t('datasetSettings.form.retrievalSetting.title')}
-      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'invertedIndex' : retrievalMethod}.title`) as string}
+      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
       valueIcon={
         <Image
           className='size-4'
@@ -166,7 +166,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 
-  const [indexingStatusDetail, setIndexingStatusDetail] = useState<any>(null)
+  const [indexingStatusDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse | null>(null)
   const fetchIndexingStatus = async () => {
     const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
     setIndexingStatusDetail(status)
@@ -193,11 +193,10 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
       await sleep(2500)
       await startQueryStatus()
     }
-    catch (e) {
+    catch {
       await sleep(2500)
       await startQueryStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopQueryStatus])
 
   useEffect(() => {
@@ -248,10 +247,10 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
 
   return (
     <>
-      <div className='py-12 px-16 flex flex-col gap-y-2'>
-        <div className='flex items-center gap-x-1 h-6'>
-          {isEmbedding && <RiLoader2Line className='h-4 w-4 text-text-secondary animate-spin' />}
-          <span className='grow text-text-secondary system-md-semibold-uppercase'>
+      <div className='flex flex-col gap-y-2 px-16 py-12'>
+        <div className='flex h-6 items-center gap-x-1'>
+          {isEmbedding && <RiLoader2Line className='h-4 w-4 animate-spin text-text-secondary' />}
+          <span className='system-md-semibold-uppercase grow text-text-secondary'>
             {isEmbedding && t('datasetDocuments.embedding.processing')}
             {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
             {isEmbeddingPaused && t('datasetDocuments.embedding.paused')}
@@ -260,12 +259,12 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
           {isEmbedding && (
             <button
               type='button'
-              className={`px-1.5 py-1 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg
-              shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] flex items-center gap-x-1 rounded-md`}
+              className={`flex items-center gap-x-1 rounded-md border-[0.5px]
+              border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <RiPauseCircleLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
-              <span className='pr-[3px] text-components-button-secondary-text system-xs-medium'>
+              <RiPauseCircleLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
+              <span className='system-xs-medium pr-[3px] text-components-button-secondary-text'>
                 {t('datasetDocuments.embedding.pause')}
               </span>
             </button>
@@ -273,12 +272,12 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
           {isEmbeddingPaused && (
             <button
               type='button'
-              className={`px-1.5 py-1 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg
-              shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] flex items-center gap-x-1 rounded-md`}
+              className={`flex items-center gap-x-1 rounded-md border-[0.5px]
+              border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <RiPlayCircleLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
-              <span className='pr-[3px] text-components-button-secondary-text system-xs-medium'>
+              <RiPlayCircleLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
+              <span className='system-xs-medium pr-[3px] text-components-button-secondary-text'>
                 {t('datasetDocuments.embedding.resume')}
               </span>
             </button>
@@ -286,8 +285,8 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
         </div>
         {/* progress bar */}
         <div className={cn(
-          'flex items-center w-full h-2 rounded-md border border-components-progress-bar-border overflow-hidden',
-          isEmbedding ? 'bg-components-progress-bar-bg bg-opacity-50' : 'bg-components-progress-bar-bg',
+          'flex h-2 w-full items-center overflow-hidden rounded-md border border-components-progress-bar-border',
+          isEmbedding ? 'bg-components-progress-bar-bg/50' : 'bg-components-progress-bar-bg',
         )}>
           <div
             className={cn(
@@ -298,8 +297,8 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <div className={'w-full flex items-center'}>
-          <span className='text-text-secondary system-xs-medium'>
+        <div className={'flex w-full items-center'}>
+          <span className='system-xs-medium text-text-secondary'>
             {`${t('datasetDocuments.embedding.segments')} ${indexingStatusDetail?.completed_segments || '--'}/${indexingStatusDetail?.total_segments || '--'} · ${percent}%`}
           </span>
         </div>

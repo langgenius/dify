@@ -1,8 +1,7 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Crea Conoscenza',
-      update: 'Aggiungi dati',
+      fallbackRoute: 'Conoscenza',
     },
     one: 'Scegli fonte dati',
     two: 'Preprocessamento e Pulizia del Testo',
@@ -26,7 +25,8 @@ const translation = {
     },
     uploader: {
       title: 'Carica file',
-      button: 'Trascina e rilascia il file, o',
+      button: 'Trascina e rilascia file o cartelle, oppure',
+      buttonSingleFile: 'Trascina e rilascia un file, oppure',
       browse: 'Sfoglia',
       tip: 'Supporta {{supportTypes}}. Max {{size}}MB ciascuno.',
       validation: {
@@ -65,8 +65,6 @@ const translation = {
       run: 'Esegui',
       firecrawlTitle: 'Estrai contenuti web con 🔥Firecrawl',
       firecrawlDoc: 'Documenti Firecrawl',
-      firecrawlDocLink:
-        'https://docs.dify.ai/guides/knowledge-base/sync_from_website',
       options: 'Opzioni',
       crawlSubPage: 'Crawl sotto-pagine',
       limit: 'Limite',
@@ -93,6 +91,14 @@ const translation = {
       jinaReaderNotConfiguredDescription: 'Configura Jina Reader inserendo la tua chiave API gratuita per l\'accesso.',
       useSitemap: 'Usa la mappa del sito',
       chooseProvider: 'Seleziona un fornitore',
+      watercrawlDoc: 'Documentazione di Watercrawl',
+      waterCrawlNotConfiguredDescription: 'Configura Watercrawl con la chiave API per utilizzarlo.',
+      configureFirecrawl: 'Configura Firecrawl',
+      watercrawlTitle: 'Estrai contenuti web con Watercrawl',
+      configureJinaReader: 'Configura Jina Reader',
+      configureWatercrawl: 'Configura Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl non è configurato',
+      running: 'Corsa',
     },
     cancel: 'Annulla',
   },
@@ -191,6 +197,7 @@ const translation = {
     previewChunk: 'Blocco di anteprima',
     notAvailableForParentChild: 'Non disponibile per l\'indice padre-figlio',
     qaSwitchHighQualityTipTitle: 'Il formato Domande e risposte richiede un metodo di indicizzazione di alta qualità',
+    qaTip: 'Quando si usano dati strutturati di Domande e risposte, è possibile creare documenti che abbinano domande e risposte. Questi documenti vengono indicizzati in base alla parte della domanda, consentendo al sistema di recuperare le risposte pertinenti in base alla somiglianza della query.',
   },
   stepThree: {
     creationTitle: '🎉 Conoscenza creata',
@@ -221,6 +228,11 @@ const translation = {
     learnMore: 'Ulteriori informazioni',
     title: 'Connettersi ad altre origini dati?',
     description: 'Attualmente, la knowledge base di Dify ha solo fonti di dati limitate. Contribuire con una fonte di dati alla knowledge base di Dify è un modo fantastico per migliorare la flessibilità e la potenza della piattaforma per tutti gli utenti. La nostra guida ai contributi ti aiuta a iniziare. Clicca sul link sottostante per saperne di più.',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'Ottieni la tua chiave API da watercrawl.dev',
+    apiKeyPlaceholder: 'Chiave API da watercrawl.dev',
+    configWatercrawl: 'Configura Watercrawl',
   },
 }
 

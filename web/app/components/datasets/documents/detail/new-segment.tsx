@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -12,7 +12,6 @@ import Keywords from './completed/common/keywords'
 import ChunkContent from './completed/common/chunk-content'
 import AddAnother from './completed/common/add-another'
 import Dot from './completed/common/dot'
-import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { ChunkingMode, type SegmentUpdater } from '@/models/datasets'
@@ -20,6 +19,8 @@ import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
 import { useAddSegment } from '@/service/knowledge/use-segment'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { IndexingType } from '../../create/step-two'
 
 type NewSegmentModalProps = {
   onCancel: () => void
@@ -44,42 +45,37 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const [addAnother, setAddAnother] = useState(true)
   const fullScreen = useSegmentListContext(s => s.fullScreen)
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
-  const mode = useDocumentContext(s => s.mode)
+  const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
   const refreshTimer = useRef<any>(null)
 
-  const CustomButton = <>
-    <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
-    <button
-      type='button'
-      className='text-text-accent system-xs-semibold'
-      onClick={() => {
-        clearTimeout(refreshTimer.current)
-        viewNewlyAddedChunk()
-      }}>
-      {t('common.operation.view')}
-    </button>
-  </>
+  const CustomButton = useMemo(() => (
+    <>
+      <Divider type='vertical' className='mx-1 h-3 bg-divider-regular' />
+      <button
+        type='button'
+        className='system-xs-semibold text-text-accent'
+        onClick={() => {
+          clearTimeout(refreshTimer.current)
+          viewNewlyAddedChunk()
+        }}>
+        {t('common.operation.view')}
+      </button>
+    </>
+  ), [viewNewlyAddedChunk, t])
 
-  const isQAModel = useMemo(() => {
-    return docForm === ChunkingMode.qa
-  }, [docForm])
-
-  const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
+  const handleCancel = useCallback((actionType: 'esc' | 'add' = 'esc') => {
     if (actionType === 'esc' || !addAnother)
       onCancel()
-    setQuestion('')
-    setAnswer('')
-    setKeywords([])
-  }
+  }, [onCancel, addAnother])
 
   const { mutateAsync: addSegment } = useAddSegment()
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const params: SegmentUpdater = { content: '' }
-    if (isQAModel) {
+    if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
         return notify({
           type: 'error',
@@ -121,6 +117,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           customComponent: CustomButton,
         })
         handleCancel('add')
+        setQuestion('')
+        setAnswer('')
+        setKeywords([])
         refreshTimer.current = setTimeout(() => {
           onSave()
         }, 3000)
@@ -129,25 +128,31 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         setLoading(false)
       },
     })
-  }
+  }, [docForm, keywords, addSegment, datasetId, documentId, question, answer, notify, t, appSidebarExpand, CustomButton, handleCancel, onSave])
 
   const wordCountText = useMemo(() => {
-    const count = isQAModel ? (question.length + answer.length) : question.length
+    const count = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.length, answer.length, isQAModel])
+  }, [question.length, answer.length, docForm, t])
+
+  const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
-    <div className={'flex flex-col h-full'}>
-      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+    <div className={'flex h-full flex-col'}>
+      <div
+        className={classNames(
+          'flex items-center justify-between',
+          fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',
+        )}
+      >
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{
-            t('datasetDocuments.segment.addChunk')
-          }</div>
+          <div className='system-xl-semibold text-text-primary'>
+            {t('datasetDocuments.segment.addChunk')}
+          </div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={t('datasetDocuments.segment.newChunk')!} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
+            <span className='system-xs-medium text-text-tertiary'>{wordCountText}</span>
           </div>
         </div>
         <div className='flex items-center'>
@@ -160,19 +165,19 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
                 loading={loading}
                 actionType='add'
               />
-              <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
+              <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
+          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+            <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
           </div>
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel.bind(null, 'esc')}>
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={handleCancel.bind(null, 'esc')}>
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3')}>
+        <div className={classNames('overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}
@@ -182,7 +187,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             isEditMode={true}
           />
         </div>
-        {mode === 'custom' && <Keywords
+        {isECOIndexing && <Keywords
           className={fullScreen ? 'w-1/5' : ''}
           actionType='add'
           keywords={keywords}
@@ -191,7 +196,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         />}
       </div>
       {!fullScreen && (
-        <div className='flex items-center justify-between p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+        <div className='flex items-center justify-between border-t-[1px] border-t-divider-subtle p-4 pt-3'>
           <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
           <ActionButtons
             handleCancel={handleCancel.bind(null, 'esc')}

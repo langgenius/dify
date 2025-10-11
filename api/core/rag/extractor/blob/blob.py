@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import contextlib
 import mimetypes
-from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterable, Mapping
+from collections.abc import Generator, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import Path, PurePath
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -31,17 +30,17 @@ class Blob(BaseModel):
     """
 
     data: Union[bytes, str, None] = None  # Raw data
-    mimetype: Optional[str] = None  # Not to be confused with a file extension
+    mimetype: str | None = None  # Not to be confused with a file extension
     encoding: str = "utf-8"  # Use utf-8 as default encoding, if decoding to string
     # Location where the original content was found
     # Represent location on the local file system
     # Useful for situations where downstream code assumes it must work with file paths
     # rather than in-memory content.
-    path: Optional[PathLike] = None
+    path: PathLike | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     @property
-    def source(self) -> Optional[str]:
+    def source(self) -> str | None:
         """The source location of the blob as string if known otherwise none."""
         return str(self.path) if self.path else None
 
@@ -92,7 +91,7 @@ class Blob(BaseModel):
         path: PathLike,
         *,
         encoding: str = "utf-8",
-        mime_type: Optional[str] = None,
+        mime_type: str | None = None,
         guess_type: bool = True,
     ) -> Blob:
         """Load the blob from a path like object.
@@ -108,7 +107,7 @@ class Blob(BaseModel):
             Blob instance
         """
         if mime_type is None and guess_type:
-            _mimetype = mimetypes.guess_type(path)[0] if guess_type else None
+            _mimetype = mimetypes.guess_type(path)[0]
         else:
             _mimetype = mime_type
         # We do not load the data immediately, instead we treat the blob as a
@@ -121,8 +120,8 @@ class Blob(BaseModel):
         data: Union[str, bytes],
         *,
         encoding: str = "utf-8",
-        mime_type: Optional[str] = None,
-        path: Optional[str] = None,
+        mime_type: str | None = None,
+        path: str | None = None,
     ) -> Blob:
         """Initialize the blob from in-memory data.
 
@@ -143,21 +142,3 @@ class Blob(BaseModel):
         if self.source:
             str_repr += f" {self.source}"
         return str_repr
-
-
-class BlobLoader(ABC):
-    """Abstract interface for blob loaders implementation.
-
-    Implementer should be able to load raw content from a datasource system according
-    to some criteria and return the raw content lazily as a stream of blobs.
-    """
-
-    @abstractmethod
-    def yield_blobs(
-        self,
-    ) -> Iterable[Blob]:
-        """A lazy loader for raw data represented by Blob object.
-
-        Returns:
-            A generator over blobs
-        """

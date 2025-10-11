@@ -27,9 +27,26 @@ class CleanProcessor:
                     pattern = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
                     text = re.sub(pattern, "", text)
 
-                    # Remove URL
-                    pattern = r"https?://[^\s]+"
-                    text = re.sub(pattern, "", text)
+                    # Remove URL but keep Markdown image URLs
+                    # First, temporarily replace Markdown image URLs with a placeholder
+                    markdown_image_pattern = r"!\[.*?\]\((https?://[^\s)]+)\)"
+                    placeholders: list[str] = []
+
+                    def replace_with_placeholder(match, placeholders=placeholders):
+                        url = match.group(1)
+                        placeholder = f"__MARKDOWN_IMAGE_URL_{len(placeholders)}__"
+                        placeholders.append(url)
+                        return f"![image]({placeholder})"
+
+                    text = re.sub(markdown_image_pattern, replace_with_placeholder, text)
+
+                    # Now remove all remaining URLs
+                    url_pattern = r"https?://[^\s)]+"
+                    text = re.sub(url_pattern, "", text)
+
+                    # Finally, restore the Markdown image URLs
+                    for i, url in enumerate(placeholders):
+                        text = text.replace(f"__MARKDOWN_IMAGE_URL_{i}__", url)
         return text
 
     def filter_string(self, text):

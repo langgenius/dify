@@ -1,4 +1,5 @@
 - openai
+- deepseek
 - anthropic
 - azure_openai
 - google
@@ -32,7 +33,6 @@
 - localai
 - volcengine_maas
 - openai_api_compatible
-- deepseek
 - hunyuan
 - siliconflow
 - perfxcloud

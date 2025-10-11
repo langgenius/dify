@@ -89,10 +89,19 @@ const ViewWorkflowHistory = () => {
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
     const filterList = (list: any, startIndex = 0, reverse = false) => list.map((state: Partial<WorkflowHistoryState>, index: number) => {
+      const nodes = (state.nodes || store.getState().nodes) || []
+      const nodeId = state?.workflowHistoryEventMeta?.nodeId
+      const targetTitle = nodes.find(n => n.id === nodeId)?.data?.title ?? ''
       return {
         label: state.workflowHistoryEvent && getHistoryLabel(state.workflowHistoryEvent),
         index: reverse ? list.length - 1 - index - startIndex : index - startIndex,
-        state,
+        state: {
+          ...state,
+          workflowHistoryEventMeta: state.workflowHistoryEventMeta ? {
+            ...state.workflowHistoryEventMeta,
+            nodeTitle: state.workflowHistoryEventMeta.nodeTitle || targetTitle,
+          } : undefined,
+        },
       }
     }).filter(Boolean)
 
@@ -109,6 +118,12 @@ const ViewWorkflowHistory = () => {
       statesCount: pastStates.length + futureStates.length,
     }
   }, [futureStates, getHistoryLabel, pastStates, store])
+
+  const composeHistoryItemLabel = useCallback((nodeTitle: string | undefined, baseLabel: string) => {
+    if (!nodeTitle)
+      return baseLabel
+    return `${nodeTitle} ${baseLabel}`
+  }, [])
 
   return (
     (
@@ -127,7 +142,7 @@ const ViewWorkflowHistory = () => {
           >
             <div
               className={
-                classNames('flex items-center justify-center w-8 h-8 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary cursor-pointer',
+                classNames('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                   open && 'bg-state-accent-active text-text-accent',
                   nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
                 )}
@@ -138,31 +153,31 @@ const ViewWorkflowHistory = () => {
                 setShowMessageLogModal(false)
               }}
             >
-              <RiHistoryLine className='w-4 h-4' />
+              <RiHistoryLine className='h-4 w-4' />
             </div>
           </TipPopup>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[12]'>
           <div
-            className='flex flex-col ml-2 min-w-[240px] max-w-[360px] bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border shadow-xl rounded-xl overflow-y-auto'
+            className='ml-2 flex min-w-[240px] max-w-[360px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]'
           >
             <div className='sticky top-0 flex items-center justify-between px-4 pt-3'>
-              <div className='grow text-text-secondary system-mg-regular'>{t('workflow.changeHistory.title')}</div>
+              <div className='system-mg-regular grow text-text-secondary'>{t('workflow.changeHistory.title')}</div>
               <div
-                className='shrink-0 flex items-center justify-center w-6 h-6 cursor-pointer'
+                className='flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center'
                 onClick={() => {
                   setCurrentLogItem()
                   setShowMessageLogModal(false)
                   setOpen(false)
                 }}
               >
-                <RiCloseLine className='w-4 h-4 text-text-secondary' />
+                <RiCloseLine className='h-4 w-4 text-text-secondary' />
               </div>
             </div>
             {
               (
                 <div
-                  className='p-2 overflow-y-auto'
+                  className='overflow-y-auto p-2'
                   style={{
                     maxHeight: 'calc(1 / 2 * 100vh)',
                   }}
@@ -170,7 +185,7 @@ const ViewWorkflowHistory = () => {
                   {
                     !calculateChangeList.statesCount && (
                       <div className='py-12'>
-                        <RiHistoryLine className='mx-auto mb-2 w-8 h-8 text-text-tertiary' />
+                        <RiHistoryLine className='mx-auto mb-2 h-8 w-8 text-text-tertiary' />
                         <div className='text-center text-[13px] text-text-tertiary'>
                           {t('workflow.changeHistory.placeholder')}
                         </div>
@@ -183,7 +198,7 @@ const ViewWorkflowHistory = () => {
                         <div
                           key={item?.index}
                           className={cn(
-                            'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-state-base-hover text-text-secondary cursor-pointer',
+                            'mb-0.5 flex cursor-pointer rounded-lg px-2 py-[7px] text-text-secondary hover:bg-state-base-hover',
                             item?.index === currentHistoryStateIndex && 'bg-state-base-hover',
                           )}
                           onClick={() => {
@@ -197,7 +212,10 @@ const ViewWorkflowHistory = () => {
                                 'flex items-center text-[13px] font-medium leading-[18px] text-text-secondary',
                               )}
                             >
-                              {item?.label || t('workflow.changeHistory.sessionStart')} ({calculateStepLabel(item?.index)}{item?.index === currentHistoryStateIndex && t('workflow.changeHistory.currentState')})
+                              {composeHistoryItemLabel(
+                                item?.state?.workflowHistoryEventMeta?.nodeTitle,
+                                item?.label || t('workflow.changeHistory.sessionStart'),
+                              )} ({calculateStepLabel(item?.index)}{item?.index === currentHistoryStateIndex && t('workflow.changeHistory.currentState')})
                             </div>
                           </div>
                         </div>
@@ -208,7 +226,7 @@ const ViewWorkflowHistory = () => {
                         <div
                           key={item?.index}
                           className={cn(
-                            'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-state-base-hover cursor-pointer',
+                            'mb-0.5 flex cursor-pointer rounded-lg px-2 py-[7px] hover:bg-state-base-hover',
                             item?.index === calculateChangeList.statesCount - 1 && 'bg-state-base-hover',
                           )}
                           onClick={() => {
@@ -222,7 +240,10 @@ const ViewWorkflowHistory = () => {
                                 'flex items-center text-[13px] font-medium leading-[18px] text-text-secondary',
                               )}
                             >
-                              {item?.label || t('workflow.changeHistory.sessionStart')} ({calculateStepLabel(item?.index)})
+                              {composeHistoryItemLabel(
+                                item?.state?.workflowHistoryEventMeta?.nodeTitle,
+                                item?.label || t('workflow.changeHistory.sessionStart'),
+                              )} ({calculateStepLabel(item?.index)})
                             </div>
                           </div>
                         </div>
@@ -238,7 +259,7 @@ const ViewWorkflowHistory = () => {
                   <Divider className='m-0' />
                   <div
                     className={cn(
-                      'flex my-0.5 px-2 py-[7px] rounded-lg text-text-secondary cursor-pointer',
+                      'my-0.5 flex cursor-pointer rounded-lg px-2 py-[7px] text-text-secondary',
                       'hover:bg-state-base-hover',
                     )}
                     onClick={() => {
@@ -259,9 +280,9 @@ const ViewWorkflowHistory = () => {
                 </div>
               )
             }
-            <div className="px-3 w-[240px] py-2 text-xs text-text-tertiary" >
-              <div className="flex items-center mb-1 h-[22px] font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
-              <div className="mb-1 text-text-tertiary leading-[18px]">{t('workflow.changeHistory.hintText')}</div>
+            <div className="w-[240px] px-3 py-2 text-xs text-text-tertiary" >
+              <div className="mb-1 flex h-[22px] items-center font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
+              <div className="mb-1 leading-[18px] text-text-tertiary">{t('workflow.changeHistory.hintText')}</div>
             </div>
           </div>
         </PortalToFollowElemContent>

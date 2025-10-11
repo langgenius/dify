@@ -1,6 +1,5 @@
 from collections.abc import Sequence
-from enum import Enum
-from typing import Optional
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, ConfigDict
 
@@ -9,16 +8,17 @@ from core.model_runtime.entities.model_entities import ModelType, ProviderModel
 from core.model_runtime.entities.provider_entities import ProviderEntity
 
 
-class ModelStatus(Enum):
+class ModelStatus(StrEnum):
     """
     Enum class for model status.
     """
 
-    ACTIVE = "active"
+    ACTIVE = auto()
     NO_CONFIGURE = "no-configure"
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
-    DISABLED = "disabled"
+    DISABLED = auto()
+    CREDENTIAL_REMOVED = "credential-removed"
 
 
 class SimpleModelProviderEntity(BaseModel):
@@ -28,11 +28,11 @@ class SimpleModelProviderEntity(BaseModel):
 
     provider: str
     label: I18nObject
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
+    icon_small: I18nObject | None = None
+    icon_large: I18nObject | None = None
     supported_model_types: list[ModelType]
 
-    def __init__(self, provider_entity: ProviderEntity) -> None:
+    def __init__(self, provider_entity: ProviderEntity):
         """
         Init simple provider.
 
@@ -54,6 +54,26 @@ class ProviderModelWithStatusEntity(ProviderModel):
 
     status: ModelStatus
     load_balancing_enabled: bool = False
+    has_invalid_load_balancing_configs: bool = False
+
+    def raise_for_status(self):
+        """
+        Check model status and raise ValueError if not active.
+
+        :raises ValueError: When model status is not active, with a descriptive message
+        """
+        if self.status == ModelStatus.ACTIVE:
+            return
+
+        error_messages = {
+            ModelStatus.NO_CONFIGURE: "Model is not configured",
+            ModelStatus.QUOTA_EXCEEDED: "Model quota has been exceeded",
+            ModelStatus.NO_PERMISSION: "No permission to use this model",
+            ModelStatus.DISABLED: "Model is disabled",
+        }
+
+        if self.status in error_messages:
+            raise ValueError(error_messages[self.status])
 
 
 class ModelWithProviderEntity(ProviderModelWithStatusEntity):
@@ -71,8 +91,8 @@ class DefaultModelProviderEntity(BaseModel):
 
     provider: str
     label: I18nObject
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
+    icon_small: I18nObject | None = None
+    icon_large: I18nObject | None = None
     supported_model_types: Sequence[ModelType] = []
 
 

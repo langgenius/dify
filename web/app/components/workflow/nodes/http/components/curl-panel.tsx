@@ -2,9 +2,10 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BodyType, type HttpNodeType, Method } from '../types'
+import { BodyPayloadValueType, BodyType, type HttpNodeType, Method } from '../types'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 
@@ -22,13 +23,14 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
   const node: Partial<HttpNodeType> = {
     title: 'HTTP Request',
     desc: 'Imported from cURL',
-    method: Method.get,
+    method: undefined,
     url: '',
     headers: '',
     params: '',
     body: { type: BodyType.none, data: '' },
   }
   const args = curlCommand.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
+  let hasData = false
 
   for (let i = 1; i < args.length; i++) {
     const arg = args[i].replace(/^['"]|['"]$/g, '')
@@ -38,6 +40,7 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
         if (i + 1 >= args.length)
           return { node: null, error: 'Missing HTTP method after -X or --request.' }
         node.method = (args[++i].replace(/^['"]|['"]$/g, '') as Method) || Method.get
+        hasData = true
         break
       case '-H':
       case '--header':
@@ -48,11 +51,16 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
       case '-d':
       case '--data':
       case '--data-raw':
-      case '--data-binary':
+      case '--data-binary': {
         if (i + 1 >= args.length)
           return { node: null, error: 'Missing data value after -d, --data, --data-raw, or --data-binary.' }
-        node.body = { type: BodyType.rawText, data: args[++i].replace(/^['"]|['"]$/g, '') }
+        const bodyPayload = [{
+          type: BodyPayloadValueType.text,
+          value: args[++i].replace(/^['"]|['"]$/g, ''),
+        }]
+        node.body = { type: BodyType.rawText, data: bodyPayload }
         break
+      }
       case '-F':
       case '--form': {
         if (i + 1 >= args.length)
@@ -88,6 +96,9 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
         break
     }
   }
+
+  // Determine final method
+  node.method = node.method || (hasData ? Method.post : Method.get)
 
   if (!node.url)
     return { node: null, error: 'Missing URL or url not start with http.' }
@@ -136,9 +147,9 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
       className='!w-[400px] !max-w-[400px] !p-4'
     >
       <div>
-        <textarea
+        <Textarea
           value={inputString}
-          className='w-full my-3 p-3 text-sm text-gray-900 border-0 rounded-lg grow bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200 h-40'
+          className='my-3 h-40 w-full grow'
           onChange={e => setInputString(e.target.value)}
           placeholder={t('workflow.nodes.http.curl.placeholder')!}
         />

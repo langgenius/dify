@@ -27,7 +27,7 @@ import gmpy2  # type: ignore
 from Crypto import Random
 from Crypto.Signature.pss import MGF1
 from Crypto.Util.number import bytes_to_long, ceil_div, long_to_bytes
-from Crypto.Util.py3compat import _copy_bytes, bord
+from Crypto.Util.py3compat import bord
 from Crypto.Util.strxor import strxor
 
 
@@ -72,7 +72,7 @@ class PKCS1OAepCipher:
         else:
             self._mgf = lambda x, y: MGF1(x, y, self._hashObj)
 
-        self._label = _copy_bytes(None, None, label)
+        self._label = bytes(label)
         self._randfunc = randfunc
 
     def can_encrypt(self):
@@ -120,7 +120,7 @@ class PKCS1OAepCipher:
         # Step 2b
         ps = b"\x00" * ps_len
         # Step 2c
-        db = lHash + ps + b"\x01" + _copy_bytes(None, None, message)
+        db = lHash + ps + b"\x01" + bytes(message)
         # Step 2d
         ros = self._randfunc(hLen)
         # Step 2e
@@ -136,7 +136,7 @@ class PKCS1OAepCipher:
         # Step 3a (OS2IP)
         em_int = bytes_to_long(em)
         # Step 3b (RSAEP)
-        m_int = gmpy2.powmod(em_int, self._key.e, self._key.n)
+        m_int = gmpy2.powmod(em_int, self._key.e, self._key.n)  # ty: ignore [unresolved-attribute]
         # Step 3c (I2OSP)
         c = long_to_bytes(m_int, k)
         return c
@@ -169,7 +169,7 @@ class PKCS1OAepCipher:
         ct_int = bytes_to_long(ciphertext)
         # Step 2b (RSADP)
         # m_int = self._key._decrypt(ct_int)
-        m_int = gmpy2.powmod(ct_int, self._key.d, self._key.n)
+        m_int = gmpy2.powmod(ct_int, self._key.d, self._key.n)  # ty: ignore [unresolved-attribute]
         # Complete step 2c (I2OSP)
         em = long_to_bytes(m_int, k)
         # Step 3a

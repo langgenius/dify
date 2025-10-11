@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
 import { BlockEnum } from '../../types'
 import {
@@ -19,14 +12,17 @@ import ConversationVariableModal from './conversation-variable-modal'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { getLastAnswer } from '@/app/components/base/chat/utils'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -35,18 +31,38 @@ type ChatWrapperProps = {
   onHide: () => void
 }
 
-const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
-  showConversationVariableModal,
-  onConversationModalHide,
-  showInputsFieldsPanel,
-  onHide,
-}, ref) => {
+const ChatWrapper = (
+  {
+    ref,
+    showConversationVariableModal,
+    onConversationModalHide,
+    showInputsFieldsPanel,
+    onHide,
+  }: ChatWrapperProps & {
+    ref: React.RefObject<ChatWrapperRefType>;
+  },
+) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const inputs = useStore(s => s.inputs)
+  const { inputs, setInputs } = useStore(s => ({
+    inputs: s.inputs,
+    setInputs: s.setInputs,
+  }))
+
+  const initialInputs = useMemo(() => {
+    const initInputs: Record<string, any> = {}
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          initInputs[variable.variable] = variable.default
+      })
+    }
+    return initInputs
+  }, [startVariables])
+
   const features = useFeatures(s => s.features)
   const config = useMemo(() => {
     return {
@@ -65,13 +81,12 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
   const {
     conversationId,
     chatList,
-    chatListRef,
-    handleUpdateChatList,
     handleStop,
     isResponding,
     suggestedQuestions,
     handleSend,
     handleRestart,
+    setTargetMessageId,
   } = useChat(
     config,
     {
@@ -82,42 +97,56 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
 
-  const doSend = useCallback<OnSend>((query, files, last_answer) => {
+  const handleRestartChat = useCallback(() => {
+    handleRestart()
+    setInputs(initialInputs)
+  }, [handleRestart, setInputs, initialInputs])
+
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
       {
-        query,
+        query: message,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
-        parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
+        parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || undefined,
       },
       {
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
       },
     )
-  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail])
+  }, [handleSend, workflowStore, conversationId, chatList, appDetail])
 
-  const doRegenerate = useCallback((chatItem: ChatItem) => {
-    const index = chatList.findIndex(item => item.id === chatItem.id)
-    if (index === -1)
-      return
+  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
+    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
+    doSend(editedQuestion ? editedQuestion.message : question.content,
+      editedQuestion ? editedQuestion.files : question.message_files,
+      true,
+      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+    )
+  }, [chatList, doSend])
 
-    const prevMessages = chatList.slice(0, index)
-    const question = prevMessages.pop()
-    const lastAnswer = getLastAnswer(prevMessages)
-
-    if (!question)
-      return
-
-    handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, lastAnswer)
-  }, [chatList, handleUpdateChatList, doSend])
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
 
   useImperativeHandle(ref, () => {
     return {
-      handleRestart,
+      handleRestart: handleRestartChat,
     }
-  }, [handleRestart])
+  }, [handleRestartChat])
+
+  useEffect(() => {
+    if (Object.keys(initialInputs).length > 0) {
+      setInputs({
+        ...initialInputs,
+        ...inputs,
+      })
+    }
+  }, [initialInputs])
 
   useEffect(() => {
     if (isResponding)
@@ -159,6 +188,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         suggestedQuestions={suggestedQuestions}
         showPromptLog
         chatAnswerContainerInner='!pr-2'
+        switchSibling={setTargetMessageId}
       />
       {showConversationVariableModal && (
         <ConversationVariableModal
@@ -168,7 +198,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
       )}
     </>
   )
-})
+}
 
 ChatWrapper.displayName = 'ChatWrapper'
 

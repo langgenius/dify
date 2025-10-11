@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import { type FC, useCallback } from 'react'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import Input, { type InputProps } from '../input'
 import classNames from '@/utils/classnames'
@@ -6,28 +6,47 @@ import classNames from '@/utils/classnames'
 export type InputNumberProps = {
   unit?: string
   value?: number
-  onChange: (value?: number) => void
+  onChange: (value: number) => void
   amount?: number
-  size?: 'sm' | 'md'
+  size?: 'regular' | 'large'
   max?: number
   min?: number
   defaultValue?: number
+  disabled?: boolean
+  wrapClassName?: string
+  controlWrapClassName?: string
+  controlClassName?: string
 } & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, ...rest } = props
+  const {
+    unit,
+    className,
+    onChange,
+    amount = 1,
+    value,
+    size = 'regular',
+    max,
+    min,
+    defaultValue,
+    wrapClassName,
+    controlWrapClassName,
+    controlClassName,
+    disabled,
+    ...rest
+  } = props
 
-  const isValidValue = (v: number) => {
-    if (max && v > max)
+  const isValidValue = useCallback((v: number) => {
+    if (typeof max === 'number' && v > max)
       return false
-    if (min && v < min)
-      return false
-    return true
-  }
+    return !(typeof min === 'number' && v < min)
+  }, [max, min])
 
   const inc = () => {
+    if (disabled) return
+
     if (value === undefined) {
-      onChange(defaultValue)
+      onChange(defaultValue ?? 0)
       return
     }
     const newValue = value + amount
@@ -36,8 +55,10 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(newValue)
   }
   const dec = () => {
+    if (disabled) return
+
     if (value === undefined) {
-      onChange(defaultValue)
+      onChange(defaultValue ?? 0)
       return
     }
     const newValue = value - amount
@@ -46,39 +67,64 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(newValue)
   }
 
-  return <div className='flex'>
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value === '') {
+      onChange(0)
+      return
+    }
+    const parsed = Number(e.target.value)
+    if (Number.isNaN(parsed))
+      return
+
+    if (!isValidValue(parsed))
+      return
+    onChange(parsed)
+  }, [isValidValue, onChange])
+
+  return <div className={classNames('flex', wrapClassName)}>
     <Input {...rest}
       // disable default controller
-      type='text'
-      className={classNames('rounded-r-none', className)}
-      value={value}
+      type='number'
+      className={classNames('no-spinner rounded-r-none', className)}
+      value={value ?? 0}
       max={max}
       min={min}
-      onChange={(e) => {
-        if (e.target.value === '')
-          onChange(undefined)
-
-        const parsed = Number(e.target.value)
-        if (Number.isNaN(parsed))
-          return
-
-        if (!isValidValue(parsed))
-          return
-        onChange(parsed)
-      }}
+      disabled={disabled}
+      onChange={handleInputChange}
       unit={unit}
+      size={size}
     />
-    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs'>
-      <button onClick={inc} className={classNames(
-        size === 'sm' ? 'pt-1' : 'pt-1.5',
-        'px-1.5 hover:bg-components-input-bg-hover',
-      )}>
+    <div className={classNames(
+      'flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs',
+      disabled && 'cursor-not-allowed opacity-50',
+      controlWrapClassName)}
+    >
+      <button
+        type='button'
+        onClick={inc}
+        disabled={disabled}
+        aria-label='increment'
+        className={classNames(
+          size === 'regular' ? 'pt-1' : 'pt-1.5',
+          'px-1.5 hover:bg-components-input-bg-hover',
+          disabled && 'cursor-not-allowed hover:bg-transparent',
+          controlClassName,
+        )}
+      >
         <RiArrowUpSLine className='size-3' />
       </button>
-      <button onClick={dec} className={classNames(
-        size === 'sm' ? 'pb-1' : 'pb-1.5',
-        'px-1.5 hover:bg-components-input-bg-hover',
-      )}>
+      <button
+        type='button'
+        onClick={dec}
+        disabled={disabled}
+        aria-label='decrement'
+        className={classNames(
+          size === 'regular' ? 'pb-1' : 'pb-1.5',
+          'px-1.5 hover:bg-components-input-bg-hover',
+          disabled && 'cursor-not-allowed hover:bg-transparent',
+          controlClassName,
+        )}
+      >
         <RiArrowDownSLine className='size-3' />
       </button>
     </div>

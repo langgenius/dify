@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -10,14 +10,13 @@ import {
 } from '@remixicon/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useHover } from 'ahooks'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
 import FamilyMod from '../assets/family-mod.svg'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
-import { PreviewContainer } from '../../preview/container'
+import PreviewContainer from '../../preview/container'
 import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
 import { FormattedText } from '../../formatted-text/formatted'
@@ -31,40 +30,42 @@ import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 
 import Button from '@/app/components/base/button'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import { type RetrievalConfig } from '@/types/app'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import type { RetrievalConfig } from '@/types/app'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Checkbox from '@/app/components/base/checkbox'
 import RadioCard from '@/app/components/base/radio-card'
-import { IS_CE_EDITION } from '@/config'
+import { FULL_DOC_PREVIEW_LENGTH, IS_CE_EDITION } from '@/config'
 import Divider from '@/app/components/base/divider'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
 import Badge from '@/app/components/base/badge'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { noop } from 'lodash-es'
+import { useDocLink } from '@/context/i18n'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className='text-text-secondary system-sm-semibold'>{props.children}</label>
+  return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
 }
 
 type StepTwoProps = {
@@ -78,6 +79,7 @@ type StepTwoProps = {
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
+  notionCredentialId: string
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
@@ -90,18 +92,15 @@ type StepTwoProps = {
   onCancel?: () => void
 }
 
-export enum SegmentType {
-  AUTO = 'automatic',
-  CUSTOM = 'custom',
-}
 export enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
 }
 
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
-const DEFAULT_MAXMIMUM_CHUNK_LENGTH = 500
+const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
 const DEFAULT_OVERLAP = 50
+const MAXIMUM_CHUNK_TOKEN_LENGTH = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
 
 type ParentChildConfig = {
   chunkForContext: ParentMode
@@ -119,11 +118,11 @@ const defaultParentChildConfig: ParentChildConfig = {
   chunkForContext: 'paragraph',
   parent: {
     delimiter: '\\n\\n',
-    maxLength: 500,
+    maxLength: 1024,
   },
   child: {
     delimiter: '\\n',
-    maxLength: 200,
+    maxLength: 512,
   },
 }
 
@@ -131,15 +130,15 @@ const StepTwo = ({
   isSetting,
   documentDetail,
   isAPIKeySet,
-  onSetting,
   datasetId,
   indexingType,
   dataSourceType: inCreatePageDataSourceType,
   files,
   notionPages = [],
+  notionCredentialId,
   websitePages = [],
   crawlOptions,
-  websiteCrawlProvider = DataSourceProvider.fireCrawl,
+  websiteCrawlProvider = DataSourceProvider.jinaReader,
   websiteCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
@@ -149,11 +148,13 @@ const StepTwo = ({
   updateRetrievalMethodCache,
 }: StepTwoProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { locale } = useContext(I18n)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+  const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
 
   const isInUpload = Boolean(currentDataset)
   const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form
@@ -162,23 +163,24 @@ const StepTwo = ({
 
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
-  const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.CUSTOM)
+  const [segmentationType, setSegmentationType] = useState<ProcessMode>(
+    currentDataset?.doc_form === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general,
+  )
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string, canEmpty?: boolean) => {
     doSetSegmentIdentifier(value ? escape(value) : (canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER))
   }, [])
-  const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXMIMUM_CHUNK_LENGTH) // default chunk length
-  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
+  const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXIMUM_CHUNK_LENGTH) // default chunk length
+  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(MAXIMUM_CHUNK_TOKEN_LENGTH)
   const [overlap, setOverlap] = useState(DEFAULT_OVERLAP)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
-  const [indexType, setIndexType] = useState<IndexingType>(
-    (indexingType
-      || isAPIKeySet)
-      ? IndexingType.QUALIFIED
-      : IndexingType.ECONOMICAL,
-  )
+  const [indexType, setIndexType] = useState<IndexingType>(() => {
+    if (hasSetIndexType)
+      return indexingType
+    return isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL
+  })
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(
     (datasetId && documentDetail)
@@ -198,7 +200,6 @@ const StepTwo = ({
   )
 
   // QA Related
-  const [isLanguageSelectDisabled, _setIsLanguageSelectDisabled] = useState(false)
   const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
   const [docForm, setDocForm] = useState<ChunkingMode>(
     (datasetId && documentDetail) ? documentDetail.doc_form as ChunkingMode : ChunkingMode.text,
@@ -210,13 +211,20 @@ const StepTwo = ({
     }
     if (value === ChunkingMode.parentChild && indexType === IndexingType.ECONOMICAL)
       setIndexType(IndexingType.QUALIFIED)
+
     setDocForm(value)
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+
+    if (value === ChunkingMode.parentChild)
+      setSegmentationType(ProcessMode.parentChild)
+    else
+      setSegmentationType(ProcessMode.general)
+
+    // eslint-disable-next-line ts/no-use-before-define
     currentEstimateMutation.reset()
   }
 
   const [docLanguage, setDocLanguage] = useState<string>(
-    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
+    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese Simplified'),
   )
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
@@ -276,6 +284,7 @@ const StepTwo = ({
     indexingTechnique: getIndexing_technique() as any,
     processRule: getProcessRule(),
     dataset_id: datasetId || '',
+    credential_id: notionCredentialId,
   })
 
   const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
@@ -348,8 +357,8 @@ const StepTwo = ({
   }
 
   const updatePreview = () => {
-    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === ProcessMode.general && maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
       return
     }
     fetchEstimate()
@@ -373,13 +382,41 @@ const StepTwo = ({
         model: defaultEmbeddingModel?.model || '',
       },
   )
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
+    },
+    top_k: 3,
+    score_threshold_enabled: false,
+    score_threshold: 0.5,
+  } as RetrievalConfig)
+
+  useEffect(() => {
+    if (currentDataset?.retrieval_model_dict)
+      return
+    setRetrievalConfig({
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: !!isRerankDefaultModelValid,
+      reranking_model: {
+        reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider.provider ?? '' : '',
+        reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
+      },
+      top_k: 3,
+      score_threshold_enabled: false,
+      score_threshold: 0.5,
+    })
+  }, [rerankDefaultModel, isRerankDefaultModelValid])
+
   const getCreationParams = () => {
     let params
-    if (segmentationType === SegmentType.CUSTOM && overlap > maxChunkLength) {
+    if (segmentationType === ProcessMode.general && overlap > maxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
-    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+    if (segmentationType === ProcessMode.general && maxChunkLength > limitMaxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
@@ -389,7 +426,6 @@ const StepTwo = ({
         doc_form: currentDocForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
@@ -398,12 +434,16 @@ const StepTwo = ({
     }
     else { // create
       const indexMethod = getIndexing_technique()
+      if (indexMethod === IndexingType.QUALIFIED && (!embeddingModel.model || !embeddingModel.provider)) {
+        Toast.notify({
+          type: 'error',
+          message: t('appDebug.datasetConfig.embeddingModelRequired'),
+        })
+        return
+      }
       if (
         !isReRankModelSelected({
-          rerankDefaultModel,
-          isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
           indexMethod: indexMethod as string,
         })
@@ -411,16 +451,6 @@ const StepTwo = ({
         Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
         return
       }
-      const postRetrievalConfig = ensureRerankModelSelected({
-        rerankDefaultModel: rerankDefaultModel!,
-        retrievalConfig: {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          ...retrievalConfig,
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
-        },
-        indexMethod: indexMethod as string,
-      })
       params = {
         data_source: {
           type: dataSourceType,
@@ -432,8 +462,7 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         doc_form: currentDocForm,
         doc_language: docLanguage,
-
-        retrieval_model: postRetrievalConfig,
+        retrieval_model: retrievalConfig,
         embedding_model: embeddingModel.model,
         embedding_model_provider: embeddingModel.provider,
       } as CreateDocumentReq
@@ -443,7 +472,7 @@ const StepTwo = ({
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
-        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages)
+        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages, notionCredentialId)
 
       if (dataSourceType === DataSourceType.WEB) {
         params.data_source.info_list.website_info_list = getWebsiteInfo({
@@ -480,17 +509,32 @@ const StepTwo = ({
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
+      const isHierarchicalDocument = documentDetail.doc_form === ChunkingMode.parentChild
+        || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
       setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
+
+      if (isHierarchicalDocument) {
+        setParentChildConfig({
+          chunkForContext: rules.parent_mode || 'paragraph',
+          parent: {
+            delimiter: escape(rules.segmentation.separator),
+            maxLength: rules.segmentation.max_tokens,
+          },
+          child: {
+            delimiter: escape(rules.subchunk_segmentation.separator),
+            maxLength: rules.subchunk_segmentation.max_tokens,
+          },
+        })
+      }
     }
   }
 
   const getDefaultMode = () => {
     if (documentDetail)
-      // @ts-expect-error fix after api refactored
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
@@ -512,6 +556,7 @@ const StepTwo = ({
   })
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
+  const invalidDatasetList = useInvalidDatasetList()
 
   const createHandle = async () => {
     const params = getCreationParams()
@@ -523,10 +568,9 @@ const StepTwo = ({
         params,
         {
           onSuccess(data) {
-            updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-            updateResultCache && updateResultCache(data)
-            // eslint-disable-next-line @typescript-eslint/no-use-before-define
-            updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+            updateIndexingTypeCache?.(indexType as string)
+            updateResultCache?.(data)
+            updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
           },
         },
       )
@@ -534,23 +578,18 @@ const StepTwo = ({
     else {
       await createDocumentMutation.mutateAsync(params, {
         onSuccess(data) {
-          updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-          updateResultCache && updateResultCache(data)
+          updateIndexingTypeCache?.(indexType as string)
+          updateResultCache?.(data)
+          updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
         },
       })
     }
     if (mutateDatasetRes)
       mutateDatasetRes()
-    onStepChange && onStepChange(+1)
-    isSetting && onSave && onSave()
-  }
-
-  const changeToEconomicalType = () => {
-    if (docForm !== ChunkingMode.text)
-      return
-
-    if (!hasSetIndexType)
-      setIndexType(IndexingType.ECONOMICAL)
+    invalidDatasetList()
+    onStepChange?.(+1)
+    if (isSetting)
+      onSave?.()
   }
 
   useEffect(() => {
@@ -562,42 +601,27 @@ const StepTwo = ({
       getRulesFromDetail()
       getDefaultMode()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     // get indexing type by props
     if (indexingType)
       setIndexType(indexingType as IndexingType)
-
     else
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
 
-  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: rerankDefaultModel?.provider.provider,
-      reranking_model_name: rerankDefaultModel?.model,
-    },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-  } as RetrievalConfig)
-
-  const economyDomRef = useRef<HTMLDivElement>(null)
-  const isHoveringEconomy = useHover(economyDomRef)
+  const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
 
   return (
-    <div className='flex w-full h-full'>
-      <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
-        <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
+    <div className='flex h-full w-full'>
+      <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
+        <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.segmentation')}</div>
         {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
           || isUploadInEmptyDataset
           || isInInit)
           && <OptionCard
-            className='bg-background-section mb-2'
+            className='mb-2 bg-background-section'
             title={t('datasetCreation.stepTwo.general')}
             icon={<Image width={20} height={20} src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
             activeHeaderClassName='bg-dataset-option-card-blue-gradient'
@@ -611,7 +635,7 @@ const StepTwo = ({
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='h-4 w-4 mr-0.5' />
+                  <RiSearchEyeLine className='mr-0.5 h-4 w-4' />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
                 <Button variant={'ghost'} onClick={resetRules}>
@@ -628,18 +652,18 @@ const StepTwo = ({
                   onChange={e => setSegmentIdentifier(e.target.value, true)}
                 />
                 <MaxLengthInput
-                  unit='tokens'
+                  unit='characters'
                   value={maxChunkLength}
                   onChange={setMaxChunkLength}
                 />
                 <OverlapInput
-                  unit='tokens'
+                  unit='characters'
                   value={overlap}
                   min={1}
                   onChange={setOverlap}
                 />
               </div>
-              <div className='w-full flex flex-col'>
+              <div className='flex w-full flex-col'>
                 <div className='flex items-center gap-x-2'>
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
@@ -654,7 +678,7 @@ const StepTwo = ({
                       <Checkbox
                         checked={rule.enabled}
                       />
-                      <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                      <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
                     </div>
                   ))}
                   {IS_CE_EDITION && <>
@@ -672,7 +696,7 @@ const StepTwo = ({
                           checked={currentDocForm === ChunkingMode.qa}
                           disabled={!!currentDataset?.doc_form}
                         />
-                        <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">
+                        <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
                           {t('datasetCreation.stepTwo.useQALanguage')}
                         </label>
                       </div>
@@ -688,7 +712,7 @@ const StepTwo = ({
                         style={{
                           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
                         }}
-                        className='h-10 mt-2 flex items-center gap-2 rounded-xl backdrop-blur-[5px] border-components-panel-border border shadow-xs px-3 text-xs'
+                        className='mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]'
                       >
                         <RiAlertFill className='size-4 text-text-warning-secondary' />
                         <span className='system-xs-medium text-text-primary'>
@@ -718,7 +742,7 @@ const StepTwo = ({
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='h-4 w-4 mr-0.5' />
+                  <RiSearchEyeLine className='mr-0.5 h-4 w-4' />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
                 <Button variant={'ghost'} onClick={resetRules}>
@@ -761,7 +785,7 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
-                        unit='tokens'
+                        unit='characters'
                         value={parentChildConfig.parent.maxLength}
                         onChange={value => setParentChildConfig({
                           ...parentChildConfig,
@@ -795,7 +819,7 @@ const StepTwo = ({
                   </div>
                   <Divider className='grow' bgStyle='gradient' />
                 </div>
-                <div className='flex gap-3 mt-1'>
+                <div className='mt-1 flex gap-3'>
                   <DelimiterInput
                     value={parentChildConfig.child.delimiter}
                     tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
@@ -808,7 +832,7 @@ const StepTwo = ({
                     })}
                   />
                   <MaxLengthInput
-                    unit='tokens'
+                    unit='characters'
                     value={parentChildConfig.child.maxLength}
                     onChange={value => setParentChildConfig({
                       ...parentChildConfig,
@@ -835,7 +859,7 @@ const StepTwo = ({
                       <Checkbox
                         checked={rule.enabled}
                       />
-                      <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                      <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
                     </div>
                   ))}
                 </div>
@@ -843,10 +867,11 @@ const StepTwo = ({
             </div>
           </OptionCard>}
         <Divider className='my-5' />
-        <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.indexMode')}</div>
+        <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.indexMode')}</div>
         <div className='flex items-center gap-2'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard className='flex-1'
+            <OptionCard
+              className='flex-1 self-stretch'
               title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
@@ -859,10 +884,9 @@ const StepTwo = ({
               description={t('datasetCreation.stepTwo.qualifiedTip')}
               icon={<Image src={indexMethodIcon.high_quality} alt='' />}
               isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
-              disabled={!isAPIKeySet || hasSetIndexType}
+              disabled={hasSetIndexType}
               onSwitched={() => {
-                if (isAPIKeySet)
-                  setIndexType(IndexingType.QUALIFIED)
+                setIndexType(IndexingType.QUALIFIED)
               }}
             />
           )}
@@ -870,11 +894,11 @@ const StepTwo = ({
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.ECONOMICAL)) && (
             <>
               <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
-                <header className='pt-6 mb-4'>
-                  <h2 className='text-lg font-semibold'>
+                <header className='mb-4 pt-6'>
+                  <h2 className='text-lg font-semibold text-text-primary'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
                   </h2>
-                  <p className='font-normal text-sm mt-2'>
+                  <p className='mt-2 text-sm font-normal text-text-secondary'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
                   </p>
                 </header>
@@ -893,49 +917,46 @@ const StepTwo = ({
                   </Button>
                 </div>
               </CustomDialog>
-              <PortalToFollowElem
-                open={
-                  isHoveringEconomy && docForm !== ChunkingMode.text
-                }
-                placement={'top'}
-              >
-                <PortalToFollowElemTrigger asChild>
-                  <OptionCard className='flex-1'
-                    title={t('datasetCreation.stepTwo.economical')}
-                    description={t('datasetCreation.stepTwo.economicalTip')}
-                    icon={<Image src={indexMethodIcon.economical} alt='' />}
-                    isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                    disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChunkingMode.text}
-                    ref={economyDomRef}
-                    onSwitched={() => {
-                      if (isAPIKeySet && docForm === ChunkingMode.text)
-                        setIndexType(IndexingType.ECONOMICAL)
-                    }}
-                  />
-                </PortalToFollowElemTrigger>
-                <PortalToFollowElemContent>
-                  <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+              <Tooltip
+                popupContent={
+                  <div className='rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg'>
                     {
                       docForm === ChunkingMode.qa
                         ? t('datasetCreation.stepTwo.notAvailableForQA')
                         : t('datasetCreation.stepTwo.notAvailableForParentChild')
                     }
                   </div>
-                </PortalToFollowElemContent>
-              </PortalToFollowElem>
+                }
+                noDecoration
+                position='top'
+                asChild={false}
+                triggerClassName='flex-1 self-stretch'
+              >
+                <OptionCard
+                  className='h-full'
+                  title={t('datasetCreation.stepTwo.economical')}
+                  description={t('datasetCreation.stepTwo.economicalTip')}
+                  icon={<Image src={indexMethodIcon.economical} alt='' />}
+                  isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+                  disabled={hasSetIndexType || docForm !== ChunkingMode.text}
+                  onSwitched={() => {
+                    setIndexType(IndexingType.ECONOMICAL)
+                  }}
+                />
+              </Tooltip>
             </>)}
         </div>
         {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-          <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
-            <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+          <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
+            <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40'></div>
             <div className='p-1'>
               <AlertTriangle className='size-4 text-text-warning-secondary' />
             </div>
-            <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
+            <span className='system-xs-medium text-text-primary'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='mt-2 system-xs-medium'>
+          <div className='system-xs-medium mt-2 text-text-tertiary'>
             {t('datasetCreation.stepTwo.indexSettingTip')}
             <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>
@@ -943,17 +964,18 @@ const StepTwo = ({
         {/* Embedding model */}
         {indexType === IndexingType.QUALIFIED && (
           <div className='mt-5'>
-            <div className={cn('system-md-semibold mb-1', datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
+            <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>{t('datasetSettings.form.embeddingModel')}</div>
             <ModelSelector
-              readonly={!!datasetId}
+              readonly={isModelAndRetrievalConfigDisabled}
+              triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
               onSelect={(model: DefaultModel) => {
                 setEmbeddingModel(model)
               }}
             />
-            {!!datasetId && (
-              <div className='mt-2 system-xs-medium'>
+            {isModelAndRetrievalConfigDisabled && (
+              <div className='system-xs-medium mt-2 text-text-tertiary'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
@@ -963,18 +985,20 @@ const StepTwo = ({
         <Divider className='my-5' />
         {/* Retrieval Method Config */}
         <div>
-          {!datasetId
+          {!isModelAndRetrievalConfigDisabled
             ? (
               <div className={'mb-1'}>
-                <div className='system-md-semibold mb-0.5'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                <div className='system-md-semibold mb-0.5 text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                 <div className='body-xs-regular text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                  <a target='_blank' rel='noopener noreferrer'
+                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
+                    className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.longDescription')}
                 </div>
               </div>
             )
             : (
-              <div className={cn('system-md-semibold mb-0.5', 'flex justify-between items-center')}>
+              <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
                 <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               </div>
             )}
@@ -984,12 +1008,14 @@ const StepTwo = ({
               getIndexing_technique() === IndexingType.QUALIFIED
                 ? (
                   <RetrievalMethodConfig
+                    disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
                   />
                 )
                 : (
                   <EconomicalRetrievalMethodConfig
+                    disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
                   />
@@ -1000,22 +1026,22 @@ const StepTwo = ({
 
         {!isSetting
           ? (
-            <div className='flex items-center mt-8 py-2'>
-              <Button onClick={() => onStepChange && onStepChange(-1)}>
-                <RiArrowLeftLine className='w-4 h-4 mr-1' />
+            <div className='mt-8 flex items-center py-2'>
+              <Button onClick={() => onStepChange?.(-1)}>
+                <RiArrowLeftLine className='mr-1 h-4 w-4' />
                 {t('datasetCreation.stepTwo.previousStep')}
               </Button>
               <Button className='ml-auto' loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
             </div>
           )
           : (
-            <div className='flex items-center mt-8 py-2'>
+            <div className='mt-8 flex items-center py-2'>
               <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
               <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
             </div>
           )}
       </div>
-      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
+      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
         <PreviewContainer
           header={<PreviewHeader
             title={t('datasetCreation.stepTwo.preview')}
@@ -1081,15 +1107,14 @@ const StepTwo = ({
               }
               {
                 currentDocForm !== ChunkingMode.qa
-                  && <Badge text={t(
-                    'datasetCreation.stepTwo.previewChunkCount', {
-                      count: estimate?.total_segments || 0,
-                    }) as string}
-                  />
+                && <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
+                  count: estimate?.total_segments || 0,
+                }) as string}
+                />
               }
             </div>
           </PreviewHeader>}
-          className={cn('flex shrink-0 w-1/2 p-4 pr-0 relative h-full', isMobile && 'w-full max-w-[524px]')}
+          className={cn('relative flex h-full w-1/2 shrink-0 p-4 pr-0', isMobile && 'w-full max-w-[524px]')}
           mainClassName='space-y-6'
         >
           {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
@@ -1117,6 +1142,9 @@ const StepTwo = ({
           {currentDocForm === ChunkingMode.parentChild && currentEstimateMutation.data?.preview && (
             estimate?.preview?.map((item, index) => {
               const indexForLabel = index + 1
+              const childChunks = parentChildConfig.chunkForContext === 'full-doc'
+                ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
+                : item.child_chunks
               return (
                 <ChunkContainer
                   key={item.content}
@@ -1124,11 +1152,11 @@ const StepTwo = ({
                   characterCount={item.content.length}
                 >
                   <FormattedText>
-                    {item.child_chunks.map((child, index) => {
+                    {childChunks.map((child, index) => {
                       const indexForLabel = index + 1
                       return (
                         <PreviewSlice
-                          key={child}
+                          key={`C-${indexForLabel}-${child}`}
                           label={`C-${indexForLabel}`}
                           text={child}
                           tooltip={`Child-chunk-${indexForLabel} · ${child.length} Characters`}
@@ -1143,7 +1171,7 @@ const StepTwo = ({
             })
           )}
           {currentEstimateMutation.isIdle && (
-            <div className='h-full w-full flex items-center justify-center'>
+            <div className='flex h-full w-full items-center justify-center'>
               <div className='flex flex-col items-center justify-center gap-3'>
                 <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
                 <p className='text-sm text-text-tertiary'>

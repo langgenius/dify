@@ -12,6 +12,7 @@ import Confirm from '@/app/components/base/confirm'
 import cn from '@/utils/classnames'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   deleteTag,
   updateTag,
@@ -59,7 +60,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setName(name)
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setName(tag.name)
       const recoverList = tagList.map((tag) => {
@@ -78,7 +79,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     }
   }
   const [showRemoveModal, setShowRemoveModal] = useState(false)
-  const [pending, setPending] = useState<Boolean>(false)
+  const [pending, setPending] = useState<boolean>(false)
   const removeTag = async (tagID: string) => {
     if (pending)
       return
@@ -92,7 +93,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       ])
       setPending(false)
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setPending(false)
     }
@@ -103,29 +104,36 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
 
   return (
     <>
-      <div className={cn('shrink-0 flex items-center gap-0.5 pr-1 pl-2 py-1 rounded-lg border border-gray-200 text-sm leading-5 text-gray-700')}>
+      <div className={cn('flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pl-2 pr-1 text-sm leading-5 text-text-secondary')}>
         {!isEditing && (
           <>
-            <div className='text-sm leading-5 text-gray-700'>
+            <div className='text-sm leading-5 text-text-secondary'>
               {tag.name}
             </div>
-            <div className='shrink-0 px-1 text-sm leading-4.5 text-gray-500 font-medium'>{tag.binding_count}</div>
-            <div className='group/edit shrink-0 p-1 rounded-md cursor-pointer hover:bg-black/5' onClick={() => setIsEditing(true)}>
-              <RiEditLine className='w-3 h-3 text-gray-500 group-hover/edit:text-gray-800' />
+            <Tooltip
+              popupContent={
+                <div>{t('workflow.common.tagBound')}</div>
+              }
+              needsDelay
+            >
+              <div className='leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary'>{tag.binding_count}</div>
+            </Tooltip>
+            <div className='group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover' onClick={() => setIsEditing(true)}>
+              <RiEditLine className='h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary' />
             </div>
-            <div className='group/remove shrink-0 p-1 rounded-md cursor-pointer hover:bg-black/5' onClick={() => {
+            <div className='group/remove shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover' onClick={() => {
               if (tag.binding_count)
                 setShowRemoveModal(true)
               else
                 handleRemove()
             }}>
-              <RiDeleteBinLine className='w-3 h-3 text-gray-500 group-hover/remove:text-gray-800' />
+              <RiDeleteBinLine className='h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary' />
             </div>
           </>
         )}
         {isEditing && (
           <input
-            className='shrink-0 outline-none appearance-none placeholder:text-gray-300 caret-primary-600'
+            className='shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary'
             autoFocus
             value={name}
             onChange={e => setName(e.target.value)}

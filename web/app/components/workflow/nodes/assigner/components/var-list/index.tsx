@@ -9,12 +9,15 @@ import { AssignerNodeInputType, WriteMode } from '../../types'
 import type { AssignerNodeOperation } from '../../types'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { ValueSelector, Var, VarType } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { noop } from 'lodash-es'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 type Props = {
   readonly: boolean
@@ -36,7 +39,7 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
-  onOpen = () => { },
+  onOpen = noop,
   filterVar,
   filterToAssignedVar,
   getAssignedVarType,
@@ -51,29 +54,34 @@ const VarList: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index].variable_selector = value as ValueSelector
         draft[index].operation = WriteMode.overwrite
+        draft[index].input_type = AssignerNodeInputType.variable
         draft[index].value = undefined
       })
       onChange(newList, value as ValueSelector)
     }
   }, [list, onChange])
 
-  const handleOperationChange = useCallback((index: number) => {
+  const handleOperationChange = useCallback((index: number, varType: VarType) => {
     return (item: { value: string | number }) => {
       const newList = produce(list, (draft) => {
         draft[index].operation = item.value as WriteMode
         draft[index].value = '' // Clear value when operation changes
         if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
-          || item.value === WriteMode.multiply || item.value === WriteMode.divide)
+          || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
+          if(varType === VarType.boolean)
+            draft[index].value = false
           draft[index].input_type = AssignerNodeInputType.constant
-        else
+        }
+        else {
           draft[index].input_type = AssignerNodeInputType.variable
+        }
       })
       onChange(newList)
     }
   }, [list, onChange])
 
   const handleToAssignedVarChange = useCallback((index: number) => {
-    return (value: ValueSelector | string | number) => {
+    return (value: ValueSelector | string | number | boolean) => {
       const newList = produce(list, (draft) => {
         draft[index].value = value as ValueSelector
       })
@@ -95,18 +103,14 @@ const VarList: FC<Props> = ({
   }, [onOpen])
 
   const handleFilterToAssignedVar = useCallback((index: number) => {
-    return (payload: Var, valueSelector: ValueSelector) => {
-      const item = list[index]
-      const assignedVarType = item.variable_selector ? getAssignedVarType?.(item.variable_selector) : undefined
+    return (payload: Var) => {
+      const { variable_selector, operation } = list[index]
+      if (!variable_selector || !operation || !filterToAssignedVar) return true
 
-      if (!filterToAssignedVar || !item.variable_selector || !assignedVarType || !item.operation)
-        return true
+      const assignedVarType = getAssignedVarType?.(variable_selector)
+      const isSameVariable = Array.isArray(variable_selector) && variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`
 
-      return filterToAssignedVar(
-        payload,
-        assignedVarType,
-        item.operation,
-      )
+      return !isSameVariable && (!assignedVarType || filterToAssignedVar(payload, assignedVarType, operation))
     }
   }, [list, filterToAssignedVar, getAssignedVarType])
 
@@ -128,7 +132,7 @@ const VarList: FC<Props> = ({
 
         return (
           <div className='flex items-start gap-1 self-stretch' key={index}>
-            <div className='flex flex-col items-start gap-1 flex-grow'>
+            <div className='flex grow flex-col items-start gap-1'>
               <div className='flex items-center gap-1 self-stretch'>
                 <VarReferencePicker
                   readonly={readonly}
@@ -147,7 +151,7 @@ const VarList: FC<Props> = ({
                   value={item.operation}
                   placeholder='Operation'
                   disabled={!item.variable_selector || item.variable_selector.length === 0}
-                  onSelect={handleOperationChange(index)}
+                  onSelect={handleOperationChange(index, assignedVarType!)}
                   assignedVarType={assignedVarType}
                   writeModeTypes={writeModeTypes}
                   writeModeTypesArr={writeModeTypesArr}
@@ -155,6 +159,7 @@ const VarList: FC<Props> = ({
                 />
               </div>
               {item.operation !== WriteMode.clear && item.operation !== WriteMode.set
+                && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
                 && !writeModeTypesNum?.includes(item.operation)
                 && (
                   <VarReferencePicker
@@ -189,6 +194,12 @@ const VarList: FC<Props> = ({
                       className='w-full'
                     />
                   )}
+                  {assignedVarType === 'boolean' && (
+                    <BoolValue
+                      value={item.value as boolean}
+                      onChange={value => handleToAssignedVarChange(index)(value)}
+                    />
+                  )}
                   {assignedVarType === 'object' && (
                     <CodeEditor
                       value={item.value as string}
@@ -212,10 +223,10 @@ const VarList: FC<Props> = ({
             </div>
             <ActionButton
               size='l'
-              className='flex-shrink-0 group hover:!bg-state-destructive-hover'
+              className='group shrink-0 hover:!bg-state-destructive-hover'
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className='text-text-tertiary w-4 h-4 group-hover:text-text-destructive' />
+              <RiDeleteBinLine className='h-4 w-4 text-text-tertiary group-hover:text-text-destructive' />
             </ActionButton>
           </div>
         )

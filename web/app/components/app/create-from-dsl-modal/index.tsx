@@ -1,11 +1,12 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { useDebounceFn, useKeyPress } from 'ahooks'
 import Uploader from './uploader'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -25,6 +26,8 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { noop } from 'lodash-es'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -32,6 +35,7 @@ type CreateFromDSLModalProps = {
   onClose: () => void
   activeTab?: string
   dslUrl?: string
+  droppedFile?: File
 }
 
 export enum CreateFromDSLModalTab {
@@ -39,17 +43,18 @@ export enum CreateFromDSLModalTab {
   FROM_URL = 'from-url',
 }
 
-const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '' }: CreateFromDSLModalProps) => {
+const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [currentFile, setDSLFile] = useState<File>()
+  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
+  const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -73,6 +78,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
+
+  useEffect(() => {
+    if (droppedFile)
+      handleFile(droppedFile)
+  }, [droppedFile])
 
   const onCreate: MouseEventHandler = async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
@@ -100,8 +110,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
       if (!response)
         return
-
-      const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         if (onSuccess)
           onSuccess()
@@ -114,7 +123,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
         })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
+        if (app_id)
+          await handleCheckPluginDependencies(app_id)
+        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -132,11 +143,24 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
   }
+
+  const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+
+  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
+      handleCreateApp()
+  })
+
+  useKeyPress('esc', () => {
+    if (show && !showErrorModal)
+      onClose()
+  })
 
   const onDSLConfirm: MouseEventHandler = async () => {
     try {
@@ -146,7 +170,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         import_id: importId,
       })
 
-      const { status, app_id } = response
+      const { status, app_id, app_mode } = response
 
       if (status === DSLImportStatus.COMPLETED) {
         if (onSuccess)
@@ -158,13 +182,16 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           type: 'success',
           message: t('app.newApp.appCreated'),
         })
+        if (app_id)
+          await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
+        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
@@ -194,26 +221,26 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   return (
     <>
       <Modal
-        className='p-0 w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+        className='w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl'
         isShow={show}
-        onClose={() => { }}
+        onClose={noop}
       >
-        <div className='flex items-center justify-between pt-6 pl-6 pr-5 pb-3 text-text-primary title-2xl-semi-bold'>
+        <div className='title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary'>
           {t('app.importFromDSL')}
           <div
-            className='flex items-center w-8 h-8 cursor-pointer'
+            className='flex h-8 w-8 cursor-pointer items-center'
             onClick={() => onClose()}
           >
-            <RiCloseLine className='w-5 h-5 text-text-tertiary' />
+            <RiCloseLine className='h-5 w-5 text-text-tertiary' />
           </div>
         </div>
-        <div className='flex items-center px-6 h-9 space-x-6 system-md-semibold text-text-tertiary border-b border-divider-subtle'>
+        <div className='system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary'>
           {
             tabs.map(tab => (
               <div
                 key={tab.key}
                 className={cn(
-                  'relative flex items-center h-full cursor-pointer',
+                  'relative flex h-full cursor-pointer items-center',
                   currentTab === tab.key && 'text-text-primary',
                 )}
                 onClick={() => setCurrentTab(tab.key)}
@@ -221,7 +248,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                 {tab.label}
                 {
                   currentTab === tab.key && (
-                    <div className='absolute bottom-0 w-full h-[2px] bg-util-colors-blue-brand-blue-brand-600'></div>
+                    <div className='absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600'></div>
                   )
                 }
               </div>
@@ -241,7 +268,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className='mb-1 system-md-semibold leading6'>DSL URL</div>
+                <div className='system-md-semibold mb-1 text-text-secondary'>DSL URL</div>
                 <Input
                   placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
                   value={dslUrlValue}
@@ -258,7 +285,18 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         )}
         <div className='flex justify-end px-6 py-5'>
           <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-          <Button disabled={buttonDisabled} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+          <Button
+            disabled={buttonDisabled}
+            variant="primary"
+            onClick={handleCreateApp}
+            className="gap-1"
+          >
+            <span>{t('app.newApp.Create')}</span>
+            <div className='flex gap-0.5'>
+              <RiCommandLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+              <RiCornerDownLeftLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+            </div>
+          </Button>
         </div>
       </Modal>
       <Modal
@@ -266,9 +304,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         onClose={() => setShowErrorModal(false)}
         className='w-[480px]'
       >
-        <div className='flex pb-4 flex-col items-start gap-2 self-stretch'>
-          <div className='text-text-primary title-2xl-semi-bold'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='flex flex-grow flex-col text-text-secondary system-md-regular'>
+        <div className='flex flex-col items-start gap-2 self-stretch pb-4'>
+          <div className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
+          <div className='system-md-regular flex grow flex-col text-text-secondary'>
             <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
             <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
             <br />
@@ -276,7 +314,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
-        <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
+        <div className='flex items-start justify-end gap-2 self-stretch pt-6'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>
         </div>

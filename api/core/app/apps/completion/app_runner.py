@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
@@ -9,6 +11,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
@@ -24,7 +27,7 @@ class CompletionAppRunner(AppRunner):
 
     def run(
         self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity
@@ -34,8 +37,8 @@ class CompletionAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(CompletionAppConfig, app_config)
-
-        app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
+        stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.scalar(stmt)
         if not app_record:
             raise ValueError("App not found")
 
@@ -43,19 +46,15 @@ class CompletionAppRunner(AppRunner):
         query = application_generate_entity.query
         files = application_generate_entity.files
 
-        # Pre-calculate the number of tokens of the prompt messages,
-        # and return the rest number of tokens by model context token size limit and max token size limit.
-        # If the rest number of tokens is not enough, raise exception.
-        # Include: prompt template, inputs, query(optional), files(optional)
-        # Not Include: memory, external data, dataset context
-        self.get_pre_calculate_rest_tokens(
-            app_record=app_record,
-            model_config=application_generate_entity.model_conf,
-            prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
+        image_detail_config = (
+            application_generate_entity.file_upload_config.image_config.detail
+            if (
+                application_generate_entity.file_upload_config
+                and application_generate_entity.file_upload_config.image_config
+            )
+            else None
         )
+        image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
         # organize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
@@ -66,6 +65,7 @@ class CompletionAppRunner(AppRunner):
             inputs=inputs,
             files=files,
             query=query,
+            image_detail_config=image_detail_config,
         )
 
         # moderation
@@ -124,9 +124,12 @@ class CompletionAppRunner(AppRunner):
                 config=dataset_config,
                 query=query or "",
                 invoke_from=application_generate_entity.invoke_from,
-                show_retrieve_source=app_config.additional_features.show_retrieve_source,
+                show_retrieve_source=app_config.additional_features.show_retrieve_source
+                if app_config.additional_features
+                else False,
                 hit_callback=hit_callback,
                 message_id=message.id,
+                inputs=inputs,
             )
 
         # reorganize all inputs and template to prompt messages
@@ -140,6 +143,7 @@ class CompletionAppRunner(AppRunner):
             files=files,
             query=query,
             context=context,
+            image_detail_config=image_detail_config,
         )
 
         # check hosting moderation

@@ -1,8 +1,11 @@
+import type { GeneratorType } from '../../app/configuration/config/automatic/types'
+import type { Type } from '../../workflow/nodes/llm/types'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
 } from '@/app/components/workflow/types'
 
 export type Option = {
@@ -54,16 +57,43 @@ export type ExternalToolBlockType = {
   onAddExternalTool?: () => void
 }
 
+export type GetVarType = (payload: {
+  nodeId: string,
+  valueSelector: ValueSelector,
+}) => Type
+
 export type WorkflowVariableBlockType = {
   show?: boolean
   variables?: NodeOutPutVar[]
-  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type'>>
+  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'>>
   onInsert?: () => void
   onDelete?: () => void
+  getVarType?: GetVarType
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 
 export type MenuTextMatch = {
   leadOffset: number
   matchingString: string
   replaceableString: string
+}
+
+export type CurrentBlockType = {
+  show?: boolean
+  generatorType: GeneratorType
+  onInsert?: () => void
+  onDelete?: () => void
+}
+
+export type ErrorMessageBlockType = {
+  show?: boolean
+  onInsert?: () => void
+  onDelete?: () => void
+}
+
+export type LastRunBlockType = {
+  show?: boolean
+  onInsert?: () => void
+  onDelete?: () => void
 }

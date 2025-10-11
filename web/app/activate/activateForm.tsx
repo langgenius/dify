@@ -7,8 +7,10 @@ import Button from '@/app/components/base/button'
 
 import { invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const ActivateForm = () => {
+  useDocumentTitle('')
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
@@ -41,7 +43,7 @@ const ActivateForm = () => {
   return (
     <div className={
       cn(
-        'flex flex-col items-center w-full grow justify-center',
+        'flex w-full grow flex-col items-center justify-center',
         'px-6',
         'md:px-[108px]',
       )
@@ -49,11 +51,11 @@ const ActivateForm = () => {
       {!checkRes && <Loading />}
       {checkRes && !checkRes.is_valid && (
         <div className="flex flex-col md:w-[400px]">
-          <div className="w-full mx-auto">
-            <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-gray-100 shadow-lg text-[40px] font-bold">🤷‍♂️</div>
-            <h2 className="text-[32px] font-bold text-gray-900">{t('login.invalid')}</h2>
+          <div className="mx-auto w-full">
+            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
+            <h2 className="text-[32px] font-bold text-text-primary">{t('login.invalid')}</h2>
           </div>
-          <div className="w-full mx-auto mt-6">
+          <div className="mx-auto mt-6 w-full">
             <Button variant='primary' className='w-full !text-sm'>
               <a href="https://dify.ai">{t('login.explore')}</a>
             </Button>

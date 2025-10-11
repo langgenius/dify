@@ -29,7 +29,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
   })
 
   return (
-    <div className='mt-2 mb-2 px-4 space-y-4'>
+    <div className='mb-2 mt-2 space-y-4 px-4'>
       <Editor
         readOnly={readOnly}
         justVar

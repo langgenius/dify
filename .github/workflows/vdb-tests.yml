@@ -1,15 +1,7 @@
 name: Run VDB Tests
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - api/core/rag/datasource/**
-      - docker/**
-      - .github/workflows/vdb-tests.yml
-      - api/poetry.lock
-      - api/pyproject.toml
+  workflow_call:
 
 concurrency:
   group: vdb-tests-${{ github.head_ref || github.run_id }}
@@ -28,20 +20,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Poetry and Python ${{ matrix.python-version }}
-        uses: ./.github/actions/setup-poetry
         with:
-          python-version: ${{ matrix.python-version }}
-          poetry-lockfile: api/poetry.lock
+          persist-credentials: false
 
-      - name: Check Poetry lockfile
-        run: |
-          poetry check -C api --lock
-          poetry show -C api
+      - name: Free Disk Space
+        uses: endersonmenezes/free-disk-space@v2
+        with:
+          remove_dotnet: true
+          remove_haskell: true
+          remove_tool_cache: true
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
 
       - name: Install dependencies
-        run: poetry install -C api --with dev
+        run: uv sync --project api --dev
 
       - name: Set up dotenvs
         run: |
@@ -51,7 +51,15 @@ jobs:
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 
-      - name: Set up Vector Stores (TiDB, Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
+      - name: Set up Vector Store (TiDB)
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: docker/tidb/docker-compose.yaml
+          services: |
+            tidb
+            tiflash
+
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase, OceanBase)
         uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
@@ -67,7 +75,16 @@ jobs:
             pgvector
             chroma
             elasticsearch
-            tidb
+            oceanbase
+
+      - name: setup test config
+        run: |
+          echo $(pwd)
+          ls -lah .
+          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
+
+      - name: Check VDB Ready (TiDB)
+        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
 
       - name: Test Vector Stores
-        run: poetry run -C api bash dev/pytest/pytest_vdb.sh
+        run: uv run --project api bash dev/pytest/pytest_vdb.sh

@@ -29,7 +29,7 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         "help": {
             "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options"
             " are considered.",
-            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "zh_Hans": "通过核心采样控制多样性：0.5 表示考虑了一半的所有可能性加权选项。",
         },
         "required": False,
         "default": 1.0,
@@ -111,7 +111,7 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         "help": {
             "en_US": "Set a response format, ensure the output from llm is a valid code block as possible,"
             " such as JSON, XML, etc.",
-            "zh_Hans": "设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等",
+            "zh_Hans": "设置一个返回格式，确保 llm 的输出尽可能是有效的代码块，如 JSON、XML 等",
         },
         "required": False,
         "options": ["JSON", "XML"],
@@ -123,7 +123,7 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         "type": "text",
         "help": {
             "en_US": "Set a response json schema will ensure LLM to adhere it.",
-            "zh_Hans": "设置返回的json schema，llm将按照它返回",
+            "zh_Hans": "设置返回的 json schema，llm 将按照它返回",
         },
         "required": False,
     },

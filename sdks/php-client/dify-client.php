@@ -1,7 +1,5 @@
 <?php
 
-require 'vendor/autoload.php';
-
 use GuzzleHttp\Client;
 
 class DifyClient {
@@ -11,19 +9,12 @@ class DifyClient {
 
     public function __construct($api_key, $base_url = null) {
         $this->api_key = $api_key;
-        $this->base_url = $base_url ?? "https://api.dify.ai/v1/";
+        $this->base_url = $base_url ?? 'https://api.dify.ai/v1/';
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->api_key,
                 'Content-Type' => 'application/json',
-            ],
-        ]);
-        $this->file_client = new Client([
-            'base_uri' => $this->base_url,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->api_key,
-                'Content-Type' => 'multipart/form-data',
             ],
         ]);
     }
@@ -58,7 +49,7 @@ class DifyClient {
             'multipart' => $this->prepareMultipart($data, $files)
         ];
 
-        return $this->file_client->request('POST', 'files/upload', $options);
+        return $this->client->request('POST', 'files/upload', $options);
     }
 
     protected function prepareMultipart($data, $files) {
@@ -128,14 +119,14 @@ class ChatClient extends DifyClient {
 
         return $this->send_request('POST', 'chat-messages', $data, null, $response_mode === 'streaming');
     }
-        
+
     public function get_suggestions($message_id, $user) {
         $params = [
             'user' => $user
-        ]
+        ];
         return $this->send_request('GET', "messages/{$message_id}/suggested", null, $params);
     }
-    
+
     public function stop_message($task_id, $user) {
         $data = ['user' => $user];
         return $this->send_request('POST', "chat-messages/{$task_id}/stop", $data);
@@ -166,7 +157,7 @@ class ChatClient extends DifyClient {
 
         return $this->send_request('GET', 'messages', null, $params);
     }
-    
+
     public function rename_conversation($conversation_id, $name,$auto_generate, $user) {
         $data = [
             'name' => $name,
@@ -188,10 +179,9 @@ class ChatClient extends DifyClient {
             'user' => $user,
         ];
         $options = [
-            'multipart' => $this->prepareMultipart($data, $files)
+            'multipart' => $this->prepareMultipart($data, $audio_file)
         ];
-        return $this->file_client->request('POST', 'audio-to-text', $options);
-        
+        return $this->client->request('POST', 'audio-to-text', $options);
     }
 
 }
@@ -212,5 +202,5 @@ class WorkflowClient extends DifyClient{
         ];
         return $this->send_request('POST', "workflows/tasks/{$task_id}/stop",$data);
     }
-    
+
 }

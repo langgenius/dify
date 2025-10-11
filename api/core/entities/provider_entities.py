@@ -1,31 +1,55 @@
-from enum import Enum
-from typing import Optional
+from enum import StrEnum, auto
+from typing import Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from core.entities.parameter_entities import (
+    AppSelectorScope,
+    CommonParameterType,
+    ModelSelectorScope,
+    ToolSelectorScope,
+)
 from core.model_runtime.entities.model_entities import ModelType
-from models.provider import ProviderQuotaType
+from core.tools.entities.common_entities import I18nObject
 
 
-class QuotaUnit(Enum):
-    TIMES = "times"
-    TOKENS = "tokens"
-    CREDITS = "credits"
+class ProviderQuotaType(StrEnum):
+    PAID = auto()
+    """hosted paid quota"""
+
+    FREE = auto()
+    """third-party free quota"""
+
+    TRIAL = auto()
+    """hosted trial quota"""
+
+    @staticmethod
+    def value_of(value):
+        for member in ProviderQuotaType:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class SystemConfigurationStatus(Enum):
+class QuotaUnit(StrEnum):
+    TIMES = auto()
+    TOKENS = auto()
+    CREDITS = auto()
+
+
+class SystemConfigurationStatus(StrEnum):
     """
     Enum class for system configuration status.
     """
 
-    ACTIVE = "active"
+    ACTIVE = auto()
     QUOTA_EXCEEDED = "quota-exceeded"
-    UNSUPPORTED = "unsupported"
+    UNSUPPORTED = auto()
 
 
 class RestrictModel(BaseModel):
     model: str
-    base_model_name: Optional[str] = None
+    base_model_name: str | None = None
     model_type: ModelType
 
     # pydantic configs
@@ -45,15 +69,24 @@ class QuotaConfiguration(BaseModel):
     restrict_models: list[RestrictModel] = []
 
 
+class CredentialConfiguration(BaseModel):
+    """
+    Model class for credential configuration.
+    """
+
+    credential_id: str
+    credential_name: str
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
     """
 
     enabled: bool
-    current_quota_type: Optional[ProviderQuotaType] = None
+    current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: Optional[dict] = None
+    credentials: dict | None = None
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -62,6 +95,9 @@ class CustomProviderConfiguration(BaseModel):
     """
 
     credentials: dict
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    available_credentials: list[CredentialConfiguration] = []
 
 
 class CustomModelConfiguration(BaseModel):
@@ -71,10 +107,23 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict
+    credentials: dict | None = None
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    available_model_credentials: list[CredentialConfiguration] = []
+    unadded_to_model_list: bool | None = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+
+class UnaddedModelConfiguration(BaseModel):
+    """
+    Model class for provider unadded model configuration.
+    """
+
+    model: str
+    model_type: ModelType
 
 
 class CustomConfiguration(BaseModel):
@@ -82,8 +131,9 @@ class CustomConfiguration(BaseModel):
     Model class for provider custom configuration.
     """
 
-    provider: Optional[CustomProviderConfiguration] = None
+    provider: CustomProviderConfiguration | None = None
     models: list[CustomModelConfiguration] = []
+    can_added_models: list[UnaddedModelConfiguration] = []
 
 
 class ModelLoadBalancingConfiguration(BaseModel):
@@ -94,6 +144,8 @@ class ModelLoadBalancingConfiguration(BaseModel):
     id: str
     name: str
     credentials: dict
+    credential_source_type: str | None = None
+    credential_id: str | None = None
 
 
 class ModelSettings(BaseModel):
@@ -104,7 +156,61 @@ class ModelSettings(BaseModel):
     model: str
     model_type: ModelType
     enabled: bool = True
+    load_balancing_enabled: bool = False
     load_balancing_configs: list[ModelLoadBalancingConfiguration] = []
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+
+class BasicProviderConfig(BaseModel):
+    """
+    Base model class for common provider settings like credentials
+    """
+
+    class Type(StrEnum):
+        SECRET_INPUT = CommonParameterType.SECRET_INPUT
+        TEXT_INPUT = CommonParameterType.TEXT_INPUT
+        SELECT = CommonParameterType.SELECT
+        BOOLEAN = CommonParameterType.BOOLEAN
+        APP_SELECTOR = CommonParameterType.APP_SELECTOR
+        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+
+        @classmethod
+        def value_of(cls, value: str) -> "ProviderConfig.Type":
+            """
+            Get value of given mode.
+
+            :param value: mode value
+            :return: mode
+            """
+            for mode in cls:
+                if mode.value == value:
+                    return mode
+            raise ValueError(f"invalid mode value {value}")
+
+    type: Type = Field(..., description="The type of the credentials")
+    name: str = Field(..., description="The name of the credentials")
+
+
+class ProviderConfig(BasicProviderConfig):
+    """
+    Model class for common provider settings like credentials
+    """
+
+    class Option(BaseModel):
+        value: str = Field(..., description="The value of the option")
+        label: I18nObject = Field(..., description="The label of the option")
+
+    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
+    required: bool = False
+    default: Union[int, str, float, bool] | None = None
+    options: list[Option] | None = None
+    label: I18nObject | None = None
+    help: I18nObject | None = None
+    url: str | None = None
+    placeholder: I18nObject | None = None
+
+    def to_basic_provider_config(self) -> BasicProviderConfig:
+        return BasicProviderConfig(type=self.type, name=self.name)

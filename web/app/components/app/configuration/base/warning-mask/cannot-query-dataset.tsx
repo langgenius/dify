@@ -20,7 +20,7 @@ const FormattingChanged: FC<IFormattingChangedProps> = ({
       description={t('appDebug.feature.dataSet.queryVariable.unableToQueryDataSetTip')}
       footer={
         <div className='flex space-x-2'>
-          <Button variant='primary' className='flex justify-start !w-[96px]' onClick={onConfirm}>
+          <Button variant='primary' className='flex !w-[96px] justify-start' onClick={onConfirm}>
             <span className='text-[13px] font-medium'>{t('appDebug.feature.dataSet.queryVariable.ok')}</span>
           </Button>
         </div>

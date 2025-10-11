@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import s from './index.module.css'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import Button from '@/app/components/base/button'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceProvider } from '@/models/common'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -20,30 +21,45 @@ const NoData: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const providerConfig = {
-    [DataSourceProvider.jinaReader]: {
+  const providerConfig: Record<DataSourceProvider, {
+    emoji: React.ReactNode
+    title: string
+    description: string
+  } | null> = {
+    [DataSourceProvider.jinaReader]: ENABLE_WEBSITE_JINAREADER ? {
       emoji: <span className={s.jinaLogo} />,
       title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`),
       description: t(`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`),
-    },
-    [DataSourceProvider.fireCrawl]: {
+    } : null,
+    [DataSourceProvider.fireCrawl]: ENABLE_WEBSITE_FIRECRAWL ? {
       emoji: '🔥',
       title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`),
       description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`),
-    },
+    } : null,
+    [DataSourceProvider.waterCrawl]: ENABLE_WEBSITE_WATERCRAWL ? {
+      emoji: '💧',
+      title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`),
+      description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`),
+    } : null,
   }
 
-  const currentProvider = providerConfig[provider]
+  const currentProvider = providerConfig[provider] || providerConfig.jinareader
+
+  if (!currentProvider) return null
 
   return (
     <>
-      <div className='max-w-[640px] p-6 rounded-2xl bg-gray-50 mt-4'>
-        <div className='flex w-11 h-11 items-center justify-center bg-gray-50 rounded-xl border-[0.5px] border-gray-100 shadow-lg'>
+      <div className='mt-4 max-w-[640px] rounded-2xl bg-workflow-process-bg p-6'>
+        <div className='flex h-12 w-12 items-center justify-center rounded-[10px] border-[0.5px]
+          border-components-card-border bg-components-card-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
           {currentProvider.emoji}
         </div>
-        <div className='my-2'>
-          <span className='text-gray-700 font-semibold'>{currentProvider.title}<Icon3Dots className='inline relative -top-3 -left-1.5' /></span>
-          <div className='mt-1 pb-3 text-gray-500 text-[13px] font-normal'>
+        <div className='mb-1 mt-2 flex flex-col gap-y-1 pb-3 pt-1'>
+          <span className='system-md-semibold text-text-secondary'>
+            {currentProvider.title}
+            <Icon3Dots className='relative -left-1.5 -top-2.5 inline' />
+          </span>
+          <div className='system-sm-regular text-text-tertiary'>
             {currentProvider.description}
           </div>
         </div>

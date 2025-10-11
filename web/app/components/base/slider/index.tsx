@@ -27,13 +27,13 @@ const Slider: React.FC<ISliderProps> = ({
 }) => {
   return <ReactSlider
     disabled={disabled}
-    value={isNaN(value) ? 0 : value}
+    value={Number.isNaN(value) ? 0 : value}
     min={min || 0}
     max={max || 100}
     step={step || 1}
-    className={cn('relative slider', className)}
-    thumbClassName={cn('absolute top-[-9px] w-2 h-5 border-[0.5px] border-components-slider-knob-border rounded-[3px] bg-components-slider-knob shadow-sm  focus:outline-none', !disabled && 'cursor-pointer', thumbClassName)}
-    trackClassName={cn('h-0.5 rounded-full slider-track', trackClassName)}
+    className={cn('slider relative', className)}
+    thumbClassName={cn('absolute top-[-9px] h-5 w-2 rounded-[3px] border-[0.5px] border-components-slider-knob-border bg-components-slider-knob shadow-sm  focus:outline-none', !disabled && 'cursor-pointer', thumbClassName)}
+    trackClassName={cn('h-0.5 rounded-full', 'slider-track', trackClassName)}
     onChange={onChange}
   />
 }

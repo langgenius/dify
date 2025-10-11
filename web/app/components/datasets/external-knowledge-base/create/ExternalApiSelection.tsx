@@ -62,7 +62,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
     <form className='flex flex-col gap-4 self-stretch'>
       <div className='flex flex-col gap-1 self-stretch'>
         <div className='flex flex-col self-stretch'>
-          <label className='text-text-secondary system-sm-semibold'>{t('dataset.externalAPIPanelTitle')}</label>
+          <label className='system-sm-semibold text-text-secondary'>{t('dataset.externalAPIPanelTitle')}</label>
         </div>
         {apiItems.length > 0
           ? <ExternalApiSelect
@@ -74,14 +74,14 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
             }}
           />
           : <Button variant={'tertiary'} onClick={handleAddNewAPI} className='justify-start gap-0.5'>
-            <RiAddLine className='w-4 h-4 text-text-tertiary' />
-            <span className='text-text-tertiary system-sm-regular'>{t('dataset.noExternalKnowledge')}</span>
+            <RiAddLine className='h-4 w-4 text-text-tertiary' />
+            <span className='system-sm-regular text-text-tertiary'>{t('dataset.noExternalKnowledge')}</span>
           </Button>
         }
       </div>
       <div className='flex flex-col gap-1 self-stretch'>
         <div className='flex flex-col self-stretch'>
-          <label className='text-text-secondary system-sm-semibold'>{t('dataset.externalKnowledgeId')}</label>
+          <label className='system-sm-semibold text-text-secondary'>{t('dataset.externalKnowledgeId')}</label>
         </div>
         <Input
           value={external_knowledge_id}

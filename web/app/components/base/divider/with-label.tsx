@@ -10,10 +10,10 @@ export type DividerWithLabelProps = DividerProps & {
 export const DividerWithLabel: FC<DividerWithLabelProps> = (props) => {
   const { label, className, ...rest } = props
   return <div
-    className="flex items-center gap-2 my-2"
+    className="my-2 flex items-center gap-2"
   >
     <Divider {...rest} className={classNames('flex-1', className)} />
-    <span className="text-text-tertiary text-xs">
+    <span className="text-xs text-text-tertiary">
       {label}
     </span>
     <Divider {...rest} className={classNames('flex-1', className)} />

@@ -1,23 +1,23 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import type { DefaultTFuncReturn } from 'i18next'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
-  title: JSX.Element | string | DefaultTFuncReturn
-  tooltip?: React.ReactNode
+  title: ReactNode
+  tooltip?: ReactNode
   isSubTitle?: boolean
   supportFold?: boolean
-  children?: JSX.Element | string | null
-  operations?: JSX.Element
+  children?: React.JSX.Element | string | null
+  operations?: React.JSX.Element
   inline?: boolean
+  required?: boolean
 }
 
 const Field: FC<Props> = ({
@@ -29,17 +29,20 @@ const Field: FC<Props> = ({
   operations,
   inline,
   supportFold,
+  required,
 }) => {
   const [fold, {
     toggle: toggleFold,
   }] = useBoolean(true)
   return (
-    <div className={cn(className, inline && 'flex justify-between items-center w-full')}>
+    <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
         onClick={() => supportFold && toggleFold()}
-        className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
-        <div className='flex items-center h-6'>
-          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>{title}</div>
+        className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}>
+        <div className='flex h-6 items-center'>
+          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
+            {title} {required && <span className='text-text-destructive'>*</span>}
+          </div>
           {tooltip && (
             <Tooltip
               popupContent={tooltip}
@@ -51,7 +54,7 @@ const Field: FC<Props> = ({
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine className='h-4 w-4 cursor-pointer text-text-tertiary transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>

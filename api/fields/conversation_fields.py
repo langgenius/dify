@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restx import Api, Namespace, fields
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
@@ -42,7 +42,14 @@ message_file_fields = {
     "size": fields.Integer,
     "transfer_method": fields.String,
     "belongs_to": fields.String(default="user"),
+    "upload_file_id": fields.String(default=None),
 }
+
+
+def build_message_file_model(api_or_ns: Api | Namespace):
+    """Build the message file fields for the API or Namespace."""
+    return api_or_ns.model("MessageFile", message_file_fields)
+
 
 agent_thought_fields = {
     "id": fields.String,
@@ -93,10 +100,6 @@ model_config_fields = {
     "user_input_form": fields.Raw,
     "pre_prompt": fields.String,
     "agent_mode": fields.Raw,
-}
-
-simple_configs_fields = {
-    "prompt_template": fields.String,
 }
 
 simple_model_config_fields = {
@@ -213,13 +216,21 @@ conversation_infinite_scroll_pagination_fields = {
     "data": fields.List(fields.Nested(simple_conversation_fields)),
 }
 
-conversation_with_model_config_fields = {
-    **simple_conversation_fields,
-    "model_config": fields.Raw,
-}
 
-conversation_with_model_config_infinite_scroll_pagination_fields = {
-    "limit": fields.Integer,
-    "has_more": fields.Boolean,
-    "data": fields.List(fields.Nested(conversation_with_model_config_fields)),
-}
+def build_conversation_infinite_scroll_pagination_model(api_or_ns: Api | Namespace):
+    """Build the conversation infinite scroll pagination model for the API or Namespace."""
+    simple_conversation_model = build_simple_conversation_model(api_or_ns)
+
+    copied_fields = conversation_infinite_scroll_pagination_fields.copy()
+    copied_fields["data"] = fields.List(fields.Nested(simple_conversation_model))
+    return api_or_ns.model("ConversationInfiniteScrollPagination", copied_fields)
+
+
+def build_conversation_delete_model(api_or_ns: Api | Namespace):
+    """Build the conversation delete model for the API or Namespace."""
+    return api_or_ns.model("ConversationDelete", conversation_delete_fields)
+
+
+def build_simple_conversation_model(api_or_ns: Api | Namespace):
+    """Build the simple conversation model for the API or Namespace."""
+    return api_or_ns.model("SimpleConversation", simple_conversation_fields)

@@ -33,20 +33,20 @@ const CustomizedPagination: FC<Props> = ({
   const [showPerPageTip, setShowPerPageTip] = React.useState(false)
 
   const { run: handlePaging } = useDebounceFn((value: string) => {
-    if (parseInt(value) > totalPages) {
+    if (Number.parseInt(value) > totalPages) {
       setInputValue(totalPages)
       onChange(totalPages - 1)
       setShowInput(false)
       return
     }
-    if (parseInt(value) < 1) {
+    if (Number.parseInt(value) < 1) {
       setInputValue(1)
       onChange(0)
       setShowInput(false)
       return
     }
-    onChange(parseInt(value) - 1)
-    setInputValue(parseInt(value))
+    onChange(Number.parseInt(value) - 1)
+    setInputValue(Number.parseInt(value))
     setShowInput(false)
   }, { wait: 500 })
 
@@ -54,15 +54,42 @@ const CustomizedPagination: FC<Props> = ({
     const value = e.target.value
     if (!value)
       return setInputValue('')
-    if (isNaN(parseInt(value)))
+    if (isNaN(Number.parseInt(value)))
       return setInputValue('')
-    setInputValue(parseInt(value))
-    handlePaging(value)
+    setInputValue(Number.parseInt(value))
+  }
+
+  const handleInputConfirm = () => {
+    if (inputValue !== '' && String(inputValue) !== String(current + 1)) {
+      handlePaging(String(inputValue))
+      return
+    }
+
+    if (inputValue === '')
+      setInputValue(current + 1)
+
+    setShowInput(false)
+  }
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleInputConfirm()
+    }
+    else if (e.key === 'Escape') {
+      e.preventDefault()
+      setInputValue(current + 1)
+      setShowInput(false)
+    }
+  }
+
+  const handleInputBlur = () => {
+    handleInputConfirm()
   }
 
   return (
     <Pagination
-      className={cn('flex items-center w-full px-6 py-3 select-none', className)}
+      className={cn('flex w-full select-none items-center px-6 py-3', className)}
       currentPage={current}
       edgePageCount={2}
       middlePagesSiblingCount={1}
@@ -71,14 +98,14 @@ const CustomizedPagination: FC<Props> = ({
       truncableClassName='flex items-center justify-center w-8 px-1 py-2 system-sm-medium text-text-tertiary'
       truncableText='...'
     >
-      <div className='flex items-center gap-0.5 p-0.5 rounded-[10px] bg-background-section-burn'>
+      <div className='flex items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5'>
         <Pagination.PrevButton
           as={<div></div>}
           disabled={current === 0}
         >
           <Button
             variant='secondary'
-            className='w-7 h-7 px-1.5'
+            className='h-7 w-7 px-1.5'
             disabled={current === 0}
           >
             <RiArrowLeftLine className='h-4 w-4' />
@@ -87,7 +114,7 @@ const CustomizedPagination: FC<Props> = ({
         {!showInput && (
           <div
             ref={inputRef}
-            className='flex items-center gap-0.5 px-2 py-1.5 rounded-lg hover:bg-state-base-hover-alt hover:cursor-text'
+            className='flex items-center gap-0.5 rounded-lg px-2 py-1.5 hover:cursor-text hover:bg-state-base-hover-alt'
             onClick={() => setShowInput(true)}
           >
             <div className='system-xs-medium text-text-secondary'>{current + 1}</div>
@@ -105,7 +132,8 @@ const CustomizedPagination: FC<Props> = ({
             autoFocus
             value={inputValue}
             onChange={handleInputChange}
-            onBlur={() => setShowInput(false)}
+            onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
           />
         )}
         <Pagination.NextButton
@@ -114,46 +142,46 @@ const CustomizedPagination: FC<Props> = ({
         >
           <Button
             variant='secondary'
-            className='w-7 h-7 px-1.5'
+            className='h-7 w-7 px-1.5'
             disabled={current === totalPages - 1}
           >
             <RiArrowRightLine className='h-4 w-4' />
           </Button>
         </Pagination.NextButton>
       </div>
-      <div className={cn('grow flex items-center justify-center gap-1 list-none')}>
+      <div className={cn('flex grow list-none items-center justify-center gap-1')}>
         <Pagination.PageButton
-          className='flex items-center justify-center min-w-8 px-1 py-2 rounded-lg system-sm-medium cursor-pointer hover:bg-components-button-ghost-bg-hover'
+          className='system-sm-medium flex min-w-8 cursor-pointer items-center justify-center rounded-lg px-1 py-2 hover:bg-components-button-ghost-bg-hover'
           activeClassName='bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover'
           inactiveClassName='text-text-tertiary'
         />
       </div>
       {onLimitChange && (
-        <div className='shrink-0 flex items-center gap-2'>
-          <div className='shrink-0 w-[51px] text-end text-text-tertiary system-2xs-regular-uppercase'>{showPerPageTip ? t('common.pagination.perPage') : ''}</div>
+        <div className='flex shrink-0 items-center gap-2'>
+          <div className='system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary'>{showPerPageTip ? t('common.pagination.perPage') : ''}</div>
           <div
-            className='flex items-center gap-[1px] p-0.5 rounded-[10px] bg-components-segmented-control-bg-normal'
+            className='flex items-center gap-[1px] rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'
             onMouseEnter={() => setShowPerPageTip(true)}
             onMouseLeave={() => setShowPerPageTip(false)}
           >
             <div
               className={cn(
-                'px-2.5 py-1.5 rounded-lg border-[0.5px] border-transparent system-sm-medium text-text-tertiary cursor-pointer hover:bg-state-base-hover hover:text-text-secondary',
-                limit === 10 && 'shadow-xs border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary hover:bg-components-segmented-control-item-active-bg',
+                'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                limit === 10 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(10)}
             >10</div>
             <div
               className={cn(
-                'px-2.5 py-1.5 rounded-lg border-[0.5px] border-transparent system-sm-medium text-text-tertiary cursor-pointer hover:bg-state-base-hover hover:text-text-secondary',
-                limit === 25 && 'shadow-xs border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary hover:bg-components-segmented-control-item-active-bg',
+                'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                limit === 25 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(25)}
             >25</div>
             <div
               className={cn(
-                'px-2.5 py-1.5 rounded-lg border-[0.5px] border-transparent system-sm-medium text-text-tertiary cursor-pointer hover:bg-state-base-hover hover:text-text-secondary',
-                limit === 50 && 'shadow-xs border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary hover:bg-components-segmented-control-item-active-bg',
+                'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                limit === 50 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(50)}
             >50</div>

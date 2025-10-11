@@ -37,6 +37,7 @@ const translation = {
     HR: 'Nhân sự',
     Agent: 'Người đại lý',
     Workflow: 'Quy trình làm việc',
+    Entertainment: 'Giải trí',
   },
 }
 

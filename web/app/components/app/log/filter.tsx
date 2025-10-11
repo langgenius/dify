@@ -40,7 +40,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
   if (!data)
     return null
   return (
-    <div className='flex flex-row flex-wrap gap-2 items-center mb-2'>
+    <div className='mb-2 flex flex-row flex-wrap items-center gap-2'>
       <Chip
         className='min-w-[150px]'
         panelClassName='w-[270px]'
@@ -80,7 +80,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
       />
       {isChatMode && (
         <>
-          <div className='w-px h-3.5 bg-divider-regular'></div>
+          <div className='h-3.5 w-px bg-divider-regular'></div>
           <Sort
             order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
             value={queryParams.sort_by?.replace('-', '') || 'created_at'}

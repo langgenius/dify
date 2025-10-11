@@ -34,7 +34,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
     }
     else if (protocol === SSOProtocol.OIDC) {
       getUserOIDCSSOUrl(invite_token).then((res) => {
-        document.cookie = `user-oidc-state=${res.state}`
+        document.cookie = `user-oidc-state=${res.state};Path=/`
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
@@ -42,7 +42,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
     }
     else if (protocol === SSOProtocol.OAuth2) {
       getUserOAuth2SSOUrl(invite_token).then((res) => {
-        document.cookie = `user-oauth2-state=${res.state}`
+        document.cookie = `user-oauth2-state=${res.state};Path=/`
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
@@ -64,7 +64,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className='mr-2 w-5 h-5 text-text-accent-light-mode-only' />
+      <Lock01 className='mr-2 h-5 w-5 text-text-accent-light-mode-only' />
       <span className="truncate">{t('login.withSSO')}</span>
     </Button>
   )

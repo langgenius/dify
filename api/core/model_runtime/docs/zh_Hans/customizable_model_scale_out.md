@@ -6,14 +6,13 @@
 
 需要注意的是，对于自定义模型，每一个模型的接入都需要填写一个完整的供应商凭据。
 
-而不同于预定义模型，自定义供应商接入时永远会拥有如下两个参数，不需要在供应商yaml中定义。
+而不同于预定义模型，自定义供应商接入时永远会拥有如下两个参数，不需要在供应商 yaml 中定义。
 
 ![Alt text](images/index/image-3.png)
 
+在前文中，我们已经知道了供应商无需实现`validate_provider_credential`，Runtime 会自行根据用户在此选择的模型类型和模型名称调用对应的模型层的`validate_credentials`来进行验证。
 
-在前文中，我们已经知道了供应商无需实现`validate_provider_credential`，Runtime会自行根据用户在此选择的模型类型和模型名称调用对应的模型层的`validate_credentials`来进行验证。
-
-### 编写供应商yaml
+### 编写供应商 yaml
 
 我们首先要确定，接入的这个供应商支持哪些类型的模型。
 
@@ -26,7 +25,7 @@
 - `tts` 文字转语音
 - `moderation` 审查
 
-`Xinference`支持`LLM`和`Text Embedding`和Rerank，那么我们开始编写`xinference.yaml`。
+`Xinference`支持`LLM`和`Text Embedding`和 Rerank，那么我们开始编写`xinference.yaml`。
 
 ```yaml
 provider: xinference #确定供应商标识
@@ -42,19 +41,20 @@ help: # 帮助
     zh_Hans: 如何部署 Xinference
   url:
     en_US: https://github.com/xorbitsai/inference
-supported_model_types: # 支持的模型类型，Xinference同时支持LLM/Text Embedding/Rerank
+supported_model_types: # 支持的模型类型，Xinference 同时支持 LLM/Text Embedding/Rerank
 - llm
 - text-embedding
 - rerank
-configurate_methods: # 因为Xinference为本地部署的供应商，并且没有预定义模型，需要用什么模型需要根据Xinference的文档自己部署，所以这里只支持自定义模型
+configurate_methods: # 因为 Xinference 为本地部署的供应商，并且没有预定义模型，需要用什么模型需要根据 Xinference 的文档自己部署，所以这里只支持自定义模型
 - customizable-model
 provider_credential_schema:
   credential_form_schemas:
 ```
 
-随后，我们需要思考在Xinference中定义一个模型需要哪些凭据
+随后，我们需要思考在 Xinference 中定义一个模型需要哪些凭据
 
 - 它支持三种不同的模型，因此，我们需要有`model_type`来指定这个模型的类型，它有三种类型，所以我们这么编写
+
 ```yaml
 provider_credential_schema:
   credential_form_schemas:
@@ -76,7 +76,9 @@ provider_credential_schema:
       label:
         en_US: Rerank
 ```
+
 - 每一个模型都有自己的名称`model_name`，因此需要在这里定义
+
 ```yaml
   - variable: model_name
     type: text-input
@@ -88,30 +90,35 @@ provider_credential_schema:
       zh_Hans: 填写模型名称
       en_US: Input model name
 ```
-- 填写Xinference本地部署的地址
+
+- 填写 Xinference 本地部署的地址
+
 ```yaml
   - variable: server_url
     label:
-      zh_Hans: 服务器URL
+      zh_Hans: 服务器 URL
       en_US: Server url
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入Xinference的服务器地址，如 https://example.com/xxx
+      zh_Hans: 在此输入 Xinference 的服务器地址，如 https://example.com/xxx
       en_US: Enter the url of your Xinference, for example https://example.com/xxx
 ```
-- 每个模型都有唯一的model_uid，因此需要在这里定义
+
+- 每个模型都有唯一的 model_uid，因此需要在这里定义
+
 ```yaml
   - variable: model_uid
     label:
-      zh_Hans: 模型UID
+      zh_Hans: 模型 UID
       en_US: Model uid
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入您的Model UID
+      zh_Hans: 在此输入您的 Model UID
       en_US: Enter the model uid
 ```
+
 现在，我们就完成了供应商的基础定义。
 
 ### 编写模型代码
@@ -132,7 +139,7 @@ provider_credential_schema:
           -> Union[LLMResult, Generator]:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param prompt_messages: prompt messages
@@ -145,7 +152,7 @@ provider_credential_schema:
       """
   ```
 
-  在实现时，需要注意使用两个函数来返回数据，分别用于处理同步返回和流式返回，因为Python会将函数中包含 `yield` 关键字的函数识别为生成器函数，返回的数据类型固定为 `Generator`，因此同步和流式返回需要分别实现，就像下面这样（注意下面例子使用了简化参数，实际实现时需要按照上面的参数列表进行实现）：
+  在实现时，需要注意使用两个函数来返回数据，分别用于处理同步返回和流式返回，因为 Python 会将函数中包含 `yield` 关键字的函数识别为生成器函数，返回的数据类型固定为 `Generator`，因此同步和流式返回需要分别实现，就像下面这样（注意下面例子使用了简化参数，实际实现时需要按照上面的参数列表进行实现）：
 
   ```python
   def _invoke(self, stream: bool, **kwargs) \
@@ -179,7 +186,7 @@ provider_credential_schema:
     """
   ```
 
-  有时候，也许你不需要直接返回0，所以你可以使用`self._get_num_tokens_by_gpt2(text: str)`来获取预计算的tokens，这个方法位于`AIModel`基类中，它会使用GPT2的Tokenizer进行计算，但是只能作为替代方法，并不完全准确。
+  有时候，也许你不需要直接返回 0，所以你可以使用`self._get_num_tokens_by_gpt2(text: str)`来获取预计算的 tokens，并确保环境变量`PLUGIN_BASED_TOKEN_COUNTING_ENABLED`设置为`true`，这个方法位于`AIModel`基类中，它会使用 GPT2 的 Tokenizer 进行计算，但是只能作为替代方法，并不完全准确。
 
 - 模型凭据校验
 
@@ -189,86 +196,86 @@ provider_credential_schema:
   def validate_credentials(self, model: str, credentials: dict) -> None:
       """
       Validate model credentials
-  
+
       :param model: model name
       :param credentials: model credentials
       :return:
       """
   ```
 
-- 模型参数Schema
-  
-  与自定义类型不同，由于没有在yaml文件中定义一个模型支持哪些参数，因此，我们需要动态时间模型参数的Schema。
-  
-  如Xinference支持`max_tokens` `temperature` `top_p` 这三个模型参数。
-  
-  但是有的供应商根据不同的模型支持不同的参数，如供应商`OpenLLM`支持`top_k`，但是并不是这个供应商提供的所有模型都支持`top_k`，我们这里举例A模型支持`top_k`，B模型不支持`top_k`，那么我们需要在这里动态生成模型参数的Schema，如下所示：
-  
-    ```python
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        """
-            used to define customizable model schema
-        """
-        rules = [
-            ParameterRule(
-                name='temperature', type=ParameterType.FLOAT,
-                use_template='temperature',
-                label=I18nObject(
-                    zh_Hans='温度', en_US='Temperature'
-                )
-            ),
-            ParameterRule(
-                name='top_p', type=ParameterType.FLOAT,
-                use_template='top_p',
-                label=I18nObject(
-                    zh_Hans='Top P', en_US='Top P'
-                )
-            ),
-            ParameterRule(
-                name='max_tokens', type=ParameterType.INT,
-                use_template='max_tokens',
-                min=1,
-                default=512,
-                label=I18nObject(
-                    zh_Hans='最大生成长度', en_US='Max Tokens'
-                )
-            )
-        ]
+- 模型参数 Schema
 
-        # if model is A, add top_k to rules
-        if model == 'A':
-            rules.append(
-                ParameterRule(
-                    name='top_k', type=ParameterType.INT,
-                    use_template='top_k',
-                    min=1,
-                    default=50,
-                    label=I18nObject(
-                        zh_Hans='Top K', en_US='Top K'
-                    )
-                )
-            )
+  与自定义类型不同，由于没有在 yaml 文件中定义一个模型支持哪些参数，因此，我们需要动态时间模型参数的 Schema。
 
-        """
-            some NOT IMPORTANT code here
-        """
+  如 Xinference 支持`max_tokens` `temperature` `top_p` 这三个模型参数。
 
-        entity = AIModelEntity(
-            model=model,
-            label=I18nObject(
-                en_US=model
-            ),
-            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_type=model_type,
-            model_properties={ 
-                ModelPropertyKey.MODE:  ModelType.LLM,
-            },
-            parameter_rules=rules
-        )
+  但是有的供应商根据不同的模型支持不同的参数，如供应商`OpenLLM`支持`top_k`，但是并不是这个供应商提供的所有模型都支持`top_k`，我们这里举例 A 模型支持`top_k`，B 模型不支持`top_k`，那么我们需要在这里动态生成模型参数的 Schema，如下所示：
 
-        return entity
-    ```
-    
+  ```python
+  def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+      """
+          used to define customizable model schema
+      """
+      rules = [
+          ParameterRule(
+              name='temperature', type=ParameterType.FLOAT,
+              use_template='temperature',
+              label=I18nObject(
+                  zh_Hans='温度', en_US='Temperature'
+              )
+          ),
+          ParameterRule(
+              name='top_p', type=ParameterType.FLOAT,
+              use_template='top_p',
+              label=I18nObject(
+                  zh_Hans='Top P', en_US='Top P'
+              )
+          ),
+          ParameterRule(
+              name='max_tokens', type=ParameterType.INT,
+              use_template='max_tokens',
+              min=1,
+              default=512,
+              label=I18nObject(
+                  zh_Hans='最大生成长度', en_US='Max Tokens'
+              )
+          )
+      ]
+
+      # if model is A, add top_k to rules
+      if model == 'A':
+          rules.append(
+              ParameterRule(
+                  name='top_k', type=ParameterType.INT,
+                  use_template='top_k',
+                  min=1,
+                  default=50,
+                  label=I18nObject(
+                      zh_Hans='Top K', en_US='Top K'
+                  )
+              )
+          )
+
+      """
+          some NOT IMPORTANT code here
+      """
+
+      entity = AIModelEntity(
+          model=model,
+          label=I18nObject(
+              en_US=model
+          ),
+          fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+          model_type=model_type,
+          model_properties={ 
+              ModelPropertyKey.MODE:  ModelType.LLM,
+          },
+          parameter_rules=rules
+      )
+
+      return entity
+  ```
+
 - 调用异常错误映射表
 
   当模型调用异常时需要映射到 Runtime 指定的 `InvokeError` 类型，方便 Dify 针对不同错误做不同后续处理。
@@ -278,7 +285,7 @@ provider_credential_schema:
   - `InvokeConnectionError` 调用连接错误
   - `InvokeServerUnavailableError ` 调用服务方不可用
   - `InvokeRateLimitError ` 调用达到限额
-  - `InvokeAuthorizationError`  调用鉴权失败
+  - `InvokeAuthorizationError` 调用鉴权失败
   - `InvokeBadRequestError ` 调用传参有误
 
   ```python
@@ -289,7 +296,7 @@ provider_credential_schema:
       The key is the error type thrown to the caller
       The value is the error type thrown by the model,
       which needs to be converted into a unified error type for the caller.
-  
+
       :return: Invoke error mapping
       """
   ```

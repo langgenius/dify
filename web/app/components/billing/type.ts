@@ -4,31 +4,55 @@ export enum Plan {
   team = 'team',
   enterprise = 'enterprise',
 }
-
 export enum Priority {
   standard = 'standard',
   priority = 'priority',
   topPriority = 'top-priority',
 }
+
+export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team
+
 export type PlanInfo = {
   level: number
   price: number
   modelProviders: string
+  teamWorkspace: number
   teamMembers: number
   buildApps: number
-  vectorSpace: number
+  documents: number
+  vectorSpace: string
   documentsUploadQuota: number
+  documentsRequestQuota: number
+  apiRateLimit: number
   documentProcessingPriority: Priority
   logHistory: number
-  customTools: string | number
-  messageRequest: {
-    en: string | number
-    zh: string | number
-  }
+  messageRequest: number
   annotatedResponse: number
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota'>
+export enum SelfHostedPlan {
+  community = 'community',
+  premium = 'premium',
+  enterprise = 'enterprise',
+}
+
+export type SelfHostedPlanInfo = {
+  level: number
+  price: number
+  modelProviders: string
+  teamWorkspace: number
+  teamMembers: number
+  buildApps: number
+  documents: number
+  vectorSpace: string
+  documentsRequestQuota: number
+  documentProcessingPriority: Priority
+  logHistory: number
+  messageRequest: number
+  annotatedResponse: number
+}
+
+export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota'> & { vectorSpace: number }
 
 export enum DocumentProcessingPriority {
   standard = 'standard',
@@ -40,7 +64,7 @@ export type CurrentPlanInfoBackend = {
   billing: {
     enabled: boolean
     subscription: {
-      plan: Plan
+      plan: BasicPlan
     }
   }
   members: {
@@ -67,6 +91,19 @@ export type CurrentPlanInfoBackend = {
   can_replace_logo: boolean
   model_load_balancing_enabled: boolean
   dataset_operator_enabled: boolean
+  education: {
+    enabled: boolean
+    activated: boolean
+  },
+  webapp_copyright_enabled: boolean
+  workspace_members: {
+    size: number
+    limit: number
+  },
+  is_allow_transfer_workspace: boolean
+  knowledge_pipeline: {
+    publish_enabled: boolean
+  },
 }
 
 export type SubscriptionItem = {

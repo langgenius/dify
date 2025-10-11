@@ -10,7 +10,7 @@ const PluginPage = () => {
   const { t } = useTranslation()
   const { data: plugins, mutate } = useSWR('/workspaces/current/tool-providers', fetchPluginProviders)
 
-  const Plugin_MAP: Record<string, (plugin: PluginProvider) => JSX.Element> = {
+  const Plugin_MAP: Record<string, (plugin: PluginProvider) => React.JSX.Element> = {
     serpapi: (plugin: PluginProvider) => <SerpapiPlugin key='serpapi' plugin={plugin} onUpdate={() => mutate()} />,
   }
 
@@ -19,11 +19,11 @@ const PluginPage = () => {
       <div>
         {plugins?.map(plugin => Plugin_MAP[plugin.tool_name](plugin))}
       </div>
-      <div className='fixed bottom-0 w-[472px] h-[42px] flex items-center bg-white text-xs text-gray-500'>
-        <LockClosedIcon className='w-3 h-3 mr-1' />
+      <div className='fixed bottom-0 flex h-[42px] w-[472px] items-center bg-white text-xs text-gray-500'>
+        <LockClosedIcon className='mr-1 h-3 w-3' />
         {t('common.provider.encrypted.front')}
         <Link
-          className='text-primary-600 mx-1'
+          className='mx-1 text-primary-600'
           target='_blank' rel='noopener noreferrer'
           href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
         >

@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Узнать больше',
       description: ' о методе поиска.',
       longDescription: ' о методе поиска, вы можете изменить это в любое время в настройках базы знаний.',
+      method: 'Метод извлечения',
     },
     save: 'Сохранить',
     externalKnowledgeAPI: 'API внешних знаний',
@@ -35,6 +36,15 @@ const translation = {
     helpText: 'Узнайте, как написать хорошее описание набора данных.',
     upgradeHighQualityTip: 'После обновления до режима «Высокое качество» возврат к экономичному режиму невозможен',
     indexMethodChangeToEconomyDisabledTip: 'Недоступно для понижения уровня с HQ до ECO',
+    searchModel: 'Поиск модели',
+    chunkStructure: {
+      learnMore: 'Подробнее',
+      title: 'Структура чанка',
+      description: 'о структуре чанка.',
+    },
+    nameAndIcon: 'Имя и иконка',
+    numberOfKeywords: 'Количество ключевых слов',
+    onSearchResults: 'Ни один участник не соответствует вашему поисковому запросу.\nПовторите попытку поиска.',
   },
 }
 

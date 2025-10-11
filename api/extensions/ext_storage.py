@@ -65,19 +65,28 @@ class Storage:
                 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 
                 return VolcengineTosStorage
-            case StorageType.SUPBASE:
+            case StorageType.SUPABASE:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
+            case StorageType.CLICKZETTA_VOLUME:
+                from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+                    ClickZettaVolumeConfig,
+                    ClickZettaVolumeStorage,
+                )
+
+                def create_clickzetta_volume_storage():
+                    # ClickZettaVolumeConfig will automatically read from environment variables
+                    # and fallback to CLICKZETTA_* config if CLICKZETTA_VOLUME_* is not set
+                    volume_config = ClickZettaVolumeConfig()
+                    return ClickZettaVolumeStorage(volume_config)
+
+                return create_clickzetta_volume_storage
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
     def save(self, filename, data):
-        try:
-            self.storage_runner.save(filename, data)
-        except Exception as e:
-            logger.exception(f"Failed to save file {filename}")
-            raise e
+        self.storage_runner.save(filename, data)
 
     @overload
     def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
@@ -86,49 +95,28 @@ class Storage:
     def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
 
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
-        try:
-            if stream:
-                return self.load_stream(filename)
-            else:
-                return self.load_once(filename)
-        except Exception as e:
-            logger.exception(f"Failed to load file {filename}")
-            raise e
+        if stream:
+            return self.load_stream(filename)
+        else:
+            return self.load_once(filename)
 
     def load_once(self, filename: str) -> bytes:
-        try:
-            return self.storage_runner.load_once(filename)
-        except Exception as e:
-            logger.exception(f"Failed to load_once file {filename}")
-            raise e
+        return self.storage_runner.load_once(filename)
 
     def load_stream(self, filename: str) -> Generator:
-        try:
-            return self.storage_runner.load_stream(filename)
-        except Exception as e:
-            logger.exception(f"Failed to load_stream file {filename}")
-            raise e
+        return self.storage_runner.load_stream(filename)
 
     def download(self, filename, target_filepath):
-        try:
-            self.storage_runner.download(filename, target_filepath)
-        except Exception as e:
-            logger.exception(f"Failed to download file {filename}")
-            raise e
+        self.storage_runner.download(filename, target_filepath)
 
     def exists(self, filename):
-        try:
-            return self.storage_runner.exists(filename)
-        except Exception as e:
-            logger.exception(f"Failed to check file exists {filename}")
-            raise e
+        return self.storage_runner.exists(filename)
 
     def delete(self, filename):
-        try:
-            return self.storage_runner.delete(filename)
-        except Exception as e:
-            logger.exception(f"Failed to delete file {filename}")
-            raise e
+        return self.storage_runner.delete(filename)
+
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        return self.storage_runner.scan(path, files=files, directories=directories)
 
 
 storage = Storage()

@@ -1,11 +1,17 @@
 @import "preflight.css";
-@tailwind base;
-@tailwind components;
+
 
 @import '../../themes/light.css';
 @import '../../themes/dark.css';
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
+
+@import "../components/base/button/index.css";
+@import "../components/base/action-button/index.css";
+@import "../components/base/modal/index.css";
+
+@tailwind base;
+@tailwind components;
 
 html {
   color-scheme: light;
@@ -292,7 +298,7 @@ button:focus-within {
   line-height: 24px;
 }
 
-[class*='code-'] {
+[class*="code-"] {
   @apply font-mono;
 }
 
@@ -654,7 +660,7 @@ button:focus-within {
 }
 
 .text-gradient {
-  background: linear-gradient(91.58deg, #2250F2 -29.55%, #0EBCF3 75.22%);
+  background: linear-gradient(91.58deg, #2250f2 -29.55%, #0ebcf3 75.22%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -662,7 +668,7 @@ button:focus-within {
 }
 
 /* overwrite paging active dark model style  */
-[class*=style_paginatio] li .text-primary-600 {
+[class*="style_paginatio"] li .text-primary-600 {
   color: rgb(28 100 242);
   background-color: rgb(235 245 255);
 }
@@ -675,8 +681,33 @@ button:focus-within {
   bottom: 0;
 }
 
-@import '../components/base/button/index.css';
-@import '../components/base/action-button/index.css';
-@import '../components/base/modal/index.css';
+[data-theme="dark"] [data-hide-on-theme="dark"],
+[data-theme="light"] [data-hide-on-theme="light"] {
+  display: none;
+}
 
 @tailwind utilities;
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Hide arrows from number input */
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .no-spinner {
+    -moz-appearance: textfield;
+  }
+}

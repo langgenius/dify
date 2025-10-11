@@ -31,8 +31,8 @@ const usualEscapeSequences: Record<string, string> = {
   '\\': '\\',
 }
 
-const fromHex = (str: string) => String.fromCodePoint(parseInt(str, 16))
-const fromOct = (str: string) => String.fromCodePoint(parseInt(str, 8))
+const fromHex = (str: string) => String.fromCodePoint(Number.parseInt(str, 16))
+const fromOct = (str: string) => String.fromCodePoint(Number.parseInt(str, 8))
 
 const unescape = (str: string) => {
   return str.replace(jsEscapeRegex, (_, __, varHex, longHex, shortHex, octal, specialCharacter, python) => {

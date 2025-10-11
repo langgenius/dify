@@ -7,3 +7,7 @@ class WorkSpaceNotAllowedCreateError(BaseServiceError):
 
 class WorkSpaceNotFoundError(BaseServiceError):
     pass
+
+
+class WorkspacesLimitExceededError(BaseServiceError):
+    pass

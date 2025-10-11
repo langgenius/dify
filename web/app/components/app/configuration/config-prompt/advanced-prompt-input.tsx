@@ -17,9 +17,10 @@ import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
@@ -141,28 +142,29 @@ const AdvancedPromptInput: FC<Props> = ({
   const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
-      className='flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl'
+      className='flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl pb-1 pl-4 pr-3 pt-2'
       style={{
         background: 'linear-gradient(180deg, #FEF0C7 0%, rgba(254, 240, 199, 0) 100%)',
       }}
     >
       <div className='flex items-center pr-2' >
-        <RiErrorWarningFill className='mr-1 w-4 h-4 text-[#F79009]' />
-        <div className='leading-[18px] text-[13px] font-medium text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
+        <RiErrorWarningFill className='mr-1 h-4 w-4 text-[#F79009]' />
+        <div className='text-[13px] font-medium leading-[18px] text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
       </div>
-      <div
-        className='flex items-center h-6 px-2 rounded-md bg-[#fff] border border-gray-200 shadow-xs text-xs font-medium text-primary-600 cursor-pointer'
+      <Button
+        size='small'
+        variant='secondary-accent'
         onClick={onHideContextMissingTip}
-      >{t('common.operation.ok')}</div>
+      >{t('common.operation.ok')}</Button>
     </div>
   )
   return (
-    <div className={`relative ${!isContextMissing ? s.gradientBorder : s.warningBorder}`}>
-      <div className='rounded-xl bg-white'>
+    <div className={`rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
+      <div className='rounded-xl bg-background-default'>
         {isContextMissing
           ? contextMissing
           : (
-            <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-white hover:shadow-xs')}>
+            <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-background-default pb-1 pl-4 pr-3 pt-2 hover:shadow-xs')}>
               {isChatMode
                 ? (
                   <MessageTypeSelector value={type} onChange={onTypeChange} />
@@ -182,30 +184,30 @@ const AdvancedPromptInput: FC<Props> = ({
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                 {canDelete && (
-                  <RiDeleteBinLine onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
+                  <RiDeleteBinLine onClick={onDelete} className='h-6 w-6 cursor-pointer p-1 text-text-tertiary' />
                 )}
                 {!isCopied
                   ? (
-                    <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' onClick={() => {
+                    <Copy className='h-6 w-6 cursor-pointer p-1 text-text-tertiary' onClick={() => {
                       copy(value)
                       setIsCopied(true)
                     }} />
                   )
                   : (
-                    <ClipboardCheck className='h-6 w-6 p-1 text-gray-500' />
+                    <CopyCheck className='h-6 w-6 p-1 text-text-tertiary' />
                   )}
               </div>
             </div>
           )}
 
         <PromptEditorHeightResizeWrap
-          className='px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700'
+          className='min-h-[102px] overflow-y-auto px-4 text-sm text-text-secondary'
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           footer={(
-            <div className='pl-4 pb-2 flex'>
-              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
+            <div className='flex pb-2 pl-4'>
+              <div className="h-[18px] rounded-md bg-divider-regular px-1 text-xs leading-[18px] text-text-tertiary">{value.length}</div>
             </div>
           )}
           hideResize={noResize}
@@ -225,7 +227,7 @@ const AdvancedPromptInput: FC<Props> = ({
             }}
             variableBlock={{
               show: true,
-              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
+              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api' && item.key && item.key.trim() && item.name && item.name.trim()).map(item => ({
                 name: item.name,
                 value: item.key,
               })),

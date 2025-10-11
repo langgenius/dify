@@ -1,0 +1,83 @@
+name: autofix.ci
+on:
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use uv to ensure we have the same ruff version in CI and locally.
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - run: |
+          cd api
+          uv sync --dev
+          # fmt first to avoid line too long
+          uv run ruff format ..
+          # Fix lint errors
+          uv run ruff check --fix .
+          # Format code
+          uv run ruff format ..
+
+      - name: ast-grep
+        run: |
+          uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
+          uvx --from ast-grep-cli sg --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all
+          uvx --from ast-grep-cli sg -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all
+          uvx --from ast-grep-cli sg -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all
+          # Convert Optional[T] to T | None (ignoring quoted types)
+          cat > /tmp/optional-rule.yml << 'EOF'
+          id: convert-optional-to-union
+          language: python
+          rule:
+            kind: generic_type
+            all:
+              - has:
+                  kind: identifier
+                  pattern: Optional
+              - has:
+                  kind: type_parameter
+                  has:
+                    kind: type
+                    pattern: $T
+          fix: $T | None
+          EOF
+          uvx --from ast-grep-cli sg scan --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
+          # Fix forward references that were incorrectly converted (Python doesn't support "Type" | None syntax)
+          find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
+          find . -name "*.py.bak" -type f -delete
+
+      - name: mdformat
+        run: |
+          uvx mdformat .
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ./web/package.json
+
+      - name: Web dependencies
+        working-directory: ./web
+        run: pnpm install --frozen-lockfile
+
+      - name: oxlint
+        working-directory: ./web
+        run: |
+          pnpx oxlint --fix
+
+      - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

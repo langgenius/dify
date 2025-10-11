@@ -2,24 +2,30 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { BlockEnum } from './types'
 import {
+  Agent,
   Answer,
   Assigner,
   Code,
+  Datasource,
   DocsExtractor,
   End,
   Home,
   Http,
   IfElse,
   Iteration,
+  KnowledgeBase,
   KnowledgeRetrieval,
   ListFilter,
   Llm,
+  Loop,
+  LoopEnd,
   ParameterExtractor,
   QuestionClassifier,
   TemplatingTransform,
   VariableX,
 } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
+import cn from '@/utils/classnames'
 
 type BlockIconProps = {
   type: BlockEnum
@@ -50,9 +56,16 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.Tool]: <VariableX className={className} />,
     [BlockEnum.IterationStart]: <VariableX className={className} />,
     [BlockEnum.Iteration]: <Iteration className={className} />,
+    [BlockEnum.LoopStart]: <VariableX className={className} />,
+    [BlockEnum.Loop]: <Loop className={className} />,
+    [BlockEnum.LoopEnd]: <LoopEnd className={className} />,
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
     [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
     [BlockEnum.ListFilter]: <ListFilter className={className} />,
+    [BlockEnum.Agent]: <Agent className={className} />,
+    [BlockEnum.KnowledgeBase]: <KnowledgeBase className={className} />,
+    [BlockEnum.DataSource]: <Datasource className={className} />,
+    [BlockEnum.DataSourceEmpty]: <></>,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
@@ -62,6 +75,8 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.End]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.IfElse]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.Iteration]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.Loop]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.LoopEnd]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.HttpRequest]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.Answer]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.KnowledgeRetrieval]: 'bg-util-colors-green-green-500',
@@ -69,10 +84,14 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.TemplateTransform]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAggregator]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.Tool]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
   [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
+  [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
+  [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,
@@ -80,28 +99,32 @@ const BlockIcon: FC<BlockIconProps> = ({
   className,
   toolIcon,
 }) => {
+  const isToolOrDataSource = type === BlockEnum.Tool || type === BlockEnum.DataSource
+  const showDefaultIcon = !isToolOrDataSource || !toolIcon
+
   return (
-    <div className={`
-      flex items-center justify-center border-[0.5px] border-white/2 text-white
-      ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]}
-      ${ICON_CONTAINER_BG_COLOR_MAP[type]}
-      ${toolIcon && '!shadow-none'}
-      ${className}
-    `}
+    <div className={
+      cn(
+        'flex items-center justify-center border-[0.5px] border-white/2 text-white',
+        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+        showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
+        toolIcon && '!shadow-none',
+        className,
+      )}
     >
       {
-        type !== BlockEnum.Tool && (
+        showDefaultIcon && (
           getIcon(type, size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5')
         )
       }
       {
-        type === BlockEnum.Tool && toolIcon && (
+        isToolOrDataSource && toolIcon && (
           <>
             {
               typeof toolIcon === 'string'
                 ? (
                   <div
-                    className='shrink-0 w-full h-full bg-cover bg-center rounded-md'
+                    className='h-full w-full shrink-0 rounded-md bg-cover bg-center'
                     style={{
                       backgroundImage: `url(${toolIcon})`,
                     }}
@@ -109,7 +132,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                 )
                 : (
                   <AppIcon
-                    className='shrink-0 !w-full !h-full'
+                    className='!h-full !w-full shrink-0'
                     size='tiny'
                     icon={toolIcon?.content}
                     background={toolIcon?.background}

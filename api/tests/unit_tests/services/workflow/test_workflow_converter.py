@@ -66,7 +66,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.CHAT.value
+    app_model.mode = AppMode.CHAT
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
@@ -107,7 +107,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     assert body_data
 
     body_data_json = json.loads(body_data)
-    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value
+    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
 
     body_params = body_data_json["params"]
     assert body_params["app_id"] == app_model.id
@@ -127,7 +127,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.WORKFLOW.value
+    app_model.mode = AppMode.WORKFLOW
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
@@ -168,7 +168,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     assert body_data
 
     body_data_json = json.loads(body_data)
-    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value
+    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
 
     body_params = body_data_json["params"]
     assert body_params["app_id"] == app_model.id
@@ -401,8 +401,7 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
         advanced_completion_prompt_template=AdvancedCompletionPromptTemplateEntity(
-            prompt="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}\n\n"
-            "Human: hi\nAssistant: ",
+            prompt="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}\n\nHuman: hi\nAssistant: ",
             role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(user="Human", assistant="Assistant"),
         ),
     )

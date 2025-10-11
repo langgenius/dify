@@ -1,7 +1,7 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 from urllib.parse import unquote
 
 from configs import dify_config
@@ -18,6 +18,7 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
+from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
@@ -25,6 +26,7 @@ from core.rag.extractor.unstructured.unstructured_msg_extractor import Unstructu
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
+from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
@@ -43,7 +45,7 @@ class ExtractProcessor:
         cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
     ) -> Union[list[Document], str]:
         extract_setting = ExtractSetting(
-            datasource_type="upload_file", upload_file=upload_file, document_model="text_model"
+            datasource_type=DatasourceType.FILE, upload_file=upload_file, document_model="text_model"
         )
         if return_text:
             delimiter = "\n"
@@ -71,10 +73,10 @@ class ExtractProcessor:
                             suffix = "." + match.group(1)
                         else:
                             suffix = ""
-            # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
-            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+            # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
+            file_path = f"{temp_dir}/{tempfile.gettempdir()}{suffix}"
             Path(file_path).write_bytes(response.content)
-            extract_setting = ExtractSetting(datasource_type="upload_file", document_model="text_model")
+            extract_setting = ExtractSetting(datasource_type=DatasourceType.FILE, document_model="text_model")
             if return_text:
                 delimiter = "\n"
                 return delimiter.join(
@@ -88,9 +90,9 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: Optional[str] = None
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
     ) -> list[Document]:
-        if extract_setting.datasource_type == DatasourceType.FILE.value:
+        if extract_setting.datasource_type == DatasourceType.FILE:
             with tempfile.TemporaryDirectory() as temp_dir:
                 if not file_path:
                     assert extract_setting.upload_file is not None, "upload_file is required"
@@ -102,9 +104,9 @@ class ExtractProcessor:
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
                 etl_type = dify_config.ETL_TYPE
-                extractor: Optional[BaseExtractor] = None
+                extractor: BaseExtractor | None = None
                 if etl_type == "Unstructured":
-                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL or ""
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
 
                     if file_extension in {".xlsx", ".xls"}:
@@ -121,6 +123,8 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                    elif file_extension == ".doc":
+                        extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".msg":
@@ -159,7 +163,7 @@ class ExtractProcessor:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 return extractor.extract()
-        elif extract_setting.datasource_type == DatasourceType.NOTION.value:
+        elif extract_setting.datasource_type == DatasourceType.NOTION:
             assert extract_setting.notion_info is not None, "notion_info is required"
             extractor = NotionExtractor(
                 notion_workspace_id=extract_setting.notion_info.notion_workspace_id,
@@ -167,12 +171,22 @@ class ExtractProcessor:
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,
                 tenant_id=extract_setting.notion_info.tenant_id,
+                credential_id=extract_setting.notion_info.credential_id,
             )
             return extractor.extract()
-        elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
+        elif extract_setting.datasource_type == DatasourceType.WEBSITE:
             assert extract_setting.website_info is not None, "website_info is required"
             if extract_setting.website_info.provider == "firecrawl":
                 extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "watercrawl":
+                extractor = WaterCrawlWebExtractor(
                     url=extract_setting.website_info.url,
                     job_id=extract_setting.website_info.job_id,
                     tenant_id=extract_setting.website_info.tenant_id,

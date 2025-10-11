@@ -12,7 +12,7 @@ type CountdownProps = {
 
 export default function Countdown({ onResend }: CountdownProps) {
   const { t } = useTranslation()
-  const [leftTime, setLeftTime] = useState(Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
+  const [leftTime, setLeftTime] = useState(() => Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
   const [time] = useCountDown({
     leftTime,
     onEnd: () => {
@@ -35,7 +35,7 @@ export default function Countdown({ onResend }: CountdownProps) {
     <span>{t('login.checkCode.didNotReceiveCode')}</span>
     {time > 0 && <span>{Math.round(time / 1000)}s</span>}
     {
-      time <= 0 && <span className='system-xs-medium text-text-accent-secondary cursor-pointer' onClick={resend}>{t('login.checkCode.resend')}</span>
+      time <= 0 && <span className='system-xs-medium cursor-pointer text-text-accent-secondary' onClick={resend}>{t('login.checkCode.resend')}</span>
     }
   </p>
 }

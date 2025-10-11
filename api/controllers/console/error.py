@@ -46,6 +46,18 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
     code = 400
 
 
+class WorkspaceMembersLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to add member because the maximum workspace's member limit was exceeded"
+    code = 400
+
+
+class WorkspacesLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create workspace because the maximum workspace limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."
@@ -64,30 +76,6 @@ class EmailSendIpLimitError(BaseHTTPException):
     code = 429
 
 
-class FileTooLargeError(BaseHTTPException):
-    error_code = "file_too_large"
-    description = "File size exceeded. {message}"
-    code = 413
-
-
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = "unsupported_file_type"
-    description = "File type not allowed."
-    code = 415
-
-
-class TooManyFilesError(BaseHTTPException):
-    error_code = "too_many_files"
-    description = "Only one file is allowed."
-    code = 400
-
-
-class NoFileUploadedError(BaseHTTPException):
-    error_code = "no_file_uploaded"
-    description = "Please upload your file."
-    code = 400
-
-
 class UnauthorizedAndForceLogout(BaseHTTPException):
     error_code = "unauthorized_and_force_logout"
     description = "Unauthorized and force logout."
@@ -101,3 +89,21 @@ class AccountInFreezeError(BaseHTTPException):
         "This email account has been deleted within the past 30 days"
         "and is temporarily unavailable for new account registration."
     )
+
+
+class EducationVerifyLimitError(BaseHTTPException):
+    error_code = "education_verify_limit"
+    description = "Rate limit exceeded"
+    code = 429
+
+
+class EducationActivateLimitError(BaseHTTPException):
+    error_code = "education_activate_limit"
+    description = "Rate limit exceeded"
+    code = 429
+
+
+class ComplianceRateLimitError(BaseHTTPException):
+    error_code = "compliance_rate_limit"
+    description = "Rate limit exceeded for downloading compliance report."
+    code = 429

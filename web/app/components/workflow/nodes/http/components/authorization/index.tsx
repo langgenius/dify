@@ -25,12 +25,12 @@ type Props = {
   onHide: () => void
 }
 
-const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: JSX.Element }) => {
+const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: React.JSX.Element }) => {
   return (
     <div>
-      <div className='leading-8 text-[13px] font-medium text-gray-700'>
+      <div className='text-[13px] font-medium leading-8 text-text-secondary'>
         {title}
-        {isRequired && <span className='ml-0.5 text-[#D92D20]'>*</span>}
+        {isRequired && <span className='ml-0.5 text-text-destructive'>*</span>}
       </div>
       <div>{children}</div>
     </div>
@@ -158,7 +158,7 @@ const Authorization: FC<Props> = ({
                 <div className='flex'>
                   <Input
                     instanceId='http-api-key'
-                    className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
+                    className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
                     value={tempPayload.config?.api_key || ''}
                     onChange={handleAPIKeyChange}
                     nodesOutputVars={availableVars}

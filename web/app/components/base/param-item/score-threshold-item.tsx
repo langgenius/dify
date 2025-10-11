@@ -20,7 +20,6 @@ const VALUE_LIMIT = {
   max: 1,
 }
 
-const key = 'score_threshold'
 const ScoreThresholdItem: FC<Props> = ({
   className,
   value,
@@ -31,7 +30,7 @@ const ScoreThresholdItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = parseFloat(value.toFixed(2))
+    let notOutRangeValue = Number.parseFloat(value.toFixed(2))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)
     notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
     onChange(key, notOutRangeValue)
@@ -39,9 +38,9 @@ const ScoreThresholdItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id={key}
-      name={t(`appDebug.datasetConfig.${key}`)}
-      tip={t(`appDebug.datasetConfig.${key}Tip`) as string}
+      id='score_threshold'
+      name={t('appDebug.datasetConfig.score_threshold')}
+      tip={t('appDebug.datasetConfig.score_thresholdTip') as string}
       {...VALUE_LIMIT}
       value={value}
       enable={enable}

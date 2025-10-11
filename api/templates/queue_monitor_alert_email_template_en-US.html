@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 16pt;
+      color: #101828;
+      background-color: #e9ebf0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 600px;
+      min-height: 605px;
+      margin: 40px auto;
+      padding: 36px 48px;
+      background-color: #fcfcfd;
+      border-radius: 16px;
+      border: 1px solid #ffffff;
+      box-shadow: 0 2px 4px -2px rgba(9, 9, 11, 0.08);
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .header img {
+      max-width: 100px;
+      height: auto;
+    }
+
+    .title {
+      font-weight: 600;
+      font-size: 24px;
+      line-height: 28.8px;
+    }
+
+    .description {
+      font-size: 13px;
+      line-height: 16px;
+      color: #676f83;
+      margin-top: 12px;
+    }
+
+    .alert-content {
+      padding: 16px 32px;
+      text-align: center;
+      border-radius: 16px;
+      background-color: #fef0f0;
+      margin: 16px auto;
+      border: 1px solid #fda29b;
+    }
+
+    .alert-title {
+      line-height: 24px;
+      font-weight: 700;
+      font-size: 18px;
+      color: #d92d20;
+    }
+
+    .alert-detail {
+      line-height: 20px;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .typography {
+      letter-spacing: -0.07px;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 14px;
+      line-height: 20px;
+      color: #354052;
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+    .typography p{
+      margin: 0 auto;
+    }
+
+    .typography-title {
+      color: #101828;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 20px;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+    .tip-list{
+      margin: 0;
+      padding-left: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
+    </div>
+    <p class="title">Queue Monitoring Alert</p>
+    <p class="typography">Our system has detected an abnormal queue status that requires your attention:</p>
+
+    <div class="alert-content">
+      <div class="alert-title">Queue Task Alert</div>
+      <div class="alert-detail">
+        Queue "{{queue_name}}" has {{queue_length}} pending tasks (Threshold: {{threshold}})
+      </div>
+    </div>
+
+    <div class="typography">
+      <p style="margin-bottom:4px">Recommended actions:</p>
+      <p>1. Check the queue processing status in the system dashboard</p>
+      <p>2. Verify if there are any processing bottlenecks</p>
+      <p>3. Consider scaling up workers if needed</p>
+    </div>
+
+    <p class="typography-title">Additional Information:</p>
+    <ul class="typography tip-list">
+      <li>Alert triggered at: {{alert_time}}</li>
+    </ul>
+  </div>
+</body>
+
+</html>

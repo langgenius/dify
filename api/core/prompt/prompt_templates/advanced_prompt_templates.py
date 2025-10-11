@@ -28,7 +28,7 @@ BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
         },
         "conversation_histories_role": {"user_prefix": "用户", "assistant_prefix": "助手"},
     },
-    "stop": ["用户:"],
+    "stop": ["用户："],
 }
 
 BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = {
@@ -41,5 +41,5 @@ BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG = {
 
 BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG = {
     "completion_prompt_config": {"prompt": {"text": "{{#pre_prompt#}}"}},
-    "stop": ["用户:"],
+    "stop": ["用户："],
 }

@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 from sqlalchemy.exc import IntegrityError
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance, user: Optional[str] = None) -> None:
+    def __init__(self, model_instance: ModelInstance, user: str | None = None):
         self._model_instance = model_instance
         self._user = user
 
@@ -42,6 +42,10 @@ class CacheEmbedding(Embeddings):
                 text_embeddings[i] = embedding.get_embedding()
             else:
                 embedding_queue_indices.append(i)
+
+        # release database connection, because embedding may take a long time
+        db.session.close()
+
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]
             embedding_queue_embeddings = []
@@ -69,13 +73,13 @@ class CacheEmbedding(Embeddings):
                             # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
                             if np.isnan(normalized_embedding).any():
                                 # for issue #11827  float values are not json compliant
-                                logger.warning(f"Normalized embedding is nan: {normalized_embedding}")
+                                logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
                             embedding_queue_embeddings.append(normalized_embedding)
                         except IntegrityError:
                             db.session.rollback()
-                        except Exception as e:
-                            logging.exception("Failed transform embedding")
+                        except Exception:
+                            logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
                     for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
@@ -95,7 +99,7 @@ class CacheEmbedding(Embeddings):
                     db.session.rollback()
             except Exception as ex:
                 db.session.rollback()
-                logger.exception("Failed to embed documents: %s")
+                logger.exception("Failed to embed documents")
                 raise ex
 
         return text_embeddings
@@ -122,7 +126,7 @@ class CacheEmbedding(Embeddings):
                 raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception(f"Failed to embed query text '{text[:10]}...({len(text)} chars)'")
+                logger.exception("Failed to embed query text '%s...(%s chars)'", text[:10], len(text))
             raise ex
 
         try:
@@ -136,7 +140,9 @@ class CacheEmbedding(Embeddings):
             redis_client.setex(embedding_cache_key, 600, encoded_str)
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception(f"Failed to add embedding to redis for the text '{text[:10]}...({len(text)} chars)'")
+                logger.exception(
+                    "Failed to add embedding to redis for the text '%s...(%s chars)'", text[:10], len(text)
+                )
             raise ex
 
-        return embedding_results
+        return embedding_results  # type: ignore

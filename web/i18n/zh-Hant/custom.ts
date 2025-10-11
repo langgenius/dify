@@ -3,9 +3,11 @@ const translation = {
   upgradeTip: {
     prefix: '升級您的計劃以',
     suffix: '定製您的品牌。',
+    des: '升級您的計劃以自訂您的品牌',
+    title: '升級您的計劃',
   },
   webapp: {
-    title: '定製 WebApp 品牌',
+    title: '定製 web app 品牌',
     removeBrand: '移除 Powered by Dify',
     changeLogo: '更改 Powered by Brand 圖片',
     changeLogoTip: 'SVG 或 PNG 格式，最小尺寸為 40x40px',

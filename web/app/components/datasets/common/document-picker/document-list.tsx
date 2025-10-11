@@ -21,17 +21,17 @@ const DocumentList: FC<Props> = ({
   }, [onChange])
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('max-h-[calc(100vh-120px)] overflow-auto', className)}>
       {list.map((item) => {
         const { id, name, extension } = item
         return (
           <div
             key={id}
-            className='flex items-center h-8 px-2 hover:bg-state-base-hover rounded-lg space-x-2 cursor-pointer'
+            className='flex h-8 cursor-pointer items-center space-x-2 rounded-lg px-2 hover:bg-state-base-hover'
             onClick={handleChange(item)}
           >
-            <FileIcon name={item.name} extension={extension} size='md' />
-            <div className='truncate text-text-secondary text-sm'>{name}</div>
+            <FileIcon name={item.name} extension={extension} size='lg' />
+            <div className='truncate text-sm text-text-secondary'>{name}</div>
           </div>
         )
       })}

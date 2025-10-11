@@ -1,12 +1,11 @@
 .githubIcon {
-  background: center/contain url('./assets/github.svg');
+  background: center/contain url('./assets/github.svg') no-repeat;
+}
+
+html[data-theme="dark"] .githubIcon {
+  background: center/contain url('./assets/github-dark.svg') no-repeat;
 }
 
 .googleIcon {
-  background: center/contain url('./assets/google.svg');
-}
-
-.background {
-  background-image: url('./assets/background.png');
-  background-size: cover;
+  background: center/contain url('./assets/google.svg') no-repeat;
 }

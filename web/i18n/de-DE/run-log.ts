@@ -21,10 +21,11 @@ const translation = {
   resultEmpty: {
     title: 'Dieser Lauf gibt nur das JSON-Format aus',
     tipLeft: 'Bitte gehen Sie zum ',
-    Link: 'Detailpanel',
     tipRight: 'ansehen.',
     link: 'Gruppe Detail',
   },
+  actionLogs: 'Aktionsprotokolle',
+  circularInvocationTip: 'Es gibt einen zirkulären Aufruf von Werkzeugen/Knoten im aktuellen Workflow.',
 }
 
 export default translation

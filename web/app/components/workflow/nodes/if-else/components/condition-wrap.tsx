@@ -12,12 +12,13 @@ import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, Handl
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
-import { SUB_VARIABLES } from '../default'
+import { SUB_VARIABLES } from '../../constants'
 import ConditionList from './condition-list'
 import ConditionAdd from './condition-add'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
+import { noop } from 'lodash-es'
 
 type Props = {
   isSubVariable?: boolean
@@ -49,7 +50,7 @@ const ConditionWrap: FC<Props> = ({
   nodeId: id = '',
   cases = [],
   readOnly,
-  handleSortCase = () => { },
+  handleSortCase = noop,
   handleRemoveCase,
   handleUpdateCondition,
   handleAddCondition,
@@ -97,18 +98,18 @@ const ConditionWrap: FC<Props> = ({
                 className={cn(
                   'group relative rounded-[10px] bg-components-panel-bg',
                   willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                  !isSubVariable && 'py-1 px-3 min-h-[40px] ',
+                  !isSubVariable && 'min-h-[40px] px-3 py-1 ',
                   isSubVariable && 'px-1 py-2',
                 )}
               >
                 {!isSubVariable && (
                   <>
                     <RiDraggable className={cn(
-                      'hidden handle absolute top-2 left-1 w-3 h-3 text-text-quaternary cursor-pointer',
+                      'handle absolute left-1 top-2 hidden h-3 w-3 cursor-pointer text-text-quaternary',
                       casesLength > 1 && 'group-hover:block',
                     )} />
                     <div className={cn(
-                      'absolute left-4 leading-4 text-[13px] font-semibold text-text-secondary',
+                      'absolute left-4 text-[13px] font-semibold leading-4 text-text-secondary',
                       casesLength === 1 ? 'top-2.5' : 'top-1',
                     )}>
                       {
@@ -116,7 +117,7 @@ const ConditionWrap: FC<Props> = ({
                       }
                       {
                         casesLength > 1 && (
-                          <div className='text-[10px] text-text-tertiary font-medium'>CASE {index + 1}</div>
+                          <div className='text-[10px] font-medium text-text-tertiary'>CASE {index + 1}</div>
                         )
                       }
                     </div>
@@ -168,7 +169,7 @@ const ConditionWrap: FC<Props> = ({
                             size='small'
                             disabled={readOnly}
                           >
-                            <RiAddLine className='mr-1 w-3.5 h-3.5' />
+                            <RiAddLine className='mr-1 h-3.5 w-3.5' />
                             {t('workflow.nodes.ifElse.addSubVariable')}
                           </Button>
                         )}
@@ -187,7 +188,7 @@ const ConditionWrap: FC<Props> = ({
                   {
                     ((index === 0 && casesLength > 1) || (index > 0)) && (
                       <Button
-                        className='hover:text-components-button-destructive-ghost-text hover:bg-components-button-destructive-ghost-bg-hover'
+                        className='hover:bg-components-button-destructive-ghost-bg-hover hover:text-components-button-destructive-ghost-text'
                         size='small'
                         variant='ghost'
                         disabled={readOnly}
@@ -195,7 +196,7 @@ const ConditionWrap: FC<Props> = ({
                         onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >
-                        <RiDeleteBinLine className='mr-1 w-3.5 h-3.5' />
+                        <RiDeleteBinLine className='mr-1 h-3.5 w-3.5' />
                         {t('common.operation.remove')}
                       </Button>
                     )
@@ -203,7 +204,7 @@ const ConditionWrap: FC<Props> = ({
                 </div>
               </div>
               {!isSubVariable && (
-                <div className='my-2 mx-3 h-[1px] bg-divider-subtle'></div>
+                <div className='mx-3 my-2 h-px bg-divider-subtle'></div>
               )}
             </div>
           ))
@@ -215,7 +216,7 @@ const ConditionWrap: FC<Props> = ({
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className='mr-1 w-3.5 h-3.5' />
+          <RiAddLine className='mr-1 h-3.5 w-3.5' />
           {t('workflow.nodes.ifElse.addSubVariable')}
         </Button>
       )}

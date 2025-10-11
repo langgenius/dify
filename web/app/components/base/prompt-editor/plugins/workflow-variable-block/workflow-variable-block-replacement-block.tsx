@@ -16,9 +16,18 @@ import { VAR_REGEX as REGEX, resetReg } from '@/config'
 
 const WorkflowVariableBlockReplacementBlock = ({
   workflowNodesMap,
+  getVarType,
   onInsert,
+  variables,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
+  const ragVariables = variables?.reduce<any[]>((acc, curr) => {
+    if (curr.nodeId === 'rag')
+      acc.push(...curr.vars)
+    else
+      acc.push(...curr.vars.filter(v => v.isRagVariable))
+    return acc
+  }, [])
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -30,8 +39,8 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap))
-  }, [onInsert, workflowNodesMap])
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], ragVariables))
+  }, [onInsert, workflowNodesMap, getVarType, variables])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
@@ -47,7 +56,7 @@ const WorkflowVariableBlockReplacementBlock = ({
     }
   }, [])
 
-  const transformListener = useCallback((textNode: any) => {
+  const transformListener = useCallback((textNode: CustomTextNode) => {
     resetReg()
     return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
   }, [createWorkflowVariableBlockNode, getMatch])

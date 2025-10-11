@@ -5,7 +5,7 @@ import type { ImageFile } from '@/types/app'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
-  children: (hovering: boolean) => JSX.Element
+  children: (hovering: boolean) => React.JSX.Element
   onUpload: (imageFile: ImageFile) => void
   closePopover?: () => void
   limit?: number
@@ -44,7 +44,7 @@ const Uploader: FC<UploaderProps> = ({
     >
       {children(hovering)}
       <input
-        className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
+        className='absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed'
         onClick={e => ((e.target as HTMLInputElement).value = '')}
         type='file'
         accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}

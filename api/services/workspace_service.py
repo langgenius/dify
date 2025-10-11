@@ -1,8 +1,8 @@
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 
 from configs import dify_config
 from extensions.ext_database import db
-from models.account import Tenant, TenantAccountJoin, TenantAccountJoinRole
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 
@@ -12,13 +12,12 @@ class WorkspaceService:
     def get_tenant_info(cls, tenant: Tenant):
         if not tenant:
             return None
-        tenant_info = {
+        tenant_info: dict[str, object] = {
             "id": tenant.id,
             "name": tenant.name,
             "plan": tenant.plan,
             "status": tenant.status,
             "created_at": tenant.created_at,
-            "in_trail": True,
             "trial_end_reason": None,
             "role": "normal",
         }
@@ -26,17 +25,15 @@ class WorkspaceService:
         # Get role of user
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
 
-        can_replace_logo = FeatureService.get_features(tenant_info["id"]).can_replace_logo
+        can_replace_logo = FeatureService.get_features(tenant.id).can_replace_logo
 
-        if can_replace_logo and TenantService.has_roles(
-            tenant, [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]
-        ):
+        if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
             base_url = dify_config.FILES_URL
             replace_webapp_logo = (
                 f"{base_url}/files/workspaces/{tenant.id}/webapp-logo"

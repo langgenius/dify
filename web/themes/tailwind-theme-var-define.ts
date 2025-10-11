@@ -124,11 +124,15 @@ const vars = {
   'components-card-bg': 'var(--color-components-card-bg)',
   'components-card-border': 'var(--color-components-card-border)',
   'components-card-bg-alt': 'var(--color-components-card-bg-alt)',
+  'components-card-bg-transparent': 'var(--color-components-card-bg-transparent)',
+  'components-card-bg-alt-transparent': 'var(--color-components-card-bg-alt-transparent)',
 
   'components-menu-item-text': 'var(--color-components-menu-item-text)',
   'components-menu-item-text-active': 'var(--color-components-menu-item-text-active)',
   'components-menu-item-text-hover': 'var(--color-components-menu-item-text-hover)',
   'components-menu-item-text-active-accent': 'var(--color-components-menu-item-text-active-accent)',
+  'components-menu-item-bg-active': 'var(--color-components-menu-item-bg-active)',
+  'components-menu-item-bg-hover': 'var(--color-components-menu-item-bg-hover)',
 
   'components-panel-bg': 'var(--color-components-panel-bg)',
   'components-panel-bg-blur': 'var(--color-components-panel-bg-blur)',
@@ -206,6 +210,7 @@ const vars = {
   'components-badge-bg-red-soft': 'var(--color-components-badge-bg-red-soft)',
   'components-badge-bg-blue-light-soft': 'var(--color-components-badge-bg-blue-light-soft)',
   'components-badge-bg-gray-soft': 'var(--color-components-badge-bg-gray-soft)',
+  'components-badge-bg-dimm': 'var(--color-components-badge-bg-dimm)',
 
   'components-chart-line': 'var(--color-components-chart-line)',
   'components-chart-area-1': 'var(--color-components-chart-area-1)',
@@ -399,7 +404,6 @@ const vars = {
   'background-default-burn': 'var(--color-background-default-burn)',
   'background-overlay-fullscreen': 'var(--color-background-overlay-fullscreen)',
   'background-default-lighter': 'var(--color-background-default-lighter)',
-  'background-account-teams-bg': 'var(--color-account-teams-bg)',
   'background-section': 'var(--color-background-section)',
   'background-interaction-from-bg-1': 'var(--color-background-interaction-from-bg-1)',
   'background-interaction-from-bg-2': 'var(--color-background-interaction-from-bg-2)',
@@ -412,6 +416,8 @@ const vars = {
   'background-surface-white': 'var(--color-background-surface-white)',
   'background-overlay-destructive': 'var(--color-background-overlay-destructive)',
   'background-overlay-backdrop': 'var(--color-background-overlay-backdrop)',
+  'background-body-transparent': 'var(--color-background-body-transparent)',
+  'background-section-burn-inverted': 'var(--color-background-section-burn-inverted)',
 
   'shadow-shadow-1': 'var(--color-shadow-shadow-1)',
   'shadow-shadow-3': 'var(--color-shadow-shadow-3)',
@@ -429,9 +435,14 @@ const vars = {
   'workflow-block-bg': 'var(--color-workflow-block-bg)',
   'workflow-block-bg-transparent': 'var(--color-workflow-block-bg-transparent)',
   'workflow-block-border-highlight': 'var(--color-workflow-block-border-highlight)',
+  'workflow-block-wrapper-bg-1': 'var(--color-workflow-block-wrapper-bg-1)',
+  'workflow-block-wrapper-bg-2': 'var(--color-workflow-block-wrapper-bg-2)',
 
   'workflow-canvas-workflow-dot-color': 'var(--color-workflow-canvas-workflow-dot-color)',
   'workflow-canvas-workflow-bg': 'var(--color-workflow-canvas-workflow-bg)',
+  'workflow-canvas-workflow-top-bar-1': 'var(--color-workflow-canvas-workflow-top-bar-1)',
+  'workflow-canvas-workflow-top-bar-2': 'var(--color-workflow-canvas-workflow-top-bar-2)',
+  'workflow-canvas-canvas-overlay': 'var(--color-workflow-canvas-canvas-overlay)',
 
   'workflow-link-line-active': 'var(--color-workflow-link-line-active)',
   'workflow-link-line-normal': 'var(--color-workflow-link-line-normal)',
@@ -497,12 +508,14 @@ const vars = {
   'divider-intense': 'var(--color-divider-intense)',
   'divider-solid': 'var(--color-divider-solid)',
   'divider-solid-alt': 'var(--color-divider-solid-alt)',
+  'divider-accent': 'var(--color-divider-accent)',
 
   'state-base-hover': 'var(--color-state-base-hover)',
   'state-base-active': 'var(--color-state-base-active)',
   'state-base-hover-alt': 'var(--color-state-base-hover-alt)',
   'state-base-handle': 'var(--color-state-base-handle)',
   'state-base-handle-hover': 'var(--color-state-base-handle-hover)',
+  'state-base-hover-subtle': 'var(--color-state-base-hover-subtle)',
 
   'state-accent-hover': 'var(--color-state-accent-hover)',
   'state-accent-active': 'var(--color-state-accent-active)',
@@ -515,6 +528,7 @@ const vars = {
   'state-destructive-active': 'var(--color-state-destructive-active)',
   'state-destructive-solid': 'var(--color-state-destructive-solid)',
   'state-destructive-border': 'var(--color-state-destructive-border)',
+  'state-destructive-hover-transparent': 'var(--color-state-destructive-hover-transparent)',
 
   'state-success-hover': 'var(--color-state-success-hover)',
   'state-success-hover-alt': 'var(--color-state-success-hover-alt)',
@@ -525,10 +539,12 @@ const vars = {
   'state-warning-hover-alt': 'var(--color-state-warning-hover-alt)',
   'state-warning-active': 'var(--color-state-warning-active)',
   'state-warning-solid': 'var(--color-state-warning-solid)',
+  'state-warning-hover-transparent': 'var(--color-state-warning-hover-transparent)',
 
   'effects-highlight': 'var(--color-effects-highlight)',
   'effects-highlight-lightmode-off': 'var(--color-effects-highlight-lightmode-off)',
   'effects-image-frame': 'var(--color-effects-image-frame)',
+  'effects-icon-border': 'var(--color-effects-icon-border)',
 
   'util-colors-orange-dark-orange-dark-50': 'var(--color-util-colors-orange-dark-orange-dark-50)',
   'util-colors-orange-dark-orange-dark-100': 'var(--color-util-colors-orange-dark-orange-dark-100)',
@@ -734,6 +750,17 @@ const vars = {
 
   'saas-background': 'var(--color-saas-background)',
   'saas-pricing-grid-bg': 'var(--color-saas-pricing-grid-bg)',
+  'saas-dify-blue-static': 'var(--color-saas-dify-blue-static)',
+  'saas-dify-blue-static-hover': 'var(--color-saas-dify-blue-static-hover)',
+  'saas-dify-blue-accessible': 'var(--color-saas-dify-blue-accessible)',
+  'saas-dify-blue-inverted': 'var(--color-saas-dify-blue-inverted)',
+  'saas-dify-blue-inverted-dimmed': 'var(--color-saas-dify-blue-inverted-dimmed)',
+
+  'saas-background-inverted': 'var(--color-saas-background-inverted)',
+  'saas-background-inverted-hover': 'var(--color-saas-background-inverted-hover)',
+
+  'dify-logo-dify-logo-blue': 'var(--color-dify-logo-dify-logo-blue)',
+  'dify-logo-dify-logo-black': 'var(--color-dify-logo-dify-logo-black)',
 
 }
 export default vars

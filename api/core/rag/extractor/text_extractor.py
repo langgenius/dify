@@ -1,7 +1,6 @@
 """Abstract interface for document loader implementations."""
 
 from pathlib import Path
-from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -16,7 +15,7 @@ class TextExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, encoding: Optional[str] = None, autodetect_encoding: bool = False):
+    def __init__(self, file_path: str, encoding: str | None = None, autodetect_encoding: bool = False):
         """Initialize with file path."""
         self._file_path = file_path
         self._encoding = encoding
@@ -36,8 +35,12 @@ class TextExtractor(BaseExtractor):
                         break
                     except UnicodeDecodeError:
                         continue
+                else:
+                    raise RuntimeError(
+                        f"Decode failed: {self._file_path}, all detected encodings failed. Original error: {e}"
+                    )
             else:
-                raise RuntimeError(f"Error loading {self._file_path}") from e
+                raise RuntimeError(f"Decode failed: {self._file_path}, specified encoding failed. Original error: {e}")
         except Exception as e:
             raise RuntimeError(f"Error loading {self._file_path}") from e
 

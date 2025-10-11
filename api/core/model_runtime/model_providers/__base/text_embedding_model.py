@@ -1,7 +1,3 @@
-import time
-from abc import abstractmethod
-from typing import Optional
-
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
@@ -25,7 +21,7 @@ class TextEmbeddingModel(AIModel):
         model: str,
         credentials: dict,
         texts: list[str],
-        user: Optional[str] = None,
+        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
@@ -38,36 +34,24 @@ class TextEmbeddingModel(AIModel):
         :param input_type: input type
         :return: embeddings result
         """
-        self.started_at = time.perf_counter()
+        from core.plugin.impl.model import PluginModelClient
 
         try:
-            return self._invoke(model, credentials, texts, user, input_type)
+            plugin_model_manager = PluginModelClient()
+            return plugin_model_manager.invoke_text_embedding(
+                tenant_id=self.tenant_id,
+                user_id=user or "unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model=model,
+                credentials=credentials,
+                texts=texts,
+                input_type=input_type,
+            )
         except Exception as e:
             raise self._transform_invoke_error(e)
 
-    @abstractmethod
-    def _invoke(
-        self,
-        model: str,
-        credentials: dict,
-        texts: list[str],
-        user: Optional[str] = None,
-        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
-    ) -> TextEmbeddingResult:
-        """
-        Invoke text embedding model
-
-        :param model: model name
-        :param credentials: model credentials
-        :param texts: texts to embed
-        :param user: unique user id
-        :param input_type: input type
-        :return: embeddings result
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> list[int]:
         """
         Get number of tokens for given prompt messages
 
@@ -76,7 +60,18 @@ class TextEmbeddingModel(AIModel):
         :param texts: texts to embed
         :return:
         """
-        raise NotImplementedError
+        from core.plugin.impl.model import PluginModelClient
+
+        plugin_model_manager = PluginModelClient()
+        return plugin_model_manager.get_text_embedding_num_tokens(
+            tenant_id=self.tenant_id,
+            user_id="unknown",
+            plugin_id=self.plugin_id,
+            provider=self.provider_name,
+            model=model,
+            credentials=credentials,
+            texts=texts,
+        )
 
     def _get_context_size(self, model: str, credentials: dict) -> int:
         """

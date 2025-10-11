@@ -24,8 +24,8 @@ const Keywords: FC<IKeywordsProps> = ({
   const { t } = useTranslation()
   return (
     <div className={classNames('flex flex-col', className)}>
-      <div className='text-text-tertiary system-xs-medium-uppercase'>{t('datasetDocuments.segment.keywords')}</div>
-      <div className='text-text-tertiary w-full max-h-[200px] overflow-auto flex flex-wrap gap-1'>
+      <div className='system-xs-medium-uppercase text-text-tertiary'>{t('datasetDocuments.segment.keywords')}</div>
+      <div className='flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary'>
         {(!segInfo?.keywords?.length && actionType === 'view')
           ? '-'
           : (

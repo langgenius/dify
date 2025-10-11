@@ -46,6 +46,7 @@ export const mockedWorkflowProcess = {
       parent_parallel_id: null,
       parent_parallel_start_node_id: null,
       iteration_id: null,
+      loop_id: null,
     },
     {
       extras: {},
@@ -107,6 +108,7 @@ export const mockedWorkflowProcess = {
       parent_parallel_id: null,
       parent_parallel_start_node_id: null,
       iteration_id: null,
+      loop_id: null,
     },
     {
       extras: {},

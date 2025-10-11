@@ -1,32 +1,19 @@
-from flask_restful import fields  # type: ignore
+from flask_restx import Api, Namespace, fields
 
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField
 
 from .raws import FilesContainedField
 
-feedback_fields = {"rating": fields.String}
-
-retriever_resource_fields = {
-    "id": fields.String,
-    "message_id": fields.String,
-    "position": fields.Integer,
-    "dataset_id": fields.String,
-    "dataset_name": fields.String,
-    "document_id": fields.String,
-    "document_name": fields.String,
-    "data_source_type": fields.String,
-    "segment_id": fields.String,
-    "score": fields.Float,
-    "hit_count": fields.Integer,
-    "word_count": fields.Integer,
-    "segment_position": fields.Integer,
-    "index_node_hash": fields.String,
-    "content": fields.String,
-    "created_at": TimestampField,
+feedback_fields = {
+    "rating": fields.String,
 }
 
-feedback_fields = {"rating": fields.String}
+
+def build_feedback_model(api_or_ns: Api | Namespace):
+    """Build the feedback model for the API or Namespace."""
+    return api_or_ns.model("Feedback", feedback_fields)
+
 
 agent_thought_fields = {
     "id": fields.String,
@@ -41,6 +28,12 @@ agent_thought_fields = {
     "observation": fields.String,
     "files": fields.List(fields.String),
 }
+
+
+def build_agent_thought_model(api_or_ns: Api | Namespace):
+    """Build the agent thought model for the API or Namespace."""
+    return api_or_ns.model("AgentThought", agent_thought_fields)
+
 
 retriever_resource_fields = {
     "id": fields.String,

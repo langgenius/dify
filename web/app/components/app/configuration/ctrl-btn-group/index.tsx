@@ -13,8 +13,8 @@ export type IContrlBtnGroupProps = {
 const ContrlBtnGroup: FC<IContrlBtnGroupProps> = ({ onSave, onReset }) => {
   const { t } = useTranslation()
   return (
-    <div className="fixed left-[224px] bottom-0 w-[519px] h-[64px]">
-      <div className={`${s.ctrlBtn} flex items-center h-full pl-4  gap-2 bg-white`}>
+    <div className="fixed bottom-0 left-[224px] h-[64px] w-[519px]">
+      <div className={`${s.ctrlBtn} flex h-full items-center gap-2  bg-white pl-4`}>
         <Button variant='primary' onClick={onSave}>{t('appDebug.operation.applyConfig')}</Button>
         <Button onClick={onReset}>{t('appDebug.operation.resetConfig')}</Button>
       </div>

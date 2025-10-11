@@ -3,7 +3,7 @@
 }
 
 .actionName {
-  @apply text-gray-700 text-sm;
+  @apply text-text-secondary text-sm;
 }
 
 .commonIcon {
@@ -29,5 +29,5 @@ body .btn:hover {
 }
 
 .deleteActionItem:hover .deleteActionItemChild {
-  @apply text-red-500; 
+  @apply text-red-500;
 }

@@ -19,7 +19,7 @@ const Line = ({
   const svgHeight = processedList[processedListLength - 1] + (processedListLength - 1) * 8
 
   return (
-    <svg className='shrink-0 w-6' style={{ height: svgHeight }}>
+    <svg className='w-6 shrink-0' style={{ height: svgHeight }}>
       {
         processedList.map((item, index) => {
           const prevItem = index > 0 ? processedList[index - 1] : 0

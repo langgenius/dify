@@ -1,11 +1,9 @@
-'use client'
-
-import Workflow from '@/app/components/workflow'
+import WorkflowApp from '@/app/components/workflow-app'
 
 const Page = () => {
   return (
-    <div className='w-full h-full overflow-x-auto'>
-      <Workflow />
+    <div className='h-full w-full overflow-x-auto'>
+      <WorkflowApp />
     </div>
   )
 }

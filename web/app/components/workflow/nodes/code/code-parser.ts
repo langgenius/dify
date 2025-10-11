@@ -25,13 +25,13 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
 }
 export const extractReturnType = (code: string, language: CodeLanguage): OutputVar => {
   const codeWithoutComments = code.replace(/\/\*\*[\s\S]*?\*\//, '')
-  console.log(codeWithoutComments)
+  // console.log(codeWithoutComments)
 
   const returnIndex = codeWithoutComments.indexOf('return')
   if (returnIndex === -1)
     return {}
 
-  // returnから始まる部分文字列を取得
+  // return から始まる部分文字列を取得
   const codeAfterReturn = codeWithoutComments.slice(returnIndex)
 
   let bracketCount = 0
@@ -64,7 +64,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
     return {}
 
   const returnContent = codeAfterReturn.slice(startIndex + 1, endIndex - 1)
-  console.log(returnContent)
+  // console.log(returnContent)
 
   const result: OutputVar = {}
 
@@ -72,7 +72,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   const matches = returnContent.matchAll(keyRegex)
 
   for (const match of matches) {
-    console.log(`Found key: "${match[1]}" from match: "${match[0]}"`)
+    // console.log(`Found key: "${match[1]}" from match: "${match[0]}"`)
     const key = match[1]
     result[key] = {
       type: VarType.string,
@@ -80,7 +80,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
     }
   }
 
-  console.log(result)
+  // console.log(result)
 
   return result
 }
