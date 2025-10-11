@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'انتخاب همه',
     deSelectAll: 'همه را انتخاب نکنید',
     config: 'تنظیمات',
+    no: 'نه',
+    deleteConfirmTitle: 'حذف شود؟',
+    yes: 'بله',
+    confirmAction: 'لطفاً اقدام خود را تأیید کنید.',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',

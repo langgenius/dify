@@ -500,7 +500,7 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE.value,
+                        datasource_type=DatasourceType.FILE,
                         upload_file=file_detail,
                         document_model=args["doc_form"],
                     )
@@ -512,7 +512,7 @@ class DatasetIndexingEstimateApi(Resource):
                 credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION.value,
+                        datasource_type=DatasourceType.NOTION,
                         notion_info=NotionInfo.model_validate(
                             {
                                 "credential_id": credential_id,
@@ -529,7 +529,7 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args["info_list"]["website_info_list"]
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE.value,
+                    datasource_type=DatasourceType.WEBSITE,
                     website_info=WebsiteInfo.model_validate(
                         {
                             "provider": website_info_list["provider"],
@@ -786,7 +786,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH]}
             case (
                 VectorType.QDRANT
                 | VectorType.WEAVIATE
@@ -810,12 +810,13 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
                 | VectorType.BAIDU
+                | VectorType.ALIBABACLOUD_MYSQL
             ):
                 return {
                     "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
                     ]
                 }
             case _:
@@ -842,7 +843,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH]}
             case (
                 VectorType.QDRANT
                 | VectorType.WEAVIATE
@@ -864,12 +865,13 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
                 | VectorType.BAIDU
+                | VectorType.ALIBABACLOUD_MYSQL
             ):
                 return {
                     "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
                     ]
                 }
             case _:

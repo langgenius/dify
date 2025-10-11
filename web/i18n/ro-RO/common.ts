@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Deselectați tot',
     selectAll: 'Selectați tot',
     config: 'Configurație',
+    yes: 'Da',
+    deleteConfirmTitle: 'Ștergere?',
+    no: 'Nu',
+    confirmAction: 'Vă rugăm să confirmați acțiunea dumneavoastră.',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',

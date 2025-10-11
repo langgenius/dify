@@ -127,7 +127,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
@@ -178,7 +178,7 @@ class AccountService:
         if not account:
             raise AccountPasswordError("Invalid email or password.")
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if password and invite_token and account.password is None:
@@ -193,8 +193,8 @@ class AccountService:
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
         db.session.commit()
@@ -357,7 +357,7 @@ class AccountService:
     @staticmethod
     def close_account(account: Account):
         """Close account"""
-        account.status = AccountStatus.CLOSED.value
+        account.status = AccountStatus.CLOSED
         db.session.commit()
 
     @staticmethod
@@ -397,8 +397,8 @@ class AccountService:
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             db.session.commit()
 
         access_token = AccountService.get_account_jwt_token(account=account)
@@ -766,7 +766,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
@@ -1030,7 +1030,7 @@ class TenantService:
     @staticmethod
     def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
         """Create tenant member"""
-        if role == TenantAccountRole.OWNER.value:
+        if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
@@ -1315,7 +1315,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
             )
-            account.status = AccountStatus.ACTIVE.value if not status else status.value
+            account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
             if open_id is not None and provider is not None:
@@ -1376,7 +1376,7 @@ class RegisterService:
                 TenantService.create_tenant_member(tenant, account, role)
 
             # Support resend invitation email when the account is pending status
-            if account.status != AccountStatus.PENDING.value:
+            if account.status != AccountStatus.PENDING:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         token = cls.generate_invite_token(tenant, account)

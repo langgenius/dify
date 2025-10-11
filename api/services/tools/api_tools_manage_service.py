@@ -277,7 +277,7 @@ class ApiToolManageService:
         provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get("description", "")
-        provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
+        provider.schema_type_str = ApiProviderSchemaType.OPENAPI
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
         provider.custom_disclaimer = custom_disclaimer
@@ -393,7 +393,7 @@ class ApiToolManageService:
                 icon="",
                 schema=schema,
                 description="",
-                schema_type_str=ApiProviderSchemaType.OPENAPI.value,
+                schema_type_str=ApiProviderSchemaType.OPENAPI,
                 tools_str=json.dumps(jsonable_encoder(tool_bundles)),
                 credentials_str=json.dumps(credentials),
             )
