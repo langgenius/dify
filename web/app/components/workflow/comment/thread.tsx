@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
+import Tooltip from '@/app/components/base/tooltip'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -271,43 +272,67 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         <div className='flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3'>
           <div className='font-semibold uppercase text-text-primary'>{t('workflow.comments.panelTitle')}</div>
           <div className='flex items-center gap-1'>
-            <button
-              type='button'
-              disabled={loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onDelete}
-              aria-label={t('workflow.comments.aria.deleteComment')}
+            <Tooltip
+              popupContent={t('workflow.comments.aria.deleteComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              <RiDeleteBinLine className='h-4 w-4' />
-            </button>
-            <button
-              type='button'
-              disabled={comment.resolved || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onResolve}
-              aria-label={t('workflow.comments.aria.resolveComment')}
+              <button
+                type='button'
+                disabled={loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onDelete}
+                aria-label={t('workflow.comments.aria.deleteComment')}
+              >
+                <RiDeleteBinLine className='h-4 w-4' />
+              </button>
+            </Tooltip>
+            <Tooltip
+              popupContent={t('workflow.comments.aria.resolveComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
-            </button>
+              <button
+                type='button'
+                disabled={comment.resolved || loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onResolve}
+                aria-label={t('workflow.comments.aria.resolveComment')}
+              >
+                {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
+              </button>
+            </Tooltip>
             <Divider type='vertical' className='h-3.5' />
-            <button
-              type='button'
-              disabled={!canGoPrev || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onPrev}
-              aria-label={t('workflow.comments.aria.previousComment')}
+            <Tooltip
+              popupContent={t('workflow.comments.aria.previousComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              <RiArrowUpSLine className='h-4 w-4' />
-            </button>
-            <button
-              type='button'
-              disabled={!canGoNext || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onNext}
-              aria-label={t('workflow.comments.aria.nextComment')}
+              <button
+                type='button'
+                disabled={!canGoPrev || loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onPrev}
+                aria-label={t('workflow.comments.aria.previousComment')}
+              >
+                <RiArrowUpSLine className='h-4 w-4' />
+              </button>
+            </Tooltip>
+            <Tooltip
+              popupContent={t('workflow.comments.aria.nextComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              <RiArrowDownSLine className='h-4 w-4' />
-            </button>
+              <button
+                type='button'
+                disabled={!canGoNext || loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onNext}
+                aria-label={t('workflow.comments.aria.nextComment')}
+              >
+                <RiArrowDownSLine className='h-4 w-4' />
+              </button>
+            </Tooltip>
             <button
               type='button'
               className='flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
