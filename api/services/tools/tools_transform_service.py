@@ -152,7 +152,8 @@ class ToolTransformService:
 
             if decrypt_credentials:
                 credentials = db_provider.credentials
-                assert db_provider.tenant_id
+                if not db_provider.tenant_id:
+                    raise ValueError(f"tenant_id is missing for BuiltinToolProvider with id {db_provider.id}")
                 # init tool configuration
                 encrypter, _ = create_provider_encrypter(
                     tenant_id=db_provider.tenant_id,
