@@ -27,7 +27,7 @@ class WeaviateConfig(BaseSettings):
         default=100,
     )
 
-    WEAVIATE_TOKENIZATION: Optional[str] = Field(
+    WEAVIATE_TOKENIZATION: str | None = Field(
         description="Tokenization for Weaviate",
         default=None,
     )
