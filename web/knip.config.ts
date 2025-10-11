@@ -58,6 +58,8 @@ const config: KnipConfig = {
     'app/**/loading.tsx!',
     'app/**/error.tsx!',
     'app/**/not-found.tsx!',
+    'app/**/template.tsx!',
+    'app/**/default.tsx!',
 
     // Core configuration files
     'middleware.ts!',
