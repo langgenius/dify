@@ -5,12 +5,12 @@ type SimpleDetail = Pick<PluginDetail, 'plugin_id' | 'declaration'> & { provider
 
 type Shape = {
   detail: SimpleDetail | undefined
-  setDetail: (detail: SimpleDetail) => void
+  setDetail: (detail?: SimpleDetail) => void
 }
 
 export const usePluginStore = create<Shape>(set => ({
   detail: undefined,
-  setDetail: (detail: SimpleDetail) => set({ detail }),
+  setDetail: (detail?: SimpleDetail) => set({ detail }),
 }))
 
 type ShapeSubscription = {

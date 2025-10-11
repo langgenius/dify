@@ -84,13 +84,8 @@ export const TriggerEventsList = () => {
   const language = getLanguage(locale)
   const detail = usePluginStore(state => state.detail)
   const events = detail?.declaration.trigger?.events || []
-  const providerKey = useMemo(() => {
-    if (!detail?.plugin_id || !detail?.declaration?.name)
-      return ''
-    return `${detail.plugin_id}/${detail.declaration.name}`
-  }, [detail?.plugin_id, detail?.declaration?.name])
 
-  const { data: providerInfo } = useTriggerProviderInfo(providerKey, !!providerKey)
+  const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
 
   const collection = useMemo<ToolWithProvider | undefined>(() => {
     if (!detail || !providerInfo)

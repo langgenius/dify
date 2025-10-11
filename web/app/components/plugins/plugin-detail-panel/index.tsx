@@ -33,13 +33,11 @@ const PluginDetailPanel: FC<Props> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    if (detail) {
-      setDetail({
-        plugin_id: detail.plugin_id,
-        provider: `${detail.plugin_id}/${detail.declaration.name}`,
-        declaration: detail.declaration,
-      })
-    }
+    setDetail(!detail ? undefined : {
+      plugin_id: detail.plugin_id,
+      provider: `${detail.plugin_id}/${detail.declaration.name}`,
+      declaration: detail.declaration,
+    })
   }, [detail])
 
   if (!detail)
