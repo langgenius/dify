@@ -205,8 +205,12 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     const isNewComment = comment.id !== previousCommentIdRef.current
     const hasNewReply = replies.length > previousReplyCountRef.current
 
-    if (isNewComment || hasNewReply)
-      container.scrollTop = container.scrollHeight
+    if (isNewComment || hasNewReply) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
 
     previousCommentIdRef.current = comment.id
     previousReplyCountRef.current = replies.length
