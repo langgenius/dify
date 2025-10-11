@@ -1,3 +1,4 @@
+from flask import request
 from flask_restx import Resource
 
 from controllers.console import api
@@ -12,8 +13,11 @@ class BannerApi(Resource):
     @explore_banner_enabled
     def get(self):
         """Get banner list."""
+        language = request.args.get("language", "en-US")
+
         banners = (
-            db.session.query(ExporleBanner).where(ExporleBanner.status == "enabled").order_by(ExporleBanner.sort).all()
+            db.session.query(ExporleBanner).where(ExporleBanner.status == "enabled", 
+                ExporleBanner.language == language).order_by(ExporleBanner.sort).all()
         )
 
         # Convert banners to serializable format

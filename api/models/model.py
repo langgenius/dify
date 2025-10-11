@@ -636,6 +636,7 @@ class ExporleBanner(Base):
     sort = mapped_column(sa.Integer, nullable=False)
     status = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"))
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
 
 
 class OAuthProviderApp(Base):
