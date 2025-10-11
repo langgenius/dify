@@ -1522,7 +1522,12 @@ def transform_datasource_credentials():
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
                         auth_count += 1
                         if not firecrawl_tenant_credential.credentials:
-                            click.echo(click.style(f"Skipping firecrawl credential for tenant {tenant_id} due to missing credentials.", fg="yellow"))
+                            click.echo(
+                                click.style(
+                                    f"Skipping firecrawl credential for tenant {tenant_id} due to missing credentials.",
+                                    fg="yellow",
+                                )
+                            )
                             continue
                         # get credential api key
                         credentials_json = json.loads(firecrawl_tenant_credential.credentials)
@@ -1580,7 +1585,12 @@ def transform_datasource_credentials():
                     for jina_tenant_credential in jina_tenant_credentials:
                         auth_count += 1
                         if not jina_tenant_credential.credentials:
-                            click.echo(click.style(f"Skipping jina credential for tenant {tenant_id} due to missing credentials.", fg="yellow"))
+                            click.echo(
+                                click.style(
+                                    f"Skipping jina credential for tenant {tenant_id} due to missing credentials.",
+                                    fg="yellow",
+                                )
+                            )
                             continue
                         # get credential api key
                         credentials_json = json.loads(jina_tenant_credential.credentials)
