@@ -70,9 +70,9 @@ class AppImportApi(Resource):
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED.value:
+        if status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING.value:
+        elif status == ImportStatus.PENDING:
             return result.model_dump(mode="json"), 202
         return result.model_dump(mode="json"), 200
 
@@ -97,7 +97,7 @@ class AppImportConfirmApi(Resource):
             session.commit()
 
         # Return appropriate status code based on result
-        if result.status == ImportStatus.FAILED.value:
+        if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
         return result.model_dump(mode="json"), 200
 

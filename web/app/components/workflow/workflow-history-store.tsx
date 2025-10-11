@@ -3,7 +3,7 @@ import { type StoreApi, create } from 'zustand'
 import { type TemporalState, temporal } from 'zundo'
 import isDeepEqual from 'fast-deep-equal'
 import type { Edge, Node } from './types'
-import type { WorkflowHistoryEvent } from './hooks'
+import type { WorkflowHistoryEventT } from './hooks'
 import { noop } from 'lodash-es'
 
 export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: noop })
@@ -98,7 +98,7 @@ function createStore({
 export type WorkflowHistoryStore = {
   nodes: Node[]
   edges: Edge[]
-  workflowHistoryEvent: WorkflowHistoryEvent | undefined
+  workflowHistoryEvent: WorkflowHistoryEventT | undefined
   workflowHistoryEventMeta?: WorkflowHistoryEventMeta
 }
 

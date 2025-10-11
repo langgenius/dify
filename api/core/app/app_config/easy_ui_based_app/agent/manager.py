@@ -40,7 +40,7 @@ class AgentConfigManager:
                         "credential_id": tool.get("credential_id", None),
                     }
 
-                    agent_tools.append(AgentToolEntity(**agent_tool_properties))
+                    agent_tools.append(AgentToolEntity.model_validate(agent_tool_properties))
 
             if "strategy" in config["agent_mode"] and config["agent_mode"]["strategy"] not in {
                 "react_router",
