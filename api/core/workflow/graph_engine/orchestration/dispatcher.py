@@ -76,22 +76,24 @@ class Dispatcher:
         """Main dispatcher loop."""
         try:
             while not self._stop_event.is_set():
-                # Check for commands
+                # Check for commands and control signals
                 self._execution_coordinator.check_commands()
-
-                # Check for scaling
                 self._execution_coordinator.check_scaling()
+
+                self._execution_coordinator.handle_pause_if_needed()
+                self._execution_coordinator.handle_abort_if_needed()
+                if self._execution_coordinator.is_execution_complete() or self._execution_coordinator.is_paused:
+                    break
 
                 # Process events
                 try:
                     event = self._event_queue.get(timeout=0.1)
-                    # Route to the event handler
-                    self._event_handler.dispatch(event)
-                    self._event_queue.task_done()
                 except queue.Empty:
-                    # Check if execution is complete
-                    if self._execution_coordinator.is_execution_complete():
-                        break
+                    continue
+
+                # Route to the event handler
+                self._event_handler.dispatch(event)
+                self._event_queue.task_done()
 
         except Exception as e:
             logger.exception("Dispatcher error")

@@ -231,6 +231,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "queue_manager": queue_manager,
                 "context": context,
                 "variable_loader": variable_loader,
+                "workflow_execution_repository": workflow_execution_repository,
+                "workflow_node_execution_repository": workflow_node_execution_repository,
             },
         )
 
@@ -244,8 +246,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
             stream=streaming,
         )
@@ -424,6 +424,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -465,6 +467,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 variable_loader=variable_loader,
                 workflow=workflow,
                 system_user_id=system_user_id,
+                workflow_execution_repository=workflow_execution_repository,
+                workflow_node_execution_repository=workflow_node_execution_repository,
             )
 
             try:
@@ -493,8 +497,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -514,8 +516,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
             stream=stream,
         )

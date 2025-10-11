@@ -18,6 +18,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
+from core.workflow.runtime import GraphRuntimeState
 from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ class AppQueueManager:
         q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
+        self._graph_runtime_state: GraphRuntimeState | None = None
 
     def listen(self):
         """
@@ -104,6 +106,16 @@ class AppQueueManager:
         :return:
         """
         self.publish(QueueErrorEvent(error=e), pub_from)
+
+    @property
+    def graph_runtime_state(self) -> GraphRuntimeState | None:
+        """Retrieve the attached graph runtime state, if available."""
+        return self._graph_runtime_state
+
+    @graph_runtime_state.setter
+    def graph_runtime_state(self, graph_runtime_state: GraphRuntimeState | None) -> None:
+        """Attach the live graph runtime state reference for downstream consumers."""
+        self._graph_runtime_state = graph_runtime_state
 
     def publish(self, event: AppQueueEvent, pub_from: PublishFrom):
         """

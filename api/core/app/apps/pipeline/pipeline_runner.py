@@ -11,11 +11,14 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import WorkflowType
 from core.workflow.graph import Graph
+from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -40,6 +43,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -56,6 +61,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self.workflow_thread_pool_id = workflow_thread_pool_id
         self._workflow = workflow
         self._sys_user_id = system_user_id
+        self._workflow_execution_repository = workflow_execution_repository
+        self._workflow_node_execution_repository = workflow_node_execution_repository
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
@@ -162,6 +169,23 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph_runtime_state=graph_runtime_state,
             variable_pool=variable_pool,
         )
+
+        self._queue_manager.graph_runtime_state = graph_runtime_state
+
+        persistence_layer = WorkflowPersistenceLayer(
+            application_generate_entity=self.application_generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=workflow.id,
+                workflow_type=WorkflowType(workflow.type),
+                version=workflow.version,
+                graph_data=workflow.graph_dict,
+            ),
+            workflow_execution_repository=self._workflow_execution_repository,
+            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            trace_manager=self.application_generate_entity.trace_manager,
+        )
+
+        workflow_entry.graph_engine.layer(persistence_layer)
 
         generator = workflow_entry.run()
 

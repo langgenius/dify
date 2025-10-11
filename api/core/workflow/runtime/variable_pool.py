@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from typing import Annotated, Any, Union, cast
 
 from pydantic import BaseModel, Field
@@ -234,6 +235,20 @@ class VariablePool(BaseModel):
         if isinstance(segment, FileSegment):
             return segment
         return None
+
+    def get_by_prefix(self, prefix: str, /) -> Mapping[str, object]:
+        """Return a copy of all variables stored under the given node prefix."""
+
+        nodes = self.variable_dictionary.get(prefix)
+        if not nodes:
+            return {}
+
+        result: dict[str, object] = {}
+        for key, variable in nodes.items():
+            value = variable.value
+            result[key] = deepcopy(value)
+
+        return result
 
     def _add_system_variables(self, system_variable: SystemVariable):
         sys_var_mapping = system_variable.to_dict()

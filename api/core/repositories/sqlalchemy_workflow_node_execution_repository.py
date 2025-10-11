@@ -104,7 +104,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # Initialize in-memory cache for node executions
-        # Key: node_execution_id, Value: WorkflowNodeExecution (DB model)
         self._node_execution_cache: dict[str, WorkflowNodeExecutionModel] = {}
 
         # Initialize FileService for handling offloaded data
@@ -332,17 +331,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Args:
             execution: The NodeExecution domain entity to persist
         """
-        # NOTE: As per the implementation of `WorkflowCycleManager`,
-        # the `save` method is invoked multiple times during the node's execution lifecycle, including:
-        #
-        # - When the node starts execution
-        # - When the node retries execution
-        # - When the node completes execution (either successfully or with failure)
-        #
-        # Only the final invocation will have `inputs` and `outputs` populated.
-        #
-        # This simplifies the logic for saving offloaded variables but introduces a tight coupling
-        # between this module and `WorkflowCycleManager`.
+        # NOTE: The workflow engine triggers `save` multiple times for a single node execution:
+        # when the node starts, any time it retries, and once more when it reaches a terminal state.
+        # Only the final call contains the complete inputs and outputs payloads, so earlier invocations
+        # must tolerate missing data without attempting to offload variables.
 
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.domain.graph_execution import GraphExecution
@@ -16,6 +15,7 @@ from core.workflow.graph_engine.response_coordinator.coordinator import Response
 from core.workflow.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import RetryConfig
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
 class _StubEdgeProcessor:

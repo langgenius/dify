@@ -26,3 +26,10 @@ class GraphRunAbortedEvent(BaseGraphEvent):
 
     reason: str | None = Field(default=None, description="reason for abort")
     outputs: dict[str, object] = Field(default_factory=dict, description="partial outputs if any")
+
+
+class GraphRunPausedEvent(BaseGraphEvent):
+    """Event emitted when a graph run is paused by user command."""
+
+    reason: str | None = Field(default=None, description="reason for pause")
+    outputs: dict[str, object] = Field(default_factory=dict, description="partial outputs if any")

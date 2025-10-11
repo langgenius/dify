@@ -5,7 +5,7 @@ from typing import Literal, NamedTuple
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayBooleanSegment, BooleanSegment
-from core.workflow.entities import VariablePool
+from core.workflow.runtime import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
 
