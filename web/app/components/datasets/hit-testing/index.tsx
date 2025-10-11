@@ -49,7 +49,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
+  const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // Initialize records as empty array
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
   const [submitLoading, setSubmitLoading] = useState(false)
   const [text, setText] = useState('')
