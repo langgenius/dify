@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 def is_secure() -> bool:
     return dify_config.CONSOLE_WEB_URL.startswith("https") and dify_config.CONSOLE_API_URL.startswith("https")
 
+
 def _try_extract_from_header(request: Request) -> str | None:
     """
     Try to extract access token from header
