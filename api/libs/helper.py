@@ -127,8 +127,11 @@ def alias_name(value: str):
         raise ValueError("Alias name is required")
 
     value = value.strip()
-    if len(value) > 255:
-        raise ValueError("Alias name cannot exceed 255 characters")
+    if len(value) > 100:
+        raise ValueError("Alias name cannot exceed 100 characters")
+
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", value):
+        raise ValueError("Alias name can only contain letters, numbers, hyphens, underscores, and dots")
 
     return value
 
