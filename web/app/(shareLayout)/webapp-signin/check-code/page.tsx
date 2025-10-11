@@ -10,8 +10,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
-import { setAccessToken } from '@/app/components/share/utils'
-import { fetchAccessToken } from '@/service/share'
+import { setWebAppAccessToken } from '@/service/webapp-auth'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -62,9 +61,8 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
-        localStorage.setItem('webapp_access_token', ret.data.access_token)
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: ret.data.access_token })
-        await setAccessToken(appCode, tokenResp.access_token)
+        setWebAppAccessToken(ret.data.access_token)
+        // let main page handle passport exchange.
         router.replace(decodeURIComponent(redirectUrl))
       }
     }
