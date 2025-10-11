@@ -12,6 +12,7 @@ from constants import (
     COOKIE_NAME_PASSPORT,
     COOKIE_NAME_REFRESH_TOKEN,
     HEADER_NAME_CSRF_TOKEN,
+    HEADER_NAME_PASSPORT,
 )
 from libs.passport import PassportService
 
@@ -79,9 +80,12 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
         return request.cookies.get(COOKIE_NAME_PASSPORT + "-" + app_code)
 
+    def _try_extract_passport_token_from_header(request: Request) -> str | None:
+        return request.headers.get(HEADER_NAME_PASSPORT)
+
     ret = (
         _try_extract_passport_token_from_cookie(request)
-        or _try_extract_from_header(request)
+        or _try_extract_passport_token_from_header(request)
         or _try_extract_passport_token_from_query(request)
     )
     return ret
@@ -111,23 +115,6 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
     )
 
 
-def set_passport_to_cookie(app_code: str, request: Request, response: Response, token: str):
-    samesite = "None"
-    if not is_secure():
-        # since None is only supported in secure env, we use lax for basic usability
-        # for embedded chat ui, use https instead.
-        samesite = "Lax"
-    response.set_cookie(
-        COOKIE_NAME_PASSPORT + "-" + app_code,
-        value=token,
-        httponly=True,
-        secure=is_secure(),
-        samesite=samesite,
-        max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
-        path="/",
-    )
-
-
 def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
         COOKIE_NAME_CSRF_TOKEN,
@@ -150,19 +137,6 @@ def _clear_cookie(request: Request, response: Response, cookie_name: str, samesi
         httponly=True,
         samesite=samesite,
     )
-
-
-def _clear_cookie_begin_with(request: Request, response: Response, prefix: str, samesite: str = "Lax"):
-    for cookie_name in request.cookies:
-        if cookie_name.startswith(prefix):
-            _clear_cookie(request, response, cookie_name, samesite)
-
-
-def clear_passport_from_cookie(app_code: str | None, request: Request, response: Response, samesite: str = "Lax"):
-    if not app_code:
-        _clear_cookie_begin_with(request, response, COOKIE_NAME_PASSPORT, samesite)
-        return
-    _clear_cookie(request, response, COOKIE_NAME_PASSPORT + "-" + app_code, samesite)
 
 
 def clear_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax"):

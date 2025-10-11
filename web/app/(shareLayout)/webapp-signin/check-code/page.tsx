@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
 import { fetchAccessToken } from '@/service/share'
+import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -61,7 +62,10 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
-        await fetchAccessToken({ appCode })
+        setWebAppAccessToken(ret.data.access_token)
+
+        const { access_token } = await fetchAccessToken({ appCode })
+        setWebAppPassport(appCode, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
     }

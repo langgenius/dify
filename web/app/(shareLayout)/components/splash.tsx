@@ -7,9 +7,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
-import { useIsWebAppLogin, useWebAppLogout } from '@/service/use-common'
+import { webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
 import { fetchAccessToken } from '@/service/share'
 import Loading from '@/app/components/base/loading'
+import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -20,6 +21,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   const redirectUrl = searchParams.get('redirect_url')
   const message = searchParams.get('message')
   const code = searchParams.get('code')
+  const tokenFromUrl = searchParams.get('web_sso_token')
   const getSigninUrl = useCallback(() => {
     const params = new URLSearchParams(searchParams)
     params.delete('message')
@@ -27,52 +29,65 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
-  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const backToHome = useCallback(async () => {
-    await webAppLogout()
+    await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout])
+  }, [getSigninUrl, router, shareCode])
 
   const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
-  const { data: isWebAppLoginData, isLoading: isWebAppLoginLoading } = useIsWebAppLogin(needCheckIsLogin, shareCode!)
-  // call login api only to login the user, call fetchAccessToken to login the app
-  const isUserLoggedIn = isWebAppLoginData?.logged_in
-  const isAppLoggedIn = isWebAppLoginData?.app_logged_in
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     if (message) {
       setIsLoading(false)
       return
     }
-    if(needCheckIsLogin && isWebAppLoginLoading)
-      return
+
+    if(tokenFromUrl)
+      setWebAppAccessToken(tokenFromUrl)
+
+    const redirectOrFinish = () => {
+      if (redirectUrl)
+        router.replace(decodeURIComponent(redirectUrl))
+      else
+        setIsLoading(false)
+    }
+
+    const proceedToAuth = () => {
+      setIsLoading(false)
+    }
 
     (async () => {
-      if(isUserLoggedIn && !isAppLoggedIn) {
-        try {
-          await fetchAccessToken({ appCode: shareCode! })
-          if (redirectUrl)
-            router.replace(decodeURIComponent(redirectUrl))
-          else
-            setIsLoading(false)
-        }
-        finally {
-          setIsLoading(false)
-        }
-        // passport exchange finished, return here to avoid extra checks
-        return
-      }
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(needCheckIsLogin, shareCode!)
 
-      // app is logged in from the beginning
-      if ((isAppLoggedIn || webAppAccessMode === AccessMode.PUBLIC)) {
-        if (redirectUrl)
-          router.replace(decodeURIComponent(redirectUrl))
-        else
-          setIsLoading(false)
+      if (userLoggedIn && appLoggedIn) {
+        redirectOrFinish()
+      }
+      else if (!userLoggedIn && !appLoggedIn) {
+        proceedToAuth()
+      }
+      else if (!userLoggedIn && appLoggedIn) {
+        redirectOrFinish()
+      }
+      else if (userLoggedIn && !appLoggedIn) {
+        try {
+          const { access_token } = await fetchAccessToken({ appCode: shareCode! })
+          setWebAppPassport(shareCode!, access_token)
+          redirectOrFinish()
+        }
+        catch (error) {
+          proceedToAuth()
+        }
       }
     })()
-  }, [shareCode, redirectUrl, router, message, webAppAccessMode, needCheckIsLogin, isWebAppLoginLoading, isAppLoggedIn])
+  }, [
+    shareCode,
+    redirectUrl,
+    router,
+    message,
+    webAppAccessMode,
+    needCheckIsLogin,
+    tokenFromUrl])
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>

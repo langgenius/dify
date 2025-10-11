@@ -1,4 +1,4 @@
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import { basePath } from '@/utils/var'
@@ -30,6 +30,7 @@ import type {
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
 import Cookies from 'js-cookie'
+import { getWebAppPassport } from './webapp-auth'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -420,12 +421,14 @@ export const ssePost = async (
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
     headers: new Headers({
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: globalThis.location.pathname.split('/').slice(-1)[0],
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
     }),
   } as RequestInit, fetchOptions)
 

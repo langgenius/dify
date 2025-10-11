@@ -40,7 +40,7 @@ import type { SystemFeatures } from '@/types/feature'
 
 type LoginSuccess = {
   result: 'success'
-  data: { }
+  data: { access_token: string }
 }
 type LoginFail = {
   result: 'fail'

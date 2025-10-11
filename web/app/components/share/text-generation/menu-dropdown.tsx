@@ -20,7 +20,7 @@ import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
 import { AccessMode } from '@/models/access-control'
 import { useWebAppStore } from '@/context/web-app-context'
-import { useWebAppLogout } from '@/service/use-common'
+import { webAppLogout } from '@/service/webapp-auth'
 
 type Props = {
   data?: SiteInfo
@@ -51,11 +51,10 @@ const MenuDropdown: FC<Props> = ({
   }, [setOpen])
 
   const shareCode = useWebAppStore(s => s.shareCode)
-  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const handleLogout = useCallback(async () => {
-    await webAppLogout()
+    await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
-  }, [router, pathname])
+  }, [router, pathname, shareCode])
 
   const [show, setShow] = useState(false)
 

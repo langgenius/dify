@@ -9,7 +9,7 @@ import NormalForm from './normalForm'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
 import { useWebAppStore } from '@/context/web-app-context'
-import { useWebAppLogout } from '@/service/use-common'
+import { webAppLogout } from '@/service/webapp-auth'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -27,12 +27,11 @@ const WebSSOForm: FC = () => {
   }, [redirectUrl])
 
   const shareCode = useWebAppStore(s => s.shareCode)
-  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const backToHome = useCallback(async () => {
-    await webAppLogout()
+    await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout])
+  }, [getSigninUrl, router, shareCode])
 
   if (!redirectUrl) {
     return <div className='flex h-full items-center justify-center'>

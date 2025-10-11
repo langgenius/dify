@@ -12,6 +12,7 @@ import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
 import { fetchAccessToken } from '@/service/share'
+import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -79,7 +80,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
-        await fetchAccessToken({ appCode: appCode! })
+        setWebAppAccessToken(res.data.access_token)
+
+        const { access_token } = await fetchAccessToken({ appCode: appCode! })
+        setWebAppPassport(appCode!, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {

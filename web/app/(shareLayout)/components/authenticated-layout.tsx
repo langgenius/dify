@@ -4,8 +4,8 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useWebAppLogout } from '@/service/use-common'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
+import { webAppLogout } from '@/service/webapp-auth'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -42,12 +42,11 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams, pathname])
 
-  const { mutateAsync: webAppLogout } = useWebAppLogout(shareCode!)
   const backToHome = useCallback(async () => {
-    await webAppLogout()
+    await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout])
+  }, [getSigninUrl, router, shareCode])
 
   if (appInfoError) {
     return <div className='flex h-full items-center justify-center'>

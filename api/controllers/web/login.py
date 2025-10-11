@@ -18,9 +18,7 @@ from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
     clear_access_token_from_cookie,
-    clear_passport_from_cookie,
     extract_access_token,
-    set_access_token_to_cookie,
 )
 from services.account_service import AccountService
 from services.app_service import AppService
@@ -62,7 +60,7 @@ class LoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         response = make_response({"result": "success", "data": {"access_token": token}})
-        set_access_token_to_cookie(request, response, token, samesite="None")
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response
 
 
@@ -124,9 +122,9 @@ class LogoutApi(Resource):
     )
     def post(self):
         response = make_response({"result": "success"})
-        app_code = request.args.get("app_code")
+        # enterprise SSO sets same site to None in https deployment
+        # so we need to logout by calling api
         clear_access_token_from_cookie(request, response, samesite="None")
-        clear_passport_from_cookie(app_code, request, response, samesite="None")
         return response
 
 
@@ -160,7 +158,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
         response = make_response({"result": "success", "data": {"access_token": token}})
-        set_access_token_to_cookie(request, response, token, samesite="None")
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response
 
 
@@ -205,5 +203,5 @@ class EmailCodeLoginApi(Resource):
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])
         response = make_response({"result": "success", "data": {"access_token": token}})
-        set_access_token_to_cookie(request, response, token, samesite="None")
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response
