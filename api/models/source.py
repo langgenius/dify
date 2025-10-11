@@ -1,4 +1,4 @@
-import json
+from dataclasses import asdict
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -63,13 +63,4 @@ class DataSourceApiKeyAuthBinding(TypeBase):
     disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"), default=False)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "category": self.category,
-            "provider": self.provider,
-            "credentials": json.loads(self.credentials),
-            "created_at": self.created_at.timestamp(),
-            "updated_at": self.updated_at.timestamp(),
-            "disabled": self.disabled,
-        }
+        return asdict(self)

@@ -22,7 +22,7 @@ class SavedMessage(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_by_role: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'end_user'::character varying"), default="end_user"
+        String(255), nullable=False, server_default=sa.text("'end_user'::character varying")
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -49,7 +49,9 @@ class PinnedConversation(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
     created_by_role: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'end_user'::character varying"), default="end_user"
+        String(255),
+        nullable=False,
+        server_default=sa.text("'end_user'::character varying"),
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

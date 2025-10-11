@@ -13,7 +13,7 @@ from core.helper import encrypter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from models.base import Base, TypeBase
+from models.base import TypeBase
 
 from .engine import db
 from .model import Account, App, Tenant
@@ -54,9 +54,9 @@ class ToolOAuthTenantClient(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), init=False)
     # oauth params of the tool provider
-    encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False, init=False)
 
     @property
     def oauth_params(self) -> dict[str, Any]:
@@ -77,10 +77,12 @@ class BuiltinToolProvider(TypeBase):
     # id of the tool provider
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     name: Mapped[str] = mapped_column(
-        String(256), nullable=False, server_default=sa.text("'API KEY 1'::character varying"), default="API KEY 1"
+        String(256),
+        nullable=False,
+        server_default=sa.text("'API KEY 1'::character varying"),
     )
     # id of the tenant
-    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     # who created this tool provider
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
@@ -106,6 +108,7 @@ class BuiltinToolProvider(TypeBase):
 
     @property
     def credentials(self) -> dict[str, Any]:
+        assert self.encrypted_credentials
         return cast(dict[str, Any], json.loads(self.encrypted_credentials))
 
 
@@ -123,7 +126,9 @@ class ApiToolProvider(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     # name of the api provider
     name: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'API KEY 1'::character varying"), default="API KEY 1"
+        String(255),
+        nullable=False,
+        server_default=sa.text("'API KEY 1'::character varying"),
     )
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -149,7 +154,11 @@ class ApiToolProvider(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
@@ -215,13 +224,13 @@ class WorkflowToolProvider(TypeBase):
     # name of the workflow provider
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     # label of the workflow provider
-    label: Mapped[str] = mapped_column(String(255), nullable=False, server_default="", default="")
+    label: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # app id of the workflow provider
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # version of the workflow provider
-    version: Mapped[str] = mapped_column(String(255), nullable=False, server_default="", default="")
+    version: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -289,7 +298,7 @@ class MCPToolProvider(TypeBase):
     # hash of server_url for uniqueness check
     server_url_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     # icon of the mcp provider
-    icon: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    icon: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who created this tool
@@ -327,6 +336,7 @@ class MCPToolProvider(TypeBase):
     @property
     def credentials(self) -> dict[str, Any]:
         try:
+            assert self.encrypted_credentials
             return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
         except Exception:
             return {}
@@ -341,6 +351,7 @@ class MCPToolProvider(TypeBase):
     def provider_icon(self) -> Mapping[str, str] | str:
         from core.file import helpers as file_helpers
 
+        assert self.icon
         try:
             return json.loads(self.icon)
         except json.JSONDecodeError:
@@ -465,22 +476,22 @@ class ToolModelInvoke(TypeBase):
     # invoke response
     model_response: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
-    prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
-    answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
+    prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
+    answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_unit_price: Mapped[float] = mapped_column(sa.Numeric(10, 4), nullable=False)
-    answer_price_unit: Mapped[float] = mapped_column(
-        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"), default=0.001
-    )
-    provider_response_latency: Mapped[float] = mapped_column(
-        sa.Float, nullable=False, server_default=sa.text("0"), default=0.0
-    )
-    total_price: Mapped[float | None] = mapped_column(sa.Numeric(10, 7), default=None)
+    answer_price_unit: Mapped[float] = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
+    total_price: Mapped[float | None] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
 
@@ -512,7 +523,11 @@ class ToolConversationVariables(TypeBase):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
