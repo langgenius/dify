@@ -240,11 +240,14 @@ def broadcast_online_users(workflow_id):
 def handle_collaboration_event(sid, data):
     """
     Handle general collaboration events, include:
-    1. mouseMove
-    2. varsAndFeaturesUpdate
-    3. syncRequest(ask leader to update graph)
-    4. appStateUpdate
-    5. mcpServerUpdate
+    1. mouse_move
+    2. vars_and_features_update
+    3. sync_request (ask leader to update graph)
+    4. app_state_update
+    5. mcp_server_update
+    6. workflow_update
+    7. comments_update
+    8. node_panel_presence
 
     """
     mapping = redis_client.get(f"ws_sid_map:{sid}")

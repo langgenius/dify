@@ -97,7 +97,7 @@ function MCPServiceCard({
     const socket = webSocketClient.getSocket(appId)
     if (socket) {
       socket.emit('collaboration_event', {
-        type: 'mcpServerUpdate',
+        type: 'mcp_server_update',
         data: {
           action: 'codeRegenerated',
           timestamp: Date.now(),
@@ -139,7 +139,7 @@ function MCPServiceCard({
     const socket = webSocketClient.getSocket(appId)
     if (socket) {
       socket.emit('collaboration_event', {
-        type: 'mcpServerUpdate',
+        type: 'mcp_server_update',
         data: {
           action: 'statusChanged',
           status: state ? 'active' : 'inactive',

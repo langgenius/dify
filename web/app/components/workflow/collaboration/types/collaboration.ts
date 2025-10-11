@@ -50,7 +50,7 @@ export type GraphSyncData = {
 }
 
 export type CollaborationUpdate = {
-  type: 'mouseMove' | 'graphUpdate' | 'userJoin' | 'userLeave'
+  type: 'mouse_move' | 'vars_and_features_update' | 'sync_request' | 'app_state_update' | 'mcp_server_update' | 'workflow_update' | 'comments_update' | 'node_panel_presence'
   userId: string
   data: any
   timestamp: number
