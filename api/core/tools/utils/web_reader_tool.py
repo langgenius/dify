@@ -6,8 +6,8 @@ from typing import Any, cast
 from urllib.parse import unquote
 
 import chardet
-import cloudscraper  # type: ignore
-from readabilipy import simple_json_from_html_string  # type: ignore
+import cloudscraper
+from readabilipy import simple_json_from_html_string
 
 from core.helper import ssrf_proxy
 from core.rag.extractor import extract_processor
@@ -63,8 +63,8 @@ def get_url(url: str, user_agent: str | None = None) -> str:
         response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
-        scraper.perform_request = ssrf_proxy.make_request  # type: ignore
-        response = scraper.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))  # type: ignore
+        scraper.perform_request = ssrf_proxy.make_request
+        response = scraper.get(url, headers=headers, timeout=(120, 300))
 
     if response.status_code != 200:
         return f"URL returned status code {response.status_code}."

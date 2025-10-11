@@ -88,7 +88,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)  # type: ignore
+        return cls.compact_retrieve_response(query, all_documents)
 
     @classmethod
     def external_retrieve(
