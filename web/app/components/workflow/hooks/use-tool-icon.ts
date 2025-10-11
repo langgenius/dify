@@ -29,7 +29,7 @@ export const useToolIcon = (data?: Node['data']) => {
       return ''
     if (data.type === BlockEnum.TriggerPlugin) {
       const targetTools = triggerPlugins || []
-      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
+      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.plugin_id))?.icon
     }
     if (data.type === BlockEnum.Tool) {
       // eslint-disable-next-line sonarjs/no-dead-store
