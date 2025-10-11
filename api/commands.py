@@ -231,16 +231,16 @@ def migrate_annotation_vector_database():
                     embedding_model=dataset_collection_binding.model_name,
                     collection_binding_id=dataset_collection_binding.id,
                     name=app.name,
-                    provider='custom',
-                    permission='only_me',
-                    data_source_type='NOTION',
-                    created_by=app.created_by
+                    provider="custom",
+                    permission="only_me",
+                    data_source_type="NOTION",
+                    created_by=app.created_by,
                 )
                 documents = []
                 if annotations:
                     for annotation in annotations:
                         document = Document(
-                            page_content=annotation.question or '',
+                            page_content=annotation.question or "",
                             metadata={"annotation_id": annotation.id, "app_id": app.id, "doc_id": annotation.id},
                         )
                         documents.append(document)
@@ -621,7 +621,7 @@ def old_metadata_migration():
                                 dataset_id=document.dataset_id,
                                 metadata_id=dataset_metadata.id,
                                 document_id=document.id,
-                                created_by=document.created_by
+                                created_by=document.created_by,
                             )
                             db.session.add(dataset_metadata_binding)
                         else:
@@ -640,7 +640,7 @@ def old_metadata_migration():
                                     dataset_id=document.dataset_id,
                                     metadata_id=dataset_metadata.id,
                                     document_id=document.id,
-                                    created_by=document.created_by
+                                    created_by=document.created_by,
                                 )
                                 db.session.add(dataset_metadata_binding)
                         db.session.commit()
@@ -1488,7 +1488,7 @@ def transform_datasource_credentials():
                             encrypted_credentials=new_credentials,
                             name=f"Auth {auth_count}",
                             avatar_url=workspace_icon or "default",
-                            is_default=False
+                            is_default=False,
                         )
                         db.session.add(datasource_provider)
                         deal_notion_count += 1

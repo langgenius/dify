@@ -327,7 +327,9 @@ class AppModelConfig(TypeBase):
     agent_mode: Mapped[str | None] = mapped_column(sa.Text)
     sensitive_word_avoidance: Mapped[str | None] = mapped_column(sa.Text)
     retriever_resource: Mapped[str | None] = mapped_column(sa.Text)
-    prompt_type: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'simple'::character varying"))
+    prompt_type: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'simple'::character varying")
+    )
     chat_prompt_config: Mapped[str | None] = mapped_column(sa.Text)
     completion_prompt_config: Mapped[str | None] = mapped_column(sa.Text)
     dataset_configs: Mapped[str | None] = mapped_column(sa.Text)
@@ -532,7 +534,9 @@ class RecommendedApp(TypeBase):
         sa.Index("recommended_app_is_listed_idx", "is_listed", "language"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     description: Mapped[str] = mapped_column(sa.JSON, nullable=False)
     copyright: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -542,9 +546,18 @@ class RecommendedApp(TypeBase):
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True, init=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, init=False)
-    language: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    language: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        server_default=sa.text("'en-US'::character varying"),
+        default="'en-US'::character varying",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def app(self) -> App | None:
@@ -566,9 +579,11 @@ class InstalledApp(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def app(self) -> App | None:
@@ -604,7 +619,9 @@ class OAuthProviderApp(TypeBase):
         nullable=False,
         server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
     )
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"))
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
+    )
 
 
 class Conversation(TypeBase):
@@ -642,15 +659,19 @@ class Conversation(TypeBase):
     read_at: Mapped[datetime | None] = mapped_column(sa.DateTime)
     read_account_id: Mapped[str | None] = mapped_column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
-    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
 
     @property
     def inputs(self) -> dict[str, Any]:
@@ -923,7 +944,9 @@ class Message(TypeBase):
     message: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
     message_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     message_unit_price: Mapped[float] = mapped_column(sa.Numeric(10, 4), nullable=False)
-    message_price_unit: Mapped[float] = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    message_price_unit: Mapped[float] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     answer: Mapped[str] = mapped_column(sa.Text, nullable=False)
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_unit_price: Mapped[float] = mapped_column(sa.Numeric(10, 4), nullable=False)
@@ -932,7 +955,9 @@ class Message(TypeBase):
     provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_price: Mapped[float | None] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
+    )
     error: Mapped[str | None] = mapped_column(sa.Text)
     message_metadata: Mapped[str | None] = mapped_column(sa.Text)
     invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1513,7 +1538,9 @@ class AppMCPServer(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     server_code: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
+    )
     parameters: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1559,7 +1586,9 @@ class Site(TypeBase):
     customize_domain: Mapped[str | None] = mapped_column(String(255))
     customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
+    )
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -1731,7 +1760,9 @@ class MessageChain(TypeBase):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     output: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp()
+    )
 
 
 class MessageAgentThought(TypeBase):
@@ -1757,7 +1788,9 @@ class MessageAgentThought(TypeBase):
     message: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     message_unit_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True)
-    message_price_unit: Mapped[float] = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    message_price_unit: Mapped[float] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     message_files: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     answer: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
@@ -1769,7 +1802,9 @@ class MessageAgentThought(TypeBase):
     latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp()
+    )
 
     @property
     def files(self) -> list[Any]:
