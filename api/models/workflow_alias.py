@@ -47,9 +47,7 @@ class WorkflowNameAlias(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    @property
-    def created_by_account(self):
-        return db.session.query(Account).where(Account.id == self.created_by).first()
+    created_by_account: Mapped["Account"] = relationship(foreign_keys=[created_by])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
