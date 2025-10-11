@@ -49,14 +49,10 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
         {`${t(`${i18nPrefix}.class`)} ${index + 1}`}
       </div>
       {shouldShowTooltip
-        ? (
-            <Tooltip
+        ? ( <Tooltip
               popupContent={
                 <div className='max-w-[300px] break-words'>
-                  <ReadonlyInputWithSelectVar
-                    value={topic.name}
-                    nodeId={nodeId}
-                  />
+                  <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId}/>
                 </div>
               }
             >
