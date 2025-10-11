@@ -3,6 +3,7 @@ import logging
 from collections.abc import Generator
 from typing import Any
 
+from flask import has_request_context
 from sqlalchemy import select
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
@@ -18,8 +19,10 @@ from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs.login import current_user
-from models.model import App
+from models import Account
+from models.model import App, EndUser
 from models.workflow import Workflow
+from services.account_service import AccountService
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +82,27 @@ class WorkflowTool(Tool):
         generator = WorkflowAppGenerator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
-        assert current_user is not None
+
+        # Resolve the actual user object in both HTTP and worker contexts.
+        # Note: `current_user` is a LocalProxy. Never compare it with None directly.
+        # - With a request context, dereference the proxy;
+        # - Without a request context (e.g., Celery/worker), load by `user_id`.
+        user: Account | EndUser | None
+        if has_request_context():
+            try:
+                user = getattr(current_user, "_get_current_object", lambda: current_user)()
+            except Exception:
+                user = None
+        else:
+            user = AccountService.load_user(user_id)
+
+        if user is None:
+            raise ToolInvokeError("User not found")
+
         result = generator.generate(
             app_model=app,
             workflow=workflow,
-            user=current_user,
+            user=user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
             streaming=False,
