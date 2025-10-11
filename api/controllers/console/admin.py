@@ -230,16 +230,32 @@ class InsertExploreBanner(Resource):
     @only_edition_cloud
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("title", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("description", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("img-src", type=str, required=True, nullable=False, location="json")
+
+        parser.add_argument("language", type=str, required=True, nullable=False, location="json")
         parser.add_argument("link", type=str, required=True, nullable=False, location="json")
         parser.add_argument("sort", type=int, required=True, nullable=False, location="json")
 
         args = parser.parse_args()
 
+        content = {
+            "category": args["category"],
+            "title": args["title"],
+            "description": args["description"],
+            "img-src": args["img-src"],
+        }
+
+        if not args["language"]:
+            args["language"] = "en-US"
+
         banner = ExporleBanner(
-            content=args["content"],
+            content=content,
             link=args["link"],
             sort=args["sort"],
+            language=args["language"],
         )
         db.session.add(banner)
         db.session.commit()
