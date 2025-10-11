@@ -220,6 +220,8 @@ class WorkflowToolProvider(Base):
     description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # parameter configuration
     parameter_configuration: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="[]")
+    # output schema
+    output_schema: Mapped[str] = mapped_column(sa.Text, nullable=True, server_default="{}")
     # privacy policy
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=True, server_default="")
 

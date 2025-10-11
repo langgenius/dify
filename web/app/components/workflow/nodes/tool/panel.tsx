@@ -121,6 +121,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
             />
             {outputSchema.map((outputItem) => {
               const schemaType = getMatchedSchemaType(outputItem.value, schemaTypeDefinitions)
+              // TODO object type
               return (
                 <div key={outputItem.name}>
                   {outputItem.value?.type === 'object' ? (
