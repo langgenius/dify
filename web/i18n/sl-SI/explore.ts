@@ -16,8 +16,6 @@ const translation = {
     },
   },
   apps: {
-    title: 'Razišči aplikacije Dify',
-    description: 'Uporabite te predloge aplikacij takoj ali prilagodite svoje aplikacije na podlagi predlog.',
     allCategories: 'Priporočeno',
   },
   appCard: {

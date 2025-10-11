@@ -16,8 +16,6 @@ const translation = {
     },
   },
   apps: {
-    title: 'Apps von Dify erkunden',
-    description: 'Nutzen Sie diese Vorlagen-Apps sofort oder passen Sie Ihre eigenen Apps basierend auf den Vorlagen an.',
     allCategories: 'Alle Kategorien',
   },
   appCard: {

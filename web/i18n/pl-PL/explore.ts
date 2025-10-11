@@ -16,9 +16,6 @@ const translation = {
     },
   },
   apps: {
-    title: 'Odkrywaj aplikacje stworzone przez Dify',
-    description:
-      'Wykorzystaj te aplikacje szablonowe natychmiast lub dostosuj własne aplikacje na podstawie szablonów.',
     allCategories: 'Polecane',
   },
   appCard: {

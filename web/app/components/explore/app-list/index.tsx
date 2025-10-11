@@ -143,32 +143,27 @@ const Apps = ({
     <div className={cn(
       'flex h-full flex-col border-l-[0.5px] border-divider-regular',
     )}>
-
-      <div className='shrink-0 px-12 pt-6'>
-        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
-      </div>
-
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
       )}>
-        <>
-          <Category
-            list={categories}
-            value={currCategory}
-            onChange={setCurrCategory}
-            allCategoriesEn={allCategoriesEn}
-          />
-        </>
+        <div className={'system-xl-semibold grow truncate text-text-primary'}>{t('explore.apps.title')}</div>
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px]'
+          wrapperClassName='w-[200px] shrink-0'
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
         />
+      </div>
 
+      <div className='mt-2 px-12'>
+        <Category
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
+        />
       </div>
 
       <div className={cn(

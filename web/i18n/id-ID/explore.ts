@@ -16,8 +16,6 @@ const translation = {
   },
   apps: {
     allCategories: 'Direkomendasikan',
-    description: 'Gunakan aplikasi templat ini secara instan atau sesuaikan aplikasi Anda sendiri berdasarkan templat.',
-    title: 'Jelajahi Aplikasi',
   },
   appCard: {
     customize: 'Menyesuaikan',

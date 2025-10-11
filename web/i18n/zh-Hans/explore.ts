@@ -16,8 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: '探索应用',
-    description: '使用这些模板应用程序，或根据模板自定义您自己的应用程序。',
+    title: '试用 Dify 精选示例应用，为您的业务寻找 AI 解决方案',
     allCategories: '推荐',
   },
   appCard: {

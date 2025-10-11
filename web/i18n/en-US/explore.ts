@@ -16,8 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explore Apps',
-    description: 'Use these template apps instantly or customize your own apps based on the templates.',
+    title: 'Try Dify\'s curated apps to find AI solutions for your business',
     allCategories: 'Recommended',
   },
   appCard: {

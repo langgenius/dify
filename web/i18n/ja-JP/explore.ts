@@ -16,8 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'アプリを探索',
-    description: 'これらのテンプレートアプリを即座に使用するか、テンプレートに基づいて独自のアプリをカスタマイズしてください。',
+    title: 'Difyの厳選アプリを試して、ビジネス向けのAIソリューションを見つけましょう',
     allCategories: '推奨',
   },
   appCard: {
