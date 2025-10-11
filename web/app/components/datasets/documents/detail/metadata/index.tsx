@@ -66,7 +66,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
           ? displayedValue
           : inputType === 'select'
             ? <SimpleSelect
-              onSelect={({ value }) => onUpdate && onUpdate(value as string)}
+              onSelect={({ value }) => onUpdate?.(value as string)}
               items={selectOptions}
               defaultValue={value}
               className={s.select}
@@ -75,7 +75,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
             />
             : inputType === 'textarea'
               ? <AutoHeightTextarea
-                onChange={e => onUpdate && onUpdate(e.target.value)}
+                onChange={e => onUpdate?.(e.target.value)}
                 value={value}
                 className={s.textArea}
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
@@ -107,7 +107,7 @@ const IconButton: FC<{
     <Tooltip
       popupContent={metadataMap[type].text}
     >
-      <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
+      <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}
           className={`group-hover:bg-primary-600 ${isChecked ? '!bg-primary-600' : ''}`}

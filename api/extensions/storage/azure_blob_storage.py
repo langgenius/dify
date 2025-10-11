@@ -27,24 +27,38 @@ class AzureBlobStorage(BaseStorage):
             self.credential = None
 
     def save(self, filename, data):
+        if not self.bucket_name:
+            return
+
         client = self._sync_client()
         blob_container = client.get_container_client(container=self.bucket_name)
         blob_container.upload_blob(filename, data)
 
     def load_once(self, filename: str) -> bytes:
+        if not self.bucket_name:
+            raise FileNotFoundError("Azure bucket name is not configured.")
+
         client = self._sync_client()
         blob = client.get_container_client(container=self.bucket_name)
         blob = blob.get_blob_client(blob=filename)
-        data: bytes = blob.download_blob().readall()
+        data = blob.download_blob().readall()
+        if not isinstance(data, bytes):
+            raise TypeError(f"Expected bytes from blob.readall(), got {type(data).__name__}")
         return data
 
     def load_stream(self, filename: str) -> Generator:
+        if not self.bucket_name:
+            raise FileNotFoundError("Azure bucket name is not configured.")
+
         client = self._sync_client()
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
         blob_data = blob.download_blob()
         yield from blob_data.chunks()
 
     def download(self, filename, target_filepath):
+        if not self.bucket_name:
+            return
+
         client = self._sync_client()
 
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
@@ -53,12 +67,18 @@ class AzureBlobStorage(BaseStorage):
             blob_data.readinto(my_blob)
 
     def exists(self, filename):
+        if not self.bucket_name:
+            return False
+
         client = self._sync_client()
 
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
         return blob.exists()
 
     def delete(self, filename):
+        if not self.bucket_name:
+            return
+
         client = self._sync_client()
 
         blob_container = client.get_container_client(container=self.bucket_name)

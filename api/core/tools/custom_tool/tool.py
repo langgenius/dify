@@ -290,6 +290,7 @@ class ApiTool(Tool):
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
+            max_retries=0,
             params=params,
             headers=headers,
             cookies=cookies,

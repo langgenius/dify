@@ -165,6 +165,8 @@ class HttpRequestNode(Node):
             body_type = typed_node_data.body.type
             data = typed_node_data.body.data
             match body_type:
+                case "none":
+                    pass
                 case "binary":
                     if len(data) != 1:
                         raise RequestBodyError("invalid body data, should have only one item")
@@ -232,7 +234,7 @@ class HttpRequestNode(Node):
 
         mapping = {
             "tool_file_id": tool_file.id,
-            "transfer_method": FileTransferMethod.TOOL_FILE.value,
+            "transfer_method": FileTransferMethod.TOOL_FILE,
         }
         file = file_factory.build_from_mapping(
             mapping=mapping,

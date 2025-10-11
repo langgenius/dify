@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.http import parse_options_header
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
@@ -44,7 +45,7 @@ def build_from_message_file(
     }
 
     # Set the correct ID field based on transfer method
-    if message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+    if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
         mapping["tool_file_id"] = message_file.upload_file_id
     else:
         mapping["upload_file_id"] = message_file.upload_file_id
@@ -247,6 +248,25 @@ def _build_from_remote_url(
     )
 
 
+def _extract_filename(url_path: str, content_disposition: str | None) -> str | None:
+    filename = None
+    # Try to extract from Content-Disposition header first
+    if content_disposition:
+        _, params = parse_options_header(content_disposition)
+        # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
+        filename = params.get("filename*") or params.get("filename")
+    # Fallback to URL path if no filename from header
+    if not filename:
+        filename = os.path.basename(url_path)
+    return filename or None
+
+
+def _guess_mime_type(filename: str) -> str:
+    """Guess MIME type from filename, returning empty string if None."""
+    guessed_mime, _ = mimetypes.guess_type(filename)
+    return guessed_mime or ""
+
+
 def _get_remote_file_info(url: str):
     file_size = -1
     parsed_url = urllib.parse.urlparse(url)
@@ -254,22 +274,25 @@ def _get_remote_file_info(url: str):
     filename = os.path.basename(url_path)
 
     # Initialize mime_type from filename as fallback
-    mime_type, _ = mimetypes.guess_type(filename)
-    if mime_type is None:
-        mime_type = ""
+    mime_type = _guess_mime_type(filename)
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
-        if content_disposition := resp.headers.get("Content-Disposition"):
-            filename = str(content_disposition.split("filename=")[-1].strip('"'))
-            # Re-guess mime_type from updated filename
-            mime_type, _ = mimetypes.guess_type(filename)
-            if mime_type is None:
-                mime_type = ""
+        content_disposition = resp.headers.get("Content-Disposition")
+        extracted_filename = _extract_filename(url_path, content_disposition)
+        if extracted_filename:
+            filename = extracted_filename
+            mime_type = _guess_mime_type(filename)
         file_size = int(resp.headers.get("Content-Length", file_size))
         # Fallback to Content-Type header if mime_type is still empty
         if not mime_type:
             mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
+
+    if not filename:
+        extension = mimetypes.guess_extension(mime_type) or ".bin"
+        filename = f"{uuid.uuid4().hex}{extension}"
+        if not mime_type:
+            mime_type = _guess_mime_type(filename)
 
     return mime_type, filename, file_size
 
@@ -345,9 +368,7 @@ def _build_from_datasource_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("datasource_file_id"),
