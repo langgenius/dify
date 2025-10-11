@@ -105,10 +105,10 @@ class RedisChannel:
             command_type = CommandType(command_type_value)
 
             if command_type == CommandType.ABORT:
-                return AbortCommand(**data)
+                return AbortCommand.model_validate(data)
             else:
                 # For other command types, use base class
-                return GraphEngineCommand(**data)
+                return GraphEngineCommand.model_validate(data)
 
         except (ValueError, TypeError):
             return None

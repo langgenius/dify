@@ -646,7 +646,7 @@ class DatasourceProviderService:
                     name=db_provider_name,
                     provider=provider_name,
                     plugin_id=plugin_id,
-                    auth_type=CredentialType.API_KEY.value,
+                    auth_type=CredentialType.API_KEY,
                     encrypted_credentials=credentials,
                 )
                 session.add(datasource_provider)
@@ -674,7 +674,7 @@ class DatasourceProviderService:
 
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type.value == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.name)
 
         return secret_input_form_variables
