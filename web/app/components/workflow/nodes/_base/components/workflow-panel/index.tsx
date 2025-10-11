@@ -270,8 +270,6 @@ const BasePanel: FC<BasePanelProps> = ({
   // For trigger plugins, get basic provider info
   const { data: triggerProviders = [] } = useAllTriggerPlugins()
   const currentTriggerProvider = useMemo(() => {
-    console.log('data', data)
-    console.log('triggerProviders', triggerProviders)
     if (!data.plugin_id || !data.provider_name)
       return undefined
     return triggerProviders.find(p => p.plugin_id === data.plugin_id && p.name === data.provider_name)
