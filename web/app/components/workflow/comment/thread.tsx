@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
@@ -197,21 +198,21 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const previousReplyCountRef = useRef(replies.length)
   const previousCommentIdRef = useRef(comment.id)
 
-  // Close dropdown when clicking outside
+  // Close dropdown when scrolling
   useEffect(() => {
-    if (!activeReplyMenuId)
+    const container = messageListRef.current
+    if (!container || !activeReplyMenuId)
       return
 
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-reply-menu]'))
-        setActiveReplyMenuId(null)
+    const handleScroll = () => {
+      setActiveReplyMenuId(null)
     }
 
-    document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
   }, [activeReplyMenuId])
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     const container = messageListRef.current
     if (!container)
@@ -333,44 +334,56 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
                   >
                     {isOwnReply && !isReplyEditing && (
-                      <div
-                        className={cn(
-                          'absolute right-1 top-1 gap-1',
-                          activeReplyMenuId === reply.id ? 'flex' : 'hidden group-hover:flex',
-                        )}
-                        data-reply-menu
+                      <PortalToFollowElem
+                        placement='bottom-end'
+                        open={activeReplyMenuId === reply.id}
+                        onOpenChange={(open) => {
+                          if (!open)
+                            setActiveReplyMenuId(null)
+                        }}
                       >
-                        <button
-                          type='button'
-                          className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
-                          }}
-                          aria-label={t('workflow.comments.aria.replyActions')}
+                        <div
+                          className={cn(
+                            'absolute right-1 top-1 gap-1',
+                            activeReplyMenuId === reply.id ? 'flex' : 'hidden group-hover:flex',
+                          )}
+                          data-reply-menu
                         >
-                          <RiMoreFill className='h-4 w-4' />
-                        </button>
-                        {activeReplyMenuId === reply.id && (
-                          <div className='absolute right-0 top-7 z-50 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
+                          <PortalToFollowElemTrigger asChild>
                             <button
-                              className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                              onClick={() => handleStartEdit(reply)}
-                            >
-                              {t('workflow.comments.actions.editReply')}
-                            </button>
-                            <button
-                              className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                              onClick={() => {
-                                setActiveReplyMenuId(null)
-                                onReplyDelete?.(reply.id)
+                              type='button'
+                              className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
                               }}
+                              aria-label={t('workflow.comments.aria.replyActions')}
                             >
-                              {t('workflow.comments.actions.deleteReply')}
+                              <RiMoreFill className='h-4 w-4' />
                             </button>
-                          </div>
-                        )}
-                      </div>
+                          </PortalToFollowElemTrigger>
+                        </div>
+                        <PortalToFollowElemContent
+                          className='z-[100] w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'
+                          data-reply-menu
+                        >
+                          <button
+                            className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                            onClick={() => handleStartEdit(reply)}
+                          >
+                            {t('workflow.comments.actions.editReply')}
+                          </button>
+                          <button
+                            className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                            onClick={() => {
+                              setActiveReplyMenuId(null)
+                              onReplyDelete?.(reply.id)
+                            }}
+                          >
+                            {t('workflow.comments.actions.deleteReply')}
+                          </button>
+                        </PortalToFollowElemContent>
+                      </PortalToFollowElem>
                     )}
                     {isReplyEditing ? (
                       <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
