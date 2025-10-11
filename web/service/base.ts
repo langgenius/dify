@@ -344,11 +344,14 @@ type UploadResponse = {
 
 export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<UploadResponse> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
     },
   }
   const mergedOptions = {
