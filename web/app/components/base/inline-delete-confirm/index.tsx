@@ -37,7 +37,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
         'flex h-16 w-[120px] flex-col',
         'rounded-xl border-0 border-t-[0.5px] border-components-panel-border',
         'bg-background-overlay-backdrop backdrop-blur-[10px]',
-        'shadow-[0px_4px_6px_-2px_var(--color-shadow-shadow-1),0px_12px_16px_-4px_var(--color-shadow-shadow-5)]',
+        'shadow-lg',
         'p-0 pt-1',
         className,
       )}
