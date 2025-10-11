@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from 'ahooks'
 import {
@@ -22,6 +22,7 @@ import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import QuotaPanel from './provider-added-card/quota-panel'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   searchText: string
@@ -32,6 +33,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
+  const { mutateCurrentWorkspace, isValidatingCurrentWorkspace } = useAppContext()
   const { data: textGenerationDefaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
@@ -40,6 +42,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { modelProviders: providers } = useProviderContext()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
+
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []
     const notConfiguredProviders: ModelProvider[] = []
@@ -82,6 +85,10 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
+  useEffect(() => {
+    mutateCurrentWorkspace()
+  }, [mutateCurrentWorkspace])
+
   return (
     <div className='relative -mt-2 pt-1'>
       <div className={cn('mb-2 flex items-center')}>
@@ -107,7 +114,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
-      <QuotaPanel providers={providers}/>
+      <QuotaPanel providers={providers} isLoading={isValidatingCurrentWorkspace}/>
       {!filteredConfiguredProviders?.length && (
         <div className='mb-2 rounded-[10px] bg-workflow-process-bg p-4'>
           <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
