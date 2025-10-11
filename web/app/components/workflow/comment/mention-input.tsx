@@ -1,7 +1,15 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -42,6 +50,10 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const { t } = useTranslation()
   const appId = params.appId as string
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const highlightContentRef = useRef<HTMLDivElement>(null)
+  const actionContainerRef = useRef<HTMLDivElement | null>(null)
+  const actionRightRef = useRef<HTMLDivElement | null>(null)
+  const baseTextareaHeightRef = useRef<number | null>(null)
 
   const workflowStore = useWorkflowStore()
   const mentionUsersFromStore = useStore(state => (
@@ -55,6 +67,11 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
   const resolvedPlaceholder = placeholder ?? t('workflow.comments.placeholder.add')
+  const BASE_PADDING = 4
+  const [shouldReserveButtonGap, setShouldReserveButtonGap] = useState(isEditing)
+  const [shouldReserveHorizontalSpace, setShouldReserveHorizontalSpace] = useState(() => !isEditing)
+  const [paddingRight, setPaddingRight] = useState(() => BASE_PADDING + (isEditing ? 0 : 48))
+  const [paddingBottom, setPaddingBottom] = useState(() => BASE_PADDING + (isEditing ? 32 : 0))
 
   const mentionNameList = useMemo(() => {
     const names = mentionUsers
@@ -153,6 +170,104 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   useEffect(() => {
     loadMentionableUsers()
   }, [loadMentionableUsers])
+  const syncHighlightScroll = useCallback(() => {
+    const textarea = textareaRef.current
+    const highlightContent = highlightContentRef.current
+    if (!textarea || !highlightContent)
+      return
+
+    const { scrollTop, scrollLeft } = textarea
+    highlightContent.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
+  }, [])
+
+  const evaluateContentLayout = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea)
+      return
+
+    const extraBottom = Math.max(0, paddingBottom - BASE_PADDING)
+    const effectiveClientHeight = textarea.clientHeight - extraBottom
+
+    if (baseTextareaHeightRef.current === null)
+      baseTextareaHeightRef.current = effectiveClientHeight
+
+    const baseHeight = baseTextareaHeightRef.current ?? effectiveClientHeight
+    const hasMultiline = effectiveClientHeight > baseHeight + 1
+    const shouldReserveVertical = isEditing ? true : hasMultiline
+
+    setShouldReserveButtonGap(shouldReserveVertical)
+    setShouldReserveHorizontalSpace(!hasMultiline)
+  }, [isEditing, paddingBottom])
+
+  const updateLayoutPadding = useCallback(() => {
+    const actionEl = actionContainerRef.current
+    const rect = actionEl?.getBoundingClientRect()
+    const rightRect = actionRightRef.current?.getBoundingClientRect()
+    let actionWidth = 0
+    if (rightRect)
+      actionWidth = Math.ceil(rightRect.width)
+    else if (rect)
+      actionWidth = Math.ceil(rect.width)
+
+    const actionHeight = rect ? Math.ceil(rect.height) : 0
+    const fallbackWidth = Math.max(0, paddingRight - BASE_PADDING)
+    const fallbackHeight = Math.max(0, paddingBottom - BASE_PADDING)
+    const effectiveWidth = actionWidth > 0 ? actionWidth : fallbackWidth
+    const effectiveHeight = actionHeight > 0 ? actionHeight : fallbackHeight
+
+    const nextRight = BASE_PADDING + (shouldReserveHorizontalSpace ? effectiveWidth : 0)
+    const nextBottom = BASE_PADDING + (shouldReserveButtonGap ? effectiveHeight : 0)
+
+    setPaddingRight(prev => (prev === nextRight ? prev : nextRight))
+    setPaddingBottom(prev => (prev === nextBottom ? prev : nextBottom))
+  }, [shouldReserveButtonGap, shouldReserveHorizontalSpace, paddingRight, paddingBottom])
+
+  const setActionContainerRef = useCallback((node: HTMLDivElement | null) => {
+    actionContainerRef.current = node
+
+    if (!isEditing)
+      actionRightRef.current = node
+    else if (!node)
+      actionRightRef.current = null
+
+    if (node && typeof window !== 'undefined')
+      window.requestAnimationFrame(() => updateLayoutPadding())
+  }, [isEditing, updateLayoutPadding])
+
+  const setActionRightRef = useCallback((node: HTMLDivElement | null) => {
+    actionRightRef.current = node
+
+    if (node && typeof window !== 'undefined')
+      window.requestAnimationFrame(() => updateLayoutPadding())
+  }, [updateLayoutPadding])
+
+  useLayoutEffect(() => {
+    syncHighlightScroll()
+  }, [value, syncHighlightScroll])
+
+  useLayoutEffect(() => {
+    evaluateContentLayout()
+  }, [value, evaluateContentLayout])
+
+  useLayoutEffect(() => {
+    updateLayoutPadding()
+  }, [updateLayoutPadding, isEditing, shouldReserveButtonGap])
+
+  useEffect(() => {
+    const handleResize = () => {
+      evaluateContentLayout()
+      updateLayoutPadding()
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [evaluateContentLayout, updateLayoutPadding])
+
+  useEffect(() => {
+    baseTextareaHeightRef.current = null
+    evaluateContentLayout()
+    setShouldReserveHorizontalSpace(!isEditing)
+  }, [isEditing, evaluateContentLayout])
 
   const filteredMentionUsers = useMemo(() => {
     if (!mentionQuery) return mentionUsers
@@ -198,8 +313,15 @@ export const MentionInput: FC<MentionInputProps> = memo(({
       else {
         setShowMentionDropdown(false)
       }
+
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          evaluateContentLayout()
+          syncHighlightScroll()
+        })
+      }
     }, 0)
-  }, [onChange])
+  }, [onChange, evaluateContentLayout, syncHighlightScroll])
 
   const handleMentionButtonClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -222,8 +344,15 @@ export const MentionInput: FC<MentionInputProps> = memo(({
       setMentionPosition(cursorPosition)
       setShowMentionDropdown(true)
       setSelectedMentionIndex(0)
+
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          evaluateContentLayout()
+          syncHighlightScroll()
+        })
+      }
     }, 0)
-  }, [value, onChange])
+  }, [value, onChange, evaluateContentLayout, syncHighlightScroll])
 
   const insertMention = useCallback((user: UserProfile) => {
     const textarea = textareaRef.current
@@ -247,8 +376,14 @@ export const MentionInput: FC<MentionInputProps> = memo(({
       const newCursorPos = mentionPosition + extraSpace + user.name.length + 2 // (space) + @ + name + space
       textarea.setSelectionRange(newCursorPos, newCursorPos)
       textarea.focus()
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          evaluateContentLayout()
+          syncHighlightScroll()
+        })
+      }
     }, 0)
-  }, [value, mentionPosition, onChange, mentionedUserIds])
+  }, [value, mentionPosition, onChange, mentionedUserIds, evaluateContentLayout, syncHighlightScroll])
 
   const handleSubmit = useCallback((e?: React.MouseEvent) => {
     if (e) {
@@ -330,9 +465,16 @@ export const MentionInput: FC<MentionInputProps> = memo(({
             'pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre-wrap break-words p-1 leading-6',
             'body-lg-regular text-text-primary',
           )}
+          style={{ paddingRight, paddingBottom }}
         >
-          {highlightedValue}
-          {'​'}
+          <div
+            ref={highlightContentRef}
+            className="min-h-full"
+            style={{ willChange: 'transform' }}
+          >
+            {highlightedValue}
+            {'​'}
+          </div>
         </div>
         <Textarea
           ref={textareaRef}
@@ -340,6 +482,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
             'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none',
             'placeholder:text-text-tertiary',
           )}
+          style={{ paddingRight, paddingBottom }}
           placeholder={resolvedPlaceholder}
           autoFocus={autoFocus}
           minRows={isEditing ? 4 : 1}
@@ -348,10 +491,14 @@ export const MentionInput: FC<MentionInputProps> = memo(({
           disabled={disabled || loading}
           onChange={e => handleContentChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onScroll={syncHighlightScroll}
         />
 
         {!isEditing && (
-          <div className="absolute bottom-0 right-1 z-20 flex items-end gap-1">
+          <div
+            ref={setActionContainerRef}
+            className="absolute bottom-0 right-1 z-20 flex items-end gap-1"
+          >
             <div
               className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
@@ -370,14 +517,20 @@ export const MentionInput: FC<MentionInputProps> = memo(({
         )}
 
         {isEditing && (
-          <div className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between">
+          <div
+            ref={setActionContainerRef}
+            className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between"
+          >
             <div
               className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
               <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
             </div>
-            <div className='flex items-center gap-2'>
+            <div
+              ref={setActionRightRef}
+              className='flex items-center gap-2'
+            >
               <Button variant='secondary' size='small' onClick={onCancel} disabled={loading}>
                 {t('common.operation.cancel')}
               </Button>
