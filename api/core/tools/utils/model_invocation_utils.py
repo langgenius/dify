@@ -119,10 +119,10 @@ class ModelInvocationUtils:
             model_response="",
             prompt_tokens=prompt_tokens,
             answer_tokens=0,
-            answer_unit_price=Decimal(0),
-            answer_price_unit=Decimal(0),
+            answer_unit_price=Decimal(),
+            answer_price_unit=Decimal(),
             provider_response_latency=0,
-            total_price=0,
+            total_price=Decimal(),
             currency="USD",
         )
 
