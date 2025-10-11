@@ -18,7 +18,6 @@
     "opentelemetry.instrumentation.redis",
     "opentelemetry.instrumentation.httpx"
   ],
-  "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
   "reportUnknownArgumentType": "hint",
   "reportUnknownVariableType": "hint",
