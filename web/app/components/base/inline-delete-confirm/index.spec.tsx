@@ -10,7 +10,7 @@ jest.mock('react-i18next', () => ({
         'common.operation.deleteConfirmTitle': 'Delete?',
         'common.operation.yes': 'Yes',
         'common.operation.no': 'No',
-        'common.operation.confirmAction': 'Please confirm your action. Press ESC to cancel or Enter to confirm.',
+        'common.operation.confirmAction': 'Please confirm your action.',
       }
       return translations[key] || key
     },
@@ -54,13 +54,13 @@ describe('InlineDeleteConfirm', () => {
     test('should have proper ARIA attributes', () => {
       const onConfirm = jest.fn()
       const onCancel = jest.fn()
-      const { getByRole } = render(
+      const { container } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
 
-      const dialog = getByRole('alertdialog')
-      expect(dialog).toHaveAttribute('aria-labelledby', 'inline-delete-confirm-title')
-      expect(dialog).toHaveAttribute('aria-describedby', 'inline-delete-confirm-description')
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper).toHaveAttribute('aria-labelledby', 'inline-delete-confirm-title')
+      expect(wrapper).toHaveAttribute('aria-describedby', 'inline-delete-confirm-description')
     })
   })
 
@@ -137,7 +137,7 @@ describe('InlineDeleteConfirm', () => {
     test('should apply custom className to wrapper', () => {
       const onConfirm = jest.fn()
       const onCancel = jest.fn()
-      const { getByRole } = render(
+      const { container } = render(
         <InlineDeleteConfirm
           className="custom-class"
           onConfirm={onConfirm}
@@ -145,7 +145,8 @@ describe('InlineDeleteConfirm', () => {
         />,
       )
 
-      expect(getByRole('alertdialog').className).toContain('custom-class')
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper.className).toContain('custom-class')
     })
   })
 })

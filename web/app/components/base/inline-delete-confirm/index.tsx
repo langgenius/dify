@@ -25,13 +25,12 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const titleText = title || t('common.operation.deleteConfirmTitle') || 'Delete?'
-  const confirmTxt = confirmText || t('common.operation.yes') || 'Yes'
-  const cancelTxt = cancelText || t('common.operation.no') || 'No'
+  const titleText = title || t('common.operation.deleteConfirmTitle', 'Delete?')
+  const confirmTxt = confirmText || t('common.operation.yes', 'Yes')
+  const cancelTxt = cancelText || t('common.operation.no', 'No')
 
   return (
     <div
-      role="alertdialog"
       aria-labelledby="inline-delete-confirm-title"
       aria-describedby="inline-delete-confirm-description"
       className={cn(
@@ -80,7 +79,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       </div>
 
       <span id="inline-delete-confirm-description" className="sr-only">
-        {t('common.operation.confirmAction') || 'Please confirm your action.'}
+        {t('common.operation.confirmAction', 'Please confirm your action.')}
       </span>
     </div>
   )
