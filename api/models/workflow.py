@@ -35,7 +35,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base
+from .base import TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
 from .types import EnumText, StringUUID
@@ -83,7 +83,7 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class Workflow(Base):
+class Workflow(TypeBase):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -127,13 +127,13 @@ class Workflow(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[str] = mapped_column(String(255), nullable=False)
-    marked_name: Mapped[str] = mapped_column(default="", server_default="")
-    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID)
+    marked_name: Mapped[str] = mapped_column(default="", server_default="")
+    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -483,7 +483,7 @@ class Workflow(Base):
         return str(d)
 
 
-class WorkflowRun(Base):
+class WorkflowRun(TypeBase):
     """
     Workflow Run
 
@@ -538,16 +538,16 @@ class WorkflowRun(Base):
     graph: Mapped[str | None] = mapped_column(sa.Text)
     inputs: Mapped[str | None] = mapped_column(sa.Text)
     status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
-    outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}")
     error: Mapped[str | None] = mapped_column(sa.Text)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
-    total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
-    exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+    outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}")
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default=sa.text("0"))
+    total_steps: Mapped[int] = mapped_column(sa.Integer, default=0, server_default=sa.text("0"), nullable=True)
+    exceptions_count: Mapped[int] = mapped_column(sa.Integer, default=0, server_default=sa.text("0"), nullable=True)
 
     @property
     def created_by_account(self):
@@ -645,7 +645,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
-class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offload_data` preloaded in most cases.
+class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `offload_data` preloaded in most cases.
     """
     Workflow Node Execution
 
@@ -757,9 +757,9 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     error: Mapped[str | None] = mapped_column(sa.Text)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
     execution_metadata: Mapped[str | None] = mapped_column(sa.Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     created_by_role: Mapped[str] = mapped_column(String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
@@ -891,7 +891,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         return self._load_full_content(session, offload.file_id, storage)
 
 
-class WorkflowNodeExecutionOffload(Base):
+class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -916,10 +916,6 @@ class WorkflowNodeExecutionOffload(Base):
         server_default=sa.text("uuidv7()"),
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
-    )
-
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
 
@@ -928,6 +924,10 @@ class WorkflowNodeExecutionOffload(Base):
     # and should be considered for garbage collection.
     node_execution_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type_: Mapped[ExecutionOffLoadType] = mapped_column(EnumText(ExecutionOffLoadType), name="type", nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
+    )
 
     # Design Decision: Combining inputs and outputs into a single object was considered to reduce I/O
     # operations. However, due to the current design of `WorkflowNodeExecutionRepository`,
@@ -986,7 +986,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
-class WorkflowAppLog(Base):
+class WorkflowAppLog(TypeBase):
     """
     Workflow App execution log, excluding workflow debugging records.
 
@@ -1026,7 +1026,7 @@ class WorkflowAppLog(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_run_id: Mapped[str] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1062,7 +1062,7 @@ class WorkflowAppLog(Base):
         }
 
 
-class ConversationVariable(Base):
+class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
@@ -1105,7 +1105,7 @@ def _naive_utc_datetime():
     return naive_utc_now()
 
 
-class WorkflowDraftVariable(Base):
+class WorkflowDraftVariable(TypeBase):
     """`WorkflowDraftVariable` record variables and outputs generated during
     debugging workflow or chatflow.
 
@@ -1135,6 +1135,8 @@ class WorkflowDraftVariable(Base):
     # id is the unique identifier of a draft variable.
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
 
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -1151,7 +1153,6 @@ class WorkflowDraftVariable(Base):
     )
 
     # "`app_id` maps to the `id` field in the `model.App` model."
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # `last_edited_at` records when the value of a given draft variable
     # is edited.
@@ -1494,7 +1495,7 @@ class WorkflowDraftVariable(Base):
         return self.last_edited_at is not None
 
 
-class WorkflowDraftVariableFile(Base):
+class WorkflowDraftVariableFile(TypeBase):
     """Stores metadata about files associated with large workflow draft variables.
 
     This model acts as an intermediary between WorkflowDraftVariable and UploadFile,

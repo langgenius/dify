@@ -4,33 +4,33 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from .base import TypeBase
 from .engine import db
 from .types import StringUUID
 
 
-class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
+class DatasourceOauthParamConfig(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "datasource_oauth_params"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="datasource_oauth_config_pkey"),
         db.UniqueConstraint("plugin_id", "provider", name="datasource_oauth_config_datasource_id_provider_idx"),
     )
 
-    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     plugin_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
     system_credentials: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
 
-class DatasourceProvider(Base):
+class DatasourceProvider(TypeBase):
     __tablename__ = "datasource_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="datasource_provider_pkey"),
         db.UniqueConstraint("tenant_id", "plugin_id", "provider", "name", name="datasource_provider_unique_name"),
         db.Index("datasource_provider_auth_type_provider_idx", "tenant_id", "plugin_id", "provider"),
     )
-    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(db.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -44,15 +44,15 @@ class DatasourceProvider(Base):
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, default=datetime.now)
 
 
-class DatasourceOauthTenantParamConfig(Base):
+class DatasourceOauthTenantParamConfig(TypeBase):
     __tablename__ = "datasource_oauth_tenant_params"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="datasource_oauth_tenant_config_pkey"),
         db.UniqueConstraint("tenant_id", "plugin_id", "provider", name="datasource_oauth_tenant_config_unique"),
     )
 
-    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(db.String(255), nullable=False)
     client_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
