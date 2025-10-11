@@ -13,6 +13,7 @@ from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.entities.entities import EventEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
 from extensions.ext_database import db
@@ -150,7 +151,7 @@ class TriggerService:
                     trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
                     plugin_id=subscription.provider_id,
                     endpoint_id=subscription.endpoint_id,
-                    inputs=invoke_response.variables.variables,
+                    inputs=invoke_response.variables,
                 )
 
                 # Trigger async workflow
@@ -191,8 +192,17 @@ class TriggerService:
         if not controller:
             return None
 
+        encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+            tenant_id=subscription.tenant_id,
+            controller=controller,
+            subscription=subscription,
+        )
         dispatch_response: TriggerDispatchResponse = controller.dispatch(
-            user_id=subscription.user_id, request=request, subscription=subscription.to_entity()
+            user_id=subscription.user_id,
+            request=request,
+            subscription=subscription.to_entity(),
+            credentials=encrypter.decrypt(subscription.credentials),
+            credential_type=CredentialType.of(subscription.credential_type),
         )
 
         if dispatch_response.events:

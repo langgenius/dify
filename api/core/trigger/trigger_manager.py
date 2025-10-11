@@ -180,6 +180,7 @@ class TriggerManager:
         endpoint: str,
         parameters: Mapping[str, Any],
         credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> Subscription:
         """
         Subscribe to a trigger (e.g., register webhook)
@@ -190,11 +191,18 @@ class TriggerManager:
         :param endpoint: Subscription endpoint
         :param parameters: Subscription parameters
         :param credentials: Provider credentials
+        :param credential_type: Credential type
         :return: Subscription result
         """
-        provider = cls.get_trigger_provider(tenant_id, provider_id)
+        provider: PluginTriggerProviderController = cls.get_trigger_provider(
+            tenant_id=tenant_id, provider_id=provider_id
+        )
         return provider.subscribe_trigger(
-            user_id=user_id, endpoint=endpoint, parameters=parameters, credentials=credentials
+            user_id=user_id,
+            endpoint=endpoint,
+            parameters=parameters,
+            credentials=credentials,
+            credential_type=credential_type,
         )
 
     @classmethod
@@ -205,6 +213,7 @@ class TriggerManager:
         provider_id: TriggerProviderID,
         subscription: Subscription,
         credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> Unsubscription:
         """
         Unsubscribe from a trigger
@@ -214,10 +223,18 @@ class TriggerManager:
         :param provider_id: Provider ID
         :param subscription: Subscription metadata from subscribe operation
         :param credentials: Provider credentials
+        :param credential_type: Credential type
         :return: Unsubscription result
         """
-        provider = cls.get_trigger_provider(tenant_id, provider_id)
-        return provider.unsubscribe_trigger(user_id=user_id, subscription=subscription, credentials=credentials)
+        provider: PluginTriggerProviderController = cls.get_trigger_provider(
+            tenant_id=tenant_id, provider_id=provider_id
+        )
+        return provider.unsubscribe_trigger(
+            user_id=user_id,
+            subscription=subscription,
+            credentials=credentials,
+            credential_type=credential_type,
+        )
 
     @classmethod
     def refresh_trigger(
@@ -226,6 +243,7 @@ class TriggerManager:
         provider_id: TriggerProviderID,
         subscription: Subscription,
         credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> Subscription:
         """
         Refresh a trigger subscription
@@ -234,9 +252,14 @@ class TriggerManager:
         :param provider_id: Provider ID
         :param subscription: Subscription metadata from subscribe operation
         :param credentials: Provider credentials
+        :param credential_type: Credential type
         :return: Refreshed subscription result
         """
-        return cls.get_trigger_provider(tenant_id, provider_id).refresh_trigger(subscription, credentials)
+
+        # TODO you should update the subscription using the return value of the refresh_trigger
+        return cls.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id).refresh_trigger(
+            subscription=subscription, credentials=credentials, credential_type=credential_type
+        )
 
 
 # Export

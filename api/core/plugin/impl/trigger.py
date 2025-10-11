@@ -158,6 +158,8 @@ class PluginTriggerManager(BasePluginClient):
         provider: str,
         subscription: Mapping[str, Any],
         request: Request,
+        credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> TriggerDispatchResponse:
         """
         Dispatch an event to triggers.
@@ -173,6 +175,8 @@ class PluginTriggerManager(BasePluginClient):
                     "data": {
                         "provider": provider_id.provider_name,
                         "subscription": subscription,
+                        "credentials": credentials,
+                        "credential_type": credential_type,
                         "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
                     },
                 },
@@ -197,6 +201,7 @@ class PluginTriggerManager(BasePluginClient):
         user_id: str,
         provider: str,
         credentials: Mapping[str, str],
+        credential_type: CredentialType,
         endpoint: str,
         parameters: Mapping[str, Any],
     ) -> TriggerSubscriptionResponse:
@@ -213,6 +218,7 @@ class PluginTriggerManager(BasePluginClient):
                 "data": {
                     "provider": provider_id.provider_name,
                     "credentials": credentials,
+                    "credential_type": credential_type,
                     "endpoint": endpoint,
                     "parameters": parameters,
                 },
@@ -235,6 +241,7 @@ class PluginTriggerManager(BasePluginClient):
         provider: str,
         subscription: Subscription,
         credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> TriggerSubscriptionResponse:
         """
         Unsubscribe from a trigger.
@@ -250,6 +257,7 @@ class PluginTriggerManager(BasePluginClient):
                     "provider": provider_id.provider_name,
                     "subscription": subscription.model_dump(),
                     "credentials": credentials,
+                    "credential_type": credential_type,
                 },
             },
             headers={
@@ -270,6 +278,7 @@ class PluginTriggerManager(BasePluginClient):
         provider: str,
         subscription: Subscription,
         credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> TriggerSubscriptionResponse:
         """
         Refresh a trigger subscription.
@@ -285,6 +294,7 @@ class PluginTriggerManager(BasePluginClient):
                     "provider": provider_id.provider_name,
                     "subscription": subscription.model_dump(),
                     "credentials": credentials,
+                    "credential_type": credential_type,
                 },
             },
             headers={

@@ -18,6 +18,7 @@ from core.trigger.entities.api_entities import (
     TriggerProviderApiEntity,
     TriggerProviderSubscriptionApiEntity,
 )
+from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
     create_trigger_provider_encrypter_for_properties,
@@ -166,7 +167,7 @@ class TriggerProviderService:
                     )
 
                     # Create provider record
-                    db_provider = TriggerSubscription(
+                    subscription = TriggerSubscription(
                         id=subscription_id or str(uuid.uuid4()),
                         tenant_id=tenant_id,
                         user_id=user_id,
@@ -181,10 +182,10 @@ class TriggerProviderService:
                         expires_at=expires_at,
                     )
 
-                    session.add(db_provider)
+                    session.add(subscription)
                     session.commit()
 
-                    return {"result": "success", "id": str(db_provider.id)}
+                    return {"result": "success", "id": str(subscription.id)}
 
         except Exception as e:
             logger.exception("Failed to add trigger provider")
@@ -228,16 +229,42 @@ class TriggerProviderService:
         :param subscription_id: Subscription instance ID
         :return: Success response
         """
-        db_provider = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
-        if not db_provider:
+        subscription: TriggerSubscription | None = (
+            session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+        )
+        if not subscription:
             raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
+        credential_type: CredentialType = CredentialType.of(subscription.credential_type)
+        is_auto_created: bool = credential_type in [CredentialType.OAUTH2, CredentialType.API_KEY]
+        if is_auto_created:
+            provider_id = TriggerProviderID(subscription.provider_id)
+            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+                tenant_id=tenant_id, provider_id=provider_id
+            )
+            encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+                subscription=subscription,
+            )
+            try:
+                TriggerManager.unsubscribe_trigger(
+                    tenant_id=tenant_id,
+                    user_id=subscription.user_id,
+                    provider_id=provider_id,
+                    subscription=subscription.to_entity(),
+                    credentials=encrypter.decrypt(subscription.credentials),
+                    credential_type=credential_type,
+                )
+            except Exception as e:
+                logger.exception("Error unsubscribing trigger", exc_info=e)
+
         # Clear cache
-        session.delete(db_provider)
+        session.delete(subscription)
         delete_cache_for_subscription(
             tenant_id=tenant_id,
-            provider_id=db_provider.provider_id,
-            subscription_id=db_provider.id,
+            provider_id=subscription.provider_id,
+            subscription_id=subscription.id,
         )
 
     @classmethod
@@ -254,16 +281,18 @@ class TriggerProviderService:
         :return: New token info
         """
         with Session(db.engine) as session:
-            db_provider = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+            subscription = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
 
-            if not db_provider:
+            if not subscription:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            if db_provider.credential_type != CredentialType.OAUTH2.value:
+            if subscription.credential_type != CredentialType.OAUTH2.value:
                 raise ValueError("Only OAuth credentials can be refreshed")
 
-            provider_id = TriggerProviderID(db_provider.provider_id)
-            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+            provider_id = TriggerProviderID(subscription.provider_id)
+            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+                tenant_id=tenant_id, provider_id=provider_id
+            )
             # Create encrypter
             encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
@@ -272,11 +301,11 @@ class TriggerProviderService:
             )
 
             # Decrypt current credentials
-            current_credentials = encrypter.decrypt(db_provider.credentials)
+            current_credentials = encrypter.decrypt(subscription.credentials)
 
             # Get OAuth client configuration
             redirect_uri = (
-                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{db_provider.provider_id}/trigger/callback"
+                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
             )
             system_credentials = cls.get_oauth_client(tenant_id, provider_id)
 
@@ -284,7 +313,7 @@ class TriggerProviderService:
             oauth_handler = OAuthHandler()
             refreshed_credentials = oauth_handler.refresh_credentials(
                 tenant_id=tenant_id,
-                user_id=db_provider.user_id,
+                user_id=subscription.user_id,
                 plugin_id=provider_id.plugin_id,
                 provider=provider_id.provider_name,
                 redirect_uri=redirect_uri,
@@ -293,8 +322,8 @@ class TriggerProviderService:
             )
 
             # Update credentials
-            db_provider.credentials = encrypter.encrypt(dict(refreshed_credentials.credentials))
-            db_provider.expires_at = refreshed_credentials.expires_at
+            subscription.credentials = encrypter.encrypt(dict(refreshed_credentials.credentials))
+            subscription.expires_at = refreshed_credentials.expires_at
             session.commit()
 
             # Clear cache
@@ -315,7 +344,9 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: OAuth client configuration or None
         """
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id=tenant_id, provider_id=provider_id
+        )
         with Session(db.engine, expire_on_commit=False) as session:
             tenant_client: TriggerOAuthTenantClient | None = (
                 session.query(TriggerOAuthTenantClient)
@@ -378,7 +409,9 @@ class TriggerProviderService:
             return {"result": "success"}
 
         # Get provider controller to access schema
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id=tenant_id, provider_id=provider_id
+        )
 
         with Session(db.engine) as session:
             # Find existing custom client params
@@ -450,7 +483,9 @@ class TriggerProviderService:
                 return {}
 
             # Get provider controller to access schema
-            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+                tenant_id=tenant_id, provider_id=provider_id
+            )
 
             # Create encrypter to decrypt and mask values
             encrypter, _ = create_provider_encrypter(
@@ -511,8 +546,8 @@ class TriggerProviderService:
             subscription = session.query(TriggerSubscription).filter_by(endpoint_id=endpoint_id).first()
             if not subscription:
                 return None
-            provider_controller = TriggerManager.get_trigger_provider(
-                subscription.tenant_id, TriggerProviderID(subscription.provider_id)
+            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+                tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
             )
             credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
                 tenant_id=subscription.tenant_id,

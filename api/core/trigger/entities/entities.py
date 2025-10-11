@@ -173,6 +173,7 @@ class Subscription(BaseModel):
     )
 
     endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving events")
+    parameters: Mapping[str, Any] = Field(default={}, description="The parameters of the subscription constructor")
     properties: Mapping[str, Any] = Field(
         ..., description="Subscription data containing all properties and provider-specific information"
     )

@@ -71,6 +71,7 @@ class TriggerSubscription(Base):
         return Subscription(
             expires_at=self.expires_at,
             endpoint=parse_endpoint_id(self.endpoint_id),
+            parameters=self.parameters,
             properties=self.properties,
         )
 

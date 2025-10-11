@@ -8,10 +8,12 @@ from typing import Any
 from flask import Request, Response
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.request import TriggerDispatchResponse
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from core.trigger.entities.entities import (
     RequestLog,
+    Subscription,
     SubscriptionBuilder,
     SubscriptionBuilderUpdater,
 )
@@ -111,13 +113,14 @@ class TriggerSubscriptionBuilderService:
             )
         else:
             # automatically create
-            subscription = TriggerManager.subscribe_trigger(
+            subscription: Subscription = TriggerManager.subscribe_trigger(
                 tenant_id=tenant_id,
                 user_id=user_id,
                 provider_id=provider_id,
                 endpoint=parse_endpoint_id(subscription_builder.endpoint_id),
                 parameters=subscription_builder.parameters,
                 credentials=subscription_builder.credentials,
+                credential_type=credential_type,
             )
 
             TriggerProviderService.add_trigger_subscription(
@@ -286,18 +289,20 @@ class TriggerSubscriptionBuilderService:
         :return: The Flask response object
         """
         # check if validation endpoint exists
-        subscription_builder = cls.get_subscription_builder(endpoint_id)
+        subscription_builder: SubscriptionBuilder | None = cls.get_subscription_builder(endpoint_id)
         if not subscription_builder:
             return None
 
         # response to validation endpoint
-        controller = TriggerManager.get_trigger_provider(
-            subscription_builder.tenant_id, TriggerProviderID(subscription_builder.provider_id)
+        controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id=subscription_builder.tenant_id, provider_id=TriggerProviderID(subscription_builder.provider_id)
         )
-        response = controller.dispatch(
+        response: TriggerDispatchResponse = controller.dispatch(
             user_id=subscription_builder.user_id,
             request=request,
             subscription=subscription_builder.to_subscription(),
+            credentials={},
+            credential_type=CredentialType.UNAUTHORIZED,
         )
         # append the request log
         cls.append_log(endpoint_id, request, response.response)

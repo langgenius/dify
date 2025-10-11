@@ -13,6 +13,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import (
     TriggerDispatchResponse,
     TriggerInvokeEventResponse,
+    TriggerSubscriptionResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProviderApiEntity
@@ -249,13 +250,22 @@ class PluginTriggerProviderController:
             else []
         )
 
-    def dispatch(self, user_id: str, request: Request, subscription: Subscription) -> TriggerDispatchResponse:
+    def dispatch(
+        self,
+        user_id: str,
+        request: Request,
+        subscription: Subscription,
+        credentials: Mapping[str, str],
+        credential_type: CredentialType,
+    ) -> TriggerDispatchResponse:
         """
         Dispatch a trigger through plugin runtime
 
         :param user_id: User ID
         :param request: Flask request object
         :param subscription: Subscription
+        :param credentials: Provider credentials
+        :param credential_type: Credential type
         :return: Dispatch response with triggers and raw HTTP response
         """
         manager = PluginTriggerManager()
@@ -267,6 +277,8 @@ class PluginTriggerProviderController:
             provider=str(provider_id),
             subscription=subscription.model_dump(),
             request=request,
+            credentials=credentials,
+            credential_type=credential_type,
         )
         return response
 
@@ -306,7 +318,12 @@ class PluginTriggerProviderController:
         )
 
     def subscribe_trigger(
-        self, user_id: str, endpoint: str, parameters: Mapping[str, Any], credentials: Mapping[str, str]
+        self,
+        user_id: str,
+        endpoint: str,
+        parameters: Mapping[str, Any],
+        credentials: Mapping[str, str],
+        credential_type: CredentialType,
     ) -> Subscription:
         """
         Subscribe to a trigger through plugin runtime
@@ -315,24 +332,26 @@ class PluginTriggerProviderController:
         :param endpoint: Subscription endpoint
         :param subscription_params: Subscription parameters
         :param credentials: Provider credentials
+        :param credential_type: Credential type
         :return: Subscription result
         """
         manager = PluginTriggerManager()
-        provider_id = self.get_provider_id()
+        provider_id: TriggerProviderID = self.get_provider_id()
 
-        response = manager.subscribe(
+        response: TriggerSubscriptionResponse = manager.subscribe(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=str(provider_id),
-            credentials=credentials,
             endpoint=endpoint,
             parameters=parameters,
+            credentials=credentials,
+            credential_type=credential_type,
         )
 
         return Subscription.model_validate(response.subscription)
 
     def unsubscribe_trigger(
-        self, user_id: str, subscription: Subscription, credentials: Mapping[str, str]
+        self, user_id: str, subscription: Subscription, credentials: Mapping[str, str], credential_type: CredentialType
     ) -> Unsubscription:
         """
         Unsubscribe from a trigger through plugin runtime
@@ -340,22 +359,26 @@ class PluginTriggerProviderController:
         :param user_id: User ID
         :param subscription: Subscription metadata
         :param credentials: Provider credentials
+        :param credential_type: Credential type
         :return: Unsubscription result
         """
         manager = PluginTriggerManager()
-        provider_id = self.get_provider_id()
+        provider_id: TriggerProviderID = self.get_provider_id()
 
-        response = manager.unsubscribe(
+        response: TriggerSubscriptionResponse = manager.unsubscribe(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=str(provider_id),
             subscription=subscription,
             credentials=credentials,
+            credential_type=credential_type,
         )
 
         return Unsubscription.model_validate(response.subscription)
 
-    def refresh_trigger(self, subscription: Subscription, credentials: Mapping[str, str]) -> Subscription:
+    def refresh_trigger(
+        self, subscription: Subscription, credentials: Mapping[str, str], credential_type: CredentialType
+    ) -> Subscription:
         """
         Refresh a trigger subscription through plugin runtime
 
@@ -364,14 +387,15 @@ class PluginTriggerProviderController:
         :return: Refreshed subscription result
         """
         manager = PluginTriggerManager()
-        provider_id = self.get_provider_id()
+        provider_id: TriggerProviderID = self.get_provider_id()
 
-        response = manager.refresh(
+        response: TriggerSubscriptionResponse = manager.refresh(
             tenant_id=self.tenant_id,
             user_id="system",  # System refresh
             provider=str(provider_id),
             subscription=subscription,
             credentials=credentials,
+            credential_type=credential_type,
         )
 
         return Subscription.model_validate(response.subscription)
