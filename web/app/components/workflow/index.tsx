@@ -480,6 +480,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
                 onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
                 onReplyDelete={replyId => handleCommentReplyDeleteClick(comment.id, replyId)}
+                onReplyDeleteDirect={replyId => handleCommentReplyDelete(comment.id, replyId)}
                 canGoPrev={canGoPrev}
                 canGoNext={canGoNext}
               />

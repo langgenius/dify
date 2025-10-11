@@ -8,6 +8,7 @@ import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircl
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
+import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -31,6 +32,7 @@ type CommentThreadProps = {
   onReply?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyEdit?: (replyId: string, content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyDelete?: (replyId: string) => void
+  onReplyDeleteDirect?: (replyId: string) => Promise<void> | void
 }
 
 const ThreadMessage: FC<{
@@ -150,6 +152,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   onReply,
   onReplyEdit,
   onReplyDelete,
+  onReplyDeleteDirect,
 }) => {
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
@@ -158,6 +161,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const [replyContent, setReplyContent] = useState('')
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
   const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
+  const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
 
   useEffect(() => {
     setReplyContent('')
@@ -389,6 +393,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
                               onClick={(e) => {
                                 e.stopPropagation()
+                                setDeletingReplyId(null)
                                 setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
                               }}
                               aria-label={t('workflow.comments.aria.replyActions')}
@@ -401,21 +406,44 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           className='z-[100] w-36 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
                           data-reply-menu
                         >
-                          <button
-                            className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                            onClick={() => handleStartEdit(reply)}
-                          >
-                            {t('workflow.comments.actions.editReply')}
-                          </button>
-                          <button
-                            className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                            onClick={() => {
-                              setActiveReplyMenuId(null)
-                              onReplyDelete?.(reply.id)
-                            }}
-                          >
-                            {t('workflow.comments.actions.deleteReply')}
-                          </button>
+                          {deletingReplyId === reply.id ? (
+                            <InlineDeleteConfirm
+                              title={t('workflow.comments.actions.deleteReply')}
+                              onConfirm={() => {
+                                setDeletingReplyId(null)
+                                setActiveReplyMenuId(null)
+                                onReplyDeleteDirect?.(reply.id)
+                              }}
+                              onCancel={() => {
+                                setDeletingReplyId(null)
+                                setActiveReplyMenuId(null)
+                              }}
+                              className='m-0 w-full border-0 shadow-none'
+                            />
+                          ) : (
+                            <>
+                              <button
+                                className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                                onClick={() => handleStartEdit(reply)}
+                              >
+                                {t('workflow.comments.actions.editReply')}
+                              </button>
+                              <button
+                                className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                                onClick={() => {
+                                  if (onReplyDeleteDirect) {
+                                    setDeletingReplyId(reply.id)
+                                  }
+                                  else {
+                                    setActiveReplyMenuId(null)
+                                    onReplyDelete?.(reply.id)
+                                  }
+                                }}
+                              >
+                                {t('workflow.comments.actions.deleteReply')}
+                              </button>
+                            </>
+                          )}
                         </PortalToFollowElemContent>
                       </PortalToFollowElem>
                     )}
