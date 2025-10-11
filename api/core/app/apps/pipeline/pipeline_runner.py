@@ -229,8 +229,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
             workflow_id=workflow.id,
             graph_config=graph_config,
             user_id=self.application_generate_entity.user_id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         )
 

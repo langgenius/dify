@@ -207,7 +207,7 @@ class ProviderConfiguration(BaseModel):
         """
         stmt = select(Provider).where(
             Provider.tenant_id == self.tenant_id,
-            Provider.provider_type == ProviderType.CUSTOM.value,
+            Provider.provider_type == ProviderType.CUSTOM,
             Provider.provider_name.in_(self._get_provider_names()),
         )
 
@@ -458,7 +458,7 @@ class ProviderConfiguration(BaseModel):
                     provider_record = Provider(
                         tenant_id=self.tenant_id,
                         provider_name=self.provider.provider,
-                        provider_type=ProviderType.CUSTOM.value,
+                        provider_type=ProviderType.CUSTOM,
                         is_valid=True,
                         credential_id=new_record.id,
                     )
@@ -1414,7 +1414,7 @@ class ProviderConfiguration(BaseModel):
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables

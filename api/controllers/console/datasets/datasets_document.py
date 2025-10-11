@@ -475,7 +475,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value, upload_file=file, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
                 )
 
                 indexing_runner = IndexingRunner()
@@ -538,7 +538,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE, upload_file=file_detail, document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
 
@@ -546,7 +546,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 if not data_source_info:
                     continue
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.NOTION.value,
+                    datasource_type=DatasourceType.NOTION,
                     notion_info=NotionInfo.model_validate(
                         {
                             "credential_id": data_source_info["credential_id"],
@@ -563,7 +563,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 if not data_source_info:
                     continue
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE.value,
+                    datasource_type=DatasourceType.WEBSITE,
                     website_info=WebsiteInfo.model_validate(
                         {
                             "provider": data_source_info["provider"],
