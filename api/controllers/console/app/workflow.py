@@ -1135,8 +1135,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         if not subscription_id:
             return jsonable_encoder({"status": "error", "message": "Subscription ID not found"}), 404
 
-        # TODO Frontend data management is completely messy here
-        provider_id = TriggerProviderID(node_data.get("provider_name"))
+        provider_id = TriggerProviderID(node_data.get("provider_id"))
         pool_key: str = PluginTriggerDebugEvent.build_pool_key(
             tenant_id=app_model.tenant_id,
             provider_id=provider_id,

@@ -1,5 +1,5 @@
 import binascii
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from typing import Any
 
 from flask import Request
@@ -8,17 +8,18 @@ from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProv
 from core.plugin.entities.request import (
     PluginTriggerDispatchResponse,
     TriggerDispatchResponse,
-    TriggerInvokeResponse,
+    TriggerInvokeEventResponse,
     TriggerSubscriptionResponse,
     TriggerValidateProviderCredentialsResponse,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.utils.http_parser import deserialize_response, serialize_request
 from core.trigger.entities.entities import Subscription
-from models.provider_ids import GenericProviderID, TriggerProviderID
+from models.provider_ids import TriggerProviderID
 
 
 class PluginTriggerManager(BasePluginClient):
+
     def fetch_trigger_providers(self, tenant_id: str) -> list[PluginTriggerProviderEntity]:
         """
         Fetch trigger providers for the given tenant.
@@ -33,10 +34,10 @@ class PluginTriggerManager(BasePluginClient):
 
             return json_response
 
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/triggers",
-            list[PluginTriggerProviderEntity],
+        response: list[PluginTriggerProviderEntity] = self._request_with_plugin_daemon_response(
+            method="GET",
+            path=f"plugin/{tenant_id}/management/triggers",
+            type=list[PluginTriggerProviderEntity],
             params={"page": 1, "page_size": 256},
             transformer=transformer,
         )
@@ -63,10 +64,10 @@ class PluginTriggerManager(BasePluginClient):
 
             return json_response
 
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/trigger",
-            PluginTriggerProviderEntity,
+        response: PluginTriggerProviderEntity = self._request_with_plugin_daemon_response(
+            method="GET",
+            path=f"plugin/{tenant_id}/management/trigger",
+            type=PluginTriggerProviderEntity,
             params={"provider": provider_id.provider_name, "plugin_id": provider_id.plugin_id},
             transformer=transformer,
         )
@@ -79,31 +80,30 @@ class PluginTriggerManager(BasePluginClient):
 
         return response
 
-    def invoke_trigger(
+    def invoke_trigger_event(
         self,
         tenant_id: str,
         user_id: str,
         provider: str,
-        trigger: str,
+        event_name: str,
         credentials: Mapping[str, str],
         credential_type: CredentialType,
         request: Request,
         parameters: Mapping[str, Any],
-    ) -> TriggerInvokeResponse:
+    ) -> TriggerInvokeEventResponse:
         """
         Invoke a trigger with the given parameters.
         """
-        trigger_provider_id = GenericProviderID(provider)
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/trigger/invoke",
-            TriggerInvokeResponse,
+        provider_id = TriggerProviderID(provider)
+        response: Generator[TriggerInvokeEventResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/trigger/invoke_event",
+            type=TriggerInvokeEventResponse,
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": trigger_provider_id.provider_name,
-                    "trigger": trigger,
+                    "provider": provider_id.provider_name,
+                    "event": event_name,
                     "credentials": credentials,
                     "credential_type": credential_type,
                     "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
@@ -111,13 +111,13 @@ class PluginTriggerManager(BasePluginClient):
                 },
             },
             headers={
-                "X-Plugin-ID": trigger_provider_id.plugin_id,
+                "X-Plugin-ID": provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )
 
         for resp in response:
-            return TriggerInvokeResponse(event=resp.event)
+            return resp
 
         raise ValueError("No response received from plugin daemon for invoke trigger")
 
@@ -127,23 +127,24 @@ class PluginTriggerManager(BasePluginClient):
         """
         Validate the credentials of the trigger provider.
         """
-        trigger_provider_id = GenericProviderID(provider)
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/trigger/validate_credentials",
-            TriggerValidateProviderCredentialsResponse,
-            data={
-                "user_id": user_id,
-                "data": {
-                    "provider": trigger_provider_id.provider_name,
-                    "credentials": credentials,
+        provider_id = TriggerProviderID(provider)
+        response: Generator[TriggerValidateProviderCredentialsResponse, None, None] = (
+            self._request_with_plugin_daemon_response_stream(
+                method="POST",
+                path=f"plugin/{tenant_id}/dispatch/trigger/validate_credentials",
+                type=TriggerValidateProviderCredentialsResponse,
+                data={
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider_id.provider_name,
+                        "credentials": credentials,
+                    },
                 },
-            },
-            headers={
-                "X-Plugin-ID": trigger_provider_id.plugin_id,
-                "Content-Type": "application/json",
-            },
+                headers={
+                    "X-Plugin-ID": provider_id.plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
         )
 
         for resp in response:
@@ -162,24 +163,25 @@ class PluginTriggerManager(BasePluginClient):
         """
         Dispatch an event to triggers.
         """
-        trigger_provider_id = GenericProviderID(provider)
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
-            PluginTriggerDispatchResponse,
-            data={
-                "user_id": user_id,
-                "data": {
-                    "provider": trigger_provider_id.provider_name,
-                    "subscription": subscription,
-                    "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
+        provider_id = TriggerProviderID(provider)
+        response: Generator[PluginTriggerDispatchResponse, None, None] = (
+            self._request_with_plugin_daemon_response_stream(
+                method="POST",
+                path=f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
+                type=PluginTriggerDispatchResponse,
+                data={
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider_id.provider_name,
+                        "subscription": subscription,
+                        "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
+                    },
                 },
-            },
-            headers={
-                "X-Plugin-ID": trigger_provider_id.plugin_id,
-                "Content-Type": "application/json",
-            },
+                headers={
+                    "X-Plugin-ID": provider_id.plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
         )
 
         for resp in response:
@@ -202,23 +204,22 @@ class PluginTriggerManager(BasePluginClient):
         """
         Subscribe to a trigger.
         """
-        trigger_provider_id = GenericProviderID(provider)
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/trigger/subscribe",
-            TriggerSubscriptionResponse,
+        provider_id = TriggerProviderID(provider)
+        response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/trigger/subscribe",
+            type=TriggerSubscriptionResponse,
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": trigger_provider_id.provider_name,
+                    "provider": provider_id.provider_name,
                     "credentials": credentials,
                     "endpoint": endpoint,
                     "parameters": parameters,
                 },
             },
             headers={
-                "X-Plugin-ID": trigger_provider_id.plugin_id,
+                "X-Plugin-ID": provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )
@@ -239,22 +240,21 @@ class PluginTriggerManager(BasePluginClient):
         """
         Unsubscribe from a trigger.
         """
-        trigger_provider_id = GenericProviderID(provider)
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/trigger/unsubscribe",
-            TriggerSubscriptionResponse,
+        provider_id = TriggerProviderID(provider)
+        response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/trigger/unsubscribe",
+            type=TriggerSubscriptionResponse,
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": trigger_provider_id.provider_name,
+                    "provider": provider_id.provider_name,
                     "subscription": subscription.model_dump(),
                     "credentials": credentials,
                 },
             },
             headers={
-                "X-Plugin-ID": trigger_provider_id.plugin_id,
+                "X-Plugin-ID": provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )
@@ -275,22 +275,21 @@ class PluginTriggerManager(BasePluginClient):
         """
         Refresh a trigger subscription.
         """
-        trigger_provider_id = GenericProviderID(provider)
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/trigger/refresh",
-            TriggerSubscriptionResponse,
+        provider_id = TriggerProviderID(provider)
+        response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/trigger/refresh",
+            type=TriggerSubscriptionResponse,
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": trigger_provider_id.provider_name,
+                    "provider": provider_id.provider_name,
                     "subscription": subscription.model_dump(),
                     "credentials": credentials,
                 },
             },
             headers={
-                "X-Plugin-ID": trigger_provider_id.plugin_id,
+                "X-Plugin-ID": provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )

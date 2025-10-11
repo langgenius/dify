@@ -269,22 +269,6 @@ class TriggerEventData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class TriggerInputs(BaseModel):
-    """Standard inputs for trigger nodes."""
-
-    request_id: str
-    trigger_name: str
-    subscription_id: str
-
-    def to_workflow_args(self) -> dict[str, Any]:
-        """Convert to workflow arguments format."""
-        return {"inputs": self.model_dump(), "files": []}
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dict (alias for model_dump)."""
-        return self.model_dump()
-
-
 class TriggerCreationMethod(StrEnum):
     OAUTH = "OAUTH"
     APIKEY = "APIKEY"
@@ -292,7 +276,7 @@ class TriggerCreationMethod(StrEnum):
 
 
 # Export all entities
-__all__ = [
+__all__: list[str] = [
     "EventDescription",
     "EventEntity",
     "EventIdentity",
@@ -304,7 +288,6 @@ __all__ = [
     "SubscriptionBuilder",
     "TriggerCreationMethod",
     "TriggerEventData",
-    "TriggerInputs",
     "TriggerProviderEntity",
     "TriggerProviderIdentity",
     "Unsubscription",

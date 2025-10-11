@@ -87,11 +87,11 @@ class TriggerService:
             return 0
 
         subscribers: list[WorkflowPluginTrigger] = cls.get_subscriber_triggers(
-            tenant_id=subscription.tenant_id, subscription_id=subscription.id, trigger_name=event.identity.name
+            tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event.identity.name
         )
         if not subscribers:
             logger.warning(
-                "No workflows found for trigger '%s' in subscription '%s'",
+                "No workflows found for trigger event '%s' in subscription '%s'",
                 event.identity.name,
                 subscription.id,
             )
@@ -112,30 +112,30 @@ class TriggerService:
                     continue
 
                 # Find the trigger node in the workflow
-                trigger_node = None
+                event_node = None
                 for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
                     if node_id == plugin_trigger.node_id:
-                        trigger_node = node_config
+                        event_node = node_config
                         break
 
-                if not trigger_node:
-                    logger.error("Trigger node not found for app %s", plugin_trigger.app_id)
+                if not event_node:
+                    logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
                     continue
 
                 # invoke triger
-                invoke_response = TriggerManager.invoke_trigger(
+                invoke_response = TriggerManager.invoke_trigger_event(
                     tenant_id=subscription.tenant_id,
                     user_id=subscription.user_id,
                     provider_id=TriggerProviderID(subscription.provider_id),
-                    trigger_name=event.identity.name,
-                    parameters=trigger_node.get("config", {}),
+                    event_name=event.identity.name,
+                    parameters=event_node.get("config", {}),
                     credentials=subscription.credentials,
                     credential_type=CredentialType.of(subscription.credential_type),
                     request=request,
                 )
                 if invoke_response.cancelled:
                     logger.info(
-                        "Trigger ignored for app %s with trigger %s",
+                        "Trigger ignored for app %s with trigger event %s",
                         plugin_trigger.app_id,
                         event.identity.name,
                     )
@@ -150,7 +150,7 @@ class TriggerService:
                     trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
                     plugin_id=subscription.provider_id,
                     endpoint_id=subscription.endpoint_id,
-                    inputs=invoke_response.event.variables,
+                    inputs=invoke_response.variables.variables,
                 )
 
                 # Trigger async workflow
@@ -158,7 +158,7 @@ class TriggerService:
                     AsyncWorkflowService.trigger_workflow_async(session, tenant_owner, trigger_data)
                     dispatched_count += 1
                     logger.info(
-                        "Triggered workflow for app %s with trigger %s",
+                        "Triggered workflow for app %s with trigger event %s",
                         plugin_trigger.app_id,
                         event.identity.name,
                     )
@@ -224,7 +224,7 @@ class TriggerService:
 
     @classmethod
     def get_subscriber_triggers(
-        cls, tenant_id: str, subscription_id: str, trigger_name: str
+        cls, tenant_id: str, subscription_id: str, event_name: str
     ) -> list[WorkflowPluginTrigger]:
         """
         Get WorkflowPluginTriggers for a subscription and trigger.
@@ -232,14 +232,14 @@ class TriggerService:
         Args:
             tenant_id: Tenant ID
             subscription_id: Subscription ID
-            trigger_name: Trigger name
+            event_name: Event name
         """
         with Session(db.engine, expire_on_commit=False) as session:
             subscribers = session.scalars(
                 select(WorkflowPluginTrigger).where(
                     WorkflowPluginTrigger.tenant_id == tenant_id,
                     WorkflowPluginTrigger.subscription_id == subscription_id,
-                    WorkflowPluginTrigger.trigger_name == trigger_name,
+                    WorkflowPluginTrigger.event_name == event_name,
                 )
             ).all()
             return list(subscribers)

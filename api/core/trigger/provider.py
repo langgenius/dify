@@ -4,7 +4,7 @@ Trigger Provider Controller for managing trigger providers
 
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from flask import Request
 
@@ -12,7 +12,7 @@ from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import (
     TriggerDispatchResponse,
-    TriggerInvokeResponse,
+    TriggerInvokeEventResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProviderApiEntity
@@ -125,7 +125,7 @@ class PluginTriggerProviderController:
         """
         return self.entity.events
 
-    def get_event(self, event_name: str) -> Optional[EventEntity]:
+    def get_event(self, event_name: str) -> EventEntity:
         """
         Get a specific event by name
 
@@ -135,7 +135,7 @@ class PluginTriggerProviderController:
         for event in self.entity.events:
             if event.identity.name == event_name:
                 return event
-        return None
+        raise ValueError(f"Event {event_name} not found in provider {self.provider_id}")
 
     def get_subscription_default_properties(self) -> Mapping[str, Any]:
         """
@@ -270,20 +270,20 @@ class PluginTriggerProviderController:
         )
         return response
 
-    def invoke_trigger(
+    def invoke_trigger_event(
         self,
         user_id: str,
-        trigger_name: str,
+        event_name: str,
         parameters: Mapping[str, Any],
         credentials: Mapping[str, str],
         credential_type: CredentialType,
         request: Request,
-    ) -> TriggerInvokeResponse:
+    ) -> TriggerInvokeEventResponse:
         """
         Execute a trigger through plugin runtime
 
         :param user_id: User ID
-        :param trigger_name: Trigger name
+        :param event_name: Event name
         :param parameters: Trigger parameters
         :param credentials: Provider credentials
         :param credential_type: Credential type
@@ -291,13 +291,14 @@ class PluginTriggerProviderController:
         :return: Trigger execution result
         """
         manager = PluginTriggerManager()
-        provider_id = self.get_provider_id()
+        provider_id: TriggerProviderID = self.get_provider_id()
+        event: EventEntity = self.get_event(event_name=event_name)
 
-        return manager.invoke_trigger(
+        return manager.invoke_trigger_event(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=str(provider_id),
-            trigger=trigger_name,
+            event_name=event.identity.name,
             credentials=credentials,
             credential_type=credential_type,
             request=request,

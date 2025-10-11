@@ -11,7 +11,7 @@ from flask import Request
 
 import contexts
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.entities.request import Event, TriggerInvokeResponse
+from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
@@ -128,41 +128,47 @@ class TriggerManager:
         return provider.get_events()
 
     @classmethod
-    def invoke_trigger(
+    def invoke_trigger_event(
         cls,
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
-        trigger_name: str,
+        event_name: str,
         parameters: Mapping[str, Any],
         credentials: Mapping[str, str],
         credential_type: CredentialType,
         request: Request,
-    ) -> TriggerInvokeResponse:
+    ) -> TriggerInvokeEventResponse:
         """
         Execute a trigger
 
         :param tenant_id: Tenant ID
         :param user_id: User ID
         :param provider_id: Provider ID
-        :param trigger_name: Trigger name
+        :param event_name: Event name
         :param parameters: Trigger parameters
         :param credentials: Provider credentials
         :param credential_type: Credential type
         :param request: Request
         :return: Trigger execution result
         """
-        provider = cls.get_trigger_provider(tenant_id, provider_id)
-        trigger = provider.get_event(trigger_name)
-        if not trigger:
-            raise ValueError(f"Trigger {trigger_name} not found in provider {provider_id}")
+        provider: PluginTriggerProviderController = cls.get_trigger_provider(
+            tenant_id=tenant_id, provider_id=provider_id
+        )
         try:
-            return provider.invoke_trigger(user_id, trigger_name, parameters, credentials, credential_type, request)
+            return provider.invoke_trigger_event(
+                user_id=user_id,
+                event_name=event_name,
+                parameters=parameters,
+                credentials=credentials,
+                credential_type=credential_type,
+                request=request,
+            )
         except PluginInvokeError as e:
             if e.get_error_type() == "TriggerIgnoreEventError":
-                return TriggerInvokeResponse(event=Event(variables={}), cancelled=True)
+                return TriggerInvokeEventResponse(variables={}, cancelled=True)
             else:
-                logger.exception("Failed to invoke trigger")
+                logger.exception("Failed to invoke trigger event")
             raise
 
     @classmethod
@@ -226,7 +232,6 @@ class TriggerManager:
 
         :param tenant_id: Tenant ID
         :param provider_id: Provider ID
-        :param trigger_name: Trigger name
         :param subscription: Subscription metadata from subscribe operation
         :param credentials: Provider credentials
         :return: Refreshed subscription result

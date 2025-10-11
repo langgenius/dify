@@ -241,12 +241,8 @@ class RequestFetchAppInfo(BaseModel):
     app_id: str
 
 
-class Event(BaseModel):
-    variables: Mapping[str, Any]
-
-
-class TriggerInvokeResponse(BaseModel):
-    event: Event
+class TriggerInvokeEventResponse(BaseModel):
+    variables: Mapping[str, Any] = Field(default_factory=dict)
     cancelled: Optional[bool] = False
 
 
