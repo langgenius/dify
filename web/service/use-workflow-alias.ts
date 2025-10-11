@@ -85,8 +85,8 @@ export const useCreateWorkflowAlias = (appId: string) => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] });
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] })
     },
   })
 }
@@ -99,8 +99,8 @@ export const useDeleteWorkflowAlias = (appId: string) => {
       return del(`/apps/${appId}/workflow-aliases/${aliasId}`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] });
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] })
     },
   })
 }
