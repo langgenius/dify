@@ -58,7 +58,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
         >
           {content}
         </Tooltip>
-          )
+        )
         : content}
     </div>
   )
