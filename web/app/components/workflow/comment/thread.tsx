@@ -161,12 +161,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
     if (!onReply || loading) return
 
+    setReplyContent('')
+
     try {
       await onReply(content, mentionedUserIds)
-      setReplyContent('')
     }
     catch (error) {
       console.error('Failed to send reply', error)
+      setReplyContent(content)
     }
   }, [onReply, loading])
 
@@ -418,11 +420,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             </div>
           )}
         </div>
-        {loading && (
-          <div className='bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary'>
-            {t('workflow.comments.loading')}
-          </div>
-        )}
         {onReply && (
           <div className='border-t border-components-panel-border px-4 py-3'>
             <div className='flex items-center gap-3'>

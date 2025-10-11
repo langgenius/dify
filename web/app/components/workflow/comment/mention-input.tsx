@@ -13,7 +13,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { RiArrowUpLine, RiAtLine } from '@remixicon/react'
+import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
 import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
@@ -347,11 +347,9 @@ export const MentionInput: FC<MentionInputProps> = memo(({
     const cursorPosition = textarea.selectionStart || 0
     const textBeforeCursor = value.slice(0, cursorPosition)
 
-    // 🔒 如果已经在 mention 模式，不插入新的 @
     if (showMentionDropdown)
       return
 
-    // 🔒 如果光标前已有未完成的 @，不插入新的 @
     if (/@\w*$/.test(textBeforeCursor))
       return
 
@@ -409,16 +407,21 @@ export const MentionInput: FC<MentionInputProps> = memo(({
     }, 0)
   }, [value, mentionPosition, onChange, mentionedUserIds, evaluateContentLayout, syncHighlightScroll])
 
-  const handleSubmit = useCallback((e?: React.MouseEvent) => {
+  const handleSubmit = useCallback(async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
 
     if (value.trim()) {
-      onSubmit(value.trim(), mentionedUserIds)
-      setMentionedUserIds([])
-      setShowMentionDropdown(false)
+      try {
+        await onSubmit(value.trim(), mentionedUserIds)
+        setMentionedUserIds([])
+        setShowMentionDropdown(false)
+      }
+      catch (error) {
+        console.error('Failed to submit', error)
+      }
     }
   }, [value, mentionedUserIds, onSubmit])
 
@@ -540,7 +543,9 @@ export const MentionInput: FC<MentionInputProps> = memo(({
               disabled={!value.trim() || disabled || loading}
               onClick={handleSubmit}
             >
-              <RiArrowUpLine className='h-4 w-4 text-components-button-primary-text' />
+              {loading
+                ? <RiLoader2Line className='h-4 w-4 animate-spin text-components-button-primary-text' />
+                : <RiArrowUpLine className='h-4 w-4 text-components-button-primary-text' />}
             </Button>
           </div>
         )}
@@ -574,6 +579,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
                 disabled={loading || !value.trim()}
                 onClick={() => handleSubmit()}
               >
+                {loading && <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />}
                 {t('common.operation.save')}
               </Button>
             </div>
