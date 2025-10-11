@@ -111,3 +111,26 @@ class TestVariablePoolGetAndNestedAttribute:
         assert segment_false is not None
         assert isinstance(segment_false, BooleanSegment)
         assert segment_false.value is False
+
+
+class TestVariablePoolGetNotModifyVairableDictionary:
+    _NODE_ID = "start"
+    _VAR_NAME = "name"
+
+    def test_convert_to_template_should_not_introduce_extra_keys(self):
+        pool = VariablePool.empty()
+        pool.add([self._NODE_ID, self._VAR_NAME], 0)
+        pool.convert_template("The start.name is {{#start.name#}}")
+        assert "The start" not in pool.variable_dictionary
+
+    def test_get_should_not_modify_variable_dictionary(self):
+        pool = VariablePool.empty()
+        pool.get([self._NODE_ID, self._VAR_NAME])
+        assert len(pool.variable_dictionary) == 1  # only contains `sys` node id
+        assert "start" not in pool.variable_dictionary
+
+        pool = VariablePool.empty()
+        pool.add([self._NODE_ID, self._VAR_NAME], "Joe")
+        pool.get([self._NODE_ID, "count"])
+        start_subdict = pool.variable_dictionary[self._NODE_ID]
+        assert "count" not in start_subdict
