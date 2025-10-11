@@ -122,16 +122,18 @@ class Workflow(TypeBase):
         sa.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
-    version: Mapped[str] = mapped_column(String(255), nullable=False)
-    graph: Mapped[str] = mapped_column(sa.Text)
-    _features: Mapped[str] = mapped_column("features", sa.TEXT)
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[str | None] = mapped_column(StringUUID)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
+    type: Mapped[str] = mapped_column(String(255), nullable=False, init=False)
+    version: Mapped[str] = mapped_column(String(255), nullable=False, init=False)
+    graph: Mapped[str] = mapped_column(sa.Text, init=False)
+    _features: Mapped[str] = mapped_column("features", sa.TEXT, init=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, init=False)
     marked_name: Mapped[str] = mapped_column(default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     updated_at: Mapped[datetime] = mapped_column(
@@ -141,13 +143,13 @@ class Workflow(TypeBase):
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
-        "environment_variables", sa.Text, nullable=False, server_default="{}"
+        "environment_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
     _conversation_variables: Mapped[str] = mapped_column(
-        "conversation_variables", sa.Text, nullable=False, server_default="{}"
+        "conversation_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
     _rag_pipeline_variables: Mapped[str] = mapped_column(
-        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
+        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}", default="{}"
     )
 
     VERSION_DRAFT = "draft"
@@ -527,27 +529,35 @@ class WorkflowRun(TypeBase):
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID)
-    app_id: Mapped[str] = mapped_column(StringUUID)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, init=False)
 
-    workflow_id: Mapped[str] = mapped_column(StringUUID)
-    type: Mapped[str] = mapped_column(String(255))
-    triggered_from: Mapped[str] = mapped_column(String(255))
-    version: Mapped[str] = mapped_column(String(255))
-    graph: Mapped[str | None] = mapped_column(sa.Text)
-    inputs: Mapped[str | None] = mapped_column(sa.Text)
-    status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
-    error: Mapped[str | None] = mapped_column(sa.Text)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
-    outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}")
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default=sa.text("0"))
-    total_steps: Mapped[int] = mapped_column(sa.Integer, default=0, server_default=sa.text("0"), nullable=True)
-    exceptions_count: Mapped[int] = mapped_column(sa.Integer, default=0, server_default=sa.text("0"), nullable=True)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, init=False)
+    type: Mapped[str] = mapped_column(String(255), init=False)
+    triggered_from: Mapped[str] = mapped_column(String(255), init=False)
+    version: Mapped[str] = mapped_column(String(255), init=False)
+    graph: Mapped[str | None] = mapped_column(sa.Text, init=False)
+    inputs: Mapped[str | None] = mapped_column(sa.Text, init=False)
+    status: Mapped[str] = mapped_column(
+        String(255), init=False
+    )  # running, succeeded, failed, stopped, partial-succeeded
+    error: Mapped[str | None] = mapped_column(sa.Text, init=False)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"), init=False)
+    created_by_role: Mapped[str] = mapped_column(String(255), init=False)  # account, end_user
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, init=False)
+    outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}", init=False)
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default=sa.text("0"), init=False)
+    total_steps: Mapped[int] = mapped_column(
+        sa.Integer, default=0, server_default=sa.text("0"), nullable=True, init=False
+    )
+    exceptions_count: Mapped[int] = mapped_column(
+        sa.Integer, default=0, server_default=sa.text("0"), nullable=True, init=False
+    )
 
     @property
     def created_by_account(self):
@@ -611,28 +621,28 @@ class WorkflowRun(TypeBase):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
-        return cls(
-            id=data.get("id"),
-            tenant_id=data.get("tenant_id"),
-            app_id=data.get("app_id"),
-            workflow_id=data.get("workflow_id"),
-            type=data.get("type"),
-            triggered_from=data.get("triggered_from"),
-            version=data.get("version"),
-            graph=json.dumps(data.get("graph")),
-            inputs=json.dumps(data.get("inputs")),
-            status=data.get("status"),
-            outputs=json.dumps(data.get("outputs")),
-            error=data.get("error"),
-            elapsed_time=data.get("elapsed_time"),
-            total_tokens=data.get("total_tokens"),
-            total_steps=data.get("total_steps"),
-            created_by_role=data.get("created_by_role"),
-            created_by=data.get("created_by"),
-            created_at=data.get("created_at"),
-            finished_at=data.get("finished_at"),
-            exceptions_count=data.get("exceptions_count"),
-        )
+        workflow_run = cls()
+        workflow_run.id = data.get("id")  # type: ignore
+        workflow_run.tenant_id = data.get("tenant_id")  # type: ignore
+        workflow_run.app_id = data.get("app_id")  # type: ignore
+        workflow_run.workflow_id = data.get("workflow_id")  # type: ignore
+        workflow_run.type = data.get("type")  # type: ignore
+        workflow_run.triggered_from = data.get("triggered_from")  # type: ignore
+        workflow_run.version = data.get("version")  # type: ignore
+        workflow_run.graph = json.dumps(data.get("graph"))
+        workflow_run.inputs = json.dumps(data.get("inputs"))
+        workflow_run.status = data.get("status")  # type: ignore
+        workflow_run.outputs = json.dumps(data.get("outputs"))
+        workflow_run.error = data.get("error")
+        workflow_run.elapsed_time = data.get("elapsed_time", 0)
+        workflow_run.total_tokens = data.get("total_tokens", 0)
+        workflow_run.total_steps = data.get("total_steps", 0)
+        workflow_run.created_by_role = data.get("created_by_role")  # type: ignore
+        workflow_run.created_by = data.get("created_by")  # type: ignore
+        workflow_run.created_at = data.get("created_at")  # type: ignore
+        workflow_run.finished_at = data.get("finished_at")
+        workflow_run.exceptions_count = data.get("exceptions_count", 0)
+        return workflow_run
 
 
 class WorkflowNodeExecutionTriggeredFrom(StrEnum):
@@ -926,7 +936,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
     type_: Mapped[ExecutionOffLoadType] = mapped_column(EnumText(ExecutionOffLoadType), name="type", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
+        DateTime, default=naive_utc_now, server_default=func.current_timestamp(), init=False
     )
 
     # Design Decision: Combining inputs and outputs into a single object was considered to reduce I/O
@@ -945,7 +955,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
     # observability and system reliability.
 
     # `file_id` references to the offloaded storage object containing the data.
-    file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    file_id: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
 
     execution: Mapped[WorkflowNodeExecutionModel] = orm.relationship(
         foreign_keys=[node_execution_id],
@@ -953,6 +963,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
         uselist=False,
         primaryjoin="WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id",
         back_populates="offload_data",
+        init=False,
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
@@ -960,6 +971,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowNodeExecutionOffload.file_id == UploadFile.id",
+        init=False,
     )
 
 
@@ -1174,20 +1186,21 @@ class WorkflowDraftVariable(TypeBase):
     #
     # However, there's one caveat. The id of the first "Answer" node in chatflow is "answer". (Other
     # "Answer" node conform the rules above.)
-    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="node_id")
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="node_id", init=False)
 
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
     #
     # ref: api/core/workflow/entities/variable_pool.py:18
-    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False, init=False)
     description: Mapped[str] = mapped_column(
         sa.String(255),
         default="",
         nullable=False,
+        init=False,
     )
 
-    selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector")
+    selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector", init=False)
 
     # The data type of this variable's value
     #
@@ -1195,18 +1208,18 @@ class WorkflowDraftVariable(TypeBase):
     # which may differ from the original value's type. Typically, they are the same,
     # but in cases where the structurally truncated  value still exceeds the size limit,
     # text slicing is applied, and the `value_type` is converted to `STRING`.
-    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
+    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20), init=False)
 
     # The variable's value serialized as a JSON string
     #
     # If the variable is offloaded, `value` contains a truncated version, not the full original value.
-    value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value")
+    value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value", init=False)
 
     # Controls whether the variable should be displayed in the variable inspection panel
-    visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True, init=False)
 
     # Determines whether this variable can be modified by users
-    editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, init=False)
 
     # The `node_execution_id` field identifies the workflow node execution that created this variable.
     # It corresponds to the `id` field in the `WorkflowNodeExecutionModel` model.
@@ -1238,6 +1251,7 @@ class WorkflowDraftVariable(TypeBase):
             "Indicates whether the current value is the default for a conversation variable. "
             "Always `FALSE` for other types of variables."
         ),
+        init=False,
     )
 
     # Relationship to WorkflowDraftVariableFile
@@ -1246,6 +1260,7 @@ class WorkflowDraftVariable(TypeBase):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowDraftVariableFile.id == WorkflowDraftVariable.file_id",
+        init=False,
     )
 
     # Cache for deserialized value
@@ -1259,7 +1274,7 @@ class WorkflowDraftVariable(TypeBase):
     #
     # Use double underscore prefix for better encapsulation,
     # making this attribute harder to access from outside the class.
-    __value: Segment | None
+    __value: Segment | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
@@ -1521,24 +1536,28 @@ class WorkflowDraftVariableFile(TypeBase):
         nullable=False,
         default=_naive_utc_datetime,
         server_default=func.current_timestamp(),
+        init=False,
     )
 
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment="The tenant to which the WorkflowDraftVariableFile belongs, referencing Tenant.id",
+        init=False,
     )
 
     app_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment="The application to which the WorkflowDraftVariableFile belongs, referencing App.id",
+        init=False,
     )
 
     user_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment="The owner to of the WorkflowDraftVariableFile, referencing Account.id",
+        init=False,
     )
 
     # Reference to the `UploadFile.id` field
@@ -1546,6 +1565,7 @@ class WorkflowDraftVariableFile(TypeBase):
         StringUUID,
         nullable=False,
         comment="Reference to UploadFile containing the large variable data",
+        init=False,
     )
 
     # -------------- metadata about the variable content --------------
@@ -1555,6 +1575,7 @@ class WorkflowDraftVariableFile(TypeBase):
         sa.BigInteger,
         nullable=False,
         comment="Size of the original variable content in bytes",
+        init=False,
     )
 
     length: Mapped[int | None] = mapped_column(
@@ -1565,12 +1586,14 @@ class WorkflowDraftVariableFile(TypeBase):
             "this represents the number of elements. For object types, it indicates the number of keys. "
             "For other types, the value is NULL."
         ),
+        init=False,
     )
 
     # The `value_type` field records the type of the original value.
     value_type: Mapped[SegmentType] = mapped_column(
         EnumText(SegmentType, length=20),
         nullable=False,
+        init=False,
     )
 
     # Relationship to UploadFile
@@ -1579,6 +1602,7 @@ class WorkflowDraftVariableFile(TypeBase):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowDraftVariableFile.upload_file_id == UploadFile.id",
+        init=False,
     )
 
 
