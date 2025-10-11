@@ -373,17 +373,17 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           </PortalToFollowElemTrigger>
                         </div>
                         <PortalToFollowElemContent
-                          className='z-[100] w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'
+                          className='z-[100] w-36 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
                           data-reply-menu
                         >
                           <button
-                            className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                            className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
                             onClick={() => handleStartEdit(reply)}
                           >
                             {t('workflow.comments.actions.editReply')}
                           </button>
                           <button
-                            className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                            className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
                             onClick={() => {
                               setActiveReplyMenuId(null)
                               onReplyDelete?.(reply.id)
