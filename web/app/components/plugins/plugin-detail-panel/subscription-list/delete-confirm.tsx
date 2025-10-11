@@ -69,5 +69,6 @@ export const DeleteConfirm = (props: Props) => {
     isLoading={isDeleting}
     onConfirm={onConfirm}
     onCancel={() => onClose(false)}
+    maskClosable={false}
   />
 }

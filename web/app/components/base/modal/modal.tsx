@@ -55,13 +55,13 @@ const Modal = ({
       >
         <div
           className={cn(
-            'max-h-[80%] overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs',
+            'flex max-h-[80%] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs',
             size === 'sm' && 'w-[480px]',
             size === 'md' && 'w-[640px]',
           )}
           onClick={e => e.stopPropagation()}
         >
-          <div className='title-2xl-semi-bold relative p-6 pb-3 pr-14 text-text-primary'>
+          <div className='title-2xl-semi-bold relative shrink-0 p-6 pb-3 pr-14 text-text-primary'>
             {title}
             {
               subTitle && (
@@ -79,10 +79,10 @@ const Modal = ({
           </div>
           {
             children && (
-              <div className='px-6 py-3'>{children}</div>
+              <div className='min-h-0 flex-1 overflow-y-auto px-6 py-3'>{children}</div>
             )
           }
-          <div className='flex justify-between p-6 pt-5'>
+          <div className='flex shrink-0 justify-between p-6 pt-5'>
             <div>
               {footerSlot}
             </div>
@@ -117,7 +117,11 @@ const Modal = ({
               </Button>
             </div>
           </div>
-          {bottomSlot}
+          {bottomSlot && (
+            <div className='shrink-0'>
+              {bottomSlot}
+            </div>
+          )}
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

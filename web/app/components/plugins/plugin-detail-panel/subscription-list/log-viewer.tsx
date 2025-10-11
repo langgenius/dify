@@ -117,15 +117,26 @@ const LogViewer = ({ logs, className }: Props) => {
           <div
             key={logId}
             className={cn(
-              'relative rounded-lg border bg-components-panel-on-panel-item-bg shadow-sm hover:bg-components-panel-on-panel-item-bg-hover',
+              'relative overflow-hidden rounded-lg border bg-components-panel-on-panel-item-bg shadow-sm hover:bg-components-panel-on-panel-item-bg-hover',
               isError && 'border-state-destructive-border',
               !isError && isExpanded && 'border-components-panel-border',
               !isError && !isExpanded && 'border-components-panel-border-subtle',
             )}
           >
             {isError && (
-              <div className='absolute -left-1 -top-4 h-16 w-16 opacity-10'>
-                <div className='h-full w-full rounded-full bg-text-destructive' />
+              <div className='pointer-events-none absolute left-0 top-0 h-7 w-[179px]'>
+                <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className='h-full w-full'>
+                  <g filter="url(#filter0_f_error_glow)">
+                    <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25"/>
+                  </g>
+                  <defs>
+                    <filter id="filter0_f_error_glow" x="-125" y="-138" width="304" height="304" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                      <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                      <feGaussianBlur stdDeviation="60" result="effect1_foregroundBlur"/>
+                    </filter>
+                  </defs>
+                </svg>
               </div>
             )}
 
