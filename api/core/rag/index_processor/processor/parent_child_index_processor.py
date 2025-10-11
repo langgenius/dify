@@ -16,6 +16,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document, ParentChildStructureChunk
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from libs import helper
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
@@ -161,7 +162,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
     def retrieve(
         self,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         query: str,
         dataset: Dataset,
         top_k: int,

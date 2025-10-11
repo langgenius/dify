@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
 
 class IconInfo(BaseModel):
     icon: str
@@ -83,7 +85,7 @@ class RetrievalSetting(BaseModel):
     Retrieval Setting.
     """
 
-    search_method: Literal["semantic_search", "full_text_search", "keyword_search", "hybrid_search"]
+    search_method: RetrievalMethod
     top_k: int
     score_threshold: float | None = 0.5
     score_threshold_enabled: bool = False

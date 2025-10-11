@@ -1,11 +1,11 @@
 from collections.abc import Mapping
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class DatasourceStreamEvent(Enum):
+class DatasourceStreamEvent(StrEnum):
     """
     Datasource Stream event
     """

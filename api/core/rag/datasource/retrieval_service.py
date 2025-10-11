@@ -34,7 +34,7 @@ class RetrievalService:
     @classmethod
     def retrieve(
         cls,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         dataset_id: str,
         query: str,
         top_k: int,
@@ -56,7 +56,7 @@ class RetrievalService:
         # Optimize multithreading with thread pools
         with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
             futures = []
-            if retrieval_method == "keyword_search":
+            if retrieval_method == RetrievalMethod.KEYWORD_SEARCH:
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
@@ -220,7 +220,7 @@ class RetrievalService:
         score_threshold: float | None,
         reranking_model: dict | None,
         all_documents: list,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         exceptions: list,
         document_ids_filter: list[str] | None = None,
     ):

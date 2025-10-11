@@ -364,7 +364,7 @@ class DatasetRetrieval:
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
                     if dataset.indexing_technique == "economy":
-                        retrieval_method = "keyword_search"
+                        retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
                     # get reranking model
@@ -623,7 +623,7 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search",
+                        retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                         dataset_id=dataset.id,
                         query=query,
                         top_k=top_k,

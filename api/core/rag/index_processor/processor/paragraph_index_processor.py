@@ -14,6 +14,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset, DatasetProcessRule
@@ -106,7 +107,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
     def retrieve(
         self,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         query: str,
         dataset: Dataset,
         top_k: int,
