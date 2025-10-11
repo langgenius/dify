@@ -1,6 +1,7 @@
 import json
 from collections.abc import Mapping
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
@@ -479,10 +480,12 @@ class ToolModelInvoke(TypeBase):
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    answer_unit_price: Mapped[float] = mapped_column(sa.Numeric(10, 4), nullable=False)
-    answer_price_unit: Mapped[float] = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    answer_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    total_price: Mapped[float | None] = mapped_column(sa.Numeric(10, 7))
+    total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
