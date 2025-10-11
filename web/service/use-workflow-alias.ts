@@ -84,40 +84,9 @@ export const useCreateWorkflowAlias = (appId: string) => {
         },
       })
     },
-    onSuccess: (data) => {
-      // Instead of invalidating all queries, update the specific cache
-      // This prevents multiple network requests
-      queryClient.setQueriesData(
-        {
-          queryKey: ['workflow-aliases', appId],
-          exact: false,
-        },
-        (oldData: WorkflowAliasList | undefined) => {
-          if (!oldData) return oldData
-
-          // Add the new alias to the existing data
-          const newAlias = data
-          const existingAliases = oldData.items || []
-
-          // Check if this alias name already exists (for transfer case)
-          const existingIndex = existingAliases.findIndex(alias => alias.name === newAlias.name)
-
-          if (existingIndex >= 0) {
-            // Update existing alias (transfer case)
-            existingAliases[existingIndex] = newAlias
-          }
-          else {
-            // Add new alias
-            existingAliases.push(newAlias)
-          }
-
-          return {
-            ...oldData,
-            items: existingAliases,
-            limit: existingAliases.length,
-          }
-        },
-      )
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] });
     },
   })
 }
