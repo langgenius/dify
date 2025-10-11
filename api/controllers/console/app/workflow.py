@@ -6,7 +6,6 @@ from typing import cast
 from flask import abort, request
 from flask_restx import Resource, fields, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
-from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -21,7 +20,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
 from core.workflow.graph_engine.manager import GraphEngineManager
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields

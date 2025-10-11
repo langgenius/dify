@@ -10,11 +10,9 @@ from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
-
-from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user

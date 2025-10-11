@@ -4,8 +4,6 @@ from typing import cast
 from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
-
-from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api, console_ns
@@ -17,7 +15,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
-
+from extensions.ext_database import get_session_maker
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import login_required
 from libs.validators import validate_description_length

@@ -5,8 +5,6 @@ from flask import request
 from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 
-from extensions.ext_database import get_session_maker
-
 from controllers.console import api, console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -18,7 +16,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
-
+from extensions.ext_database import get_session_maker
 from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account

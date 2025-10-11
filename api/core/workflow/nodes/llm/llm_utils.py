@@ -3,7 +3,6 @@ from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
-from extensions.ext_database import get_session_maker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -19,7 +18,7 @@ from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegme
 from core.workflow.entities import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType

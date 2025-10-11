@@ -8,11 +8,10 @@ import click
 from flask import Flask, current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from extensions.ext_database import get_session_maker
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import (
@@ -136,15 +135,15 @@ class ClearFreePlanTenantExpiredLogs:
                             break
 
                         storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/messages/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [message.to_dict() for message in messages],
-                            ),
-                        ).encode("utf-8"),
-                    )
+                            f"free_plan_tenant_expired_logs/"
+                            f"{tenant_id}/messages/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                            f"-{time.time()}.json",
+                            json.dumps(
+                                jsonable_encoder(
+                                    [message.to_dict() for message in messages],
+                                ),
+                            ).encode("utf-8"),
+                        )
 
                     message_ids = [message.id for message in messages]
 
@@ -179,15 +178,15 @@ class ClearFreePlanTenantExpiredLogs:
                             break
 
                         storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/conversations/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [conversation.to_dict() for conversation in conversations],
-                            ),
-                        ).encode("utf-8"),
-                    )
+                            f"free_plan_tenant_expired_logs/"
+                            f"{tenant_id}/conversations/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                            f"-{time.time()}.json",
+                            json.dumps(
+                                jsonable_encoder(
+                                    [conversation.to_dict() for conversation in conversations],
+                                ),
+                            ).encode("utf-8"),
+                        )
 
                     conversation_ids = [conversation.id for conversation in conversations]
                     session.query(Conversation).where(
@@ -314,15 +313,15 @@ class ClearFreePlanTenantExpiredLogs:
 
                         # save workflow app logs
                         storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/workflow_app_logs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [workflow_app_log.to_dict() for workflow_app_log in workflow_app_logs],
-                            ),
-                        ).encode("utf-8"),
-                    )
+                            f"free_plan_tenant_expired_logs/"
+                            f"{tenant_id}/workflow_app_logs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                            f"-{time.time()}.json",
+                            json.dumps(
+                                jsonable_encoder(
+                                    [workflow_app_log.to_dict() for workflow_app_log in workflow_app_logs],
+                                ),
+                            ).encode("utf-8"),
+                        )
 
                     workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
 

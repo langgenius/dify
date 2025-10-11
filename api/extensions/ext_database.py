@@ -1,16 +1,13 @@
 import logging
+from typing import Any, Optional
 
 import gevent
-
-from typing import Optional, Any
-
 from sqlalchemy import event
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
 from models.engine import db
-
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +52,7 @@ def _setup_gevent_compatibility():
     _gevent_compatibility_setup = True
 
 
-_session_maker: Optional[sessionmaker[Session]] = None
+_session_maker: sessionmaker[Session] | None = None
 
 
 def get_session_maker() -> sessionmaker[Session]:

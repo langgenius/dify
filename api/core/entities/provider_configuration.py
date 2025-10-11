@@ -5,12 +5,9 @@ from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 
-from typing import cast
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from extensions.ext_database import get_session_maker
 
 from constants import HIDDEN_VALUE
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -31,7 +28,7 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from libs.datetime_utils import naive_utc_now
 from models.provider import (
     LoadBalancingModelConfig,

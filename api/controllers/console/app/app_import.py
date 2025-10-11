@@ -3,7 +3,6 @@ from typing import cast
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
-from extensions.ext_database import get_session_maker
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.app.wraps import get_app_model
@@ -12,7 +11,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
 from libs.login import login_required
 from models import Account
