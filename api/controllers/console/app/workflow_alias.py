@@ -57,8 +57,11 @@ class WorkflowAliasApi(Resource):
         offset = args.get("offset", 0)
 
         # Validate pagination parameters
-        if limit < 1 or limit > 1000:
-            limit = 100
+        if limit < 1:
+            limit = 1
+        elif limit > 1000:
+            limit = 1000
+
         if offset < 0:
             offset = 0
 
