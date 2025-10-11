@@ -277,6 +277,19 @@ export const MentionInput: FC<MentionInputProps> = memo(({
     )
   }, [mentionUsers, mentionQuery])
 
+  const shouldDisableMentionButton = useMemo(() => {
+    if (showMentionDropdown)
+      return true
+
+    const textarea = textareaRef.current
+    if (!textarea)
+      return false
+
+    const cursorPosition = textarea.selectionStart || 0
+    const textBeforeCursor = value.slice(0, cursorPosition)
+    return /@\w*$/.test(textBeforeCursor)
+  }, [showMentionDropdown, value])
+
   const dropdownPosition = useMemo(() => {
     if (!showMentionDropdown || !textareaRef.current)
       return { x: 0, y: 0, placement: 'bottom' as const }
@@ -328,9 +341,20 @@ export const MentionInput: FC<MentionInputProps> = memo(({
     e.stopPropagation()
 
     const textarea = textareaRef.current
-    if (!textarea) return
+    if (!textarea)
+      return
 
     const cursorPosition = textarea.selectionStart || 0
+    const textBeforeCursor = value.slice(0, cursorPosition)
+
+    // 🔒 如果已经在 mention 模式，不插入新的 @
+    if (showMentionDropdown)
+      return
+
+    // 🔒 如果光标前已有未完成的 @，不插入新的 @
+    if (/@\w*$/.test(textBeforeCursor))
+      return
+
     const newContent = `${value.slice(0, cursorPosition)}@${value.slice(cursorPosition)}`
 
     onChange(newContent)
@@ -352,7 +376,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
         })
       }
     }, 0)
-  }, [value, onChange, evaluateContentLayout, syncHighlightScroll])
+  }, [value, onChange, evaluateContentLayout, syncHighlightScroll, showMentionDropdown])
 
   const insertMention = useCallback((user: UserProfile) => {
     const textarea = textareaRef.current
@@ -500,8 +524,13 @@ export const MentionInput: FC<MentionInputProps> = memo(({
             className="absolute bottom-0 right-1 z-20 flex items-end gap-1"
           >
             <div
-              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
-              onClick={handleMentionButtonClick}
+              className={cn(
+                'z-20 flex h-8 w-8 items-center justify-center rounded-lg transition-opacity',
+                shouldDisableMentionButton
+                  ? 'cursor-not-allowed opacity-40'
+                  : 'cursor-pointer hover:bg-state-base-hover',
+              )}
+              onClick={shouldDisableMentionButton ? undefined : handleMentionButtonClick}
             >
               <RiAtLine className="h-4 w-4 text-text-tertiary" />
             </div>
@@ -522,8 +551,13 @@ export const MentionInput: FC<MentionInputProps> = memo(({
             className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between"
           >
             <div
-              className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
-              onClick={handleMentionButtonClick}
+              className={cn(
+                'z-20 flex h-8 w-8 items-center justify-center rounded-lg transition-opacity',
+                shouldDisableMentionButton
+                  ? 'cursor-not-allowed opacity-40'
+                  : 'cursor-pointer hover:bg-state-base-hover',
+              )}
+              onClick={shouldDisableMentionButton ? undefined : handleMentionButtonClick}
             >
               <RiAtLine className="h-4 w-4 text-text-tertiary" />
             </div>
