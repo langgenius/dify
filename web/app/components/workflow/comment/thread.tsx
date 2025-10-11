@@ -376,11 +376,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         placement='bottom-end'
                         open={activeReplyMenuId === reply.id}
                         onOpenChange={(open) => {
-                          // Don't allow closing if we're showing delete confirm
-                          if (!open && deletingReplyId === reply.id)
-                            return
-                          if (!open)
+                          if (!open) {
+                            setDeletingReplyId(null)
                             setActiveReplyMenuId(null)
+                          }
                         }}
                       >
                         <div
@@ -409,7 +408,37 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           className='z-[100] w-36 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
                           data-reply-menu
                         >
-                          {deletingReplyId === reply.id ? (
+                          {/* Menu buttons - hidden when showing delete confirm */}
+                          <div className={cn(deletingReplyId === reply.id ? 'hidden' : 'block')}>
+                            <button
+                              className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleStartEdit(reply)
+                              }}
+                            >
+                              {t('workflow.comments.actions.editReply')}
+                            </button>
+                            <button
+                              className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                if (onReplyDeleteDirect) {
+                                  setDeletingReplyId(reply.id)
+                                }
+                                else {
+                                  setActiveReplyMenuId(null)
+                                  onReplyDelete?.(reply.id)
+                                }
+                              }}
+                            >
+                              {t('workflow.comments.actions.deleteReply')}
+                            </button>
+                          </div>
+
+                          {/* Delete confirmation - shown when deletingReplyId matches */}
+                          <div className={cn(deletingReplyId === reply.id ? 'block' : 'hidden')}>
                             <InlineDeleteConfirm
                               title={t('workflow.comments.actions.deleteReply')}
                               onConfirm={() => {
@@ -419,38 +448,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               }}
                               onCancel={() => {
                                 setDeletingReplyId(null)
-                                setActiveReplyMenuId(null)
                               }}
                               className='m-0 w-full border-0 shadow-none'
                             />
-                          ) : (
-                            <>
-                              <button
-                                className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleStartEdit(reply)
-                                }}
-                              >
-                                {t('workflow.comments.actions.editReply')}
-                              </button>
-                              <button
-                                className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (onReplyDeleteDirect) {
-                                    setDeletingReplyId(reply.id)
-                                  }
-                                  else {
-                                    setActiveReplyMenuId(null)
-                                    onReplyDelete?.(reply.id)
-                                  }
-                                }}
-                              >
-                                {t('workflow.comments.actions.deleteReply')}
-                              </button>
-                            </>
-                          )}
+                          </div>
                         </PortalToFollowElemContent>
                       </PortalToFollowElem>
                     )}
