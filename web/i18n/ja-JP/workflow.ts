@@ -214,8 +214,8 @@ const translation = {
       deleteReplyDesc: 'この返信は完全に削除されます。',
     },
     aria: {
-      deleteComment: 'コメントを削除',
-      resolveComment: 'コメントを解決',
+      deleteComment: 'スレッドを削除',
+      resolveComment: '解決',
       previousComment: '前のコメント',
       nextComment: '次のコメント',
       closeComment: 'コメントを閉じる',

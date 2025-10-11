@@ -215,8 +215,8 @@ const translation = {
       deleteReplyDesc: 'This reply will be removed permanently.',
     },
     aria: {
-      deleteComment: 'Delete comment',
-      resolveComment: 'Resolve comment',
+      deleteComment: 'Delete thread',
+      resolveComment: 'Resolve',
       previousComment: 'Previous comment',
       nextComment: 'Next comment',
       closeComment: 'Close comment',
