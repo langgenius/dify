@@ -158,7 +158,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
         return {"result": "success", "data": token}
-        
+
 
 @web_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
