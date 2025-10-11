@@ -619,8 +619,13 @@ class TestTenantService:
                 mock_tenant_instance.name = "Test User's Workspace"
                 mock_tenant_class.return_value = mock_tenant_instance
 
-                # Execute test
-                TenantService.create_owner_tenant_if_not_exist(mock_account)
+                # Mock the db import in CreditPoolService to avoid database connection
+                with patch("services.credit_pool_service.db") as mock_credit_pool_db:
+                    mock_credit_pool_db.session.add = MagicMock()
+                    mock_credit_pool_db.session.commit = MagicMock()
+
+                    # Execute test
+                    TenantService.create_owner_tenant_if_not_exist(mock_account)
 
         # Verify tenant was created with correct parameters
         mock_db_dependencies["db"].session.add.assert_called()

@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from sqlalchemy import update
 from sqlalchemy.orm import Session
@@ -24,7 +23,7 @@ class CreditPoolService:
         return credit_pool
 
     @classmethod
-    def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> Optional[TenantCreditPool]:
+    def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> TenantCreditPool | None:
         """get tenant credit pool"""
         return (
             db.session.query(TenantCreditPool)
