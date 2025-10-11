@@ -47,7 +47,7 @@ def upgrade():
     sa.Column('plugin_id', sa.String(length=255), nullable=False),
     sa.Column('auth_type', sa.String(length=255), nullable=False),
     sa.Column('encrypted_credentials', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('avatar_url', sa.String(length=255), nullable=True),
+    sa.Column('avatar_url', sa.Text(), nullable=True),
     sa.Column('is_default', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.Column('expires_at', sa.Integer(), server_default='-1', nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),

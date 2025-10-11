@@ -276,7 +276,7 @@ function Form<
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className='system-sm-semibold flex items-center justify-between py-2 text-text-secondary'>
             <div className='flex items-center space-x-2'>
-              <span className={cn(fieldLabelClassName, 'system-sm-regular flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
               {required && (
                 <span className='ml-1 text-red-500'>*</span>
               )}

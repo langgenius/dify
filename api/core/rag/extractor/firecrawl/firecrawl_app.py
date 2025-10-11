@@ -2,7 +2,7 @@ import json
 import time
 from typing import Any, cast
 
-import requests
+import httpx
 
 from extensions.ext_storage import storage
 
@@ -104,18 +104,18 @@ class FirecrawlApp:
     def _prepare_headers(self) -> dict[str, Any]:
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
-    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> requests.Response:
+    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         for attempt in range(retries):
-            response = requests.post(url, headers=headers, json=data)
+            response = httpx.post(url, headers=headers, json=data)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
         return response
 
-    def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> requests.Response:
+    def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         for attempt in range(retries):
-            response = requests.get(url, headers=headers)
+            response = httpx.get(url, headers=headers)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:

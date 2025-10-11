@@ -5,7 +5,7 @@ from flask_restx import Resource, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,
@@ -20,6 +20,7 @@ from services.app_dsl_service import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
+@console_ns.route("/rag/pipelines/imports")
 class RagPipelineImportApi(Resource):
     @setup_required
     @login_required
@@ -59,13 +60,14 @@ class RagPipelineImportApi(Resource):
 
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED.value:
+        if status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING.value:
+        elif status == ImportStatus.PENDING:
             return result.model_dump(mode="json"), 202
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/rag/pipelines/imports/<string:import_id>/confirm")
 class RagPipelineImportConfirmApi(Resource):
     @setup_required
     @login_required
@@ -85,11 +87,12 @@ class RagPipelineImportConfirmApi(Resource):
             session.commit()
 
         # Return appropriate status code based on result
-        if result.status == ImportStatus.FAILED.value:
+        if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/rag/pipelines/imports/<string:pipeline_id>/check-dependencies")
 class RagPipelineImportCheckDependenciesApi(Resource):
     @setup_required
     @login_required
@@ -107,6 +110,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/rag/pipelines/<string:pipeline_id>/exports")
 class RagPipelineExportApi(Resource):
     @setup_required
     @login_required
@@ -128,22 +132,3 @@ class RagPipelineExportApi(Resource):
             )
 
         return {"data": result}, 200
-
-
-# Import Rag Pipeline
-api.add_resource(
-    RagPipelineImportApi,
-    "/rag/pipelines/imports",
-)
-api.add_resource(
-    RagPipelineImportConfirmApi,
-    "/rag/pipelines/imports/<string:import_id>/confirm",
-)
-api.add_resource(
-    RagPipelineImportCheckDependenciesApi,
-    "/rag/pipelines/imports/<string:pipeline_id>/check-dependencies",
-)
-api.add_resource(
-    RagPipelineExportApi,
-    "/rag/pipelines/<string:pipeline_id>/exports",
-)

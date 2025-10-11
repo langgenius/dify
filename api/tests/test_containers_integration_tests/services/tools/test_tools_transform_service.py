@@ -168,7 +168,7 @@ class TestToolTransformService:
         """
         # Arrange: Setup test data
         fake = Faker()
-        provider_type = ToolProviderType.BUILT_IN.value
+        provider_type = ToolProviderType.BUILT_IN
         provider_name = fake.company()
         icon = "🔧"
 
@@ -206,7 +206,7 @@ class TestToolTransformService:
         """
         # Arrange: Setup test data
         fake = Faker()
-        provider_type = ToolProviderType.API.value
+        provider_type = ToolProviderType.API
         provider_name = fake.company()
         icon = '{"background": "#FF6B6B", "content": "🔧"}'
 
@@ -231,7 +231,7 @@ class TestToolTransformService:
         """
         # Arrange: Setup test data with invalid JSON
         fake = Faker()
-        provider_type = ToolProviderType.API.value
+        provider_type = ToolProviderType.API
         provider_name = fake.company()
         icon = '{"invalid": json}'
 
@@ -257,7 +257,7 @@ class TestToolTransformService:
         """
         # Arrange: Setup test data
         fake = Faker()
-        provider_type = ToolProviderType.WORKFLOW.value
+        provider_type = ToolProviderType.WORKFLOW
         provider_name = fake.company()
         icon = {"background": "#FF6B6B", "content": "🔧"}
 
@@ -282,7 +282,7 @@ class TestToolTransformService:
         """
         # Arrange: Setup test data
         fake = Faker()
-        provider_type = ToolProviderType.MCP.value
+        provider_type = ToolProviderType.MCP
         provider_name = fake.company()
         icon = {"background": "#FF6B6B", "content": "🔧"}
 
@@ -329,7 +329,7 @@ class TestToolTransformService:
         # Arrange: Setup test data
         fake = Faker()
         tenant_id = fake.uuid4()
-        provider = {"type": ToolProviderType.BUILT_IN.value, "name": fake.company(), "icon": "🔧"}
+        provider = {"type": ToolProviderType.BUILT_IN, "name": fake.company(), "icon": "🔧"}
 
         # Act: Execute the method under test
         ToolTransformService.repack_provider(tenant_id, provider)

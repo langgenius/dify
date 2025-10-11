@@ -418,6 +418,8 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </td>
                 <td>
                   <Operations
+                    selectedIds={selectedIds}
+                    onSelectedIdChange={onSelectedIdChange}
                     embeddingAvailable={embeddingAvailable}
                     datasetId={datasetId}
                     detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}

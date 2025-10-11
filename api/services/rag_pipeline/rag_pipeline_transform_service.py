@@ -149,21 +149,20 @@ class RagPipelineTransformService:
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
-        file_extensions = [file_extension.lower() for file_extension in file_extensions]
-        node["data"]["fileExtensions"] = DOCUMENT_EXTENSIONS
+        node["data"]["fileExtensions"] = [ext.lower() for ext in file_extensions if ext in DOCUMENT_EXTENSIONS]
         return node
 
     def _deal_knowledge_index(
         self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)
+        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            retrieval_setting = RetrievalSetting(**retrieval_model)
+            retrieval_setting = RetrievalSetting.model_validate(retrieval_model)
             if indexing_technique == "economy":
                 retrieval_setting.search_method = "keyword_search"
             knowledge_configuration.retrieval_model = retrieval_setting
@@ -215,7 +214,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=current_user.id,
@@ -227,7 +226,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=current_user.id,

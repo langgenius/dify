@@ -19,6 +19,7 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from extensions.ext_database import db
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import login_required
+from libs.validators import validate_description_length
 from models import Account, App
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
@@ -26,12 +27,6 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
-
-
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
 
 
 @console_ns.route("/apps")
@@ -138,7 +133,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("description", type=_validate_description_length, location="json")
+        parser.add_argument("description", type=validate_description_length, location="json")
         parser.add_argument("mode", type=str, choices=ALLOW_CREATE_APP_MODES, location="json")
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
@@ -219,7 +214,7 @@ class AppApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("description", type=_validate_description_length, location="json")
+        parser.add_argument("description", type=validate_description_length, location="json")
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
@@ -297,7 +292,7 @@ class AppCopyApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=_validate_description_length, location="json")
+        parser.add_argument("description", type=validate_description_length, location="json")
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
@@ -309,7 +304,7 @@ class AppCopyApi(Resource):
             account = cast(Account, current_user)
             result = import_service.import_app(
                 account=account,
-                import_mode=ImportMode.YAML_CONTENT.value,
+                import_mode=ImportMode.YAML_CONTENT,
                 yaml_content=yaml_content,
                 name=args.get("name"),
                 description=args.get("description"),

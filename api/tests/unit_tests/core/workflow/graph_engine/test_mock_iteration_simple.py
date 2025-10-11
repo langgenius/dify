@@ -56,8 +56,8 @@ def test_mock_iteration_node_preserves_config():
         workflow_id="test",
         graph_config={"nodes": [], "edges": []},
         user_id="test",
-        user_from=UserFrom.ACCOUNT.value,
-        invoke_from=InvokeFrom.SERVICE_API.value,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
         call_depth=0,
     )
 
@@ -117,8 +117,8 @@ def test_mock_loop_node_preserves_config():
         workflow_id="test",
         graph_config={"nodes": [], "edges": []},
         user_id="test",
-        user_from=UserFrom.ACCOUNT.value,
-        invoke_from=InvokeFrom.SERVICE_API.value,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
         call_depth=0,
     )
 

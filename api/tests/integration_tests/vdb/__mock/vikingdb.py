@@ -40,13 +40,13 @@ class MockVikingDBClass:
             collection_name=collection_name,
             description="Collection For Dify",
             viking_db_service=self._viking_db_service,
-            primary_key=vdb_Field.PRIMARY_KEY.value,
+            primary_key=vdb_Field.PRIMARY_KEY,
             fields=[
-                Field(field_name=vdb_Field.PRIMARY_KEY.value, field_type=FieldType.String, is_primary_key=True),
-                Field(field_name=vdb_Field.METADATA_KEY.value, field_type=FieldType.String),
-                Field(field_name=vdb_Field.GROUP_KEY.value, field_type=FieldType.String),
-                Field(field_name=vdb_Field.CONTENT_KEY.value, field_type=FieldType.Text),
-                Field(field_name=vdb_Field.VECTOR.value, field_type=FieldType.Vector, dim=768),
+                Field(field_name=vdb_Field.PRIMARY_KEY, field_type=FieldType.String, is_primary_key=True),
+                Field(field_name=vdb_Field.METADATA_KEY, field_type=FieldType.String),
+                Field(field_name=vdb_Field.GROUP_KEY, field_type=FieldType.String),
+                Field(field_name=vdb_Field.CONTENT_KEY, field_type=FieldType.Text),
+                Field(field_name=vdb_Field.VECTOR, field_type=FieldType.Vector, dim=768),
             ],
             indexes=[
                 Index(
@@ -71,7 +71,7 @@ class MockVikingDBClass:
         return Collection(
             collection_name=collection_name,
             description=description,
-            primary_key=vdb_Field.PRIMARY_KEY.value,
+            primary_key=vdb_Field.PRIMARY_KEY,
             viking_db_service=self._viking_db_service,
             fields=fields,
         )
@@ -126,11 +126,11 @@ class MockVikingDBClass:
     def fetch_data(self, id: Union[str, list[str], int, list[int]]):
         return Data(
             fields={
-                vdb_Field.GROUP_KEY.value: "test_group",
-                vdb_Field.METADATA_KEY.value: "{}",
-                vdb_Field.CONTENT_KEY.value: "content",
-                vdb_Field.PRIMARY_KEY.value: id,
-                vdb_Field.VECTOR.value: [-0.00762577411336441, -0.01949881482151406, 0.008832383941428398],
+                vdb_Field.GROUP_KEY: "test_group",
+                vdb_Field.METADATA_KEY: "{}",
+                vdb_Field.CONTENT_KEY: "content",
+                vdb_Field.PRIMARY_KEY: id,
+                vdb_Field.VECTOR: [-0.00762577411336441, -0.01949881482151406, 0.008832383941428398],
             },
             id=id,
         )
@@ -151,16 +151,16 @@ class MockVikingDBClass:
         return [
             Data(
                 fields={
-                    vdb_Field.GROUP_KEY.value: "test_group",
-                    vdb_Field.METADATA_KEY.value: '\
+                    vdb_Field.GROUP_KEY: "test_group",
+                    vdb_Field.METADATA_KEY: '\
                     {"source": "/var/folders/ml/xxx/xxx.txt", \
                     "document_id": "test_document_id", \
                     "dataset_id": "test_dataset_id", \
                     "doc_id": "test_id", \
                     "doc_hash": "test_hash"}',
-                    vdb_Field.CONTENT_KEY.value: "content",
-                    vdb_Field.PRIMARY_KEY.value: "test_id",
-                    vdb_Field.VECTOR.value: vector,
+                    vdb_Field.CONTENT_KEY: "content",
+                    vdb_Field.PRIMARY_KEY: "test_id",
+                    vdb_Field.VECTOR: vector,
                 },
                 id="test_id",
                 score=0.10,
@@ -173,16 +173,16 @@ class MockVikingDBClass:
         return [
             Data(
                 fields={
-                    vdb_Field.GROUP_KEY.value: "test_group",
-                    vdb_Field.METADATA_KEY.value: '\
+                    vdb_Field.GROUP_KEY: "test_group",
+                    vdb_Field.METADATA_KEY: '\
                     {"source": "/var/folders/ml/xxx/xxx.txt", \
                     "document_id": "test_document_id", \
                     "dataset_id": "test_dataset_id", \
                     "doc_id": "test_id", \
                     "doc_hash": "test_hash"}',
-                    vdb_Field.CONTENT_KEY.value: "content",
-                    vdb_Field.PRIMARY_KEY.value: "test_id",
-                    vdb_Field.VECTOR.value: [-0.00762577411336441, -0.01949881482151406, 0.008832383941428398],
+                    vdb_Field.CONTENT_KEY: "content",
+                    vdb_Field.PRIMARY_KEY: "test_id",
+                    vdb_Field.VECTOR: [-0.00762577411336441, -0.01949881482151406, 0.008832383941428398],
                 },
                 id="test_id",
                 score=0.10,
