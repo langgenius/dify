@@ -61,7 +61,7 @@ const TriggerPluginActionItem: FC<Props> = ({
           }
           onSelect(BlockEnum.TriggerPlugin, {
             plugin_id: provider.plugin_id,
-            provider_id: payload.name,
+            provider_id: provider.name,
             provider_type: provider.type as string,
             provider_name: provider.name,
             event_name: payload.name,
