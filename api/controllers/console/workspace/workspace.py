@@ -53,6 +53,7 @@ tenant_fields = {
     "custom_config": fields.Raw(attribute="custom_config"),
     "trial_credits": fields.Integer,
     "trial_credits_used": fields.Integer,
+    "next_credit_reset_date": fields.Integer,
 }
 
 tenants_fields = {
