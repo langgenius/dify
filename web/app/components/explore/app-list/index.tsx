@@ -22,6 +22,7 @@ import {
 } from '@/models/app'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
+import Banner from '../banner'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -143,6 +144,9 @@ const Apps = ({
     <div className={cn(
       'flex h-full flex-col border-l-[0.5px] border-divider-regular',
     )}>
+      <div className='mt-4 px-12'>
+        <Banner />
+      </div>
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
       )}>
