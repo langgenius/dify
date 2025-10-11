@@ -45,7 +45,6 @@ const TextGeneration: FC<Props> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
-  // console.log(isPC, setInputs)
 
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const { data: tryAppParams } = useGetTryAppParams(appId)

@@ -1,3 +1,4 @@
+import type { AppMode } from '@/types/app'
 import {
   get,
 } from './base'
@@ -7,7 +8,7 @@ import type {
 
 type TryAppInfo = {
   name: string
-  mode: 'chat' | 'advanced-chat' | 'text-generation' | 'workflow'
+  mode: AppMode
   site: SiteInfo
 }
 
