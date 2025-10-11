@@ -322,7 +322,7 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
+  const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
     const { nodes, edges } = collaborativeWorkflow.getState()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!

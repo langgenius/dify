@@ -489,6 +489,7 @@ const translation = {
       },
       outputVars: {
         output: 'सामग्री उत्पन्न करें',
+        reasoning_content: 'तर्क सामग्री',
         usage: 'मॉडल उपयोग जानकारी',
       },
       singleRun: {

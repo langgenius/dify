@@ -264,7 +264,7 @@ class FileLifecycleManager:
                 logger.warning("File %s not found in metadata", filename)
                 return False
 
-            metadata_dict[filename]["status"] = FileStatus.ARCHIVED.value
+            metadata_dict[filename]["status"] = FileStatus.ARCHIVED
             metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
 
             self._save_metadata(metadata_dict)
@@ -309,7 +309,7 @@ class FileLifecycleManager:
             # Update metadata
             metadata_dict = self._load_metadata()
             if filename in metadata_dict:
-                metadata_dict[filename]["status"] = FileStatus.DELETED.value
+                metadata_dict[filename]["status"] = FileStatus.DELETED
                 metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
                 self._save_metadata(metadata_dict)
 

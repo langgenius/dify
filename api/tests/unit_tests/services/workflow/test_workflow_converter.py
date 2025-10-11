@@ -107,7 +107,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     assert body_data
 
     body_data_json = json.loads(body_data)
-    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value
+    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
 
     body_params = body_data_json["params"]
     assert body_params["app_id"] == app_model.id
@@ -168,7 +168,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     assert body_data
 
     body_data_json = json.loads(body_data)
-    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value
+    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
 
     body_params = body_data_json["params"]
     assert body_params["app_id"] == app_model.id

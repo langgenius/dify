@@ -234,7 +234,7 @@ class HttpRequestNode(Node):
 
         mapping = {
             "tool_file_id": tool_file.id,
-            "transfer_method": FileTransferMethod.TOOL_FILE.value,
+            "transfer_method": FileTransferMethod.TOOL_FILE,
         }
         file = file_factory.build_from_mapping(
             mapping=mapping,

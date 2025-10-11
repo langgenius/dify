@@ -24,7 +24,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
@@ -500,7 +500,7 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE.value,
+                        datasource_type=DatasourceType.FILE,
                         upload_file=file_detail,
                         document_model=args["doc_form"],
                     )
@@ -512,14 +512,16 @@ class DatasetIndexingEstimateApi(Resource):
                 credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION.value,
-                        notion_info={
-                            "credential_id": credential_id,
-                            "notion_workspace_id": workspace_id,
-                            "notion_obj_id": page["page_id"],
-                            "notion_page_type": page["type"],
-                            "tenant_id": current_user.current_tenant_id,
-                        },
+                        datasource_type=DatasourceType.NOTION,
+                        notion_info=NotionInfo.model_validate(
+                            {
+                                "credential_id": credential_id,
+                                "notion_workspace_id": workspace_id,
+                                "notion_obj_id": page["page_id"],
+                                "notion_page_type": page["type"],
+                                "tenant_id": current_user.current_tenant_id,
+                            }
+                        ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
@@ -527,15 +529,17 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args["info_list"]["website_info_list"]
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE.value,
-                    website_info={
-                        "provider": website_info_list["provider"],
-                        "job_id": website_info_list["job_id"],
-                        "url": url,
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": "crawl",
-                        "only_main_content": website_info_list["only_main_content"],
-                    },
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": website_info_list["provider"],
+                            "job_id": website_info_list["job_id"],
+                            "url": url,
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": "crawl",
+                            "only_main_content": website_info_list["only_main_content"],
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
@@ -782,7 +786,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH]}
             case (
                 VectorType.QDRANT
                 | VectorType.WEAVIATE
@@ -806,12 +810,13 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
                 | VectorType.BAIDU
+                | VectorType.ALIBABACLOUD_MYSQL
             ):
                 return {
                     "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
                     ]
                 }
             case _:
@@ -838,7 +843,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH]}
             case (
                 VectorType.QDRANT
                 | VectorType.WEAVIATE
@@ -860,12 +865,13 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MATRIXONE
                 | VectorType.CLICKZETTA
                 | VectorType.BAIDU
+                | VectorType.ALIBABACLOUD_MYSQL
             ):
                 return {
                     "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
                     ]
                 }
             case _:

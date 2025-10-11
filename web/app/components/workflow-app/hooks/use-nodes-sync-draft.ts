@@ -162,7 +162,7 @@ export const useNodesSyncDraft = () => {
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         console.log('Leader successfully synced workflow draft')
-        callback?.onSuccess && callback.onSuccess()
+        callback?.onSuccess?.()
       }
       catch (error: any) {
         console.error('Leader failed to sync workflow draft:', error)
@@ -174,10 +174,10 @@ export const useNodesSyncDraft = () => {
             }
           })
         }
-        callback?.onError && callback.onError()
+        callback?.onError?.()
       }
       finally {
-        callback?.onSettled && callback.onSettled()
+        callback?.onSettled?.()
       }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])

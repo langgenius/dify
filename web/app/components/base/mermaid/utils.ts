@@ -60,7 +60,7 @@ export function svgToBase64(svgGraph: string): Promise<string> {
       reader.readAsDataURL(blob)
     })
   }
-  catch (error) {
+  catch {
     return Promise.resolve('')
   }
 }
