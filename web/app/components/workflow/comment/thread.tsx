@@ -297,7 +297,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         </div>
         <div
           ref={messageListRef}
-          className='relative mt-2 flex-1 overflow-y-auto px-4'
+          className='relative mt-2 flex-1 overflow-y-auto px-4 pb-4'
         >
           <ThreadMessage
             authorId={comment.created_by_account?.id || ''}
@@ -309,9 +309,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           />
           {replies.length > 0 && (
             <div className='mt-2 space-y-3 pt-3'>
-              {replies.map((reply) => {
+              {replies.map((reply, index) => {
                 const isReplyEditing = editingReply?.id === reply.id
                 const isOwnReply = reply.created_by_account?.id === userProfile?.id
+                const isLastReply = index === replies.length - 1
                 return (
                   <div
                     key={reply.id}
@@ -331,7 +332,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           <RiMoreFill className='h-4 w-4' />
                         </button>
                         {activeReplyMenuId === reply.id && (
-                          <div className='absolute right-0 top-7 z-40 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
+                          <div className={cn(
+                            'absolute right-0 z-50 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg',
+                            isLastReply ? 'bottom-7' : 'top-7',
+                          )}>
                             <button
                               className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
                               onClick={() => handleStartEdit(reply)}
