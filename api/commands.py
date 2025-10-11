@@ -229,12 +229,7 @@ def migrate_annotation_vector_database():
                     indexing_technique="high_quality",
                     embedding_model_provider=dataset_collection_binding.provider_name,
                     embedding_model=dataset_collection_binding.model_name,
-                    collection_binding_id=dataset_collection_binding.id,
-                    name=app.name,
-                    provider="custom",
-                    permission="only_me",
-                    data_source_type="NOTION",
-                    created_by=app.created_by,
+                    collection_binding_id=dataset_collection_binding.id
                 )
                 documents = []
                 if annotations:

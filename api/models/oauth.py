@@ -15,7 +15,7 @@ class DatasourceOauthParamConfig(TypeBase):  # type: ignore[name-defined]
         sa.UniqueConstraint("plugin_id", "provider", name="datasource_oauth_config_datasource_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     system_credentials: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -28,7 +28,7 @@ class DatasourceProvider(TypeBase):
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", "name", name="datasource_provider_unique_name"),
         sa.Index("datasource_provider_auth_type_provider_idx", "tenant_id", "plugin_id", "provider"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
