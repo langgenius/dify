@@ -95,7 +95,7 @@ class IterationNode(Node):
             "config": {
                 "is_parallel": False,
                 "parallel_nums": 10,
-                "error_handle_mode": ErrorHandleMode.TERMINATED.value,
+                "error_handle_mode": ErrorHandleMode.TERMINATED,
             },
         }
 

@@ -242,7 +242,7 @@ class PluginMigration:
                     if data.get("type") == "tool":
                         provider_name = data.get("provider_name")
                         provider_type = data.get("provider_type")
-                        if provider_name not in excluded_providers and provider_type == ToolProviderType.BUILT_IN.value:
+                        if provider_name not in excluded_providers and provider_type == ToolProviderType.BUILT_IN:
                             result.append(ToolProviderID(provider_name).plugin_id)
 
             return result
@@ -271,7 +271,7 @@ class PluginMigration:
                             try:
                                 tool_entity = AgentToolEntity.model_validate(tool)
                                 if (
-                                    tool_entity.provider_type == ToolProviderType.BUILT_IN.value
+                                    tool_entity.provider_type == ToolProviderType.BUILT_IN
                                     and tool_entity.provider_id not in excluded_providers
                                 ):
                                     result.append(ToolProviderID(tool_entity.provider_id).plugin_id)

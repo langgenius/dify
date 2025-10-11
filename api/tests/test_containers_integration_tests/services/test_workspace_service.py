@@ -69,7 +69,7 @@ class TestWorkspaceService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -111,7 +111,7 @@ class TestWorkspaceService:
             assert result["name"] == tenant.name
             assert result["plan"] == tenant.plan
             assert result["status"] == tenant.status
-            assert result["role"] == TenantAccountRole.OWNER.value
+            assert result["role"] == TenantAccountRole.OWNER
             assert result["created_at"] == tenant.created_at
             assert result["trial_end_reason"] is None
 
@@ -159,7 +159,7 @@ class TestWorkspaceService:
             assert result["name"] == tenant.name
             assert result["plan"] == tenant.plan
             assert result["status"] == tenant.status
-            assert result["role"] == TenantAccountRole.OWNER.value
+            assert result["role"] == TenantAccountRole.OWNER
             assert result["created_at"] == tenant.created_at
             assert result["trial_end_reason"] is None
 
@@ -194,7 +194,7 @@ class TestWorkspaceService:
         from extensions.ext_database import db
 
         join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
-        join.role = TenantAccountRole.NORMAL.value
+        join.role = TenantAccountRole.NORMAL
         db.session.commit()
 
         # Setup mocks for feature service
@@ -212,7 +212,7 @@ class TestWorkspaceService:
             assert result["name"] == tenant.name
             assert result["plan"] == tenant.plan
             assert result["status"] == tenant.status
-            assert result["role"] == TenantAccountRole.NORMAL.value
+            assert result["role"] == TenantAccountRole.NORMAL
             assert result["created_at"] == tenant.created_at
             assert result["trial_end_reason"] is None
 
@@ -245,7 +245,7 @@ class TestWorkspaceService:
         from extensions.ext_database import db
 
         join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
-        join.role = TenantAccountRole.ADMIN.value
+        join.role = TenantAccountRole.ADMIN
         db.session.commit()
 
         # Setup mocks for feature service and tenant service
@@ -260,7 +260,7 @@ class TestWorkspaceService:
 
             # Assert: Verify the expected outcomes
             assert result is not None
-            assert result["role"] == TenantAccountRole.ADMIN.value
+            assert result["role"] == TenantAccountRole.ADMIN
 
             # Verify custom config is included for admin users
             assert "custom_config" in result
@@ -378,7 +378,7 @@ class TestWorkspaceService:
         from extensions.ext_database import db
 
         join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
-        join.role = TenantAccountRole.EDITOR.value
+        join.role = TenantAccountRole.EDITOR
         db.session.commit()
 
         # Setup mocks for feature service and tenant service
@@ -394,7 +394,7 @@ class TestWorkspaceService:
 
             # Assert: Verify the expected outcomes
             assert result is not None
-            assert result["role"] == TenantAccountRole.EDITOR.value
+            assert result["role"] == TenantAccountRole.EDITOR
 
             # Verify custom config is not included for editor users without admin privileges
             assert "custom_config" not in result
@@ -425,7 +425,7 @@ class TestWorkspaceService:
         from extensions.ext_database import db
 
         join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
-        join.role = TenantAccountRole.DATASET_OPERATOR.value
+        join.role = TenantAccountRole.DATASET_OPERATOR
         db.session.commit()
 
         # Setup mocks for feature service and tenant service
@@ -441,7 +441,7 @@ class TestWorkspaceService:
 
             # Assert: Verify the expected outcomes
             assert result is not None
-            assert result["role"] == TenantAccountRole.DATASET_OPERATOR.value
+            assert result["role"] == TenantAccountRole.DATASET_OPERATOR
 
             # Verify custom config is not included for dataset operators without admin privileges
             assert "custom_config" not in result
