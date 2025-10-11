@@ -8,12 +8,11 @@ from typing import ParamSpec, TypeVar
 
 from flask import abort, request
 
-from libs.login import current_user
-
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.login import current_user
 from models.account import Account, AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup

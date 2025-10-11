@@ -184,9 +184,7 @@ class EndpointDeleteApi(Resource):
         endpoint_id = args["endpoint_id"]
 
         return {
-            "success": EndpointService.delete_endpoint(
-                tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id
-            )
+            "success": EndpointService.delete_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
         }
 
 
@@ -269,9 +267,7 @@ class EndpointEnableApi(Resource):
             raise Forbidden()
 
         return {
-            "success": EndpointService.enable_endpoint(
-                tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id
-            )
+            "success": EndpointService.enable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
         }
 
 
@@ -304,7 +300,5 @@ class EndpointDisableApi(Resource):
             raise Forbidden()
 
         return {
-            "success": EndpointService.disable_endpoint(
-                tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id
-            )
+            "success": EndpointService.disable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
         }
