@@ -98,31 +98,25 @@ const config: KnipConfig = {
     // ========================================================================
     // Context providers might be used via React Context API and imported dynamically.
     // Protecting all context files to prevent breaking the provider chain.
-    'context/**/*.tsx!',
-    'context/**/*.ts!',
+    'context/**/*.ts?(x)!',
 
     // Component-level contexts (also used via React.useContext)
-    'app/components/**/context.tsx!',
-    'app/components/**/context.ts!',
+    'app/components/**/*.context.ts?(x)!',
 
     // ========================================================================
     // 🔒 CRITICAL: State Management Stores
     // ========================================================================
     // Zustand stores might be imported dynamically or via hooks.
     // These are often imported at module level, so they should be protected.
-    'app/components/**/store.tsx!',
-    'app/components/**/store.ts!',
-    'context/**/store.tsx!',
-    'context/**/store.ts!',
+    'app/components/**/*.store.ts?(x)!',
+    'context/**/*.store.ts?(x)!',
 
     // ========================================================================
     // 🔒 CRITICAL: Provider Components
     // ========================================================================
     // Provider components wrap the app and provide global state/functionality
-    'app/components/**/provider.tsx!',
-    'app/components/**/provider.ts!',
-    'context/**/provider.tsx!',
-    'context/**/provider.ts!',
+    'app/components/**/*.provider.ts?(x)!',
+    'context/**/*.provider.ts?(x)!',
 
     // ========================================================================
     // Development tools
