@@ -1,4 +1,3 @@
-from dify.api.configs import feature
 from flask_login import current_user
 
 from configs import dify_config
