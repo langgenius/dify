@@ -3,7 +3,7 @@ import logging
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
-
+from controllers.console import api
 import services
 from controllers.common import fields
 from controllers.common.fields import build_site_model
@@ -24,11 +24,13 @@ from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
     NotCompletionAppError,
+    NotWorkflowAppError,
 )
 from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
 from controllers.service_api import service_api_ns
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -36,6 +38,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from fields.app_fields import app_detail_fields_with_site
 from libs import helper
@@ -63,6 +66,71 @@ from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
 
 logger = logging.getLogger(__name__)
+
+
+class TrialAppWorkflowRunApi(TrialAppResource):
+    def post(self, trial_app):
+        """
+        Run workflow
+        """
+        app_model = trial_app
+        if not app_model:
+            raise NotWorkflowAppError()
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode != AppMode.WORKFLOW:
+            raise NotWorkflowAppError()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("files", type=list, required=False, location="json")
+        args = parser.parse_args()
+        assert current_user is not None
+        try:
+            app_id = app_model.id
+            user_id = current_user.id
+            response = AppGenerateService.generate(
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            )
+            RecommendedAppService.add_trial_app_record(app_id, user_id)
+            return helper.compact_generate_response(response)
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except ValueError as e:
+            raise e
+        except Exception:
+            logger.exception("internal server error.")
+            raise InternalServerError()
+
+
+class TrialAppWorkflowTaskStopApi(TrialAppResource):
+    def post(self, trial_app, task_id: str):
+        """
+        Stop workflow task
+        """
+        app_model = trial_app
+        if not app_model:
+            raise NotWorkflowAppError()
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode != AppMode.WORKFLOW:
+            raise NotWorkflowAppError()
+        assert current_user is not None
+
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
+
+        return {"result": "success"}
 
 
 class TrialChatApi(TrialAppResource):
@@ -372,3 +440,26 @@ class AppApi(Resource):
         app_model = app_service.get_app(app_model)
 
         return app_model
+
+
+api.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+
+api.add_resource(
+    TrialMessageSuggestedQuestionApi,
+    "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="trial_app_suggested_question",
+)
+
+api.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
+api.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
+
+api.add_resource(TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion")
+
+api.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
+
+api.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
+
+api.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
+
+api.add_resource(TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run")
+api.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
