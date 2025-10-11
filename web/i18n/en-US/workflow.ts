@@ -733,6 +733,8 @@ const translation = {
       instruction: 'Instruction',
       instructionTip: 'Input additional instructions to help the question classifier better understand how to categorize questions.',
       instructionPlaceholder: 'Write your instruction',
+      showMore: 'Show {{count}} more',
+      showLess: 'Show less',
     },
     parameterExtractor: {
       inputVar: 'Input Variable',
