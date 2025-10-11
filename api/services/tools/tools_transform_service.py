@@ -152,7 +152,7 @@ class ToolTransformService:
 
             if decrypt_credentials:
                 credentials = db_provider.credentials
-
+                assert db_provider.tenant_id
                 # init tool configuration
                 encrypter, _ = create_provider_encrypter(
                     tenant_id=db_provider.tenant_id,

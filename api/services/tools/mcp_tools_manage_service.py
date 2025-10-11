@@ -188,6 +188,7 @@ class MCPToolManageService:
             raise
 
         user = mcp_provider.load_user()
+        assert mcp_provider.icon
         return ToolProviderApiEntity(
             id=mcp_provider.id,
             name=mcp_provider.name,

@@ -1521,6 +1521,7 @@ def transform_datasource_credentials():
                     auth_count = 0
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
                         auth_count += 1
+                        assert firecrawl_tenant_credential.credentials
                         # get credential api key
                         credentials_json = json.loads(firecrawl_tenant_credential.credentials)
                         api_key = credentials_json.get("config", {}).get("api_key")
@@ -1576,6 +1577,7 @@ def transform_datasource_credentials():
                     auth_count = 0
                     for jina_tenant_credential in jina_tenant_credentials:
                         auth_count += 1
+                        assert jina_tenant_credential.credentials
                         # get credential api key
                         credentials_json = json.loads(jina_tenant_credential.credentials)
                         api_key = credentials_json.get("config", {}).get("api_key")

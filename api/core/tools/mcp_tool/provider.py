@@ -76,7 +76,7 @@ class MCPToolProviderController(ToolProviderController):
             )
             for remote_mcp_tool in remote_mcp_tools
         ]
-
+        assert db_provider.icon
         return cls(
             entity=ToolProviderEntityWithPlugin(
                 identity=ToolProviderIdentity(
