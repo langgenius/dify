@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Hepsini Seç',
     deSelectAll: 'Hepsini Seçme',
     config: 'Konfigürasyon',
+    no: 'Hayır',
+    yes: 'Evet',
+    deleteConfirmTitle: 'Silinsin mi?',
+    confirmAction: 'Lütfen işleminizi onaylayın.',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
