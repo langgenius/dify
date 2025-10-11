@@ -36,7 +36,7 @@ class PluginTriggerManager(BasePluginClient):
         response: list[PluginTriggerProviderEntity] = self._request_with_plugin_daemon_response(
             method="GET",
             path=f"plugin/{tenant_id}/management/triggers",
-            type=list[PluginTriggerProviderEntity],
+            type_=list[PluginTriggerProviderEntity],
             params={"page": 1, "page_size": 256},
             transformer=transformer,
         )
@@ -66,7 +66,7 @@ class PluginTriggerManager(BasePluginClient):
         response: PluginTriggerProviderEntity = self._request_with_plugin_daemon_response(
             method="GET",
             path=f"plugin/{tenant_id}/management/trigger",
-            type=PluginTriggerProviderEntity,
+            type_=PluginTriggerProviderEntity,
             params={"provider": provider_id.provider_name, "plugin_id": provider_id.plugin_id},
             transformer=transformer,
         )
@@ -97,7 +97,7 @@ class PluginTriggerManager(BasePluginClient):
         response: Generator[TriggerInvokeEventResponse, None, None] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/invoke_event",
-            type=TriggerInvokeEventResponse,
+            type_=TriggerInvokeEventResponse,
             data={
                 "user_id": user_id,
                 "data": {
@@ -131,7 +131,7 @@ class PluginTriggerManager(BasePluginClient):
             self._request_with_plugin_daemon_response_stream(
                 method="POST",
                 path=f"plugin/{tenant_id}/dispatch/trigger/validate_credentials",
-                type=TriggerValidateProviderCredentialsResponse,
+                type_=TriggerValidateProviderCredentialsResponse,
                 data={
                     "user_id": user_id,
                     "data": {
@@ -167,7 +167,7 @@ class PluginTriggerManager(BasePluginClient):
             self._request_with_plugin_daemon_response_stream(
                 method="POST",
                 path=f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
-                type=PluginTriggerDispatchResponse,
+                type_=PluginTriggerDispatchResponse,
                 data={
                     "user_id": user_id,
                     "data": {
@@ -207,7 +207,7 @@ class PluginTriggerManager(BasePluginClient):
         response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/subscribe",
-            type=TriggerSubscriptionResponse,
+            type_=TriggerSubscriptionResponse,
             data={
                 "user_id": user_id,
                 "data": {
@@ -243,7 +243,7 @@ class PluginTriggerManager(BasePluginClient):
         response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/unsubscribe",
-            type=TriggerSubscriptionResponse,
+            type_=TriggerSubscriptionResponse,
             data={
                 "user_id": user_id,
                 "data": {
@@ -278,7 +278,7 @@ class PluginTriggerManager(BasePluginClient):
         response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/refresh",
-            type=TriggerSubscriptionResponse,
+            type_=TriggerSubscriptionResponse,
             data={
                 "user_id": user_id,
                 "data": {
