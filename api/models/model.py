@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -579,6 +579,63 @@ class InstalledApp(Base):
     def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
+
+
+class TrialApp(Base):
+    __tablename__ = "trial_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
+        sa.Index("trial_app_app_id_idx", "app_id"),
+        sa.Index("trial_app_tenant_id_idx", "tenant_id"),
+        sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id = mapped_column(StringUUID, nullable=False)
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+
+class AccountTrialAppRecord(Base):
+    __tablename__ = "account_trial_app_records"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
+        sa.Index("account_trial_app_record_account_id_idx", "account_id"),
+        sa.Index("account_trial_app_record_app_id_idx", "app_id"),
+        sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
+    )
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    account_id = mapped_column(StringUUID, nullable=False)
+    app_id = mapped_column(StringUUID, nullable=False)
+    count = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+    @property
+    def user(self) -> Account | None:
+        user = db.session.query(Account).where(Account.id == self.account_id).first()
+        return user
+
+
+class ExporleBanner(Base):
+    __tablename__ = "exporle_banners"
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    content = mapped_column(sa.JSON, nullable=False)
+    link = mapped_column(String(255), nullable=False)
+    sort = mapped_column(sa.Integer, nullable=False)
+    status = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"))
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class OAuthProviderApp(Base):
@@ -1944,3 +2001,29 @@ class TraceAppConfig(Base):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+
+class TenantCreditPool(Base):
+    __tablename__ = "tenant_credit_pools"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
+        sa.Index("tenant_credit_pool_tenant_id_idx", "tenant_id"),
+        sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
+    )
+
+    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used = mapped_column(BigInteger, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    @property
+    def remaining_credits(self) -> int:
+        return max(0, self.quota_limit - self.quota_used)
+
+    def has_sufficient_credits(self, required_credits: int) -> bool:
+        return self.remaining_credits >= required_credits

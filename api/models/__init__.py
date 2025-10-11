@@ -10,6 +10,11 @@ from .account import (
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .chatflow_memory import ChatflowConversation, ChatflowMemoryVariable, ChatflowMessage
+from .comment import (
+    WorkflowComment,
+    WorkflowCommentMention,
+    WorkflowCommentReply,
+)
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -29,6 +34,7 @@ from .dataset import (
 )
 from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
 from .model import (
+    AccountTrialAppRecord,
     ApiRequest,
     ApiToken,
     App,
@@ -41,6 +47,7 @@ from .model import (
     DatasetRetrieverResource,
     DifySetup,
     EndUser,
+    ExporleBanner,
     IconType,
     InstalledApp,
     Message,
@@ -54,7 +61,9 @@ from .model import (
     Site,
     Tag,
     TagBinding,
+    TenantCreditPool,
     TraceAppConfig,
+    TrialApp,
     UploadFile,
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider
@@ -99,6 +108,7 @@ __all__ = [
     "Account",
     "AccountIntegrate",
     "AccountStatus",
+    "AccountTrialAppRecord",
     "ApiRequest",
     "ApiToken",
     "ApiToolProvider",
@@ -135,6 +145,7 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
     "IconType",
@@ -163,6 +174,7 @@ __all__ = [
     "Tenant",
     "TenantAccountJoin",
     "TenantAccountRole",
+    "TenantCreditPool",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
     "TenantStatus",
@@ -172,12 +184,16 @@ __all__ = [
     "ToolLabelBinding",
     "ToolModelInvoke",
     "TraceAppConfig",
+    "TrialApp",
     "UploadFile",
     "UserFrom",
     "Whitelist",
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
+    "WorkflowComment",
+    "WorkflowCommentMention",
+    "WorkflowCommentReply",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",

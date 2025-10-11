@@ -58,11 +58,13 @@ from .app import (
     mcp_server,
     message,
     model_config,
+    online_user,
     ops_trace,
     site,
     statistic,
     workflow,
     workflow_app_log,
+    workflow_comment,
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
@@ -106,10 +108,12 @@ from .datasets.rag_pipeline import (
 
 # Import explore controllers
 from .explore import (
+    banner,
     installed_app,
     parameter,
     recommended_app,
     saved_message,
+    trial,
 )
 
 # Import tag controllers
@@ -143,6 +147,7 @@ __all__ = [
     "apikey",
     "app",
     "audio",
+    "banner",
     "billing",
     "bp",
     "completion",
@@ -196,6 +201,7 @@ __all__ = [
     "statistic",
     "tags",
     "tool_providers",
+    "trial",
     "version",
     "website",
     "workflow",

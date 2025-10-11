@@ -32,6 +32,8 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import dynamic from 'next/dynamic'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import type { WorkflowOnlineUser } from '@/models/app'
 
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
   ssr: false,
@@ -55,9 +57,10 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
 export type AppCardProps = {
   app: App
   onRefresh?: () => void
+  onlineUsers?: WorkflowOnlineUser[]
 }
 
-const AppCard = ({ app, onRefresh }: AppCardProps) => {
+const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -333,6 +336,19 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
   }, [app.updated_at, app.created_at])
 
+  const onlineUserAvatars = useMemo(() => {
+    if (!onlineUsers.length)
+      return []
+
+    return onlineUsers
+      .map(user => ({
+        id: user.user_id || user.sid || '',
+        name: user.username || 'User',
+        avatar_url: user.avatar || undefined,
+      }))
+      .filter(user => !!user.id)
+  }, [onlineUsers])
+
   return (
     <>
       <div
@@ -376,6 +392,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             {app.access_mode === AccessMode.EXTERNAL_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.external')}>
               <RiVerifiedBadgeLine className='h-4 w-4 text-text-quaternary' />
             </Tooltip>}
+          </div>
+          <div>
+            {onlineUserAvatars.length > 0 && (
+              <UserAvatarList users={onlineUserAvatars} maxVisible={3} size={20} />
+            )}
           </div>
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>

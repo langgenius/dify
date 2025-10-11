@@ -618,9 +618,9 @@ class ProviderManager:
                 )
 
             for quota in configuration.quotas:
-                if quota.quota_type == ProviderQuotaType.TRIAL:
+                if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
                     # Init trial provider records if not exists
-                    if ProviderQuotaType.TRIAL not in provider_quota_to_provider_record_dict:
+                    if quota.quota_type not in provider_quota_to_provider_record_dict:                        
                         try:
                             # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
                             new_provider_record = Provider(
@@ -628,8 +628,8 @@ class ProviderManager:
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM.value,
-                                quota_type=ProviderQuotaType.TRIAL.value,
-                                quota_limit=quota.quota_limit,  # type: ignore
+                                quota_type=quota.quota_type,
+                                quota_limit=0,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
                             )
@@ -642,7 +642,7 @@ class ProviderManager:
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == ModelProviderID(provider_name).provider_name,
                                 Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == ProviderQuotaType.TRIAL.value,
+                                Provider.quota_type == quota.quota_type,
                             )
                             existed_provider_record = db.session.scalar(stmt)
                             if not existed_provider_record:
@@ -652,7 +652,7 @@ class ProviderManager:
                                 existed_provider_record.is_valid = True
                                 db.session.commit()
 
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
+                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)                        
 
         return provider_name_to_provider_records_dict
 
@@ -912,6 +912,22 @@ class ProviderManager:
                 provider_record
             )
         quota_configurations = []
+
+        if dify_config.EDITION == "CLOUD":
+            from services.credit_pool_service import CreditPoolService
+
+            trail_pool = CreditPoolService.get_pool(
+                tenant_id=tenant_id,
+                pool_type=ProviderQuotaType.TRIAL.value,
+            )
+            paid_pool = CreditPoolService.get_pool(
+                tenant_id=tenant_id,
+                pool_type=ProviderQuotaType.PAID.value,
+            )
+        else:
+            trail_pool = None
+            paid_pool = None
+
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
                 if provider_quota.quota_type == ProviderQuotaType.FREE:
@@ -932,16 +948,36 @@ class ProviderManager:
                     raise ValueError("quota_used is None")
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
+                if provider_quota.quota_type == ProviderQuotaType.TRIAL and trail_pool is not None:
+                    quota_configuration = QuotaConfiguration(
+                        quota_type=provider_quota.quota_type,
+                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                        quota_used=trail_pool.quota_used,
+                        quota_limit=trail_pool.quota_limit,
+                        is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
+                        restrict_models=provider_quota.restrict_models,
+                    )
+                
+                elif provider_quota.quota_type == ProviderQuotaType.PAID and paid_pool is not None:
+                    quota_configuration = QuotaConfiguration(
+                        quota_type=provider_quota.quota_type,
+                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                        quota_used=paid_pool.quota_used,
+                        quota_limit=paid_pool.quota_limit,
+                        is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                        restrict_models=provider_quota.restrict_models,
+                    )
 
-                quota_configuration = QuotaConfiguration(
-                    quota_type=provider_quota.quota_type,
-                    quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                    quota_used=provider_record.quota_used,
-                    quota_limit=provider_record.quota_limit,
-                    is_valid=provider_record.quota_limit > provider_record.quota_used
-                    or provider_record.quota_limit == -1,
-                    restrict_models=provider_quota.restrict_models,
-                )
+                else:
+                    quota_configuration = QuotaConfiguration(
+                        quota_type=provider_quota.quota_type,
+                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                        quota_used=provider_record.quota_used,
+                        quota_limit=provider_record.quota_limit,
+                        is_valid=provider_record.quota_limit > provider_record.quota_used
+                        or provider_record.quota_limit == -1,
+                        restrict_models=provider_quota.restrict_models,
+                    )
 
             quota_configurations.append(quota_configuration)
 

@@ -1,3 +1,4 @@
+import os
 import sys
 
 
@@ -8,10 +9,16 @@ def is_db_command():
 
 
 # create app
+celery = None
+flask_app = None
+socketio_app = None
+
 if is_db_command():
     from app_factory import create_migrations_app
 
     app = create_migrations_app()
+    socketio_app = app
+    flask_app = app
 else:
     # It seems that JetBrains Python debugger does not work well with gevent,
     # so we need to disable gevent in debug mode.
@@ -33,8 +40,15 @@ else:
 
     from app_factory import create_app
 
-    app = create_app()
-    celery = app.extensions["celery"]
+    socketio_app, flask_app = create_app()
+    app = flask_app
+    celery = flask_app.extensions["celery"]
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 5001))
+    server = pywsgi.WSGIServer((host, port), socketio_app, handler_class=WebSocketHandler)
+    server.serve_forever()

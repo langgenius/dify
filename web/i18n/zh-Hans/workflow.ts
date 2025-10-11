@@ -70,6 +70,7 @@ const translation = {
     pasteHere: '粘贴到这里',
     pointerMode: '指针模式',
     handMode: '手模式',
+    commentMode: '评论模式',
     exportImage: '导出图片',
     exportPNG: '导出为 PNG',
     exportJPEG: '导出为 JPEG',
@@ -196,6 +197,38 @@ const translation = {
     noteChange: '注释已更改',
     noteDelete: '注释已删除',
     edgeDelete: '块已断开连接',
+  },
+  comments: {
+    panelTitle: '评论',
+    loading: '加载中…',
+    reply: '回复',
+    noComments: '暂无评论',
+    placeholder: {
+      add: '添加评论',
+      reply: '回复',
+      editReply: '编辑回复',
+    },
+    confirm: {
+      deleteThreadTitle: '删除此讨论？',
+      deleteThreadDesc: '此操作会永久删除该讨论及其所有回复，且无法恢复。',
+      deleteReplyTitle: '删除此回复？',
+      deleteReplyDesc: '此回复将被永久删除。',
+    },
+    aria: {
+      deleteComment: '删除评论',
+      resolveComment: '解决评论',
+      previousComment: '上一条评论',
+      nextComment: '下一条评论',
+      closeComment: '关闭评论',
+      replyActions: '回复操作',
+    },
+    actions: {
+      editReply: '编辑回复',
+      deleteReply: '删除回复',
+    },
+    fallback: {
+      user: '用户',
+    },
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

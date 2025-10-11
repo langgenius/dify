@@ -197,6 +197,38 @@ const translation = {
     nodeDragStop: 'Nodo spostato',
     nodeConnect: 'Nodo connesso',
   },
+  comments: {
+    panelTitle: 'Commento',
+    loading: 'Caricamento…',
+    reply: 'Rispondi',
+    noComments: 'Ancora nessun commento',
+    placeholder: {
+      add: 'Aggiungi un commento',
+      reply: 'Rispondi',
+      editReply: 'Modifica risposta',
+    },
+    confirm: {
+      deleteThreadTitle: 'Eliminare questa conversazione?',
+      deleteThreadDesc: 'Questa azione eliminerà in modo permanente la conversazione e tutte le risposte. Non sarà possibile annullare.',
+      deleteReplyTitle: 'Eliminare questa risposta?',
+      deleteReplyDesc: 'Questa risposta verrà rimossa definitivamente.',
+    },
+    aria: {
+      deleteComment: 'Elimina commento',
+      resolveComment: 'Risolvi commento',
+      previousComment: 'Commento precedente',
+      nextComment: 'Commento successivo',
+      closeComment: 'Chiudi commento',
+      replyActions: 'Azioni di risposta',
+    },
+    actions: {
+      editReply: 'Modifica risposta',
+      deleteReply: 'Elimina risposta',
+    },
+    fallback: {
+      user: 'Utente',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} è richiesto',
     authRequired: 'È richiesta l\'autorizzazione',

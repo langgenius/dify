@@ -27,6 +27,7 @@ recommended_app_fields = {
     "category": fields.String,
     "position": fields.Integer,
     "is_listed": fields.Boolean,
+    "can_trial": fields.Boolean,
 }
 
 recommended_app_list_fields = {
