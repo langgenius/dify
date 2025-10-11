@@ -19,7 +19,6 @@ from models.provider_ids import TriggerProviderID
 
 
 class PluginTriggerManager(BasePluginClient):
-
     def fetch_trigger_providers(self, tenant_id: str) -> list[PluginTriggerProviderEntity]:
         """
         Fetch trigger providers for the given tenant.
