@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import {
-  useNodes,
+  useStoreApi,
 } from 'reactflow'
 import { uniqBy } from 'lodash-es'
 import {
@@ -15,12 +15,14 @@ import type {
 import { AssignerNodeInputType, WriteMode } from './types'
 
 export const useGetAvailableVars = () => {
-  const nodes: Node[] = useNodes()
+  const store = useStoreApi()
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
   const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean, hideEnv = false) => {
     const availableNodes: Node[] = []
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
     const currentNode = nodes.find(node => node.id === nodeId)!
 
     if (!currentNode)
@@ -52,7 +54,7 @@ export const useGetAvailableVars = () => {
       isChatMode,
       filterVar,
     })
-  }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
+  }, [store, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
 
   return getAvailableVars
 }

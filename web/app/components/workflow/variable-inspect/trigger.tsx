@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { useMemo } from 'react'
-import { useNodes } from 'reactflow'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
@@ -8,7 +8,6 @@ import { useStore } from '../store'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import cn from '@/utils/classnames'
@@ -38,8 +37,7 @@ const VariableInspectTrigger: FC = () => {
     getNodesReadOnly,
   } = useNodesReadOnly()
   const workflowRunningData = useStore(s => s.workflowRunningData)
-  const nodes = useNodes<CommonNodeType>()
-  const isStepRunning = useMemo(() => nodes.some(node => node.data._singleRunningStatus === NodeRunningStatus.Running), [nodes])
+  const isStepRunning = useReactFlowStore(s => s.getNodes().some(node => node.data._singleRunningStatus === NodeRunningStatus.Running))
   const isPreviewRunning = useMemo(() => {
     if (!workflowRunningData)
       return false

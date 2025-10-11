@@ -1,18 +1,18 @@
 import { useCallback, useMemo } from 'react'
-import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import type {
-  CommonNodeType,
   Node,
   ValueSelector,
   VarType,
 } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import {
   VariableLabelInSelect,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 type VariableTagProps = {
   valueSelector: ValueSelector
@@ -26,16 +26,16 @@ const VariableTag = ({
   isShort,
   availableNodes,
 }: VariableTagProps) => {
-  const nodes = useNodes<CommonNodeType>()
   const isRagVar = isRagVariableVar(valueSelector)
+  const nodeFromAvailableNodes = useFindNode(isRagVar ? [valueSelector[1]] : [valueSelector[0]], availableNodes)
   const node = useMemo(() => {
     if (isSystemVar(valueSelector)) {
       const startNode = availableNodes?.find(n => n.data.type === BlockEnum.Start)
       if (startNode)
         return startNode
     }
-    return getNodeInfoById(availableNodes || nodes, isRagVar ? valueSelector[1] : valueSelector[0])
-  }, [nodes, valueSelector, availableNodes, isRagVar])
+    return nodeFromAvailableNodes
+  }, [valueSelector, availableNodes, isRagVar, nodeFromAvailableNodes]) as Node
 
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)

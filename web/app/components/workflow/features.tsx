@@ -2,13 +2,12 @@ import {
   memo,
   useCallback,
 } from 'react'
-import { useNodes } from 'reactflow'
 import { useStore } from './store'
 import {
   useIsChatMode,
   useNodesReadOnly,
 } from './hooks'
-import { type CommonNodeType, type InputVar, InputVarType, type Node } from './types'
+import { type InputVar, InputVarType, type Node } from './types'
 import useConfig from './nodes/start/use-config'
 import type { StartNodeType } from './nodes/start/types'
 import type { PromptVariable } from '@/models/debug'
@@ -16,6 +15,7 @@ import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { updateFeatures } from '@/service/workflow'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
@@ -23,8 +23,7 @@ const Features = () => {
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const featuresStore = useFeaturesStore()
-  const nodes = useNodes<CommonNodeType>()
-  const startNode = nodes.find(node => node.data.type === 'start')
+  const startNode = useFindNode(['sys'])
   const { id, data } = startNode as Node<StartNodeType>
   const { handleAddVariable } = useConfig(id, data)
 
@@ -63,7 +62,7 @@ const Features = () => {
 
       await updateFeatures({
         appId,
-        features: transformedFeatures,
+        features: transformedFeatures as any,
       })
 
       // Emit update event to other connected clients

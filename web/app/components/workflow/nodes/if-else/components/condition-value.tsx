@@ -3,7 +3,6 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
@@ -12,13 +11,10 @@ import {
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
-import type {
-  CommonNodeType,
-  Node,
-} from '@/app/components/workflow/types'
 import {
   VariableLabelInText,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 type ConditionValueProps = {
   variableSelector: string[]
@@ -33,11 +29,10 @@ const ConditionValue = ({
   value,
 }: ConditionValueProps) => {
   const { t } = useTranslation()
-  const nodes = useNodes()
+  const node = useFindNode(variableSelector)
   const variableName = labelName || (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}`) : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
-  const node: Node<CommonNodeType> | undefined = nodes.find(n => n.id === variableSelector[0]) as Node<CommonNodeType>
   const isException = isExceptionVariable(variableName, node?.data.type)
   const formatValue = useMemo(() => {
     if (notHasValue)

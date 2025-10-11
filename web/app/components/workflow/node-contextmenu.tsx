@@ -4,18 +4,16 @@ import {
   useRef,
 } from 'react'
 import { useClickAway } from 'ahooks'
-import { useNodes } from 'reactflow'
 import PanelOperatorPopup from './nodes/_base/components/panel-operator/panel-operator-popup'
-import type { Node } from './types'
 import { useStore } from './store'
 import { usePanelInteractions } from './hooks'
+import { useFindNode } from '@/app/components/workflow/hooks/use-find-node'
 
 const NodeContextmenu = () => {
   const ref = useRef(null)
-  const nodes = useNodes()
   const { handleNodeContextmenuCancel, handlePaneContextmenuCancel } = usePanelInteractions()
   const nodeMenu = useStore(s => s.nodeMenu)
-  const currentNode = nodes.find(node => node.id === nodeMenu?.nodeId) as Node
+  const currentNode = useFindNode(nodeMenu?.nodeId ? [nodeMenu.nodeId] : [])
 
   useEffect(() => {
     if (nodeMenu)
