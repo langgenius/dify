@@ -360,7 +360,9 @@ class Workflow(Base):
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
-        # _environment_variables is guaranteed to be non-None due to server_default="{}"
+        # TODO: find some way to init `self._environment_variables` when instance created.
+        if self._environment_variables is None:
+            self._environment_variables = "{}"
 
         # Use workflow.tenant_id to avoid relying on request user in background threads
         tenant_id = self.tenant_id
@@ -444,7 +446,9 @@ class Workflow(Base):
 
     @property
     def conversation_variables(self) -> Sequence[Variable]:
-        # _conversation_variables is guaranteed to be non-None due to server_default="{}"
+        # TODO: find some way to init `self._conversation_variables` when instance created.
+        if self._conversation_variables is None:
+            self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
         results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
@@ -825,14 +829,14 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         if self.execution_metadata_dict:
             from core.workflow.nodes import NodeType
 
-            if self.node_type == NodeType.TOOL.value and "tool_info" in self.execution_metadata_dict:
+            if self.node_type == NodeType.TOOL and "tool_info" in self.execution_metadata_dict:
                 tool_info: dict[str, Any] = self.execution_metadata_dict["tool_info"]
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
                     provider_type=tool_info["provider_type"],
                     provider_id=tool_info["provider_id"],
                 )
-            elif self.node_type == NodeType.DATASOURCE.value and "datasource_info" in self.execution_metadata_dict:
+            elif self.node_type == NodeType.DATASOURCE and "datasource_info" in self.execution_metadata_dict:
                 datasource_info = self.execution_metadata_dict["datasource_info"]
                 extras["icon"] = datasource_info.get("icon")
         return extras

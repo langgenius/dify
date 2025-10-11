@@ -130,7 +130,7 @@ class TestWorkflowRunService:
             elapsed_time=1.5,
             total_tokens=100,
             total_steps=3,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=created_time,
             finished_at=created_time,
@@ -167,7 +167,7 @@ class TestWorkflowRunService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source=CreatorUserRole.ACCOUNT.value,
+            from_source=CreatorUserRole.ACCOUNT,
             from_account_id=account.id,
         )
         db.session.add(conversation)
@@ -188,7 +188,7 @@ class TestWorkflowRunService:
         message.answer_price_unit = 0.001
         message.currency = "USD"
         message.status = "normal"
-        message.from_source = CreatorUserRole.ACCOUNT.value
+        message.from_source = CreatorUserRole.ACCOUNT
         message.from_account_id = account.id
         message.workflow_run_id = workflow_run.id
         message.inputs = {"input": "test input"}
@@ -458,7 +458,7 @@ class TestWorkflowRunService:
                 status="succeeded",
                 elapsed_time=0.5,
                 execution_metadata=json.dumps({"tokens": 50}),
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC),
             )
@@ -689,7 +689,7 @@ class TestWorkflowRunService:
             status="succeeded",
             elapsed_time=0.5,
             execution_metadata=json.dumps({"tokens": 50}),
-            created_by_role=CreatorUserRole.END_USER.value,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=end_user.id,
             created_at=datetime.now(UTC),
         )
@@ -710,4 +710,4 @@ class TestWorkflowRunService:
         assert node_exec.app_id == app.id
         assert node_exec.workflow_run_id == workflow_run.id
         assert node_exec.created_by == end_user.id
-        assert node_exec.created_by_role == CreatorUserRole.END_USER.value
+        assert node_exec.created_by_role == CreatorUserRole.END_USER

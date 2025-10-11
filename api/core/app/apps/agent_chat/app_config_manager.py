@@ -186,7 +186,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
         if not agent_mode.get("strategy"):
-            agent_mode["strategy"] = PlanningStrategy.ROUTER.value
+            agent_mode["strategy"] = PlanningStrategy.ROUTER
 
         if agent_mode["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
             raise ValueError("strategy in agent_mode must be in the specified strategy list")

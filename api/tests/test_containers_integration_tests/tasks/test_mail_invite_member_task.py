@@ -95,10 +95,10 @@ class TestMailInviteMemberTask:
             name=fake.name(),
             password=fake.password(),
             interface_language="en-US",
-            status=AccountStatus.ACTIVE.value,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            status=AccountStatus.ACTIVE,
         )
+        account.created_at = datetime.now(UTC)
+        account.updated_at = datetime.now(UTC)
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
         db_session_with_containers.refresh(account)
@@ -106,9 +106,9 @@ class TestMailInviteMemberTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
         )
+        tenant.created_at = datetime.now(UTC)
+        tenant.updated_at = datetime.now(UTC)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
         db_session_with_containers.refresh(tenant)
@@ -117,9 +117,9 @@ class TestMailInviteMemberTask:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
-            created_at=datetime.now(UTC),
+            role=TenantAccountRole.OWNER,
         )
+        tenant_join.created_at = datetime.now(UTC)
         db_session_with_containers.add(tenant_join)
         db_session_with_containers.commit()
 
@@ -163,10 +163,11 @@ class TestMailInviteMemberTask:
             name=email.split("@")[0],
             password="",
             interface_language="en-US",
-            status=AccountStatus.PENDING.value,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            status=AccountStatus.PENDING,
         )
+
+        account.created_at = datetime.now(UTC)
+        account.updated_at = datetime.now(UTC)
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
         db_session_with_containers.refresh(account)
@@ -175,9 +176,9 @@ class TestMailInviteMemberTask:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.NORMAL.value,
-            created_at=datetime.now(UTC),
+            role=TenantAccountRole.NORMAL,
         )
+        tenant_join.created_at = datetime.now(UTC)
         db_session_with_containers.add(tenant_join)
         db_session_with_containers.commit()
 
@@ -485,7 +486,7 @@ class TestMailInviteMemberTask:
         db_session_with_containers.refresh(pending_account)
         db_session_with_containers.refresh(tenant)
 
-        assert pending_account.status == AccountStatus.PENDING.value
+        assert pending_account.status == AccountStatus.PENDING
         assert pending_account.email == invitee_email
         assert tenant.name is not None
 
@@ -496,7 +497,7 @@ class TestMailInviteMemberTask:
             .first()
         )
         assert tenant_join is not None
-        assert tenant_join.role == TenantAccountRole.NORMAL.value
+        assert tenant_join.role == TenantAccountRole.NORMAL
 
     def test_send_invite_member_mail_token_lifecycle_management(
         self, db_session_with_containers, mock_external_service_dependencies

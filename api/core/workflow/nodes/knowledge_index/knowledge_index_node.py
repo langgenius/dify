@@ -27,7 +27,7 @@ from .exc import (
 logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 2,
@@ -77,7 +77,7 @@ class KnowledgeIndexNode(Node):
             raise KnowledgeIndexNodeError("Index chunk variable is required.")
         invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
         if invoke_from:
-            is_preview = invoke_from.value == InvokeFrom.DEBUGGER.value
+            is_preview = invoke_from.value == InvokeFrom.DEBUGGER
         else:
             is_preview = False
         chunks = variable.value

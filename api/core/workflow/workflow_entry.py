@@ -227,7 +227,7 @@ class WorkflowEntry:
             "height": node_height,
             "type": "custom",
             "data": {
-                "type": NodeType.START.value,
+                "type": NodeType.START,
                 "title": "Start",
                 "desc": "Start",
             },

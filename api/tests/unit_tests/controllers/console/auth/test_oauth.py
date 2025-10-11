@@ -143,7 +143,7 @@ class TestOAuthCallback:
         oauth_provider.get_user_info.return_value = OAuthUserInfo(id="123", name="Test User", email="test@example.com")
 
         account = MagicMock()
-        account.status = AccountStatus.ACTIVE.value
+        account.status = AccountStatus.ACTIVE
 
         token_pair = MagicMock()
         token_pair.access_token = "jwt_access_token"
@@ -218,7 +218,7 @@ class TestOAuthCallback:
     @pytest.mark.parametrize(
         ("account_status", "expected_redirect"),
         [
-            (AccountStatus.BANNED.value, "http://localhost:3000/signin?message=Account is banned."),
+            (AccountStatus.BANNED, "http://localhost:3000/signin?message=Account is banned."),
             # CLOSED status: Currently NOT handled, will proceed to login (security issue)
             # This documents actual behavior. See test_defensive_check_for_closed_account_status for details
             (
@@ -294,7 +294,7 @@ class TestOAuthCallback:
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         mock_account = MagicMock()
-        mock_account.status = AccountStatus.PENDING.value
+        mock_account.status = AccountStatus.PENDING
         mock_generate_account.return_value = mock_account
 
         mock_token_pair = MagicMock()
@@ -305,7 +305,7 @@ class TestOAuthCallback:
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
             resource.get("github")
 
-        assert mock_account.status == AccountStatus.ACTIVE.value
+        assert mock_account.status == AccountStatus.ACTIVE
         assert mock_account.initialized_at is not None
         mock_db.session.commit.assert_called_once()
 
@@ -355,7 +355,7 @@ class TestOAuthCallback:
 
         # Create account with CLOSED status
         closed_account = MagicMock()
-        closed_account.status = AccountStatus.CLOSED.value
+        closed_account.status = AccountStatus.CLOSED
         closed_account.id = "123"
         closed_account.name = "Closed Account"
         mock_generate_account.return_value = closed_account

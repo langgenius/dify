@@ -23,7 +23,7 @@ class TestModelConfigResourcePermissions:
         """Create a mock App model for testing."""
         app = App()
         app.id = str(uuid.uuid4())
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
         app.status = "normal"
         app.app_model_config_id = str(uuid.uuid4())
@@ -32,17 +32,16 @@ class TestModelConfigResourcePermissions:
     @pytest.fixture
     def mock_account(self, monkeypatch: pytest.MonkeyPatch):
         """Create a mock Account for testing."""
-        account = Account()
+
+        account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid.uuid4())
-        account.name = "Test User"
-        account.email = "test@example.com"
         account.last_active_at = naive_utc_now()
         account.created_at = naive_utc_now()
         account.updated_at = naive_utc_now()
 
-        tenant = Tenant()
+        # Create mock tenant
+        tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid.uuid4())
-        tenant.name = "Test Tenant"
 
         mock_session_instance = mock.Mock()
 
