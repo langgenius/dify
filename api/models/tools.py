@@ -108,7 +108,8 @@ class BuiltinToolProvider(TypeBase):
 
     @property
     def credentials(self) -> dict[str, Any]:
-        assert self.encrypted_credentials
+        if not self.encrypted_credentials:
+            return {}
         return cast(dict[str, Any], json.loads(self.encrypted_credentials))
 
 
