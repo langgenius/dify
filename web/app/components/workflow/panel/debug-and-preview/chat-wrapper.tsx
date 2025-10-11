@@ -94,7 +94,7 @@ const ChatWrapper = (
       inputsForm: (startVariables || []) as any,
     },
     [],
-    taskId => stopChatMessageResponding(appDetail!.id, taskId),
+    taskId => stopChatMessageResponding(appDetail?.id || '', taskId),
   )
 
   const handleRestartChat = useCallback(() => {
@@ -112,7 +112,7 @@ const ChatWrapper = (
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || undefined,
       },
       {
-        onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+        onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail?.id || '', messageId, getAbortController),
       },
     )
   }, [handleSend, workflowStore, conversationId, chatList, appDetail])
