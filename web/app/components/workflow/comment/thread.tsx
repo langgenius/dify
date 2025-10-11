@@ -18,6 +18,8 @@ import { getUserColor } from '@/app/components/workflow/collaboration/utils/user
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
   loading?: boolean
+  replySubmitting?: boolean
+  replyUpdating?: boolean
   onClose: () => void
   onDelete?: () => void
   onResolve?: () => void
@@ -135,6 +137,8 @@ const ThreadMessage: FC<{
 export const CommentThread: FC<CommentThreadProps> = memo(({
   comment,
   loading = false,
+  replySubmitting = false,
+  replyUpdating = false,
   onClose,
   onDelete,
   onResolve,
@@ -159,7 +163,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [comment.id])
 
   const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
-    if (!onReply || loading) return
+    if (!onReply || replySubmitting) return
 
     setReplyContent('')
 
@@ -170,7 +174,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
       console.error('Failed to send reply', error)
       setReplyContent(content)
     }
-  }, [onReply, loading])
+  }, [onReply, replySubmitting])
 
   const screenPosition = useMemo(() => {
     return flowToScreenPosition({
@@ -398,7 +402,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           onCancel={handleCancelEdit}
                           placeholder={t('workflow.comments.placeholder.editReply')}
                           disabled={loading}
-                          loading={loading}
+                          loading={replyUpdating}
                           isEditing={true}
                           className="system-sm-regular"
                           autoFocus
@@ -420,6 +424,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             </div>
           )}
         </div>
+        {loading && (
+          <div className='bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary'>
+            {t('workflow.comments.loading')}
+          </div>
+        )}
         {onReply && (
           <div className='border-t border-components-panel-border px-4 py-3'>
             <div className='flex items-center gap-3'>
@@ -436,7 +445,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   onSubmit={handleReplySubmit}
                   placeholder={t('workflow.comments.placeholder.reply')}
                   disabled={loading}
-                  loading={loading}
+                  loading={replySubmitting}
                 />
               </div>
             </div>

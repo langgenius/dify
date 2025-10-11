@@ -188,6 +188,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     pendingComment,
     activeComment,
     activeCommentLoading,
+    replySubmitting,
+    replyUpdating,
     handleCommentSubmit,
     handleCommentCancel,
     handleCommentIconClick,
@@ -468,6 +470,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 key={`${comment.id}-thread`}
                 comment={activeComment}
                 loading={activeCommentLoading}
+                replySubmitting={replySubmitting}
+                replyUpdating={replyUpdating}
                 onClose={handleActiveCommentClose}
                 onResolve={() => handleCommentResolve(comment.id)}
                 onDelete={() => handleCommentDeleteClick(comment.id)}
