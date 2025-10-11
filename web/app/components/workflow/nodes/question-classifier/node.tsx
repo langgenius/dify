@@ -3,7 +3,6 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import type { NodeProps } from 'reactflow'
-import InfoPanel from '../_base/components/info-panel'
 import { NodeSourceHandle } from '../_base/components/node-handle'
 import type { QuestionClassifierNodeType } from './types'
 import {
