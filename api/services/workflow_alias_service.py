@@ -18,7 +18,7 @@ from models import Workflow, WorkflowNameAlias
 class WorkflowAliasArgs(BaseModel):
     app_id: str = Field(..., description="App ID")
     workflow_id: str = Field(..., description="Workflow ID")
-    name: str = Field(..., description="Alias name", max_length=255)
+    name: str = Field(..., description="Alias name", max_length=100)
     created_by: str | None = Field(default=None, description="User ID who created the alias")
 
 
