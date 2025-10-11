@@ -63,7 +63,10 @@ class RecommendedAppService:
         :return:
         """
         with Session(db.engine) as session:
-            account_trial_app_record = session.query(AccountTrialAppRecord).where(TrialApp.app_id == app_id).first()
+            account_trial_app_record = session.query(AccountTrialAppRecord).where(
+                AccountTrialAppRecord.app_id == app_id,
+                AccountTrialAppRecord.account_id == account_id
+            ).first()
             if account_trial_app_record:
                 account_trial_app_record.count += 1
                 session.commit()
