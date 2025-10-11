@@ -99,6 +99,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { t } = useTranslation()
   const params = useParams()
   const isTop = depth === 1
+  const isTryApp = appSourceType === AppSourceType.tryApp
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
   const [childFeedback, setChildFeedback] = useState<FeedbackType>({
@@ -329,13 +330,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       <RiReplay15Line className='h-4 w-4' />
                     </ActionButton>
                   )}
-                  {isInWebApp && !isWorkflow && (
+                  {isInWebApp && !isWorkflow && !isTryApp && (
                     <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
                       <RiBookmark3Line className='h-4 w-4' />
                     </ActionButton>
                   )}
                 </div>
-                {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
+                {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
                   <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
                     {!feedback?.rating && (
                       <>
