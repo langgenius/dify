@@ -3,10 +3,11 @@ import logging
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
-from controllers.console import api
+
 import services
 from controllers.common import fields
 from controllers.common.fields import build_site_model
+from controllers.console import api
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
