@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Odznacz wszystkie',
     selectAll: 'Zaznacz wszystkie',
     config: 'Konfiguracja',
+    yes: 'Tak',
+    no: 'Nie',
+    deleteConfirmTitle: 'Usunąć?',
+    confirmAction: 'Proszę potwierdzić swoją akcję.',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
