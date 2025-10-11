@@ -1,10 +1,12 @@
 import logging
 import queue
+import threading
 import time
 from abc import abstractmethod
 from enum import IntEnum, auto
 from typing import Any
 
+from cachetools import TTLCache, cachedmethod
 from redis.exceptions import RedisError
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -45,6 +47,8 @@ class AppQueueManager:
         q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
+        self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
+        self._cache_lock = threading.Lock()
 
     def listen(self):
         """
@@ -157,6 +161,7 @@ class AppQueueManager:
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
 
+    @cachedmethod(lambda self: self._stopped_cache, lock=lambda self: self._cache_lock)
     def _is_stopped(self) -> bool:
         """
         Check if task is stopped
