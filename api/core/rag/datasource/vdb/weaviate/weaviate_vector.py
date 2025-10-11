@@ -7,19 +7,18 @@ document embeddings used in retrieval-augmented generation workflows.
 
 import datetime
 import json
-from typing import Any, Optional
+import logging
 import uuid as _uuid
-import requests
+from typing import Any
 from urllib.parse import urlparse
 
 import weaviate
 import weaviate.classes.config as wc
-
+from pydantic import BaseModel, model_validator
+from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
 from weaviate.exceptions import UnexpectedStatusCodeError
-from weaviate.classes.data import DataObject
-from pydantic import BaseModel, model_validator
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -31,19 +30,19 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
-import logging
-
 logger = logging.getLogger(__name__)
+
 
 class WeaviateConfig(BaseModel):
     """
     Configuration model for Weaviate connection settings.
-    
+
     Attributes:
         endpoint: Weaviate server endpoint URL
         api_key: Optional API key for authentication
         batch_size: Number of objects to batch per insert operation
     """
+
     endpoint: str
     api_key: str | None = None
     batch_size: int = 100
@@ -56,18 +55,19 @@ class WeaviateConfig(BaseModel):
             raise ValueError("config WEAVIATE_ENDPOINT is required")
         return values
 
+
 class WeaviateVector(BaseVector):
     """
     Weaviate vector database implementation for document storage and retrieval.
-    
+
     Handles creation, insertion, deletion, and querying of document embeddings
     in a Weaviate collection.
     """
-    
+
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
         """
         Initializes the Weaviate vector store.
-        
+
         Args:
             collection_name: Name of the Weaviate collection
             config: Weaviate configuration settings
@@ -80,12 +80,12 @@ class WeaviateVector(BaseVector):
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
         Initializes and returns a connected Weaviate client.
-        
+
         Configures both HTTP and gRPC connections with proper authentication.
         """
         p = urlparse(config.endpoint)
         host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
-        http_secure = (p.scheme == "https")
+        http_secure = p.scheme == "https"
         http_port = p.port or (443 if http_secure else 80)
 
         grpc_host = host
@@ -114,7 +114,7 @@ class WeaviateVector(BaseVector):
     def get_collection_name(self, dataset: Dataset) -> str:
         """
         Retrieves or generates the collection name for a dataset.
-        
+
         Uses existing index structure if available, otherwise generates from dataset ID.
         """
         if dataset.index_struct_dict:
@@ -140,7 +140,7 @@ class WeaviateVector(BaseVector):
     def _create_collection(self):
         """
         Creates the Weaviate collection with required schema if it doesn't exist.
-        
+
         Uses Redis locking to prevent concurrent creation attempts.
         """
         lock_name = f"vector_indexing_lock_{self._collection_name}"
@@ -169,13 +169,13 @@ class WeaviateVector(BaseVector):
                 self._ensure_properties()
                 redis_client.set(cache_key, 1, ex=3600)
             except Exception as e:
-                logger.exception(f"Error creating collection {self._collection_name}: {e}")
+                logger.exception("Error creating collection %s", self._collection_name)
                 raise
 
     def _ensure_properties(self) -> None:
         """
         Ensures all required properties exist in the collection schema.
-        
+
         Adds missing properties if the collection exists but lacks them.
         """
         if not self._client.collections.exists(self._collection_name):
@@ -197,27 +197,27 @@ class WeaviateVector(BaseVector):
             try:
                 col.config.add_property(prop)
             except Exception as e:
-                logger.warning(f"Could not add property {prop.name}: {e}")
+                logger.warning("Could not add property %s: %s", prop.name, e)
 
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.
-        
+
         Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
         """
         URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-        
+
         uuids = []
         for doc in documents:
             uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
             uuids.append(str(uuid_val))
-        
+
         return uuids
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Adds documents with their embeddings to the collection.
-        
+
         Batches insertions for efficiency and returns the list of inserted object IDs.
         """
         uuids = self._get_uuids(documents)
@@ -250,16 +250,10 @@ class WeaviateVector(BaseVector):
                 )
             )
 
-        
-        
         batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
         with col.batch.dynamic() as batch:
             for obj in objs:
-                batch.add_object(
-                    properties=obj.properties,
-                    uuid=obj.uuid,
-                    vector=obj.vector
-                )
+                batch.add_object(properties=obj.properties, uuid=obj.uuid, vector=obj.vector)
 
         return ids_out
 
@@ -301,7 +295,7 @@ class WeaviateVector(BaseVector):
     def delete_by_ids(self, ids: list[str]) -> None:
         """
         Deletes objects by their UUID identifiers.
-        
+
         Silently ignores 404 errors for non-existent IDs.
         """
         if not self._client.collections.exists(self._collection_name):
@@ -319,7 +313,7 @@ class WeaviateVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Performs vector similarity search using the provided query vector.
-        
+
         Filters by document IDs if provided and applies score threshold.
         Returns documents sorted by relevance score.
         """
@@ -367,7 +361,7 @@ class WeaviateVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """
         Performs BM25 full-text search on document content.
-        
+
         Filters by document IDs if provided and returns matching documents with vectors.
         """
         if not self._client.collections.exists(self._collection_name):
@@ -413,13 +407,14 @@ class WeaviateVector(BaseVector):
             return value.isoformat()
         return value
 
+
 class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""
-    
+
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
         """
         Initializes a WeaviateVector instance for the given dataset.
-        
+
         Uses existing collection name from dataset index structure or generates a new one.
         Updates dataset index structure if not already set.
         """
@@ -429,7 +424,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name)) 
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
         return WeaviateVector(
             collection_name=collection_name,
             config=WeaviateConfig(
