@@ -39,7 +39,7 @@ class TagListApi(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -67,7 +67,7 @@ class TagUpdateDeleteApi(Resource):
         assert current_user.current_tenant_id is not None
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -91,7 +91,7 @@ class TagUpdateDeleteApi(Resource):
         assert current_user.current_tenant_id is not None
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         TagService.delete_tag(tag_id)
@@ -108,7 +108,7 @@ class TagBindingCreateApi(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -136,7 +136,7 @@ class TagBindingDeleteApi(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()

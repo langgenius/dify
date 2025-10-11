@@ -74,7 +74,7 @@ class BaseApiKeyListResource(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         current_key_count = (
