@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Bỏ chọn tất cả',
     selectAll: 'Chọn Tất Cả',
     config: 'Cấu hình',
+    no: 'Không',
+    yes: 'Vâng',
+    deleteConfirmTitle: 'Xóa?',
+    confirmAction: 'Vui lòng xác nhận hành động của bạn.',
   },
   placeholder: {
     input: 'Vui lòng nhập',

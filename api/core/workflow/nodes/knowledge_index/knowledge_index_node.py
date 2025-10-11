@@ -2,7 +2,7 @@ import datetime
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import func, select
 
@@ -27,7 +27,7 @@ from .exc import (
 logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 2,
@@ -62,7 +62,7 @@ class KnowledgeIndexNode(Node):
         return self._node_data
 
     def _run(self) -> NodeRunResult:  # type: ignore
-        node_data = cast(KnowledgeIndexNodeData, self._node_data)
+        node_data = self._node_data
         variable_pool = self.graph_runtime_state.variable_pool
         dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
         if not dataset_id:
@@ -77,7 +77,7 @@ class KnowledgeIndexNode(Node):
             raise KnowledgeIndexNodeError("Index chunk variable is required.")
         invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
         if invoke_from:
-            is_preview = invoke_from.value == InvokeFrom.DEBUGGER.value
+            is_preview = invoke_from.value == InvokeFrom.DEBUGGER
         else:
             is_preview = False
         chunks = variable.value

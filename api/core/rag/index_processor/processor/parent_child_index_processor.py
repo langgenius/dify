@@ -40,7 +40,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             raise ValueError("No process rule found.")
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
-        rules = Rule(**process_rule.get("rules"))
+        rules = Rule.model_validate(process_rule.get("rules"))
         all_documents: list[Document] = []
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
@@ -110,7 +110,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 child_documents = document.children
                 if child_documents:
                     formatted_child_documents = [
-                        Document(**child_document.model_dump()) for child_document in child_documents
+                        Document.model_validate(child_document.model_dump()) for child_document in child_documents
                     ]
                     vector.create(formatted_child_documents)
 
@@ -224,7 +224,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         return child_nodes
 
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
-        parent_childs = ParentChildStructureChunk(**chunks)
+        parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:
             metadata = {
@@ -274,7 +274,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     vector.create(all_child_documents)
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
-        parent_childs = ParentChildStructureChunk(**chunks)
+        parent_childs = ParentChildStructureChunk.model_validate(chunks)
         preview = []
         for parent_child in parent_childs.parent_child_chunks:
             preview.append({"content": parent_child.parent_content, "child_chunks": parent_child.child_contents})
