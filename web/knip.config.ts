@@ -138,11 +138,6 @@ const config: KnipConfig = {
   // Excludes test files to avoid false positives.
   project: [
     '**/*.{js,jsx,ts,tsx,mjs,cjs}',
-
-    // Exclude test files (they have their own imports and are not part of production)
-    '!**/*.spec.{ts,tsx}',
-    '!**/*.test.{ts,tsx}',
-    '!**/__tests__/**',
   ],
 
   // ============================================================================
