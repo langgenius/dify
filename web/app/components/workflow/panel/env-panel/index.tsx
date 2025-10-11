@@ -82,7 +82,7 @@ const EnvPanel = () => {
       const socket = webSocketClient.getSocket(appId)
       if (socket?.connected) {
         socket.emit('collaboration_event', {
-          type: 'varsAndFeaturesUpdate',
+          type: 'vars_and_features_update',
           timestamp: Date.now(),
         })
       }
@@ -137,7 +137,7 @@ const EnvPanel = () => {
         const socket = webSocketClient.getSocket(appId)
         if (socket) {
           socket.emit('collaboration_event', {
-            type: 'varsAndFeaturesUpdate',
+            type: 'vars_and_features_update',
           })
         }
 
@@ -203,7 +203,7 @@ const EnvPanel = () => {
       const socket = webSocketClient.getSocket(appId)
       if (socket) {
         socket.emit('collaboration_event', {
-          type: 'varsAndFeaturesUpdate',
+          type: 'vars_and_features_update',
         })
       }
 

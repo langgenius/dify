@@ -285,7 +285,7 @@ export class CollaborationManager {
     const socket = webSocketClient.getSocket(this.currentAppId)
     if (socket) {
       socket.emit('collaboration_event', {
-        type: 'mouseMove',
+        type: 'mouse_move',
         userId: socket.id,
         data: { x: position.x, y: position.y },
         timestamp: Date.now(),
@@ -300,7 +300,7 @@ export class CollaborationManager {
     if (socket) {
       console.log('Emitting sync request to leader')
       socket.emit('collaboration_event', {
-        type: 'syncRequest',
+        type: 'sync_request',
         data: { timestamp: Date.now() },
         timestamp: Date.now(),
       })
@@ -314,7 +314,7 @@ export class CollaborationManager {
     if (socket) {
       console.log('Emitting Workflow update event')
       socket.emit('collaboration_event', {
-        type: 'workflowUpdate',
+        type: 'workflow_update',
         data: { appId, timestamp: Date.now() },
         timestamp: Date.now(),
       })
@@ -336,7 +336,7 @@ export class CollaborationManager {
     }
 
     socket.emit('collaboration_event', {
-      type: 'nodePanelPresence',
+      type: 'node_panel_presence',
       data: payload,
       timestamp: payload.timestamp,
     })
@@ -397,7 +397,7 @@ export class CollaborationManager {
     if (socket) {
       console.log('Emitting Comments update event')
       socket.emit('collaboration_event', {
-        type: 'commentsUpdate',
+        type: 'comments_update',
         data: { appId, timestamp: Date.now() },
         timestamp: Date.now(),
       })
@@ -793,7 +793,7 @@ export class CollaborationManager {
     console.log('Setting up socket event listeners for collaboration')
 
     socket.on('collaboration_update', (update: any) => {
-      if (update.type === 'mouseMove') {
+      if (update.type === 'mouse_move') {
         // Update cursor state for this user
         this.cursors[update.userId] = {
           x: update.data.x,
@@ -804,31 +804,31 @@ export class CollaborationManager {
 
         this.eventEmitter.emit('cursors', { ...this.cursors })
       }
-      else if (update.type === 'varsAndFeaturesUpdate') {
-        console.log('Processing varsAndFeaturesUpdate event:', update)
+      else if (update.type === 'vars_and_features_update') {
+        console.log('Processing vars_and_features_update event:', update)
         this.eventEmitter.emit('varsAndFeaturesUpdate', update)
       }
-      else if (update.type === 'appStateUpdate') {
-        console.log('Processing appStateUpdate event:', update)
+      else if (update.type === 'app_state_update') {
+        console.log('Processing app_state_update event:', update)
         this.eventEmitter.emit('appStateUpdate', update)
       }
-      else if (update.type === 'mcpServerUpdate') {
-        console.log('Processing mcpServerUpdate event:', update)
+      else if (update.type === 'mcp_server_update') {
+        console.log('Processing mcp_server_update event:', update)
         this.eventEmitter.emit('mcpServerUpdate', update)
       }
-      else if (update.type === 'workflowUpdate') {
-        console.log('Processing workflowUpdate event:', update)
+      else if (update.type === 'workflow_update') {
+        console.log('Processing workflow_update event:', update)
         this.eventEmitter.emit('workflowUpdate', update.data)
       }
-      else if (update.type === 'commentsUpdate') {
-        console.log('Processing commentsUpdate event:', update)
+      else if (update.type === 'comments_update') {
+        console.log('Processing comments_update event:', update)
         this.eventEmitter.emit('commentsUpdate', update.data)
       }
-      else if (update.type === 'nodePanelPresence') {
-        console.log('Processing nodePanelPresence event:', update)
+      else if (update.type === 'node_panel_presence') {
+        console.log('Processing node_panel_presence event:', update)
         this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
       }
-      else if (update.type === 'syncRequest') {
+      else if (update.type === 'sync_request') {
         console.log('Received sync request from another user')
         // Only process if we are the leader
         if (this.isLeader) {

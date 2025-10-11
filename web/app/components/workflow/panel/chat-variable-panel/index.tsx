@@ -86,7 +86,7 @@ const ChatVariablePanel = () => {
       const socket = webSocketClient.getSocket(appId)
       if (socket) {
         socket.emit('collaboration_event', {
-          type: 'varsAndFeaturesUpdate',
+          type: 'vars_and_features_update',
         })
       }
 
@@ -128,7 +128,7 @@ const ChatVariablePanel = () => {
         const socket = webSocketClient.getSocket(appId)
         if (socket) {
           socket.emit('collaboration_event', {
-            type: 'varsAndFeaturesUpdate',
+            type: 'vars_and_features_update',
           })
         }
 
@@ -169,7 +169,7 @@ const ChatVariablePanel = () => {
       const socket = webSocketClient.getSocket(appId)
       if (socket) {
         socket.emit('collaboration_event', {
-          type: 'varsAndFeaturesUpdate',
+          type: 'vars_and_features_update',
         })
       }
 

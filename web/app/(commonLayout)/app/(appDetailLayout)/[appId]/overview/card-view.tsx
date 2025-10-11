@@ -56,7 +56,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       const socket = webSocketClient.getSocket(appId)
       if (socket) {
         socket.emit('collaboration_event', {
-          type: 'appStateUpdate',
+          type: 'app_state_update',
           data: { timestamp: Date.now() },
           timestamp: Date.now(),
         })
