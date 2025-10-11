@@ -1,5 +1,3 @@
-from sqlalchemy.orm import Session
-
 from configs import dify_config
 from extensions.ext_database import db
 from models.model import AccountTrialAppRecord, TrialApp
@@ -62,7 +60,7 @@ class RecommendedAppService:
         :param app_id: app id
         :return:
         """
-        with Session(db.engine) as session:
+        with db.session as session:
             account_trial_app_record = session.query(AccountTrialAppRecord).where(
                 AccountTrialAppRecord.app_id == app_id,
                 AccountTrialAppRecord.account_id == account_id
