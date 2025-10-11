@@ -97,7 +97,7 @@ const translation = {
     messageRequest: {
       title: '{{count,number}} 条消息额度',
       titlePerMonth: '{{count,number}} 条消息额度/月',
-      tooltip: '消息额度旨在帮助您便捷地试用 Dify 中的各类 OpenAI 模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 OpenAI API 密钥。',
+      tooltip: '消息额度旨在帮助您便捷地试用 Dify 中来自 OpenAI、Anthropic、Gemini、Grok、DeepSeek 的模型的的不同模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 API 密钥。',
     },
     annotatedResponse: {
       title: '{{count,number}} 个标注回复数',
