@@ -20,7 +20,6 @@ import type { Task } from '../../share/text-generation/types'
 import Res from '@/app/components/share/text-generation/result'
 import { AppSourceType } from '@/service/share'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
-import useDocumentTitle from '@/hooks/use-document-title'
 
 type Props = {
   appId: string
@@ -37,7 +36,6 @@ const TextGeneration: FC<Props> = ({
 }) => {
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
-  useDocumentTitle(appData?.site?.title || '')
 
   const [inputs, doSetInputs] = useState<Record<string, any>>({})
   const inputsRef = useRef<Record<string, any>>(inputs)

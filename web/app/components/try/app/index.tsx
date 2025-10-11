@@ -6,6 +6,7 @@ import TextGeneration from './text-generation'
 import Loading from '../../base/loading'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import type { AppData } from '@/models/share'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 type Props = {
   appId: string
@@ -18,6 +19,9 @@ const TryApp: FC<Props> = ({
   const mode = appInfo?.mode
   const isChat = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
   const isCompletion = !isChat
+
+  useDocumentTitle(appInfo?.site?.title || '')
+
   if (isFetchingAppInfo) {
     return (
       <div className='flex h-full items-center justify-center'>
