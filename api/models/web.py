@@ -29,7 +29,6 @@ class SavedMessage(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -58,6 +57,5 @@ class PinnedConversation(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
         init=False,
     )
