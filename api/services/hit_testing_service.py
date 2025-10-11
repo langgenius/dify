@@ -63,7 +63,7 @@ class HitTestingService:
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [])
         all_documents = RetrievalService.retrieve(
-            retrieval_method=retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH),
+            retrieval_method=RetrievalMethod(retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
             dataset_id=dataset.id,
             query=query,
             top_k=retrieval_model.get("top_k", 4),
