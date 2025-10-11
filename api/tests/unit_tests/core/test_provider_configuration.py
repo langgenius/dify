@@ -14,7 +14,13 @@ from core.entities.provider_entities import (
 )
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity, CredentialFormSchema, FormType, FormOption
+from core.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormOption,
+    FormType,
+    ProviderEntity,
+)
 from models.provider import Provider, ProviderType
 
 
@@ -386,7 +392,7 @@ class TestProviderConfiguration:
             "secret_token": "secret_value_123",
             "temperature": "0.7",
         }
-        
+
         credential_form_schemas = [
             CredentialFormSchema(
                 variable="api_key",
@@ -424,7 +430,7 @@ class TestProviderConfiguration:
         assert obfuscated["model_name"] == "gpt-4"  # Not obfuscated
         assert obfuscated["secret_token"] == "***_123"
         assert obfuscated["temperature"] == "0.7"  # Not obfuscated
-        
+
         # Verify encrypter was called for secret fields only
         assert mock_encrypter.obfuscated_token.call_count == 2
         mock_encrypter.obfuscated_token.assert_any_call("sk-1234567890abcdef")
@@ -438,7 +444,7 @@ class TestProviderConfiguration:
             "temperature": "0.7",
             "max_tokens": "1000",
         }
-        
+
         credential_form_schemas = [
             CredentialFormSchema(
                 variable="model_name",
