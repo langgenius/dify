@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
 } from 'react'
 import {
@@ -23,8 +24,13 @@ import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
+import { useSearchParams } from 'next/navigation'
+
+import { fetchRunDetail } from '@/service/log'
+import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
@@ -46,6 +52,29 @@ const WorkflowAppWithAdditionalContext = () => {
 
     return []
   }, [data])
+
+  const searchParams = useSearchParams()
+  const workflowStore = useWorkflowStore()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  useEffect(() => {
+    const replayRunId = searchParams.get('replayRunId')
+    if (!replayRunId)
+      return
+    const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
+    if (!runUrl)
+      return
+    fetchRunDetail(runUrl).then((res) => {
+      const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } = workflowStore.getState()
+      if (typeof res.inputs === 'object') {
+        const userInputs = Object.fromEntries(
+          Object.entries(res.inputs as Record<string, any>).filter(([key]) => !key.startsWith('sys.')),
+        )
+        setInputs(userInputs)
+        setShowInputsPanel(true)
+        setShowDebugAndPreviewPanel(true)
+      }
+    })
+  }, [searchParams])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
