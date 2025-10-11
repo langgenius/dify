@@ -84,8 +84,8 @@ export const updateUserProfile: Fetcher<CommonResponse, { url: string; body: Rec
   return post<CommonResponse>(url, { body })
 }
 
-export const logout: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<CommonResponse>(url, params)
+export const logout: Fetcher<CommonResponse, { url: string; body?: Record<string, any> }> = ({ url, body }) => {
+  return post<CommonResponse>(url, { body: body ?? {} })
 }
 
 export const fetchLangGeniusVersion: Fetcher<LangGeniusVersionResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
@@ -375,7 +375,7 @@ export const verifyWebAppResetPasswordCode = (body: { email: string; code: strin
   post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body }, { isPublicAPI: true })
 
 export const sendDeleteAccountCode = () =>
-  get<CommonResponse & { data: string }>('/account/delete/verify')
+  post<CommonResponse & { data: string }>('/account/delete/verify', { body: {} })
 
 export const verifyDeleteAccountCode = (body: { code: string; token: string }) =>
   post<CommonResponse & { is_valid: boolean }>('/account/delete', { body })

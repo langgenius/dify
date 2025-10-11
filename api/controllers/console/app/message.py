@@ -269,7 +269,7 @@ class MessageSuggestedQuestionApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model, message_id):
+    def post(self, app_model, message_id):
         message_id = str(message_id)
 
         try:
