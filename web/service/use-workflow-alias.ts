@@ -98,28 +98,9 @@ export const useDeleteWorkflowAlias = (appId: string) => {
     mutationFn: async (aliasId: string) => {
       return del(`/apps/${appId}/workflow-aliases/${aliasId}`)
     },
-    onSuccess: (data, variables) => {
-      // Instead of invalidating all queries, update the specific cache
-      // This prevents multiple network requests
-      queryClient.setQueriesData(
-        {
-          queryKey: ['workflow-aliases', appId],
-          exact: false,
-        },
-        (oldData: WorkflowAliasList | undefined) => {
-          if (!oldData) return oldData
-
-          // Remove the deleted alias from the existing data
-          const existingAliases = oldData.items || []
-          const filteredAliases = existingAliases.filter(alias => alias.id !== variables)
-
-          return {
-            ...oldData,
-            items: filteredAliases,
-            limit: filteredAliases.length,
-          }
-        },
-      )
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] });
     },
   })
 }
