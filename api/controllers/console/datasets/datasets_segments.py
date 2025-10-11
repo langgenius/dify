@@ -309,7 +309,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.update_segment(SegmentUpdateArgs(**args), segment, document, dataset)
+        segment = SegmentService.update_segment(SegmentUpdateArgs.model_validate(args), segment, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
     @setup_required
@@ -564,7 +564,7 @@ class ChildChunkAddApi(Resource):
         args = parser.parse_args()
         try:
             chunks_data = args["chunks"]
-            chunks = [ChildChunkUpdateArgs(**chunk) for chunk in chunks_data]
+            chunks = [ChildChunkUpdateArgs.model_validate(chunk) for chunk in chunks_data]
             child_chunks = SegmentService.update_child_chunks(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))

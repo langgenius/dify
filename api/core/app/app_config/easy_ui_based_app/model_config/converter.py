@@ -68,7 +68,7 @@ class ModelConfigConverter:
         # get model mode
         model_mode = model_config.mode
         if not model_mode:
-            model_mode = LLMMode.CHAT.value
+            model_mode = LLMMode.CHAT
             if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
                 model_mode = LLMMode(model_schema.model_properties[ModelPropertyKey.MODE]).value
 

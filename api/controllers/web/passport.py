@@ -126,6 +126,8 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     end_user_id = enterprise_user_decoded.get("end_user_id")
     session_id = enterprise_user_decoded.get("session_id")
     user_auth_type = enterprise_user_decoded.get("auth_type")
+    exchanged_token_expires_unix = enterprise_user_decoded.get("exp")
+
     if not user_auth_type:
         raise Unauthorized("Missing auth_type in the token.")
 
@@ -169,8 +171,11 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         )
         db.session.add(end_user)
         db.session.commit()
-    exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
-    exp = int(exp_dt.timestamp())
+
+    exp = int((datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp())
+    if exchanged_token_expires_unix:
+        exp = int(exchanged_token_expires_unix)
+
     payload = {
         "iss": site.id,
         "sub": "Web API Passport",

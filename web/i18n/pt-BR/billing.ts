@@ -94,6 +94,8 @@ const translation = {
     apiRateLimitTooltip: 'O limite da taxa da API se aplica a todas as solicitações feitas através da API Dify, incluindo geração de texto, conversas de chat, execuções de fluxo de trabalho e processamento de documentos.',
     documentsRequestQuotaTooltip: 'Especifica o número total de ações que um espaço de trabalho pode realizar por minuto dentro da base de conhecimento, incluindo criação, exclusão, atualizações de conjuntos de dados, uploads de documentos, modificações, arquivamento e consultas à base de conhecimento. Esse métrica é utilizada para avaliar o desempenho das solicitações à base de conhecimento. Por exemplo, se um usuário do Sandbox realizar 10 testes de impacto consecutivos dentro de um minuto, seu espaço de trabalho ficará temporariamente restrito de realizar as seguintes ações no minuto seguinte: criação, exclusão, atualizações de conjuntos de dados e uploads ou modificações de documentos.',
     startBuilding: 'Comece a construir',
+    taxTip: 'Todos os preços de assinatura (mensal/anual) não incluem os impostos aplicáveis (por exemplo, IVA, imposto sobre vendas).',
+    taxTipSecond: 'Se a sua região não tiver requisitos fiscais aplicáveis, nenhum imposto aparecerá no seu checkout e você não será cobrado por taxas adicionais durante todo o período da assinatura.',
   },
   plans: {
     sandbox: {
