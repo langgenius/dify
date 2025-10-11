@@ -49,7 +49,7 @@ class DatasourceProviderApiEntity(BaseModel):
         for datasource in datasources:
             if datasource.get("parameters"):
                 for parameter in datasource.get("parameters"):
-                    if parameter.get("type") == DatasourceParameter.DatasourceParameterType.SYSTEM_FILES.value:
+                    if parameter.get("type") == DatasourceParameter.DatasourceParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
         # -------------
 

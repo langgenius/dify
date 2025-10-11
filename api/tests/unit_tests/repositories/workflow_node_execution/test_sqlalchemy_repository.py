@@ -298,7 +298,7 @@ def test_to_domain_model(repository):
     db_model.predecessor_node_id = "test-predecessor-id"
     db_model.node_execution_id = "test-node-execution-id"
     db_model.node_id = "test-node-id"
-    db_model.node_type = NodeType.START.value
+    db_model.node_type = NodeType.START
     db_model.title = "Test Node"
     db_model.inputs = json.dumps(inputs_dict)
     db_model.process_data = json.dumps(process_data_dict)

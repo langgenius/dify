@@ -393,7 +393,7 @@ class ApiBasedToolSchemaParser:
             openapi = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.OPENAPI.value
+            schema_type = ApiProviderSchemaType.OPENAPI
             return openapi, schema_type
         except ToolApiSchemaError as e:
             openapi_error = e
@@ -403,7 +403,7 @@ class ApiBasedToolSchemaParser:
             converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.SWAGGER.value
+            schema_type = ApiProviderSchemaType.SWAGGER
             return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 converted_swagger, extra_info=extra_info, warning=warning
             ), schema_type
@@ -415,7 +415,7 @@ class ApiBasedToolSchemaParser:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                 json_dumps(loaded_content), extra_info=extra_info, warning=warning
             )
-            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN.value
+            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN
         except ToolNotSupportedError as e:
             # maybe it's not plugin at all
             openapi_plugin_error = e
