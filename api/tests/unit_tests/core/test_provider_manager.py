@@ -1,4 +1,6 @@
 import pytest
+from pytest_mock import MockerFixture
+
 
 from core.entities.provider_entities import ModelSettings
 from core.model_runtime.entities.model_entities import ModelType
@@ -7,19 +9,25 @@ from models.provider import LoadBalancingModelConfig, ProviderModelSetting
 
 
 @pytest.fixture
-def mock_provider_entity(mocker):
+def mock_provider_entity(mocker: MockerFixture):
     mock_entity = mocker.Mock()
     mock_entity.provider = "openai"
     mock_entity.configurate_methods = ["predefined-model"]
     mock_entity.supported_model_types = [ModelType.LLM]
 
-    mock_entity.model_credential_schema = mocker.Mock()
-    mock_entity.model_credential_schema.credential_form_schemas = []
+    # Use PropertyMock to ensure credential_form_schemas is iterable
+    provider_credential_schema = mocker.Mock()
+    type(provider_credential_schema).credential_form_schemas = mocker.PropertyMock(return_value=[])
+    mock_entity.provider_credential_schema = provider_credential_schema
+
+    model_credential_schema = mocker.Mock()
+    type(model_credential_schema).credential_form_schemas = mocker.PropertyMock(return_value=[])
+    mock_entity.model_credential_schema = model_credential_schema
 
     return mock_entity
 
 
-def test__to_model_settings(mocker, mock_provider_entity):
+def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
     provider_model_settings = [
         ProviderModelSetting(
@@ -79,7 +87,7 @@ def test__to_model_settings(mocker, mock_provider_entity):
     assert result[0].load_balancing_configs[1].name == "first"
 
 
-def test__to_model_settings_only_one_lb(mocker, mock_provider_entity):
+def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
     provider_model_settings = [
         ProviderModelSetting(
@@ -127,7 +135,7 @@ def test__to_model_settings_only_one_lb(mocker, mock_provider_entity):
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test__to_model_settings_lb_disabled(mocker, mock_provider_entity):
+def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
     provider_model_settings = [
         ProviderModelSetting(
