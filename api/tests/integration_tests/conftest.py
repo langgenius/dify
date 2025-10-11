@@ -35,6 +35,10 @@ _load_env()
 
 _CACHED_APP = create_app()
 
+# Initialize the app within an application context to avoid RuntimeError
+with _CACHED_APP.app_context():
+    pass
+
 
 @pytest.fixture
 def flask_app() -> Flask:

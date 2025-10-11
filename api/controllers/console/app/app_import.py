@@ -11,7 +11,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
 from libs.login import login_required
 from models import Account
@@ -48,7 +48,8 @@ class AppImportApi(Resource):
         args = parser.parse_args()
 
         # Create service with session
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             # Import app
             account = cast(Account, current_user)
@@ -89,7 +90,8 @@ class AppImportConfirmApi(Resource):
             raise Forbidden()
 
         # Create service with session
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             # Confirm import
             account = cast(Account, current_user)
