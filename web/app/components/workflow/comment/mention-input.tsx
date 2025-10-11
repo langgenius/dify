@@ -503,7 +503,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
               className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
+              <RiAtLine className="h-4 w-4 text-text-tertiary" />
             </div>
             <Button
               className='z-20 ml-2 w-8 px-0'
@@ -525,7 +525,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
               className="z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
               onClick={handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4 text-components-button-primary-text" />
+              <RiAtLine className="h-4 w-4 text-text-tertiary" />
             </div>
             <div
               ref={setActionRightRef}
