@@ -344,7 +344,6 @@ class MCPToolProvider(TypeBase):
         except json.JSONDecodeError:
             return {}
 
-
     @property
     def mcp_tools(self) -> list["MCPTool"]:
         from core.mcp.types import Tool as MCPTool
