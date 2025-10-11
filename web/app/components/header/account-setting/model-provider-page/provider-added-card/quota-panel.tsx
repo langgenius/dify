@@ -12,6 +12,7 @@ import InstallFromMarketplace from '@/app/components/plugins/install-plugin/inst
 import { useMarketplaceAllPlugins } from '../hooks'
 import { useBoolean } from 'ahooks'
 import useTimestamp from '@/hooks/use-timestamp'
+import Loading from '@/app/components/base/loading'
 
 const allProviders = [
   { key: ModelProviderQuotaGetPaid.OPENAI, Icon: OpenaiSmall },
@@ -33,9 +34,11 @@ const providerKeyToPluginId: Record<string, string> = {
 
 type QuotaPanelProps = {
   providers: ModelProvider[]
+  isLoading?: boolean
 }
 const QuotaPanel: FC<QuotaPanelProps> = ({
   providers,
+  isLoading = false,
 }) => {
   const { t } = useTranslation()
   const { currentWorkspace } = useAppContext()
@@ -74,6 +77,14 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       }
     }
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
+  console.log('isLoading', isLoading)
+  if (isLoading) {
+    return (
+      <div className='my-2 flex min-h-[72px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs'>
+        <Loading />
+      </div>
+    )
+  }
 
   return (
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
