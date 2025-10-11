@@ -93,7 +93,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
           <div className='mt-2 space-y-0.5'>
             <div className={cn('space-y-0.5', hasMoreTopics && !showAll && 'max-h-[200px] overflow-hidden')}>
               {visibleTopics.map((topic, index) => (
-                <div key={index} className='relative' >
+                <div key={topic.id} className='relative' >
                   <TruncatedClassItem topic={topic} index={index} nodeId={id} t={t}/>
                   <NodeSourceHandle {...props} handleId={topic.id} handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'/>
                 </div>
