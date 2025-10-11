@@ -27,11 +27,14 @@ const translation = {
         actions: {
           delete: 'Delete',
           deleteConfirm: {
-            title: 'Delete subscription',
-            content: 'Are you sure you want to delete "{{name}}"?',
-            contentWithApps: 'This subscription is being used in {{count}} apps. Are you sure you want to delete "{{name}}"?',
-            confirm: 'Delete',
+            title: 'Delete {{name}}?',
+            content: 'Once deleted, this subscription cannot be recovered. Please confirm.',
+            contentWithApps: 'The current subscription is referenced by {{count}} applications. Deleting it will cause the configured applications to stop receiving subscription events.',
+            confirm: 'Confirm Delete',
             cancel: 'Cancel',
+            confirmInputWarning: 'Please enter the correct name to confirm.',
+            confirmInputPlaceholder: 'Enter "{{name}}" to confirm.',
+            confirmInputTip: 'Please enter “{{name}}” to confirm.',
           },
         },
         status: {

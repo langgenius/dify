@@ -27,11 +27,14 @@ const translation = {
         actions: {
           delete: '删除',
           deleteConfirm: {
-            title: '删除订阅',
-            content: '确定要删除"{{name}}"吗？',
-            contentWithApps: '该订阅正在被{{count}}个应用使用。确定要删除"{{name}}"吗？',
-            confirm: '删除',
+            title: '删除 {{name}} ？',
+            content: '删除后，该订阅将无法恢复，请确认。',
+            contentWithApps: '该订阅正在被 {{count}} 个应用使用，删除它将导致这些应用停止接收订阅事件。',
+            confirm: '确认删除',
             cancel: '取消',
+            confirmInputWarning: '请输入正确的名称确认。',
+            confirmInputPlaceholder: '输入 "{{name}}" 确认',
+            confirmInputTip: '请输入 “{{name}}” 确认：',
           },
         },
         status: {

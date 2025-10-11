@@ -64,6 +64,7 @@ const SubscriptionCard = ({ data }: Props) => {
           isShow={isShowDeleteModal}
           currentId={data.id}
           currentName={data.name}
+          workflowsInUse={data.workflows_in_use}
         />
       )}
     </>
