@@ -1,3 +1,4 @@
+from dify.api.configs import feature
 from flask_login import current_user
 
 from configs import dify_config
@@ -31,7 +32,8 @@ class WorkspaceService:
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
 
-        can_replace_logo = FeatureService.get_features(tenant.id).can_replace_logo
+        feature = FeatureService.get_features(tenant.id)
+        can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
             base_url = dify_config.FILES_URL
@@ -47,6 +49,9 @@ class WorkspaceService:
                 "replace_webapp_logo": replace_webapp_logo,
             }
         if dify_config.EDITION == "CLOUD":
+
+            tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
+
             from services.credit_pool_service import CreditPoolService
 
             paid_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="paid")
