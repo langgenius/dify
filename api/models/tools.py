@@ -337,11 +337,13 @@ class MCPToolProvider(TypeBase):
 
     @property
     def credentials(self) -> dict[str, Any]:
-        try:
-            assert self.encrypted_credentials
-            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
-        except Exception:
+        if not self.encrypted_credentials:
             return {}
+        try:
+            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
+        except json.JSONDecodeError:
+            return {}
+
 
     @property
     def mcp_tools(self) -> list["MCPTool"]:
