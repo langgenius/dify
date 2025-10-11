@@ -37,6 +37,7 @@ class TagListApi(Resource):
     @account_initialization_required
     def post(self):
         assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
@@ -63,6 +64,7 @@ class TagUpdateDeleteApi(Resource):
     @account_initialization_required
     def patch(self, tag_id):
         assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.is_editor or current_user.is_dataset_editor):
@@ -86,6 +88,7 @@ class TagUpdateDeleteApi(Resource):
     @account_initialization_required
     def delete(self, tag_id):
         assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
@@ -103,6 +106,7 @@ class TagBindingCreateApi(Resource):
     @account_initialization_required
     def post(self):
         assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
@@ -130,6 +134,7 @@ class TagBindingDeleteApi(Resource):
     @account_initialization_required
     def post(self):
         assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
