@@ -197,6 +197,21 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const previousReplyCountRef = useRef(replies.length)
   const previousCommentIdRef = useRef(comment.id)
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!activeReplyMenuId)
+      return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-reply-menu]'))
+        setActiveReplyMenuId(null)
+    }
+
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [activeReplyMenuId])
+
   useEffect(() => {
     const container = messageListRef.current
     if (!container)
@@ -309,17 +324,22 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           />
           {replies.length > 0 && (
             <div className='mt-2 space-y-3 pt-3'>
-              {replies.map((reply, index) => {
+              {replies.map((reply) => {
                 const isReplyEditing = editingReply?.id === reply.id
                 const isOwnReply = reply.created_by_account?.id === userProfile?.id
-                const isLastReply = index === replies.length - 1
                 return (
                   <div
                     key={reply.id}
                     className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
                   >
                     {isOwnReply && !isReplyEditing && (
-                      <div className='absolute right-1 top-1 hidden gap-1 group-hover:flex'>
+                      <div
+                        className={cn(
+                          'absolute right-1 top-1 gap-1',
+                          activeReplyMenuId === reply.id ? 'flex' : 'hidden group-hover:flex',
+                        )}
+                        data-reply-menu
+                      >
                         <button
                           type='button'
                           className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
@@ -332,10 +352,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           <RiMoreFill className='h-4 w-4' />
                         </button>
                         {activeReplyMenuId === reply.id && (
-                          <div className={cn(
-                            'absolute right-0 z-50 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg',
-                            isLastReply ? 'bottom-7' : 'top-7',
-                          )}>
+                          <div className='absolute right-0 top-7 z-50 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
                             <button
                               className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
                               onClick={() => handleStartEdit(reply)}
