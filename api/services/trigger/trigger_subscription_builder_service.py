@@ -298,20 +298,25 @@ class TriggerSubscriptionBuilderService:
             tenant_id=subscription_builder.tenant_id, provider_id=TriggerProviderID(subscription_builder.provider_id)
         )
         try:
-            response: TriggerDispatchResponse = controller.dispatch(
+            dispatch_response: TriggerDispatchResponse = controller.dispatch(
                 user_id=subscription_builder.user_id,
                 request=request,
                 subscription=subscription_builder.to_subscription(),
                 credentials={},
                 credential_type=CredentialType.UNAUTHORIZED,
             )
+            response: Response = dispatch_response.response
+            # append the request log
+            cls.append_log(
+                endpoint_id=endpoint_id,
+                request=request,
+                response=response,
+            )
+            return response
         except Exception as e:
             error_response = Response(status=500, response=str(e))
             cls.append_log(endpoint_id=endpoint_id, request=request, response=error_response)
             return error_response
-        # append the request log
-        cls.append_log(endpoint_id=endpoint_id, request=request, response=response.response)
-        return response.response
 
     @classmethod
     def get_subscription_builder_by_id(cls, subscription_builder_id: str) -> SubscriptionBuilderApiEntity:
