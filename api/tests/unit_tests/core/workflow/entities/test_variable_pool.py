@@ -113,7 +113,7 @@ class TestVariablePoolGetAndNestedAttribute:
         assert segment_false.value is False
 
 
-class TestVariablePoolGetNotModifyVairableDictionary:
+class TestVariablePoolGetNotModifyVariableDictionary:
     _NODE_ID = "start"
     _VAR_NAME = "name"
 
