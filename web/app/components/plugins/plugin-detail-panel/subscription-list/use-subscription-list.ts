@@ -18,6 +18,5 @@ export const useSubscriptionList = () => {
     subscriptions,
     isLoading,
     refetch,
-    hasSubscriptions: !!(subscriptions && subscriptions.length > 0),
   }
 }

@@ -1,6 +1,6 @@
 import CheckboxList from '@/app/components/base/checkbox-list'
-import type { FormSchema } from '@/app/components/base/form/types'
-import { FormTypeEnum } from '@/app/components/base/form/types'
+import type { FieldState, FormSchema } from '@/app/components/base/form/types'
+import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
@@ -31,6 +31,29 @@ const getExtraProps = (type: FormTypeEnum) => {
   }
 }
 
+const VALIDATE_STATUS_STYLE_MAP: Record<FormItemValidateStatusEnum, { componentClassName: string, textClassName: string, infoFieldName: string }> = {
+  [FormItemValidateStatusEnum.Error]: {
+    componentClassName: 'border-components-input-border-destructive focus:border-components-input-border-destructive',
+    textClassName: 'text-text-destructive',
+    infoFieldName: 'errors',
+  },
+  [FormItemValidateStatusEnum.Warning]: {
+    componentClassName: 'border-components-input-border-warning focus:border-components-input-border-warning',
+    textClassName: 'text-text-warning',
+    infoFieldName: 'warnings',
+  },
+  [FormItemValidateStatusEnum.Success]: {
+    componentClassName: '',
+    textClassName: '',
+    infoFieldName: '',
+  },
+  [FormItemValidateStatusEnum.Validating]: {
+    componentClassName: '',
+    textClassName: '',
+    infoFieldName: '',
+  },
+}
+
 export type BaseFieldProps = {
   fieldClassName?: string
   labelClassName?: string
@@ -40,6 +63,7 @@ export type BaseFieldProps = {
   field: AnyFieldApi
   disabled?: boolean
   onChange?: (field: string, value: any) => void
+  fieldState?: FieldState
 }
 
 const BaseField = ({
@@ -51,6 +75,7 @@ const BaseField = ({
   field,
   disabled: propsDisabled,
   onChange,
+  fieldState,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -168,7 +193,7 @@ const BaseField = ({
             <Input
               id={field.name}
               name={field.name}
-              className={cn(inputClassName)}
+              className={cn(inputClassName, VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus as FormItemValidateStatusEnum]?.componentClassName)}
               value={value || ''}
               onChange={(e) => {
                 handleChange(e.target.value)
@@ -266,6 +291,14 @@ const BaseField = ({
             </Radio.Group>
           )
         }
+        {fieldState?.validateStatus && [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(fieldState?.validateStatus) && (
+          <div className={cn(
+            'system-xs-regular mt-1 px-0 py-[2px]',
+            VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
+          )}>
+            {fieldState?.[VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].infoFieldName as keyof FieldState]}
+          </div>
+        )}
         {
           formSchema.url && (
             <a

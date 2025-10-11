@@ -167,6 +167,7 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
       return post<{ verified: boolean }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify/${subscriptionBuilderId}`,
         { body },
+        { silent: true },
       )
     },
   })

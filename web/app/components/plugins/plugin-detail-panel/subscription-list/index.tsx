@@ -21,30 +21,23 @@ export const SubscriptionList = withErrorBoundary(({
   selectedId,
   onSelect,
 }: SubscriptionListProps) => {
-  const { subscriptions, isLoading, hasSubscriptions } = useSubscriptionList()
-
-  // console.log('detail', detail)
+  const { subscriptions, isLoading } = useSubscriptionList()
 
   if (mode === SubscriptionListMode.SELECTOR) {
     return (
       <SubscriptionSelectorView
         subscriptions={subscriptions}
         isLoading={isLoading}
-        hasSubscriptions={hasSubscriptions}
         selectedId={selectedId}
         onSelect={onSelect}
       />
     )
   }
 
-  // const showTopBorder = !!(detail?.declaration?.tool || detail?.declaration?.endpoint)
-
   return (
     <SubscriptionListView
       subscriptions={subscriptions}
       isLoading={isLoading}
-      // showTopBorder={showTopBorder}
-      hasSubscriptions={hasSubscriptions}
     />
   )
 })

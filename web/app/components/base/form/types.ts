@@ -45,6 +45,13 @@ export type FormOption = {
 
 export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any>
 
+export enum FormItemValidateStatusEnum {
+  Success = 'success',
+  Warning = 'warning',
+  Error = 'error',
+  Validating = 'validating',
+}
+
 export type FormSchema = {
   type: FormTypeEnum
   name: string
@@ -79,11 +86,25 @@ export type GetValuesOptions = {
   needTransformWhenSecretFieldIsPristine?: boolean
   needCheckValidatedValues?: boolean
 }
+
+export type FieldState = {
+  validateStatus?: FormItemValidateStatusEnum
+  help?: string | ReactNode
+  errors?: string[]
+  warnings?: string[]
+}
+
+export type SetFieldsParam = {
+  name: string
+  value?: any
+} & FieldState
+
 export type FormRefObject = {
   getForm: () => AnyFormApi
   getFormValues: (obj: GetValuesOptions) => {
     values: Record<string, any>
     isCheckValidated: boolean
   }
+  setFields: (fields: SetFieldsParam[]) => void
 }
 export type FormRef = ForwardedRef<FormRefObject>

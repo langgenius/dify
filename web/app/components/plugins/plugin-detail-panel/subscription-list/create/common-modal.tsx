@@ -1,5 +1,6 @@
 'use client'
 // import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
@@ -15,10 +16,11 @@ import {
   useUpdateTriggerSubscriptionBuilder,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
+import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { RiLoader2Line } from '@remixicon/react'
+import { debounce } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { debounce } from 'lodash-es'
 import LogViewer from '../log-viewer'
 import { usePluginStore, usePluginSubscriptionStore } from '../store'
 
@@ -68,7 +70,6 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration)
 
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
-  const [verificationError, setVerificationError] = useState<string>('')
   const isInitializedRef = useRef(false)
 
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyTriggerSubscriptionBuilder()
@@ -175,7 +176,10 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       return
     }
 
-    setVerificationError('')
+    apiKeyCredentialsFormRef.current?.setFields([{
+      name: Object.keys(credentials)[0],
+      errors: [],
+    }])
 
     verifyCredentials(
       {
@@ -191,8 +195,12 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           })
           setCurrentStep(ApiKeyStep.Configuration)
         },
-        onError: (error: any) => {
-          setVerificationError(error?.message || t('pluginTrigger.modal.apiKey.verify.error'))
+        onError: async (error: any) => {
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
+          apiKeyCredentialsFormRef.current?.setFields([{
+            name: Object.keys(credentials)[0],
+            errors: [errorMessage],
+          }])
         },
       },
     )
@@ -238,10 +246,11 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           onClose()
           refresh?.()
         },
-        onError: (error: any) => {
+        onError: async (error: any) => {
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.errors.createFailed')
           Toast.notify({
             type: 'error',
-            message: error?.message || t('pluginTrigger.modal.errors.createFailed'),
+            message: errorMessage,
           })
         },
       },
@@ -255,6 +264,13 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       handleCreate()
   }
 
+  const handleApiKeyCredentialsChange = () => {
+    apiKeyCredentialsFormRef.current?.setFields([{
+      name: apiKeyCredentialsSchema[0].name,
+      errors: [],
+    }])
+  }
+
   return (
     <Modal
       title={t(`pluginTrigger.modal.${createType === SupportedCreationMethods.APIKEY ? 'apiKey' : createType.toLowerCase()}.title`)}
@@ -266,6 +282,8 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       onClose={onClose}
       onCancel={onClose}
       onConfirm={handleConfirm}
+      disabled={isVerifyingCredentials || isBuilding}
+      bottomSlot={currentStep === ApiKeyStep.Verify ? <EncryptedBottom /> : null}
     >
       {createType === SupportedCreationMethods.APIKEY && <MultiSteps currentStep={currentStep} />}
       {currentStep === ApiKeyStep.Verify && (
@@ -278,14 +296,8 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
                 preventDefaultSubmit={true}
                 formClassName='space-y-4'
+                onChange={handleApiKeyCredentialsChange}
               />
-            </div>
-          )}
-          {verificationError && (
-            <div className='bg-state-destructive-bg mb-4 rounded-lg border border-state-destructive-border p-3'>
-              <div className='text-state-destructive-text system-xs-medium'>
-                {verificationError}
-              </div>
             </div>
           )}
         </>

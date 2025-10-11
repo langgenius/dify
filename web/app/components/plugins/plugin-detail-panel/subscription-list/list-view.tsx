@@ -11,14 +11,12 @@ type SubscriptionListViewProps = {
   subscriptions?: TriggerSubscription[]
   isLoading: boolean
   showTopBorder?: boolean
-  hasSubscriptions: boolean
 }
 
 export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
   subscriptions,
   isLoading,
   showTopBorder = false,
-  hasSubscriptions,
 }) => {
   const { t } = useTranslation()
 
@@ -35,7 +33,7 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
   return (
     <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
       <div className='relative mb-3 flex items-center justify-between'>
-        {hasSubscriptions && (
+        {subscriptions?.length && (
           <div className='flex shrink-0 items-center gap-1'>
             <span className='system-sm-semibold-uppercase text-text-secondary'>
               {t('pluginTrigger.subscription.listNum', { num: subscriptions?.length || 0 })}
@@ -44,11 +42,11 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
           </div>
         )}
         <CreateSubscriptionButton
-          buttonType={hasSubscriptions ? CreateButtonType.ICON_BUTTON : CreateButtonType.FULL_BUTTON}
+          buttonType={subscriptions?.length ? CreateButtonType.ICON_BUTTON : CreateButtonType.FULL_BUTTON}
         />
       </div>
 
-      {hasSubscriptions && (
+      {subscriptions?.length && (
         <div className='flex flex-col gap-1'>
           {subscriptions?.map(subscription => (
             <SubscriptionCard
