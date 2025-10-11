@@ -157,10 +157,8 @@ class EmailCodeLoginSendEmailApi(Resource):
             raise AuthenticationFailedError()
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
-        response = make_response({"result": "success", "data": {"access_token": token}})
-        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
-        return response
-
+        return {"result": "success", "data": token}
+        
 
 @web_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
