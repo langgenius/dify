@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'İçerik Üret',
+        reasoning_content: 'Akıl yürütme içeriği',
         usage: 'Model Kullanım Bilgileri',
       },
       singleRun: {
@@ -945,6 +946,9 @@ const translation = {
       changeChunkStructure: 'Yığın Yapısını Değiştir',
       chunksInput: 'Parçalar',
       chunksInputTip: 'Bilgi tabanı düğümünün girdi değişkeni \'Chunks\'tır. Değişkenin tipi, seçilen parça yapısıyla tutarlı olması gereken belirli bir JSON Şemasına sahip bir nesnedir.',
+      embeddingModelIsRequired: 'Gömme modeli gereklidir',
+      chunksVariableIsRequired: 'Chunks değişkeni gereklidir',
+      rerankingModelIsRequired: 'Yeniden sıralama modeli gereklidir',
     },
   },
   tracing: {

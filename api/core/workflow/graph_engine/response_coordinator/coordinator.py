@@ -212,10 +212,11 @@ class ResponseStreamCoordinator:
                 edge = self._graph.edges[edge_id]
                 source_node = self._graph.nodes[edge.tail]
 
-                # Check if node is a branch/container (original behavior)
+                # Check if node is a branch, container, or response node
                 if source_node.execution_type in {
                     NodeExecutionType.BRANCH,
                     NodeExecutionType.CONTAINER,
+                    NodeExecutionType.RESPONSE,
                 } or source_node.blocks_variable_output(variable_selectors):
                     blocking_edges.append(edge_id)
 

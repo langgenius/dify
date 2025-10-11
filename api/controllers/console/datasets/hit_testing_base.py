@@ -1,10 +1,11 @@
 import logging
+from typing import cast
 
 from flask_login import current_user
 from flask_restx import marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services.dataset_service
+import services
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -20,6 +21,7 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from fields.hit_testing_fields import hit_testing_record_fields
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
 
@@ -59,7 +61,7 @@ class DatasetsHitTestingBase:
             response = HitTestingService.retrieve(
                 dataset=dataset,
                 query=args["query"],
-                account=current_user,
+                account=cast(Account, current_user),
                 retrieval_model=args["retrieval_model"],
                 external_retrieval_model=args["external_retrieval_model"],
                 limit=10,

@@ -469,6 +469,7 @@ const translation = {
       },
       outputVars: {
         output: '생성된 내용',
+        reasoning_content: '추론 내용',
         usage: '모델 사용 정보',
       },
       singleRun: {
@@ -992,6 +993,9 @@ const translation = {
       retrievalSettingIsRequired: '검색 설정이 필요합니다.',
       chunksInput: '청크',
       chunksInputTip: '지식 기반 노드의 입력 변수는 Chunks입니다. 변수 유형은 선택된 청크 구조와 일치해야 하는 특정 JSON 스키마를 가진 객체입니다.',
+      chunksVariableIsRequired: 'Chunks 변수는 필수입니다',
+      embeddingModelIsRequired: '임베딩 모델이 필요합니다',
+      rerankingModelIsRequired: '재순위 모델이 필요합니다',
     },
   },
   tracing: {

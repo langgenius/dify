@@ -37,6 +37,8 @@ const translation = {
     save: 'Save ',
     free: 'Free',
     annualBilling: 'Bill Annually Save {{percent}}%',
+    taxTip: 'All subscription prices (monthly/annual) exclude applicable taxes (e.g., VAT, sales tax).',
+    taxTipSecond: 'If your region has no applicable tax requirements, no tax will appear in your checkout, and you won’t be charged any additional fees for the entire subscription term.',
     comparePlanAndFeatures: 'Compare plans & features',
     priceTip: 'per workspace/',
     currentPlan: 'Current Plan',

@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Hepsini Seç',
     deSelectAll: 'Hepsini Seçme',
     config: 'Konfigürasyon',
+    no: 'Hayır',
+    yes: 'Evet',
+    deleteConfirmTitle: 'Silinsin mi?',
+    confirmAction: 'Lütfen işleminizi onaylayın.',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -505,6 +509,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Kimlik bilgisi kullanımda ve silinemiyor',
     },
     parametersInvalidRemoved: 'Bazı parametreler geçersizdir ve kaldırılmıştır.',
+    installDataSourceProvider: 'Veri kaynağı sağlayıcılarını yükle',
   },
   dataSource: {
     add: 'Bir veri kaynağı ekle',

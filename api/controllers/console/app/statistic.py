@@ -52,7 +52,7 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -127,7 +127,7 @@ class DailyConversationStatistic(Resource):
                 sa.func.count(sa.distinct(Message.conversation_id)).label("conversation_count"),
             )
             .select_from(Message)
-            .where(Message.app_id == app_model.id, Message.invoke_from != InvokeFrom.DEBUGGER.value)
+            .where(Message.app_id == app_model.id, Message.invoke_from != InvokeFrom.DEBUGGER)
         )
 
         if args["start"]:
@@ -190,7 +190,7 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -263,7 +263,7 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -345,7 +345,7 @@ FROM
         WHERE
             c.app_id = :app_id
             AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -432,7 +432,7 @@ LEFT JOIN
 WHERE
     m.app_id = :app_id
     AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -509,7 +509,7 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -584,7 +584,7 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc

@@ -69,7 +69,7 @@ const ValueContent = ({
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
+  const [fileValue, setFileValue] = useState<any>(() => formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
 

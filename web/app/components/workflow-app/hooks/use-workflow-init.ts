@@ -33,13 +33,6 @@ export const useWorkflowInit = () => {
     workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
   }, [appDetail.id, workflowStore])
 
-  const handleUpdateWorkflowConfig = useCallback((config: Record<string, any>) => {
-    const { setWorkflowConfig } = workflowStore.getState()
-
-    setWorkflowConfig(config)
-  }, [workflowStore])
-  useWorkflowConfig(`/apps/${appDetail.id}/workflows/draft/config`, handleUpdateWorkflowConfig)
-
   const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
     const { setFileUploadConfig } = workflowStore.getState()
     setFileUploadConfig(config)
