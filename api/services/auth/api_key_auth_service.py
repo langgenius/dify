@@ -27,9 +27,7 @@ class ApiKeyAuthService:
             args["credentials"]["config"]["api_key"] = api_key
 
             data_source_api_key_binding = DataSourceApiKeyAuthBinding(
-            tenant_id = tenant_id,
-            category = args["category"],
-            provider = args["provider"]
+                tenant_id=tenant_id, category=args["category"], provider=args["provider"]
             )
             data_source_api_key_binding.credentials = json.dumps(args["credentials"], ensure_ascii=False)
             db.session.add(data_source_api_key_binding)
