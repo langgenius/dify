@@ -34,48 +34,40 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       aria-labelledby="inline-delete-confirm-title"
       aria-describedby="inline-delete-confirm-description"
       className={cn(
-        'flex h-16 w-[120px] flex-col',
-        'rounded-xl border-0 border-t-[0.5px] border-components-panel-border',
-        'bg-background-overlay-backdrop backdrop-blur-[10px]',
-        'shadow-lg',
-        'p-0 pt-1',
-        className,
-      )}
-    >
-      <div className={cn(
-        'flex h-[60px] w-full flex-col justify-center gap-1.5',
+        'flex w-[120px] flex-col justify-center gap-1.5',
         'rounded-[10px] border-[0.5px] border-components-panel-border-subtle',
         'bg-components-panel-bg-blur px-2 pb-2 pt-1.5',
         'backdrop-blur-[10px]',
-      )}>
-        <div
-          id="inline-delete-confirm-title"
-          className="system-xs-semibold text-text-primary"
-        >
-          {titleText}
-        </div>
+        className,
+      )}
+    >
+      <div
+        id="inline-delete-confirm-title"
+        className="system-xs-semibold text-text-primary"
+      >
+        {titleText}
+      </div>
 
-        <div className="flex w-full items-center justify-center gap-1">
-          <Button
-            size="small"
-            variant="secondary"
-            onClick={onCancel}
-            aria-label={cancelTxt}
-            className="flex-1"
-          >
-            {cancelTxt}
-          </Button>
-          <Button
-            size="small"
-            variant="primary"
-            destructive={variant === 'delete'}
-            onClick={onConfirm}
-            aria-label={confirmTxt}
-            className="flex-1"
-          >
-            {confirmTxt}
-          </Button>
-        </div>
+      <div className="flex w-full items-center justify-center gap-1">
+        <Button
+          size="small"
+          variant="secondary"
+          onClick={onCancel}
+          aria-label={cancelTxt}
+          className="flex-1"
+        >
+          {cancelTxt}
+        </Button>
+        <Button
+          size="small"
+          variant="primary"
+          destructive={variant === 'delete'}
+          onClick={onConfirm}
+          aria-label={confirmTxt}
+          className="flex-1"
+        >
+          {confirmTxt}
+        </Button>
       </div>
 
       <span id="inline-delete-confirm-description" className="sr-only">
