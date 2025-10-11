@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # server is behind a reverse proxy, so we need to check the url
 def is_secure() -> bool:
-    return dify_config.CONSOLE_WEB_URL.startswith("https")
+    return dify_config.CONSOLE_WEB_URL.startswith("https") and dify_config.CONSOLE_API_URL.startswith("https")
 
 def _try_extract_from_header(request: Request) -> str | None:
     """
