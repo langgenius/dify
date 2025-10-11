@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { NodeProps } from 'reactflow'
 import InfoPanel from '../_base/components/info-panel'
 import { NodeSourceHandle } from '../_base/components/node-handle'
@@ -22,7 +23,7 @@ type TruncatedClassItemProps = {
   topic: { id: string; name: string }
   index: number
   nodeId: string
-  t: any
+  t: TFunction
 }
 
 const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId, t }) => {
@@ -34,7 +35,11 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
 
   const content = (
     <div className='system-xs-regular truncate text-text-tertiary'>
-      <ReadonlyInputWithSelectVar value={truncatedText} nodeId={nodeId} className='truncate'/>
+      <ReadonlyInputWithSelectVar
+        value={truncatedText}
+        nodeId={nodeId}
+        className='truncate'
+      />
     </div>
   )
 
@@ -45,9 +50,13 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
       </div>
       {shouldShowTooltip
         ? (
-            <Tooltip popupContent={
+            <Tooltip
+              popupContent={
                 <div className='max-w-[300px] break-words'>
-                  <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId}/>
+                  <ReadonlyInputWithSelectVar
+                    value={topic.name}
+                    nodeId={nodeId}
+                  />
                 </div>
               }
             >
@@ -93,14 +102,27 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
           <div className='mt-2 space-y-0.5'>
             <div className={cn('space-y-0.5', hasMoreTopics && !showAll && 'max-h-[200px] overflow-hidden')}>
               {visibleTopics.map((topic, index) => (
-                <div key={topic.id} className='relative' >
-                  <TruncatedClassItem topic={topic} index={index} nodeId={id} t={t}/>
-                  <NodeSourceHandle {...props} handleId={topic.id} handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'/>
+                <div
+                  key={index}
+                  className='relative'
+                >
+                  <TruncatedClassItem
+                    topic={topic}
+                    index={index}
+                    nodeId={id}
+                    t={t}
+                  />
+                  <NodeSourceHandle
+                    {...props}
+                    handleId={topic.id}
+                    handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
+                  />
                 </div>
               ))}
             </div>
             {hasMoreTopics && (
-              <button onClick={(e) => {
+              <button
+                onClick={(e) => {
                   e.stopPropagation()
                   setShowAll(!showAll)
                 }}
