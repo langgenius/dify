@@ -55,6 +55,10 @@ class VariablePool(BaseModel):
         description="RAG pipeline variables.",
         default_factory=list,
     )
+    memory_blocks: Mapping[str, str] = Field(
+        description="Memory blocks.",
+        default_factory=dict,
+    )
 
     def model_post_init(self, context: Any, /):
         # Create a mapping from field names to SystemVariableKey enum values
@@ -75,6 +79,9 @@ class VariablePool(BaseModel):
                 rag_pipeline_variables_map[node_id][key] = value
             for key, value in rag_pipeline_variables_map.items():
                 self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
+        # Add memory blocks to the variable pool
+        for memory_id, memory_value in self.memory_blocks.items():
+            self.add([CONVERSATION_VARIABLE_NODE_ID, memory_id], memory_value)
 
     def add(self, selector: Sequence[str], value: Any, /):
         """

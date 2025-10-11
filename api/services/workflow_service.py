@@ -11,6 +11,7 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
+from core.memory.entities import MemoryCreatedBy, MemoryScope
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
@@ -39,6 +40,7 @@ from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
+from .chatflow_memory_service import ChatflowMemoryService
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 
@@ -709,17 +711,10 @@ class WorkflowService:
                     tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
                 )
                 # init variable pool
-                variable_pool = _setup_variable_pool(
-                    query=query,
-                    files=files or [],
-                    user_id=account.id,
-                    user_inputs=user_inputs,
-                    workflow=draft_workflow,
-                    # NOTE(QuantumGhost): We rely on `DraftVarLoader` to load conversation variables.
-                    conversation_variables=[],
-                    node_type=node_type,
-                    conversation_id=conversation_id,
-                )
+                variable_pool = _setup_variable_pool(query=query, files=files or [], user_id=account.id,
+                                                     user_inputs=user_inputs, workflow=draft_workflow,
+                                                     node_type=node_type, conversation_id=conversation_id,
+                                                     conversation_variables=[], is_draft=True)
 
         else:
             variable_pool = VariablePool(
@@ -1068,6 +1063,7 @@ def _setup_variable_pool(
     node_type: NodeType,
     conversation_id: str,
     conversation_variables: list[Variable],
+    is_draft: bool
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
@@ -1086,7 +1082,6 @@ def _setup_variable_pool(
             system_variable.dialogue_count = 1
     else:
         system_variable = SystemVariable.empty()
-
     # init variable pool
     variable_pool = VariablePool(
         system_variables=system_variable,
@@ -1095,6 +1090,12 @@ def _setup_variable_pool(
         # Based on the definition of `VariableUnion`,
         # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
         conversation_variables=cast(list[VariableUnion], conversation_variables),  #
+        memory_blocks=_fetch_memory_blocks(
+            workflow,
+            MemoryCreatedBy(account_id=user_id),
+            conversation_id,
+            is_draft=is_draft
+        ),
     )
 
     return variable_pool
@@ -1131,3 +1132,29 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
         return build_from_mappings(mappings=value, tenant_id=tenant_id)
     else:
         raise Exception("unreachable")
+
+
+def _fetch_memory_blocks(
+    workflow: Workflow,
+    created_by: MemoryCreatedBy,
+    conversation_id: str,
+    is_draft: bool
+) -> Mapping[str, str]:
+    memory_blocks = {}
+    memory_block_specs = workflow.memory_blocks
+    memories = ChatflowMemoryService.get_memories_by_specs(
+        memory_block_specs=memory_block_specs,
+        tenant_id=workflow.tenant_id,
+        app_id=workflow.app_id,
+        node_id=None,
+        conversation_id=conversation_id,
+        is_draft=is_draft,
+        created_by=created_by,
+    )
+    for memory in memories:
+        if memory.spec.scope == MemoryScope.APP:
+            memory_blocks[memory.spec.id] = memory.value
+        else:  # NODE scope
+            memory_blocks[f"{memory.node_id}.{memory.spec.id}"] = memory.value
+
+    return memory_blocks

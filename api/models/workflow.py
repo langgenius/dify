@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
@@ -11,9 +12,15 @@ from sqlalchemy import DateTime, Select, exists, orm, select
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
+from core.memory.entities import MemoryBlockSpec
 from core.variables import utils as variable_utils
+from core.variables.segments import VersionedMemoryValue
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    MEMORY_BLOCK_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -360,7 +367,9 @@ class Workflow(Base):
 
     @property
     def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
-        # _environment_variables is guaranteed to be non-None due to server_default="{}"
+        # TODO: find some way to init `self._environment_variables` when instance created.
+        if self._environment_variables is None:
+            self._environment_variables = "{}"
 
         # Use workflow.tenant_id to avoid relying on request user in background threads
         tenant_id = self.tenant_id
@@ -438,13 +447,14 @@ class Workflow(Base):
             "features": self.features_dict,
             "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
-            "rag_pipeline_variables": self.rag_pipeline_variables,
         }
         return result
 
     @property
     def conversation_variables(self) -> Sequence[Variable]:
-        # _conversation_variables is guaranteed to be non-None due to server_default="{}"
+        # TODO: find some way to init `self._conversation_variables` when instance created.
+        if self._conversation_variables is None:
+            self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
         results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
@@ -473,6 +483,17 @@ class Workflow(Base):
             {item["variable"]: item for item in values},
             ensure_ascii=False,
         )
+
+    @property
+    def memory_blocks(self) -> Sequence[MemoryBlockSpec]:
+        """Memory blocks configuration from graph"""
+
+        if not self.graph_dict:
+            return []
+
+        memory_blocks_config = self.graph_dict.get('memory_blocks', [])
+        results = [MemoryBlockSpec.model_validate(config) for config in memory_blocks_config]
+        return results
 
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
@@ -1484,6 +1505,31 @@ class WorkflowDraftVariable(Base):
         variable.visible = visible
         variable.editable = editable
         return variable
+
+    @staticmethod
+    def new_memory_block_variable(
+        *,
+        app_id: str,
+        node_id: str | None = None,
+        memory_id: str,
+        name: str,
+        value: VersionedMemoryValue,
+        description: str = "",
+    ) -> "WorkflowDraftVariable":
+        """Create a new memory block draft variable."""
+        return WorkflowDraftVariable(
+            id=str(uuid.uuid4()),
+            app_id=app_id,
+            node_id=MEMORY_BLOCK_VARIABLE_NODE_ID,
+            name=name,
+            value=value.model_dump_json(),
+            description=description,
+            selector=[MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id] if node_id is None else
+            [MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id, node_id],
+            value_type=SegmentType.VERSIONED_MEMORY,
+            visible=True,
+            editable=True,
+        )
 
     @property
     def edited(self):

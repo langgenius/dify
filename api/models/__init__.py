@@ -9,6 +9,7 @@ from .account import (
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .chatflow_memory import ChatflowConversation, ChatflowMemoryVariable, ChatflowMessage
 from .comment import (
     WorkflowComment,
     WorkflowCommentMention,
@@ -121,6 +122,9 @@ __all__ = [
     "BuiltinToolProvider",
     "CeleryTask",
     "CeleryTaskSet",
+    "ChatflowConversation",
+    "ChatflowMemoryVariable",
+    "ChatflowMessage",
     "Conversation",
     "ConversationVariable",
     "CreatorUserRole",

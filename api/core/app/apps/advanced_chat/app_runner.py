@@ -1,10 +1,11 @@
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing_extensions import override
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -20,11 +21,14 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from core.memory.entities import MemoryCreatedBy, MemoryScope
+from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+from core.workflow.graph_events import GraphRunSucceededEvent
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -34,6 +38,8 @@ from models import Workflow
 from models.enums import UserFrom
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
+from services.chatflow_history_service import ChatflowHistoryService
+from services.chatflow_memory_service import ChatflowMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +76,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._app = app
 
     def run(self):
+        ChatflowMemoryService.wait_for_sync_memory_completion(
+            workflow=self._workflow,
+            conversation_id=self.conversation.id
+        )
+
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -133,6 +144,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 # Based on the definition of `VariableUnion`,
                 # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
                 conversation_variables=conversation_variables,
+                memory_blocks=self._fetch_memory_blocks(),
             )
 
             # init graph
@@ -176,6 +188,31 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         for event in generator:
             self._handle_event(workflow_entry, event)
+
+        try:
+            self._check_app_memory_updates(variable_pool)
+        except Exception as e:
+            logger.exception("Failed to check app memory updates", exc_info=e)
+
+    @override
+    def _handle_event(self, workflow_entry: WorkflowEntry, event: Any) -> None:
+        super()._handle_event(workflow_entry, event)
+        if isinstance(event, GraphRunSucceededEvent):
+            workflow_outputs = event.outputs
+            if not workflow_outputs:
+                logger.warning("Chatflow output is empty.")
+                return
+            assistant_message = workflow_outputs.get('answer')
+            if not assistant_message:
+                logger.warning("Chatflow output does not contain 'answer'.")
+                return
+            if not isinstance(assistant_message, str):
+                logger.warning("Chatflow output 'answer' is not a string.")
+                return
+            try:
+                self._sync_conversation_to_chatflow_tables(assistant_message)
+            except Exception as e:
+                logger.exception("Failed to sync conversation to memory tables", exc_info=e)
 
     def handle_input_moderation(
         self,
@@ -374,3 +411,67 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         # Return combined list
         return existing_variables + new_variables
+
+    def _fetch_memory_blocks(self) -> Mapping[str, str]:
+        """fetch all memory blocks for current app"""
+
+        memory_blocks_dict: MutableMapping[str, str] = {}
+        is_draft = (self.application_generate_entity.invoke_from == InvokeFrom.DEBUGGER)
+        conversation_id = self.conversation.id
+        memory_block_specs = self._workflow.memory_blocks
+        # Get runtime memory values
+        memories = ChatflowMemoryService.get_memories_by_specs(
+            memory_block_specs=memory_block_specs,
+            tenant_id=self._workflow.tenant_id,
+            app_id=self._workflow.app_id,
+            node_id=None,
+            conversation_id=conversation_id,
+            is_draft=is_draft,
+            created_by=self._get_created_by(),
+        )
+
+        # Build memory_id -> value mapping
+        for memory in memories:
+            if memory.spec.scope == MemoryScope.APP:
+                # App level: use memory_id directly
+                memory_blocks_dict[memory.spec.id] = memory.value
+            else:  # NODE scope
+                node_id = memory.node_id
+                if not node_id:
+                    logger.warning("Memory block %s has no node_id, skip.", memory.spec.id)
+                    continue
+                key = f"{node_id}.{memory.spec.id}"
+                memory_blocks_dict[key] = memory.value
+
+        return memory_blocks_dict
+
+    def _sync_conversation_to_chatflow_tables(self, assistant_message: str):
+        ChatflowHistoryService.save_app_message(
+            prompt_message=UserPromptMessage(content=(self.application_generate_entity.query)),
+            conversation_id=self.conversation.id,
+            app_id=self._workflow.app_id,
+            tenant_id=self._workflow.tenant_id
+        )
+        ChatflowHistoryService.save_app_message(
+            prompt_message=AssistantPromptMessage(content=assistant_message),
+            conversation_id=self.conversation.id,
+            app_id=self._workflow.app_id,
+            tenant_id=self._workflow.tenant_id
+        )
+
+    def _check_app_memory_updates(self, variable_pool: VariablePool):
+        is_draft = (self.application_generate_entity.invoke_from == InvokeFrom.DEBUGGER)
+
+        ChatflowMemoryService.update_app_memory_if_needed(
+            workflow=self._workflow,
+            conversation_id=self.conversation.id,
+            variable_pool=variable_pool,
+            is_draft=is_draft,
+            created_by=self._get_created_by()
+        )
+
+    def _get_created_by(self) -> MemoryCreatedBy:
+        if self.application_generate_entity.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE}:
+            return MemoryCreatedBy(account_id=self.application_generate_entity.user_id)
+        else:
+            return MemoryCreatedBy(end_user_id=self.application_generate_entity.user_id)

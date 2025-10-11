@@ -21,6 +21,8 @@ from core.variables.segments import (
     ObjectSegment,
     Segment,
     StringSegment,
+    VersionedMemorySegment,
+    VersionedMemoryValue,
 )
 from core.variables.types import SegmentType
 from core.variables.variables import (
@@ -39,6 +41,7 @@ from core.variables.variables import (
     SecretVariable,
     StringVariable,
     Variable,
+    VersionedMemoryVariable,
 )
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -69,6 +72,7 @@ SEGMENT_TO_VARIABLE_MAP = {
     NoneSegment: NoneVariable,
     ObjectSegment: ObjectVariable,
     StringSegment: StringVariable,
+    VersionedMemorySegment: VersionedMemoryVariable
 }
 
 
@@ -193,6 +197,7 @@ _segment_factory: Mapping[SegmentType, type[Segment]] = {
     SegmentType.FILE: FileSegment,
     SegmentType.BOOLEAN: BooleanSegment,
     SegmentType.OBJECT: ObjectSegment,
+    SegmentType.VERSIONED_MEMORY: VersionedMemorySegment,
     # Array types
     SegmentType.ARRAY_ANY: ArrayAnySegment,
     SegmentType.ARRAY_STRING: ArrayStringSegment,
@@ -258,6 +263,12 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
             return ArrayFileSegment(value=value)
         else:
             raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got empty list")
+
+    if segment_type == SegmentType.VERSIONED_MEMORY:
+        return VersionedMemorySegment(
+            value_type=segment_type,
+            value=VersionedMemoryValue.model_validate(value)
+        )
 
     inferred_type = SegmentType.infer_segment_type(value)
     # Type compatibility checking

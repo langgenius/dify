@@ -422,3 +422,18 @@ INSTRUCTION_GENERATE_TEMPLATE_PROMPT = """The output of this prompt is not as ex
 You should edit the prompt according to the IDEAL OUTPUT."""
 
 INSTRUCTION_GENERATE_TEMPLATE_CODE = """Please fix the errors in the {{#error_message#}}."""
+
+MEMORY_UPDATE_PROMPT = """
+Based on the following conversation history, update the memory content:
+
+Conversation history:
+{{formatted_history}}
+
+Current memory:
+{{current_value}}
+
+Update instruction:
+{{instruction}}
+
+Please output only the updated memory content, no other text like greeting:
+"""

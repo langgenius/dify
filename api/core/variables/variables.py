@@ -22,6 +22,7 @@ from .segments import (
     ObjectSegment,
     Segment,
     StringSegment,
+    VersionedMemorySegment,
     get_segment_discriminator,
 )
 from .types import SegmentType
@@ -106,6 +107,10 @@ class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
     pass
 
 
+class VersionedMemoryVariable(VersionedMemorySegment, Variable):
+    pass
+
+
 class ArrayBooleanVariable(ArrayBooleanSegment, ArrayVariable):
     pass
 
@@ -161,6 +166,7 @@ VariableUnion: TypeAlias = Annotated[
         | Annotated[ArrayFileVariable, Tag(SegmentType.ARRAY_FILE)]
         | Annotated[ArrayBooleanVariable, Tag(SegmentType.ARRAY_BOOLEAN)]
         | Annotated[SecretVariable, Tag(SegmentType.SECRET)]
+        | Annotated[VersionedMemoryVariable, Tag(SegmentType.VERSIONED_MEMORY)]
     ),
     Discriminator(get_segment_discriminator),
 ]

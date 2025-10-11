@@ -23,6 +23,7 @@ class DraftVariableType(StrEnum):
     NODE = "node"
     SYS = "sys"
     CONVERSATION = "conversation"
+    MEMORY_BLOCK = "memory_block"
 
 
 class MessageStatus(StrEnum):

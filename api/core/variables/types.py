@@ -41,6 +41,8 @@ class SegmentType(StrEnum):
     ARRAY_FILE = "array[file]"
     ARRAY_BOOLEAN = "array[boolean]"
 
+    VERSIONED_MEMORY = "versioned_memory"
+
     NONE = "none"
 
     GROUP = "group"

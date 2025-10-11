@@ -14,10 +14,12 @@ from core.llm_generator.prompts import (
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
+    MEMORY_UPDATE_PROMPT,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
+from core.memory.entities import MemoryBlock, MemoryBlockSpec
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
@@ -27,6 +29,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -560,3 +563,35 @@ class LLMGenerator:
                 "Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=True
             )
             return {"error": f"An unexpected error occurred: {str(e)}"}
+
+    @staticmethod
+    def update_memory_block(
+        tenant_id: str,
+        visible_history: Sequence[tuple[str, str]],
+        variable_pool: VariablePool,
+        memory_block: MemoryBlock,
+        memory_spec: MemoryBlockSpec
+    ) -> str:
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            provider=memory_spec.model.provider,
+            model=memory_spec.model.name,
+            model_type=ModelType.LLM,
+        )
+        formatted_history = ""
+        for sender, message in visible_history:
+            formatted_history += f"{sender}: {message}\n"
+        filled_instruction = variable_pool.convert_template(memory_spec.instruction).text
+        formatted_prompt = PromptTemplateParser(MEMORY_UPDATE_PROMPT).format(
+            inputs={
+                "formatted_history": formatted_history,
+                "current_value": memory_block.value,
+                "instruction": filled_instruction,
+            }
+        )
+        llm_result = model_instance.invoke_llm(
+            prompt_messages=[UserPromptMessage(content=formatted_prompt)],
+            model_parameters=memory_spec.model.completion_params,
+            stream=False,
+        )
+        return llm_result.message.get_text_content()
