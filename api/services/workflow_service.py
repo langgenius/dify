@@ -40,7 +40,6 @@ from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
-from .chatflow_memory_service import ChatflowMemoryService
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 
@@ -1142,6 +1141,7 @@ def _fetch_memory_blocks(
 ) -> Mapping[str, str]:
     memory_blocks = {}
     memory_block_specs = workflow.memory_blocks
+    from services.chatflow_memory_service import ChatflowMemoryService
     memories = ChatflowMemoryService.get_memories_by_specs(
         memory_block_specs=memory_block_specs,
         tenant_id=workflow.tenant_id,
