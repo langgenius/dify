@@ -61,7 +61,7 @@ class ToolProviderApiEntity(BaseModel):
         for tool in tools:
             if tool.get("parameters"):
                 for parameter in tool.get("parameters"):
-                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
+                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
                     if parameter.get("input_schema") is None:
                         parameter.pop("input_schema", None)
@@ -110,7 +110,9 @@ class ToolProviderCredentialApiEntity(BaseModel):
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):
-    supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    supported_credential_types: list[CredentialType] = Field(
+        description="The supported credential types of the provider"
+    )
     is_oauth_custom_client_enabled: bool = Field(
         default=False, description="Whether the OAuth custom client is enabled for the provider"
     )

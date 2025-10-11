@@ -549,7 +549,7 @@ class WorkflowDraftVariableService:
             system_instruction="",
             system_instruction_tokens=0,
             status="normal",
-            invoke_from=InvokeFrom.DEBUGGER.value,
+            invoke_from=InvokeFrom.DEBUGGER,
             from_source="console",
             from_end_user_id=None,
             from_account_id=account_id,
