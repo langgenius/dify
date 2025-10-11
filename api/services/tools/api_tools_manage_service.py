@@ -144,7 +144,7 @@ class ApiToolManageService:
             user_id=user_id,
             name=provider_name,
             icon=json.dumps(icon),
-            schema_text=schema,
+            schema=schema,
             description=extra_info.get("description", ""),
             schema_type_str=schema_type,
             tools_str=json.dumps(jsonable_encoder(tool_bundles)),

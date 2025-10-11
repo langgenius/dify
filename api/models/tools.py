@@ -133,7 +133,7 @@ class ApiToolProvider(TypeBase):
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
-    schema_text: Mapped[str] = mapped_column("schema", sa.Text, nullable=False)
+    schema: Mapped[str] = mapped_column(sa.Text, nullable=False)
     schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
