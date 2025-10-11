@@ -26,10 +26,9 @@ class ApiKeyAuthService:
             api_key = encrypter.encrypt_token(tenant_id, args["credentials"]["config"]["api_key"])
             args["credentials"]["config"]["api_key"] = api_key
 
-            data_source_api_key_binding = DataSourceApiKeyAuthBinding()
-            data_source_api_key_binding.tenant_id = tenant_id
-            data_source_api_key_binding.category = args["category"]
-            data_source_api_key_binding.provider = args["provider"]
+            data_source_api_key_binding = DataSourceApiKeyAuthBinding(
+                tenant_id=tenant_id, category=args["category"], provider=args["provider"]
+            )
             data_source_api_key_binding.credentials = json.dumps(args["credentials"], ensure_ascii=False)
             db.session.add(data_source_api_key_binding)
             db.session.commit()
@@ -47,6 +46,8 @@ class ApiKeyAuthService:
             .first()
         )
         if not data_source_api_key_bindings:
+            return None
+        if not data_source_api_key_bindings.credentials:
             return None
         credentials = json.loads(data_source_api_key_bindings.credentials)
         return credentials
