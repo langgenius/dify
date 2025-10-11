@@ -30,7 +30,6 @@ class WorkflowAliasService:
         session: Union[Session, "scoped_session"],
         request: WorkflowAliasArgs,
     ) -> WorkflowNameAlias:
-
         workflow = session.get(Workflow, request.workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {request.workflow_id} not found")
@@ -117,4 +116,3 @@ class WorkflowAliasService:
 
         session.delete(alias)
         return True
-
