@@ -1494,7 +1494,7 @@ class DefaultEndUserSessionID(StrEnum):
     DEFAULT_SESSION_ID = "DEFAULT-USER"
 
 
-class EndUser(Base, UserMixin):
+class EndUser(TypeBase, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="end_user_pkey"),

@@ -242,7 +242,9 @@ class Dataset(TypeBase):
             "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
             "external_knowledge_api_id": external_knowledge_api.id,
             "external_knowledge_api_name": external_knowledge_api.name,
-            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
+            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", "")
+            if external_knowledge_api.settings
+            else "",
         }
 
     @property
@@ -687,22 +689,22 @@ class DocumentSegment(TypeBase):
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # basic fields
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, init=False)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), init=False)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
-    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'::character varying"))
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
+    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'::character varying"), init=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
-    error: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    error: Mapped[str | None] = mapped_column(sa.Text, nullable=True, init=False)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
 
     @property
@@ -1232,7 +1234,7 @@ class PipelineBuiltInTemplate(TypeBase):  # type: ignore[name-defined]
     copyright: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, init=False)
     language: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1241,7 +1243,7 @@ class PipelineBuiltInTemplate(TypeBase):  # type: ignore[name-defined]
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
 
     @property
     def created_user_name(self):
@@ -1266,10 +1268,10 @@ class PipelineCustomizedTemplate(TypeBase):  # type: ignore[name-defined]
     icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     yaml_content: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, init=False)
     language: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1287,7 +1289,7 @@ class PipelineCustomizedTemplate(TypeBase):  # type: ignore[name-defined]
 
 class Pipeline(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1308,8 +1310,8 @@ class Pipeline(TypeBase):  # type: ignore[name-defined]
 class DocumentPipelineExecutionLog(TypeBase):
     __tablename__ = "document_pipeline_execution_logs"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="document_pipeline_execution_log_pkey"),
-        db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
+        sa.PrimaryKeyConstraint("id", name="document_pipeline_execution_log_pkey"),
+        sa.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
@@ -1325,7 +1327,7 @@ class DocumentPipelineExecutionLog(TypeBase):
 
 class PipelineRecommendedPlugin(TypeBase):
     __tablename__ = "pipeline_recommended_plugins"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     plugin_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
