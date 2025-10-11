@@ -12,11 +12,13 @@ import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
   useTriggerSubscriptionBuilderLogs,
+  useUpdateTriggerSubscriptionBuilder,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { RiLoader2Line } from '@remixicon/react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { debounce } from 'lodash-es'
 import LogViewer from '../log-viewer'
 import { usePluginStore, usePluginSubscriptionStore } from '../store'
 
@@ -72,6 +74,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyTriggerSubscriptionBuilder()
   const { mutateAsync: createBuilder /* isPending: isCreatingBuilder */ } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
+  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
 
   const manualPropertiesSchema = detail?.declaration.trigger.subscription_schema || [] // manual
   const manualPropertiesFormRef = React.useRef<FormRefObject>(null)
@@ -123,6 +126,43 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     }
   }, [subscriptionBuilder?.endpoint])
 
+  const debouncedUpdate = useMemo(
+    () => debounce((provider: string, builderId: string, properties: Record<string, any>) => {
+      updateBuilder(
+        {
+          provider,
+          subscriptionBuilderId: builderId,
+          properties,
+        },
+        {
+          onError: (error: any) => {
+            console.error('Failed to update subscription builder:', error)
+            Toast.notify({
+              type: 'error',
+              message: error?.message || t('pluginTrigger.modal.errors.updateFailed'),
+            })
+          },
+        },
+      )
+    }, 500),
+    [updateBuilder, t],
+  )
+
+  const handleManualPropertiesChange = useCallback(() => {
+    if (!subscriptionBuilder || !detail?.provider)
+      return
+
+    const formValues = manualPropertiesFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+
+    debouncedUpdate(detail.provider, subscriptionBuilder.id, formValues.values)
+  }, [subscriptionBuilder, detail?.provider, debouncedUpdate])
+
+  useEffect(() => {
+    return () => {
+      debouncedUpdate.cancel()
+    }
+  }, [debouncedUpdate])
+
   const handleVerify = () => {
     const apiKeyCredentialsFormValues = apiKeyCredentialsFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
     const credentials = apiKeyCredentialsFormValues.values
@@ -163,11 +203,21 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     const subscriptionFormValues = subscriptionFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
     // console.log('parameterForm', parameterForm)
 
-    if (!subscriptionFormValues?.isCheckValidated || !autoCommonParametersFormValues?.isCheckValidated)
+    if (!subscriptionFormValues?.isCheckValidated || (createType !== SupportedCreationMethods.MANUAL && !autoCommonParametersFormValues?.isCheckValidated)) {
+      Toast.notify({
+        type: 'error',
+        message: 'Please fill in all required fields',
+      })
       return
+    }
 
-    if (!subscriptionBuilder)
+    if (!subscriptionBuilder) {
+      Toast.notify({
+        type: 'error',
+        message: 'Subscription builder not found',
+      })
       return
+    }
 
     const subscriptionNameValue = subscriptionFormValues?.values.subscription_name as string
 
@@ -299,6 +349,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 ref={manualPropertiesFormRef}
                 labelClassName='system-sm-medium mb-2 block text-text-primary'
                 formClassName='space-y-4'
+                onChange={handleManualPropertiesChange}
               />
             </div>
           )}

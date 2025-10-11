@@ -144,9 +144,7 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
       provider: string
       subscriptionBuilderId: string
       name?: string
-      parameters?: Record<string, any>
       properties?: Record<string, any>
-      credentials?: Record<string, any>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<TriggerSubscriptionBuilder>(
