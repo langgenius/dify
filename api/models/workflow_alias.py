@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .account import Account
 from .base import Base
 from .types import StringUUID
-
+from .engine import db
 
 class WorkflowNameAlias(Base):
     """
@@ -46,7 +46,9 @@ class WorkflowNameAlias(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    created_by_account: Mapped["Account"] = relationship(foreign_keys=[created_by])
+    @property
+    def created_by_account(self):
+        return db.session.query(Account).where(Account.id == self.created_by).first()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

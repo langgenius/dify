@@ -31,7 +31,6 @@ class WorkflowAliasService:
         session: Union[Session, "scoped_session"],
         request: WorkflowAliasArgs,
     ) -> WorkflowNameAlias:
-        self._validate_alias_name(request.name)
 
         workflow = session.get(Workflow, request.workflow_id)
         if not workflow:
@@ -120,15 +119,3 @@ class WorkflowAliasService:
         session.delete(alias)
         return True
 
-    def _validate_alias_name(self, name: str) -> None:
-        if not name:
-            raise ValueError("Alias name cannot be empty")
-
-        if len(name) > 100:
-            raise ValueError("Alias name cannot exceed 100 characters")
-
-        if len(name) < 1:
-            raise ValueError("Alias name must be at least 1 character long")
-
-        if not re.match(r"^[a-zA-Z0-9_.-]+$", name):
-            raise ValueError("Alias name can only contain letters, numbers, hyphens, underscores, and dots")
