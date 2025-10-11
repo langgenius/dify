@@ -14,6 +14,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import {
+  AppSourceType,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
@@ -138,14 +139,13 @@ const ChatWrapper = () => {
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
-
     handleSend(
       getUrl('chat-messages', appSourceType, appId || ''),
       data,
       {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-        isPublicAPI: !isInstalledApp,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
       },
     )
   }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
