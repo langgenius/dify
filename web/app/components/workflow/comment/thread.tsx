@@ -37,7 +37,8 @@ const ThreadMessage: FC<{
   createdAt: number
   content: string
   mentionedNames?: string[]
-}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames }) => {
+  className?: string
+}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { userProfile } = useAppContext()
   const currentUserId = userProfile?.id
@@ -108,7 +109,7 @@ const ThreadMessage: FC<{
   }, [content, mentionedNames])
 
   return (
-    <div className={cn('flex gap-3 pt-1')}>
+    <div className={cn('flex gap-3 pt-1', className)}>
       <div className='shrink-0'>
         <Avatar
           name={authorName}
@@ -322,6 +323,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             createdAt={comment.created_at}
             content={comment.content}
             mentionedNames={mentionsByTarget.get('root')}
+            className='pl-1'
           />
           {replies.length > 0 && (
             <div className='mt-2 space-y-3 pt-3'>
@@ -331,7 +333,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 return (
                   <div
                     key={reply.id}
-                    className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
+                    className='group relative rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
                   >
                     {isOwnReply && !isReplyEditing && (
                       <PortalToFollowElem
