@@ -192,6 +192,7 @@ const config: KnipConfig = {
     // and are not imported by the application code.
     'scripts/**',
     'bin/**',
+    'i18n-config/**',
 
     // Icon generation script (generates components, not used in runtime)
     'app/components/base/icons/script.mjs',
