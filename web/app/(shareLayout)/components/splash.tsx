@@ -33,7 +33,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, shareCode])
+  }, [getSigninUrl, router, webAppLogout, shareCode])
 
   const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
   const [isLoading, setIsLoading] = useState(true)

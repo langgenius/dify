@@ -54,7 +54,7 @@ const MenuDropdown: FC<Props> = ({
   const handleLogout = useCallback(async () => {
     await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
-  }, [router, pathname, shareCode])
+  }, [router, pathname, webAppLogout, shareCode])
 
   const [show, setShow] = useState(false)
 
