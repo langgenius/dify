@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from .account import Account
 from .base import Base
-from .engine import db
 from .types import StringUUID
 
 
