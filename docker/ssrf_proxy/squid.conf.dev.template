@@ -1,0 +1,30 @@
+################################## DEVELOPMENT MODE CONFIGURATION ##################################
+# WARNING: This configuration DISABLES all SSRF protections!
+# Only use this in development environments. NEVER use in production!
+
+# Allow all requests - put this FIRST before any other rules
+http_access allow all
+
+################################## Proxy Server Configuration ##################################
+http_port ${HTTP_PORT}
+coredump_dir ${COREDUMP_DIR}
+
+# Refresh patterns
+refresh_pattern ^ftp:		1440	20%	10080
+refresh_pattern ^gopher:	1440	0%	1440
+refresh_pattern -i (/cgi-bin/|\?) 0	0%	0
+refresh_pattern \/(Packages|Sources)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern \/Release(|\.gpg)$ 0 0% 0 refresh-ims
+refresh_pattern \/InRelease$ 0 0% 0 refresh-ims
+refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern .		0	20%	4320
+
+################################## Reverse Proxy To Sandbox ##################################
+http_port ${REVERSE_PROXY_PORT} accel vhost
+cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
+
+# Buffer size for file uploads
+client_request_buffer_max_size 100 MB
+
+# Debug logging for development
+debug_options ALL,1
