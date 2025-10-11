@@ -180,7 +180,7 @@ const config: KnipConfig = {
     'coverage/**',
 
     // Development tools
-    '.storybook/**',
+    // Note: .storybook/** is defined as entry point (line 129), so no need to ignore it
     '**/*.stories.{ts,tsx}',
 
     // ========================================================================
