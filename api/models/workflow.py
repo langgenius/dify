@@ -128,9 +128,11 @@ class Workflow(TypeBase):
     type: Mapped[WorkflowType] = mapped_column(String(255), nullable=False)
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     graph: Mapped[str] = mapped_column(sa.Text)
-    _features: Mapped[str] = mapped_column("features", sa.TEXT, init=False)
+    _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, init=False)
     marked_name: Mapped[str] = mapped_column(default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(default="", server_default="")

@@ -70,13 +70,13 @@ class Dataset(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
-    embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
+    embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
     keyword_number: Mapped[int | None] = mapped_column(
-        sa.Integer, nullable=True, server_default=sa.text("10"), init=False
+        sa.Integer, nullable=True, server_default=sa.text("10"), init=False, default=None
     )
-    collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    retrieval_model: Mapped[dict | None] = mapped_column(JSONB, nullable=True, init=False)
+    collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    retrieval_model: Mapped[dict | None] = mapped_column(JSONB, nullable=True, init=False, default=None)
     built_in_field_enabled: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), init=False
     )
@@ -1033,7 +1033,9 @@ class DatasetCollectionBinding(TypeBase):
         String(40), server_default=sa.text("'dataset'::character varying"), nullable=False
     )
     collection_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class TidbAuthBinding(TypeBase):
