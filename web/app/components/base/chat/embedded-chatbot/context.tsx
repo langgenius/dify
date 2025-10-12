@@ -6,6 +6,7 @@ import type {
   ChatConfig,
   ChatItem,
   Feedback,
+  Memory,
 } from '../types'
 import type { ThemeBuilder } from './theme/theme-context'
 import type {
@@ -58,6 +59,12 @@ export type EmbeddedChatbotContextValue = {
   }
   showChatMemory?: boolean
   setShowChatMemory: (state: boolean) => void
+  memoryList: Memory[]
+  clearAllMemory: () => void
+  updateMemory: (memory: Memory, content: string) => void
+  resetDefault: (memory: Memory) => void
+  clearAllUpdateVersion: (memory: Memory) => void
+  switchMemoryVersion: (memory: Memory, version: string) => void
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -90,5 +97,11 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   initUserVariables: {},
   showChatMemory: false,
   setShowChatMemory: noop,
+  memoryList: [],
+  clearAllMemory: noop,
+  updateMemory: noop,
+  resetDefault: noop,
+  clearAllUpdateVersion: noop,
+  switchMemoryVersion: noop,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

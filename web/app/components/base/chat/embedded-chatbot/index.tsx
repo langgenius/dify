@@ -33,6 +33,12 @@ const Chatbot = () => {
     themeBuilder,
     showChatMemory,
     setShowChatMemory,
+    memoryList,
+    clearAllMemory,
+    updateMemory,
+    resetDefault,
+    clearAllUpdateVersion,
+    switchMemoryVersion,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -99,9 +105,15 @@ const Chatbot = () => {
         >
           <div className='flex h-full w-[360px] rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
             <MemoryPanel
-              showChatMemory={showChatMemory}
               isMobile={isMobile}
+              showChatMemory={showChatMemory}
               setShowChatMemory={setShowChatMemory}
+              memoryList={memoryList}
+              clearAllMemory={clearAllMemory}
+              updateMemory={updateMemory}
+              resetDefault={resetDefault}
+              clearAllUpdateVersion={clearAllUpdateVersion}
+              switchMemoryVersion={switchMemoryVersion}
             />
           </div>
         </div>
@@ -150,6 +162,12 @@ const EmbeddedChatbotWrapper = () => {
     initUserVariables,
     showChatMemory,
     setShowChatMemory,
+    memoryList,
+    clearAllMemory,
+    updateMemory,
+    resetDefault,
+    clearAllUpdateVersion,
+    switchMemoryVersion,
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
@@ -189,6 +207,12 @@ const EmbeddedChatbotWrapper = () => {
     initUserVariables,
     showChatMemory,
     setShowChatMemory,
+    memoryList,
+    clearAllMemory,
+    updateMemory,
+    resetDefault,
+    clearAllUpdateVersion,
+    switchMemoryVersion,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>
