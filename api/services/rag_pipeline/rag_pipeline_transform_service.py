@@ -201,9 +201,9 @@ class RagPipelineTransformService:
         # Create new app
         pipeline = Pipeline(
 
-        tenant_id = current_user.current_tenant_id,
-        name = pipeline_data.get("name", ""),
-        description = pipeline_data.get("description", "")
+        tenant_id=current_user.current_tenant_id,
+        name=pipeline_data.get("name", ""),
+        description=pipeline_data.get("description", "")
         )
         pipeline.id = str(uuid4())
         pipeline.created_by = current_user.id
