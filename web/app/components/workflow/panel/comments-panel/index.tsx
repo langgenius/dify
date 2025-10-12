@@ -12,6 +12,8 @@ import { useParams } from 'next/navigation'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useAppContext } from '@/context/app-context'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
+import Divider from '@/app/components/base/divider'
+import Switch from '@/app/components/base/switch'
 
 const CommentsPanel = () => {
   const { t } = useTranslation()
@@ -23,7 +25,8 @@ const CommentsPanel = () => {
   const appId = params.appId as string
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  const [filter, setFilter] = useState<'all' | 'unresolved' | 'mine'>('all')
+  const [showOnlyMine, setShowOnlyMine] = useState(false)
+  const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
 
   const handleSelect = useCallback((comment: WorkflowCommentList) => {
@@ -34,12 +37,12 @@ const CommentsPanel = () => {
 
   const filteredSorted = useMemo(() => {
     let data = comments
-    if (filter === 'unresolved')
+    if (showOnlyUnresolved)
       data = data.filter(c => !c.resolved)
-    else if (filter === 'mine')
+    if (showOnlyMine)
       data = data.filter(c => c.created_by === userProfile?.id)
     return data
-  }, [comments, filter, userProfile?.id])
+  }, [comments, showOnlyMine, showOnlyUnresolved, userProfile?.id])
 
   const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
     if (comment.resolved) return
@@ -57,10 +60,7 @@ const CommentsPanel = () => {
     }
   }, [appId, loadComments, setActiveCommentId])
 
-  const handleFilterChange = useCallback((value: 'all' | 'unresolved' | 'mine') => {
-    setFilter(value)
-    setShowFilter(false)
-  }, [])
+  const hasActiveFilter = showOnlyMine || !showOnlyUnresolved
 
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
@@ -68,37 +68,59 @@ const CommentsPanel = () => {
         <div className='system-xl-semibold font-semibold leading-6 text-text-primary'>{t('workflow.comments.panelTitle')}</div>
         <div className='relative flex items-center gap-2'>
           <button
-            className='flex h-8 w-8 items-center justify-center rounded-md bg-components-panel-on-panel-item-bg hover:bg-state-base-hover'
+            className={cn(
+              'group flex h-6 w-6 items-center justify-center rounded-md hover:bg-state-accent-active',
+              hasActiveFilter && 'bg-state-accent-active',
+            )}
             aria-label='Filter comments'
             onClick={() => setShowFilter(v => !v)}
           >
-            <RiFilter3Line className='h-4 w-4 text-text-secondary' />
+            <RiFilter3Line className={cn(
+              'h-4 w-4 text-text-secondary group-hover:text-text-accent',
+              hasActiveFilter && 'text-text-accent',
+            )} />
           </button>
           {showFilter && (
-            <div className='absolute right-10 top-9 z-50 w-40 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
+            <div className='absolute right-10 top-9 z-50 min-w-[184px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]'>
               <button
-                className={cn('flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'all' && 'bg-components-panel-on-panel-item-bg')}
-                onClick={() => handleFilterChange('all')}
+                className={cn('flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', !showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
+                onClick={() => {
+                  setShowOnlyMine(false)
+                  setShowFilter(false)
+                }}
               >
                 <span className='text-text-secondary'>All</span>
-                {filter === 'all' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
+                {!showOnlyMine && <RiCheckLine className='h-4 w-4 text-primary-600' />}
               </button>
               <button
-                className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'unresolved' && 'bg-components-panel-on-panel-item-bg')}
-                onClick={() => handleFilterChange('unresolved')}
-              >
-                <span className='text-text-secondary'>Unresolved</span>
-                {filter === 'unresolved' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
-              </button>
-              <button
-                className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', filter === 'mine' && 'bg-components-panel-on-panel-item-bg')}
-                onClick={() => handleFilterChange('mine')}
+                className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
+                onClick={() => {
+                  setShowOnlyMine(true)
+                  setShowFilter(false)
+                }}
               >
                 <span className='text-text-secondary'>Only your threads</span>
-                {filter === 'mine' && <RiCheckLine className='h-4 w-4 text-text-secondary' />}
+                {showOnlyMine && <RiCheckLine className='h-4 w-4 text-primary-600' />}
               </button>
+              <Divider type='horizontal' className='my-1' />
+              <div
+                className='flex w-full items-center justify-between rounded-md px-2 py-2'
+                onClick={(e) => {
+                  e.stopPropagation()
+                }}
+              >
+                <span className='text-sm text-text-secondary'>Show resolved</span>
+                <Switch
+                  size='md'
+                  defaultValue={!showOnlyUnresolved}
+                  onChange={(checked) => {
+                    setShowOnlyUnresolved(!checked)
+                  }}
+                />
+              </div>
             </div>
           )}
+          <Divider type='vertical' className='h-3.5' />
           <div
             className='flex h-6 w-6 cursor-pointer items-center justify-center'
             onClick={() => {
