@@ -786,7 +786,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH]}
+                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
                 VectorType.QDRANT
                 | VectorType.WEAVIATE
@@ -814,9 +814,9 @@ class DatasetRetrievalSettingApi(Resource):
             ):
                 return {
                     "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH,
-                        RetrievalMethod.FULL_TEXT_SEARCH,
-                        RetrievalMethod.HYBRID_SEARCH,
+                        RetrievalMethod.SEMANTIC_SEARCH.value,
+                        RetrievalMethod.FULL_TEXT_SEARCH.value,
+                        RetrievalMethod.HYBRID_SEARCH.value,
                     ]
                 }
             case _:
@@ -843,7 +843,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
             ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH]}
+                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
                 VectorType.QDRANT
                 | VectorType.WEAVIATE
@@ -869,9 +869,9 @@ class DatasetRetrievalSettingMockApi(Resource):
             ):
                 return {
                     "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH,
-                        RetrievalMethod.FULL_TEXT_SEARCH,
-                        RetrievalMethod.HYBRID_SEARCH,
+                        RetrievalMethod.SEMANTIC_SEARCH.value,
+                        RetrievalMethod.FULL_TEXT_SEARCH.value,
+                        RetrievalMethod.HYBRID_SEARCH.value,
                     ]
                 }
             case _:
