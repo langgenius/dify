@@ -217,7 +217,7 @@ const AppPublisher = ({
                       onClick={handleRestore}
                       disabled={published}
                     >
-                      {t('common.restore')}
+                      {t('workflow.common.restore')}
                     </Button>}
                   </div>
                 )

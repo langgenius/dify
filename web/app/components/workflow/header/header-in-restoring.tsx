@@ -89,7 +89,7 @@ const HeaderInRestoring = ({
             theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
           )}
         >
-          {t('common.restore')}
+          {t('workflow.common.restore')}
         </Button>
         <Button
           onClick={handleCancelRestore}
