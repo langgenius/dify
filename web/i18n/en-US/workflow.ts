@@ -1047,5 +1047,23 @@ const translation = {
       noDependents: 'No dependents',
     },
   },
+  alias: {
+    managementTitle: 'Alias List',
+    add: 'Add Alias',
+    nameRequired: 'Please enter alias name',
+    createSuccess: 'Alias created successfully',
+    createFailure: 'Failed to create alias',
+    transferSuccess: 'Alias transferred to current workflow',
+    aliasExists: 'Alias already exists',
+    deleteSuccess: 'Alias deleted successfully',
+    deleteFailure: 'Failed to delete alias',
+    noAliases: 'No aliases',
+    inputAlias: 'Enter alias',
+    confirmAdd: 'Confirm add',
+    cancel: 'Cancel',
+    untitled: 'Untitled',
+    deleteAlias: 'Delete alias',
+    manageAlias: 'Manage Alias',
+  },
 }
 export default translation

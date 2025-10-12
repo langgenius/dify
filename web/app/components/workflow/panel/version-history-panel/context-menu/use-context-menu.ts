@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { VersionHistoryContextMenuOptions } from '../../../types'
-import { workflowAliasTranslation } from '@/i18n/zh-Hans/workflow-alias'
 import type { ContextMenuProps } from './index'
 import { useStore } from '@/app/components/workflow/store'
 
@@ -9,8 +8,7 @@ const useContextMenu = (props: ContextMenuProps) => {
   const {
     isNamedVersion,
   } = props
-  const { t } = useTranslation()
-  const aliasT = workflowAliasTranslation
+  const { t } = useTranslation('workflow')
   const pipelineId = useStore(s => s.pipelineId)
 
   const deleteOperation = {
@@ -44,10 +42,10 @@ const useContextMenu = (props: ContextMenuProps) => {
       },
       {
         key: VersionHistoryContextMenuOptions.manageAlias,
-        name: aliasT.manageAlias,
+        name: t('alias.manageAlias'),
       },
     ]
-  }, [isNamedVersion, t, pipelineId, aliasT])
+  }, [isNamedVersion, t, pipelineId])
 
   return {
     deleteOperation,

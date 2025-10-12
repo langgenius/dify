@@ -8,7 +8,7 @@ import Toast from '@/app/components/base/toast'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useCreateWorkflowAlias, useDeleteWorkflowAlias } from '@/service/use-workflow-alias'
-import { workflowAliasTranslation } from '@/i18n/zh-Hans/workflow-alias'
+import { useTranslation } from 'react-i18next'
 
 type AliasManagementModalProps = {
   isOpen: boolean
@@ -25,7 +25,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
   aliases,
   onAliasChange,
 }) => {
-  const aliasT = workflowAliasTranslation
+  const { t } = useTranslation('workflow')
   const [isCreating, setIsCreating] = useState(false)
   const [newAliasName, setNewAliasName] = useState('')
   const [isAddingNew, setIsAddingNew] = useState(false)
@@ -42,7 +42,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
     if (!newAliasName || !newAliasName.trim()) {
       Toast.notify({
         type: 'error',
-        message: aliasT.nameRequired,
+        message: t('alias.nameRequired'),
       })
       return
     }
@@ -57,12 +57,12 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       let message
       if (result.is_transferred) {
         if (result.old_workflow_id === versionHistory.id)
-          message = aliasT.aliasExists
+          message = t('alias.aliasExists')
         else
-          message = aliasT.transferSuccess
+          message = t('alias.transferSuccess')
       }
       else {
-        message = aliasT.createSuccess
+        message = t('alias.createSuccess')
       }
 
       Toast.notify({
@@ -76,7 +76,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
     catch (error: any) {
       Toast.notify({
         type: 'error',
-        message: error.message || aliasT.createFailure,
+        message: error.message || t('alias.createFailure'),
       })
     }
     finally {
@@ -89,14 +89,14 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       await deleteAlias(alias.id)
       Toast.notify({
         type: 'success',
-        message: aliasT.deleteSuccess,
+        message: t('alias.deleteSuccess'),
       })
       onAliasChange()
     }
     catch (error: any) {
       Toast.notify({
         type: 'error',
-        message: error.message || aliasT.deleteFailure,
+        message: error.message || t('alias.deleteFailure'),
       })
     }
   }, [deleteAlias, onAliasChange])
@@ -110,7 +110,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
     <Modal
       isShow={isOpen}
       onClose={onClose}
-      title={`${aliasT.managementTitle} - ${versionHistory.marked_name || aliasT.untitled}`}
+      title={`${t('alias.managementTitle')} - ${versionHistory.marked_name || t('alias.untitled')}`}
       className="max-h-[80vh] w-[600px] overflow-visible"
     >
       <div className="space-y-2 overflow-visible">
@@ -138,7 +138,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                       type="button"
                       onClick={() => handleDeleteAlias(alias)}
                       className="rounded-md p-1.5 text-gray-400 opacity-0 transition-all duration-200 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
-                      title={aliasT.deleteAlias}
+                      title={t('alias.deleteAlias')}
                     >
                       <RiDeleteBinLine className="h-3.5 w-3.5" />
                     </button>
@@ -149,7 +149,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
           ) : (
             <div className="space-y-2">
               <div className="py-8 text-center text-sm text-gray-400">
-                {aliasT.noAliases}
+                {t('alias.noAliases')}
               </div>
             </div>
           )}
@@ -160,7 +160,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
               <Input
                 value={newAliasName}
                 onChange={e => setNewAliasName(e.target.value)}
-                placeholder={aliasT.inputAlias}
+                placeholder={t('alias.inputAlias')}
                 maxLength={255}
                 className="w-full"
               />
@@ -172,7 +172,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                 onClick={handleCreateAlias}
                 disabled={!newAliasName.trim() || isCreating}
                 className="rounded-md p-2 text-green-600 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
-                title={aliasT.confirmAdd}
+                title={t('alias.confirmAdd')}
               >
                 {isCreating ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
@@ -189,7 +189,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                   resetForm()
                 }}
                 className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                title={aliasT.cancel}
+                title={t('alias.cancel')}
               >
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -205,7 +205,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
             >
               <RiAddLine className="mr-2 h-4 w-4 text-gray-400" />
               <span className="text-sm text-gray-500">
-                {aliasT.add}
+                {t('alias.add')}
               </span>
             </div>
           </div>
