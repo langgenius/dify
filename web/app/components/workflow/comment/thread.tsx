@@ -163,9 +163,43 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
   const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
 
+  // Focus management refs
+  const replyInputRef = useRef<HTMLTextAreaElement>(null)
+  const threadRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     setReplyContent('')
   }, [comment.id])
+
+  // P0: Auto-focus reply input when thread opens or comment changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (replyInputRef.current && !editingReply.id && onReply)
+        replyInputRef.current.focus()
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [comment.id, editingReply.id, onReply])
+
+  // P2: Handle Esc key to close thread
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if actively editing a reply
+      if (editingReply.id) return
+
+      // Don't intercept if mention dropdown is open (let MentionInput handle it)
+      if (document.querySelector('[data-mention-dropdown]')) return
+
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [onClose, editingReply.id])
 
   const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
     if (!onReply || replySubmitting) return
@@ -174,6 +208,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
     try {
       await onReply(content, mentionedUserIds)
+
+      // P0: Restore focus to reply input after successful submission
+      setTimeout(() => {
+        replyInputRef.current?.focus()
+      }, 0)
     }
     catch (error) {
       console.error('Failed to send reply', error)
@@ -195,6 +234,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
   const handleCancelEdit = useCallback(() => {
     setEditingReply({ id: '', content: '' })
+
+    // P1: Restore focus to reply input after canceling edit
+    setTimeout(() => {
+      replyInputRef.current?.focus()
+    }, 0)
   }, [])
 
   const handleEditSubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
@@ -203,6 +247,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     if (!trimmed) return
     await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
     setEditingReply({ id: '', content: '' })
+
+    // P1: Restore focus to reply input after saving edit
+    setTimeout(() => {
+      replyInputRef.current?.focus()
+    }, 0)
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
@@ -272,9 +321,20 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         transform: 'translateY(-20%)',
       }}
     >
-      <div className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
+      <div
+        ref={threadRef}
+        className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'
+        role='dialog'
+        aria-modal='true'
+        aria-labelledby='comment-thread-title'
+      >
         <div className='flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3'>
-          <div className='font-semibold uppercase text-text-primary'>{t('workflow.comments.panelTitle')}</div>
+          <div
+            id='comment-thread-title'
+            className='font-semibold uppercase text-text-primary'
+          >
+            {t('workflow.comments.panelTitle')}
+          </div>
           <div className='flex items-center gap-1'>
             <Tooltip
               popupContent={t('workflow.comments.aria.deleteComment')}
@@ -502,6 +562,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               />
               <div className='flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm'>
                 <MentionInput
+                  ref={replyInputRef}
                   value={replyContent}
                   onChange={setReplyContent}
                   onSubmit={handleReplySubmit}

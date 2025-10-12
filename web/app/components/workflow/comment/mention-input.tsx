@@ -1,10 +1,12 @@
 'use client'
 
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import {
+  forwardRef,
   memo,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -34,7 +36,7 @@ type MentionInputProps = {
   autoFocus?: boolean
 }
 
-export const MentionInput: FC<MentionInputProps> = memo(({
+const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   value,
   onChange,
   onSubmit,
@@ -45,7 +47,7 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   className,
   isEditing = false,
   autoFocus = false,
-}) => {
+}, forwardedRef) => {
   const params = useParams()
   const { t } = useTranslation()
   const appId = params.appId as string
@@ -54,6 +56,9 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   const actionContainerRef = useRef<HTMLDivElement | null>(null)
   const actionRightRef = useRef<HTMLDivElement | null>(null)
   const baseTextareaHeightRef = useRef<number | null>(null)
+
+  // Expose textarea ref to parent component
+  useImperativeHandle(forwardedRef, () => textareaRef.current!, [])
 
   const workflowStore = useWorkflowStore()
   const mentionUsersFromStore = useStore(state => (
@@ -630,4 +635,6 @@ export const MentionInput: FC<MentionInputProps> = memo(({
   )
 })
 
-MentionInput.displayName = 'MentionInput'
+MentionInputInner.displayName = 'MentionInputInner'
+
+export const MentionInput = memo(MentionInputInner)
