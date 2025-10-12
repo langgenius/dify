@@ -57,11 +57,7 @@ def batch_create_segment_to_index_task(
         if not dataset_document:
             raise ValueError("Document not exist.")
 
-        if (
-            not dataset_document.enabled
-            or dataset_document.archived
-            or dataset_document.indexing_status != "completed"
-        ):
+        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
             raise ValueError("Document is not available.")
 
         upload_file = db.session.get(UploadFile, upload_file_id)
