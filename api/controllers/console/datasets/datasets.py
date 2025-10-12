@@ -61,6 +61,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
     """
     if vector_type is None:
         raise ValueError("Vector store type is not configured.")
+
     # Define vector database types that only support semantic search
     semantic_only_types = {
         VectorType.RELYT,
@@ -70,10 +71,6 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.VIKINGDB,
         VectorType.UPSTASH,
     }
-
-    # For Mock API, MILVUS is also categorized as semantic search only
-    if is_mock:
-        semantic_only_types.add(VectorType.MILVUS)
 
     # Define vector database types that support all retrieval methods
     full_search_types = {
@@ -101,20 +98,22 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.ALIBABACLOUD_MYSQL,
     }
 
-    # For non-Mock API, MILVUS supports all retrieval methods
-    if not is_mock:
-        full_search_types.add(VectorType.MILVUS)
+    semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+    full_methods = {
+        "retrieval_method": [
+            RetrievalMethod.SEMANTIC_SEARCH.value,
+            RetrievalMethod.FULL_TEXT_SEARCH.value,
+            RetrievalMethod.HYBRID_SEARCH.value,
+        ]
+    }
+
+    if vector_type == VectorType.MILVUS:
+        return semantic_methods if is_mock else full_methods
 
     if vector_type in semantic_only_types:
-        return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+        return semantic_methods
     elif vector_type in full_search_types:
-        return {
-            "retrieval_method": [
-                RetrievalMethod.SEMANTIC_SEARCH.value,
-                RetrievalMethod.FULL_TEXT_SEARCH.value,
-                RetrievalMethod.HYBRID_SEARCH.value,
-            ]
-        }
+        return full_methods
     else:
         raise ValueError(f"Unsupported vector db type {vector_type}.")
 
