@@ -48,11 +48,11 @@ def _validate_name(name: str) -> str:
 def _get_retrieval_methods_by_vector_type(vector_type: str, is_mock: bool = False) -> dict[str, list[str]]:
     """
     Get supported retrieval methods based on vector database type.
-    
+
     Args:
         vector_type: Vector database type
         is_mock: Whether this is a Mock API, affects MILVUS handling
-    
+
     Returns:
         Dictionary containing supported retrieval methods
     """
@@ -65,11 +65,11 @@ def _get_retrieval_methods_by_vector_type(vector_type: str, is_mock: bool = Fals
         VectorType.VIKINGDB,
         VectorType.UPSTASH,
     }
-    
+
     # For Mock API, MILVUS is also categorized as semantic search only
     if is_mock:
         semantic_only_types.add(VectorType.MILVUS)
-    
+
     # Define vector database types that support all retrieval methods
     full_search_types = {
         VectorType.QDRANT,
@@ -95,11 +95,11 @@ def _get_retrieval_methods_by_vector_type(vector_type: str, is_mock: bool = Fals
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
     }
-    
+
     # For non-Mock API, MILVUS supports all retrieval methods
     if not is_mock:
         full_search_types.add(VectorType.MILVUS)
-    
+
     if vector_type in semantic_only_types:
         return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
     elif vector_type in full_search_types:
