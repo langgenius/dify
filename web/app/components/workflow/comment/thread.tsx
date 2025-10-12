@@ -256,8 +256,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
   const replies = comment.replies || []
   const messageListRef = useRef<HTMLDivElement>(null)
-  const previousReplyCountRef = useRef(replies.length)
-  const previousCommentIdRef = useRef(comment.id)
+  const previousReplyCountRef = useRef<number | undefined>(undefined)
+  const previousCommentIdRef = useRef<string | undefined>(undefined)
 
   // Close dropdown when scrolling
   useEffect(() => {
@@ -279,10 +279,13 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     if (!container)
       return
 
+    const isFirstRender = previousCommentIdRef.current === undefined
     const isNewComment = comment.id !== previousCommentIdRef.current
-    const hasNewReply = replies.length > previousReplyCountRef.current
+    const hasNewReply = previousReplyCountRef.current !== undefined
+      && replies.length > previousReplyCountRef.current
 
-    if (isNewComment || hasNewReply) {
+    // Scroll on first render, new comment, or new reply
+    if (isFirstRender || isNewComment || hasNewReply) {
       container.scrollTo({
         top: container.scrollHeight,
         behavior: 'smooth',
