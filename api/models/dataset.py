@@ -85,7 +85,7 @@ class Dataset(TypeBase):
         sa.String(255), nullable=True, server_default=sa.text("'general'::character varying"), default=None
     )
     pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
-    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, init=False)
+    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), init=False)
 
     @property
@@ -1325,13 +1325,19 @@ class Pipeline(TypeBase):  # type: ignore[name-defined]
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default=sa.text("''::character varying"))
-    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_published: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     def retrieve_dataset(self, session: Session):
         return session.query(Dataset).where(Dataset.pipeline_id == self.id).first()

@@ -11,6 +11,7 @@ from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from factories import variable_factory
+from models.account import Account
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
@@ -178,7 +179,7 @@ class RagPipelineTransformService:
         data: dict,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
-        pipeline_data = data.get("rag_pipeline", {})
+        pipeline_data: dict = data.get("rag_pipeline", {})
         # Initialize pipeline based on mode
         workflow_data = data.get("workflow")
         if not workflow_data or not isinstance(workflow_data, dict):
@@ -195,13 +196,16 @@ class RagPipelineTransformService:
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
 
         graph = workflow_data.get("graph", {})
-
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id
         # Create new app
-        pipeline = Pipeline()
+        pipeline = Pipeline(
+
+        tenant_id = current_user.current_tenant_id,
+        name = pipeline_data.get("name", ""),
+        description = pipeline_data.get("description", "")
+        )
         pipeline.id = str(uuid4())
-        pipeline.tenant_id = current_user.current_tenant_id
-        pipeline.name = pipeline_data.get("name", "")
-        pipeline.description = pipeline_data.get("description", "")
         pipeline.created_by = current_user.id
         pipeline.updated_by = current_user.id
         pipeline.is_published = True
@@ -213,26 +217,26 @@ class RagPipelineTransformService:
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            features="{}",
+            _features="{}",
             type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=current_user.id,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            rag_pipeline_variables=rag_pipeline_variables_list,
+            _environment_variables=environment_variables,
+            _conversation_variables=conversation_variables,
+            _rag_pipeline_variables=rag_pipeline_variables_list,
         )
         published_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            features="{}",
+            _features="{}",
             type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=current_user.id,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            rag_pipeline_variables=rag_pipeline_variables_list,
+            _environment_variables=environment_variables,
+            _conversation_variables=conversation_variables,
+            _rag_pipeline_variables=rag_pipeline_variables_list,
         )
         db.session.add(draft_workflow)
         db.session.add(published_workflow)
@@ -263,6 +267,7 @@ class RagPipelineTransformService:
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
     def _transform_to_empty_pipeline(self, dataset: Dataset):
+        assert dataset.description
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
