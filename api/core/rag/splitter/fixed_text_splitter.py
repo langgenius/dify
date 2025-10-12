@@ -58,7 +58,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         if self._fixed_separator:
-            chunks = text.split(self._fixed_separator)
+            chunks = re.split(self._fixed_separator, text)
         else:
             chunks = [text]
 
