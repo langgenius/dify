@@ -21,7 +21,7 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
@@ -107,7 +107,7 @@ class RetrievalService:
             raise ValueError(";\n".join(exceptions))
 
         # Deduplicate documents for hybrid search to avoid duplicate chunks
-        if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
+        if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
             all_documents = cls._deduplicate_documents(all_documents)
             data_post_processor = DataPostProcessor(
                 str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
@@ -245,10 +245,10 @@ class RetrievalService:
                         reranking_model
                         and reranking_model.get("reranking_model_name")
                         and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH.value
+                        and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
-                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
+                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
@@ -293,10 +293,10 @@ class RetrievalService:
                         reranking_model
                         and reranking_model.get("reranking_model_name")
                         and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH.value
+                        and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
-                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
+                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
                         all_documents.extend(
                             data_post_processor.invoke(

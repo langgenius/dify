@@ -218,4 +218,5 @@ vdb = [
     "weaviate-client>=4.0.0,<5.0.0",
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
+    "mysql-connector-python>=9.3.0",
 ]
