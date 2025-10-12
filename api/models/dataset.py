@@ -51,8 +51,8 @@ class Dataset(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
-    name: Mapped[str] = mapped_column(String(255), init=False)
-    description: Mapped[str | None] = mapped_column(sa.Text, nullable=True, init=False)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     provider: Mapped[str] = mapped_column(
         String(255), server_default=sa.text("'vendor'::character varying"), init=False
     )
@@ -62,7 +62,7 @@ class Dataset(TypeBase):
     data_source_type: Mapped[str] = mapped_column(String(255), init=False)
     indexing_technique: Mapped[str | None] = mapped_column(String(255))
     index_struct: Mapped[str | None] = mapped_column(sa.Text, nullable=True, init=False)
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -76,13 +76,13 @@ class Dataset(TypeBase):
         sa.Integer, nullable=True, server_default=sa.text("10"), init=False, default=None
     )
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    retrieval_model: Mapped[dict | None] = mapped_column(JSONB, nullable=True, init=False, default=None)
+    retrieval_model: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=None)
     built_in_field_enabled: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), init=False
     )
-    icon_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True, init=False)
+    icon_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=None)
     runtime_mode: Mapped[str | None] = mapped_column(
-        sa.String(255), nullable=True, server_default=sa.text("'general'::character varying"), init=False
+        sa.String(255), nullable=True, server_default=sa.text("'general'::character varying"), default=None
     )
     pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
     chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, init=False)

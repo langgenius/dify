@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import re
 import uuid
@@ -1834,21 +1835,23 @@ class MessageAgentThought(TypeBase):
     observation: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
     tool_process_data: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
-    message: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
-    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    message_unit_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True)
-    message_price_unit: Mapped[float] = mapped_column(
-        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    message: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    message_unit_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True, default=None)
+    message_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"), default=Decimal("0.001")
     )
-    message_files: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
-    answer: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
-    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    answer_unit_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True)
-    answer_price_unit: Mapped[float] = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    total_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True)
-    currency: Mapped[str | None] = mapped_column(String, nullable=True)
-    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    message_files: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    answer: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    answer_unit_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True, default=None)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"), default=Decimal("0.001")
+    )
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    total_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True, default=None)
+    currency: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)
     created_by_role: Mapped[str] = mapped_column(String, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

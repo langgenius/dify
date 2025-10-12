@@ -179,7 +179,7 @@ class Workflow(TypeBase):
             type=type,
             version=version,
             graph=graph,
-            features=features,
+            _features=features,
             created_by=created_by,
             environment_variables=environment_variables or [],
             conversation_variables=conversation_variables or [],
