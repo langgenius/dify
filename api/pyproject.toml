@@ -19,7 +19,7 @@ dependencies = [
     "flask-migrate~=4.0.7",
     "flask-orjson~=2.0.0",
     "flask-sqlalchemy~=3.1.1",
-    "gevent~=25.9.1",
+    "gevent==24.11.1",
     "gmpy2~=2.2.1",
     "google-api-core==2.18.0",
     "google-api-python-client==2.90.0",
