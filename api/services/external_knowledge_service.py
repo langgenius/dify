@@ -89,8 +89,8 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = ssrf_proxy.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception:
-            raise ValueError(f"failed to connect to the endpoint: {endpoint}")
+        except Exception as e:
+            raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
