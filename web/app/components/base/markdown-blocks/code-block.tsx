@@ -127,7 +127,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Store event handlers in useMemo to avoid recreating them
   const echartsEvents = useMemo(() => ({
-    finished: (params: EChartsEventParams) => {
+    finished: (_params: EChartsEventParams) => {
       // Limit finished event frequency to avoid infinite loops
       finishedEventCountRef.current++
       if (finishedEventCountRef.current > 3) {

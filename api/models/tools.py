@@ -152,7 +152,7 @@ class ApiToolProvider(Base):
     def tools(self) -> list["ApiToolBundle"]:
         from core.tools.entities.tool_bundle import ApiToolBundle
 
-        return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
+        return [ApiToolBundle.model_validate(tool) for tool in json.loads(self.tools_str)]
 
     @property
     def credentials(self) -> dict[str, Any]:
@@ -242,7 +242,10 @@ class WorkflowToolProvider(Base):
     def parameter_configurations(self) -> list["WorkflowToolParameterConfiguration"]:
         from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
-        return [WorkflowToolParameterConfiguration(**config) for config in json.loads(self.parameter_configuration)]
+        return [
+            WorkflowToolParameterConfiguration.model_validate(config)
+            for config in json.loads(self.parameter_configuration)
+        ]
 
     @property
     def app(self) -> App | None:
@@ -312,7 +315,7 @@ class MCPToolProvider(Base):
     def mcp_tools(self) -> list["MCPTool"]:
         from core.mcp.types import Tool as MCPTool
 
-        return [MCPTool(**tool) for tool in json.loads(self.tools)]
+        return [MCPTool.model_validate(tool) for tool in json.loads(self.tools)]
 
     @property
     def provider_icon(self) -> Mapping[str, str] | str:
@@ -552,4 +555,4 @@ class DeprecatedPublishedAppTool(Base):
     def description_i18n(self) -> "I18nObject":
         from core.tools.entities.common_entities import I18nObject
 
-        return I18nObject(**json.loads(self.description))
+        return I18nObject.model_validate(json.loads(self.description))

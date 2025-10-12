@@ -98,7 +98,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
         parser.add_argument("is_published", type=bool, required=True, location="json")
         args: ParseResult = parser.parse_args()
 
-        datasource_node_run_api_entity: DatasourceNodeRunApiEntity = DatasourceNodeRunApiEntity(**args)
+        datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(args)
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService()
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id)

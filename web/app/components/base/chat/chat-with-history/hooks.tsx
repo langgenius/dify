@@ -128,7 +128,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         const localState = localStorage.getItem('webappSidebarCollapse')
         return localState === 'collapsed'
       }
-      catch (e) {
+      catch {
         // localStorage may be disabled in private browsing mode or by security settings
         // fallback to default value
         return false
@@ -142,7 +142,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       try {
         localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
       }
-      catch (e) {
+      catch {
         // localStorage may be disabled, continue without persisting state
       }
     }

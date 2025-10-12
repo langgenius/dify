@@ -457,6 +457,7 @@ const translation = {
       },
       outputVars: {
         output: '生成内容',
+        reasoning_content: '推理内容',
         usage: '模型用量信息',
       },
       singleRun: {
