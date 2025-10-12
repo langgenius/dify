@@ -74,7 +74,7 @@ const WorkflowAppWithAdditionalContext = () => {
         setShowDebugAndPreviewPanel(true)
       }
     })
-  }, [searchParams])
+  }, [searchParams, workflowStore, getWorkflowRunAndTraceUrl])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
