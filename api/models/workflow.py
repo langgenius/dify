@@ -748,7 +748,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
             ),
         )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
@@ -1034,7 +1034,7 @@ class WorkflowAppLog(TypeBase):
         sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1077,7 +1077,7 @@ class WorkflowAppLog(TypeBase):
 class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, init=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True, index=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     data: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -1145,7 +1145,9 @@ class WorkflowDraftVariable(TypeBase):
     __allow_unmapped__ = True
 
     # id is the unique identifier of a draft variable.
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
 
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
@@ -1525,10 +1527,7 @@ class WorkflowDraftVariableFile(TypeBase):
 
     # Primary key
     id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=uuidv7,
-        server_default=sa.text("uuidv7()"),
+        StringUUID, primary_key=True, default=uuidv7, server_default=sa.text("uuidv7()"), init=False
     )
 
     created_at: Mapped[datetime] = mapped_column(

@@ -55,7 +55,7 @@ class Provider(TypeBase):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_type: Mapped[str] = mapped_column(
@@ -127,7 +127,7 @@ class ProviderModel(TypeBase):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -164,7 +164,7 @@ class TenantDefaultModel(TypeBase):
         sa.Index("tenant_default_model_tenant_id_provider_type_idx", "tenant_id", "provider_name", "model_type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -180,7 +180,7 @@ class TenantPreferredModelProvider(TypeBase):
         sa.Index("tenant_preferred_model_provider_tenant_provider_idx", "tenant_id", "provider_name"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     preferred_provider_type: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -195,7 +195,7 @@ class ProviderOrder(TypeBase):
         sa.Index("provider_order_tenant_provider_idx", "tenant_id", "provider_name"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -226,7 +226,7 @@ class ProviderModelSetting(TypeBase):
         sa.Index("provider_model_setting_tenant_provider_model_idx", "tenant_id", "provider_name", "model_type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -248,7 +248,7 @@ class LoadBalancingModelConfig(TypeBase):
         sa.Index("load_balancing_model_config_tenant_provider_model_idx", "tenant_id", "provider_name", "model_type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -273,7 +273,7 @@ class ProviderCredential(TypeBase):
         sa.Index("provider_credential_tenant_provider_idx", "tenant_id", "provider_name"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuidv7()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     credential_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -299,7 +299,7 @@ class ProviderModelCredential(TypeBase):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuidv7()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)

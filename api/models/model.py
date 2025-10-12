@@ -71,7 +71,7 @@ class App(TypeBase):
     __tablename__ = "apps"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(sa.Text, server_default=sa.text("''::character varying"))
@@ -545,8 +545,8 @@ class RecommendedApp(TypeBase):
     description: Mapped[str] = mapped_column(sa.JSON, nullable=False)
     copyright: Mapped[str] = mapped_column(String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=False)
-    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="", init=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True, init=False)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, init=False)
@@ -578,7 +578,7 @@ class InstalledApp(TypeBase):
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_tenant_app"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -612,7 +612,7 @@ class OAuthProviderApp(TypeBase):
         sa.Index("oauth_provider_app_client_id_idx", "client_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
     app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, server_default="{}")
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -635,7 +635,7 @@ class Conversation(TypeBase):
         sa.Index("conversation_app_from_user_idx", "app_id", "from_source", "from_end_user_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1310,7 +1310,7 @@ class MessageFeedback(TypeBase):
         sa.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1372,7 +1372,7 @@ class MessageFile(TypeBase):
         self.created_by_role = created_by_role.value
         self.created_by = created_by
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1393,7 +1393,7 @@ class MessageAnnotation(TypeBase):
         sa.Index("message_annotation_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
@@ -1425,7 +1425,7 @@ class AppAnnotationHitHistory(TypeBase):
         sa.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     annotation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     source: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -1460,7 +1460,7 @@ class AppAnnotationSetting(TypeBase):
         sa.Index("app_annotation_settings_app_idx", "app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
     collection_binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1488,7 +1488,7 @@ class OperationLog(TypeBase):
         sa.Index("operation_log_account_action_idx", "tenant_id", "account_id", "action"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1514,7 +1514,7 @@ class EndUser(TypeBase, UserMixin):
         sa.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1544,7 +1544,7 @@ class AppMCPServer(TypeBase):
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
         sa.UniqueConstraint("server_code", name="unique_app_mcp_server_server_code"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1580,7 +1580,7 @@ class Site(TypeBase):
         sa.Index("site_code_idx", "code", "status"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     icon_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1644,13 +1644,15 @@ class ApiToken(TypeBase):
         sa.Index("api_token_tenant_idx", "tenant_id", "type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
-    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @staticmethod
     def generate_api_key(prefix: str, n: int) -> str:
@@ -1671,7 +1673,7 @@ class UploadFile(TypeBase):
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips
     # (especially when generating `source_url`).
     # The `server_default` serves as a fallback mechanism.
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1754,7 +1756,9 @@ class ApiRequest(TypeBase):
         sa.Index("api_request_token_idx", "tenant_id", "api_token_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     api_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     path: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1771,7 +1775,9 @@ class MessageChain(TypeBase):
         sa.Index("message_chain_message_id_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
@@ -1789,7 +1795,9 @@ class MessageAgentThought(TypeBase):
         sa.Index("message_agent_thought_message_chain_id_idx", "message_chain_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_chain_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -1906,7 +1914,9 @@ class DatasetRetrieverResource(TypeBase):
         sa.Index("dataset_retriever_resource_message_id_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1938,7 +1948,7 @@ class Tag(TypeBase):
 
     TAG_TYPE_LIST = ["knowledge", "app"]
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1954,7 +1964,7 @@ class TagBinding(TypeBase):
         sa.Index("tag_bind_tag_id_idx", "tag_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     tag_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     target_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -1969,7 +1979,7 @@ class TraceAppConfig(TypeBase):
         sa.Index("trace_app_config_app_id_idx", "app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tracing_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tracing_config: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)

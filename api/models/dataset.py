@@ -49,7 +49,7 @@ class Dataset(TypeBase):
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255), init=False)
     description: Mapped[str | None] = mapped_column(sa.Text, nullable=True, init=False)
@@ -320,7 +320,9 @@ class DatasetProcessRule(TypeBase):
         sa.Index("dataset_process_rule_dataset_id_idx", "dataset_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     mode: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'automatic'::character varying")
@@ -366,7 +368,9 @@ class Document(TypeBase):
     )
 
     # initial fields
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -914,7 +918,7 @@ class DatasetQuery(TypeBase):
     )
 
     id: Mapped[str] = mapped_column(
-        StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()")
+        StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
     )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -932,7 +936,9 @@ class DatasetKeywordTable(TypeBase):
         sa.Index("dataset_keyword_table_dataset_id_idx", "dataset_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table: Mapped[str] = mapped_column(sa.Text, nullable=False)
     data_source_type: Mapped[str] = mapped_column(
@@ -983,7 +989,9 @@ class Embedding(TypeBase):
         sa.Index("created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     model_name: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'::character varying")
     )
@@ -1008,7 +1016,9 @@ class DatasetCollectionBinding(TypeBase):
         sa.Index("provider_model_name_idx", "provider_name", "model_name"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(
@@ -1027,7 +1037,9 @@ class TidbAuthBinding(TypeBase):
         sa.Index("tidb_auth_bindings_created_at_idx", "created_at"),
         sa.Index("tidb_auth_bindings_status_idx", "status"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1046,7 +1058,9 @@ class Whitelist(TypeBase):
         sa.PrimaryKeyConstraint("id", name="whitelists_pkey"),
         sa.Index("whitelists_tenant_idx", "tenant_id"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1061,7 +1075,9 @@ class DatasetPermission(TypeBase):
         sa.Index("idx_dataset_permissions_tenant_id", "tenant_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), primary_key=True)
+    id: Mapped[str] = mapped_column(
+        StringUUID, server_default=sa.text("uuid_generate_v4()"), primary_key=True, init=False
+    )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1077,7 +1093,9 @@ class ExternalKnowledgeApis(TypeBase):
         sa.Index("external_knowledge_apis_name_idx", "name"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1130,7 +1148,9 @@ class ExternalKnowledgeBindings(TypeBase):
         sa.Index("external_knowledge_bindings_external_knowledge_api_idx", "external_knowledge_api_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     external_knowledge_api_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1150,7 +1170,7 @@ class DatasetAutoDisableLog(TypeBase):
         sa.Index("dataset_auto_disable_log_created_atx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1168,7 +1188,7 @@ class RateLimitLog(TypeBase):
         sa.Index("rate_limit_log_operation_idx", "operation"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     subscription_plan: Mapped[str] = mapped_column(String(255), nullable=False)
     operation: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1225,7 +1245,7 @@ class PipelineBuiltInTemplate(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "pipeline_built_in_templates"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
@@ -1260,7 +1280,7 @@ class PipelineCustomizedTemplate(TypeBase):  # type: ignore[name-defined]
         sa.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -1291,7 +1311,7 @@ class Pipeline(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default=sa.text("''::character varying"))
@@ -1314,7 +1334,7 @@ class DocumentPipelineExecutionLog(TypeBase):
         sa.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     pipeline_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     datasource_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
@@ -1329,7 +1349,7 @@ class PipelineRecommendedPlugin(TypeBase):
     __tablename__ = "pipeline_recommended_plugins"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     plugin_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
     provider_name: Mapped[str] = mapped_column(sa.Text, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
