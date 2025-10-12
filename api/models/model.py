@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
@@ -647,7 +648,7 @@ class Conversation(TypeBase):
     model_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mode: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    summary: Mapped[str | None] = mapped_column(sa.Text)
+    summary: Mapped[str | None] = mapped_column(sa.Text, init=False)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
     introduction: Mapped[str | None] = mapped_column(sa.Text)
     system_instruction: Mapped[str | None] = mapped_column(sa.Text)
@@ -658,14 +659,14 @@ class Conversation(TypeBase):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[InvokeFrom | None] = mapped_column(String(255), nullable=True)
 
     # ref: ConversationSource.
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
-    read_at: Mapped[datetime | None] = mapped_column(sa.DateTime)
-    read_account_id: Mapped[str | None] = mapped_column(StringUUID)
+    read_at: Mapped[datetime | None] = mapped_column(sa.DateTime, default=None, init=False)
+    read_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None, init=False)
     dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False

@@ -123,16 +123,14 @@ class Workflow(TypeBase):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False, init=False)
-    version: Mapped[str] = mapped_column(String(255), nullable=False, init=False)
-    graph: Mapped[str] = mapped_column(sa.Text, init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    type: Mapped[WorkflowType] = mapped_column(String(255), nullable=False)
+    version: Mapped[str] = mapped_column(String(255), nullable=False)
+    graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT, init=False)
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID, init=False)
     marked_name: Mapped[str] = mapped_column(default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(default="", server_default="")
@@ -149,7 +147,7 @@ class Workflow(TypeBase):
         "conversation_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
     _rag_pipeline_variables: Mapped[str] = mapped_column(
-        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}", default="{}"
+        "rag_pipeline_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
 
     VERSION_DRAFT = "draft"
@@ -171,22 +169,24 @@ class Workflow(TypeBase):
         marked_name: str = "",
         marked_comment: str = "",
     ) -> "Workflow":
-        workflow = Workflow()
-        workflow.id = str(uuid4())
-        workflow.tenant_id = tenant_id
-        workflow.app_id = app_id
-        workflow.type = type
-        workflow.version = version
-        workflow.graph = graph
-        workflow.features = features
-        workflow.created_by = created_by
-        workflow.environment_variables = environment_variables or []
-        workflow.conversation_variables = conversation_variables or []
-        workflow.rag_pipeline_variables = rag_pipeline_variables or []
-        workflow.marked_name = marked_name
-        workflow.marked_comment = marked_comment
-        workflow.created_at = naive_utc_now()
-        workflow.updated_at = workflow.created_at
+        n = naive_utc_now()
+        workflow = Workflow(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=type,
+            version=version,
+            graph=graph,
+            features=features,
+            created_by=created_by,
+            environment_variables=environment_variables or [],
+            conversation_variables=conversation_variables or [],
+            rag_pipeline_variables=rag_pipeline_variables or [],
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+            created_at=n,
+            updated_at=n,
+        )
         return workflow
 
     @property
@@ -1528,7 +1528,7 @@ class WorkflowDraftVariableFile(TypeBase):
 
     # Primary key
     id: Mapped[str] = mapped_column(
-        StringUUID, primary_key=True, default=uuidv7, server_default=sa.text("uuidv7()"), init=False
+        StringUUID, primary_key=True, default=uuidv7, server_default=sa.text("uuidv7()")
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -1536,7 +1536,6 @@ class WorkflowDraftVariableFile(TypeBase):
         nullable=False,
         default=_naive_utc_datetime,
         server_default=func.current_timestamp(),
-        init=False,
     )
 
     tenant_id: Mapped[str] = mapped_column(
