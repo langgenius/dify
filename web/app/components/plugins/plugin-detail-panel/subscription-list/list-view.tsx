@@ -29,24 +29,25 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
       </div>
     )
   }
+  const subscriptionCount = subscriptions?.length || 0
 
   return (
     <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
       <div className='relative mb-3 flex items-center justify-between'>
-        {subscriptions?.length && (
+        {subscriptionCount > 0 && (
           <div className='flex shrink-0 items-center gap-1'>
             <span className='system-sm-semibold-uppercase text-text-secondary'>
-              {t('pluginTrigger.subscription.listNum', { num: subscriptions?.length || 0 })}
+              {t('pluginTrigger.subscription.listNum', { num: subscriptionCount })}
             </span>
             <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
           </div>
         )}
         <CreateSubscriptionButton
-          buttonType={subscriptions?.length ? CreateButtonType.ICON_BUTTON : CreateButtonType.FULL_BUTTON}
+          buttonType={subscriptionCount > 0 ? CreateButtonType.ICON_BUTTON : CreateButtonType.FULL_BUTTON}
         />
       </div>
 
-      {subscriptions?.length && (
+      {subscriptionCount > 0 && (
         <div className='flex flex-col gap-1'>
           {subscriptions?.map(subscription => (
             <SubscriptionCard

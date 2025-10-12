@@ -146,7 +146,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         triggerPopupSameWidth: buttonType === CreateButtonType.FULL_BUTTON,
       }}
       triggerProps={{
-        className: cn('h-8 bg-transparent px-0 hover:bg-transparent', methodType !== DEFAULT_METHOD && 'pointer-events-none', buttonType === CreateButtonType.FULL_BUTTON && 'grow'),
+        className: cn('h-8 bg-transparent px-0 hover:bg-transparent', methodType !== DEFAULT_METHOD && supportedMethods.length > 1 && 'pointer-events-none', buttonType === CreateButtonType.FULL_BUTTON && 'grow'),
       }}
       popupProps={{
         wrapperClassName: 'z-[1000]',
