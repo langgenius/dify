@@ -1,9 +1,9 @@
-from decimal import Decimal
 import json
 import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
