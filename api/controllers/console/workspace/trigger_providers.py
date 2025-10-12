@@ -133,19 +133,15 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
         args = parser.parse_args()
 
         try:
-            TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
+            # Use atomic update_and_verify to prevent race conditions
+            return TriggerSubscriptionBuilderService.update_and_verify_builder(
                 tenant_id=user.current_tenant_id,
+                user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
                     credentials=args.get("credentials", None),
                 ),
-            )
-            return TriggerSubscriptionBuilderService.verify_trigger_subscription_builder(
-                tenant_id=user.current_tenant_id,
-                user_id=user.id,
-                provider_id=TriggerProviderID(provider),
-                subscription_builder_id=subscription_builder_id,
             )
         except Exception as e:
             logger.exception("Error verifying provider credential", exc_info=e)
@@ -232,8 +228,10 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
         try:
-            TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
+            # Use atomic update_and_build to prevent race conditions
+            TriggerSubscriptionBuilderService.update_and_build_builder(
                 tenant_id=user.current_tenant_id,
+                user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
@@ -241,12 +239,6 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
                     parameters=args.get("parameters", None),
                     properties=args.get("properties", None),
                 ),
-            )
-            TriggerSubscriptionBuilderService.build_trigger_subscription_builder(
-                tenant_id=user.current_tenant_id,
-                user_id=user.id,
-                provider_id=TriggerProviderID(provider),
-                subscription_builder_id=subscription_builder_id,
             )
             return 200
         except Exception as e:
