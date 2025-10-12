@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 
 from flask import Request, Response
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -22,7 +22,7 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
-from models.workflow import Workflow, WorkflowPluginTrigger
+from models.workflow import AppTrigger, AppTriggerStatus, Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
@@ -246,10 +246,20 @@ class TriggerService:
         """
         with Session(db.engine, expire_on_commit=False) as session:
             subscribers = session.scalars(
-                select(WorkflowPluginTrigger).where(
+                select(WorkflowPluginTrigger)
+                .join(
+                    AppTrigger,
+                    and_(
+                        AppTrigger.tenant_id == WorkflowPluginTrigger.tenant_id,
+                        AppTrigger.app_id == WorkflowPluginTrigger.app_id,
+                        AppTrigger.node_id == WorkflowPluginTrigger.node_id,
+                    ),
+                )
+                .where(
                     WorkflowPluginTrigger.tenant_id == tenant_id,
                     WorkflowPluginTrigger.subscription_id == subscription_id,
                     WorkflowPluginTrigger.event_name == event_name,
+                    AppTrigger.status == AppTriggerStatus.ENABLED,
                 )
             ).all()
             return list(subscribers)
