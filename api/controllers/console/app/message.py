@@ -184,6 +184,8 @@ class MessageFeedbackApi(Resource):
                 message_id=message.id,
                 rating=args["rating"],
                 from_source="admin",
+                content=None,
+                from_end_user_id=None,
                 from_account_id=current_user.id,
             )
             db.session.add(feedback)

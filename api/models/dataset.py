@@ -329,7 +329,9 @@ class DatasetProcessRule(TypeBase):
     )
     rules: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     MODES = ["automatic", "custom", "hierarchical"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
@@ -382,7 +384,9 @@ class Document(TypeBase):
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     # start processing
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -423,7 +427,9 @@ class Document(TypeBase):
     archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     doc_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
     doc_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     doc_form: Mapped[str] = mapped_column(
@@ -677,7 +683,9 @@ class DocumentSegment(TypeBase):
     )
 
     # initial fields
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -868,7 +876,7 @@ class ChildChunk(TypeBase):
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
+        DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"), init=False
     )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -1176,7 +1184,7 @@ class DatasetAutoDisableLog(TypeBase):
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
+        DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"), init=False
     )
 
 
@@ -1193,7 +1201,7 @@ class RateLimitLog(TypeBase):
     subscription_plan: Mapped[str] = mapped_column(String(255), nullable=False)
     operation: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
+        DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)"), init=False
     )
 
 

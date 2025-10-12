@@ -753,24 +753,24 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
     triggered_from: Mapped[str] = mapped_column(String(255))
-    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     index: Mapped[int] = mapped_column(sa.Integer)
-    predecessor_node_id: Mapped[str | None] = mapped_column(String(255))
-    node_execution_id: Mapped[str | None] = mapped_column(String(255))
+    predecessor_node_id: Mapped[str | None] = mapped_column(String(255), default=None)
+    node_execution_id: Mapped[str | None] = mapped_column(String(255), default=None)
     node_id: Mapped[str] = mapped_column(String(255))
     node_type: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
-    inputs: Mapped[str | None] = mapped_column(sa.Text)
-    process_data: Mapped[str | None] = mapped_column(sa.Text)
-    outputs: Mapped[str | None] = mapped_column(sa.Text)
+    inputs: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    process_data: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    outputs: Mapped[str | None] = mapped_column(sa.Text, default=None)
     status: Mapped[str] = mapped_column(String(255))
-    error: Mapped[str | None] = mapped_column(sa.Text)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
-    execution_metadata: Mapped[str | None] = mapped_column(sa.Text)
+    error: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"), default=0)
+    execution_metadata: Mapped[str | None] = mapped_column(sa.Text, default=None)
     created_by_role: Mapped[str] = mapped_column(String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
@@ -778,6 +778,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
         uselist=True,
         lazy="raise",
         back_populates="execution",
+        init=False,
     )
 
     @staticmethod

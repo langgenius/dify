@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -104,7 +104,10 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant not found for access token")
+            features = FeatureService.get_features(tenant_id)
 
             if features.billing.enabled:
                 members = features.members
@@ -135,7 +138,10 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant not found for access token")
+            features = FeatureService.get_features(tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == "sandbox":
@@ -157,12 +163,15 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant not found for access token")
 
             if resource == "knowledge":
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{api_token.tenant_id}"
+                    key = f"rate_limit_{tenant_id}"
 
                     redis_client.zadd(key, {current_time: current_time})
 
@@ -173,7 +182,7 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
                     if request_count > knowledge_rate_limit.limit:
                         # add ratelimit record
                         rate_limit_log = RateLimitLog(
-                            tenant_id=api_token.tenant_id,
+                            tenant_id=tenant_id,
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
@@ -255,7 +264,10 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-            return view(api_token.tenant_id, *args, **kwargs)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant not found for access token")
+            return view(cast(T, tenant_id), *args, **kwargs)
 
         return decorated
 
@@ -332,9 +344,11 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = 
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type="service_api",
-                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+                external_user_id=None,
+                name=None,
                 session_id=user_id,
             )
+            end_user.is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
             session.add(end_user)
             session.commit()
 

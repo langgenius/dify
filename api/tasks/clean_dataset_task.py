@@ -50,12 +50,14 @@ def clean_dataset_task(
 
     try:
         dataset = Dataset(
-            id=dataset_id,
             tenant_id=tenant_id,
             indexing_technique=indexing_technique,
-            index_struct=index_struct,
+            embedding_model=None,
+            embedding_model_provider=None,
             collection_binding_id=collection_binding_id,
         )
+        dataset.id = dataset_id
+        dataset.index_struct = index_struct
         documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset_id)).all()
         segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id)).all()
 

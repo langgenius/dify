@@ -153,6 +153,8 @@ class DataSourceNotionListApi(Resource):
                 ).all()
                 if documents:
                     for document in documents:
+                        if document.data_source_info is None:
+                            continue
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
             # get all authorized pages

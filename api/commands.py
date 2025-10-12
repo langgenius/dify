@@ -224,13 +224,13 @@ def migrate_annotation_vector_database():
                         select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
                     ).all()
                 dataset = Dataset(
-                    id=app.id,
                     tenant_id=app.tenant_id,
                     indexing_technique="high_quality",
                     embedding_model_provider=dataset_collection_binding.provider_name,
                     embedding_model=dataset_collection_binding.model_name,
                     collection_binding_id=dataset_collection_binding.id,
                 )
+                dataset.id = app.id
                 documents = []
                 if annotations:
                     for annotation in annotations:

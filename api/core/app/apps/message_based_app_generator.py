@@ -156,6 +156,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         query = application_generate_entity.query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
+        inputs_payload = dict(application_generate_entity.inputs or {})
+
         if not conversation:
             conversation = Conversation(
                 app_id=app_config.app_id,
@@ -165,7 +167,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_config.app_mode.value,
                 name=conversation_name,
-                inputs=application_generate_entity.inputs,
+                summary=None,
+                _inputs=inputs_payload,
                 introduction=introduction,
                 system_instruction="",
                 system_instruction_tokens=0,
@@ -174,6 +177,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 from_source=from_source,
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
+                read_at=None,
+                read_account_id=None,
             )
 
             db.session.add(conversation)
@@ -185,29 +190,20 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         message = Message(
             app_id=app_config.app_id,
-            model_provider=model_provider,
-            model_id=model_id,
-            override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=conversation.id,
-            inputs=application_generate_entity.inputs,
+            _inputs=inputs_payload,
             query=application_generate_entity.query or "",
-            message="",
-            message_tokens=0,
-            message_unit_price=0,
-            message_price_unit=0,
+            message={},
             answer="",
-            answer_tokens=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
-            parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
-            provider_response_latency=0,
-            total_price=0,
-            currency="USD",
-            invoke_from=application_generate_entity.invoke_from.value,
             from_source=from_source,
-            from_end_user_id=end_user_id,
-            from_account_id=account_id,
         )
+        message.model_provider = model_provider
+        message.model_id = model_id
+        message.override_model_configs = json.dumps(override_model_configs) if override_model_configs else None
+        message.parent_message_id = getattr(application_generate_entity, "parent_message_id", None)
+        message.invoke_from = application_generate_entity.invoke_from.value
+        message.from_end_user_id = end_user_id
+        message.from_account_id = account_id
 
         db.session.add(message)
         db.session.commit()

@@ -91,12 +91,16 @@ def batch_create_segment_to_index_task(
             document_segments = []
             embedding_model = None
             if dataset.indexing_technique == "high_quality":
+                provider_name = dataset.embedding_model_provider
+                model_name = dataset.embedding_model
+                if provider_name is None or model_name is None:
+                    raise ValueError("Dataset embedding model is not configured.")
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_model_instance(
                     tenant_id=dataset.tenant_id,
-                    provider=dataset.embedding_model_provider,
+                    provider=provider_name,
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
+                    model=model_name,
                 )
         word_count_change = 0
         if embedding_model:
@@ -118,20 +122,23 @@ def batch_create_segment_to_index_task(
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 document_id=document_id,
-                index_node_id=doc_id,
-                index_node_hash=segment_hash,
                 position=max_position + 1 if max_position else 1,
                 content=content,
+                answer=None,
                 word_count=len(content),
                 tokens=tokens,
-                created_by=user_id,
-                indexing_at=naive_utc_now(),
-                status="completed",
-                completed_at=naive_utc_now(),
+                keywords=None,
+                index_node_id=doc_id,
+                index_node_hash=segment_hash,
             )
+            segment_document.created_by = user_id
+            segment_document.indexing_at = naive_utc_now()
+            segment_document.status = "completed"
+            segment_document.completed_at = naive_utc_now()
             if dataset_document.doc_form == "qa_model":
-                segment_document.answer = segment["answer"]
-                segment_document.word_count += len(segment["answer"])
+                answer_text = segment["answer"]
+                segment_document.answer = answer_text
+                segment_document.word_count += len(answer_text)
             word_count_change += segment_document.word_count
             db.session.add(segment_document)
             document_segments.append(segment_document)

@@ -53,10 +53,13 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
+                    app_id=None,
                     type="service_api",
-                    is_anonymous=is_anonymous,
+                    external_user_id=None,
+                    name=None,
                     session_id=user_id,
                 )
+                user_model.is_anonymous = is_anonymous
                 session.add(user_model)
                 session.commit()
                 session.refresh(user_model)

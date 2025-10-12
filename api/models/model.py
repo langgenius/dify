@@ -92,9 +92,13 @@ class App(TypeBase):
     tracing: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     max_active_requests: Mapped[int | None]
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     @property
@@ -1319,8 +1323,12 @@ class MessageFeedback(TypeBase):
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def from_account(self):
@@ -1381,7 +1389,9 @@ class MessageFile(TypeBase):
     upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class MessageAnnotation(TypeBase):
@@ -1401,8 +1411,12 @@ class MessageAnnotation(TypeBase):
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def account(self):
@@ -1431,7 +1445,9 @@ class AppAnnotationHitHistory(TypeBase):
     source: Mapped[str] = mapped_column(sa.Text, nullable=False)
     question: Mapped[str] = mapped_column(sa.Text, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     score: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     annotation_question: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -1465,9 +1481,13 @@ class AppAnnotationSetting(TypeBase):
     score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
     collection_binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def collection_binding_detail(self):
@@ -1521,7 +1541,7 @@ class EndUser(TypeBase, UserMixin):
     external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name: Mapped[str | None] = mapped_column(String(255))
     _is_anonymous: Mapped[bool] = mapped_column(
-        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
+        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true"), init=False
     )
 
     @property
@@ -1533,8 +1553,12 @@ class EndUser(TypeBase, UserMixin):
         self._is_anonymous = value
 
     session_id: Mapped[str] = mapped_column()
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class AppMCPServer(TypeBase):
@@ -1808,7 +1832,7 @@ class MessageAgentThought(TypeBase):
     tool_input: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     observation: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
-    tool_process_data: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    tool_process_data: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
     message: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     message_unit_price: Mapped[float | None] = mapped_column(sa.Numeric, nullable=True)
@@ -1827,7 +1851,7 @@ class MessageAgentThought(TypeBase):
     created_by_role: Mapped[str] = mapped_column(String, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
 
     @property

@@ -47,7 +47,7 @@ def remove_document_from_index_task(document_id: str):
         index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
         segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
-        index_node_ids = [segment.index_node_id for segment in segments]
+        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id is not None]
         if index_node_ids:
             try:
                 index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)

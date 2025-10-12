@@ -36,13 +36,13 @@ def update_annotation_to_index_task(
         )
 
         dataset = Dataset(
-            id=app_id,
             tenant_id=tenant_id,
             indexing_technique="high_quality",
             embedding_model_provider=dataset_collection_binding.provider_name,
             embedding_model=dataset_collection_binding.model_name,
             collection_binding_id=dataset_collection_binding.id,
         )
+        dataset.id = app_id
 
         document = Document(
             page_content=question, metadata={"annotation_id": annotation_id, "app_id": app_id, "doc_id": annotation_id}

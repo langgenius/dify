@@ -696,10 +696,11 @@ class DatasetApiKeyApi(Resource):
             )
 
         key = ApiToken.generate_api_key(self.token_prefix, 24)
-        api_token = ApiToken()
-        api_token.tenant_id = current_user.current_tenant_id
-        api_token.token = key
-        api_token.type = self.resource_type
+        api_token = ApiToken(
+            tenant_id=current_user.current_tenant_id,
+            type=self.resource_type,
+            token=key,
+        )
         db.session.add(api_token)
         db.session.commit()
         return api_token, 200

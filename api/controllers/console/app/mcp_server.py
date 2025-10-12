@@ -10,6 +10,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_server_fields
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models.model import AppMCPServer
 
@@ -73,6 +74,8 @@ class AppMCPServerController(Resource):
             app_id=app_model.id,
             tenant_id=current_user.current_tenant_id,
             server_code=AppMCPServer.generate_server_code(16),
+            created_at=naive_utc_now(),
+            updated_at=naive_utc_now(),
         )
         db.session.add(server)
         db.session.commit()

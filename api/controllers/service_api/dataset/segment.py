@@ -81,13 +81,19 @@ class SegmentApi(DatasetApiResource):
             raise NotFound("Document is disabled.")
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
+            provider_name = dataset.embedding_model_provider
+            model_name = dataset.embedding_model
+            if provider_name is None or model_name is None:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    provider=dataset.embedding_model_provider,
+                    provider=provider_name,
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
+                    model=model_name,
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
@@ -130,13 +136,19 @@ class SegmentApi(DatasetApiResource):
             raise NotFound("Document not found.")
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
+            provider_name = dataset.embedding_model_provider
+            model_name = dataset.embedding_model
+            if provider_name is None or model_name is None:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    provider=dataset.embedding_model_provider,
+                    provider=provider_name,
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
+                    model=model_name,
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
@@ -229,13 +241,19 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Document not found.")
         if dataset.indexing_technique == "high_quality":
             # check embedding model setting
+            provider_name = dataset.embedding_model_provider
+            model_name = dataset.embedding_model
+            if provider_name is None or model_name is None:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    provider=dataset.embedding_model_provider,
+                    provider=provider_name,
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
+                    model=model_name,
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
@@ -325,13 +343,19 @@ class ChildChunkApi(DatasetApiResource):
 
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
+            provider_name = dataset.embedding_model_provider
+            model_name = dataset.embedding_model
+            if provider_name is None or model_name is None:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                )
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    provider=dataset.embedding_model_provider,
+                    provider=provider_name,
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
+                    model=model_name,
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(

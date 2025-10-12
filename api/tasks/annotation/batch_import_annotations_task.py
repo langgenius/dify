@@ -62,13 +62,13 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 if not dataset_collection_binding:
                     raise NotFound("App annotation setting not found")
                 dataset = Dataset(
-                    id=app_id,
                     tenant_id=tenant_id,
                     indexing_technique="high_quality",
                     embedding_model_provider=dataset_collection_binding.provider_name,
                     embedding_model=dataset_collection_binding.model_name,
                     collection_binding_id=dataset_collection_binding.id,
                 )
+                dataset.id = app_id
 
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
                 vector.create(documents, duplicate_check=True)
