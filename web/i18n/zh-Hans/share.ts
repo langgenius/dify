@@ -53,6 +53,7 @@ const translation = {
         cancel: '取消',
         save: '保存并应用',
       },
+      empty: '暂无记忆。',
     },
   },
   generation: {

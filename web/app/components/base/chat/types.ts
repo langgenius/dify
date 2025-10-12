@@ -95,3 +95,36 @@ export type Feedback = {
   rating: 'like' | 'dislike' | null
   content?: string | null
 }
+
+export type MemorySpec = {
+  id: string
+  name: string
+  description: string
+  template: string // default value
+  instruction: string
+  scope: string // app or node
+  term: string // session or persistent
+  strategy: string
+  update_turns: number
+  preserved_turns: number
+  schedule_mode: string // sync or async
+  end_user_visible: boolean
+  end_user_editable: boolean
+}
+
+export type ConversationMetaData = {
+  type: string // mutable_visible_window
+  visible_count: number // visible_count - preserved_turns = N messages waiting merged
+}
+
+export type Memory = {
+  tenant_id: string
+  value: string
+  app_id: string
+  conversation_id?: string
+  node_id?: string
+  version: number
+  edited_by_user: boolean
+  conversation_metadata?: ConversationMetaData
+  spec: MemorySpec
+}

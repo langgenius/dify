@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import { Memory } from '@/app/components/base/icons/src/vender/line/others'
@@ -10,14 +10,14 @@ import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
 import Toast from '@/app/components/base/toast'
-import type { MemoryItem } from '../type'
+import type { Memory as MemoryItem } from '@/app/components/base/chat/types'
 import { noop } from 'lodash-es'
 import cn from '@/utils/classnames'
 
 type Props = {
   memory: MemoryItem
   show: boolean
-  onConfirm: (info: MemoryItem) => Promise<void>
+  onConfirm: (info: MemoryItem, content: string) => Promise<void>
   onHide: () => void
   isMobile?: boolean
 }
@@ -30,14 +30,25 @@ const MemoryEditModal = ({
   isMobile,
 }: Props) => {
   const { t } = useTranslation()
-  const [content, setContent] = React.useState(memory.content)
+  const [content, setContent] = React.useState(memory.value)
+
+  const versionTag = useMemo(() => {
+    const res = `${t('share.chat.memory.updateVersion.update')} ${memory.version}`
+    if (memory.edited_by_user)
+      return `${res} · ${t('share.chat.memory.updateVersion.edited')}`
+    return res
+  }, [memory.version, t])
+
+  const reset = () => {
+    setContent(memory.value)
+  }
 
   const submit = () => {
     if (!content.trim()) {
       Toast.notify({ type: 'error', message: 'content is required' })
       return
     }
-    onConfirm({ ...memory, content })
+    onConfirm(memory, content)
     onHide()
   }
 
@@ -56,8 +67,8 @@ const MemoryEditModal = ({
             <div className='title-2xl-semi-bold mb-2 text-text-primary'>{t('share.chat.memory.editTitle')}</div>
             <div className='flex items-center gap-1 pb-1 pt-2'>
               <Memory className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
-              <div className='system-sm-semibold truncate text-text-primary'>{memory.name}</div>
-              <Badge text={`${t('share.chat.memory.updateVersion.update')} 2`} />
+              <div className='system-sm-semibold truncate text-text-primary'>{memory.spec.name}</div>
+              {memory.version > 1 && <Badge text={versionTag} className='!h-4' />}
             </div>
           </div>
           <div className='grow px-4'>
@@ -71,7 +82,7 @@ const MemoryEditModal = ({
             <Button className='ml-2' variant='primary' onClick={submit}>{t('share.chat.memory.operations.save')}</Button>
             <Button className='ml-3' onClick={onHide}>{t('share.chat.memory.operations.cancel')}</Button>
             <Divider type='vertical' className='!mx-0 !h-4' />
-            <Button className='mr-3' onClick={onHide}>{t('share.chat.memory.operations.reset')}</Button>
+            <Button className='mr-3' onClick={reset}>{t('share.chat.memory.operations.reset')}</Button>
           </div>
         </div>
       </div>
@@ -93,8 +104,8 @@ const MemoryEditModal = ({
         <div className='title-2xl-semi-bold mb-2 text-text-primary'>{t('share.chat.memory.editTitle')}</div>
         <div className='flex items-center gap-1 pb-1 pt-2'>
           <Memory className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
-          <div className='system-sm-semibold truncate text-text-primary'>{memory.name}</div>
-          <Badge text={`${t('share.chat.memory.updateVersion.update')} 2`} />
+          <div className='system-sm-semibold truncate text-text-primary'>{memory.spec.name}</div>
+          {memory.version > 1 && <Badge text={versionTag} />}
         </div>
       </div>
       <div className='px-6'>
@@ -108,7 +119,7 @@ const MemoryEditModal = ({
         <Button className='ml-2' variant='primary' onClick={submit}>{t('share.chat.memory.operations.save')}</Button>
         <Button className='ml-3' onClick={onHide}>{t('share.chat.memory.operations.cancel')}</Button>
         <Divider type='vertical' className='!mx-0 !h-4' />
-        <Button className='mr-3' onClick={onHide}>{t('share.chat.memory.operations.reset')}</Button>
+        <Button className='mr-3' onClick={reset}>{t('share.chat.memory.operations.reset')}</Button>
       </div>
     </Modal>
   )

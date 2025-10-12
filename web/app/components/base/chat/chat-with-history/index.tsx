@@ -39,6 +39,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     sidebarCollapseState,
     showChatMemory,
     setShowChatMemory,
+    memoryList,
+    clearAllMemory,
+    updateMemory,
+    resetDefault,
+    clearAllUpdateVersion,
+    switchMemoryVersion,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const customConfig = appData?.custom_config
@@ -101,14 +107,34 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
           )}
         </div>
         {!isMobile && (
-          <MemoryPanel showChatMemory={showChatMemory} />
+          <MemoryPanel
+            isMobile={isMobile}
+            showChatMemory={showChatMemory}
+            setShowChatMemory={setShowChatMemory}
+            memoryList={memoryList}
+            clearAllMemory={clearAllMemory}
+            updateMemory={updateMemory}
+            resetDefault={resetDefault}
+            clearAllUpdateVersion={clearAllUpdateVersion}
+            switchMemoryVersion={switchMemoryVersion}
+          />
         )}
         {isMobile && showChatMemory && (
           <div className='fixed inset-0 z-50 flex flex-row-reverse bg-background-overlay p-1 backdrop-blur-sm'
             onClick={() => setShowChatMemory(false)}
           >
             <div className='flex h-full w-[360px] rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
-              <MemoryPanel showChatMemory={showChatMemory} />
+              <MemoryPanel
+                isMobile={isMobile}
+                showChatMemory={showChatMemory}
+                setShowChatMemory={setShowChatMemory}
+                memoryList={memoryList}
+                clearAllMemory={clearAllMemory}
+                updateMemory={updateMemory}
+                resetDefault={resetDefault}
+                clearAllUpdateVersion={clearAllUpdateVersion}
+                switchMemoryVersion={switchMemoryVersion}
+              />
             </div>
           </div>
         )}
@@ -169,6 +195,12 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     initUserVariables,
     showChatMemory,
     setShowChatMemory,
+    memoryList,
+    clearAllMemory,
+    updateMemory,
+    resetDefault,
+    clearAllUpdateVersion,
+    switchMemoryVersion,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -214,6 +246,12 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       initUserVariables,
       showChatMemory,
       setShowChatMemory,
+      memoryList,
+      clearAllMemory,
+      updateMemory,
+      resetDefault,
+      clearAllUpdateVersion,
+      switchMemoryVersion,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

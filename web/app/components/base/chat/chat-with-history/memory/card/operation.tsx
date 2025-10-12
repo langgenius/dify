@@ -10,14 +10,23 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Divider from '@/app/components/base/divider'
+import type { Memory } from '@/app/components/base/chat/types'
 import cn from '@/utils/classnames'
 
 type Props = {
+  memory: Memory
   onEdit: () => void
+  resetDefault: (memory: Memory) => void
+  clearAllUpdateVersion: (memory: Memory) => void
+  switchMemoryVersion: (memory: Memory, version: string) => void
 }
 
 const OperationDropdown: FC<Props> = ({
+  memory,
   onEdit,
+  resetDefault,
+  clearAllUpdateVersion,
+  switchMemoryVersion,
 }) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
@@ -52,8 +61,8 @@ const OperationDropdown: FC<Props> = ({
         <div className='w-[220px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
           <div className='p-1'>
             <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={onEdit}>{t('share.chat.memory.operations.edit')}</div>
-            <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('share.chat.memory.operations.reset')}</div>
-            <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive'>{t('share.chat.memory.operations.clear')}</div>
+            <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={() => resetDefault(memory)}>{t('share.chat.memory.operations.reset')}</div>
+            <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive' onClick={() => clearAllUpdateVersion(memory)}>{t('share.chat.memory.operations.clear')}</div>
           </div>
           <Divider className='!my-0 !h-px bg-divider-subtle' />
           <div className='px-1 py-2'>

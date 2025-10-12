@@ -21,8 +21,11 @@ import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
   delConversation,
+  deleteMemory,
+  editMemory,
   fetchChatList,
   fetchConversations,
+  fetchMemories,
   generationConversationName,
   pinConversation,
   renameConversation,
@@ -41,6 +44,9 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { noop } from 'lodash-es'
 import { useWebAppStore } from '@/context/web-app-context'
+import type { Memory } from '@/app/components/base/chat/types'
+
+import { mockMemoryList } from '@/app/components/base/chat/chat-with-history/memory/mock'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -527,6 +533,59 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [isInstalledApp, appId, t, notify])
 
   const [showChatMemory, setShowChatMemory] = useState(false)
+  const [memoryList, setMemoryList] = useState<Memory[]>(mockMemoryList)
+
+  const getMemoryList = useCallback(async (currentConversationId: string) => {
+    const memories = await fetchMemories(currentConversationId, '', '', isInstalledApp, appId)
+    setMemoryList(memories)
+  }, [isInstalledApp, appId])
+
+  const clearAllMemory = useCallback(async () => {
+    await deleteMemory('', isInstalledApp, appId)
+    notify({ type: 'success', message: t('common.api.success') })
+    getMemoryList(currentConversationId)
+  }, [currentConversationId, getMemoryList])
+
+  const resetDefault = useCallback(async (memory: Memory) => {
+    try {
+      await editMemory(memory.spec.id, memory.spec.template, isInstalledApp, appId)
+      getMemoryList(currentConversationId)
+    }
+    catch (error) {
+      console.error('Failed to reset memory:', error)
+    }
+  }, [currentConversationId, getMemoryList, isInstalledApp, appId])
+
+  const clearAllUpdateVersion = useCallback(async (memory: Memory) => {
+    await deleteMemory(memory.spec.id, isInstalledApp, appId)
+    notify({ type: 'success', message: t('common.api.success') })
+    getMemoryList(currentConversationId)
+  }, [currentConversationId, getMemoryList])
+
+  const switchMemoryVersion = useCallback(async (memory: Memory, version: string) => {
+    const memories = await fetchMemories(currentConversationId, memory.spec.id, version, isInstalledApp, appId)
+    const newMemory = memories[0]
+    const newList = produce(memoryList, (draft) => {
+      const index = draft.findIndex(item => item.spec.id === memory.spec.id)
+      if (index !== -1)
+        draft[index] = newMemory
+    })
+    setMemoryList(newList)
+  }, [memoryList, currentConversationId, isInstalledApp, appId])
+
+  const updateMemory = useCallback(async (memory: Memory, content: string) => {
+    try {
+      await editMemory(memory.spec.id, content, isInstalledApp, appId)
+      getMemoryList(currentConversationId)
+    }
+    catch (error) {
+      console.error('Failed to reset memory:', error)
+    }
+  }, [getMemoryList, currentConversationId, isInstalledApp, appId])
+
+  useEffect(() => {
+    getMemoryList(currentConversationId)
+  }, [currentConversationId, getMemoryList])
 
   return {
     isInstalledApp,
@@ -576,5 +635,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     initUserVariables,
     showChatMemory,
     setShowChatMemory,
+    memoryList,
+    clearAllMemory,
+    updateMemory,
+    resetDefault,
+    clearAllUpdateVersion,
+    switchMemoryVersion,
   }
 }

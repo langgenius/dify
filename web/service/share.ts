@@ -22,8 +22,8 @@ import type {
   IOnWorkflowStarted,
 } from './base'
 import {
-  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
-  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
+  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost, put as consolePut,
+  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, putPublic as put, ssePost,
 } from './base'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type {
@@ -32,10 +32,10 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { ChatConfig, Memory } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 
-function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
+function getAction(action: 'get' | 'post' | 'del' | 'patch' | 'put', isInstalledApp: boolean) {
   switch (action) {
     case 'get':
       return isInstalledApp ? consoleGet : get
@@ -45,6 +45,8 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boo
       return isInstalledApp ? consolePatch : patch
     case 'del':
       return isInstalledApp ? consoleDel : del
+    case 'put':
+      return isInstalledApp ? consolePut : put
   }
 }
 
@@ -307,4 +309,31 @@ export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
 
 export const getAppAccessModeByAppCode = (appCode: string) => {
   return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
+}
+
+export const fetchMemories = async (
+  conversation_id = '',
+  memory_id = '',
+  version = '',
+  isInstalledApp: boolean,
+  installedAppId = '',
+) => {
+  return (getAction('get', isInstalledApp))(getUrl('/memories', isInstalledApp, installedAppId), { params: { conversation_id, memory_id, version } }) as Promise<Memory[]>
+}
+
+export const deleteMemory = (
+  memoryId = '',
+  isInstalledApp: boolean,
+  installedAppId = '',
+) => {
+  return (getAction('del', isInstalledApp))(getUrl('/memories', isInstalledApp, installedAppId), { params: { id: memoryId } })
+}
+
+export const editMemory = (
+  memoryId: string,
+  value: string,
+  isInstalledApp: boolean,
+  installedAppId = '',
+) => {
+  return (getAction('put', isInstalledApp))(getUrl('memory-edit', isInstalledApp, installedAppId), { body: { id: memoryId, update: value } })
 }

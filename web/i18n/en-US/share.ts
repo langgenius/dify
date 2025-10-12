@@ -57,6 +57,7 @@ const translation = {
         cancel: 'Cancel',
         save: 'Save & Apply',
       },
+      empty: 'No memory yet.',
     },
   },
   generation: {

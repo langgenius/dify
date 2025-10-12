@@ -16,7 +16,7 @@ import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import MemoryPanel from './memory'
+import MemoryPanel from '@/app/components/base/chat/chat-with-history/memory'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -94,14 +94,18 @@ const Chatbot = () => {
         </div>
       )}
       {showChatMemory && (
-          <div className='fixed inset-0 z-50 flex flex-row-reverse bg-background-overlay p-1 backdrop-blur-sm'
-            onClick={() => setShowChatMemory(false)}
-          >
-            <div className='flex h-full w-[360px] rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
-              <MemoryPanel showChatMemory={showChatMemory} />
-            </div>
+        <div className='fixed inset-0 z-50 flex flex-row-reverse bg-background-overlay p-1 backdrop-blur-sm'
+          onClick={() => setShowChatMemory(false)}
+        >
+          <div className='flex h-full w-[360px] rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
+            <MemoryPanel
+              showChatMemory={showChatMemory}
+              isMobile={isMobile}
+              setShowChatMemory={setShowChatMemory}
+            />
           </div>
-        )}
+        </div>
+      )}
     </div>
   )
 }
