@@ -8,7 +8,7 @@ const useContextMenu = (props: ContextMenuProps) => {
   const {
     isNamedVersion,
   } = props
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
 
   const deleteOperation = {
@@ -42,7 +42,7 @@ const useContextMenu = (props: ContextMenuProps) => {
       },
       {
         key: VersionHistoryContextMenuOptions.manageAlias,
-        name: t('alias.manageAlias'),
+        name: t('workflow.alias.manageAlias'),
       },
     ]
   }, [isNamedVersion, t, pipelineId])
