@@ -45,6 +45,75 @@ def _validate_name(name: str) -> str:
     return name
 
 
+def _get_retrieval_methods_by_vector_type(vector_type: str, is_mock: bool = False) -> dict[str, list[str]]:
+    """
+    Get supported retrieval methods based on vector database type.
+    
+    Args:
+        vector_type: Vector database type
+        is_mock: Whether this is a Mock API, affects MILVUS handling
+    
+    Returns:
+        Dictionary containing supported retrieval methods
+    """
+    # Define vector database types that only support semantic search
+    semantic_only_types = {
+        VectorType.RELYT,
+        VectorType.TIDB_VECTOR,
+        VectorType.CHROMA,
+        VectorType.PGVECTO_RS,
+        VectorType.VIKINGDB,
+        VectorType.UPSTASH,
+    }
+    
+    # For Mock API, MILVUS is also categorized as semantic search only
+    if is_mock:
+        semantic_only_types.add(VectorType.MILVUS)
+    
+    # Define vector database types that support all retrieval methods
+    full_search_types = {
+        VectorType.QDRANT,
+        VectorType.WEAVIATE,
+        VectorType.OPENSEARCH,
+        VectorType.ANALYTICDB,
+        VectorType.MYSCALE,
+        VectorType.ORACLE,
+        VectorType.ELASTICSEARCH,
+        VectorType.ELASTICSEARCH_JA,
+        VectorType.PGVECTOR,
+        VectorType.VASTBASE,
+        VectorType.TIDB_ON_QDRANT,
+        VectorType.LINDORM,
+        VectorType.COUCHBASE,
+        VectorType.OPENGAUSS,
+        VectorType.OCEANBASE,
+        VectorType.TABLESTORE,
+        VectorType.HUAWEI_CLOUD,
+        VectorType.TENCENT,
+        VectorType.MATRIXONE,
+        VectorType.CLICKZETTA,
+        VectorType.BAIDU,
+        VectorType.ALIBABACLOUD_MYSQL,
+    }
+    
+    # For non-Mock API, MILVUS supports all retrieval methods
+    if not is_mock:
+        full_search_types.add(VectorType.MILVUS)
+    
+    if vector_type in semantic_only_types:
+        return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+    elif vector_type in full_search_types:
+        return {
+            "retrieval_method": [
+                RetrievalMethod.SEMANTIC_SEARCH.value,
+                RetrievalMethod.FULL_TEXT_SEARCH.value,
+                RetrievalMethod.HYBRID_SEARCH.value,
+            ]
+        }
+    else:
+        raise ValueError(f"Unsupported vector db type {vector_type}.")
+
+
 @console_ns.route("/datasets")
 class DatasetListApi(Resource):
     @api.doc("get_datasets")
@@ -777,50 +846,7 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = dify_config.VECTOR_STORE
-        match vector_type:
-            case (
-                VectorType.RELYT
-                | VectorType.TIDB_VECTOR
-                | VectorType.CHROMA
-                | VectorType.PGVECTO_RS
-                | VectorType.VIKINGDB
-                | VectorType.UPSTASH
-            ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-            case (
-                VectorType.QDRANT
-                | VectorType.WEAVIATE
-                | VectorType.OPENSEARCH
-                | VectorType.ANALYTICDB
-                | VectorType.MYSCALE
-                | VectorType.ORACLE
-                | VectorType.ELASTICSEARCH
-                | VectorType.ELASTICSEARCH_JA
-                | VectorType.PGVECTOR
-                | VectorType.VASTBASE
-                | VectorType.TIDB_ON_QDRANT
-                | VectorType.LINDORM
-                | VectorType.COUCHBASE
-                | VectorType.MILVUS
-                | VectorType.OPENGAUSS
-                | VectorType.OCEANBASE
-                | VectorType.TABLESTORE
-                | VectorType.HUAWEI_CLOUD
-                | VectorType.TENCENT
-                | VectorType.MATRIXONE
-                | VectorType.CLICKZETTA
-                | VectorType.BAIDU
-                | VectorType.ALIBABACLOUD_MYSQL
-            ):
-                return {
-                    "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
-                    ]
-                }
-            case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=False)
 
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
@@ -833,49 +859,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        match vector_type:
-            case (
-                VectorType.MILVUS
-                | VectorType.RELYT
-                | VectorType.TIDB_VECTOR
-                | VectorType.CHROMA
-                | VectorType.PGVECTO_RS
-                | VectorType.VIKINGDB
-                | VectorType.UPSTASH
-            ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-            case (
-                VectorType.QDRANT
-                | VectorType.WEAVIATE
-                | VectorType.OPENSEARCH
-                | VectorType.ANALYTICDB
-                | VectorType.MYSCALE
-                | VectorType.ORACLE
-                | VectorType.ELASTICSEARCH
-                | VectorType.ELASTICSEARCH_JA
-                | VectorType.COUCHBASE
-                | VectorType.PGVECTOR
-                | VectorType.VASTBASE
-                | VectorType.LINDORM
-                | VectorType.OPENGAUSS
-                | VectorType.OCEANBASE
-                | VectorType.TABLESTORE
-                | VectorType.TENCENT
-                | VectorType.HUAWEI_CLOUD
-                | VectorType.MATRIXONE
-                | VectorType.CLICKZETTA
-                | VectorType.BAIDU
-                | VectorType.ALIBABACLOUD_MYSQL
-            ):
-                return {
-                    "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
-                    ]
-                }
-            case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=True)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
