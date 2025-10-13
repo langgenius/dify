@@ -25,7 +25,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
 from libs.helper import extract_remote_ip
-from libs.login import current_user, login_required
+from libs.login import get_current_user_and_tenant_id, login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
@@ -41,8 +41,7 @@ class MemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
@@ -69,9 +68,7 @@ class MemberInviteEmailApi(Resource):
         interface_language = args["language"]
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
@@ -120,8 +117,7 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.query(Account).where(Account.id == str(member_id)).first()
@@ -160,9 +156,7 @@ class MemberUpdateRoleApi(Resource):
 
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
@@ -189,8 +183,7 @@ class DatasetOperatorMemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
@@ -212,10 +205,8 @@ class SendOwnerTransferEmailApi(Resource):
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
-
+        current_user, _ = get_current_user_and_tenant_id()
         # check if the current user is the owner of the workspace
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
@@ -250,8 +241,7 @@ class OwnerTransferCheckApi(Resource):
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         # check if the current user is the owner of the workspace
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
@@ -296,8 +286,7 @@ class OwnerTransfer(Resource):
         args = parser.parse_args()
 
         # check if the current user is the owner of the workspace
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = get_current_user_and_tenant_id()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
