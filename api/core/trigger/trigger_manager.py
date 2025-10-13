@@ -12,7 +12,7 @@ from yarl import URL
 
 import contexts
 from configs import dify_config
-from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonError, PluginTriggerProviderEntity
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
@@ -123,6 +123,8 @@ class TriggerManager:
                 )
                 plugin_trigger_providers[provider_id_str] = controller
                 return controller
+            except PluginDaemonError as e:
+                raise e
             except Exception as e:
                 logger.exception("Failed to load trigger provider")
                 raise e

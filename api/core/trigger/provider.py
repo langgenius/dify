@@ -16,7 +16,7 @@ from core.plugin.entities.request import (
     TriggerSubscriptionResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerManager
-from core.trigger.entities.api_entities import TriggerApiEntity, TriggerProviderApiEntity
+from core.trigger.entities.api_entities import EventApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     EventEntity,
     ProviderConfig,
@@ -102,7 +102,7 @@ class PluginTriggerProviderController:
             subscription_schema=self.entity.subscription_schema,
             supported_creation_methods=supported_creation_methods,
             events=[
-                TriggerApiEntity(
+                EventApiEntity(
                     name=event.identity.name,
                     identity=event.identity,
                     description=event.description,

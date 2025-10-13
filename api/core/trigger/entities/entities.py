@@ -90,15 +90,6 @@ class EventIdentity(BaseModel):
     provider: Optional[str] = Field(default=None, description="The provider of the event")
 
 
-class EventDescription(BaseModel):
-    """
-    The description of the event
-    """
-
-    human: I18nObject = Field(..., description="Human readable description")
-    llm: I18nObject = Field(..., description="LLM readable description")
-
-
 class EventEntity(BaseModel):
     """
     The configuration of an event
@@ -106,7 +97,7 @@ class EventEntity(BaseModel):
 
     identity: EventIdentity = Field(..., description="The identity of the event")
     parameters: list[EventParameter] = Field(default=[], description="The parameters of the event")
-    description: EventDescription = Field(..., description="The description of the event")
+    description: I18nObject = Field(..., description="The description of the event")
     output_schema: Optional[Mapping[str, Any]] = Field(
         default=None, description="The output schema that this event produces"
     )
@@ -279,7 +270,6 @@ class TriggerCreationMethod(StrEnum):
 
 # Export all entities
 __all__: list[str] = [
-    "EventDescription",
     "EventEntity",
     "EventIdentity",
     "EventParameter",

@@ -7,7 +7,6 @@ from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import (
-    EventDescription,
     EventIdentity,
     EventParameter,
     SubscriptionConstructor,
@@ -27,10 +26,10 @@ class TriggerProviderSubscriptionApiEntity(BaseModel):
     workflows_in_use: int = Field(description="The number of workflows using this subscription")
 
 
-class TriggerApiEntity(BaseModel):
+class EventApiEntity(BaseModel):
     name: str = Field(description="The name of the trigger")
     identity: EventIdentity = Field(description="The identity of the trigger")
-    description: EventDescription = Field(description="The description of the trigger")
+    description: I18nObject = Field(description="The description of the trigger")
     parameters: list[EventParameter] = Field(description="The parameters of the trigger")
     output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
 
@@ -60,7 +59,7 @@ class TriggerProviderApiEntity(BaseModel):
         default_factory=list,
         description="The subscription schema of the trigger provider",
     )
-    events: list[TriggerApiEntity] = Field(description="The events of the trigger provider")
+    events: list[EventApiEntity] = Field(description="The events of the trigger provider")
 
 
 class SubscriptionBuilderApiEntity(BaseModel):
@@ -74,4 +73,4 @@ class SubscriptionBuilderApiEntity(BaseModel):
     credential_type: CredentialType = Field(description="The credential type of the subscription builder")
 
 
-__all__ = ["TriggerApiEntity", "TriggerProviderApiEntity", "TriggerProviderSubscriptionApiEntity"]
+__all__ = ["EventApiEntity", "TriggerProviderApiEntity", "TriggerProviderSubscriptionApiEntity"]

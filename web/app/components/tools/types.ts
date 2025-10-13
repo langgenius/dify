@@ -107,7 +107,7 @@ export type Event = {
   name: string
   author: string
   label: TypeWithI18N
-  description: any
+  description: TypeWithI18N
   parameters: TriggerParameter[]
   labels: string[]
   output_schema: Record<string, any>
