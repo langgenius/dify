@@ -39,7 +39,11 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
         "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"error": "oops"}},
     )
-    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+    # Mock AccountService.load_user to return a mock user object
+    from unittest.mock import Mock
+
+    mock_user = Mock()
+    monkeypatch.setattr("services.account_service.AccountService.load_user", lambda *_args, **_kwargs: mock_user)
 
     with pytest.raises(ToolInvokeError) as exc_info:
         # WorkflowTool always returns a generator, so we need to iterate to
