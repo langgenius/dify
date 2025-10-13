@@ -48,6 +48,10 @@ const translation = {
     },
     change: 'Zmień',
     changeRetrievalMethod: 'Zmień metodę odzyskiwania',
+    keyword_search: {
+      title: 'Odwrócony indeks',
+      description: 'Inverted Index to struktura używana do efektywnego wyszukiwania. Uporządkowany według terminów, każdy termin wskazuje dokumenty lub strony internetowe, które go zawierają.',
+    },
   },
   docsFailedNotice: 'nie udało się zindeksować dokumentów',
   retry: 'Ponów',
@@ -155,6 +159,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'Rodzic-dziecko',
     general: 'Ogólne',
+    graph: 'Wykres',
+    qa: 'Pytania i odpowiedziQ&A',
   },
   parentMode: {
     fullDoc: 'Pełna wersja dokumentu',
@@ -223,6 +229,9 @@ const translation = {
     chooseTime: 'Wybierz czas...',
   },
   embeddingModelNotAvailable: 'Model osadzający jest niedostępny.',
+  updated: 'Aktualizowano',
+  createFromPipeline: 'Tworzenie na podstawie potoku wiedzy',
+  externalKnowledgeBase: 'Zewnętrzna baza wiedzy',
 }
 
 export default translation

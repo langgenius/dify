@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 import click
 from celery import shared_task
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: Optional[str]):
+def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: str | None):
     """
     Clean document when document deleted.
     :param document_id: document id

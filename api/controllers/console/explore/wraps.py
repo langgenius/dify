@@ -1,16 +1,16 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, Optional, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar
 
-from flask_login import current_user
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import InstalledApp
+from models.account import Account
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -20,10 +20,12 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 
-def installed_app_required(view: Optional[Callable[Concatenate[InstalledApp, P], R]] = None):
+def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
             installed_app = (
                 db.session.query(InstalledApp)
                 .where(
@@ -50,12 +52,13 @@ def installed_app_required(view: Optional[Callable[Concatenate[InstalledApp, P],
     return decorator
 
 
-def user_allowed_to_access_app(view: Optional[Callable[Concatenate[InstalledApp, P], R]] = None):
+def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
+                assert isinstance(current_user, Account)
                 app_id = installed_app.app_id
                 app_code = AppService.get_app_code_by_id(app_id)
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(

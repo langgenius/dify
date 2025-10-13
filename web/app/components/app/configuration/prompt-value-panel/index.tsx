@@ -192,7 +192,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 <Button
                   variant="primary"
                   disabled={canNotRun}
-                  onClick={() => onSend && onSend()}
+                  onClick={() => onSend?.()}
                   className="w-[96px]">
                   <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                   {t('appDebug.inputs.run')}
@@ -203,7 +203,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               <Button
                 variant="primary"
                 disabled={canNotRun}
-                onClick={() => onSend && onSend()}
+                onClick={() => onSend?.()}
                 className="w-[96px]">
                 <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {t('appDebug.inputs.run')}

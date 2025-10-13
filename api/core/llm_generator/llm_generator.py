@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import Protocol, cast
 
 import json_repair
 
@@ -28,16 +28,26 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_engine.entities.event import AgentLogEvent
-from models import App, Message, WorkflowNodeExecutionModel, db
+from extensions.ext_database import db
+from extensions.ext_storage import storage
+from models import App, Message, WorkflowNodeExecutionModel
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowServiceInterface(Protocol):
+    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+        pass
+
+    def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
+        pass
 
 
 class LLMGenerator:
     @classmethod
     def generate_conversation_name(
-        cls, tenant_id: str, query, conversation_id: Optional[str] = None, app_id: Optional[str] = None
+        cls, tenant_id: str, query, conversation_id: str | None = None, app_id: str | None = None
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
@@ -417,16 +427,17 @@ class LLMGenerator:
         instruction: str,
         model_config: dict,
         ideal_output: str | None,
+        workflow_service: WorkflowServiceInterface,
     ):
-        from services.workflow_service import WorkflowService
+        session = db.session()
 
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
+        app: App | None = session.query(App).where(App.id == flow_id).first()
         if not app:
             raise ValueError("App not found.")
-        workflow = WorkflowService().get_draft_workflow(app_model=app)
+        workflow = workflow_service.get_draft_workflow(app_model=app)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
-        last_run = WorkflowService().get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
+        last_run = workflow_service.get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
         try:
             node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
         except Exception:
@@ -450,22 +461,22 @@ class LLMGenerator:
             )
 
         def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
-            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG, [])
             if not raw_agent_log:
                 return []
-            parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
 
-            def dict_of_event(event: AgentLogEvent):
-                return {
-                    "status": event.status,
-                    "error": event.error,
-                    "data": event.data,
+            return [
+                {
+                    "status": event["status"],
+                    "error": event["error"],
+                    "data": event["data"],
                 }
+                for event in raw_agent_log
+            ]
 
-            return [dict_of_event(event) for event in parsed]
-
+        inputs = last_run.load_full_inputs(session, storage)
         last_run_dict = {
-            "inputs": last_run.inputs_dict,
+            "inputs": inputs,
             "status": last_run.status,
             "error": last_run.error,
             "agent_log": agent_log_of(last_run),

@@ -2,9 +2,10 @@ import {
   memo,
   useState,
 } from 'react'
+import type { Fetcher } from 'swr'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
+import { noop } from 'lodash-es'
 import {
   RiCheckboxCircleLine,
   RiCloseLine,
@@ -26,27 +27,30 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Tooltip from '@/app/components/base/tooltip'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   ClockPlay,
   ClockPlaySlim,
 } from '@/app/components/base/icons/src/vender/line/time'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import {
-  fetchChatRunHistory,
-  fetchWorkflowRunHistory,
-} from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
+import type { WorkflowRunHistoryResponse } from '@/types/workflow'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
-type ViewHistoryProps = {
+export type ViewHistoryProps = {
   withText?: boolean
+  onClearLogAndMessageModal?: () => void
+  historyUrl?: string
+  historyFetcher?: Fetcher<WorkflowRunHistoryResponse, string>
 }
 const ViewHistory = ({
   withText,
+  onClearLogAndMessageModal,
+  historyUrl,
+  historyFetcher,
 }: ViewHistoryProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -60,18 +64,15 @@ const ViewHistory = ({
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
   const setControlMode = useStore(s => s.setControlMode)
-  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
-    appDetail: state.appDetail,
-    setCurrentLogItem: state.setCurrentLogItem,
-    setShowMessageLogModal: state.setShowMessageLogModal,
-  })))
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
-  const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
-  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetchChatRunHistory)
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const data = isChatMode ? chatList : runList
-  const isLoading = isChatMode ? chatListLoading : runListLoading
+  const fetcher = historyFetcher ?? (noop as Fetcher<WorkflowRunHistoryResponse, string>)
+  const {
+    data,
+    isLoading,
+  } = useSWR((open && historyUrl && historyFetcher) ? historyUrl : null, fetcher)
 
   return (
     (
@@ -107,8 +108,7 @@ const ViewHistory = ({
                 <div
                   className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
                   onClick={() => {
-                    setCurrentLogItem()
-                    setShowMessageLogModal(false)
+                    onClearLogAndMessageModal?.()
                   }}
                 >
                   <ClockPlay className={cn('h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
@@ -129,8 +129,7 @@ const ViewHistory = ({
               <div
                 className='flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center'
                 onClick={() => {
-                  setCurrentLogItem()
-                  setShowMessageLogModal(false)
+                  onClearLogAndMessageModal?.()
                   setOpen(false)
                 }}
               >
@@ -171,6 +170,7 @@ const ViewHistory = ({
                             showInputsPanel: false,
                             showEnvPanel: false,
                           })
+                          closeAllInputFieldPanels()
                           handleBackupDraft()
                           setOpen(false)
                           handleNodesCancelSelected()

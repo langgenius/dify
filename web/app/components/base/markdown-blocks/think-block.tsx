@@ -37,7 +37,7 @@ const removeEndThink = (children: any): any => {
 
 const useThinkTimer = (children: any) => {
   const { isResponding } = useChatContext()
-  const [startTime] = useState(Date.now())
+  const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const timerRef = useRef<NodeJS.Timeout>()
@@ -63,7 +63,7 @@ const useThinkTimer = (children: any) => {
   return { elapsedTime, isComplete }
 }
 
-export const ThinkBlock = ({ children, ...props }: any) => {
+const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()

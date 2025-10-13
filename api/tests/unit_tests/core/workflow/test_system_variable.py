@@ -46,7 +46,7 @@ class TestSystemVariableSerialization:
     def test_basic_deserialization(self):
         """Test successful deserialization from JSON structure with all fields correctly mapped."""
         # Test with complete data
-        system_var = SystemVariable(**COMPLETE_VALID_DATA)
+        system_var = SystemVariable.model_validate(COMPLETE_VALID_DATA)
 
         # Verify all fields are correctly mapped
         assert system_var.user_id == COMPLETE_VALID_DATA["user_id"]
@@ -59,7 +59,7 @@ class TestSystemVariableSerialization:
         assert system_var.files == []
 
         # Test with minimal data (only required fields)
-        minimal_var = SystemVariable(**VALID_BASE_DATA)
+        minimal_var = SystemVariable.model_validate(VALID_BASE_DATA)
         assert minimal_var.user_id == VALID_BASE_DATA["user_id"]
         assert minimal_var.app_id == VALID_BASE_DATA["app_id"]
         assert minimal_var.workflow_id == VALID_BASE_DATA["workflow_id"]
@@ -75,12 +75,12 @@ class TestSystemVariableSerialization:
 
         # Test workflow_run_id only (preferred alias)
         data_run_id = {**VALID_BASE_DATA, "workflow_run_id": workflow_id}
-        system_var1 = SystemVariable(**data_run_id)
+        system_var1 = SystemVariable.model_validate(data_run_id)
         assert system_var1.workflow_execution_id == workflow_id
 
         # Test workflow_execution_id only (direct field name)
         data_execution_id = {**VALID_BASE_DATA, "workflow_execution_id": workflow_id}
-        system_var2 = SystemVariable(**data_execution_id)
+        system_var2 = SystemVariable.model_validate(data_execution_id)
         assert system_var2.workflow_execution_id == workflow_id
 
         # Test both present - workflow_run_id should take precedence
@@ -89,17 +89,17 @@ class TestSystemVariableSerialization:
             "workflow_execution_id": "should-be-ignored",
             "workflow_run_id": workflow_id,
         }
-        system_var3 = SystemVariable(**data_both)
+        system_var3 = SystemVariable.model_validate(data_both)
         assert system_var3.workflow_execution_id == workflow_id
 
         # Test neither present - should be None
-        system_var4 = SystemVariable(**VALID_BASE_DATA)
+        system_var4 = SystemVariable.model_validate(VALID_BASE_DATA)
         assert system_var4.workflow_execution_id is None
 
     def test_serialization_round_trip(self):
         """Test that serialize → deserialize produces the same result with alias handling."""
         # Create original SystemVariable
-        original = SystemVariable(**COMPLETE_VALID_DATA)
+        original = SystemVariable.model_validate(COMPLETE_VALID_DATA)
 
         # Serialize to dict
         serialized = original.model_dump(mode="json")
@@ -110,7 +110,7 @@ class TestSystemVariableSerialization:
         assert serialized["workflow_run_id"] == COMPLETE_VALID_DATA["workflow_run_id"]
 
         # Deserialize back
-        deserialized = SystemVariable(**serialized)
+        deserialized = SystemVariable.model_validate(serialized)
 
         # Verify all fields match after round-trip
         assert deserialized.user_id == original.user_id
@@ -125,7 +125,7 @@ class TestSystemVariableSerialization:
     def test_json_round_trip(self):
         """Test JSON serialization/deserialization consistency with proper structure."""
         # Create original SystemVariable
-        original = SystemVariable(**COMPLETE_VALID_DATA)
+        original = SystemVariable.model_validate(COMPLETE_VALID_DATA)
 
         # Serialize to JSON string
         json_str = original.model_dump_json()
@@ -137,7 +137,7 @@ class TestSystemVariableSerialization:
         assert json_data["workflow_run_id"] == COMPLETE_VALID_DATA["workflow_run_id"]
 
         # Deserialize from JSON data
-        deserialized = SystemVariable(**json_data)
+        deserialized = SystemVariable.model_validate(json_data)
 
         # Verify key fields match after JSON round-trip
         assert deserialized.workflow_execution_id == original.workflow_execution_id
@@ -149,13 +149,13 @@ class TestSystemVariableSerialization:
         """Test deserialization with File objects in the files field - SystemVariable specific logic."""
         # Test with empty files list
         data_empty = {**VALID_BASE_DATA, "files": []}
-        system_var_empty = SystemVariable(**data_empty)
+        system_var_empty = SystemVariable.model_validate(data_empty)
         assert system_var_empty.files == []
 
         # Test with single File object
         test_file = create_test_file()
         data_single = {**VALID_BASE_DATA, "files": [test_file]}
-        system_var_single = SystemVariable(**data_single)
+        system_var_single = SystemVariable.model_validate(data_single)
         assert len(system_var_single.files) == 1
         assert system_var_single.files[0].filename == "test.txt"
         assert system_var_single.files[0].tenant_id == "test-tenant-id"
@@ -179,14 +179,14 @@ class TestSystemVariableSerialization:
         )
 
         data_multiple = {**VALID_BASE_DATA, "files": [file1, file2]}
-        system_var_multiple = SystemVariable(**data_multiple)
+        system_var_multiple = SystemVariable.model_validate(data_multiple)
         assert len(system_var_multiple.files) == 2
         assert system_var_multiple.files[0].filename == "doc1.txt"
         assert system_var_multiple.files[1].filename == "image.jpg"
 
         # Verify files field serialization/deserialization
         serialized = system_var_multiple.model_dump(mode="json")
-        deserialized = SystemVariable(**serialized)
+        deserialized = SystemVariable.model_validate(serialized)
         assert len(deserialized.files) == 2
         assert deserialized.files[0].filename == "doc1.txt"
         assert deserialized.files[1].filename == "image.jpg"
@@ -197,7 +197,7 @@ class TestSystemVariableSerialization:
 
         # Create with workflow_run_id (alias)
         data_with_alias = {**VALID_BASE_DATA, "workflow_run_id": workflow_id}
-        system_var = SystemVariable(**data_with_alias)
+        system_var = SystemVariable.model_validate(data_with_alias)
 
         # Serialize and verify alias is used
         serialized = system_var.model_dump()
@@ -205,7 +205,7 @@ class TestSystemVariableSerialization:
         assert "workflow_execution_id" not in serialized
 
         # Deserialize and verify field mapping
-        deserialized = SystemVariable(**serialized)
+        deserialized = SystemVariable.model_validate(serialized)
         assert deserialized.workflow_execution_id == workflow_id
 
         # Test JSON serialization path
@@ -213,7 +213,7 @@ class TestSystemVariableSerialization:
         assert json_serialized["workflow_run_id"] == workflow_id
         assert "workflow_execution_id" not in json_serialized
 
-        json_deserialized = SystemVariable(**json_serialized)
+        json_deserialized = SystemVariable.model_validate(json_serialized)
         assert json_deserialized.workflow_execution_id == workflow_id
 
     def test_model_validator_serialization_logic(self):
@@ -222,7 +222,7 @@ class TestSystemVariableSerialization:
 
         # Test direct instantiation with workflow_execution_id (should work)
         data1 = {**VALID_BASE_DATA, "workflow_execution_id": workflow_id}
-        system_var1 = SystemVariable(**data1)
+        system_var1 = SystemVariable.model_validate(data1)
         assert system_var1.workflow_execution_id == workflow_id
 
         # Test serialization of the above (should use alias)
@@ -236,7 +236,7 @@ class TestSystemVariableSerialization:
             "workflow_execution_id": "should-be-removed",
             "workflow_run_id": workflow_id,
         }
-        system_var2 = SystemVariable(**data2)
+        system_var2 = SystemVariable.model_validate(data2)
         assert system_var2.workflow_execution_id == workflow_id
 
         # Verify serialization consistency

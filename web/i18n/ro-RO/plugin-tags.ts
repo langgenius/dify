@@ -17,6 +17,7 @@ const translation = {
     business: 'Afacere',
     weather: 'Vreme',
     image: 'Imagine',
+    rag: 'CÂRPĂ',
   },
   allTags: 'Toate etichetele',
   searchTags: 'Etichete de căutare',

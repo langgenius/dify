@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from flask import Response
 from flask_restx import Resource, reqparse
@@ -73,7 +73,7 @@ class MCPAppApi(Resource):
             ValidationError: Invalid request format or parameters
         """
         args = mcp_request_parser.parse_args()
-        request_id: Optional[Union[int, str]] = args.get("id")
+        request_id: Union[int, str] | None = args.get("id")
         mcp_request = self._parse_mcp_request(args)
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -107,7 +107,7 @@ class MCPAppApi(Resource):
     def _process_mcp_message(
         self,
         mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification,
-        request_id: Optional[Union[int, str]],
+        request_id: Union[int, str] | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -130,7 +130,7 @@ class MCPAppApi(Resource):
     def _handle_request(
         self,
         mcp_request: mcp_types.ClientRequest,
-        request_id: Optional[Union[int, str]],
+        request_id: Union[int, str] | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],

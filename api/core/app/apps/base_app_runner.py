@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -61,9 +61,6 @@ class AppRunner:
         if model_context_tokens is None:
             return -1
 
-        if max_tokens is None:
-            max_tokens = 0
-
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         if prompt_tokens + max_tokens > model_context_tokens:
@@ -82,11 +79,11 @@ class AppRunner:
         prompt_template_entity: PromptTemplateEntity,
         inputs: Mapping[str, str],
         files: Sequence["File"],
-        query: Optional[str] = None,
-        context: Optional[str] = None,
-        memory: Optional[TokenBufferMemory] = None,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
-    ) -> tuple[list[PromptMessage], Optional[list[str]]]:
+        query: str | None = None,
+        context: str | None = None,
+        memory: TokenBufferMemory | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+    ) -> tuple[list[PromptMessage], list[str] | None]:
         """
         Organize prompt messages
         :param context:
@@ -161,7 +158,7 @@ class AppRunner:
         prompt_messages: list,
         text: str,
         stream: bool,
-        usage: Optional[LLMUsage] = None,
+        usage: LLMUsage | None = None,
     ):
         """
         Direct output
@@ -375,7 +372,7 @@ class AppRunner:
 
     def query_app_annotations_to_reply(
         self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
-    ) -> Optional[MessageAnnotation]:
+    ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
         :param app_record: app record

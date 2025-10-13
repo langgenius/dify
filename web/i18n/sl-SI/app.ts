@@ -88,6 +88,7 @@ const translation = {
     chooseAppType: 'Izberite vrsto aplikacije',
     learnMore: 'Izvedi več',
     dropDSLToCreateApp: 'Spustite DSL datoteko sem, da ustvarite aplikacijo',
+    import: 'Uvoz',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',

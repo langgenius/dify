@@ -244,6 +244,7 @@ const translation = {
       publishTip: 'Aplicație nepublicată. Publicați aplicația mai întâi.',
     },
   },
+  allTools: 'Toate instrumentele',
 }
 
 export default translation

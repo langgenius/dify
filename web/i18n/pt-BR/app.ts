@@ -80,6 +80,7 @@ const translation = {
     noAppsFound: 'Nenhum aplicativo encontrado',
     advancedShortDescription: 'Fluxo aprimorado para conversas de múltiplos turnos',
     dropDSLToCreateApp: 'Cole o arquivo DSL aqui para criar o aplicativo',
+    import: 'Importação',
   },
   editApp: 'Editar Informações',
   editAppTitle: 'Editar Informações do Aplicativo',

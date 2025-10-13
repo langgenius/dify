@@ -91,6 +91,7 @@ const translation = {
     workflowUserDescription: 'ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築',
     completionUserDescription: '簡単な構成でテキスト生成タスク用の AI アシスタントをすばやく構築します。',
     dropDSLToCreateApp: 'アプリを作成するにはここにDSLファイルをドロップしてください',
+    import: '輸入',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',

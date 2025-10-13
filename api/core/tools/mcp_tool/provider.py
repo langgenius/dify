@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional, Self
+from typing import Any, Self
 
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController
@@ -25,9 +25,9 @@ class MCPToolProviderController(ToolProviderController):
         provider_id: str,
         tenant_id: str,
         server_url: str,
-        headers: Optional[dict[str, str]] = None,
-        timeout: Optional[float] = None,
-        sse_read_timeout: Optional[float] = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity
@@ -54,7 +54,7 @@ class MCPToolProviderController(ToolProviderController):
         """
         tools = []
         tools_data = json.loads(db_provider.tools)
-        remote_mcp_tools = [RemoteMCPTool(**tool) for tool in tools_data]
+        remote_mcp_tools = [RemoteMCPTool.model_validate(tool) for tool in tools_data]
         user = db_provider.load_user()
         tools = [
             ToolEntity(
@@ -72,12 +72,12 @@ class MCPToolProviderController(ToolProviderController):
                     ),
                     llm=remote_mcp_tool.description or "",
                 ),
-                output_schema=None,
                 has_runtime_parameters=len(remote_mcp_tool.inputSchema) > 0,
             )
             for remote_mcp_tool in remote_mcp_tools
         ]
-
+        if not db_provider.icon:
+            raise ValueError("Database provider icon is required")
         return cls(
             entity=ToolProviderEntityWithPlugin(
                 identity=ToolProviderIdentity(

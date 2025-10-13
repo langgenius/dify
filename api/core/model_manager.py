@@ -103,47 +103,47 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: list[str] | None = None,
         stream: Literal[True] = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Generator: ...
 
     @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: list[str] | None = None,
         stream: Literal[False] = False,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> LLMResult: ...
 
     @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: list[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[Sequence[str]] = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -176,7 +176,7 @@ class ModelInstance:
         )
 
     def get_llm_num_tokens(
-        self, prompt_messages: Sequence[PromptMessage], tools: Optional[Sequence[PromptMessageTool]] = None
+        self, prompt_messages: Sequence[PromptMessage], tools: Sequence[PromptMessageTool] | None = None
     ) -> int:
         """
         Get number of tokens for llm
@@ -199,7 +199,7 @@ class ModelInstance:
         )
 
     def invoke_text_embedding(
-        self, texts: list[str], user: Optional[str] = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+        self, texts: list[str], user: str | None = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
     ) -> TextEmbeddingResult:
         """
         Invoke large language model
@@ -246,9 +246,9 @@ class ModelInstance:
         self,
         query: str,
         docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -276,7 +276,7 @@ class ModelInstance:
             ),
         )
 
-    def invoke_moderation(self, text: str, user: Optional[str] = None) -> bool:
+    def invoke_moderation(self, text: str, user: str | None = None) -> bool:
         """
         Invoke moderation model
 
@@ -297,7 +297,7 @@ class ModelInstance:
             ),
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) -> str:
+    def invoke_speech2text(self, file: IO[bytes], user: str | None = None) -> str:
         """
         Invoke large language model
 
@@ -318,7 +318,7 @@ class ModelInstance:
             ),
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> Iterable[bytes]:
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: str | None = None) -> Iterable[bytes]:
         """
         Invoke large language tts model
 
@@ -397,7 +397,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: Optional[str] = None):
+    def get_tts_voices(self, language: str | None = None):
         """
         Invoke large language tts model voices
 
@@ -470,7 +470,7 @@ class LBModelManager:
         model_type: ModelType,
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
-        managed_credentials: Optional[dict] = None,
+        managed_credentials: dict | None = None,
     ):
         """
         Load balancing model manager
@@ -495,7 +495,7 @@ class LBModelManager:
                 else:
                     load_balancing_config.credentials = managed_credentials
 
-    def fetch_next(self) -> Optional[ModelLoadBalancingConfiguration]:
+    def fetch_next(self) -> ModelLoadBalancingConfiguration | None:
         """
         Get next model load balancing config
         Strategy: Round Robin

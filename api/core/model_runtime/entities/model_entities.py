@@ -1,6 +1,6 @@
 from decimal import Decimal
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -154,7 +154,7 @@ class ProviderModel(BaseModel):
     model: str
     label: I18nObject
     model_type: ModelType
-    features: Optional[list[ModelFeature]] = None
+    features: list[ModelFeature] | None = None
     fetch_from: FetchFrom
     model_properties: dict[ModelPropertyKey, Any]
     deprecated: bool = False
@@ -171,15 +171,15 @@ class ParameterRule(BaseModel):
     """
 
     name: str
-    use_template: Optional[str] = None
+    use_template: str | None = None
     label: I18nObject
     type: ParameterType
-    help: Optional[I18nObject] = None
+    help: I18nObject | None = None
     required: bool = False
-    default: Optional[Any] = None
-    min: Optional[float] = None
-    max: Optional[float] = None
-    precision: Optional[int] = None
+    default: Any | None = None
+    min: float | None = None
+    max: float | None = None
+    precision: int | None = None
     options: list[str] = []
 
 
@@ -189,7 +189,7 @@ class PriceConfig(BaseModel):
     """
 
     input: Decimal
-    output: Optional[Decimal] = None
+    output: Decimal | None = None
     unit: Decimal
     currency: str
 
@@ -200,7 +200,7 @@ class AIModelEntity(ProviderModel):
     """
 
     parameter_rules: list[ParameterRule] = []
-    pricing: Optional[PriceConfig] = None
+    pricing: PriceConfig | None = None
 
     @model_validator(mode="after")
     def validate_model(self):

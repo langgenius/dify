@@ -1,5 +1,3 @@
-from typing import Optional
-
 from sqlalchemy import select
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
@@ -39,7 +37,7 @@ class ApiExternalDataTool(ExternalDataTool):
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
 
-    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+    def query(self, inputs: dict, query: str | None = None) -> str:
         """
         Query the external data tool.
 

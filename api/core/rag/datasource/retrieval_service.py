@@ -1,6 +1,5 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -22,7 +21,7 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
@@ -35,15 +34,15 @@ class RetrievalService:
     @classmethod
     def retrieve(
         cls,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float] = 0.0,
-        reranking_model: Optional[dict] = None,
+        score_threshold: float | None = 0.0,
+        reranking_model: dict | None = None,
         reranking_mode: str = "reranking_model",
-        weights: Optional[dict] = None,
-        document_ids_filter: Optional[list[str]] = None,
+        weights: dict | None = None,
+        document_ids_filter: list[str] | None = None,
     ):
         if not query:
             return []
@@ -57,7 +56,7 @@ class RetrievalService:
         # Optimize multithreading with thread pools
         with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
             futures = []
-            if retrieval_method == "keyword_search":
+            if retrieval_method == RetrievalMethod.KEYWORD_SEARCH:
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
@@ -107,7 +106,9 @@ class RetrievalService:
         if exceptions:
             raise ValueError(";\n".join(exceptions))
 
-        if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
+        # Deduplicate documents for hybrid search to avoid duplicate chunks
+        if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
+            all_documents = cls._deduplicate_documents(all_documents)
             data_post_processor = DataPostProcessor(
                 str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
             )
@@ -125,15 +126,15 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: Optional[dict] = None,
-        metadata_filtering_conditions: Optional[dict] = None,
+        external_retrieval_model: dict | None = None,
+        metadata_filtering_conditions: dict | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = db.session.scalar(stmt)
         if not dataset:
             return []
         metadata_condition = (
-            MetadataCondition(**metadata_filtering_conditions) if metadata_filtering_conditions else None
+            MetadataCondition.model_validate(metadata_filtering_conditions) if metadata_filtering_conditions else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
             dataset.tenant_id,
@@ -145,7 +146,41 @@ class RetrievalService:
         return all_documents
 
     @classmethod
-    def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
+    def _deduplicate_documents(cls, documents: list[Document]) -> list[Document]:
+        """Deduplicate documents based on doc_id to avoid duplicate chunks in hybrid search."""
+        if not documents:
+            return documents
+
+        unique_documents = []
+        seen_doc_ids = set()
+
+        for document in documents:
+            # For dify provider documents, use doc_id for deduplication
+            if document.provider == "dify" and document.metadata is not None and "doc_id" in document.metadata:
+                doc_id = document.metadata["doc_id"]
+                if doc_id not in seen_doc_ids:
+                    seen_doc_ids.add(doc_id)
+                    unique_documents.append(document)
+                # If duplicate, keep the one with higher score
+                elif "score" in document.metadata:
+                    # Find existing document with same doc_id and compare scores
+                    for i, existing_doc in enumerate(unique_documents):
+                        if (
+                            existing_doc.metadata
+                            and existing_doc.metadata.get("doc_id") == doc_id
+                            and existing_doc.metadata.get("score", 0) < document.metadata.get("score", 0)
+                        ):
+                            unique_documents[i] = document
+                            break
+            else:
+                # For non-dify documents, use content-based deduplication
+                if document not in unique_documents:
+                    unique_documents.append(document)
+
+        return unique_documents
+
+    @classmethod
+    def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
             return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
@@ -158,7 +193,7 @@ class RetrievalService:
         top_k: int,
         all_documents: list,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -182,12 +217,12 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
+        score_threshold: float | None,
+        reranking_model: dict | None,
         all_documents: list,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -210,10 +245,10 @@ class RetrievalService:
                         reranking_model
                         and reranking_model.get("reranking_model_name")
                         and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH.value
+                        and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
-                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
+                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
@@ -235,12 +270,12 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
+        score_threshold: float | None,
+        reranking_model: dict | None,
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
-        document_ids_filter: Optional[list[str]] = None,
+        document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -258,10 +293,10 @@ class RetrievalService:
                         reranking_model
                         and reranking_model.get("reranking_model_name")
                         and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH.value
+                        and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
-                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL.value), reranking_model, None, False
+                            str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
                         all_documents.extend(
                             data_post_processor.invoke(

@@ -173,7 +173,7 @@ const Apps = ({
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px] shrink-0'
+          wrapperClassName='w-[200px] self-start'
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}

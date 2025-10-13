@@ -40,7 +40,6 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { noop } from 'lodash-es'
-import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 function getFormattedChatList(messages: any[]) {
@@ -69,21 +68,12 @@ function getFormattedChatList(messages: any[]) {
   return newChatList
 }
 
-export const useEmbeddedChatbot = (appSourceType = AppSourceType.webApp, tryAppId?: string) => {
+export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: string) => {
   const isInstalledApp = false // just can be webapp and try app
-  const isTryApp = appSourceType === AppSourceType.tryApp
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const isTryApp = appSourceType === AppSourceType.tryApp
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', isTryApp ? () => fetchTryAppInfo(tryAppId) : fetchAppInfo)
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
-    appId: appInfo?.app_id || tryAppId,
-    isInstalledApp,
-    enabled: systemFeatures.webapp_auth.enabled && !isTryApp,
-  })
-
-  const appData = useMemo(() => {
-    return appInfo
-  }, [appInfo])
-  const appId = useMemo(() => isTryApp ? tryAppId : appData?.app_id, [appData, appSourceType, tryAppId])
+  const appId = useMemo(() => isTryApp ? tryAppId : appInfo?.app_id, [appInfo])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
@@ -202,13 +192,16 @@ export const useEmbeddedChatbot = (appSourceType = AppSourceType.webApp, tryAppI
           type: 'number',
         }
       }
+
       if (item.checkbox) {
+        const preset = initInputs[item.checkbox.variable] === true
         return {
           ...item.checkbox,
-          default: false,
+          default: preset || item.default || item.checkbox.default,
           type: 'checkbox',
         }
       }
+
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
@@ -414,7 +407,7 @@ export const useEmbeddedChatbot = (appSourceType = AppSourceType.webApp, tryAppI
     currentConversationId,
     currentConversationItem,
     handleConversationIdInfoChange,
-    appData,
+    appData: appInfo,
     appParams: appParams || {} as ChatConfig,
     appMeta,
     appPinnedConversationData,

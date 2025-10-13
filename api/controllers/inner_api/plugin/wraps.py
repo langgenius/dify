@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, ParamSpec, TypeVar, cast
+from typing import ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -24,24 +24,37 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     NOTE: user_id is not trusted, it could be maliciously set to any value.
     As a result, it could only be considered as an end user id.
     """
+    if not user_id:
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
+    is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
     try:
         with Session(db.engine) as session:
-            if not user_id:
-                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
+            user_model = None
 
-            user_model = (
-                session.query(EndUser)
-                .where(
-                    EndUser.session_id == user_id,
-                    EndUser.tenant_id == tenant_id,
+            if is_anonymous:
+                user_model = (
+                    session.query(EndUser)
+                    .where(
+                        EndUser.session_id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .first()
                 )
-                .first()
-            )
+            else:
+                user_model = (
+                    session.query(EndUser)
+                    .where(
+                        EndUser.id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .first()
+                )
+
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
                     type="service_api",
-                    is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value,
+                    is_anonymous=is_anonymous,
                     session_id=user_id,
                 )
                 session.add(user_model)
@@ -54,7 +67,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view: Optional[Callable[P, R]] = None):
+def get_user_tenant(view: Callable[P, R] | None = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
@@ -72,7 +85,7 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
                 raise ValueError("tenant_id is required")
 
             if not user_id:
-                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
+                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
             try:
                 tenant_model = (
@@ -106,7 +119,7 @@ def get_user_tenant(view: Optional[Callable[P, R]] = None):
         return decorator(view)
 
 
-def plugin_data(view: Optional[Callable[P, R]] = None, *, payload_type: type[BaseModel]):
+def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):
     def decorator(view_func: Callable[P, R]):
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
             try:
@@ -115,7 +128,7 @@ def plugin_data(view: Optional[Callable[P, R]] = None, *, payload_type: type[Bas
                 raise ValueError("invalid json")
 
             try:
-                payload = payload_type(**data)
+                payload = payload_type.model_validate(data)
             except Exception as e:
                 raise ValueError(f"invalid payload: {str(e)}")
 

@@ -1,7 +1,4 @@
-from typing import Optional
-
 import flask_restx
-from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
@@ -10,7 +7,8 @@ from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
@@ -50,7 +48,7 @@ class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: Optional[type] = None
+    resource_model: type | None = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
@@ -59,6 +57,8 @@ class BaseApiKeyListResource(Resource):
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         keys = db.session.scalars(
             select(ApiToken).where(
@@ -71,8 +71,10 @@ class BaseApiKeyListResource(Resource):
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         current_key_count = (
@@ -103,13 +105,15 @@ class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: Optional[type] = None
+    resource_model: type | None = None
     resource_id_field: str | None = None
 
     def delete(self, resource_id, api_key_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner

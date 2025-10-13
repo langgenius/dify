@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -35,7 +35,7 @@ class InvokeCredentials(BaseModel):
 
 
 class PluginInvokeContext(BaseModel):
-    credentials: Optional[InvokeCredentials] = Field(
+    credentials: InvokeCredentials | None = Field(
         default_factory=InvokeCredentials,
         description="Credentials context for the plugin invocation or backward invocation.",
     )
@@ -50,7 +50,7 @@ class RequestInvokeTool(BaseModel):
     provider: str
     tool: str
     tool_parameters: dict
-    credential_id: Optional[str] = None
+    credential_id: str | None = None
 
 
 class BaseRequestInvokeModel(BaseModel):
@@ -70,9 +70,9 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     mode: str
     completion_params: dict[str, Any] = Field(default_factory=dict)
     prompt_messages: list[PromptMessage] = Field(default_factory=list)
-    tools: Optional[list[PromptMessageTool]] = Field(default_factory=list[PromptMessageTool])
-    stop: Optional[list[str]] = Field(default_factory=list[str])
-    stream: Optional[bool] = False
+    tools: list[PromptMessageTool] | None = Field(default_factory=list[PromptMessageTool])
+    stop: list[str] | None = Field(default_factory=list[str])
+    stream: bool | None = False
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -83,16 +83,16 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
             raise ValueError("prompt_messages must be a list")
 
         for i in range(len(v)):
-            if v[i]["role"] == PromptMessageRole.USER.value:
-                v[i] = UserPromptMessage(**v[i])
-            elif v[i]["role"] == PromptMessageRole.ASSISTANT.value:
-                v[i] = AssistantPromptMessage(**v[i])
-            elif v[i]["role"] == PromptMessageRole.SYSTEM.value:
-                v[i] = SystemPromptMessage(**v[i])
-            elif v[i]["role"] == PromptMessageRole.TOOL.value:
-                v[i] = ToolPromptMessage(**v[i])
+            if v[i]["role"] == PromptMessageRole.USER:
+                v[i] = UserPromptMessage.model_validate(v[i])
+            elif v[i]["role"] == PromptMessageRole.ASSISTANT:
+                v[i] = AssistantPromptMessage.model_validate(v[i])
+            elif v[i]["role"] == PromptMessageRole.SYSTEM:
+                v[i] = SystemPromptMessage.model_validate(v[i])
+            elif v[i]["role"] == PromptMessageRole.TOOL:
+                v[i] = ToolPromptMessage.model_validate(v[i])
             else:
-                v[i] = PromptMessage(**v[i])
+                v[i] = PromptMessage.model_validate(v[i])
 
         return v
 
@@ -194,10 +194,10 @@ class RequestInvokeApp(BaseModel):
 
     app_id: str
     inputs: dict[str, Any]
-    query: Optional[str] = None
+    query: str | None = None
     response_mode: Literal["blocking", "streaming"]
-    conversation_id: Optional[str] = None
-    user: Optional[str] = None
+    conversation_id: str | None = None
+    user: str | None = None
     files: list[dict] = Field(default_factory=list)
 
 

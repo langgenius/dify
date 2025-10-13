@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Sequence
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import ConfigDict
 
@@ -22,7 +22,6 @@ from core.model_runtime.entities.model_entities import (
     PriceType,
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +93,12 @@ class LargeLanguageModel(AIModel):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        model_parameters: dict | None = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
         Invoke large language model
@@ -142,6 +141,8 @@ class LargeLanguageModel(AIModel):
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
 
         try:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             result = plugin_model_manager.invoke_llm(
                 tenant_id=self.tenant_id,
@@ -243,11 +244,11 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke result generator
@@ -328,7 +329,7 @@ class LargeLanguageModel(AIModel):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
+        tools: list[PromptMessageTool] | None = None,
     ) -> int:
         """
         Get number of tokens for given prompt messages
@@ -340,6 +341,8 @@ class LargeLanguageModel(AIModel):
         :return:
         """
         if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.get_llm_num_tokens(
                 tenant_id=self.tenant_id,
@@ -403,11 +406,11 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ):
         """
         Trigger before invoke callbacks
@@ -451,11 +454,11 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ):
         """
         Trigger new chunk callbacks
@@ -498,11 +501,11 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ):
         """
         Trigger after invoke callbacks
@@ -548,11 +551,11 @@ class LargeLanguageModel(AIModel):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ):
         """
         Trigger invoke error callbacks

@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
 from enum import StrEnum
-from typing import Any, Literal, Optional, cast, overload
+from typing import Any, Literal, cast, overload
 
 import json_repair
 from pydantic import TypeAdapter, ValidationError
@@ -51,12 +51,12 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Optional[Mapping] = None,
+    model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
-    stop: Optional[list[str]] = None,
+    stop: list[str] | None = None,
     stream: Literal[True],
-    user: Optional[str] = None,
-    callbacks: Optional[list[Callback]] = None,
+    user: str | None = None,
+    callbacks: list[Callback] | None = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -66,12 +66,12 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Optional[Mapping] = None,
+    model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
-    stop: Optional[list[str]] = None,
+    stop: list[str] | None = None,
     stream: Literal[False],
-    user: Optional[str] = None,
-    callbacks: Optional[list[Callback]] = None,
+    user: str | None = None,
+    callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -81,12 +81,12 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Optional[Mapping] = None,
+    model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
-    stop: Optional[list[str]] = None,
+    stop: list[str] | None = None,
     stream: bool = True,
-    user: Optional[str] = None,
-    callbacks: Optional[list[Callback]] = None,
+    user: str | None = None,
+    callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 def invoke_llm_with_structured_output(
     *,
@@ -95,12 +95,12 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Optional[Mapping] = None,
+    model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
-    stop: Optional[list[str]] = None,
+    stop: list[str] | None = None,
     stream: bool = True,
-    user: Optional[str] = None,
-    callbacks: Optional[list[Callback]] = None,
+    user: str | None = None,
+    callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
     Invoke large language model with structured output
@@ -166,7 +166,7 @@ def invoke_llm_with_structured_output(
         def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
             result_text: str = ""
             prompt_messages: Sequence[PromptMessage] = []
-            system_fingerprint: Optional[str] = None
+            system_fingerprint: str | None = None
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
                     prompt_messages = event.prompt_messages
@@ -224,8 +224,8 @@ def _handle_native_json_schema(
 
     # Set appropriate response format if required by the model
     for rule in rules:
-        if rule.name == "response_format" and ResponseFormat.JSON_SCHEMA.value in rule.options:
-            model_parameters["response_format"] = ResponseFormat.JSON_SCHEMA.value
+        if rule.name == "response_format" and ResponseFormat.JSON_SCHEMA in rule.options:
+            model_parameters["response_format"] = ResponseFormat.JSON_SCHEMA
 
     return model_parameters
 
@@ -239,10 +239,10 @@ def _set_response_format(model_parameters: dict, rules: list):
     """
     for rule in rules:
         if rule.name == "response_format":
-            if ResponseFormat.JSON.value in rule.options:
-                model_parameters["response_format"] = ResponseFormat.JSON.value
-            elif ResponseFormat.JSON_OBJECT.value in rule.options:
-                model_parameters["response_format"] = ResponseFormat.JSON_OBJECT.value
+            if ResponseFormat.JSON in rule.options:
+                model_parameters["response_format"] = ResponseFormat.JSON
+            elif ResponseFormat.JSON_OBJECT in rule.options:
+                model_parameters["response_format"] = ResponseFormat.JSON_OBJECT
 
 
 def _handle_prompt_based_schema(

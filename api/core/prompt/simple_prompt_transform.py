@@ -2,7 +2,7 @@ import json
 import os
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -45,11 +45,11 @@ class SimplePromptTransform(PromptTransform):
         inputs: Mapping[str, str],
         query: str,
         files: Sequence["File"],
-        context: Optional[str],
-        memory: Optional[TokenBufferMemory],
+        context: str | None,
+        memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
-    ) -> tuple[list[PromptMessage], Optional[list[str]]]:
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+    ) -> tuple[list[PromptMessage], list[str] | None]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
         model_mode = ModelMode(model_config.mode)
@@ -86,9 +86,9 @@ class SimplePromptTransform(PromptTransform):
         model_config: ModelConfigWithCredentialsEntity,
         pre_prompt: str,
         inputs: dict,
-        query: Optional[str] = None,
-        context: Optional[str] = None,
-        histories: Optional[str] = None,
+        query: str | None = None,
+        context: str | None = None,
+        histories: str | None = None,
     ) -> tuple[str, dict]:
         # get prompt template
         prompt_template_config = self.get_prompt_template(
@@ -182,12 +182,12 @@ class SimplePromptTransform(PromptTransform):
         pre_prompt: str,
         inputs: dict,
         query: str,
-        context: Optional[str],
+        context: str | None,
         files: Sequence["File"],
-        memory: Optional[TokenBufferMemory],
+        memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
-    ) -> tuple[list[PromptMessage], Optional[list[str]]]:
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+    ) -> tuple[list[PromptMessage], list[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
         # get prompt
@@ -228,12 +228,12 @@ class SimplePromptTransform(PromptTransform):
         pre_prompt: str,
         inputs: dict,
         query: str,
-        context: Optional[str],
+        context: str | None,
         files: Sequence["File"],
-        memory: Optional[TokenBufferMemory],
+        memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
-    ) -> tuple[list[PromptMessage], Optional[list[str]]]:
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+    ) -> tuple[list[PromptMessage], list[str] | None]:
         # get prompt
         prompt, prompt_rules = self._get_prompt_str_and_rules(
             app_mode=app_mode,
@@ -281,7 +281,7 @@ class SimplePromptTransform(PromptTransform):
         self,
         prompt: str,
         files: Sequence["File"],
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> UserPromptMessage:
         if files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
