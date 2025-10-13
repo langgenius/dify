@@ -1,9 +1,9 @@
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, reqparse
 
 from libs.helper import extract_remote_ip
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from services.billing_service import BillingService
 
 from .. import console_ns
@@ -17,6 +17,8 @@ class ComplianceApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     def get(self):
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         parser = reqparse.RequestParser()
         parser.add_argument("doc_name", type=str, required=True, location="args")
         args = parser.parse_args()
