@@ -22,6 +22,7 @@ def _load_app_model(app_id: str) -> App | None:
     )
     return app_model
 
+
 def _load_app_model_with_trial(app_id: str) -> App | None:
     assert isinstance(current_user, Account)
     app_model = (
@@ -30,6 +31,7 @@ def _load_app_model_with_trial(app_id: str) -> App | None:
         .first()
     )
     return app_model
+
 
 def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
     def decorator(view_func: Callable[P1, R1]):
