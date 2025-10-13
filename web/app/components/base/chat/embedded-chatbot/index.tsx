@@ -101,7 +101,6 @@ const EmbeddedChatbotWrapper = () => {
 
   const {
     appData,
-    userCanAccess,
     appParams,
     appMeta,
     appChatListDataLoading,
@@ -135,7 +134,6 @@ const EmbeddedChatbotWrapper = () => {
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
-    userCanAccess,
     appData,
     appParams,
     appMeta,
