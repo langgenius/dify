@@ -1,5 +1,5 @@
 import enum
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -218,7 +218,7 @@ class DatasourceLabel(BaseModel):
     icon: str = Field(..., description="The icon of the tool")
 
 
-class DatasourceInvokeFrom(Enum):
+class DatasourceInvokeFrom(StrEnum):
     """
     Enum class for datasource invoke
     """

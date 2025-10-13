@@ -1,10 +1,12 @@
 import os
 
+from pytest_mock import MockerFixture
+
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from tests.unit_tests.core.rag.extractor.test_notion_extractor import _mock_response
 
 
-def test_firecrawl_web_extractor_crawl_mode(mocker):
+def test_firecrawl_web_extractor_crawl_mode(mocker: MockerFixture):
     url = "https://firecrawl.dev"
     api_key = os.getenv("FIRECRAWL_API_KEY") or "fc-"
     base_url = "https://api.firecrawl.dev"
