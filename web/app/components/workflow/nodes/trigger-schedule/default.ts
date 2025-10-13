@@ -122,8 +122,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
     if (!errorMessages && !payload.mode)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.mode') })
 
-    if (!errorMessages && !payload.timezone)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.triggerSchedule.timezone') })
+    // Validate timezone format if provided (timezone will be auto-filled by use-config.ts if undefined)
     if (!errorMessages && payload.timezone) {
       try {
         Intl.DateTimeFormat(undefined, { timeZone: payload.timezone })
