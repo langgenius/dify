@@ -330,6 +330,11 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
+
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(resp.verification)
+
         features = FeatureService.get_system_features()
         response = manager.upload_pkg(
             tenant_id,
@@ -353,6 +358,10 @@ class PluginService:
         features = FeatureService.get_system_features()
 
         manager = PluginInstaller()
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(resp.verification)
+
         response = manager.upload_pkg(
             tenant_id,
             pkg,
@@ -377,6 +386,10 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(resp.verification)
+
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -393,6 +406,9 @@ class PluginService:
         PluginService._check_marketplace_only_permission()
 
         manager = PluginInstaller()
+        plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+        PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+
         return manager.install_from_identifiers(
             tenant_id,
             [plugin_unique_identifier],
