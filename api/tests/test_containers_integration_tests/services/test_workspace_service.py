@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from sqlalchemy import select
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.workspace_service import WorkspaceService

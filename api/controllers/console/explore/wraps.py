@@ -3,7 +3,6 @@ from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
 from flask_restx import Resource
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError
