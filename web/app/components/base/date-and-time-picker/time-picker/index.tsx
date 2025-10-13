@@ -19,6 +19,7 @@ import Header from './header'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import TimezoneLabel from '@/app/components/base/timezone-label'
 
 const to24Hour = (hour12: string, period: Period) => {
   const normalized = Number.parseInt(hour12, 10) % 12
@@ -36,6 +37,7 @@ const TimePicker = ({
   minuteFilter,
   popupClassName,
   notClearable = false,
+  showTimezone = false,
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -214,6 +216,9 @@ const TimePicker = ({
             onClick={handleClickTrigger}
           >
             {inputElem}
+            {showTimezone && timezone && (
+              <TimezoneLabel timezone={timezone} inline className="shrink-0 text-xs" />
+            )}
             <RiTimeLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
