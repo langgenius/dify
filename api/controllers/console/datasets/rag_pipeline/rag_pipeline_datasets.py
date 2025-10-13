@@ -1,4 +1,3 @@
-from flask_login import current_user
 from flask_restx import Resource, marshal, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden

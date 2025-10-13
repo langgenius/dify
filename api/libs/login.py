@@ -13,6 +13,15 @@ from models.model import EndUser
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
 current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
+
+
+def get_current_user_and_tenant_id():
+    if not isinstance(current_user, Account):
+        raise ValueError("current_user must be an Account instance")
+    assert current_user.current_tenant_id is not None, "The tenant information should be loaded."
+    return current_user, current_user.current_tenant_id
+
+
 from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
