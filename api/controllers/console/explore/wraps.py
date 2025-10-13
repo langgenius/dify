@@ -11,7 +11,6 @@ from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models import InstalledApp
 from models.account import Account
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
