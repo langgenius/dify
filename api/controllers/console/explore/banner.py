@@ -28,6 +28,7 @@ class BannerApi(Resource):
         result = []
         for banner in banners:
             banner_data = {
+                "id": banner.id,
                 "content": banner.content,  # Already parsed as JSON by SQLAlchemy
                 "link": banner.link,
                 "sort": banner.sort,
