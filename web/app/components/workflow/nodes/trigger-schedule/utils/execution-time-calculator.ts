@@ -1,5 +1,6 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 
 // Get current time completely in user timezone, no browser timezone involved
 const getUserTimezoneCurrentTime = (timezone: string): Date => {
@@ -15,7 +16,7 @@ const getUserTimezoneCurrentTime = (timezone: string): Date => {
 }
 
 // Format date that is already in user timezone, no timezone conversion
-const formatUserTimezoneDate = (date: Date, includeWeekday: boolean = true): string => {
+const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
   const dateOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
@@ -23,7 +24,7 @@ const formatUserTimezoneDate = (date: Date, includeWeekday: boolean = true): str
   }
 
   if (includeWeekday)
-    dateOptions.weekday = 'short'
+    dateOptions.weekday = 'long' // Changed from 'short' to 'long' for full weekday name
 
   const timeOptions: Intl.DateTimeFormatOptions = {
     hour: 'numeric',
@@ -31,7 +32,9 @@ const formatUserTimezoneDate = (date: Date, includeWeekday: boolean = true): str
     hour12: true,
   }
 
-  return `${date.toLocaleDateString('en-US', dateOptions)} ${date.toLocaleTimeString('en-US', timeOptions)}`
+  const timezoneOffset = convertTimezoneToOffsetStr(timezone)
+
+  return `${date.toLocaleDateString('en-US', dateOptions)}, ${date.toLocaleTimeString('en-US', timeOptions)} (${timezoneOffset})`
 }
 
 // Helper function to get default datetime - consistent with base DatePicker
@@ -230,8 +233,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-export const formatExecutionTime = (date: Date, _timezone: string, includeWeekday: boolean = true): string => {
-  return formatUserTimezoneDate(date, includeWeekday)
+export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
+  return formatUserTimezoneDate(date, timezone, includeWeekday)
 }
 
 export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
