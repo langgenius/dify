@@ -10,13 +10,13 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit, SystemConfiguration
-from core.plugin.entities.plugin import ModelProviderID
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def handle(sender: Message, **kwargs):
                 filters=_ProviderUpdateFilters(
                     tenant_id=tenant_id,
                     provider_name=ModelProviderID(model_config.provider).provider_name,
-                    provider_type=ProviderType.SYSTEM.value,
+                    provider_type=ProviderType.SYSTEM,
                     quota_type=provider_configuration.system_configuration.current_quota_type.value,
                 ),
                 values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),

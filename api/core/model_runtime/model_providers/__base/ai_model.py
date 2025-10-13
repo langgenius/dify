@@ -23,8 +23,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
-from core.plugin.impl.model import PluginModelClient
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 
 
 class AIModel(BaseModel):
@@ -52,6 +51,8 @@ class AIModel(BaseModel):
 
         :return: Invoke error mapping
         """
+        from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+
         return {
             InvokeConnectionError: [InvokeConnectionError],
             InvokeServerUnavailableError: [InvokeServerUnavailableError],
@@ -139,6 +140,8 @@ class AIModel(BaseModel):
         :param credentials: model credentials
         :return: model schema
         """
+        from core.plugin.impl.model import PluginModelClient
+
         plugin_model_manager = PluginModelClient()
         cache_key = f"{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
         # sort credentials

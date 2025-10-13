@@ -1,9 +1,9 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import PluginDynamicSelectOptionsResponse
 from core.plugin.impl.base import BasePluginClient
+from models.provider_ids import GenericProviderID
 
 
 class DynamicSelectClient(BasePluginClient):

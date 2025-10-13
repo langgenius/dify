@@ -62,6 +62,9 @@ class ChatMessageListApi(Resource):
     @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model):
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+            raise Forbidden()
+
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
         parser.add_argument("first_id", type=uuid_value, location="args")

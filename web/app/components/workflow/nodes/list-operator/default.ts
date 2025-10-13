@@ -2,10 +2,17 @@ import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
 import { type ListFilterNodeType, OrderBy } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Utilities,
+  sort: 2,
+  type: BlockEnum.ListFilter,
+})
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
+  metaData,
   defaultValue: {
     variable: [],
     filter_by: {
@@ -25,16 +32,6 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       enabled: false,
       size: 10,
     },
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: ListFilterNodeType, t: any) {
     let errorMessages = ''

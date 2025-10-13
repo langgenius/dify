@@ -37,3 +37,15 @@ class OceanBaseVectorConfig(BaseSettings):
         "with older versions",
         default=False,
     )
+
+    OCEANBASE_FULLTEXT_PARSER: str | None = Field(
+        description=(
+            "Fulltext parser to use for text indexing. "
+            "Built-in options: 'ngram' (N-gram tokenizer for English/numbers), "
+            "'beng' (Basic English tokenizer), 'space' (Space-based tokenizer), "
+            "'ngram2' (Improved N-gram tokenizer), 'ik' (Chinese tokenizer). "
+            "External plugins (require installation): 'japanese_ftparser' (Japanese tokenizer), "
+            "'thai_ftparser' (Thai tokenizer). Default is 'ik'"
+        ),
+        default="ik",
+    )

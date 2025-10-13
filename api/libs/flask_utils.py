@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import TypeVar
 
-from flask import Flask, g, has_request_context
+from flask import Flask, g
 
 T = TypeVar("T")
 
@@ -48,7 +48,8 @@ def preserve_flask_contexts(
 
     # Save current user before entering new app context
     saved_user = None
-    if has_request_context() and hasattr(g, "_login_user"):
+    # Check for user in g (works in both request context and app context)
+    if hasattr(g, "_login_user"):
         saved_user = g._login_user
 
     # Enter Flask app context

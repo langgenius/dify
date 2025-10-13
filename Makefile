@@ -26,7 +26,6 @@ prepare-web:
 	@echo "🌐 Setting up web environment..."
 	@cp -n web/.env.example web/.env 2>/dev/null || echo "Web .env already exists"
 	@cd web && pnpm install
-	@cd web && pnpm build
 	@echo "✅ Web environment prepared (not started)"
 
 # Step 3: Prepare API environment
@@ -61,8 +60,9 @@ check:
 	@echo "✅ Code check complete"
 
 lint:
-	@echo "🔧 Running ruff format and check with fixes..."
-	@uv run --directory api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@echo "🔧 Running ruff format, check with fixes, and import linter..."
+	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@uv run --directory api --dev lint-imports
 	@echo "✅ Linting complete"
 
 type-check:

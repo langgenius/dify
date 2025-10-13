@@ -62,8 +62,10 @@ const SwrInitializer = ({
           return
         }
         if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
-          consoleToken && localStorage.setItem('console_token', consoleToken)
-          refreshToken && localStorage.setItem('refresh_token', refreshToken)
+          if (consoleToken)
+            localStorage.setItem('console_token', consoleToken)
+          if (refreshToken)
+            localStorage.setItem('refresh_token', refreshToken)
           const redirectUrl = resolvePostLoginRedirect(searchParams)
           if (redirectUrl)
             location.replace(redirectUrl)

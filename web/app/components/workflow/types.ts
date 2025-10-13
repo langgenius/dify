@@ -5,7 +5,10 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type {
+  DataSourceDefaultValue,
+  ToolDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -17,6 +20,8 @@ import type {
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import type { PluginMeta } from '../plugins/types'
+import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export enum BlockEnum {
   Start = 'start',
@@ -42,6 +47,9 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  DataSource = 'datasource',
+  DataSourceEmpty = 'datasource-empty',
+  KnowledgeBase = 'knowledge-index',
 }
 
 export enum ControlMode {
@@ -74,9 +82,10 @@ export type CommonNodeType<T = {}> = {
   _holdAddVariablePopup?: boolean
   _iterationLength?: number
   _iterationIndex?: number
-  _inParallelHovering?: boolean
   _waitingRun?: boolean
   _retryIndex?: number
+  _dataSourceStartToAdd?: boolean
+  _isTempNode?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -96,6 +105,7 @@ export type CommonNodeType<T = {}> = {
   credential_id?: string
   _dimmed?: boolean
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
+  & Partial<Pick<DataSourceDefaultValue, 'plugin_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -202,11 +212,13 @@ export type InputVar = {
   }
   variable: string
   max_length?: number
-  default?: string
+  default?: string | number
   required: boolean
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  placeholder?: string
+  unit?: string
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
@@ -293,6 +305,8 @@ export type Var = {
   isException?: boolean
   isLoopVariable?: boolean
   nodeId?: string
+  isRagVariable?: boolean
+  schemaType?: string
 }
 
 export type NodeOutPutVar = {
@@ -304,22 +318,30 @@ export type NodeOutPutVar = {
   isFlat?: boolean
 }
 
-export type Block = {
-  classification?: string
-  type: BlockEnum
-  title: string
-  description?: string
-}
-
-export type NodeDefault<T> = {
+export type NodeDefault<T = {}> = {
+  metaData: {
+    classification: BlockClassificationEnum
+    sort: number
+    type: BlockEnum
+    title: string
+    author: string
+    description?: string
+    helpLinkUri?: string
+    isRequired?: boolean
+    isUndeletable?: boolean
+    isStart?: boolean
+    isSingleton?: boolean
+    isTypeFixed?: boolean
+  }
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
-  getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
-  getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
+  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
+    schemaTypeDefinitions?: SchemaTypeDefinition[]
+  }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -350,7 +372,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    toolDefaultValue?: ToolDefaultValue
+    toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
@@ -380,8 +402,14 @@ export type WorkflowRunningData = {
   result: {
     workflow_id?: string
     inputs?: string
+    inputs_truncated: boolean
     process_data?: string
+    process_data_truncated: boolean
     outputs?: string
+    outputs_truncated: boolean
+    outputs_full_content?: {
+      download_url: string
+    }
     status: string
     error?: string
     elapsed_time?: number
@@ -421,6 +449,18 @@ export type MoreInfo = {
 export type ToolWithProvider = Collection & {
   tools: Tool[]
   meta: PluginMeta
+}
+
+export type UninstalledRecommendedPlugin = {
+  plugin_id: string
+  name: string
+  icon: string
+  plugin_unique_identifier: string
+}
+
+export type RAGRecommendedPlugins = {
+  installed_recommended_plugins: ToolWithProvider[]
+  uninstalled_recommended_plugins: UninstalledRecommendedPlugin[]
 }
 
 export enum SupportUploadFileTypes {

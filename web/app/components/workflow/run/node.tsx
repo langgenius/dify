@@ -30,6 +30,7 @@ import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/err
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
 import Tooltip from '@/app/components/base/tooltip'
+import LargeDataAlert from '../variable-inspect/large-data-alert'
 
 type Props = {
   className?: string
@@ -231,6 +232,7 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.inputs}
                   isJSONStringifyBeauty
+                  footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2 h-7' />}
                 />
               </div>
             )}
@@ -254,6 +256,7 @@ const NodePanel: FC<Props> = ({
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
                   tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
+                  footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className='mx-1 mb-1 mt-2 h-7' />}
                 />
               </div>
             )}

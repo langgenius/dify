@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -16,10 +17,10 @@ class ToolApiEntity(BaseModel):
     description: I18nObject
     parameters: list[ToolParameter] | None = None
     labels: list[str] = Field(default_factory=list)
-    output_schema: dict | None = None
+    output_schema: Mapping[str, object] = Field(default_factory=dict)
 
 
-ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow", "mcp"]]
+ToolProviderTypeApiLiteral = Literal["builtin", "api", "workflow", "mcp"] | None
 
 
 class ToolProviderApiEntity(BaseModel):
@@ -27,17 +28,17 @@ class ToolProviderApiEntity(BaseModel):
     author: str
     name: str  # identifier
     description: I18nObject
-    icon: str | dict
-    icon_dark: str | dict | None = Field(default=None, description="The dark icon of the tool")
+    icon: str | Mapping[str, str]
+    icon_dark: str | Mapping[str, str] = ""
     label: I18nObject  # label
     type: ToolProviderType
-    masked_credentials: dict | None = None
-    original_credentials: dict | None = None
+    masked_credentials: Mapping[str, object] = Field(default_factory=dict)
+    original_credentials: Mapping[str, object] = Field(default_factory=dict)
     is_team_authorization: bool = False
     allow_delete: bool = True
     plugin_id: str | None = Field(default="", description="The plugin id of the tool")
     plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the tool")
-    tools: list[ToolApiEntity] = Field(default_factory=list)
+    tools: list[ToolApiEntity] = Field(default_factory=list[ToolApiEntity])
     labels: list[str] = Field(default_factory=list)
     # MCP
     server_url: str | None = Field(default="", description="The server url of the tool")
@@ -60,7 +61,7 @@ class ToolProviderApiEntity(BaseModel):
         for tool in tools:
             if tool.get("parameters"):
                 for parameter in tool.get("parameters"):
-                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
+                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
                     if parameter.get("input_schema") is None:
                         parameter.pop("input_schema", None)
@@ -105,11 +106,13 @@ class ToolProviderCredentialApiEntity(BaseModel):
     is_default: bool = Field(
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
-    credentials: dict = Field(description="The credentials of the provider")
+    credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):
-    supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    supported_credential_types: list[CredentialType] = Field(
+        description="The supported credential types of the provider"
+    )
     is_oauth_custom_client_enabled: bool = Field(
         default=False, description="Whether the OAuth custom client is enabled for the provider"
     )

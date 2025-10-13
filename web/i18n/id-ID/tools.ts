@@ -240,6 +240,7 @@ const translation = {
   openInStudio: 'Buka di Studio',
   builtInPromptTitle: 'Cepat',
   toolNameUsageTip: 'Nama panggilan alat untuk penalaran dan permintaan agen',
+  allTools: 'Semua alat',
 }
 
 export default translation

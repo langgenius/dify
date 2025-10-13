@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from typing import Any
 
@@ -22,6 +23,8 @@ from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()  # type: Any
 
@@ -187,8 +190,8 @@ class RelytVector(BaseVector):
                 delete_condition = chunks_table.c.id.in_(ids)
                 conn.execute(chunks_table.delete().where(delete_condition))
                 return True
-        except Exception as e:
-            print("Delete operation failed:", str(e))
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
     def delete_by_metadata_field(self, key: str, value: str):

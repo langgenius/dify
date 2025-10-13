@@ -51,6 +51,8 @@ const RunOnce: FC<IRunOnceProps> = ({
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = ''
+      else if (item.type === 'checkbox')
+        newInputs[item.key] = false
       else
         newInputs[item.key] = undefined
     })
@@ -77,6 +79,8 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = item.default || ''
       else if (item.type === 'number')
         newInputs[item.key] = item.default
+      else if (item.type === 'checkbox')
+        newInputs[item.key] = item.default || false
       else if (item.type === 'file')
         newInputs[item.key] = item.default
       else if (item.type === 'file-list')
@@ -96,7 +100,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized ? null
             : promptConfig.prompt_variables.map(item => (
               <div className='mt-4 w-full' key={item.key}>
-                {item.type !== 'boolean' && (
+                {item.type !== 'checkbox' && (
                   <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
                 )}
                 <div className='mt-1'>
@@ -134,7 +138,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                       onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
                   )}
-                  {item.type === 'boolean' && (
+                  {item.type === 'checkbox' && (
                     <BoolInput
                       name={item.name || item.key}
                       value={!!inputs[item.key]}

@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -31,12 +31,14 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from core.workflow.entities.workflow_execution import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
+
+if TYPE_CHECKING:
+    from core.workflow.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +166,10 @@ class OpsTraceManager:
             if key in tracing_config:
                 if "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
-                    new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    if current_trace_config:
+                        new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    else:
+                        new_config[key] = tracing_config[key]
                 else:
                     # Otherwise, encrypt the key
                     new_config[key] = encrypt_token(tenant_id, tracing_config[key])
@@ -418,7 +423,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: str | None = None,
-        workflow_execution: WorkflowExecution | None = None,
+        workflow_execution: Optional["WorkflowExecution"] = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,

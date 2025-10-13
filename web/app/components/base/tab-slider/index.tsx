@@ -21,7 +21,7 @@ const TabSlider: FC<TabSliderProps> = ({
   onChange,
   options,
 }) => {
-  const [activeIndex, setActiveIndex] = useState(options.findIndex(option => option.value === value))
+  const [activeIndex, setActiveIndex] = useState(() => options.findIndex(option => option.value === value))
   const [sliderStyle, setSliderStyle] = useState({})
   const { data: pluginList } = useInstalledPluginList()
 

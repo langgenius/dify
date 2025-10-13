@@ -37,6 +37,14 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'HQ 에서 ECO 로 다운그레이드할 수 없습니다.',
     helpText: '좋은 데이터 세트 설명을 작성하는 방법을 알아보세요.',
     searchModel: '모델 검색',
+    chunkStructure: {
+      title: '청크 구조',
+      learnMore: '더 알아보세요',
+      description: '청크 구조에 대해.',
+    },
+    numberOfKeywords: '키워드 수',
+    nameAndIcon: '이름 & 아이콘',
+    onSearchResults: '검색어와 일치하는 구성원이 없습니다.\n검색을 다시 시도합니다.',
   },
 }
 

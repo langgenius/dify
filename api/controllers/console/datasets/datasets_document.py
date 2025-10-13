@@ -1,8 +1,10 @@
+import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from typing import Literal, cast
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import current_user
 from flask_restx import Resource, fields, marshal, marshal_with, reqparse
@@ -42,7 +44,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from extensions.ext_database import db
 from fields.document_fields import (
     dataset_and_document_fields,
@@ -53,6 +55,8 @@ from fields.document_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models.account import Account
+from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 
@@ -209,13 +213,13 @@ class DatasetDocumentListApi(Resource):
 
         if sort == "hit_count":
             sub_query = (
-                db.select(DocumentSegment.document_id, db.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
                 .group_by(DocumentSegment.document_id)
                 .subquery()
             )
 
             query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
-                sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)),
+                sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
                 sort_logic(Document.position),
             )
         elif sort == "created_at":
@@ -301,7 +305,7 @@ class DatasetDocumentListApi(Resource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         args = parser.parse_args()
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
 
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
@@ -391,7 +395,7 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
@@ -415,7 +419,9 @@ class DatasetInitApi(Resource):
 
         try:
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
-                tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
+                tenant_id=current_user.current_tenant_id,
+                knowledge_config=knowledge_config,
+                account=cast(Account, current_user),
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -449,7 +455,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.dataset_process_rule
-        data_process_rule_dict = data_process_rule.to_dict()
+        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
 
         response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
 
@@ -469,7 +475,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value, upload_file=file, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
                 )
 
                 indexing_runner = IndexingRunner()
@@ -511,7 +517,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         if not documents:
             return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
-        data_process_rule_dict = data_process_rule.to_dict()
+        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
         extract_settings = []
         for document in documents:
             if document.indexing_status in {"completed", "error"}:
@@ -532,7 +538,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value, upload_file=file_detail, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE, upload_file=file_detail, document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
 
@@ -540,13 +546,16 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 if not data_source_info:
                     continue
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.NOTION.value,
-                    notion_info={
-                        "notion_workspace_id": data_source_info["notion_workspace_id"],
-                        "notion_obj_id": data_source_info["notion_page_id"],
-                        "notion_page_type": data_source_info["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    },
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": data_source_info["credential_id"],
+                            "notion_workspace_id": data_source_info["notion_workspace_id"],
+                            "notion_obj_id": data_source_info["notion_page_id"],
+                            "notion_page_type": data_source_info["type"],
+                            "tenant_id": current_user.current_tenant_id,
+                        }
+                    ),
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
@@ -554,15 +563,17 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 if not data_source_info:
                     continue
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE.value,
-                    website_info={
-                        "provider": data_source_info["provider"],
-                        "job_id": data_source_info["job_id"],
-                        "url": data_source_info["url"],
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": data_source_info["mode"],
-                        "only_main_content": data_source_info["only_main_content"],
-                    },
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": data_source_info["provider"],
+                            "job_id": data_source_info["job_id"],
+                            "url": data_source_info["url"],
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": data_source_info["mode"],
+                            "only_main_content": data_source_info["only_main_content"],
+                        }
+                    ),
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
@@ -716,7 +727,7 @@ class DocumentApi(DocumentResource):
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -749,7 +760,7 @@ class DocumentApi(DocumentResource):
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -1069,7 +1080,9 @@ class DocumentRenameApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
-        DatasetService.check_dataset_operator_permission(current_user, dataset)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        DatasetService.check_dataset_operator_permission(cast(Account, current_user), dataset)
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
@@ -1108,3 +1121,39 @@ class WebsiteDocumentSyncApi(DocumentResource):
         DocumentService.sync_website_document(dataset_id, document)
 
         return {"result": "success"}, 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
+class DocumentPipelineExecutionLogApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        log = (
+            db.session.query(DocumentPipelineExecutionLog)
+            .filter_by(document_id=document_id)
+            .order_by(DocumentPipelineExecutionLog.created_at.desc())
+            .first()
+        )
+        if not log:
+            return {
+                "datasource_info": None,
+                "datasource_type": None,
+                "input_data": None,
+                "datasource_node_id": None,
+            }, 200
+        return {
+            "datasource_info": json.loads(log.datasource_info),
+            "datasource_type": log.datasource_type,
+            "input_data": log.input_data,
+            "datasource_node_id": log.datasource_node_id,
+        }, 200

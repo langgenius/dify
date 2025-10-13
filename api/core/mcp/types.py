@@ -160,7 +160,7 @@ class ErrorData(BaseModel):
     sentence.
     """
 
-    data: Any | None = None
+    data: Any = None
     """
     Additional information about the error. The value of this member is defined by the
     sender (e.g. detailed error information, nested errors etc.).

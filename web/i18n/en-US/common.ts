@@ -18,6 +18,10 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    yes: 'Yes',
+    no: 'No',
+    deleteConfirmTitle: 'Delete?',
+    confirmAction: 'Please confirm your action.',
     saveAndEnable: 'Save & Enable',
     edit: 'Edit',
     add: 'Add',
@@ -75,6 +79,9 @@ const translation = {
   placeholder: {
     input: 'Please enter',
     select: 'Please select',
+  },
+  label: {
+    optional: '(optional)',
   },
   voice: {
     language: {
@@ -490,6 +497,7 @@ const translation = {
     toBeConfigured: 'To be configured',
     configureTip: 'Set up api-key or add model to use',
     installProvider: 'Install model providers',
+    installDataSourceProvider: 'Install data source providers',
     discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',
@@ -524,6 +532,7 @@ const translation = {
       selectModelCredential: 'Select a model credential',
       customModelCredentialsDeleteTip: 'Credential is in use and cannot be deleted',
     },
+    parametersInvalidRemoved: 'Some parameters are invalid and have been removed',
   },
   dataSource: {
     add: 'Add a data source',
@@ -622,6 +631,7 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
     noRelatedApp: 'No linked apps',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Speak now...',

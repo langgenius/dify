@@ -132,7 +132,7 @@ class OpsService:
         config_class: type[BaseTracingConfig] = provider_config["config_class"]
         other_keys: list[str] = provider_config["other_keys"]
 
-        default_config_instance: BaseTracingConfig = config_class(**tracing_config)
+        default_config_instance = config_class.model_validate(tracing_config)
         for key in other_keys:
             if key in tracing_config and tracing_config[key] == "":
                 tracing_config[key] = getattr(default_config_instance, key, None)

@@ -1,12 +1,13 @@
 from flask_restx import Resource, reqparse
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from libs.login import current_user, login_required
 from models.model import Account
 from services.billing_service import BillingService
 
 
+@console_ns.route("/billing/subscription")
 class Subscription(Resource):
     @setup_required
     @login_required
@@ -26,6 +27,7 @@ class Subscription(Resource):
         )
 
 
+@console_ns.route("/billing/invoices")
 class Invoices(Resource):
     @setup_required
     @login_required
@@ -36,7 +38,3 @@ class Invoices(Resource):
         BillingService.is_tenant_owner_or_admin(current_user)
         assert current_user.current_tenant_id is not None
         return BillingService.get_invoices(current_user.email, current_user.current_tenant_id)
-
-
-api.add_resource(Subscription, "/billing/subscription")
-api.add_resource(Invoices, "/billing/invoices")

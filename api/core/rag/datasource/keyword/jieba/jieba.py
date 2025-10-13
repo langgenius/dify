@@ -29,10 +29,10 @@ class Jieba(BaseKeyword):
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
             keyword_table = self._get_dataset_keyword_table()
+            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
+
             for text in texts:
-                keywords = keyword_table_handler.extract_keywords(
-                    text.page_content, self._config.max_keywords_per_chunk
-                )
+                keywords = keyword_table_handler.extract_keywords(text.page_content, keyword_number)
                 if text.metadata is not None:
                     self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords))
                     keyword_table = self._add_text_to_keyword_table(
@@ -50,18 +50,15 @@ class Jieba(BaseKeyword):
 
             keyword_table = self._get_dataset_keyword_table()
             keywords_list = kwargs.get("keywords_list")
+            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
             for i in range(len(texts)):
                 text = texts[i]
                 if keywords_list:
                     keywords = keywords_list[i]
                     if not keywords:
-                        keywords = keyword_table_handler.extract_keywords(
-                            text.page_content, self._config.max_keywords_per_chunk
-                        )
+                        keywords = keyword_table_handler.extract_keywords(text.page_content, keyword_number)
                 else:
-                    keywords = keyword_table_handler.extract_keywords(
-                        text.page_content, self._config.max_keywords_per_chunk
-                    )
+                    keywords = keyword_table_handler.extract_keywords(text.page_content, keyword_number)
                 if text.metadata is not None:
                     self._update_segment_keywords(self.dataset.id, text.metadata["doc_id"], list(keywords))
                     keyword_table = self._add_text_to_keyword_table(
@@ -238,7 +235,9 @@ class Jieba(BaseKeyword):
                     keyword_table or {}, segment.index_node_id, pre_segment_data["keywords"]
                 )
             else:
-                keywords = keyword_table_handler.extract_keywords(segment.content, self._config.max_keywords_per_chunk)
+                keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
+
+                keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)
                 segment.keywords = list(keywords)
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, list(keywords)

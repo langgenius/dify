@@ -6,6 +6,7 @@ const translation = {
     extensions: 'एक्सटेंशन्स',
     tools: 'उपकरण',
     agents: 'एजेंट रणनीतियाँ',
+    datasources: 'डेटा स्रोत',
   },
   categorySingle: {
     extension: 'विस्तार',
@@ -13,6 +14,7 @@ const translation = {
     tool: 'उपकरण',
     agent: 'एजेंट रणनीति',
     model: 'मॉडल',
+    datasource: 'डेटा स्रोत',
   },
   list: {
     source: {
@@ -49,24 +51,31 @@ const translation = {
       auto: 'स्वचालित',
       uninstalledLink: 'प्लगइन्स में प्रबंधित करें',
       unsupportedTitle: 'असमर्थित क्रिया',
-      unsupportedContent: 'स्थापित प्लगइन संस्करण यह क्रिया प्रदान नहीं करता है।',
+      unsupportedContent:
+        'स्थापित प्लगइन संस्करण यह क्रिया प्रदान नहीं करता है।',
       descriptionLabel: 'उपकरण का विवरण',
       unsupportedContent2: 'संस्करण बदलने के लिए क्लिक करें।',
       placeholder: 'एक उपकरण चुनें...',
       title: 'उपकरण जोड़ें',
       toolLabel: 'उपकरण',
       params: 'कारण निर्धारण कॉन्फ़िग',
-      empty: 'उपकरण जोड़ने के लिए \'+\' बटन पर क्लिक करें। आप कई उपकरण जोड़ सकते हैं।',
+      empty:
+        'उपकरण जोड़ने के लिए \'+\' बटन पर क्लिक करें। आप कई उपकरण जोड़ सकते हैं।',
       settings: 'उपयोगकर्ता सेटिंग्स',
-      uninstalledContent: 'यह प्लगइन स्थानीय/गिटहब रिपॉजिटरी से स्थापित किया गया है। कृपया स्थापना के बाद उपयोग करें।',
-      paramsTip2: 'जब \'स्वचालित\' बंद होता है, तो डिफ़ॉल्ट मान का उपयोग किया जाता है।',
-      descriptionPlaceholder: 'उपकरण के उद्देश्य का संक्षिप्त विवरण, जैसे, किसी विशेष स्थान के लिए तापमान प्राप्त करना।',
+      uninstalledContent:
+        'यह प्लगइन स्थानीय/गिटहब रिपॉजिटरी से स्थापित किया गया है। कृपया स्थापना के बाद उपयोग करें।',
+      paramsTip2:
+        'जब \'स्वचालित\' बंद होता है, तो डिफ़ॉल्ट मान का उपयोग किया जाता है।',
+      descriptionPlaceholder:
+        'उपकरण के उद्देश्य का संक्षिप्त विवरण, जैसे, किसी विशेष स्थान के लिए तापमान प्राप्त करना।',
       paramsTip1: 'एलएलएम अनुमान पैरामीटर को नियंत्रित करता है।',
       toolSetting: 'टूल सेटिंग्स',
-      unsupportedMCPTool: 'वर्तमान में चयनित एजेंट रणनीति प्लगइन संस्करण MCP टूल का समर्थन नहीं करता है।',
+      unsupportedMCPTool:
+        'वर्तमान में चयनित एजेंट रणनीति प्लगइन संस्करण MCP टूल का समर्थन नहीं करता है।',
     },
     switchVersion: 'स्विच संस्करण',
-    endpointModalDesc: 'एक बार कॉन्फ़िगर होने के बाद, प्लगइन द्वारा API एंडपॉइंट्स के माध्यम से प्रदान की गई सुविधाओं का उपयोग किया जा सकता है।',
+    endpointModalDesc:
+      'एक बार कॉन्फ़िगर होने के बाद, प्लगइन द्वारा API एंडपॉइंट्स के माध्यम से प्रदान की गई सुविधाओं का उपयोग किया जा सकता है।',
     actionNum: '{{num}} {{action}} शामिल है',
     endpointDeleteTip: 'एंडपॉइंट हटाएं',
     endpointsDocLink: 'दस्तावेज़ देखें',
@@ -83,7 +92,8 @@ const translation = {
     endpointsEmpty: 'एक एंडपॉइंट जोड़ने के लिए \'+\' बटन पर क्लिक करें',
     endpointModalTitle: 'एंडपॉइंट सेटअप करें',
     strategyNum: '{{num}} {{रणनीति}} शामिल',
-    endpointsTip: 'यह प्लगइन एंडपॉइंट्स के माध्यम से विशिष्ट कार्यक्षमताएँ प्रदान करता है, और आप वर्तमान कार्यक्षेत्र के लिए कई एंडपॉइंट सेट कॉन्फ़िगर कर सकते हैं।',
+    endpointsTip:
+      'यह प्लगइन एंडपॉइंट्स के माध्यम से विशिष्ट कार्यक्षमताएँ प्रदान करता है, और आप वर्तमान कार्यक्षेत्र के लिए कई एंडपॉइंट सेट कॉन्फ़िगर कर सकते हैं।',
     deprecation: {
       reason: {
         noMaintainer: 'कोई देखभाल करने वाला नहीं',
@@ -91,8 +101,10 @@ const translation = {
         businessAdjustments: 'व्यवसाय समायोजन',
       },
       noReason: 'यह प्लगइन अप्रचलित हो गया है और इसे अब अपडेट नहीं किया जाएगा।',
-      onlyReason: 'इस प्लगइन को {{deprecatedReason}} के कारण अमान्य कर दिया गया है और इसे अब अपडेट नहीं किया जाएगा।',
-      fullMessage: 'इस प्लगइन को {{deprecatedReason}} के कारण अमान्य कर दिया गया है, और इसे अब अपडेट नहीं किया जाएगा। कृपया इसके बजाय <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> का उपयोग करें।',
+      onlyReason:
+        'इस प्लगइन को {{deprecatedReason}} के कारण अमान्य कर दिया गया है और इसे अब अपडेट नहीं किया जाएगा।',
+      fullMessage:
+        'इस प्लगइन को {{deprecatedReason}} के कारण अमान्य कर दिया गया है, और इसे अब अपडेट नहीं किया जाएगा। कृपया इसके बजाय <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> का उपयोग करें।',
     },
   },
   debugInfo: {
@@ -140,14 +152,16 @@ const translation = {
     uploadingPackage: '{{packageName}} अपलोड हो रहा है...',
     installing: 'स्थापित कर रहा है...',
     installedSuccessfully: 'स्थापना सफल',
-    dropPluginToInstall: 'यहां प्लगइन पैकेज ड्रॉप करें ताकि इसे स्थापित किया जा सके',
+    dropPluginToInstall:
+      'यहां प्लगइन पैकेज ड्रॉप करें ताकि इसे स्थापित किया जा सके',
     readyToInstallPackage: 'निम्नलिखित प्लगइन स्थापित करने वाले हैं',
     pluginLoadError: 'प्लगइन लोड त्रुटि',
     installFailed: 'स्थापना विफल हो गई',
     readyToInstall: 'निम्नलिखित प्लगइन स्थापित करने वाले हैं',
     installFailedDesc: 'प्लगइन स्थापित करने में विफल रहा।',
     installedSuccessfullyDesc: 'प्लगइन सफलतापूर्वक स्थापित किया गया है।',
-    fromTrustSource: 'कृपया सुनिश्चित करें कि आप केवल एक <trustSource>विश्वसनीय स्रोत</trustSource> से प्लगइन्स स्थापित करें।',
+    fromTrustSource:
+      'कृपया सुनिश्चित करें कि आप केवल एक <trustSource>विश्वसनीय स्रोत</trustSource> से प्लगइन्स स्थापित करें।',
     installWarning: 'इस प्लगइन को स्थापित करने की अनुमति नहीं है।',
   },
   installFromGitHub: {
@@ -158,7 +172,8 @@ const translation = {
     updatePlugin: 'गिटहब से प्लगइन अपडेट करें',
     installPlugin: 'GitHub से प्लगइन स्थापित करें',
     selectPackagePlaceholder: 'कृपया एक पैकेज चुनें',
-    installNote: 'कृपया सुनिश्चित करें कि आप केवल एक विश्वसनीय स्रोत से प्लगइन्स स्थापित करें।',
+    installNote:
+      'कृपया सुनिश्चित करें कि आप केवल एक विश्वसनीय स्रोत से प्लगइन्स स्थापित करें।',
     installedSuccessfully: 'स्थापना सफल',
     installFailed: 'स्थापना विफल हो गई',
     uploadFailed: 'अपलोड विफल',
@@ -173,9 +188,12 @@ const translation = {
     usedInApps: '{{num}} ऐप्स में उपयोग किया गया',
   },
   error: {
-    inValidGitHubUrl: 'अमान्य GitHub URL। कृपया निम्नलिखित प्रारूप में एक मान्य URL दर्ज करें: https://github.com/owner/repo',
-    noReleasesFound: 'कोई रिलीज़ नहीं मिली। कृपया GitHub रिपॉजिटरी या इनपुट URL की जांच करें।',
-    fetchReleasesError: 'रिलीज़ प्राप्त करने में असमर्थ। कृपया बाद में फिर से प्रयास करें।',
+    inValidGitHubUrl:
+      'अमान्य GitHub URL। कृपया निम्नलिखित प्रारूप में एक मान्य URL दर्ज करें: https://github.com/owner/repo',
+    noReleasesFound:
+      'कोई रिलीज़ नहीं मिली। कृपया GitHub रिपॉजिटरी या इनपुट URL की जांच करें।',
+    fetchReleasesError:
+      'रिलीज़ प्राप्त करने में असमर्थ। कृपया बाद में फिर से प्रयास करें।',
   },
   marketplace: {
     sortOption: {
@@ -199,10 +217,13 @@ const translation = {
   task: {
     clearAll: 'सभी साफ करें',
     installing: '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, 0 पूरा हुआ।',
-    installError: '{{errorLength}} प्लगइन्स स्थापित करने में विफल रहे, देखने के लिए क्लिक करें',
+    installError:
+      '{{errorLength}} प्लगइन्स स्थापित करने में विफल रहे, देखने के लिए क्लिक करें',
     installedError: '{{errorLength}} प्लगइन्स स्थापित करने में विफल रहे',
-    installingWithError: '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, {{successLength}} सफल, {{errorLength}} विफल',
-    installingWithSuccess: '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, {{successLength}} सफल।',
+    installingWithError:
+      '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, {{successLength}} सफल, {{errorLength}} विफल',
+    installingWithSuccess:
+      '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, {{successLength}} सफल।',
   },
   installFrom: 'से इंस्टॉल करें',
   fromMarketplace: 'मार्केटप्लेस से',
@@ -221,7 +242,8 @@ const translation = {
   metadata: {
     title: 'प्लगइन्स',
   },
-  difyVersionNotCompatible: 'वर्तमान डिफाई संस्करण इस प्लगइन के साथ संगत नहीं है, कृपया आवश्यक न्यूनतम संस्करण में अपग्रेड करें: {{minimalDifyVersion}}',
+  difyVersionNotCompatible:
+    'वर्तमान डिफाई संस्करण इस प्लगइन के साथ संगत नहीं है, कृपया आवश्यक न्यूनतम संस्करण में अपग्रेड करें: {{minimalDifyVersion}}',
   requestAPlugin: 'एक प्लगइन का अनुरोध करें',
   publishPlugins: 'प्लगइन प्रकाशित करें',
   auth: {
@@ -244,12 +266,18 @@ const translation = {
     useApiAuth: 'एपीआई कुंजी प्राधिकरण कॉन्फ़िगरेशन',
     oauthClientSettings: 'OAuth क्लाइंट सेटिंग्स',
     authorization: 'अधिकार',
-    useApiAuthDesc: 'क्रेडेंशियल्स कॉन्फ़िगर करने के बाद, कार्यक्षेत्र के सभी सदस्यों को एप्लिकेशन को व्यवस्थित करते समय इस उपकरण का उपयोग करने की अनुमति होती है।',
-    clientInfo: 'चूंकि इस टूल प्रदाता के लिए कोई सिस्टम क्लाइंट रहस्य नहीं पाए गए हैं, इसलिए इसे मैन्युअल रूप से सेटअप करना आवश्यक है, कृपया redirect_uri का उपयोग करें',
+    useApiAuthDesc:
+      'क्रेडेंशियल्स कॉन्फ़िगर करने के बाद, कार्यक्षेत्र के सभी सदस्यों को एप्लिकेशन को व्यवस्थित करते समय इस उपकरण का उपयोग करने की अनुमति होती है।',
+    clientInfo:
+      'चूंकि इस टूल प्रदाता के लिए कोई सिस्टम क्लाइंट रहस्य नहीं पाए गए हैं, इसलिए इसे मैन्युअल रूप से सेटअप करना आवश्यक है, कृपया redirect_uri का उपयोग करें',
     unavailable: 'अप्राप्त',
-    customCredentialUnavailable: 'कस्टम क्रेडेंशियल वर्तमान में उपलब्ध नहीं हैं',
-    credentialUnavailable: 'वर्तमान में क्रेडेंशियल्स उपलब्ध नहीं हैं। कृपया प्रशासन से संपर्क करें।',
+    customCredentialUnavailable:
+      'कस्टम क्रेडेंशियल वर्तमान में उपलब्ध नहीं हैं',
+    credentialUnavailable:
+      'वर्तमान में क्रेडेंशियल्स उपलब्ध नहीं हैं। कृपया प्रशासन से संपर्क करें।',
     credentialUnavailableInButton: 'प्रमाण पत्र उपलब्ध नहीं है',
+    connectedWorkspace: 'संयुक्त कार्यक्षेत्र',
+    emptyAuth: 'कृपया प्रमाणीकरण कॉन्फ़िगर करें',
   },
   deprecated: 'अनुशंसित नहीं',
   autoUpdate: {
@@ -261,7 +289,8 @@ const translation = {
       fixOnly: {
         name: 'केवल ठीक करें',
         selectedDescription: 'केवल पैच संस्करणों के लिए स्वचालित अपडेट',
-        description: 'केवल पैच संस्करणों के लिए स्वचालित अद्यतन (जैसे, 1.0.1 → 1.0.2)। छोटा संस्करण परिवर्तन अद्यतन को ट्रिगर नहीं करेगा।',
+        description:
+          'केवल पैच संस्करणों के लिए स्वचालित अद्यतन (जैसे, 1.0.1 → 1.0.2)। छोटा संस्करण परिवर्तन अद्यतन को ट्रिगर नहीं करेगा।',
       },
       latest: {
         name: 'नवीनतम',
@@ -275,7 +304,8 @@ const translation = {
       exclude: 'चुने हुए को बाहर करें',
     },
     upgradeModePlaceholder: {
-      partial: 'केवल चयनित प्लगइन्स स्वतः अपडेट होंगे। वर्तमान में कोई प्लगइन चयनित नहीं है, इसलिए कोई प्लगइन स्वतः अपडेट नहीं होगा।',
+      partial:
+        'केवल चयनित प्लगइन्स स्वतः अपडेट होंगे। वर्तमान में कोई प्लगइन चयनित नहीं है, इसलिए कोई प्लगइन स्वतः अपडेट नहीं होगा।',
       exclude: 'चुने हुए प्लगइन्स अपने आप अपडेट नहीं होंगे',
     },
     operation: {
@@ -286,7 +316,8 @@ const translation = {
       downgrade: 'फिर भी डाउनग्रेड करें',
       title: 'प्लगइन डाउनग्रेड',
       exclude: 'स्वतः अपडेट से बाहर करें',
-      description: 'इस प्लगइन के लिए ऑटो-अपडेट वर्तमान में सक्षम है। संस्करण को डाउनग्रेड करने से आपके परिवर्तनों को अगली स्वचालित अद्यतन के दौरान ओवरराइट किया जा सकता है।',
+      description:
+        'इस प्लगइन के लिए ऑटो-अपडेट वर्तमान में सक्षम है। संस्करण को डाउनग्रेड करने से आपके परिवर्तनों को अगली स्वचालित अद्यतन के दौरान ओवरराइट किया जा सकता है।',
     },
     noPluginPlaceholder: {
       noFound: 'कोई प्लगइन्स नहीं मिले',
@@ -295,12 +326,15 @@ const translation = {
     updateTimeTitle: 'अद्यतन समय',
     updateSettings: 'सेटिंग्स अपडेट करें',
     automaticUpdates: 'स्वचालित अपडेट',
-    partialUPdate: 'केवल निम्नलिखित {{num}} प्लगइन्स स्वचालित रूप से अपडेट होंगे',
+    partialUPdate:
+      'केवल निम्नलिखित {{num}} प्लगइन्स स्वचालित रूप से अपडेट होंगे',
     nextUpdateTime: 'अगली ऑटो-अपडेट: {{time}}',
     updateTime: 'अद्यतन समय',
     specifyPluginsToUpdate: 'अपडेट करने के लिए प्लगइन्स निर्दिष्ट करें',
-    changeTimezone: 'समय क्षेत्र बदलने के लिए, <setTimezone>सेटिंग्स</setTimezone> पर जाएं',
-    excludeUpdate: 'निम्नलिखित {{num}} प्लगइन्स स्वचालित रूप से अपडेट नहीं होंगे',
+    changeTimezone:
+      'समय क्षेत्र बदलने के लिए, <setTimezone>सेटिंग्स</setTimezone> पर जाएं',
+    excludeUpdate:
+      'निम्नलिखित {{num}} प्लगइन्स स्वचालित रूप से अपडेट नहीं होंगे',
   },
 }
 

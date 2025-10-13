@@ -153,7 +153,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       return
     }
 
-    if (localeData.variable && !/[a-zA-Z_]\w{0,29}/g.test(localeData.variable)) {
+    if (localeData.variable && !/^[a-zA-Z_]\w{0,29}$/.test(localeData.variable)) {
       notify({ type: 'error', message: t('appDebug.varKeyError.notValid', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
       return
     }

@@ -39,7 +39,7 @@ class IterationState(BaseIterationState):
     """
 
     outputs: list[Any] = Field(default_factory=list)
-    current_output: Any | None = None
+    current_output: Any = None
 
     class MetaData(BaseIterationState.MetaData):
         """
@@ -48,7 +48,7 @@ class IterationState(BaseIterationState):
 
         iterator_length: int
 
-    def get_last_output(self) -> Any | None:
+    def get_last_output(self) -> Any:
         """
         Get last output.
         """
@@ -56,7 +56,7 @@ class IterationState(BaseIterationState):
             return self.outputs[-1]
         return None
 
-    def get_current_output(self) -> Any | None:
+    def get_current_output(self) -> Any:
         """
         Get current output.
         """

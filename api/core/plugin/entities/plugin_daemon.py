@@ -6,6 +6,7 @@ from typing import Any, Generic, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
@@ -46,6 +47,14 @@ class PluginToolProviderEntity(BaseModel):
     plugin_unique_identifier: str
     plugin_id: str
     declaration: ToolProviderEntityWithPlugin
+
+
+class PluginDatasourceProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    is_authorized: bool = False
+    declaration: DatasourceProviderEntityWithPlugin
 
 
 class PluginAgentProviderEntity(BaseModel):

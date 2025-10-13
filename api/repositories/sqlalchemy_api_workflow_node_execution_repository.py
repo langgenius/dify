@@ -8,7 +8,7 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import delete, desc, select
+from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.workflow import WorkflowNodeExecutionModel
@@ -62,11 +62,14 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             node_id: The node identifier
 
         Returns:
-            The most recent WorkflowNodeExecutionModel for the node, or None if not found
+            The most recent WorkflowNodeExecutionModel for the node, or None if not found.
+
+            The returned WorkflowNodeExecutionModel will have `offload_data` preloaded.
         """
+        stmt = select(WorkflowNodeExecutionModel)
+        stmt = WorkflowNodeExecutionModel.preload_offload_data(stmt)
         stmt = (
-            select(WorkflowNodeExecutionModel)
-            .where(
+            stmt.where(
                 WorkflowNodeExecutionModel.tenant_id == tenant_id,
                 WorkflowNodeExecutionModel.app_id == app_id,
                 WorkflowNodeExecutionModel.workflow_id == workflow_id,
@@ -99,15 +102,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         Returns:
             A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
         """
-        stmt = (
-            select(WorkflowNodeExecutionModel)
-            .where(
-                WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                WorkflowNodeExecutionModel.app_id == app_id,
-                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-            )
-            .order_by(desc(WorkflowNodeExecutionModel.index))
-        )
+        stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+        stmt = stmt.where(
+            WorkflowNodeExecutionModel.tenant_id == tenant_id,
+            WorkflowNodeExecutionModel.app_id == app_id,
+            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
@@ -134,7 +134,8 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         Returns:
             The WorkflowNodeExecutionModel if found, or None if not found
         """
-        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution_id)
+        stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+        stmt = stmt.where(WorkflowNodeExecutionModel.id == execution_id)
 
         # Add tenant filtering if provided
         if tenant_id is not None:

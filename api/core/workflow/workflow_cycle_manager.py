@@ -7,8 +7,6 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.queue_entities import (
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -16,13 +14,17 @@ from core.app.entities.queue_entities import (
 from core.app.task_pipeline.exc import WorkflowRunNotFoundError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
-from core.workflow.entities.workflow_node_execution import (
+from core.workflow.entities import (
+    WorkflowExecution,
     WorkflowNodeExecution,
+)
+from core.workflow.enums import (
+    SystemVariableKey,
+    WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
+    WorkflowType,
 )
-from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
@@ -188,15 +190,13 @@ class WorkflowCycleManager:
         )
 
         self._workflow_node_execution_repository.save(domain_execution)
+        self._workflow_node_execution_repository.save_execution_data(domain_execution)
         return domain_execution
 
     def handle_workflow_node_execution_failed(
         self,
         *,
-        event: QueueNodeFailedEvent
-        | QueueNodeInIterationFailedEvent
-        | QueueNodeInLoopFailedEvent
-        | QueueNodeExceptionEvent,
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
@@ -220,6 +220,7 @@ class WorkflowCycleManager:
         )
 
         self._workflow_node_execution_repository.save(domain_execution)
+        self._workflow_node_execution_repository.save_execution_data(domain_execution)
         return domain_execution
 
     def handle_workflow_node_execution_retried(
@@ -242,7 +243,9 @@ class WorkflowCycleManager:
 
         domain_execution.update_from_mapping(inputs=inputs, outputs=outputs, metadata=metadata)
 
-        return self._save_and_cache_node_execution(domain_execution)
+        execution = self._save_and_cache_node_execution(domain_execution)
+        self._workflow_node_execution_repository.save_execution_data(execution)
+        return execution
 
     def _get_workflow_execution_or_raise_error(self, id: str, /) -> WorkflowExecution:
         # Check cache first
@@ -275,7 +278,10 @@ class WorkflowCycleManager:
         return execution
 
     def _save_and_cache_node_execution(self, execution: WorkflowNodeExecution) -> WorkflowNodeExecution:
-        """Save node execution to repository and cache it if it has an ID."""
+        """Save node execution to repository and cache it if it has an ID.
+
+        This does not persist the `inputs` / `process_data` / `outputs` fields of the execution model.
+        """
         self._workflow_node_execution_repository.save(execution)
         if execution.node_execution_id:
             self._node_execution_cache[execution.node_execution_id] = execution
@@ -355,7 +361,7 @@ class WorkflowCycleManager:
         self,
         *,
         workflow_execution: WorkflowExecution,
-        event: Union[QueueNodeStartedEvent, QueueNodeRetryEvent],
+        event: QueueNodeStartedEvent,
         status: WorkflowNodeExecutionStatus,
         error: str | None = None,
         created_at: datetime | None = None,
@@ -371,7 +377,7 @@ class WorkflowCycleManager:
         }
 
         domain_execution = WorkflowNodeExecution(
-            id=str(uuidv7()),
+            id=event.node_execution_id,
             workflow_id=workflow_execution.workflow_id,
             workflow_execution_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,
@@ -379,7 +385,7 @@ class WorkflowCycleManager:
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,
             node_type=event.node_type,
-            title=event.node_data.title,
+            title=event.node_title,
             status=status,
             metadata=metadata,
             created_at=created_at,
@@ -399,8 +405,6 @@ class WorkflowCycleManager:
         event: Union[
             QueueNodeSucceededEvent,
             QueueNodeFailedEvent,
-            QueueNodeInIterationFailedEvent,
-            QueueNodeInLoopFailedEvent,
             QueueNodeExceptionEvent,
         ],
         status: WorkflowNodeExecutionStatus,

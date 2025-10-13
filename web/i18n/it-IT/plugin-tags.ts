@@ -17,6 +17,7 @@ const translation = {
     productivity: 'Produttività',
     finance: 'Finanza',
     social: 'Sociale',
+    rag: 'STRACCIO',
   },
   searchTags: 'Cerca Tag',
   allTags: 'Tutti i tag',

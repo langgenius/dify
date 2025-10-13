@@ -1,0 +1,116 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "16",
+			"height": "16",
+			"viewBox": "0 0 16 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Group"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector",
+							"d": "M4.25 15.5H0.5V11.75H4.25V15.5Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_2",
+							"d": "M9.875 9.875H6.125V6.125H9.875V9.875Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_3",
+							"d": "M4.25 9.875H0.5V6.125H4.25V9.875Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_4",
+							"d": "M9.875 4.25H6.125V0.5H9.875V4.25Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_5",
+							"d": "M4.25 4.25H0.5V0.5H4.25V4.25Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_6",
+							"d": "M15.5 4.25H11.75V0.5H15.5V4.25Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_7",
+							"d": "M14.875 12.375H12.375V14.875H14.875V12.375Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_8",
+							"d": "M14.875 6.75H12.375V9.25H14.875V6.75Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_9",
+							"d": "M9.25 12.375H6.75V14.875H9.25V12.375Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "VectorSearch"
+}

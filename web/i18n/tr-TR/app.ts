@@ -84,6 +84,7 @@ const translation = {
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
     dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
+    import: 'Ithalat',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',

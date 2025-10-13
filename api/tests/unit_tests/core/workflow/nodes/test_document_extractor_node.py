@@ -5,12 +5,14 @@ import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment
 from core.variables.variables import StringVariable
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_docx,
@@ -18,11 +20,25 @@ from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
-from core.workflow.nodes.enums import NodeType
+from models.enums import UserFrom
 
 
 @pytest.fixture
-def document_extractor_node():
+def graph_init_params() -> GraphInitParams:
+    return GraphInitParams(
+        tenant_id="test_tenant",
+        app_id="test_app",
+        workflow_id="test_workflow",
+        graph_config={},
+        user_id="test_user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+
+
+@pytest.fixture
+def document_extractor_node(graph_init_params):
     node_data = DocumentExtractorNodeData(
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
@@ -31,8 +47,7 @@ def document_extractor_node():
     node = DocumentExtractorNode(
         id="test_node_id",
         config=node_config,
-        graph_init_params=Mock(),
-        graph=Mock(),
+        graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
     )
     # Initialize node data
@@ -201,7 +216,7 @@ def test_extract_text_from_docx(mock_document):
 
 
 def test_node_type(document_extractor_node):
-    assert document_extractor_node._node_type == NodeType.DOCUMENT_EXTRACTOR
+    assert document_extractor_node.node_type == NodeType.DOCUMENT_EXTRACTOR
 
 
 @patch("pandas.ExcelFile")

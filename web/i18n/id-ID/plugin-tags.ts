@@ -17,6 +17,7 @@ const translation = {
     other: 'Lain',
     utilities: 'Utilitas',
     search: 'Mencari',
+    rag: 'Kain lap',
   },
   allTags: 'Semua Tag',
   searchTags: 'Tag Pencarian',

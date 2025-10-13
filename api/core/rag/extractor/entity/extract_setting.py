@@ -9,15 +9,13 @@ class NotionInfo(BaseModel):
     Notion import info.
     """
 
+    credential_id: str | None = None
     notion_workspace_id: str
     notion_obj_id: str
     notion_page_type: str
     document: Document | None = None
     tenant_id: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def __init__(self, **data):
-        super().__init__(**data)
 
 
 class WebsiteInfo(BaseModel):
@@ -46,6 +44,3 @@ class ExtractSetting(BaseModel):
     website_info: WebsiteInfo | None = None
     document_model: str | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def __init__(self, **data):
-        super().__init__(**data)

@@ -68,6 +68,7 @@ const translation = {
     hideTemplates: 'Kembali ke pemilihan mode',
     useTemplate: 'Gunakan template ini',
     appCreateDSLErrorPart2: 'Apakah Anda ingin melanjutkan?',
+    import: 'Mengimpor',
   },
   newAppFromTemplate: {
     sidebar: {

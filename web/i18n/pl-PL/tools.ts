@@ -248,6 +248,7 @@ const translation = {
       publishTip: 'Aplikacja nieopublikowana. Najpierw opublikuj aplikację.',
     },
   },
+  allTools: 'Wszystkie narzędzia',
 }
 
 export default translation

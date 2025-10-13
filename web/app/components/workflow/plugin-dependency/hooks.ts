@@ -1,15 +1,18 @@
 import { useCallback } from 'react'
 import { useStore as usePluginDependenciesStore } from './store'
 import { useMutationCheckDependencies } from '@/service/use-plugins'
+import { useCheckPipelineDependencies } from '@/service/use-pipeline'
 
 export const usePluginDependencies = () => {
-  const { mutateAsync } = useMutationCheckDependencies()
+  const { mutateAsync: checkWorkflowDependencies } = useMutationCheckDependencies()
+  const { mutateAsync: checkPipelineDependencies } = useCheckPipelineDependencies()
 
-  const handleCheckPluginDependencies = useCallback(async (appId: string) => {
-    const { leaked_dependencies } = await mutateAsync(appId)
+  const handleCheckPluginDependencies = useCallback(async (id: string, isPipeline = false) => {
+    const checkDependencies = isPipeline ? checkPipelineDependencies : checkWorkflowDependencies
+    const { leaked_dependencies } = await checkDependencies(id)
     const { setDependencies } = usePluginDependenciesStore.getState()
     setDependencies(leaked_dependencies)
-  }, [mutateAsync])
+  }, [checkWorkflowDependencies, checkPipelineDependencies])
 
   return {
     handleCheckPluginDependencies,
