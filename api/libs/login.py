@@ -14,6 +14,7 @@ from models.model import EndUser
 #: anonymous user
 current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
 
+
 def current_account_with_tenant():
     if not isinstance(current_user, Account):
         raise ValueError("current_user must be an Account instance")

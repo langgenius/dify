@@ -4,7 +4,7 @@ from constants import HIDDEN_VALUE
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
-from libs.login import current_user, current_account_with_tenant, login_required
+from libs.login import current_account_with_tenant, current_user, login_required
 from models.account import Account
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
