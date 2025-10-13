@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Seleziona tutto',
     deSelectAll: 'Deseleziona tutto',
     config: 'Config',
+    no: 'No',
+    yes: 'Sì',
+    confirmAction: 'Per favore conferma la tua azione.',
+    deleteConfirmTitle: 'Eliminare?',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
