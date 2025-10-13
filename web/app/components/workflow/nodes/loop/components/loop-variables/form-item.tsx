@@ -41,6 +41,9 @@ const FormItem = ({
 }: FormItemProps) => {
   const { t } = useTranslation()
   const { value_type, var_type, value } = item
+  const normalizedVarValue = useMemo(() => {
+    return Array.isArray(value) ? value : []
+  }, [value])
 
   const handleInputChange = useCallback((e: any) => {
     onChange(e.target.value)
@@ -79,7 +82,7 @@ const FormItem = ({
             readonly={false}
             nodeId={nodeId}
             isShowNodeName
-            value={value}
+            value={normalizedVarValue}
             onChange={handleChange}
             filterVar={filterVar}
             placeholder={t('workflow.nodes.assigner.setParameter') as string}
