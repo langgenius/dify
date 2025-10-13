@@ -8,7 +8,7 @@ import importlib
 import logging
 import os
 import socket
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:

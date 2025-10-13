@@ -6,7 +6,7 @@ import hashlib
 import random
 import uuid
 from datetime import datetime
-from typing import Optional, cast
+from typing import cast
 
 from opentelemetry.trace import Link, SpanContext, TraceFlags
 

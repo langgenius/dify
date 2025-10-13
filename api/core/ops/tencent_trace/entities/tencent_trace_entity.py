@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from typing import Optional
 
 from opentelemetry import trace as trace_api
 from opentelemetry.sdk.trace import Event
