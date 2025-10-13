@@ -12,8 +12,8 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_user, get_current_user_and_tenant_id, login_required
-from models import Account, App, InstalledApp, RecommendedApp
+from libs.login import get_current_user_and_tenant_id, login_required
+from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
