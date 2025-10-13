@@ -9,7 +9,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import StrLen, uuid_value
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
@@ -22,7 +22,7 @@ class DefaultModelApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -46,7 +46,7 @@ class DefaultModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, tenant_id = get_current_user_and_tenant_id()
+        current_user, tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -90,7 +90,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
@@ -102,7 +102,7 @@ class ModelProviderModelApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         # To save the model's load balance configs
-        current_user, tenant_id = get_current_user_and_tenant_id()
+        current_user, tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -127,7 +127,7 @@ class ModelProviderModelApi(Resource):
                 raise ValueError("credential_id is required when configuring a custom-model")
             service = ModelProviderService()
             service.switch_active_custom_model_credential(
-                tenant_id=current_tenant_id,
+                tenant_id=tenant_id,
                 provider=provider,
                 model_type=args["model_type"],
                 model=args["model"],
@@ -162,7 +162,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        current_user, tenant_id = get_current_user_and_tenant_id()
+        current_user, tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -193,7 +193,7 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="args")
@@ -255,7 +255,7 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, tenant_id = get_current_user_and_tenant_id()
+        current_user, tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -300,7 +300,7 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -341,7 +341,7 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -376,7 +376,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -412,7 +412,7 @@ class ModelProviderModelEnableApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
@@ -442,7 +442,7 @@ class ModelProviderModelDisableApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
@@ -470,7 +470,7 @@ class ModelProviderModelValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
@@ -519,7 +519,7 @@ class ModelProviderModelParameterRuleApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="args")
         args = parser.parse_args()
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
@@ -535,7 +535,7 @@ class ModelProviderAvailableModelApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, model_type):
-        _, tenant_id = get_current_user_and_tenant_id()
+        _, tenant_id = current_account_with_tenant()
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 

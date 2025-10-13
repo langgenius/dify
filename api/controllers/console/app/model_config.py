@@ -14,7 +14,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
@@ -52,7 +52,7 @@ class ModelConfigResource(Resource):
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
         """Modify app model config"""
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()

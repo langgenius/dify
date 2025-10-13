@@ -12,7 +12,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
@@ -24,7 +24,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         tenant_id = current_tenant_id
         if not current_user.has_edit_permission:
@@ -131,7 +131,7 @@ class DatasourceAuth(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -162,7 +162,7 @@ class DatasourceAuth(Resource):
     def get(self, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         datasources = datasource_provider_service.list_datasource_credentials(
             tenant_id=current_tenant_id,
@@ -178,7 +178,7 @@ class DatasourceAuthDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
@@ -204,7 +204,7 @@ class DatasourceAuthUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
         parser = reqparse.RequestParser()
@@ -232,7 +232,7 @@ class DatasourceAuthListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_all_datasource_credentials(tenant_id=current_tenant_id)
@@ -245,7 +245,7 @@ class DatasourceHardCodeAuthListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_hard_code_datasource_credentials(tenant_id=current_tenant_id)
@@ -258,7 +258,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -280,7 +280,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider_id: str):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -297,7 +297,7 @@ class DatasourceAuthDefaultApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -320,7 +320,7 @@ class DatasourceUpdateProviderNameApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()

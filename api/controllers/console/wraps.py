@@ -12,7 +12,7 @@ from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import get_current_user_and_tenant_id
+from libs.login import current_account_with_tenant
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
@@ -29,7 +29,7 @@ def account_initialization_required(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         # check account initialization
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         account = current_user
 
@@ -77,7 +77,7 @@ def only_edition_self_hosted(view: Callable[P, R]):
 def cloud_edition_billing_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         features = FeatureService.get_features(current_tenant_id)
         if not features.billing.enabled:
             abort(403, "Billing feature is not enabled.")
@@ -90,7 +90,7 @@ def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
-            _, current_tenant_id = get_current_user_and_tenant_id()
+            _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 members = features.members
@@ -132,7 +132,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
-            _, current_tenant_id = get_current_user_and_tenant_id()
+            _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
@@ -156,7 +156,7 @@ def cloud_edition_billing_rate_limit_check(resource: str):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             if resource == "knowledge":
-                _, current_tenant_id = get_current_user_and_tenant_id()
+                _, current_tenant_id = current_account_with_tenant()
                 knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
@@ -191,7 +191,7 @@ def cloud_utm_record(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
-            _, current_tenant_id = get_current_user_and_tenant_id()
+            _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
 
             if features.billing.enabled:
@@ -278,7 +278,7 @@ def enable_change_email(view: Callable[P, R]):
 def is_allow_transfer_owner(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         features = FeatureService.get_features(current_tenant_id)
         if features.is_allow_transfer_workspace:
             return view(*args, **kwargs)
@@ -292,7 +292,7 @@ def is_allow_transfer_owner(view: Callable[P, R]):
 def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         features = FeatureService.get_features(current_tenant_id)
         if features.knowledge_pipeline.publish_enabled:
             return view(*args, **kwargs)

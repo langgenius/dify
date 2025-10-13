@@ -3,7 +3,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.auth.error import ApiKeyAuthFailedError
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from ..wraps import account_initialization_required, setup_required
@@ -15,7 +15,7 @@ class ApiKeyAuthDataSource(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_tenant_id)
         if data_source_api_key_bindings:
             return {
@@ -41,7 +41,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the table must be admin or owner
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
@@ -65,7 +65,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @account_initialization_required
     def delete(self, binding_id):
         # The role of the current user in the table must be admin or owner
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()

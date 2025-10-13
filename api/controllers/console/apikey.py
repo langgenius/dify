@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
@@ -57,7 +57,7 @@ class BaseApiKeyListResource(Resource):
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         keys = db.session.scalars(
@@ -71,7 +71,7 @@ class BaseApiKeyListResource(Resource):
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -111,7 +111,7 @@ class BaseApiKeyResource(Resource):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner

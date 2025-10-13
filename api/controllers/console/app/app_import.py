@@ -10,7 +10,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
 from services.enterprise.enterprise_service import EnterpriseService
@@ -28,7 +28,7 @@ class AppImportApi(Resource):
     @cloud_edition_billing_resource_check("apps")
     def post(self):
         # Check user role first
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -82,7 +82,7 @@ class AppImportConfirmApi(Resource):
     @marshal_with(app_import_fields)
     def post(self, import_id):
         # Check user role first
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -108,7 +108,7 @@ class AppImportCheckDependenciesApi(Resource):
     @account_initialization_required
     @marshal_with(app_import_check_dependencies_fields)
     def get(self, app_model: App):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 

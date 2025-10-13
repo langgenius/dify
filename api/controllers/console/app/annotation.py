@@ -16,7 +16,7 @@ from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
 )
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from services.annotation_service import AppAnnotationService
 
 
@@ -42,7 +42,7 @@ class AnnotationReplyActionApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def post(self, app_id, action: Literal["enable", "disable"]):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -71,7 +71,7 @@ class AppAnnotationSettingDetailApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -102,7 +102,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, app_id, annotation_setting_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -130,7 +130,7 @@ class AnnotationReplyActionStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def get(self, app_id, job_id, action):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -167,7 +167,7 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -208,7 +208,7 @@ class AnnotationApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @marshal_with(annotation_fields)
     def post(self, app_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -225,7 +225,7 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, app_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -263,7 +263,7 @@ class AnnotationExportApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -288,7 +288,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @marshal_with(annotation_fields)
     def post(self, app_id, annotation_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -306,7 +306,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, app_id, annotation_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -330,7 +330,7 @@ class AnnotationBatchImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def post(self, app_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -363,7 +363,7 @@ class AnnotationBatchImportStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def get(self, app_id, job_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -400,7 +400,7 @@ class AnnotationHitHistoryListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id, annotation_id):
-        current_user, _ = get_current_user_and_tenant_id()
+        current_user, _ = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()

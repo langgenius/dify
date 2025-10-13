@@ -10,7 +10,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import StrLen, uuid_value
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
 
@@ -21,7 +21,7 @@ class ModelProviderListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
         parser = reqparse.RequestParser()
@@ -47,7 +47,7 @@ class ModelProviderCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
         parser = reqparse.RequestParser()
@@ -65,7 +65,7 @@ class ModelProviderCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
@@ -92,7 +92,7 @@ class ModelProviderCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
@@ -121,7 +121,7 @@ class ModelProviderCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -142,7 +142,7 @@ class ModelProviderCredentialSwitchApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -164,7 +164,7 @@ class ModelProviderValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
@@ -217,7 +217,7 @@ class PreferredProviderTypeUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
@@ -250,7 +250,7 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        current_user, current_tenant_id = get_current_user_and_tenant_id()
+        current_user, current_tenant_id = current_account_with_tenant()
         BillingService.is_tenant_owner_or_admin(current_user)
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,

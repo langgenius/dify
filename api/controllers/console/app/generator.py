@@ -16,7 +16,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
-from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_account_with_tenant, login_required
 from models import App
 from services.workflow_service import WorkflowService
 
@@ -47,7 +47,7 @@ class RuleGenerateApi(Resource):
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
         args = parser.parse_args()
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         try:
             rules = LLMGenerator.generate_rule_config(
@@ -98,7 +98,7 @@ class RuleCodeGenerateApi(Resource):
         parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
         parser.add_argument("code_language", type=str, required=False, default="javascript", location="json")
         args = parser.parse_args()
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         try:
             code_result = LLMGenerator.generate_code(
@@ -143,7 +143,7 @@ class RuleStructuredOutputGenerateApi(Resource):
         parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         try:
             structured_output = LLMGenerator.generate_structured_output(
@@ -197,7 +197,7 @@ class InstructionGenerateApi(Resource):
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("ideal_output", type=str, required=False, default="", location="json")
         args = parser.parse_args()
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
         code_template = (
             Python3CodeProvider.get_default_code()
             if args["language"] == "python"

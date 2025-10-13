@@ -4,7 +4,7 @@ from constants import HIDDEN_VALUE
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
-from libs.login import current_user, get_current_user_and_tenant_id, login_required
+from libs.login import current_user, current_account_with_tenant, login_required
 from models.account import Account
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
@@ -47,7 +47,7 @@ class APIBasedExtensionAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def get(self):
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         tenant_id = current_tenant_id
         return APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
@@ -77,7 +77,7 @@ class APIBasedExtensionAPI(Resource):
         parser.add_argument("api_endpoint", type=str, required=True, location="json")
         parser.add_argument("api_key", type=str, required=True, location="json")
         args = parser.parse_args()
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
             tenant_id=current_tenant_id,
@@ -103,7 +103,7 @@ class APIBasedExtensionDetailAPI(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         tenant_id = current_tenant_id
 
@@ -131,7 +131,7 @@ class APIBasedExtensionDetailAPI(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
@@ -160,7 +160,7 @@ class APIBasedExtensionDetailAPI(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
-        _, current_tenant_id = get_current_user_and_tenant_id()
+        _, current_tenant_id = current_account_with_tenant()
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
