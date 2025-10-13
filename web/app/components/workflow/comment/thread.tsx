@@ -414,7 +414,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           ref={messageListRef}
           className='relative mt-2 flex-1 overflow-y-auto px-4 pb-4'
         >
-          <div className='rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'>
+          <div className='-mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'>
             <ThreadMessage
               authorId={comment.created_by_account?.id || ''}
               authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
@@ -432,7 +432,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 return (
                   <div
                     key={reply.id}
-                    className='group relative rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
+                    className='group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
                   >
                     {isOwnReply && !isReplyEditing && (
                       <PortalToFollowElem
@@ -519,19 +519,31 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                       </PortalToFollowElem>
                     )}
                     {isReplyEditing ? (
-                      <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
-                        <MentionInput
-                          value={editingReply?.content ?? ''}
-                          onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
-                          onSubmit={handleEditSubmit}
-                          onCancel={handleCancelEdit}
-                          placeholder={t('workflow.comments.placeholder.editReply')}
-                          disabled={loading}
-                          loading={replyUpdating}
-                          isEditing={true}
-                          className="system-sm-regular"
-                          autoFocus
-                        />
+                      <div className='flex gap-3 pt-1'>
+                        <div className='shrink-0'>
+                          <Avatar
+                            name={reply.created_by_account?.name || t('workflow.comments.fallback.user')}
+                            avatar={reply.created_by_account?.avatar_url || null}
+                            size={24}
+                            className='h-8 w-8 rounded-full'
+                          />
+                        </div>
+                        <div className='min-w-0 flex-1'>
+                          <div className='rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]'>
+                            <MentionInput
+                              value={editingReply?.content ?? ''}
+                              onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
+                              onSubmit={handleEditSubmit}
+                              onCancel={handleCancelEdit}
+                              placeholder={t('workflow.comments.placeholder.editReply')}
+                              disabled={loading}
+                              loading={replyUpdating}
+                              isEditing={true}
+                              className="system-sm-regular"
+                              autoFocus
+                            />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <ThreadMessage

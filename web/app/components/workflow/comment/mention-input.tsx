@@ -15,7 +15,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
+import { RiArrowUpLine, RiAtLine, RiCommandLine, RiCornerDownLeftLine, RiLoader2Line } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
 import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
@@ -583,9 +583,16 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
                 size='small'
                 disabled={loading || !value.trim()}
                 onClick={() => handleSubmit()}
+                className='gap-1'
               >
                 {loading && <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />}
-                {t('common.operation.save')}
+                <span>{t('common.operation.save')}</span>
+                {!loading && (
+                  <div className='flex gap-0.5'>
+                    <RiCommandLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+                    <RiCornerDownLeftLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+                  </div>
+                )}
               </Button>
             </div>
           </div>
