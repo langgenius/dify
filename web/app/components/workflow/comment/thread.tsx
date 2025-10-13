@@ -162,6 +162,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
   const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
   const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
 
   // Focus management refs
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
@@ -245,13 +246,23 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     if (!onReplyEdit || !editingReply) return
     const trimmed = content.trim()
     if (!trimmed) return
-    await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
-    setEditingReply({ id: '', content: '' })
 
-    // P1: Restore focus to reply input after saving edit
-    setTimeout(() => {
-      replyInputRef.current?.focus()
-    }, 0)
+    setIsSubmittingEdit(true)
+    try {
+      await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
+      setEditingReply({ id: '', content: '' })
+
+      // P1: Restore focus to reply input after saving edit
+      setTimeout(() => {
+        replyInputRef.current?.focus()
+      }, 0)
+    }
+    catch (error) {
+      console.error('Failed to edit reply', error)
+    }
+    finally {
+      setIsSubmittingEdit(false)
+    }
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
@@ -537,7 +548,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               onCancel={handleCancelEdit}
                               placeholder={t('workflow.comments.placeholder.editReply')}
                               disabled={loading}
-                              loading={replyUpdating}
+                              loading={replyUpdating || isSubmittingEdit}
                               isEditing={true}
                               className="system-sm-regular"
                               autoFocus
