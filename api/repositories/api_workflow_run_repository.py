@@ -59,6 +59,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         triggered_from: str,
         limit: int = 20,
         last_id: str | None = None,
+        status: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -73,6 +74,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
             triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
             limit: Maximum number of records to return (default: 20)
             last_id: Cursor for pagination - ID of the last record from previous page
+            status: Optional filter by status (e.g., "running", "succeeded", "failed")
 
         Returns:
             InfiniteScrollPagination object containing:

@@ -63,6 +63,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         triggered_from: str,
         limit: int = 20,
         last_id: str | None = None,
+        status: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -78,6 +79,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.app_id == app_id,
                 WorkflowRun.triggered_from == triggered_from,
             )
+
+            # Add optional status filter
+            if status:
+                base_stmt = base_stmt.where(WorkflowRun.status == status)
 
             if last_id:
                 # Get the last workflow run for cursor-based pagination

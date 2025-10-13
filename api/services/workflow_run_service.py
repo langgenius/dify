@@ -70,6 +70,7 @@ class WorkflowRunService:
         """
         limit = int(args.get("limit", 20))
         last_id = args.get("last_id")
+        status = args.get("status")
 
         return self._workflow_run_repo.get_paginated_workflow_runs(
             tenant_id=app_model.tenant_id,
@@ -77,6 +78,7 @@ class WorkflowRunService:
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             limit=limit,
             last_id=last_id,
+            status=status,
         )
 
     def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun | None:

@@ -25,6 +25,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @api.doc(description="Get advanced chat workflow run list")
     @api.doc(params={"app_id": "Application ID"})
     @api.doc(params={"last_id": "Last run ID for pagination", "limit": "Number of items per page (1-100)"})
+    @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
     @api.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_fields)
     @setup_required
     @login_required
@@ -38,6 +39,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser.add_argument("status", type=str, location="args", required=False)
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
@@ -52,6 +54,7 @@ class WorkflowRunListApi(Resource):
     @api.doc(description="Get workflow run list")
     @api.doc(params={"app_id": "Application ID"})
     @api.doc(params={"last_id": "Last run ID for pagination", "limit": "Number of items per page (1-100)"})
+    @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
     @api.response(200, "Workflow runs retrieved successfully", workflow_run_pagination_fields)
     @setup_required
     @login_required
@@ -65,6 +68,7 @@ class WorkflowRunListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser.add_argument("status", type=str, location="args", required=False)
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
