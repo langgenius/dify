@@ -72,21 +72,21 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
-    <div className='w-fit shrink-0 cursor-pointer border-r border-divider-burn px-4 pt-6 sm:w-[216px]'>
+    <div className='w-fit shrink-0 cursor-pointer px-4 pt-6 sm:w-[240px]'>
       <Link
         href='/explore/apps'
         className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover',
           'flex h-8 items-center gap-2 rounded-lg px-1 mobile:w-fit mobile:justify-center pc:w-full pc:justify-start')}
       >
-        <div className='flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
+        <div className='flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
           <RiAppsFill className='size-3.5 text-components-avatar-shape-fill-stop-100' />
         </div>
-        {!isMobile && <div className={cn(isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('explore.sidebar.title')}</div>}
+        {!isMobile && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('explore.sidebar.title')}</div>}
       </Link>
       {installedApps.length > 0 && (
-        <div className='mt-10'>
-          <p className='break-all pl-2 text-xs font-medium uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>
-          <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden'
+        <div className='mt-5'>
+          <p className='system-xs-medium-uppercase break-all pl-2 uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>
+          <div className='mt-1.5 space-y-0.5 overflow-y-auto overflow-x-hidden'
             style={{
               height: 'calc(100vh - 250px)',
             }}

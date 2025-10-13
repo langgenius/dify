@@ -151,7 +151,7 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex h-full flex-col border-l-[0.5px] border-divider-regular',
+      'flex h-full flex-col',
     )}>
       {systemFeatures.enable_explore_banner && (
         <div className='mt-4 px-12'>
