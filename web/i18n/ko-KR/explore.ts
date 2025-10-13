@@ -18,7 +18,6 @@ const translation = {
   apps: {
   },
   appCard: {
-    addToWorkspace: '작업 공간에 추가',
     customize: '사용자 정의',
   },
   appCustomize: {

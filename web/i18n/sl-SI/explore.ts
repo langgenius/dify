@@ -18,7 +18,6 @@ const translation = {
   apps: {
   },
   appCard: {
-    addToWorkspace: 'Dodaj v delovni prostor',
     customize: 'Prilagodi',
   },
   appCustomize: {

@@ -22,8 +22,8 @@ const translation = {
     resetFilter: 'Clear filter',
   },
   appCard: {
-    addToWorkspace: 'Add to Workspace',
-    customize: 'Customize',
+    addToWorkspace: 'Use template',
+    try: 'Details',
   },
   appCustomize: {
     title: 'Create app from {{name}}',

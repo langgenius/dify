@@ -18,7 +18,6 @@ const translation = {
   },
   appCard: {
     customize: 'Menyesuaikan',
-    addToWorkspace: 'Tambahkan ke Ruang Kerja',
   },
   appCustomize: {
     subTitle: 'Ikon & nama aplikasi',

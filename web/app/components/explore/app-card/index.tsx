@@ -6,6 +6,9 @@ import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppTypeIcon } from '../../app/type-selector'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import Link from 'next/link'
 export type AppCardProps = {
   app: App
   canCreate: boolean
@@ -21,8 +24,11 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
+  const { systemFeatures } = useGlobalPublicStore()
+  const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
+
   return (
-    <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg')}>
+    <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
       <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
         <div className='relative shrink-0'>
           <AppIcon
@@ -53,14 +59,25 @@ const AppCard = ({
           {app.description}
         </div>
       </div>
-      {isExplore && canCreate && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('flex h-8 w-full items-center space-x-2')}>
-            <Button variant='primary' className='h-7 grow' onClick={() => onCreate()}>
+      {isExplore && (canCreate || isTrialApp) && (
+        <div className={cn(
+          'absolute bottom-0 left-0 right-0 hidden  bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8',
+          (canCreate && isTrialApp) && 'grid-cols-2 gap-2 group-hover:grid ',
+        )}>
+          {canCreate && (
+            <Button variant='primary' className='h-7' onClick={() => onCreate()}>
               <PlusIcon className='mr-1 h-4 w-4' />
               <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
             </Button>
-          </div>
+          )}
+          {isTrialApp && (
+            <Link href={`/try/app/${app.app_id}`} target='_blank' rel='noreferrer'>
+              <Button className='w-full'>
+                <span>{t('explore.appCard.try')}</span>
+                <RiArrowRightUpLine className='size-4' />
+              </Button>
+            </Link>
+          )}
         </div>
       )}
     </div>

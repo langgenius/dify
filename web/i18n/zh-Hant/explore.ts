@@ -18,7 +18,6 @@ const translation = {
   apps: {
   },
   appCard: {
-    addToWorkspace: '新增到工作區',
     customize: '自定義',
   },
   appCustomize: {

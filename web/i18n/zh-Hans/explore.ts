@@ -22,7 +22,8 @@ const translation = {
     resetFilter: '清除筛选',
   },
   appCard: {
-    addToWorkspace: '添加到工作区',
+    addToWorkspace: '使用模板',
+    try: '详情',
     customize: '自定义',
   },
   appCustomize: {

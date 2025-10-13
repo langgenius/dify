@@ -22,7 +22,8 @@ const translation = {
     resetFilter: 'クリア',
   },
   appCard: {
-    addToWorkspace: 'ワークスペースに追加',
+    addToWorkspace: 'テンプレートを使用',
+    try: '詳細',
     customize: 'カスタマイズ',
   },
   appCustomize: {
