@@ -215,8 +215,8 @@ const translation = {
       deleteReplyDesc: '此回复将被永久删除。',
     },
     aria: {
-      deleteComment: '删除评论',
-      resolveComment: '解决评论',
+      deleteComment: '删除讨论',
+      resolveComment: '解决',
       previousComment: '上一条评论',
       nextComment: '下一条评论',
       closeComment: '关闭评论',

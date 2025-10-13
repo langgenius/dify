@@ -161,6 +161,8 @@ export const useNodesSyncDraft = () => {
         })
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
+
+        console.log('Leader successfully synced workflow draft')
         callback?.onSuccess?.()
       }
       catch (error: any) {

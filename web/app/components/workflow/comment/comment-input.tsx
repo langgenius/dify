@@ -39,7 +39,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
 
   return (
     <div
-      className="absolute z-50 w-96"
+      className="absolute z-[60] w-96"
       style={{
         left: position.x,
         top: position.y,

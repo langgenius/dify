@@ -188,6 +188,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     pendingComment,
     activeComment,
     activeCommentLoading,
+    replySubmitting,
+    replyUpdating,
     handleCommentSubmit,
     handleCommentCancel,
     handleCommentIconClick,
@@ -410,7 +412,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={cn(
-        'relative h-full w-full min-w-[960px]',
+        'relative h-full w-full min-w-[960px] overflow-hidden',
         workflowReadOnly && 'workflow-panel-animation',
         nodeAnimation && 'workflow-node-animation',
       )}
@@ -468,6 +470,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 key={`${comment.id}-thread`}
                 comment={activeComment}
                 loading={activeCommentLoading}
+                replySubmitting={replySubmitting}
+                replyUpdating={replyUpdating}
                 onClose={handleActiveCommentClose}
                 onResolve={() => handleCommentResolve(comment.id)}
                 onDelete={() => handleCommentDeleteClick(comment.id)}
@@ -476,6 +480,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
                 onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
                 onReplyDelete={replyId => handleCommentReplyDeleteClick(comment.id, replyId)}
+                onReplyDeleteDirect={replyId => handleCommentReplyDelete(comment.id, replyId)}
                 canGoPrev={canGoPrev}
                 canGoNext={canGoNext}
               />

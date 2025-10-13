@@ -10,6 +10,10 @@ export type CommentSliceShape = {
   setActiveCommentDetail: (comment: WorkflowCommentDetail | null) => void
   activeCommentDetailLoading: boolean
   setActiveCommentDetailLoading: (loading: boolean) => void
+  replySubmitting: boolean
+  setReplySubmitting: (loading: boolean) => void
+  replyUpdating: boolean
+  setReplyUpdating: (loading: boolean) => void
   commentDetailCache: Record<string, WorkflowCommentDetail>
   setCommentDetailCache: (cache: Record<string, WorkflowCommentDetail>) => void
   mentionableUsersCache: Record<string, UserProfile[]>
@@ -27,6 +31,10 @@ export const createCommentSlice: StateCreator<CommentSliceShape> = set => ({
   setActiveCommentDetail: activeCommentDetail => set({ activeCommentDetail }),
   activeCommentDetailLoading: false,
   setActiveCommentDetailLoading: activeCommentDetailLoading => set({ activeCommentDetailLoading }),
+  replySubmitting: false,
+  setReplySubmitting: replySubmitting => set({ replySubmitting }),
+  replyUpdating: false,
+  setReplyUpdating: replyUpdating => set({ replyUpdating }),
   commentDetailCache: {},
   setCommentDetailCache: commentDetailCache => set({ commentDetailCache }),
   mentionableUsersCache: {},

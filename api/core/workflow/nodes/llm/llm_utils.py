@@ -92,7 +92,7 @@ def fetch_memory(
         return None
 
     # get conversation id
-    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value

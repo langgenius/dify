@@ -7,6 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
+import Tooltip from '@/app/components/base/tooltip'
+import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
@@ -17,6 +20,8 @@ import { getUserColor } from '@/app/components/workflow/collaboration/utils/user
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
   loading?: boolean
+  replySubmitting?: boolean
+  replyUpdating?: boolean
   onClose: () => void
   onDelete?: () => void
   onResolve?: () => void
@@ -27,6 +32,7 @@ type CommentThreadProps = {
   onReply?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyEdit?: (replyId: string, content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyDelete?: (replyId: string) => void
+  onReplyDeleteDirect?: (replyId: string) => Promise<void> | void
 }
 
 const ThreadMessage: FC<{
@@ -36,7 +42,8 @@ const ThreadMessage: FC<{
   createdAt: number
   content: string
   mentionedNames?: string[]
-}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames }) => {
+  className?: string
+}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { userProfile } = useAppContext()
   const currentUserId = userProfile?.id
@@ -107,7 +114,7 @@ const ThreadMessage: FC<{
   }, [content, mentionedNames])
 
   return (
-    <div className={cn('flex gap-3 pt-1')}>
+    <div className={cn('flex gap-3 pt-1', className)}>
       <div className='shrink-0'>
         <Avatar
           name={authorName}
@@ -133,6 +140,8 @@ const ThreadMessage: FC<{
 export const CommentThread: FC<CommentThreadProps> = memo(({
   comment,
   loading = false,
+  replySubmitting = false,
+  replyUpdating = false,
   onClose,
   onDelete,
   onResolve,
@@ -143,6 +152,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   onReply,
   onReplyEdit,
   onReplyDelete,
+  onReplyDeleteDirect,
 }) => {
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
@@ -151,22 +161,64 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const [replyContent, setReplyContent] = useState('')
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
   const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
+  const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
+
+  // Focus management refs
+  const replyInputRef = useRef<HTMLTextAreaElement>(null)
+  const threadRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setReplyContent('')
   }, [comment.id])
 
+  // P0: Auto-focus reply input when thread opens or comment changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (replyInputRef.current && !editingReply.id && onReply)
+        replyInputRef.current.focus()
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [comment.id, editingReply.id, onReply])
+
+  // P2: Handle Esc key to close thread
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if actively editing a reply
+      if (editingReply.id) return
+
+      // Don't intercept if mention dropdown is open (let MentionInput handle it)
+      if (document.querySelector('[data-mention-dropdown]')) return
+
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [onClose, editingReply.id])
+
   const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
-    if (!onReply || loading) return
+    if (!onReply || replySubmitting) return
+
+    setReplyContent('')
 
     try {
       await onReply(content, mentionedUserIds)
-      setReplyContent('')
+
+      // P0: Restore focus to reply input after successful submission
+      setTimeout(() => {
+        replyInputRef.current?.focus()
+      }, 0)
     }
     catch (error) {
       console.error('Failed to send reply', error)
+      setReplyContent(content)
     }
-  }, [onReply, loading])
+  }, [onReply, replySubmitting])
 
   const screenPosition = useMemo(() => {
     return flowToScreenPosition({
@@ -182,6 +234,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
   const handleCancelEdit = useCallback(() => {
     setEditingReply({ id: '', content: '' })
+
+    // P1: Restore focus to reply input after canceling edit
+    setTimeout(() => {
+      replyInputRef.current?.focus()
+    }, 0)
   }, [])
 
   const handleEditSubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
@@ -190,23 +247,50 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     if (!trimmed) return
     await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
     setEditingReply({ id: '', content: '' })
+
+    // P1: Restore focus to reply input after saving edit
+    setTimeout(() => {
+      replyInputRef.current?.focus()
+    }, 0)
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
   const messageListRef = useRef<HTMLDivElement>(null)
-  const previousReplyCountRef = useRef(replies.length)
-  const previousCommentIdRef = useRef(comment.id)
+  const previousReplyCountRef = useRef<number | undefined>(undefined)
+  const previousCommentIdRef = useRef<string | undefined>(undefined)
 
+  // Close dropdown when scrolling
+  useEffect(() => {
+    const container = messageListRef.current
+    if (!container || !activeReplyMenuId)
+      return
+
+    const handleScroll = () => {
+      setActiveReplyMenuId(null)
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [activeReplyMenuId])
+
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     const container = messageListRef.current
     if (!container)
       return
 
+    const isFirstRender = previousCommentIdRef.current === undefined
     const isNewComment = comment.id !== previousCommentIdRef.current
-    const hasNewReply = replies.length > previousReplyCountRef.current
+    const hasNewReply = previousReplyCountRef.current !== undefined
+      && replies.length > previousReplyCountRef.current
 
-    if (isNewComment || hasNewReply)
-      container.scrollTop = container.scrollHeight
+    // Scroll on first render, new comment, or new reply
+    if (isFirstRender || isNewComment || hasNewReply) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
 
     previousCommentIdRef.current = comment.id
     previousReplyCountRef.current = replies.length
@@ -240,47 +324,82 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         transform: 'translateY(-20%)',
       }}
     >
-      <div className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
+      <div
+        ref={threadRef}
+        className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'
+        role='dialog'
+        aria-modal='true'
+        aria-labelledby='comment-thread-title'
+      >
         <div className='flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3'>
-          <div className='font-semibold uppercase text-text-primary'>{t('workflow.comments.panelTitle')}</div>
+          <div
+            id='comment-thread-title'
+            className='font-semibold uppercase text-text-primary'
+          >
+            {t('workflow.comments.panelTitle')}
+          </div>
           <div className='flex items-center gap-1'>
-            <button
-              type='button'
-              disabled={loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onDelete}
-              aria-label={t('workflow.comments.aria.deleteComment')}
+            <Tooltip
+              popupContent={t('workflow.comments.aria.deleteComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              <RiDeleteBinLine className='h-4 w-4' />
-            </button>
-            <button
-              type='button'
-              disabled={comment.resolved || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onResolve}
-              aria-label={t('workflow.comments.aria.resolveComment')}
+              <button
+                type='button'
+                disabled={loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onDelete}
+                aria-label={t('workflow.comments.aria.deleteComment')}
+              >
+                <RiDeleteBinLine className='h-4 w-4' />
+              </button>
+            </Tooltip>
+            <Tooltip
+              popupContent={t('workflow.comments.aria.resolveComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
-            </button>
+              <button
+                type='button'
+                disabled={comment.resolved || loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onResolve}
+                aria-label={t('workflow.comments.aria.resolveComment')}
+              >
+                {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
+              </button>
+            </Tooltip>
             <Divider type='vertical' className='h-3.5' />
-            <button
-              type='button'
-              disabled={!canGoPrev || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onPrev}
-              aria-label={t('workflow.comments.aria.previousComment')}
+            <Tooltip
+              popupContent={t('workflow.comments.aria.previousComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              <RiArrowUpSLine className='h-4 w-4' />
-            </button>
-            <button
-              type='button'
-              disabled={!canGoNext || loading}
-              className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-              onClick={onNext}
-              aria-label={t('workflow.comments.aria.nextComment')}
+              <button
+                type='button'
+                disabled={!canGoPrev || loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onPrev}
+                aria-label={t('workflow.comments.aria.previousComment')}
+              >
+                <RiArrowUpSLine className='h-4 w-4' />
+              </button>
+            </Tooltip>
+            <Tooltip
+              popupContent={t('workflow.comments.aria.nextComment')}
+              position='top'
+              popupClassName='!px-2 !py-1.5'
             >
-              <RiArrowDownSLine className='h-4 w-4' />
-            </button>
+              <button
+                type='button'
+                disabled={!canGoNext || loading}
+                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                onClick={onNext}
+                aria-label={t('workflow.comments.aria.nextComment')}
+              >
+                <RiArrowDownSLine className='h-4 w-4' />
+              </button>
+            </Tooltip>
             <button
               type='button'
               className='flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
@@ -293,16 +412,18 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         </div>
         <div
           ref={messageListRef}
-          className='relative mt-2 flex-1 overflow-y-auto px-4'
+          className='relative mt-2 flex-1 overflow-y-auto px-4 pb-4'
         >
-          <ThreadMessage
-            authorId={comment.created_by_account?.id || ''}
-            authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
-            avatarUrl={comment.created_by_account?.avatar_url || null}
-            createdAt={comment.created_at}
-            content={comment.content}
-            mentionedNames={mentionsByTarget.get('root')}
-          />
+          <div className='rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'>
+            <ThreadMessage
+              authorId={comment.created_by_account?.id || ''}
+              authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
+              avatarUrl={comment.created_by_account?.avatar_url || null}
+              createdAt={comment.created_at}
+              content={comment.content}
+              mentionedNames={mentionsByTarget.get('root')}
+            />
+          </div>
           {replies.length > 0 && (
             <div className='mt-2 space-y-3 pt-3'>
               {replies.map((reply) => {
@@ -311,41 +432,91 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 return (
                   <div
                     key={reply.id}
-                    className='group relative rounded-lg py-2 transition-colors hover:bg-components-panel-on-panel-item-bg'
+                    className='group relative rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
                   >
                     {isOwnReply && !isReplyEditing && (
-                      <div className='absolute right-1 top-1 hidden gap-1 group-hover:flex'>
-                        <button
-                          type='button'
-                          className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
-                          }}
-                          aria-label={t('workflow.comments.aria.replyActions')}
+                      <PortalToFollowElem
+                        placement='bottom-end'
+                        open={activeReplyMenuId === reply.id}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setDeletingReplyId(null)
+                            setActiveReplyMenuId(null)
+                          }
+                        }}
+                      >
+                        <div
+                          className={cn(
+                            'absolute right-1 top-1 gap-1',
+                            activeReplyMenuId === reply.id ? 'flex' : 'hidden group-hover:flex',
+                          )}
+                          data-reply-menu
                         >
-                          <RiMoreFill className='h-4 w-4' />
-                        </button>
-                        {activeReplyMenuId === reply.id && (
-                          <div className='absolute right-0 top-7 z-40 w-36 rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg'>
+                          <PortalToFollowElemTrigger asChild>
                             <button
-                              className='flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                              onClick={() => handleStartEdit(reply)}
+                              type='button'
+                              className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeletingReplyId(null)
+                                setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
+                              }}
+                              aria-label={t('workflow.comments.aria.replyActions')}
+                            >
+                              <RiMoreFill className='h-4 w-4' />
+                            </button>
+                          </PortalToFollowElemTrigger>
+                        </div>
+                        <PortalToFollowElemContent
+                          className='z-[100] w-36 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
+                          data-reply-menu
+                        >
+                          {/* Menu buttons - hidden when showing delete confirm */}
+                          <div className={cn(deletingReplyId === reply.id ? 'hidden' : 'block')}>
+                            <button
+                              className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleStartEdit(reply)
+                              }}
                             >
                               {t('workflow.comments.actions.editReply')}
                             </button>
                             <button
-                              className='text-negative flex w-full items-center justify-start px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
-                              onClick={() => {
-                                setActiveReplyMenuId(null)
-                                onReplyDelete?.(reply.id)
+                              className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                if (onReplyDeleteDirect) {
+                                  setDeletingReplyId(reply.id)
+                                }
+                                else {
+                                  setActiveReplyMenuId(null)
+                                  onReplyDelete?.(reply.id)
+                                }
                               }}
                             >
                               {t('workflow.comments.actions.deleteReply')}
                             </button>
                           </div>
-                        )}
-                      </div>
+
+                          {/* Delete confirmation - shown when deletingReplyId matches */}
+                          <div className={cn(deletingReplyId === reply.id ? 'block' : 'hidden')}>
+                            <InlineDeleteConfirm
+                              title={t('workflow.comments.actions.deleteReply')}
+                              onConfirm={() => {
+                                setDeletingReplyId(null)
+                                setActiveReplyMenuId(null)
+                                onReplyDeleteDirect?.(reply.id)
+                              }}
+                              onCancel={() => {
+                                setDeletingReplyId(null)
+                              }}
+                              className='m-0 w-full border-0 shadow-none'
+                            />
+                          </div>
+                        </PortalToFollowElemContent>
+                      </PortalToFollowElem>
                     )}
                     {isReplyEditing ? (
                       <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
@@ -356,7 +527,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           onCancel={handleCancelEdit}
                           placeholder={t('workflow.comments.placeholder.editReply')}
                           disabled={loading}
-                          loading={loading}
+                          loading={replyUpdating}
                           isEditing={true}
                           className="system-sm-regular"
                           autoFocus
@@ -394,12 +565,13 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               />
               <div className='flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm'>
                 <MentionInput
+                  ref={replyInputRef}
                   value={replyContent}
                   onChange={setReplyContent}
                   onSubmit={handleReplySubmit}
                   placeholder={t('workflow.comments.placeholder.reply')}
                   disabled={loading}
-                  loading={loading}
+                  loading={replySubmitting}
                 />
               </div>
             </div>

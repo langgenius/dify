@@ -5,7 +5,6 @@ import { uniqBy } from 'lodash-es'
 import {
   getIncomers,
   getOutgoers,
-  useStoreApi,
 } from 'reactflow'
 import type {
   Connection,
@@ -54,7 +53,6 @@ export const useWorkflow = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const { getAvailableBlocks } = useAvailableBlocks()
   const { nodesMap } = useNodesMetaData()
-  const store = useStoreApi()
 
   const getNodeById = useCallback((nodeId: string) => {
     const { nodes } = collaborativeWorkflow.getState()
@@ -325,11 +323,7 @@ export const useWorkflow = () => {
   }, [nodesMap, getRootNodesById])
 
   const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
-    const {
-      edges,
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes, edges } = collaborativeWorkflow.getState()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
 

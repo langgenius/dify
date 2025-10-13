@@ -956,7 +956,7 @@ class LLMNode(Node):
             variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
 
         if typed_node_data.memory:
-            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
+            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
         if typed_node_data.prompt_config:
             enable_jinja = False

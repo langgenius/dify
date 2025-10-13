@@ -49,9 +49,6 @@ importers:
 
   .:
     dependencies:
-      '@dagrejs/dagre':
-        specifier: ^1.1.4
-        version: 1.1.5
       '@emoji-mart/data':
         specifier: ^1.2.1
         version: 1.2.1
@@ -354,8 +351,8 @@ importers:
         specifier: ^1.15.0
         version: 1.52.3(eslint@9.36.0(jiti@2.6.1))(ts-api-utils@2.1.0(typescript@5.8.3))(typescript@5.8.3)
       '@happy-dom/jest-environment':
-        specifier: ^17.4.4
-        version: 17.6.3
+        specifier: ^20.0.0
+        version: 20.0.0(@jest/environment@29.7.0)(@jest/fake-timers@29.7.0)(@jest/types@29.6.3)(jest-mock@29.7.0)(jest-util@29.7.0)
       '@mdx-js/loader':
         specifier: ^3.1.0
         version: 3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
@@ -407,9 +404,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.0.1
         version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.7(@types/react@19.1.11))(@types/react@19.1.11)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@types/dagre':
-        specifier: ^0.7.52
-        version: 0.7.53
       '@types/jest':
         specifier: ^29.5.13
         version: 29.5.14
@@ -1331,13 +1325,6 @@ packages:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
 
-  '@dagrejs/dagre@1.1.5':
-    resolution: {integrity: sha512-Ghgrh08s12DCL5SeiR6AoyE80mQELTWhJBRmXfFoqDiFkR458vPEdgTbbjA0T+9ETNxUblnD0QW55tfdvi5pjQ==}
-
-  '@dagrejs/graphlib@2.2.4':
-    resolution: {integrity: sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==}
-    engines: {node: '>17.0.0'}
-
   '@discoveryjs/json-ext@0.5.7':
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
     engines: {node: '>=10.0.0'}
@@ -1662,9 +1649,15 @@ packages:
   '@formatjs/intl-localematcher@0.5.10':
     resolution: {integrity: sha512-af3qATX+m4Rnd9+wHcjJ4w2ijq+rAVP3CCinJQvFv1kgSu1W6jypUmvleJxcewdxmutM8dmIRZFxO/IQBZmP2Q==}
 
-  '@happy-dom/jest-environment@17.6.3':
-    resolution: {integrity: sha512-HXuHKvpHLo9/GQ/yKMmKFyS1AYL2t9pL67+GfpYZfOAb29qD80EMozi50zRZk82KmNRBcA2A0/ErjpOwUxJrNg==}
+  '@happy-dom/jest-environment@20.0.0':
+    resolution: {integrity: sha512-dUyMDNJzPDFopSDyzKdbeYs8z9B4jLj9kXnru8TjYdGeLsQKf+6r0lq/9T2XVcu04QFxXMykt64A+KjsaJTaNA==}
     engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@jest/environment': '>=25.0.0'
+      '@jest/fake-timers': '>=25.0.0'
+      '@jest/types': '>=25.0.0'
+      jest-mock: '>=25.0.0'
+      jest-util: '>=25.0.0'
 
   '@headlessui/react@2.2.1':
     resolution: {integrity: sha512-daiUqVLae8CKVjEVT19P/izW0aGK0GNhMSAeMlrDebKmoVZHcRRwbxzgtnEadUVDXyBsWo9/UH4KHeniO+0tMg==}
@@ -3375,9 +3368,6 @@ packages:
   '@types/d3@7.4.3':
     resolution: {integrity: sha512-lZXZ9ckh5R8uiFVt8ogUNf+pIrK4EsWrx2Np75WvF/eTpJ0FMHNhjXk8CKEx/+gpHbNQyJWehbFaTvqmHWB3ww==}
 
-  '@types/dagre@0.7.53':
-    resolution: {integrity: sha512-f4gkWqzPZvYmKhOsDnhq/R8mO4UMcKdxZo+i5SCkOU1wvGeHJeUXGIHeE9pnwGyPMDof1Vx5ZQo4nxpeg2TTVQ==}
-
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
 
@@ -3469,6 +3459,9 @@ packages:
   '@types/node@18.15.0':
     resolution: {integrity: sha512-z6nr0TTEOBGkzLGmbypWOGnpSpSIBorEhC4L+4HeQ2iezKCi4f77kyslRwvHeNitymGQ+oFyIWGP96l/DPSV9w==}
 
+  '@types/node@20.19.20':
+    resolution: {integrity: sha512-2Q7WS25j4pS1cS8yw3d6buNCVJukOTeQ39bAnwR6sOJbaxvyCGebzTMypDFN82CxBLnl+lSWVdCCWbRY6y9yZQ==}
+
   '@types/papaparse@5.3.16':
     resolution: {integrity: sha512-T3VuKMC2H0lgsjI9buTB3uuKj3EMD2eap1MOuEQuBQ44EnDx/IkGhU6EwiTf9zG3za4SKlmwKAImdDKdNnCsXg==}
 
@@ -3527,6 +3520,9 @@ packages:
 
   '@types/uuid@9.0.8':
     resolution: {integrity: sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA==}
+
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -5572,8 +5568,8 @@ packages:
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
 
-  happy-dom@17.6.3:
-    resolution: {integrity: sha512-UVIHeVhxmxedbWPCfgS55Jg2rDfwf2BCKeylcPSqazLz5w3Kri7Q4xdBJubsr/+VUzFLh0VjIvh13RaDA2/Xug==}
+  happy-dom@20.0.0:
+    resolution: {integrity: sha512-GkWnwIFxVGCf2raNrxImLo397RdGhLapj5cT3R2PT7FwL62Ze1DROhzmYW7+J3p9105DYMVenEejEbnq5wA37w==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -8270,6 +8266,9 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
     engines: {node: '>=4'}
@@ -8495,10 +8494,6 @@ packages:
 
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
-
-  webidl-conversions@7.0.0:
-    resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
-    engines: {node: '>=12'}
 
   webpack-bundle-analyzer@4.10.1:
     resolution: {integrity: sha512-s3P7pgexgT/HTUSYgxJyn28A+99mmLq4HsJepMPzu0R8ImJc52QNqaFYW1Z2z2uIb1/J3eYgaAWVpaC+v/1aAQ==}
@@ -9807,12 +9802,6 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.9
     optional: true
 
-  '@dagrejs/dagre@1.1.5':
-    dependencies:
-      '@dagrejs/graphlib': 2.2.4
-
-  '@dagrejs/graphlib@2.2.4': {}
-
   '@discoveryjs/json-ext@0.5.7': {}
 
   '@emnapi/core@1.5.0':
@@ -10154,12 +10143,12 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@happy-dom/jest-environment@17.6.3':
+  '@happy-dom/jest-environment@20.0.0(@jest/environment@29.7.0)(@jest/fake-timers@29.7.0)(@jest/types@29.6.3)(jest-mock@29.7.0)(jest-util@29.7.0)':
     dependencies:
       '@jest/environment': 29.7.0
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      happy-dom: 17.6.3
+      happy-dom: 20.0.0
       jest-mock: 29.7.0
       jest-util: 29.7.0
 
@@ -12145,8 +12134,6 @@ snapshots:
       '@types/d3-transition': 3.0.9
       '@types/d3-zoom': 3.0.8
 
-  '@types/dagre@0.7.53': {}
-
   '@types/debug@4.1.12':
     dependencies:
       '@types/ms': 2.1.0
@@ -12241,6 +12228,10 @@ snapshots:
 
   '@types/node@18.15.0': {}
 
+  '@types/node@20.19.20':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/papaparse@5.3.16':
     dependencies:
       '@types/node': 18.15.0
@@ -12294,6 +12285,8 @@ snapshots:
   '@types/uuid@10.0.0': {}
 
   '@types/uuid@9.0.8': {}
+
+  '@types/whatwg-mimetype@3.0.2': {}
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -14713,9 +14706,10 @@ snapshots:
 
   hachure-fill@0.5.2: {}
 
-  happy-dom@17.6.3:
+  happy-dom@20.0.0:
     dependencies:
-      webidl-conversions: 7.0.0
+      '@types/node': 20.19.20
+      '@types/whatwg-mimetype': 3.0.2
       whatwg-mimetype: 3.0.0
 
   has-flag@4.0.0: {}
@@ -18137,6 +18131,8 @@ snapshots:
 
   uglify-js@3.19.3: {}
 
+  undici-types@6.21.0: {}
+
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
   unicode-match-property-ecmascript@2.0.0:
@@ -18362,8 +18358,6 @@ snapshots:
     optional: true
 
   webidl-conversions@4.0.2: {}
-
-  webidl-conversions@7.0.0: {}
 
   webpack-bundle-analyzer@4.10.1:
     dependencies:

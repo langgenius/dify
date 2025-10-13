@@ -69,7 +69,7 @@ def test_notion_page(mocker):
         ],
         "next_cursor": None,
     }
-    mocker.patch("requests.request", return_value=_mock_response(mocked_notion_page))
+    mocker.patch("httpx.request", return_value=_mock_response(mocked_notion_page))
 
     page_docs = extractor._load_data_as_documents(page_id, "page")
     assert len(page_docs) == 1
@@ -84,7 +84,7 @@ def test_notion_database(mocker):
         "results": [_generate_page(i) for i in page_title_list],
         "next_cursor": None,
     }
-    mocker.patch("requests.post", return_value=_mock_response(mocked_notion_database))
+    mocker.patch("httpx.post", return_value=_mock_response(mocked_notion_database))
     database_docs = extractor._load_data_as_documents(database_id, "database")
     assert len(database_docs) == 1
     content = _remove_multiple_new_lines(database_docs[0].page_content)

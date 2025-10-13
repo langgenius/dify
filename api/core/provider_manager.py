@@ -610,7 +610,7 @@ class ProviderManager:
 
             provider_quota_to_provider_record_dict = {}
             for provider_record in provider_records:
-                if provider_record.provider_type != ProviderType.SYSTEM.value:
+                if provider_record.provider_type != ProviderType.SYSTEM:
                     continue
 
                 provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
@@ -702,7 +702,7 @@ class ProviderManager:
         """Get custom provider configuration."""
         # Find custom provider record (non-system)
         custom_provider_record = next(
-            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM.value), None
+            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM), None
         )
 
         if not custom_provider_record:
@@ -905,7 +905,7 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}
         for provider_record in provider_records:
-            if provider_record.provider_type != ProviderType.SYSTEM.value:
+            if provider_record.provider_type != ProviderType.SYSTEM:
                 continue
 
             quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
@@ -1082,7 +1082,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables

@@ -24,7 +24,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
 
   return (
     <div
-      className="w-80 cursor-pointer rounded-br-xl rounded-tl-xl rounded-tr-xl border border-components-panel-border bg-components-panel-bg p-4 shadow-lg transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
+      className="w-80 cursor-pointer rounded-3xl rounded-bl-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[10px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
       onClick={onClick}
     >
       <div className="mb-3 flex items-center justify-between">
