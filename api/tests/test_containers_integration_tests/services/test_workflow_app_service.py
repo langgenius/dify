@@ -794,37 +794,29 @@ class TestWorkflowAppService:
         new_email = "changed@example.com"
         account.email = new_email
         db_session_with_containers.commit()
-        
+
         assert account.email == new_email
-        
+
         # Results for new email, is expected to be the same as the original email
         result_with_new_email = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers, 
-            app_model=app, 
-            created_by_account=new_email, 
-            page=1, 
-            limit=20
+            session=db_session_with_containers, app_model=app, created_by_account=new_email, page=1, limit=20
         )
         assert result_with_new_email["total"] == 3
         assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_with_new_email["data"])
-        
+
         # Old email unbound, is expected to be 0
         result_with_old_email = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers, 
-            app_model=app, 
-            created_by_account=original_email, 
-            page=1, 
-            limit=20
+            session=db_session_with_containers, app_model=app, created_by_account=original_email, page=1, limit=20
         )
         assert result_with_old_email["total"] == 0
 
         # Result with unknown email, is expected to be 0
         result_with_unknown_email = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers, 
-            app_model=app, 
-            created_by_account="unknown@example.com", 
-            page=1, 
-            limit=20
+            session=db_session_with_containers,
+            app_model=app,
+            created_by_account="unknown@example.com",
+            page=1,
+            limit=20,
         )
         assert result_with_unknown_email["total"] == 0
 

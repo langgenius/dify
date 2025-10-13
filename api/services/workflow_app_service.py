@@ -86,9 +86,7 @@ class WorkflowAppService:
                 ),
             )
         if created_by_account:
-            account = session.scalar(
-                select(Account).where(Account.email == created_by_account)
-            )
+            account = session.scalar(select(Account).where(Account.email == created_by_account))
             account_id = account.id if account else None
             stmt = stmt.join(
                 Account,
