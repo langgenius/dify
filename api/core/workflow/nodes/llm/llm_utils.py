@@ -92,7 +92,7 @@ def fetch_memory(
         return None
 
     # get conversation id
-    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value
@@ -143,7 +143,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                     Provider.tenant_id == tenant_id,
                     # TODO: Use provider name with prefix after the data migration.
                     Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                    Provider.provider_type == ProviderType.SYSTEM.value,
+                    Provider.provider_type == ProviderType.SYSTEM,
                     Provider.quota_type == system_configuration.current_quota_type.value,
                     Provider.quota_limit > Provider.quota_used,
                 )

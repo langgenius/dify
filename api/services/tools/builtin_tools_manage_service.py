@@ -680,7 +680,7 @@ class BuiltinToolManageService:
                     cache=NoOpProviderCredentialCache(),
                 )
                 original_params = encrypter.decrypt(custom_client_params.oauth_params)
-                new_params: dict = {
+                new_params = {
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }

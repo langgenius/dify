@@ -85,13 +85,13 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
             raise ValueError("prompt_messages must be a list")
 
         for i in range(len(v)):
-            if v[i]["role"] == PromptMessageRole.USER.value:
+            if v[i]["role"] == PromptMessageRole.USER:
                 v[i] = UserPromptMessage.model_validate(v[i])
-            elif v[i]["role"] == PromptMessageRole.ASSISTANT.value:
+            elif v[i]["role"] == PromptMessageRole.ASSISTANT:
                 v[i] = AssistantPromptMessage.model_validate(v[i])
-            elif v[i]["role"] == PromptMessageRole.SYSTEM.value:
+            elif v[i]["role"] == PromptMessageRole.SYSTEM:
                 v[i] = SystemPromptMessage.model_validate(v[i])
-            elif v[i]["role"] == PromptMessageRole.TOOL.value:
+            elif v[i]["role"] == PromptMessageRole.TOOL:
                 v[i] = ToolPromptMessage.model_validate(v[i])
             else:
                 v[i] = PromptMessage.model_validate(v[i])

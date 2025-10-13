@@ -1,10 +1,9 @@
 import {
   useCallback,
+  useEffect,
+  useMemo,
   useRef,
 } from 'react'
-import Link from 'next/link'
-import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import { BlockEnum } from '../types'
 import type {
   OnSelectBlock,
@@ -14,10 +13,12 @@ import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
 import Tools from './tools'
 import { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
-import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { getMarketplaceUrl } from '@/utils/var'
+import PluginList, { type ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { PluginType } from '../../plugins/types'
+import { useGetLanguage } from '@/context/i18n'
 
 type AllToolsProps = {
   className?: string
@@ -34,9 +35,26 @@ const DataSources = ({
   onSelect,
   dataSources,
 }: AllToolsProps) => {
-  const { t } = useTranslation()
+  const language = useGetLanguage()
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
+
+  const isMatchingKeywords = (text: string, keywords: string) => {
+    return text.toLowerCase().includes(keywords.toLowerCase())
+  }
+
+  const filteredDatasources = useMemo(() => {
+    const hasFilter = searchText
+    if (!hasFilter)
+      return dataSources.filter(toolWithProvider => toolWithProvider.tools.length > 0)
+
+    return dataSources.filter((toolWithProvider) => {
+      return isMatchingKeywords(toolWithProvider.name, searchText) || toolWithProvider.tools.some((tool) => {
+        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
+      })
+    })
+  }, [searchText, dataSources, language])
+
   const handleSelect = useCallback((_: BlockEnum, toolDefaultValue: ToolDefaultValue) => {
     let defaultValue: DataSourceDefaultValue = {
       plugin_id: toolDefaultValue?.provider_id,
@@ -55,7 +73,23 @@ const DataSources = ({
     }
     onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
   }, [onSelect])
+
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+
+  const {
+    queryPluginsWithDebounced: fetchPlugins,
+    plugins: notInstalledPlugins = [],
+  } = useMarketplacePlugins()
+
+  useEffect(() => {
+    if (!enable_marketplace) return
+    if (searchText) {
+      fetchPlugins({
+        query: searchText,
+        category: PluginType.datasource,
+      })
+    }
+  }, [searchText, enable_marketplace])
 
   return (
     <div className={cn(className)}>
@@ -66,24 +100,23 @@ const DataSources = ({
       >
         <Tools
           className={toolContentClassName}
-          tools={dataSources}
-          onSelect={handleSelect}
+          tools={filteredDatasources}
+          onSelect={handleSelect as OnSelectBlock}
           viewType={ViewType.flat}
           hasSearchText={!!searchText}
           canNotSelectMultiple
         />
-        {
-          enable_marketplace && (
-            <Link
-              className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
-              href={getMarketplaceUrl('')}
-              target='_blank'
-            >
-              <span>{t('plugin.findMoreInMarketplace')}</span>
-              <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
-            </Link>
-          )
-        }
+        {/* Plugins from marketplace */}
+        {enable_marketplace && (
+          <PluginList
+            ref={pluginRef}
+            wrapElemRef={wrapElemRef}
+            list={notInstalledPlugins}
+            tags={[]}
+            searchText={searchText}
+            toolContentClassName={toolContentClassName}
+          />
+        )}
       </div>
     </div>
   )

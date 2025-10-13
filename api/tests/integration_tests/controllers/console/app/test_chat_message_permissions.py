@@ -25,7 +25,7 @@ class TestChatMessageApiPermissions:
         """Create a mock App model for testing."""
         app = App()
         app.id = str(uuid.uuid4())
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
         app.status = "normal"
         return app

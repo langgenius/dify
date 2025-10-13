@@ -113,7 +113,7 @@ class ApiProviderAuthType(StrEnum):
         # normalize & tiny alias for backward compatibility
         v = (value or "").strip().lower()
         if v == "api_key":
-            v = cls.API_KEY_HEADER.value
+            v = cls.API_KEY_HEADER
 
         for mode in cls:
             if mode.value == v:
