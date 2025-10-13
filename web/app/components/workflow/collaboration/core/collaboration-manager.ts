@@ -372,6 +372,10 @@ export class CollaborationManager {
     return this.eventEmitter.on('appStateUpdate', callback)
   }
 
+  onAppMetaUpdate(callback: (update: any) => void): () => void {
+    return this.eventEmitter.on('appMetaUpdate', callback)
+  }
+
   onMcpServerUpdate(callback: (update: any) => void): () => void {
     return this.eventEmitter.on('mcpServerUpdate', callback)
   }
@@ -811,6 +815,10 @@ export class CollaborationManager {
       else if (update.type === 'app_state_update') {
         console.log('Processing app_state_update event:', update)
         this.eventEmitter.emit('appStateUpdate', update)
+      }
+      else if (update.type === 'app_meta_update') {
+        console.log('Processing app_meta_update event:', update)
+        this.eventEmitter.emit('appMetaUpdate', update)
       }
       else if (update.type === 'mcp_server_update') {
         console.log('Processing mcp_server_update event:', update)
