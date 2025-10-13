@@ -62,7 +62,7 @@ const ChatWrapper = () => {
         fileUploadConfig: (config as any).system_parameters,
       },
       supportFeedback: true,
-      opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
+      opening_statement: (config as any).opening_statement || currentConversationItem?.introduction,
     } as ChatConfig
   }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
@@ -158,7 +158,7 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
-    if (currentConversationId)
+    if (currentConversationId || chatList.length > 1)
       return chatList
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
