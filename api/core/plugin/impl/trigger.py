@@ -106,7 +106,7 @@ class PluginTriggerManager(BasePluginClient):
                     "event": event_name,
                     "credentials": credentials,
                     "credential_type": credential_type,
-                    "subscription": subscription,
+                    "subscription": subscription.model_dump(),
                     "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
                     "parameters": parameters,
                 },
