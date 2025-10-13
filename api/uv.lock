@@ -1529,7 +1529,7 @@ requires-dist = [
     { name = "opentelemetry-sdk", specifier = "==1.27.0" },
     { name = "opentelemetry-semantic-conventions", specifier = "==0.48b0" },
     { name = "opentelemetry-util-http", specifier = "==0.48b0" },
-    { name = "opik", specifier = "~=1.7.25" },
+    { name = "opik", specifier = "~=1.8.72" },
     { name = "packaging", specifier = "~=23.2" },
     { name = "pandas", extras = ["excel", "output-formatting", "performance"], specifier = "~=2.2.2" },
     { name = "psycogreen", specifier = "~=1.0.2" },
@@ -4055,7 +4055,7 @@ wheels = [
 
 [[package]]
 name = "opik"
-version = "1.7.43"
+version = "1.8.72"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3-stubs", extra = ["bedrock-runtime"] },
@@ -4074,9 +4074,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "uuid6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/52/cea0317bc3207bc967b48932781995d9cdb2c490e7e05caa00ff660f7205/opik-1.7.43.tar.gz", hash = "sha256:0b02522b0b74d0a67b141939deda01f8bb69690eda6b04a7cecb1c7f0649ccd0", size = 326886, upload-time = "2025-07-07T10:30:07.715Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/08/679b60db21994cf3318d4cdd1d08417c1877b79ac20971a8d80f118c9455/opik-1.8.72.tar.gz", hash = "sha256:26fcb003dc609d96b52eaf6a12fb16eb2b69eb0d1b35d88279ec612925d23944", size = 409774, upload-time = "2025-10-10T13:22:38.2Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/ae/f3566bdc3c49a1a8f795b1b6e726ef211c87e31f92d870ca6d63999c9bbf/opik-1.7.43-py3-none-any.whl", hash = "sha256:a66395c8b5ea7c24846f72dafc70c74d5b8f24ffbc4c8a1b3a7f9456e550568d", size = 625356, upload-time = "2025-07-07T10:30:06.389Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/f5/04d35af828d127de65a36286ce5b53e7310087a6b55a56f398daa7f0c9a6/opik-1.8.72-py3-none-any.whl", hash = "sha256:697e361a8364666f36aeb197aaba7ffa0696b49f04d2257b733d436749c90a8c", size = 768233, upload-time = "2025-10-10T13:22:36.352Z" },
 ]
 
 [[package]]
