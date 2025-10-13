@@ -23,6 +23,7 @@ import {
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import Banner from '../banner'
+import Button from '../../base/button'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -42,6 +43,12 @@ const Apps = ({
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
+
+  const hasFilterCondition = !!keywords
+  const handleResetFilter = useCallback(() => {
+    setKeywords('')
+    setSearchKeywords('')
+  }, [])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
@@ -150,7 +157,15 @@ const Apps = ({
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
       )}>
-        <div className={'system-xl-semibold grow truncate text-text-primary'}>{t('explore.apps.title')}</div>
+        <div className='flex items-center'>
+          <div className={'system-xl-semibold grow truncate text-text-primary'}>{!hasFilterCondition ? t('explore.apps.title') : t('explore.apps.resultNum', { num: searchFilteredList.length })}</div>
+          {hasFilterCondition && (
+            <>
+              <div className='mx-3 h-4 w-px bg-divider-regular'></div>
+              <Button size='medium' onClick={handleResetFilter}>{t('explore.apps.resetFilter')}</Button>
+            </>
+          )}
+        </div>
         <Input
           showLeftIcon
           showClearIcon

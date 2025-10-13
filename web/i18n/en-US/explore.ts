@@ -18,6 +18,8 @@ const translation = {
   apps: {
     title: 'Try Dify\'s curated apps to find AI solutions for your business',
     allCategories: 'All',
+    resultNum: '{{num}} results',
+    resetFilter: 'Clear filter',
   },
   appCard: {
     addToWorkspace: 'Add to Workspace',

@@ -18,6 +18,8 @@ const translation = {
   apps: {
     title: '试用 Dify 精选示例应用，为您的业务寻找 AI 解决方案',
     allCategories: '所有',
+    resultNum: '{{num}} 个结果',
+    resetFilter: '清除筛选',
   },
   appCard: {
     addToWorkspace: '添加到工作区',

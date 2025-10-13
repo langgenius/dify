@@ -18,6 +18,8 @@ const translation = {
   apps: {
     title: 'Difyの厳選アプリを試して、ビジネス向けのAIソリューションを見つけましょう',
     allCategories: '全て',
+    resultNum: '{{num}}件の結果',
+    resetFilter: 'クリア',
   },
   appCard: {
     addToWorkspace: 'ワークスペースに追加',
