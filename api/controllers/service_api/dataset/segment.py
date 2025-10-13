@@ -408,8 +408,6 @@ class ChildChunkApi(DatasetApiResource):
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
 class DatasetChildChunkApi(DatasetApiResource):
-    current_user, current_tenant_id = current_account_with_tenant()
-
     """Resource for updating child chunks."""
 
     @service_api_ns.doc("delete_child_chunk")
