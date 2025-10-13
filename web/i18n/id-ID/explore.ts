@@ -10,7 +10,6 @@ const translation = {
       content: 'Apakah Anda yakin ingin menghapus aplikasi ini?',
       title: 'Hapus aplikasi',
     },
-    workspace: 'Workspace',
     chat: 'Mengobrol',
   },
   apps: {

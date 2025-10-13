@@ -2,7 +2,6 @@ const translation = {
   title: 'Keşfet',
   sidebar: {
     chat: 'Sohbet',
-    workspace: 'Çalışma Alanı',
     action: {
       pin: 'Sabitle',
       unpin: 'Sabitlemeyi Kaldır',

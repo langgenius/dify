@@ -2,7 +2,6 @@ const translation = {
   title: 'Badać',
   sidebar: {
     chat: 'Chat',
-    workspace: 'Espaço de Trabalho',
     action: {
       pin: 'Fixar',
       unpin: 'Desafixar',

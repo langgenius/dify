@@ -2,7 +2,6 @@ const translation = {
   title: 'Razišči',
   sidebar: {
     chat: 'Klepet',
-    workspace: 'Delovni prostor',
     action: {
       pin: 'Pripni',
       unpin: 'Odpni',

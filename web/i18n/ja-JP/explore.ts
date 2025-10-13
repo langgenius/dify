@@ -3,7 +3,7 @@ const translation = {
   sidebar: {
     title: 'アプリギャラリー',
     chat: 'チャット',
-    workspace: 'ワークスペース',
+    webApps: 'Webアプリ',
     action: {
       pin: 'ピン留め',
       unpin: 'ピン留め解除',

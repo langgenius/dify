@@ -2,7 +2,6 @@ const translation = {
   title: 'کاوش',
   sidebar: {
     chat: 'چت',
-    workspace: 'فضای کاری',
     action: {
       pin: 'سنجاق کردن',
       unpin: 'برداشتن سنجاق',

@@ -2,7 +2,6 @@ const translation = {
   title: 'Khám phá',
   sidebar: {
     chat: 'Trò chuyện',
-    workspace: 'Không gian làm việc',
     action: {
       pin: 'Ghim',
       unpin: 'Bỏ ghim',

@@ -2,7 +2,6 @@ const translation = {
   title: '탐색',
   sidebar: {
     chat: '채팅',
-    workspace: '작업 공간',
     action: {
       pin: '고정',
       unpin: '고정 해제',

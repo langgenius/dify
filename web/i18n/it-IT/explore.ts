@@ -2,7 +2,6 @@ const translation = {
   title: 'Esplora',
   sidebar: {
     chat: 'Chat',
-    workspace: 'Workspace',
     action: {
       pin: 'Fissa',
       unpin: 'Sblocca',

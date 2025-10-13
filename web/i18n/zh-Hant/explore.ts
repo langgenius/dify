@@ -2,7 +2,6 @@ const translation = {
   title: '探索',
   sidebar: {
     chat: '智聊',
-    workspace: '工作區',
     action: {
       pin: '置頂',
       unpin: '取消置頂',

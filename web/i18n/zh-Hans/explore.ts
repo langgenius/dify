@@ -3,7 +3,7 @@ const translation = {
   sidebar: {
     title: '应用库',
     chat: '智聊',
-    workspace: '工作区',
+    webApps: 'WEB APPS',
     action: {
       pin: '置顶',
       unpin: '取消置顶',

@@ -2,7 +2,6 @@ const translation = {
   title: 'สํารวจ',
   sidebar: {
     chat: 'สนทนา',
-    workspace: 'พื้นที่',
     action: {
       pin: 'เข็มกลัด',
       unpin: 'ปลดหมุด',

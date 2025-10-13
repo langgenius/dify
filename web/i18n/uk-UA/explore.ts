@@ -2,7 +2,6 @@ const translation = {
   title: 'Досліджувати',
   sidebar: {
     chat: 'Чат',
-    workspace: 'Робочий простір',
     action: {
       pin: 'Закріпити',
       unpin: 'Відкріпити',

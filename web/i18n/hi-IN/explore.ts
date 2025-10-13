@@ -2,7 +2,6 @@ const translation = {
   title: 'अन्वेषण करें',
   sidebar: {
     chat: 'चैट',
-    workspace: 'कार्यक्षेत्र',
     action: {
       pin: 'पिन करें',
       unpin: 'पिन हटाएँ',
