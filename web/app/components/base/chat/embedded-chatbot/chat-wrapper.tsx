@@ -62,9 +62,9 @@ const ChatWrapper = () => {
         fileUploadConfig: (config as any).system_parameters,
       },
       supportFeedback: true,
-      opening_statement: (config as any).opening_statement || currentConversationItem?.introduction,
+      opening_statement: currentConversationItem?.introduction || (config as any).opening_statement,
     } as ChatConfig
-  }, [appParams, currentConversationItem?.introduction, currentConversationId])
+  }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
     setTargetMessageId,
@@ -160,6 +160,7 @@ const ChatWrapper = () => {
   const messageList = useMemo(() => {
     if (currentConversationId || chatList.length > 1)
       return chatList
+    // Without messages we are in the welcome screen, so hide the opening statement from chatlist
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
