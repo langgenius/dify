@@ -15,13 +15,14 @@ import {
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { RiArrowUpLine, RiAtLine, RiCommandLine, RiCornerDownLeftLine, RiLoader2Line } from '@remixicon/react'
+import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
 import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
 import cn from '@/utils/classnames'
 import { type UserProfile, fetchMentionableUsers } from '@/service/workflow-comment'
 import { useStore, useWorkflowStore } from '../store'
+import { EnterKey } from '@/app/components/base/icons/src/public/common'
 
 type MentionInputProps = {
   value: string
@@ -588,10 +589,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
                 {loading && <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />}
                 <span>{t('common.operation.save')}</span>
                 {!loading && (
-                  <div className='flex gap-0.5'>
-                    <RiCommandLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
-                    <RiCornerDownLeftLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
-                  </div>
+                  <EnterKey className='h-4 w-4' />
                 )}
               </Button>
             </div>
