@@ -245,7 +245,7 @@ class WeaviateVector(BaseVector):
             objs.append(
                 DataObject(
                     uuid=uid,
-                    properties=props, # type: ignore[arg-type]  # mypy incorrectly infers DataObject signature
+                    properties=props,  # type: ignore[arg-type]  # mypy incorrectly infers DataObject signature
                     vector=vec_payload,
                 )
             )
