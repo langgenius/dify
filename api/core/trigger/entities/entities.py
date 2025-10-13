@@ -155,7 +155,8 @@ class TriggerProviderEntity(BaseModel):
         default_factory=list,
         description="The configuration schema stored in the subscription entity",
     )
-    subscription_constructor: SubscriptionConstructor = Field(
+    subscription_constructor: SubscriptionConstructor | None = Field(
+        default=None,
         description="The subscription constructor of the trigger provider",
     )
     events: list[EventEntity] = Field(default=[], description="The events of the trigger provider")

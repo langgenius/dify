@@ -25,6 +25,18 @@ from services.trigger.workflow_plugin_trigger_service import WorkflowPluginTrigg
 logger = logging.getLogger(__name__)
 
 
+class TriggerProviderIconApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        user = current_user
+        assert isinstance(user, Account)
+        assert user.current_tenant_id is not None
+
+        return TriggerManager.get_trigger_plugin_icon(tenant_id=user.current_tenant_id, provider_id=provider)
+
+
 class TriggerProviderListApi(Resource):
     @setup_required
     @login_required
@@ -534,6 +546,7 @@ class TriggerOAuthClientManageApi(Resource):
 
 
 # Trigger Subscription
+api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
 api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
 api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
 api.add_resource(TriggerSubscriptionListApi, "/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")

@@ -8,9 +8,11 @@ from threading import Lock
 from typing import Any
 
 from flask import Request
+from yarl import URL
 
 import contexts
-from core.plugin.entities.plugin_daemon import CredentialType
+from configs import dify_config
+from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
@@ -29,6 +31,26 @@ class TriggerManager:
     """
     Manager for trigger providers and triggers
     """
+
+    @classmethod
+    def get_trigger_plugin_icon(cls, tenant_id: str, provider_id: str) -> str:
+        """
+        Get the icon of a trigger plugin
+        """
+        manager = PluginTriggerManager()
+        provider: PluginTriggerProviderEntity = manager.fetch_trigger_provider(
+            tenant_id=tenant_id, provider_id=TriggerProviderID(provider_id)
+        )
+        return str(
+            URL(dify_config.CONSOLE_API_URL or "/")
+            / "console"
+            / "api"
+            / "workspaces"
+            / "current"
+            / "plugin"
+            / "icon"
+            % {"tenant_id": tenant_id, "filename": provider.declaration.identity.icon}
+        )
 
     @classmethod
     def list_plugin_trigger_providers(cls, tenant_id: str) -> list[PluginTriggerProviderController]:

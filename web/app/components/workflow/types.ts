@@ -104,6 +104,7 @@ export type CommonNodeType<T = {}> = {
   default_value?: DefaultValueForm[]
   credential_id?: string
   subscription_id?: string
+  provider_id?: string
   _dimmed?: boolean
 } & T & Partial<PluginDefaultValue>
 

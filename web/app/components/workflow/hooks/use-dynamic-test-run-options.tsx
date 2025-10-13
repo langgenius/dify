@@ -7,7 +7,6 @@ import type { TestRunOptions, TriggerOption } from '../header/test-run-menu'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '../block-icon'
 import { useStore } from '../store'
-import { canFindTool } from '@/utils'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 
 export const useDynamicTestRunOptions = (): TestRunOptions => {
@@ -74,18 +73,18 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         })
       }
       else if (nodeData.type === BlockEnum.TriggerPlugin) {
-        let toolIcon: string | any
+        let triggerIcon: string | any
 
         if (nodeData.provider_id) {
-          const targetTools = triggerPlugins || []
-          toolIcon = targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, nodeData.provider_id!))?.icon
+          const targetTriggers = triggerPlugins || []
+          triggerIcon = targetTriggers.find(toolWithProvider => toolWithProvider.name === nodeData.provider_id)?.icon
         }
 
         const icon = (
           <BlockIcon
             type={BlockEnum.TriggerPlugin}
             size='md'
-            toolIcon={toolIcon}
+            toolIcon={triggerIcon}
           />
         )
 
