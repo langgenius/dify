@@ -16,24 +16,13 @@ import { checkKeys } from '@/utils/var'
 import type { StructuredOutput } from '../../../llm/types'
 import { Type } from '../../../llm/types'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
-import { varTypeToStructType } from './utils'
+import { isSpecialVar, varTypeToStructType } from './utils'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
-import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { noop } from 'lodash-es'
 import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
+import ManageInputField from './manage-input-field'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-
-type ObjectChildrenProps = {
-  nodeId: string
-  title: string
-  data: Var[]
-  objPath: string[]
-  onChange: (value: ValueSelector, item: Var) => void
-  onHovering?: (value: boolean) => void
-  itemWidth?: number
-  isSupportFileVar?: boolean
-}
 
 type ItemProps = {
   nodeId: string
@@ -50,9 +39,8 @@ type ItemProps = {
   isInCodeGeneratorInstructionEditor?: boolean
   zIndex?: number
   className?: string
+  preferSchemaType?: boolean
 }
-
-const objVarTypes = [VarType.object, VarType.file]
 
 const Item: FC<ItemProps> = ({
   nodeId,
@@ -68,6 +56,7 @@ const Item: FC<ItemProps> = ({
   isInCodeGeneratorInstructionEditor,
   zIndex,
   className,
+  preferSchemaType,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -75,6 +64,7 @@ const Item: FC<ItemProps> = ({
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
+  const isRagVariable = itemData.isRagVariable
   const flatVarIcon = useMemo(() => {
     if (!isFlat)
       return null
@@ -101,8 +91,9 @@ const Item: FC<ItemProps> = ({
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
-    const properties: Record<string, Field> = {};
-    (isFile ? FILE_STRUCT : (itemData.children as Var[])).forEach((c) => {
+    const properties: Record<string, Field> = {}
+    const childrenVars = (itemData.children as Var[]) || []
+    childrenVars.forEach((c) => {
       properties[c.variable] = {
         type: varTypeToStructType(c.type),
       }
@@ -115,7 +106,7 @@ const Item: FC<ItemProps> = ({
         additionalProperties: false,
       },
     }
-  }, [isFile, isObj, itemData.children])
+  }, [isObj, itemData.children])
 
   const structuredOutput = (() => {
     if (isStructureOutput)
@@ -146,7 +137,7 @@ const Item: FC<ItemProps> = ({
   const isHovering = isItemHovering || isChildrenHovering
   const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
-    onHovering && onHovering(isHovering)
+    onHovering?.(isHovering)
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -157,7 +148,7 @@ const Item: FC<ItemProps> = ({
     if (isFlat) {
       onChange([itemData.variable], itemData)
     }
-    else if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
+    else if (isSys || isEnv || isChatVar || isRagVariable) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
     else {
@@ -168,8 +159,9 @@ const Item: FC<ItemProps> = ({
     if (isEnv) return 'environment'
     if (isChatVar) return 'conversation'
     if (isLoopVar) return 'loop'
+    if (isRagVariable) return 'rag'
     return 'system'
-  }, [isEnv, isChatVar, isSys, isLoopVar])
+  }, [isEnv, isChatVar, isSys, isLoopVar, isRagVariable])
   return (
     <PortalToFollowElem
       open={open}
@@ -200,7 +192,7 @@ const Item: FC<ItemProps> = ({
             />}
             {isFlat && flatVarIcon}
 
-            {!isEnv && !isChatVar && (
+            {!isEnv && !isChatVar && !isRagVariable && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{varName}</div>
             )}
             {isEnv && (
@@ -209,8 +201,11 @@ const Item: FC<ItemProps> = ({
             {isChatVar && (
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
             )}
+            {isRagVariable && (
+              <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.split('.').slice(-1)[0]}</div>
+            )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
           {
             (isObj || isStructureOutput) && (
               <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
@@ -223,7 +218,7 @@ const Item: FC<ItemProps> = ({
       }}>
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
-            root={{ nodeId, nodeName: title, attrName: itemData.variable }}
+            root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.schemaType }}
             payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {
@@ -233,66 +228,6 @@ const Item: FC<ItemProps> = ({
         )}
       </PortalToFollowElemContent>
     </PortalToFollowElem >
-  )
-}
-
-const ObjectChildren: FC<ObjectChildrenProps> = ({
-  title,
-  nodeId,
-  objPath,
-  data,
-  onChange,
-  onHovering,
-  itemWidth,
-  isSupportFileVar,
-}) => {
-  const currObjPath = objPath
-  const itemRef = useRef<HTMLDivElement>(null)
-  const [isItemHovering, setIsItemHovering] = useState(false)
-  useHover(itemRef, {
-    onChange: (hovering) => {
-      if (hovering) {
-        setIsItemHovering(true)
-      }
-      else {
-        setTimeout(() => {
-          setIsItemHovering(false)
-        }, 100)
-      }
-    },
-  })
-  const [isChildrenHovering, setIsChildrenHovering] = useState(false)
-  const isHovering = isItemHovering || isChildrenHovering
-  useEffect(() => {
-    onHovering && onHovering(isHovering)
-  }, [isHovering])
-  useEffect(() => {
-    onHovering && onHovering(isItemHovering)
-  }, [isItemHovering])
-  // absolute top-[-2px]
-  return (
-    <div ref={itemRef} className=' space-y-1 rounded-lg border border-gray-200 bg-white shadow-lg' style={{
-      right: itemWidth ? itemWidth - 10 : 215,
-      minWidth: 252,
-    }}>
-      <div className='flex h-[22px] items-center px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
-      {
-        (data && data.length > 0)
-        && data.map((v, i) => (
-          <Item
-            key={i}
-            nodeId={nodeId}
-            title={title}
-            objPath={objPath}
-            itemData={v}
-            onChange={onChange}
-            onHovering={setIsChildrenHovering}
-            isSupportFileVar={isSupportFileVar}
-            isException={v.isException}
-          />
-        ))
-      }
-    </div>
   )
 }
 
@@ -308,7 +243,10 @@ type Props = {
   onBlur?: () => void
   zIndex?: number
   isInCodeGeneratorInstructionEditor?: boolean
+  showManageInputField?: boolean
+  onManageInputField?: () => void
   autoFocus?: boolean
+  preferSchemaType?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -322,7 +260,10 @@ const VarReferenceVars: FC<Props> = ({
   onBlur,
   zIndex,
   isInCodeGeneratorInstructionEditor,
+  showManageInputField,
+  onManageInputField,
   autoFocus = true,
+  preferSchemaType,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -335,7 +276,7 @@ const VarReferenceVars: FC<Props> = ({
   }
 
   const filteredVars = vars.filter((v) => {
-    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
+    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
     return children.length > 0
   }).filter((node) => {
     if (!searchText)
@@ -346,7 +287,7 @@ const VarReferenceVars: FC<Props> = ({
     })
     return children.length > 0
   }).map((node) => {
-    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
+    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
     if (searchText) {
       const searchTextLower = searchText.toLowerCase()
       if (!node.title.toLowerCase().includes(searchTextLower))
@@ -412,6 +353,7 @@ const VarReferenceVars: FC<Props> = ({
                     isFlat={item.isFlat}
                     isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                     zIndex={zIndex}
+                    preferSchemaType={preferSchemaType}
                   />
                 ))}
                 {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
@@ -425,7 +367,15 @@ const VarReferenceVars: FC<Props> = ({
           }
         </div>
         : <div className='mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
+      {
+        showManageInputField && (
+          <ManageInputField
+            onManage={onManageInputField || noop}
+          />
+        )
+      }
     </>
   )
 }
+
 export default React.memo(VarReferenceVars)

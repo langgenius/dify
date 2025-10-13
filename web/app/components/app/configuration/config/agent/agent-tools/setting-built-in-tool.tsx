@@ -120,6 +120,8 @@ const SettingBuiltInTool: FC<Props> = ({
       return t('tools.setBuiltInTools.number')
     if (type === 'text-input')
       return t('tools.setBuiltInTools.string')
+    if (type === 'checkbox')
+      return 'boolean'
     if (type === 'file')
       return t('tools.setBuiltInTools.file')
     return type

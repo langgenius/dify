@@ -3,11 +3,12 @@ import sys
 from collections.abc import Mapping
 from typing import Any
 
-from flask import current_app, got_request_exception
+from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
+from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 
 
@@ -15,7 +16,7 @@ def http_status_message(code):
     return HTTP_STATUS_CODES.get(code, "")
 
 
-def register_external_error_handlers(api: Api) -> None:
+def register_external_error_handlers(api: Api):
     @api.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
@@ -68,6 +69,8 @@ def register_external_error_handlers(api: Api) -> None:
                 headers["WWW-Authenticate"] = 'Bearer realm="api"'
             return data, status_code, headers
 
+    _ = handle_http_exception
+
     @api.errorhandler(ValueError)
     def handle_value_error(e: ValueError):
         got_request_exception.send(current_app, exception=e)
@@ -75,12 +78,16 @@ def register_external_error_handlers(api: Api) -> None:
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
         return data, status_code
 
+    _ = handle_value_error
+
     @api.errorhandler(AppInvokeQuotaExceededError)
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
         got_request_exception.send(current_app, exception=e)
         status_code = 429
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
         return data, status_code
+
+    _ = handle_quota_exceeded
 
     @api.errorhandler(Exception)
     def handle_general_exception(e: Exception):
@@ -90,7 +97,7 @@ def register_external_error_handlers(api: Api) -> None:
         data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
 
         # 🔒 Normalize non-mapping data (e.g., if someone set e.data = Response)
-        if not isinstance(data, Mapping):
+        if not isinstance(data, dict):
             data = {"message": str(e)}
 
         data.setdefault("code", "unknown")
@@ -104,8 +111,26 @@ def register_external_error_handlers(api: Api) -> None:
 
         return data, status_code
 
+    _ = handle_general_exception
+
 
 class ExternalApi(Api):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    _authorizations = {
+        "Bearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Type: Bearer {your-api-key}",
+        }
+    }
+
+    def __init__(self, app: Blueprint | Flask, *args, **kwargs):
+        kwargs.setdefault("authorizations", self._authorizations)
+        kwargs.setdefault("security", "Bearer")
+        kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
+        kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
+
+        # manual separate call on construction and init_app to ensure configs in kwargs effective
+        super().__init__(app=None, *args, **kwargs)  # type: ignore
+        self.init_app(app, **kwargs)
         register_external_error_handlers(self)

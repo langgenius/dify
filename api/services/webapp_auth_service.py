@@ -1,7 +1,7 @@
 import enum
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any
 
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -36,13 +36,13 @@ class WebAppAuthService:
         if not account:
             raise AccountNotFoundError()
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
-        return cast(Account, account)
+        return account
 
     @classmethod
     def login(cls, account: Account) -> str:
@@ -56,14 +56,14 @@ class WebAppAuthService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: str = "en-US"
+        cls, account: Account | None = None, email: str | None = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:
@@ -82,7 +82,7 @@ class WebAppAuthService:
         return token
 
     @classmethod
-    def get_email_code_login_data(cls, token: str) -> Optional[dict[str, Any]]:
+    def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
 
     @classmethod
@@ -113,7 +113,7 @@ class WebAppAuthService:
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account) -> str:
-        exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
+        exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
         exp = int(exp_dt.timestamp())
 
         payload = {
@@ -130,7 +130,7 @@ class WebAppAuthService:
 
     @classmethod
     def is_app_require_permission_check(
-        cls, app_code: Optional[str] = None, app_id: Optional[str] = None, access_mode: Optional[str] = None
+        cls, app_code: str | None = None, app_id: str | None = None, access_mode: str | None = None
     ) -> bool:
         """
         Check if the app requires permission check based on its access mode.

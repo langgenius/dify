@@ -4,12 +4,11 @@ import re
 import threading
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Float, and_, or_, text
+from sqlalchemy import Float, and_, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -62,10 +61,10 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-    "top_k": 2,
+    "top_k": 4,
     "score_threshold_enabled": False,
 }
 
@@ -86,9 +85,9 @@ class DatasetRetrieval:
         show_retrieve_source: bool,
         hit_callback: DatasetIndexToolCallbackHandler,
         message_id: str,
-        memory: Optional[TokenBufferMemory] = None,
-        inputs: Optional[Mapping[str, Any]] = None,
-    ) -> Optional[str]:
+        memory: TokenBufferMemory | None = None,
+        inputs: Mapping[str, Any] | None = None,
+    ) -> str | None:
         """
         Retrieve dataset.
         :param app_id: app_id
@@ -135,7 +134,8 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             # pass if dataset is not available
             if not dataset:
@@ -240,15 +240,12 @@ class DatasetRetrieval:
                     for record in records:
                         segment = record.segment
                         dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                        document = (
-                            db.session.query(DatasetDocument)
-                            .where(
-                                DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
-                            )
-                            .first()
+                        dataset_document_stmt = select(DatasetDocument).where(
+                            DatasetDocument.id == segment.document_id,
+                            DatasetDocument.enabled == True,
+                            DatasetDocument.archived == False,
                         )
+                        document = db.session.scalar(dataset_document_stmt)
                         if dataset and document:
                             source = RetrievalSourceMetadata(
                                 dataset_id=dataset.id,
@@ -293,9 +290,9 @@ class DatasetRetrieval:
         model_instance: ModelInstance,
         model_config: ModelConfigWithCredentialsEntity,
         planning_strategy: PlanningStrategy,
-        message_id: Optional[str] = None,
-        metadata_filter_document_ids: Optional[dict[str, list[str]]] = None,
-        metadata_condition: Optional[MetadataCondition] = None,
+        message_id: str | None = None,
+        metadata_filter_document_ids: dict[str, list[str]] | None = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         tools = []
         for dataset in available_datasets:
@@ -327,7 +324,8 @@ class DatasetRetrieval:
 
         if dataset_id:
             # get retrieval model config
-            dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
             if dataset:
                 results = []
                 if dataset.provider == "external":
@@ -366,7 +364,7 @@ class DatasetRetrieval:
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
                     if dataset.indexing_technique == "economy":
-                        retrieval_method = "keyword_search"
+                        retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
                     # get reranking model
@@ -412,12 +410,12 @@ class DatasetRetrieval:
         top_k: int,
         score_threshold: float,
         reranking_mode: str,
-        reranking_model: Optional[dict] = None,
-        weights: Optional[dict[str, Any]] = None,
+        reranking_model: dict | None = None,
+        weights: dict[str, Any] | None = None,
         reranking_enable: bool = True,
-        message_id: Optional[str] = None,
-        metadata_filter_document_ids: Optional[dict[str, list[str]]] = None,
-        metadata_condition: Optional[MetadataCondition] = None,
+        message_id: str | None = None,
+        metadata_filter_document_ids: dict[str, list[str]] | None = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         if not available_datasets:
             return []
@@ -507,31 +505,25 @@ class DatasetRetrieval:
 
         return all_documents
 
-    def _on_retrieval_end(
-        self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
-    ) -> None:
+    def _on_retrieval_end(self, documents: list[Document], message_id: str | None = None, timer: dict | None = None):
         """Handle retrieval end."""
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
             if document.metadata is not None:
-                dataset_document = (
-                    db.session.query(DatasetDocument)
-                    .where(DatasetDocument.id == document.metadata["document_id"])
-                    .first()
+                dataset_document_stmt = select(DatasetDocument).where(
+                    DatasetDocument.id == document.metadata["document_id"]
                 )
+                dataset_document = db.session.scalar(dataset_document_stmt)
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                        child_chunk = (
-                            db.session.query(ChildChunk)
-                            .where(
-                                ChildChunk.index_node_id == document.metadata["doc_id"],
-                                ChildChunk.dataset_id == dataset_document.dataset_id,
-                                ChildChunk.document_id == dataset_document.id,
-                            )
-                            .first()
+                        child_chunk_stmt = select(ChildChunk).where(
+                            ChildChunk.index_node_id == document.metadata["doc_id"],
+                            ChildChunk.dataset_id == dataset_document.dataset_id,
+                            ChildChunk.document_id == dataset_document.id,
                         )
+                        child_chunk = db.session.scalar(child_chunk_stmt)
                         if child_chunk:
-                            segment = (
+                            _ = (
                                 db.session.query(DocumentSegment)
                                 .where(DocumentSegment.id == child_chunk.segment_id)
                                 .update(
@@ -539,7 +531,6 @@ class DatasetRetrieval:
                                     synchronize_session=False,
                                 )
                             )
-                            db.session.commit()
                     else:
                         query = db.session.query(DocumentSegment).where(
                             DocumentSegment.index_node_id == document.metadata["doc_id"]
@@ -567,7 +558,7 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
+    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
         """
         Handle query.
         """
@@ -595,12 +586,12 @@ class DatasetRetrieval:
         query: str,
         top_k: int,
         all_documents: list,
-        document_ids_filter: Optional[list[str]] = None,
-        metadata_condition: Optional[MetadataCondition] = None,
+        document_ids_filter: list[str] | None = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         with flask_app.app_context():
-            with Session(db.engine) as session:
-                dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             if not dataset:
                 return []
@@ -632,7 +623,7 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search",
+                        retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                         dataset_id=dataset.id,
                         query=query,
                         top_k=top_k,
@@ -647,7 +638,7 @@ class DatasetRetrieval:
                             retrieval_method=retrieval_model["search_method"],
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=retrieval_model.get("top_k") or 2,
+                            top_k=retrieval_model.get("top_k") or 4,
                             score_threshold=retrieval_model.get("score_threshold", 0.0)
                             if retrieval_model["score_threshold_enabled"]
                             else 0.0,
@@ -671,7 +662,7 @@ class DatasetRetrieval:
         hit_callback: DatasetIndexToolCallbackHandler,
         user_id: str,
         inputs: dict,
-    ) -> Optional[list[DatasetRetrieverBaseTool]]:
+    ) -> list[DatasetRetrieverBaseTool] | None:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param tenant_id: tenant id
@@ -685,7 +676,8 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.scalar(dataset_stmt)
 
             # pass if dataset is not available
             if not dataset:
@@ -700,7 +692,7 @@ class DatasetRetrieval:
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
             default_retrieval_model = {
-                "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+                "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                 "reranking_enable": False,
                 "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
                 "top_k": 2,
@@ -743,7 +735,7 @@ class DatasetRetrieval:
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,
-                top_k=retrieve_config.top_k or 2,
+                top_k=retrieve_config.top_k or 4,
                 score_threshold=retrieve_config.score_threshold,
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,
@@ -859,9 +851,9 @@ class DatasetRetrieval:
         user_id: str,
         metadata_filtering_mode: str,
         metadata_model_config: ModelConfig,
-        metadata_filtering_conditions: Optional[MetadataFilteringCondition],
+        metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
-    ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
+    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
         document_query = db.session.query(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
@@ -956,9 +948,10 @@ class DatasetRetrieval:
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
-    ) -> Optional[list[dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | None:
         # get all metadata field
-        metadata_fields = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
+        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.scalars(metadata_stmt).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:
@@ -990,7 +983,7 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []
@@ -1005,12 +998,12 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
+        except Exception:
             return None
         return automatic_metadata_filters
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
+        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return

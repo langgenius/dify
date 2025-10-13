@@ -24,7 +24,7 @@ type ConditionValueProps = {
   variableSelector: string[]
   labelName?: string
   operator: ComparisonOperator
-  value: string | string[]
+  value: string | string[] | boolean
 }
 const ConditionValue = ({
   variableSelector,
@@ -45,6 +45,9 @@ const ConditionValue = ({
 
     if (Array.isArray(value)) // transfer method
       return value[0]
+
+    if(value === true || value === false)
+      return value ? 'True' : 'False'
 
     return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
       const arr: string[] = b.split('.')

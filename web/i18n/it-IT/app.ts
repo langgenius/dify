@@ -80,6 +80,7 @@ const translation = {
     advancedShortDescription: 'Flusso di lavoro migliorato per conversazioni multiple',
     chooseAppType: 'Scegli un tipo di app',
     dropDSLToCreateApp: 'Trascina il file DSL qui per creare l\'app',
+    import: 'Importazione',
   },
   editApp: 'Modifica Info',
   editAppTitle: 'Modifica Info App',
@@ -283,6 +284,10 @@ const translation = {
       runDesc: 'Esegui comandi rapidi (tema, lingua, ...)',
       themeSystemDesc: 'Segui l\'aspetto del tuo sistema operativo',
       slashDesc: 'Esegui comandi come /theme, /lang',
+      communityDesc: 'Apri la community di Discord',
+      accountDesc: 'Vai alla pagina dell\'account',
+      feedbackDesc: 'Discussioni di feedback della comunità aperta',
+      docDesc: 'Apri la documentazione di aiuto',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Nessuna base di conoscenza trovata',
@@ -317,6 +322,11 @@ const translation = {
     inScope: 'in {{scope}}s',
     tryDifferentSearch: 'Prova un termine di ricerca diverso',
     noMatchingCommands: 'Nessun comando corrispondente trovato',
+    slashHint: 'Digita / per vedere tutti i comandi disponibili',
+    selectToNavigate: 'Seleziona per navigare',
+    startTyping: 'Inizia a digitare per cercare',
+    tips: 'Premi ↑↓ per navigare',
+    pressEscToClose: 'Premi ESC per chiudere',
   },
 }
 

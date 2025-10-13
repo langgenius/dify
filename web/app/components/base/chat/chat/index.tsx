@@ -166,8 +166,13 @@ const Chat: FC<ChatProps> = ({
   })
 
   useEffect(() => {
-    window.addEventListener('resize', debounce(handleWindowResize))
-    return () => window.removeEventListener('resize', handleWindowResize)
+    const debouncedHandler = debounce(handleWindowResize, 200)
+    window.addEventListener('resize', debouncedHandler)
+
+    return () => {
+      window.removeEventListener('resize', debouncedHandler)
+      debouncedHandler.cancel()
+    }
   }, [handleWindowResize])
 
   useEffect(() => {

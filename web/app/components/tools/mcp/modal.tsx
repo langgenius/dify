@@ -3,12 +3,14 @@ import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDomain } from 'tldts'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import HeadersInput from './headers-input'
 import type { AppIconType } from '@/types/app'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { noop } from 'lodash-es'
@@ -16,6 +18,7 @@ import Toast from '@/app/components/base/toast'
 import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
+import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -29,11 +32,12 @@ export type DuplicateAppModalProps = {
     server_identifier: string
     timeout: number
     sse_read_timeout: number
+    headers?: Record<string, string>
   }) => void
   onHide: () => void
 }
 
-const DEFAULT_ICON = { type: 'emoji', icon: '🧿', background: '#EFF1F5' }
+const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
 const extractFileId = (url: string) => {
   const match = url.match(/files\/(.+?)\/file-preview/)
   return match ? match[1] : null
@@ -63,18 +67,44 @@ const MCPModal = ({
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
-  const [timeout, setMcpTimeout] = React.useState(30)
-  const [sseReadTimeout, setSseReadTimeout] = React.useState(300)
+  const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
+  const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.sse_read_timeout || 300)
+  const [headers, setHeaders] = React.useState<Record<string, string>>(
+    data?.masked_headers || {},
+  )
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
 
+  // Update states when data changes (for edit mode)
+  React.useEffect(() => {
+    if (data) {
+      setUrl(data.server_url || '')
+      setName(data.name || '')
+      setServerIdentifier(data.server_identifier || '')
+      setMcpTimeout(data.timeout || 30)
+      setSseReadTimeout(data.sse_read_timeout || 300)
+      setHeaders(data.masked_headers || {})
+      setAppIcon(getIcon(data))
+    }
+    else {
+      // Reset for create mode
+      setUrl('')
+      setName('')
+      setServerIdentifier('')
+      setMcpTimeout(30)
+      setSseReadTimeout(300)
+      setHeaders({})
+      setAppIcon(DEFAULT_ICON as AppIconSelection)
+    }
+  }, [data])
+
   const isValidUrl = (string: string) => {
     try {
-      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(\:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
+      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
       return urlPattern.test(string)
     }
     catch {
@@ -129,6 +159,7 @@ const MCPModal = ({
       server_identifier: serverIdentifier.trim(),
       timeout: timeout || 30,
       sse_read_timeout: sseReadTimeout || 300,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
     })
     if(isCreate)
       onHide()
@@ -179,6 +210,7 @@ const MCPModal = ({
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-8 w-8 text-text-primary-on-surface' /> : undefined}
                 size='xxl'
                 className='relative cursor-pointer rounded-2xl'
                 coverElement={
@@ -229,6 +261,18 @@ const MCPModal = ({
               onChange={e => setSseReadTimeout(Number(e.target.value))}
               onBlur={e => handleBlur(e.target.value.trim())}
               placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+            />
+          </div>
+          <div>
+            <div className='mb-1 flex h-6 items-center'>
+              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
+            </div>
+            <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
+            <HeadersInput
+              headers={headers}
+              onChange={setHeaders}
+              readonly={false}
+              isMasked={!isCreate && Object.keys(headers).length > 0}
             />
           </div>
         </div>

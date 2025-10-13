@@ -32,6 +32,7 @@ export const checkOrSetAccessToken = async (appCode?: string | null) => {
       [userId || 'DEFAULT']: res.access_token,
     }
     localStorage.setItem('token', JSON.stringify(accessTokenJson))
+    localStorage.removeItem(CONVERSATION_ID_INFO)
   }
 }
 

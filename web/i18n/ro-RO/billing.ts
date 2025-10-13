@@ -93,6 +93,9 @@ const translation = {
     freeTrialTip: 'perioadă de probă gratuită de 200 de apeluri OpenAI.',
     documentsRequestQuotaTooltip: 'Specificați numărul total de acțiuni pe care un spațiu de lucru le poate efectua pe minut în cadrul bazei de cunoștințe, inclusiv crearea, ștergerea, actualizările setului de date, încărcările de documente, modificările, arhivarea și interogările bazei de cunoștințe. Acest metric este utilizat pentru a evalua performanța cererilor din baza de cunoștințe. De exemplu, dacă un utilizator Sandbox efectuează 10 teste consecutive de hituri într-un minut, spațiul său de lucru va fi restricționat temporar de la efectuarea următoarelor acțiuni pentru minutul următor: crearea setului de date, ștergerea, actualizările și încărcările sau modificările documentelor.',
     apiRateLimitTooltip: 'Limita de rată API se aplică tuturor cererilor efectuate prin API-ul Dify, inclusiv generarea de texte, conversațiile de chat, execuțiile fluxului de lucru și procesarea documentelor.',
+    startBuilding: 'Începeți să construiți',
+    taxTip: 'Toate prețurile abonamentelor (lunare/anuale) nu includ taxele aplicabile (de exemplu, TVA, taxa pe vânzări).',
+    taxTipSecond: 'Dacă regiunea dumneavoastră nu are cerințe fiscale aplicabile, niciun impozit nu va apărea la finalizarea comenzii și nu vi se vor percepe taxe suplimentare pe întreaga durată a abonamentului.',
   },
   plans: {
     sandbox: {
@@ -115,15 +118,15 @@ const translation = {
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
       features: {
-        6: 'Securitate și controale avansate',
         1: 'Autorizare licență comercială',
-        2: 'Funcții exclusive pentru întreprinderi',
-        0: 'Soluții de implementare scalabile la nivel de întreprindere',
-        5: 'SLA-uri negociate de partenerii Dify',
         3: 'Mai multe spații de lucru și managementul întreprinderii',
+        2: 'Funcții exclusive pentru întreprinderi',
         7: 'Actualizări și întreținere de către Dify oficial',
-        8: 'Asistență tehnică profesională',
+        0: 'Soluții de implementare scalabile la nivel de întreprindere',
         4: 'SSO',
+        8: 'Asistență tehnică profesională',
+        5: 'SLA-uri negociate de partenerii Dify',
+        6: 'Securitate și controale avansate',
       },
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
@@ -132,8 +135,8 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Toate caracteristicile de bază lansate în depozitul public',
         2: 'Respectă licența Dify Open Source',
+        0: 'Toate caracteristicile de bază lansate în depozitul public',
         1: 'Spațiu de lucru unic',
       },
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
@@ -145,10 +148,10 @@ const translation = {
     },
     premium: {
       features: {
-        3: 'Asistență prioritară prin e-mail și chat',
         1: 'Spațiu de lucru unic',
-        0: 'Fiabilitate autogestionată de diverși furnizori de cloud',
+        3: 'Asistență prioritară prin e-mail și chat',
         2: 'Personalizarea logo-ului și brandingului WebApp',
+        0: 'Fiabilitate autogestionată de diverși furnizori de cloud',
       },
       btnText: 'Obține Premium în',
       description: 'Pentru organizații și echipe de dimensiuni medii',

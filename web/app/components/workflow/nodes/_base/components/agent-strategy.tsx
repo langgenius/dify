@@ -236,7 +236,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               'zh-Hans': '/guides/workflow/node/agent#选择-agent-策略',
               'ja-JP': '/guides/workflow/node/agent#エージェント戦略の選択',
             })}
-              className='text-text-accent-secondary' target='_blank'>
+            className='text-text-accent-secondary' target='_blank'>
               {t('workflow.nodes.agent.learnMore')}
             </Link>
           </div>}

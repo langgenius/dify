@@ -1,12 +1,8 @@
 import {
-  getConnectedEdges,
-  getIncomers,
   getOutgoers,
 } from 'reactflow'
 import { v4 as uuid4 } from 'uuid'
 import {
-  groupBy,
-  isEqual,
   uniqBy,
 } from 'lodash-es'
 import type {
@@ -16,8 +12,6 @@ import type {
 import {
   BlockEnum,
 } from '../types'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
 
 export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
@@ -40,6 +34,11 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     || nodeType === BlockEnum.VariableAggregator
     || nodeType === BlockEnum.Assigner
     || nodeType === BlockEnum.HumanInput
+    || nodeType === BlockEnum.DataSource
+}
+
+export const isSupportCustomRunForm = (nodeType: BlockEnum) => {
+  return nodeType === BlockEnum.DataSource
 }
 
 type ConnectedSourceOrTargetNodesChange = {
@@ -94,9 +93,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-
+export const getValidTreeNodes = (startNode: Node, nodes: Node[], edges: Edge[]) => {
   if (!startNode) {
     return {
       validNodes: [],
@@ -166,170 +163,6 @@ export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
   })
 
   return [newNodes, newEdges] as [Node[], Edge[]]
-}
-
-type ParallelInfoItem = {
-  parallelNodeId: string
-  depth: number
-  isBranch?: boolean
-}
-type NodeParallelInfo = {
-  parallelNodeId: string
-  edgeHandleId: string
-  depth: number
-}
-type NodeHandle = {
-  node: Node
-  handle: string
-}
-type NodeStreamInfo = {
-  upstreamNodes: Set<string>
-  downstreamEdges: Set<string>
-}
-export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: string) => {
-  let startNode
-
-  if (parentNodeId) {
-    const parentNode = nodes.find(node => node.id === parentNodeId)
-    if (!parentNode)
-      throw new Error('Parent node not found')
-
-    startNode = nodes.find(node => node.id === (parentNode.data as (IterationNodeType | LoopNodeType)).start_node_id)
-  }
-  else {
-    startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  }
-  if (!startNode)
-    throw new Error('Start node not found')
-
-  const parallelList = [] as ParallelInfoItem[]
-  const nextNodeHandles = [{ node: startNode, handle: 'source' }]
-  let hasAbnormalEdges = false
-
-  const traverse = (firstNodeHandle: NodeHandle) => {
-    const nodeEdgesSet = {} as Record<string, Set<string>>
-    const totalEdgesSet = new Set<string>()
-    const nextHandles = [firstNodeHandle]
-    const streamInfo = {} as Record<string, NodeStreamInfo>
-    const parallelListItem = {
-      parallelNodeId: '',
-      depth: 0,
-    } as ParallelInfoItem
-    const nodeParallelInfoMap = {} as Record<string, NodeParallelInfo>
-    nodeParallelInfoMap[firstNodeHandle.node.id] = {
-      parallelNodeId: '',
-      edgeHandleId: '',
-      depth: 0,
-    }
-
-    while (nextHandles.length) {
-      const currentNodeHandle = nextHandles.shift()!
-      const { node: currentNode, handle: currentHandle = 'source' } = currentNodeHandle
-      const currentNodeHandleKey = currentNode.id
-      const connectedEdges = edges.filter(edge => edge.source === currentNode.id && edge.sourceHandle === currentHandle)
-      const connectedEdgesLength = connectedEdges.length
-      const outgoers = nodes.filter(node => connectedEdges.some(edge => edge.target === node.id))
-      const incomers = getIncomers(currentNode, nodes, edges)
-
-      if (!streamInfo[currentNodeHandleKey]) {
-        streamInfo[currentNodeHandleKey] = {
-          upstreamNodes: new Set<string>(),
-          downstreamEdges: new Set<string>(),
-        }
-      }
-
-      if (nodeEdgesSet[currentNodeHandleKey]?.size > 0 && incomers.length > 1) {
-        const newSet = new Set<string>()
-        for (const item of totalEdgesSet) {
-          if (!streamInfo[currentNodeHandleKey].downstreamEdges.has(item))
-            newSet.add(item)
-        }
-        if (isEqual(nodeEdgesSet[currentNodeHandleKey], newSet)) {
-          parallelListItem.depth = nodeParallelInfoMap[currentNode.id].depth
-          nextNodeHandles.push({ node: currentNode, handle: currentHandle })
-          break
-        }
-      }
-
-      if (nodeParallelInfoMap[currentNode.id].depth > parallelListItem.depth)
-        parallelListItem.depth = nodeParallelInfoMap[currentNode.id].depth
-
-      outgoers.forEach((outgoer) => {
-        const outgoerConnectedEdges = getConnectedEdges([outgoer], edges).filter(edge => edge.source === outgoer.id)
-        const sourceEdgesGroup = groupBy(outgoerConnectedEdges, 'sourceHandle')
-        const incomers = getIncomers(outgoer, nodes, edges)
-
-        if (outgoers.length > 1 && incomers.length > 1)
-          hasAbnormalEdges = true
-
-        Object.keys(sourceEdgesGroup).forEach((sourceHandle) => {
-          nextHandles.push({ node: outgoer, handle: sourceHandle })
-        })
-        if (!outgoerConnectedEdges.length)
-          nextHandles.push({ node: outgoer, handle: 'source' })
-
-        const outgoerKey = outgoer.id
-        if (!nodeEdgesSet[outgoerKey])
-          nodeEdgesSet[outgoerKey] = new Set<string>()
-
-        if (nodeEdgesSet[currentNodeHandleKey]) {
-          for (const item of nodeEdgesSet[currentNodeHandleKey])
-            nodeEdgesSet[outgoerKey].add(item)
-        }
-
-        if (!streamInfo[outgoerKey]) {
-          streamInfo[outgoerKey] = {
-            upstreamNodes: new Set<string>(),
-            downstreamEdges: new Set<string>(),
-          }
-        }
-
-        if (!nodeParallelInfoMap[outgoer.id]) {
-          nodeParallelInfoMap[outgoer.id] = {
-            ...nodeParallelInfoMap[currentNode.id],
-          }
-        }
-
-        if (connectedEdgesLength > 1) {
-          const edge = connectedEdges.find(edge => edge.target === outgoer.id)!
-          nodeEdgesSet[outgoerKey].add(edge.id)
-          totalEdgesSet.add(edge.id)
-
-          streamInfo[currentNodeHandleKey].downstreamEdges.add(edge.id)
-          streamInfo[outgoerKey].upstreamNodes.add(currentNodeHandleKey)
-
-          for (const item of streamInfo[currentNodeHandleKey].upstreamNodes)
-            streamInfo[item].downstreamEdges.add(edge.id)
-
-          if (!parallelListItem.parallelNodeId)
-            parallelListItem.parallelNodeId = currentNode.id
-
-          const prevDepth = nodeParallelInfoMap[currentNode.id].depth + 1
-          const currentDepth = nodeParallelInfoMap[outgoer.id].depth
-
-          nodeParallelInfoMap[outgoer.id].depth = Math.max(prevDepth, currentDepth)
-        }
-        else {
-          for (const item of streamInfo[currentNodeHandleKey].upstreamNodes)
-            streamInfo[outgoerKey].upstreamNodes.add(item)
-
-          nodeParallelInfoMap[outgoer.id].depth = nodeParallelInfoMap[currentNode.id].depth
-        }
-      })
-    }
-
-    parallelList.push(parallelListItem)
-  }
-
-  while (nextNodeHandles.length) {
-    const nodeHandle = nextNodeHandles.shift()!
-    traverse(nodeHandle)
-  }
-
-  return {
-    parallelList,
-    hasAbnormalEdges,
-  }
 }
 
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {

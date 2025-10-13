@@ -2,9 +2,9 @@ import logging
 from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 
-from httpx import Timeout, post
+import httpx
 from pydantic import BaseModel
 from yarl import URL
 
@@ -13,9 +13,17 @@ from core.helper.code_executor.javascript.javascript_transformer import NodeJsTe
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 from core.helper.code_executor.template_transformer import TemplateTransformer
+from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
 code_execution_endpoint_url = URL(str(dify_config.CODE_EXECUTION_ENDPOINT))
+CODE_EXECUTION_SSL_VERIFY = dify_config.CODE_EXECUTION_SSL_VERIFY
+_CODE_EXECUTOR_CLIENT_LIMITS = httpx.Limits(
+    max_connections=dify_config.CODE_EXECUTION_POOL_MAX_CONNECTIONS,
+    max_keepalive_connections=dify_config.CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS,
+    keepalive_expiry=dify_config.CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY,
+)
+_CODE_EXECUTOR_CLIENT_KEY = "code_executor:http_client"
 
 
 class CodeExecutionError(Exception):
@@ -24,8 +32,8 @@ class CodeExecutionError(Exception):
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: Optional[str] = None
-        error: Optional[str] = None
+        stdout: str | None = None
+        error: str | None = None
 
     code: int
     message: str
@@ -36,6 +44,13 @@ class CodeLanguage(StrEnum):
     PYTHON3 = "python3"
     JINJA2 = "jinja2"
     JAVASCRIPT = "javascript"
+
+
+def _build_code_executor_client() -> httpx.Client:
+    return httpx.Client(
+        verify=CODE_EXECUTION_SSL_VERIFY,
+        limits=_CODE_EXECUTOR_CLIENT_LIMITS,
+    )
 
 
 class CodeExecutor:
@@ -76,17 +91,21 @@ class CodeExecutor:
             "enable_network": True,
         }
 
+        timeout = httpx.Timeout(
+            connect=dify_config.CODE_EXECUTION_CONNECT_TIMEOUT,
+            read=dify_config.CODE_EXECUTION_READ_TIMEOUT,
+            write=dify_config.CODE_EXECUTION_WRITE_TIMEOUT,
+            pool=None,
+        )
+
+        client = get_pooled_http_client(_CODE_EXECUTOR_CLIENT_KEY, _build_code_executor_client)
+
         try:
-            response = post(
+            response = client.post(
                 str(url),
                 json=data,
                 headers=headers,
-                timeout=Timeout(
-                    connect=dify_config.CODE_EXECUTION_CONNECT_TIMEOUT,
-                    read=dify_config.CODE_EXECUTION_READ_TIMEOUT,
-                    write=dify_config.CODE_EXECUTION_WRITE_TIMEOUT,
-                    pool=None,
-                ),
+                timeout=timeout,
             )
             if response.status_code == 503:
                 raise CodeExecutionError("Code execution service is unavailable")
@@ -106,13 +125,13 @@ class CodeExecutor:
 
         try:
             response_data = response.json()
-        except:
-            raise CodeExecutionError("Failed to parse response")
+        except Exception as e:
+            raise CodeExecutionError("Failed to parse response") from e
 
         if (code := response_data.get("code")) != 0:
             raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response_data.get('message')}")
 
-        response_code = CodeExecutionResponse(**response_data)
+        response_code = CodeExecutionResponse.model_validate(response_data)
 
         if response_code.data.error:
             raise CodeExecutionError(response_code.data.error)

@@ -65,7 +65,6 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
         ...defaultConfig,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((template: string) => {
@@ -76,7 +75,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   }, [setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
+    return [VarType.string, VarType.number, VarType.boolean, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject].includes(varPayload.type)
   }, [])
 
   return {

@@ -33,7 +33,7 @@ class PgvectoRSConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config PGVECTO_RS_HOST is required")
         if not values["port"]:
@@ -150,7 +150,7 @@ class PGVectoRS(BaseVector):
                 session.execute(select_statement, {"ids": ids})
                 session.commit()
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         with Session(self._client) as session:
             select_statement = sql_text(
                 f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = ANY (:doc_ids); "
@@ -164,7 +164,7 @@ class PGVectoRS(BaseVector):
                     session.execute(select_statement, {"ids": ids})
                     session.commit()
 
-    def delete(self) -> None:
+    def delete(self):
         with Session(self._client) as session:
             session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
             session.commit()
@@ -202,7 +202,7 @@ class PGVectoRS(BaseVector):
             score = 1 - dis
             metadata["score"] = score
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 doc = Document(page_content=record.text, metadata=metadata)
                 docs.append(doc)
         return docs

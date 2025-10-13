@@ -2,11 +2,11 @@ from typing import Literal
 
 from flask import request
 from flask_login import current_user
-from flask_restx import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -21,7 +21,23 @@ from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
+    @api.doc("annotation_reply_action")
+    @api.doc(description="Enable or disable annotation reply for an app")
+    @api.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
+    @api.expect(
+        api.model(
+            "AnnotationReplyActionRequest",
+            {
+                "score_threshold": fields.Float(required=True, description="Score threshold for annotation matching"),
+                "embedding_provider_name": fields.String(required=True, description="Embedding provider name"),
+                "embedding_model_name": fields.String(required=True, description="Embedding model name"),
+            },
+        )
+    )
+    @api.response(200, "Action completed successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -43,7 +59,13 @@ class AnnotationReplyActionApi(Resource):
         return result, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotation-setting")
 class AppAnnotationSettingDetailApi(Resource):
+    @api.doc("get_annotation_setting")
+    @api.doc(description="Get annotation settings for an app")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Annotation settings retrieved successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -56,7 +78,23 @@ class AppAnnotationSettingDetailApi(Resource):
         return result, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
 class AppAnnotationSettingUpdateApi(Resource):
+    @api.doc("update_annotation_setting")
+    @api.doc(description="Update annotation settings for an app")
+    @api.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
+    @api.expect(
+        api.model(
+            "AnnotationSettingUpdateRequest",
+            {
+                "score_threshold": fields.Float(required=True, description="Score threshold"),
+                "embedding_provider_name": fields.String(required=True, description="Embedding provider"),
+                "embedding_model_name": fields.String(required=True, description="Embedding model"),
+            },
+        )
+    )
+    @api.response(200, "Settings updated successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -75,7 +113,13 @@ class AppAnnotationSettingUpdateApi(Resource):
         return result, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")
 class AnnotationReplyActionStatusApi(Resource):
+    @api.doc("get_annotation_reply_action_status")
+    @api.doc(description="Get status of annotation reply action job")
+    @api.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
+    @api.response(200, "Job status retrieved successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -99,7 +143,19 @@ class AnnotationReplyActionStatusApi(Resource):
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotations")
 class AnnotationApi(Resource):
+    @api.doc("list_annotations")
+    @api.doc(description="Get annotations for an app with pagination")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("page", type=int, location="args", default=1, help="Page number")
+        .add_argument("limit", type=int, location="args", default=20, help="Page size")
+        .add_argument("keyword", type=str, location="args", default="", help="Search keyword")
+    )
+    @api.response(200, "Annotations retrieved successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -122,6 +178,21 @@ class AnnotationApi(Resource):
         }
         return response, 200
 
+    @api.doc("create_annotation")
+    @api.doc(description="Create a new annotation for an app")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.model(
+            "CreateAnnotationRequest",
+            {
+                "question": fields.String(required=True, description="Question text"),
+                "answer": fields.String(required=True, description="Answer text"),
+                "annotation_reply": fields.Raw(description="Annotation reply data"),
+            },
+        )
+    )
+    @api.response(201, "Annotation created successfully", annotation_fields)
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -168,7 +239,13 @@ class AnnotationApi(Resource):
             return {"result": "success"}, 204
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotations/export")
 class AnnotationExportApi(Resource):
+    @api.doc("export_annotations")
+    @api.doc(description="Export all annotations for an app")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Annotations exported successfully", fields.List(fields.Nested(annotation_fields)))
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -182,7 +259,14 @@ class AnnotationExportApi(Resource):
         return response, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
+    @api.doc("update_delete_annotation")
+    @api.doc(description="Update or delete an annotation")
+    @api.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
+    @api.response(200, "Annotation updated successfully", annotation_fields)
+    @api.response(204, "Annotation deleted successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -214,7 +298,14 @@ class AnnotationUpdateDeleteApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
+    @api.doc("batch_import_annotations")
+    @api.doc(description="Batch import annotations from CSV file")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Batch import started successfully")
+    @api.response(403, "Insufficient permissions")
+    @api.response(400, "No file uploaded or too many files")
     @setup_required
     @login_required
     @account_initialization_required
@@ -239,7 +330,13 @@ class AnnotationBatchImportApi(Resource):
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
 class AnnotationBatchImportStatusApi(Resource):
+    @api.doc("get_batch_import_status")
+    @api.doc(description="Get status of batch import job")
+    @api.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
+    @api.response(200, "Job status retrieved successfully")
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -262,7 +359,20 @@ class AnnotationBatchImportStatusApi(Resource):
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
 class AnnotationHitHistoryListApi(Resource):
+    @api.doc("list_annotation_hit_histories")
+    @api.doc(description="Get hit histories for an annotation")
+    @api.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("page", type=int, location="args", default=1, help="Page number")
+        .add_argument("limit", type=int, location="args", default=20, help="Page size")
+    )
+    @api.response(
+        200, "Hit histories retrieved successfully", fields.List(fields.Nested(annotation_hit_history_fields))
+    )
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -285,17 +395,3 @@ class AnnotationHitHistoryListApi(Resource):
             "page": page,
         }
         return response
-
-
-api.add_resource(AnnotationReplyActionApi, "/apps/<uuid:app_id>/annotation-reply/<string:action>")
-api.add_resource(
-    AnnotationReplyActionStatusApi, "/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>"
-)
-api.add_resource(AnnotationApi, "/apps/<uuid:app_id>/annotations")
-api.add_resource(AnnotationExportApi, "/apps/<uuid:app_id>/annotations/export")
-api.add_resource(AnnotationUpdateDeleteApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
-api.add_resource(AnnotationBatchImportApi, "/apps/<uuid:app_id>/annotations/batch-import")
-api.add_resource(AnnotationBatchImportStatusApi, "/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
-api.add_resource(AnnotationHitHistoryListApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
-api.add_resource(AppAnnotationSettingDetailApi, "/apps/<uuid:app_id>/annotation-setting")
-api.add_resource(AppAnnotationSettingUpdateApi, "/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")

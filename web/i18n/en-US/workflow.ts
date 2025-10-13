@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: 'Set variable',
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
+    needAdd: '{{node}} node must be added',
     needEndNode: 'The End node must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
@@ -93,7 +94,6 @@ const translation = {
     importWarning: 'Caution',
     importWarningDetails: 'DSL version difference may affect certain features',
     importSuccess: 'Import Successfully',
-    parallelRun: 'Parallel Run',
     parallelTip: {
       click: {
         title: 'Click',
@@ -141,6 +141,10 @@ const translation = {
       ignore: 'Export DSL',
       export: 'Export DSL with secret values ',
     },
+  },
+  sidebar: {
+    exportWarning: 'Export Current Saved Version',
+    exportWarningDesc: 'This will export the current saved version of your workflow. If you have unsaved changes in the editor, please save them first by using the export option in the workflow canvas.',
   },
   chatVariable: {
     panelTitle: 'Conversation Variables',
@@ -213,8 +217,10 @@ const translation = {
     toolParameterRequired: '{{field}}: parameter [{{param}}] is required',
   },
   singleRun: {
-    testRun: 'Test Run ',
+    testRun: 'Test Run',
     startRun: 'Start Run',
+    preparingDataSource: 'Preparing Data Source',
+    reRun: 'Re-run',
     running: 'Running',
     testRunIteration: 'Test Run Iteration',
     back: 'Back',
@@ -238,6 +244,8 @@ const translation = {
     'agent': 'Agent Strategy',
     'allAdded': 'All added',
     'addAll': 'Add all',
+    'sources': 'Sources',
+    'searchDataSource': 'Search Data Source',
   },
   blocks: {
     'start': 'Start',
@@ -263,6 +271,8 @@ const translation = {
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
     'human-input': 'Human Input',
+    'knowledge-index': 'Knowledge Base',
+    'datasource': 'Data Source',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -286,6 +296,8 @@ const translation = {
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
     'human-input': 'Ask for human to confirm before generating the next step',
+    'knowledge-index': 'Knowledge Base About',
+    'datasource': 'Data Source About',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -393,6 +405,7 @@ const translation = {
         input: 'Input value',
         variable: 'Use variable',
       },
+      inputVars: 'Input Variables',
     },
     start: {
       required: 'required',
@@ -447,12 +460,19 @@ const translation = {
       },
       outputVars: {
         output: 'Generate content',
+        reasoning_content: 'Reasoning Content',
         usage: 'Model Usage Information',
       },
       singleRun: {
         variable: 'Variable',
       },
       sysQueryInUser: 'sys.query in user message is required',
+      reasoningFormat: {
+        title: 'Enable reasoning tag separation',
+        tagged: 'Keep think tags',
+        separated: 'Separate think tags',
+        tooltip: 'Extract content from think tags and store it in the reasoning_content field.',
+      },
       jsonSchema: {
         title: 'Structured Output Schema',
         instruction: 'Instruction',
@@ -1035,6 +1055,30 @@ const translation = {
         back: 'Back',
       },
     },
+    dataSource: {
+      supportedFileFormats: 'Supported file formats',
+      supportedFileFormatsPlaceholder: 'File extension, e.g. doc',
+      add: 'Add data source',
+    },
+    knowledgeBase: {
+      chunkStructure: 'Chunk Structure',
+      chooseChunkStructure: 'Choose a chunk structure',
+      chunkStructureTip: {
+        title: 'Please choose a chunk structure',
+        message: 'The Dify Knowledge Base supports three chunking structures: General, Parent-child, and Q&A. Each knowledge base can have only one structure. The output from the preceding node must align with the selected chunk structure. Note that the choice of chunking structure affects the available index methods.',
+        learnMore: 'Learn more',
+      },
+      changeChunkStructure: 'Change Chunk Structure',
+      chunksInput: 'Chunks',
+      chunksInputTip: 'The input variable of the knowledge base node is Chunks. The variable type is an object with a specific JSON Schema which must be consistent with the selected chunk structure.',
+      aboutRetrieval: 'about retrieval method.',
+      chunkIsRequired: 'Chunk structure is required',
+      indexMethodIsRequired: 'Index method is required',
+      chunksVariableIsRequired: 'Chunks variable is required',
+      embeddingModelIsRequired: 'Embedding model is required',
+      retrievalSettingIsRequired: 'Retrieval setting is required',
+      rerankingModelIsRequired: 'Reranking model is required',
+    },
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
@@ -1071,7 +1115,7 @@ const translation = {
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
       copyIdSuccess: 'ID copied to clipboard',
-      },
+    },
   },
   debug: {
     settingsTab: 'Settings',
@@ -1106,6 +1150,10 @@ const translation = {
       envNode: 'Environment',
       chatNode: 'Conversation',
       systemNode: 'System',
+      exportToolTip: 'Export Variable as File',
+      largeData: 'Large data, read-only preview. Export to view all.',
+      largeDataNoExport: 'Large data - partial preview only',
+      export: 'export',
     },
     lastOutput: 'Last Output',
     relations: {

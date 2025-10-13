@@ -9,12 +9,14 @@ from typing import Union
 
 import flask
 from celery.signals import worker_init
-from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
+from flask_login import user_loaded_from_request, user_logged_in
 
 from configs import dify_config
 from dify_app import DifyApp
 from libs.helper import extract_tenant_id
 from models import Account, EndUser
+
+logger = logging.getLogger(__name__)
 
 
 @user_logged_in.connect
@@ -33,7 +35,7 @@ def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
                     current_span.set_attribute("service.tenant.id", tenant_id)
                     current_span.set_attribute("service.user.id", user.id)
             except Exception:
-                logging.exception("Error setting tenant and user attributes")
+                logger.exception("Error setting tenant and user attributes")
                 pass
 
 
@@ -74,12 +76,12 @@ def init_app(app: DifyApp):
                         attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
                     _http_response_counter.add(1, attributes)
                 except Exception:
-                    logging.exception("Error setting status and attributes")
+                    logger.exception("Error setting status and attributes")
                     pass
 
         instrumentor = FlaskInstrumentor()
         if dify_config.DEBUG:
-            logging.info("Initializing Flask instrumentor")
+            logger.info("Initializing Flask instrumentor")
         instrumentor.instrument_app(app, response_hook=response_hook)
 
     def init_sqlalchemy_instrumentor(app: DifyApp):
@@ -101,7 +103,7 @@ def init_app(app: DifyApp):
     def shutdown_tracer():
         provider = trace.get_tracer_provider()
         if hasattr(provider, "force_flush"):
-            provider.force_flush()
+            provider.force_flush()  # ty: ignore [call-non-callable]
 
     class ExceptionLoggingHandler(logging.Handler):
         """Custom logging handler that creates spans for logging.exception() calls"""
@@ -134,8 +136,8 @@ def init_app(app: DifyApp):
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     from opentelemetry.instrumentation.redis import RedisInstrumentor
-    from opentelemetry.instrumentation.requests import RequestsInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
     from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
     from opentelemetry.propagate import set_global_textmap
@@ -235,7 +237,7 @@ def init_app(app: DifyApp):
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
     RedisInstrumentor().instrument()
-    RequestsInstrumentor().instrument()
+    HTTPXClientInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
 
@@ -253,5 +255,5 @@ def init_celery_worker(*args, **kwargs):
         tracer_provider = get_tracer_provider()
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
-            logging.info("Initializing OpenTelemetry for Celery worker")
+            logger.info("Initializing OpenTelemetry for Celery worker")
         CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()

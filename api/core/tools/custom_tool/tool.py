@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Optional, Union
+from typing import Any, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -275,39 +275,35 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
-        if method in {
-            "get",
-            "head",
-            "post",
-            "put",
-            "delete",
-            "patch",
-            "options",
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-        }:
-            response: httpx.Response = getattr(ssrf_proxy, method.lower())(
-                url,
-                params=params,
-                headers=headers,
-                cookies=cookies,
-                data=body,
-                files=files,
-                timeout=API_TOOL_DEFAULT_TIMEOUT,
-                follow_redirects=True,
-            )
-            return response
-        else:
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+        }
+        method_lc = method.lower()
+        if method_lc not in _METHOD_MAP:
             raise ValueError(f"Invalid http method {method}")
+        response: httpx.Response = _METHOD_MAP[
+            method_lc
+        ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
+            url,
+            max_retries=0,
+            params=params,
+            headers=headers,
+            cookies=cookies,
+            data=body,
+            files=files,
+            timeout=API_TOOL_DEFAULT_TIMEOUT,
+            follow_redirects=True,
+        )
+        return response
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
-    ) -> Any:
+    ):
         if max_recursive <= 0:
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
@@ -342,7 +338,7 @@ class ApiTool(Tool):
         # If no option succeeded, you might want to return the value as is or raise an error
         return value  # or raise ValueError(f"Cannot convert value '{value}' to any specified type in anyOf")
 
-    def _convert_body_property_type(self, property: dict[str, Any], value: Any) -> Any:
+    def _convert_body_property_type(self, property: dict[str, Any], value: Any):
         try:
             if "type" in property:
                 if property["type"] == "integer" or property["type"] == "int":
@@ -381,9 +377,9 @@ class ApiTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke http request
@@ -401,6 +397,10 @@ class ApiTool(Tool):
         # assemble invoke message based on response type
         if parsed_response.is_json and isinstance(parsed_response.content, dict):
             yield self.create_json_message(parsed_response.content)
+
+            # FIXES: https://github.com/langgenius/dify/pull/23456#issuecomment-3182413088
+            # We need never break the original flows
+            yield self.create_text_message(response.text)
         else:
             # Convert to string if needed and create text message
             text_response = (

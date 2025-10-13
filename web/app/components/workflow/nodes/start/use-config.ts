@@ -11,8 +11,12 @@ import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { hasDuplicateStr } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
+import { useTranslation } from 'react-i18next'
 
 const useConfig = (id: string, payload: StartNodeType) => {
+  const { t } = useTranslation()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
   const isChatMode = useIsChatMode()
@@ -80,7 +84,27 @@ const useConfig = (id: string, payload: StartNodeType) => {
     const newInputs = produce(inputs, (draft: StartNodeType) => {
       draft.variables.push(payload)
     })
+    const newList = newInputs.variables
+    let errorMsgKey = ''
+    let typeName = ''
+    if(hasDuplicateStr(newList.map(item => item.variable))) {
+      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+      typeName = 'appDebug.variableConfig.varName'
+    }
+    else if(hasDuplicateStr(newList.map(item => item.label as string))) {
+      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+      typeName = 'appDebug.variableConfig.labelName'
+    }
+
+    if (errorMsgKey) {
+      Toast.notify({
+        type: 'error',
+        message: t(errorMsgKey, { key: t(typeName) }),
+      })
+      return false
+    }
     setInputs(newInputs)
+    return true
   }, [inputs, setInputs])
   return {
     readOnly,

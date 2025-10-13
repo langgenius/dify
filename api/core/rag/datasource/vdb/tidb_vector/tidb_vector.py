@@ -31,7 +31,7 @@ class TiDBVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config TIDB_VECTOR_HOST is required")
         if not values["port"]:
@@ -55,13 +55,13 @@ class TiDBVector(BaseVector):
         return Table(
             self._collection_name,
             self._orm_base.metadata,
-            Column(Field.PRIMARY_KEY.value, String(36), primary_key=True, nullable=False),
+            Column(Field.PRIMARY_KEY, String(36), primary_key=True, nullable=False),
             Column(
-                Field.VECTOR.value,
+                Field.VECTOR,
                 VectorType(dim),
                 nullable=False,
             ),
-            Column(Field.TEXT_KEY.value, TEXT, nullable=False),
+            Column(Field.TEXT_KEY, TEXT, nullable=False),
             Column("meta", JSON, nullable=False),
             Column("create_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP")),
             Column(
@@ -83,14 +83,14 @@ class TiDBVector(BaseVector):
         self._dimension = 1536
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        logger.info("create collection and add texts, collection_name: " + self._collection_name)
+        logger.info("create collection and add texts, collection_name: %s", self._collection_name)
         self._create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
         self._dimension = len(embeddings[0])
         pass
 
     def _create_collection(self, dimension: int):
-        logger.info("_create_collection, collection_name " + self._collection_name)
+        logger.info("_create_collection, collection_name %s", self._collection_name)
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -144,7 +144,7 @@ class TiDBVector(BaseVector):
         result = self.get_ids_by_metadata_field("doc_id", id)
         return bool(result)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         with Session(self._engine) as session:
             ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
@@ -164,8 +164,8 @@ class TiDBVector(BaseVector):
                 delete_condition = table.c.id.in_(ids)
                 conn.execute(table.delete().where(delete_condition))
                 return True
-        except Exception as e:
-            print("Delete operation failed:", str(e))
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
     def get_ids_by_metadata_field(self, key: str, value: str):
@@ -179,7 +179,7 @@ class TiDBVector(BaseVector):
         else:
             return None
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self._delete_by_ids(ids)
@@ -237,7 +237,7 @@ class TiDBVector(BaseVector):
         # tidb doesn't support bm25 search
         return []
 
-    def delete(self) -> None:
+    def delete(self):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
             session.commit()

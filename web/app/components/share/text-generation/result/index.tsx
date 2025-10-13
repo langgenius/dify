@@ -21,6 +21,7 @@ import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
+import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -77,15 +78,15 @@ const Result: FC<IResultProps> = ({
       setRespondingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, doSetCompletionRes] = useState<any>('')
-  const completionResRef = useRef<any>()
-  const setCompletionRes = (res: any) => {
+  const [completionRes, doSetCompletionRes] = useState<string>('')
+  const completionResRef = useRef<string>('')
+  const setCompletionRes = (res: string) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
   const setWorkflowProcessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
@@ -101,7 +102,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
@@ -124,7 +125,9 @@ const Result: FC<IResultProps> = ({
     }
 
     let hasEmptyInput = ''
-    const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
+    const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
+      if(type === 'boolean' || type === 'checkbox')
+        return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) || [] // compatible with old version
@@ -158,7 +161,7 @@ const Result: FC<IResultProps> = ({
       return
 
     const data: Record<string, any> = {
-      inputs,
+      inputs: formatBooleanInputs(promptConfig?.prompt_variables, inputs),
     }
     if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {

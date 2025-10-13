@@ -5,7 +5,7 @@ line-length = 120
 quote-style = "double"
 
 [lint]
-preview = false
+preview = true
 select = [
     "B",       # flake8-bugbear rules
     "C4",      # flake8-comprehensions
@@ -30,6 +30,7 @@ select = [
     "RUF022",  # unsorted-dunder-all
     "S506",    # unsafe-yaml-load
     "SIM",     # flake8-simplify rules
+    "T201",    # print-found
     "TRY400",  # error-instead-of-exception
     "TRY401",  # verbose-log-message
     "UP",      # pyupgrade rules
@@ -43,7 +44,9 @@ select = [
     "S302", # suspicious-marshal-usage, disallow use of `marshal` module
     "S311", # suspicious-non-cryptographic-random-usage
     "G001", # don't use str format to logging messages
+    "G003", # don't use + in logging messages
     "G004", # don't use f-strings to format logging messages
+    "UP042", # use StrEnum
 ]
 
 ignore = [
@@ -63,6 +66,7 @@ ignore = [
     "B006",    # mutable-argument-default
     "B007",    # unused-loop-control-variable
     "B026",    # star-arg-unpacking-after-keyword-arg
+    "B901",    # allow return in yield
     "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except
     "B905",    # zip-without-explicit-strict
@@ -77,7 +81,6 @@ ignore = [
     "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
     "SIM210",  # if-expr-with-true-false
-    "UP038",   # deprecated and not recommended by Ruff, https://docs.astral.sh/ruff/rules/non-pep604-isinstance/
 ]
 
 [lint.per-file-ignores]
@@ -88,11 +91,18 @@ ignore = [
 "configs/*" = [
     "N802", # invalid-function-name
 ]
+"core/model_runtime/callbacks/base_callback.py" = [
+    "T201",
+]
+"core/workflow/callbacks/workflow_logging_callback.py" = [
+    "T201",
+]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
 ]
 "tests/*" = [
     "F811", # redefined-while-unused
+    "T201", # allow print in tests
 ]
 
 [lint.pyflakes]

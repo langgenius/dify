@@ -55,6 +55,7 @@ const translation = {
     passwordInvalid: '密碼必須包含字母和數字，且長度不小於 8 位',
     passwordLengthInValid: '密碼必須至少為 8 個字元',
     registrationNotAllowed: '找不到帳戶。請聯繫系統管理員進行註冊。',
+    invalidEmailOrPassword: '無效的電子郵件或密碼。',
   },
   license: {
     tip: '啟動 Dify 社群版之前，請閱讀 GitHub 上的',
@@ -109,6 +110,15 @@ const translation = {
     noLoginMethodTip: '請聯絡系統管理員以添加身份驗證方法。',
     disabled: '網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。',
     login: '登入',
+  },
+  signup: {
+    signIn: '登入',
+    signUp: '註冊',
+    noAccount: '還沒有帳戶嗎？',
+    verifyMail: '繼續驗證碼',
+    createAccount: '創建您的帳戶',
+    haveAccount: '已經有帳戶了嗎？',
+    welcome: '👋 歡迎！請填寫詳細信息以開始。',
   },
 }
 

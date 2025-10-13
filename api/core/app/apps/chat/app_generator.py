@@ -211,7 +211,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         queue_manager: AppQueueManager,
         conversation_id: str,
         message_id: str,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app

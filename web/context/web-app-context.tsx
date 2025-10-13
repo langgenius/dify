@@ -11,6 +11,7 @@ import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
 import { useState } from 'react'
 import { create } from 'zustand'
+import { useGlobalPublicStore } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -56,6 +57,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
+  const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const pathname = usePathname()
@@ -64,10 +66,12 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Compute shareCode directly
   const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
-  updateShareCode(shareCode)
+  useEffect(() => {
+    updateShareCode(shareCode)
+  }, [shareCode, updateShareCode])
 
   const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
-  const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(false)
+  const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(true)
 
   useEffect(() => {
     if (accessModeResult?.accessMode) {
@@ -84,7 +88,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isFetching || isFetchingAccessToken) {
+  if (isGlobalPending || isFetching || isFetchingAccessToken) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
     </div>

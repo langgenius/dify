@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -154,7 +154,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         if invoke_from == InvokeFrom.DEBUGGER:
             # always enable retriever resource in debugger mode
-            app_config.additional_features.show_retrieve_source = True
+            app_config.additional_features.show_retrieve_source = True  # type: ignore
 
         workflow_run_id = str(uuid.uuid4())
         # init application generate entity
@@ -390,7 +390,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        conversation: Optional[Conversation] = None,
+        conversation: Conversation | None = None,
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
@@ -420,7 +420,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             db.session.refresh(conversation)
 
         # get conversation dialogue count
-        self._dialogue_count = get_thread_messages_length(conversation.id)
+        # NOTE: dialogue_count should not start from 0,
+        # because during the first conversation, dialogue_count should be 1.
+        self._dialogue_count = get_thread_messages_length(conversation.id) + 1
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -450,6 +452,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         worker_thread.start()
 
+        # release database connection, because the following new thread operations may take a long time
+        db.session.refresh(workflow)
+        db.session.refresh(message)
+        # db.session.refresh(user)
+        db.session.close()
+
         # return response or stream generator
         response = self._handle_advanced_chat_response(
             application_generate_entity=application_generate_entity,
@@ -461,7 +469,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             stream=stream,
-            draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from),
+            draft_var_saver_factory=self._get_draft_var_saver_factory(invoke_from, account=user),
         )
 
         return AdvancedChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
@@ -475,7 +483,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         message_id: str,
         context: contextvars.Context,
         variable_loader: VariableLoader,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app

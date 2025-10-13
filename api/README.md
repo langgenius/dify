@@ -80,10 +80,10 @@
 1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
 ```bash
-uv run celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation
+uv run celery -A app.celery worker -P gevent -c 2 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation
 ```
 
-Addition, if you want to debug the celery scheduled tasks, you can use the following command in another terminal:
+Additionally, if you want to debug the celery scheduled tasks, you can run the following command in another terminal to start the beat service:
 
 ```bash
 uv run celery -A app.celery beat
@@ -99,14 +99,14 @@ uv run celery -A app.celery beat
 
 1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
 
-   ```cli
-   uv run --project api pytest      # Run all tests
-   uv run --project api pytest tests/unit_tests/     # Unit tests only
-   uv run --project api pytest tests/integration_tests/  # Integration tests
+   ```bash
+   uv run pytest                           # Run all tests
+   uv run pytest tests/unit_tests/         # Unit tests only
+   uv run pytest tests/integration_tests/  # Integration tests
 
    # Code quality
-   ./dev/reformat                    # Run all formatters and linters
-   uv run --project api ruff check --fix ./    # Fix linting issues
-   uv run --project api ruff format ./         # Format code
-   uv run --project api mypy .                 # Type checking
+   ../dev/reformat               # Run all formatters and linters
+   uv run ruff check --fix ./    # Fix linting issues
+   uv run ruff format ./         # Format code
+   uv run basedpyright .         # Type checking
    ```

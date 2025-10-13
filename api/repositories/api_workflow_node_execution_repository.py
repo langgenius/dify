@@ -11,7 +11,7 @@ tenant_id, app_id, triggered_from, etc., which are not part of the core domain m
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Protocol
 
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel
@@ -44,7 +44,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         app_id: str,
         workflow_id: str,
         node_id: str,
-    ) -> Optional[WorkflowNodeExecutionModel]:
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get the most recent execution for a specific node.
 
@@ -87,8 +87,8 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
     def get_execution_by_id(
         self,
         execution_id: str,
-        tenant_id: Optional[str] = None,
-    ) -> Optional[WorkflowNodeExecutionModel]:
+        tenant_id: str | None = None,
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.
 

@@ -35,11 +35,11 @@ import {
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
-import { useParams } from 'next/navigation'
 import { submitHumanInputForm } from '@/service/workflow'
 import {
   CUSTOM_NODE,
 } from '@/app/components/workflow/constants'
+import { useHooksStore } from '../../hooks-store'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -63,8 +63,8 @@ export const useChat = (
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
-  const { appId } = useParams()
-  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
@@ -302,7 +302,7 @@ export const useChat = (
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
           handleResponding(false)
-          fetchInspectVars()
+          fetchInspectVars({})
           invalidAllLastRun()
 
           if (hasError) {
@@ -472,7 +472,7 @@ export const useChat = (
 
             if (current.execution_metadata) {
               if (current.execution_metadata.agent_log) {
-                const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.id === data.id)
+                const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.message_id === data.message_id)
                 if (currentLogIndex > -1) {
                   current.execution_metadata.agent_log[currentLogIndex] = {
                     ...current.execution_metadata.agent_log[currentLogIndex],

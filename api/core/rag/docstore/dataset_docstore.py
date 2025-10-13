@@ -1,7 +1,7 @@
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -15,7 +15,7 @@ class DatasetDocumentStore:
         self,
         dataset: Dataset,
         user_id: str,
-        document_id: Optional[str] = None,
+        document_id: str | None = None,
     ):
         self._dataset = dataset
         self._user_id = user_id
@@ -32,18 +32,17 @@ class DatasetDocumentStore:
         }
 
     @property
-    def dataset_id(self) -> Any:
+    def dataset_id(self):
         return self._dataset.id
 
     @property
-    def user_id(self) -> Any:
+    def user_id(self):
         return self._user_id
 
     @property
     def docs(self) -> dict[str, Document]:
-        document_segments = (
-            db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id).all()
-        )
+        stmt = select(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id)
+        document_segments = db.session.scalars(stmt).all()
 
         output = {}
         for document_segment in document_segments:
@@ -60,7 +59,7 @@ class DatasetDocumentStore:
 
         return output
 
-    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
+    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False):
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
             .where(DocumentSegment.document_id == self._document_id)
@@ -177,7 +176,7 @@ class DatasetDocumentStore:
         result = self.get_document_segment(doc_id)
         return result is not None
 
-    def get_document(self, doc_id: str, raise_error: bool = True) -> Optional[Document]:
+    def get_document(self, doc_id: str, raise_error: bool = True) -> Document | None:
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -196,7 +195,7 @@ class DatasetDocumentStore:
             },
         )
 
-    def delete_document(self, doc_id: str, raise_error: bool = True) -> None:
+    def delete_document(self, doc_id: str, raise_error: bool = True):
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -208,7 +207,7 @@ class DatasetDocumentStore:
         db.session.delete(document_segment)
         db.session.commit()
 
-    def set_document_hash(self, doc_id: str, doc_hash: str) -> None:
+    def set_document_hash(self, doc_id: str, doc_hash: str):
         """Set the hash for a given doc_id."""
         document_segment = self.get_document_segment(doc_id)
 
@@ -218,20 +217,19 @@ class DatasetDocumentStore:
         document_segment.index_node_hash = doc_hash
         db.session.commit()
 
-    def get_document_hash(self, doc_id: str) -> Optional[str]:
+    def get_document_hash(self, doc_id: str) -> str | None:
         """Get the stored hash for a document, if it exists."""
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
             return None
-        data: Optional[str] = document_segment.index_node_hash
+        data: str | None = document_segment.index_node_hash
         return data
 
-    def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
-        document_segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
-            .first()
+    def get_document_segment(self, doc_id: str) -> DocumentSegment | None:
+        stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
         )
+        document_segment = db.session.scalar(stmt)
 
         return document_segment

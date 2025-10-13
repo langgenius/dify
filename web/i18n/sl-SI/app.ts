@@ -88,6 +88,7 @@ const translation = {
     chooseAppType: 'Izberite vrsto aplikacije',
     learnMore: 'Izvedi več',
     dropDSLToCreateApp: 'Spustite DSL datoteko sem, da ustvarite aplikacijo',
+    import: 'Uvoz',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',
@@ -277,6 +278,10 @@ const translation = {
       runDesc: 'Zaženi hitre ukaze (teme, jezik, ...)',
       languageChangeDesc: 'Spremeni jezik vmesnika',
       slashDesc: 'Izvedi ukaze kot so /tema, /jezik',
+      accountDesc: 'Pojdite na stran računa',
+      docDesc: 'Odprite pomoč dokumentacijo',
+      feedbackDesc: 'Razprave o povratnih informacijah odprte skupnosti',
+      communityDesc: 'Odpri Discord skupnost',
     },
     emptyState: {
       noPluginsFound: 'Vtičnikov ni mogoče najti',
@@ -311,6 +316,11 @@ const translation = {
     inScope: 'v {{scope}}s',
     tryDifferentSearch: 'Poskusite uporabiti drug iskalni izraz',
     noMatchingCommands: 'Ujemajoči se ukazi niso našli',
+    slashHint: 'Vnesite / za ogled vseh razpoložljivih ukazov',
+    startTyping: 'Začnite vnašati za iskanje',
+    pressEscToClose: 'Pritisnite ESC za zapiranje',
+    selectToNavigate: 'Izberite za navigacijo',
+    tips: 'Pritisnite ↑↓ za navigacijo',
   },
 }
 

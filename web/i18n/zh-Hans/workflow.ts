@@ -45,6 +45,7 @@ const translation = {
     setVarValuePlaceholder: '设置变量值',
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
+    needAdd: '必须添加{{node}}节点',
     needEndNode: '必须添加结束节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
@@ -92,7 +93,6 @@ const translation = {
     importWarning: '注意',
     importWarningDetails: 'DSL 版本差异可能影响部分功能表现',
     importSuccess: '导入成功',
-    parallelRun: '并行运行',
     parallelTip: {
       click: {
         title: '点击',
@@ -141,6 +141,10 @@ const translation = {
       ignore: '导出 DSL',
       export: '导出包含 Secret 值的 DSL',
     },
+  },
+  sidebar: {
+    exportWarning: '导出当前已保存版本',
+    exportWarningDesc: '这将导出您工作流的当前已保存版本。如果您在编辑器中有未保存的更改，请先使用工作流画布中的导出选项保存它们。',
   },
   chatVariable: {
     panelTitle: '会话变量',
@@ -213,8 +217,10 @@ const translation = {
     toolParameterRequired: '{{field}}: 参数 [{{param}}] 不能为空',
   },
   singleRun: {
-    testRun: '测试运行 ',
+    testRun: '测试运行',
     startRun: '开始运行',
+    preparingDataSource: '准备数据源',
+    reRun: '重新运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
     back: '返回',
@@ -238,6 +244,8 @@ const translation = {
     'agent': 'Agent 策略',
     'allAdded': '已添加全部',
     'addAll': '添加全部',
+    'sources': '数据源',
+    'searchDataSource': '搜索数据源',
   },
   blocks: {
     'start': '开始',
@@ -263,6 +271,8 @@ const translation = {
     'loop': '循环',
     'loop-end': '退出循环',
     'human-input': '人类输入',
+    'knowledge-index': '知识库',
+    'datasource': '数据源',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -286,6 +296,8 @@ const translation = {
     'list-operator': '用于过滤或排序数组内容。',
     'agent': '调用大型语言模型回答问题或处理自然语言',
     'human-input': '人工输入，确认后生成下一步',
+    'knowledge-index': '知识库节点',
+    'datasource': '数据源节点',
   },
   operator: {
     zoomIn: '放大',
@@ -393,6 +405,7 @@ const translation = {
         input: '输入值',
         variable: '使用变量',
       },
+      inputVars: '输入变量',
     },
     start: {
       required: '必填',
@@ -447,6 +460,7 @@ const translation = {
       },
       outputVars: {
         output: '生成内容',
+        reasoning_content: '推理内容',
         usage: '模型用量信息',
       },
       singleRun: {
@@ -480,6 +494,12 @@ const translation = {
         warningTips: {
           saveSchema: '请先完成当前字段的编辑',
         },
+      },
+      reasoningFormat: {
+        tooltip: '从think标签中提取内容，并将其存储在reasoning_content字段中。',
+        title: '启用推理标签分离',
+        tagged: '保持思考标签',
+        separated: '分开思考标签',
       },
     },
     knowledgeRetrieval: {
@@ -1035,6 +1055,30 @@ const translation = {
         back: '返回',
       },
     },
+    dataSource: {
+      supportedFileFormats: '支持的文件格式',
+      supportedFileFormatsPlaceholder: '文件格式，例如：doc',
+      add: '添加数据源',
+    },
+    knowledgeBase: {
+      chunkStructure: '分段结构',
+      chooseChunkStructure: '选择分段结构',
+      chunkStructureTip: {
+        title: '请选择分段结构',
+        message: 'Dify 知识库支持三种分块结构：通用、父子和问答。每个知识库只能有一种结构。前一节点的输出必须与所选的分块结构相匹配。请注意，分块结构的选择会影响可用的索引方法。',
+        learnMore: '了解更多',
+      },
+      changeChunkStructure: '更改分段结构',
+      chunksInput: '分块',
+      chunksInputTip: '知识库节点的输入变量为 Chunks。该变量类型是符合特定 JSON Schema 的对象，必须与所选块结构一致。',
+      aboutRetrieval: '关于知识检索。',
+      chunkIsRequired: '分段结构是必需的',
+      indexMethodIsRequired: '索引方法是必需的',
+      chunksVariableIsRequired: 'Chunks 变量是必需的',
+      embeddingModelIsRequired: 'Embedding 模型是必需的',
+      retrievalSettingIsRequired: '检索设置是必需的',
+      rerankingModelIsRequired: 'Reranking 模型是必需的',
+    },
   },
   tracing: {
     stopBy: '由{{user}}终止',
@@ -1106,6 +1150,10 @@ const translation = {
       envNode: '环境变量',
       chatNode: '会话变量',
       systemNode: '系统变量',
+      exportToolTip: '导出变量为文件',
+      largeData: '大数据 - 仅部分只读预览。请导出查看完整数据。',
+      largeDataNoExport: '大数据 - 仅部分预览',
+      export: '导出',
     },
     lastOutput: '上次输出',
     relations: {

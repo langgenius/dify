@@ -1,6 +1,7 @@
 import {
   isValidElement,
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import { RiExternalLinkLine } from '@remixicon/react'
@@ -12,6 +13,7 @@ import PureSelect from '@/app/components/base/select/pure'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 
 export type BaseFieldProps = {
@@ -22,6 +24,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
+  onChange?: (field: string, value: any) => void
 }
 const BaseField = ({
   fieldClassName,
@@ -30,7 +33,8 @@ const BaseField = ({
   inputClassName,
   formSchema,
   field,
-  disabled,
+  disabled: propsDisabled,
+  onChange,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -39,8 +43,9 @@ const BaseField = ({
     placeholder,
     options,
     labelClassName: formLabelClassName,
-    show_on = [],
+    disabled: formSchemaDisabled,
   } = formSchema
+  const disabled = propsDisabled || formSchemaDisabled
 
   const memorizedLabel = useMemo(() => {
     if (isValidElement(label))
@@ -72,7 +77,7 @@ const BaseField = ({
   })
   const memorizedOptions = useMemo(() => {
     return options?.filter((option) => {
-      if (!option.show_on?.length)
+      if (!option.show_on || option.show_on.length === 0)
         return true
 
       return option.show_on.every((condition) => {
@@ -85,23 +90,13 @@ const BaseField = ({
         value: option.value,
       }
     }) || []
-  }, [options, renderI18nObject])
+  }, [options, renderI18nObject, optionValues])
   const value = useStore(field.form.store, s => s.values[field.name])
-  const values = useStore(field.form.store, (s) => {
-    return show_on.reduce((acc, condition) => {
-      acc[condition.variable] = s.values[condition.variable]
-      return acc
-    }, {} as Record<string, any>)
-  })
-  const show = useMemo(() => {
-    return show_on.every((condition) => {
-      const conditionValue = values[condition.variable]
-      return conditionValue === condition.value
-    })
-  }, [values, show_on])
 
-  if (!show)
-    return null
+  const handleChange = useCallback((value: any) => {
+    field.handleChange(value)
+    onChange?.(field.name, value)
+  }, [field, onChange])
 
   return (
     <div className={cn(fieldClassName)}>
@@ -121,7 +116,9 @@ const BaseField = ({
               name={field.name}
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={(e) => {
+                handleChange(e.target.value)
+              }}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
@@ -136,10 +133,11 @@ const BaseField = ({
               type='password'
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={e => handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
+              autoComplete={'new-password'}
             />
           )
         }
@@ -151,7 +149,7 @@ const BaseField = ({
               type='number'
               className={cn(inputClassName)}
               value={value || ''}
-              onChange={e => field.handleChange(e.target.value)}
+              onChange={e => handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
@@ -162,11 +160,14 @@ const BaseField = ({
           formSchema.type === FormTypeEnum.select && (
             <PureSelect
               value={value}
-              onChange={v => field.handleChange(v)}
+              onChange={v => handleChange(v)}
               disabled={disabled}
               placeholder={memorizedPlaceholder}
               options={memorizedOptions}
               triggerPopupSameWidth
+              popupProps={{
+                className: 'max-h-[320px] overflow-y-auto',
+              }}
             />
           )
         }
@@ -182,9 +183,10 @@ const BaseField = ({
                     className={cn(
                       'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
                       value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
+                      disabled && 'cursor-not-allowed opacity-50',
                       inputClassName,
                     )}
-                    onClick={() => field.handleChange(option.value)}
+                    onClick={() => !disabled && handleChange(option.value)}
                   >
                     {
                       formSchema.showRadioUI && (
@@ -199,6 +201,18 @@ const BaseField = ({
                 ))
               }
             </div>
+          )
+        }
+        {
+          formSchema.type === FormTypeEnum.boolean && (
+            <Radio.Group
+              className='flex w-fit items-center'
+              value={value}
+              onChange={v => field.handleChange(v)}
+            >
+              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={false}>False</Radio>
+            </Radio.Group>
           )
         }
         {

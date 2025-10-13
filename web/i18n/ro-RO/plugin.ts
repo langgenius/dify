@@ -6,6 +6,7 @@ const translation = {
     tools: 'Instrumente',
     extensions: 'Extensii',
     models: 'Modele',
+    datasources: 'Surse de date',
   },
   categorySingle: {
     tool: 'Unealtă',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'Extensie',
     agent: 'Strategia agentului',
     model: 'Model',
+    datasource: 'Sursa datelor',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     setupOAuth: 'Configurați clientul OAuth',
     useApiAuthDesc: 'După configurarea acreditivelor, toți membrii din spațiul de lucru pot folosi acest instrument atunci când orchestran aplicații.',
     clientInfo: 'Deoarece nu s-au găsit secretele clientului sistemului pentru acest furnizor de instrumente, este necesară configurarea manuală; pentru redirect_uri, vă rugăm să folosiți',
+    unavailable: 'Necesar',
+    customCredentialUnavailable: 'Credentialele personalizate sunt în prezent indisponibile',
+    credentialUnavailable: 'Credențialele nu sunt disponibile în acest moment. Vă rugăm să contactați administratorul.',
+    credentialUnavailableInButton: 'Credential indisponibil',
+    connectedWorkspace: 'Spațiu de lucru conectat',
+    emptyAuth: 'Vă rugăm să configurați autentificarea',
   },
   deprecated: 'Încetat de a mai fi utilizat',
   autoUpdate: {

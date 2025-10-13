@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Изменить',
     changeRetrievalMethod: 'Изменить метод поиска',
+    keyword_search: {
+      title: 'Инвертированный индекс',
+      description: 'Инвертированный индекс — это структура, используемая для эффективного извлечения. Каждый термин упорядочен по терминам и указывает на документы или веб-страницы, содержащие его.',
+    },
   },
   docsFailedNotice: 'документов не удалось проиндексировать',
   retry: 'Повторить попытку',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Общее',
     parentChild: 'Родитель-дочерний',
+    graph: 'График',
+    qa: 'Вопросы и ответы',
   },
   parentMode: {
     fullDoc: 'Полный документ',
@@ -217,6 +223,9 @@ const translation = {
     addMetadata: 'Добавить метаданные',
   },
   embeddingModelNotAvailable: 'Модель встраивания недоступна.',
+  updated: 'Обновлено',
+  externalKnowledgeBase: 'Внешняя база знаний',
+  createFromPipeline: 'Создание из конвейера знаний',
 }
 
 export default translation

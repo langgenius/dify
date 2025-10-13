@@ -49,6 +49,10 @@ const translation = {
     },
     change: 'बदलें',
     changeRetrievalMethod: 'पुनर्प्राप्ति विधि बदलें',
+    keyword_search: {
+      title: 'इनवर्टेड अनुक्रमणिका',
+      description: 'इनवर्टेड इंडेक्स एक संरचना है जो कुशल पुनर्प्राप्ति के लिए उपयोग की जाती है। यह शर्तों द्वारा व्यवस्थित होती है, प्रत्येक शर्त उन दस्तावेजों या वेब पृष्ठों की ओर इशारा करती है जिनमें यह मौजूद होती है।',
+    },
   },
   docsFailedNotice: 'दस्तावेज़ों को अनुक्रमित करने में विफल',
   retry: 'पुनः प्रयास करें',
@@ -156,6 +160,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'माता-पिता का बच्चा',
     general: 'सामान्य',
+    graph: 'ग्राफ',
+    qa: 'प्रश्न और उत्तर',
   },
   parentMode: {
     fullDoc: 'पूर्ण-दस्तावेज़',
@@ -224,6 +230,9 @@ const translation = {
     metadata: 'मेटाडेटा',
   },
   embeddingModelNotAvailable: 'एम्बेडिंग मॉडल उपलब्ध नहीं है।',
+  updated: 'अपडेट किया गया',
+  externalKnowledgeBase: 'बाहरी ज्ञान आधार',
+  createFromPipeline: 'ज्ञान पाइपलाइन से बनाएं',
 }
 
 export default translation

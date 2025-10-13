@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import s from './index.module.css'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import Button from '@/app/components/base/button'
-import { DataSourceProvider } from '@/models/common'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import { DataSourceProvider } from '@/models/common'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -21,7 +21,11 @@ const NoData: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const providerConfig = {
+  const providerConfig: Record<DataSourceProvider, {
+    emoji: React.ReactNode
+    title: string
+    description: string
+  } | null> = {
     [DataSourceProvider.jinaReader]: ENABLE_WEBSITE_JINAREADER ? {
       emoji: <span className={s.jinaLogo} />,
       title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`),
@@ -39,7 +43,7 @@ const NoData: FC<Props> = ({
     } : null,
   }
 
-  const currentProvider = providerConfig[provider] || providerConfig[DataSourceProvider.jinaReader]
+  const currentProvider = providerConfig[provider] || providerConfig.jinareader
 
   if (!currentProvider) return null
 

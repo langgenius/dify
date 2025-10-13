@@ -1,7 +1,7 @@
 import os
 
 from flask import session
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,20 +11,47 @@ from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
 
-from . import api
+from . import api, console_ns
 from .error import AlreadySetupError, InitValidateFailedError
 from .wraps import only_edition_self_hosted
 
 
+@console_ns.route("/init")
 class InitValidateAPI(Resource):
+    @api.doc("get_init_status")
+    @api.doc(description="Get initialization validation status")
+    @api.response(
+        200,
+        "Success",
+        model=api.model(
+            "InitStatusResponse",
+            {"status": fields.String(description="Initialization status", enum=["finished", "not_started"])},
+        ),
+    )
     def get(self):
+        """Get initialization validation status"""
         init_status = get_init_validate_status()
         if init_status:
             return {"status": "finished"}
         return {"status": "not_started"}
 
+    @api.doc("validate_init_password")
+    @api.doc(description="Validate initialization password for self-hosted edition")
+    @api.expect(
+        api.model(
+            "InitValidateRequest",
+            {"password": fields.String(required=True, description="Initialization password", max_length=30)},
+        )
+    )
+    @api.response(
+        201,
+        "Success",
+        model=api.model("InitValidateResponse", {"result": fields.String(description="Operation result")}),
+    )
+    @api.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
     def post(self):
+        """Validate initialization password"""
         # is tenant created
         tenant_count = TenantService.get_tenant_count()
         if tenant_count > 0:
@@ -52,6 +79,3 @@ def get_init_validate_status():
                 return db_session.execute(select(DifySetup)).scalar_one_or_none()
 
     return True
-
-
-api.add_resource(InitValidateAPI, "/init")

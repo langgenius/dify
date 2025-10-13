@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
 
@@ -23,7 +23,7 @@ class WorkflowAppService:
         limit: int = 20,
         created_by_end_user_session_id: str | None = None,
         created_by_account: str | None = None,
-    ) -> dict:
+    ):
         """
         Get paginate workflow app logs using SQLAlchemy 2.0 style
         :param session: SQLAlchemy session

@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from extensions.ext_database import db
 from models import ConversationVariable
@@ -10,9 +10,11 @@ from models.model import Message, MessageAnnotation, MessageFeedback
 from models.tools import ToolConversationVariables, ToolFile
 from models.web import PinnedConversation
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="conversation")
-def delete_conversation_related_data(conversation_id: str) -> None:
+def delete_conversation_related_data(conversation_id: str):
     """
     Delete related data conversation in correct order from datatbase to respect foreign key constraints
 
@@ -20,7 +22,7 @@ def delete_conversation_related_data(conversation_id: str) -> None:
         conversation_id: conversation Id
     """
 
-    logging.info(
+    logger.info(
         click.style(f"Starting to delete conversation data from db for conversation_id {conversation_id}", fg="green")
     )
     start_at = time.perf_counter()
@@ -53,7 +55,7 @@ def delete_conversation_related_data(conversation_id: str) -> None:
         db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 f"Succeeded cleaning data from db for conversation_id {conversation_id} latency: {end_at - start_at}",
                 fg="green",
@@ -61,7 +63,7 @@ def delete_conversation_related_data(conversation_id: str) -> None:
         )
 
     except Exception as e:
-        logging.exception("Failed to delete data from db for conversation_id: %s failed", conversation_id)
+        logger.exception("Failed to delete data from db for conversation_id: %s failed", conversation_id)
         db.session.rollback()
         raise e
     finally:

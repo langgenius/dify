@@ -6,6 +6,7 @@ const translation = {
     models: 'Моделі',
     extensions: 'Розширення',
     agents: 'Стратегії агентів',
+    datasources: 'Джерела даних',
   },
   categorySingle: {
     agent: 'Стратегія агента',
@@ -13,6 +14,7 @@ const translation = {
     tool: 'Інструмент',
     extension: 'Збільшення',
     model: 'Модель',
+    datasource: 'Джерело даних',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     oauthClient: 'Клієнт OAuth',
     clientInfo: 'Оскільки не знайдено жодних секретів клієнта системи для цього постачальника інструментів, потрібно налаштувати його вручну; для redirect_uri, будь ласка, використовуйте',
     useApiAuthDesc: 'Після налаштування облікових даних усі учасники робочого простору можуть використовувати цей інструмент під час оркестрації додатків.',
+    unavailable: 'Недоступний',
+    customCredentialUnavailable: 'Індивідуальні облікові дані наразі недоступні',
+    credentialUnavailable: 'Облікові дані наразі недоступні. Будь ласка, зверніться до адміністратора.',
+    credentialUnavailableInButton: 'Облікові дані недоступні',
+    connectedWorkspace: 'Підключене робоче середовище',
+    emptyAuth: 'Будь ласка, налаштуйте аутентифікацію',
   },
   deprecated: 'Застарілий',
   autoUpdate: {

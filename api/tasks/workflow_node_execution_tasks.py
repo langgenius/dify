@@ -140,9 +140,7 @@ def _create_node_execution_from_domain(
     return node_execution
 
 
-def _update_node_execution_from_domain(
-    node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution
-) -> None:
+def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """

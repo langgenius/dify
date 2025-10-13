@@ -60,6 +60,7 @@ const translation = {
       'Hasło musi zawierać litery i cyfry, a jego długość musi być większa niż 8',
     passwordLengthInValid: 'Hasło musi składać się z co najmniej 8 znaków',
     registrationNotAllowed: 'Nie znaleziono konta. Skontaktuj się z administratorem systemu, aby się zarejestrować.',
+    invalidEmailOrPassword: 'Nieprawidłowy adres e-mail lub hasło.',
   },
   license: {
     tip: 'Przed rozpoczęciem wersji społecznościowej Dify, przeczytaj GitHub',
@@ -114,6 +115,15 @@ const translation = {
     noLoginMethodTip: 'Proszę skontaktować się z administratorem systemu, aby dodać metodę uwierzytelniania.',
     disabled: 'Uwierzytelnianie aplikacji internetowej jest wyłączone. Proszę skontaktować się z administratorem systemu, aby je włączyć. Możesz spróbować użyć aplikacji bezpośrednio.',
     login: 'Zaloguj się',
+  },
+  signup: {
+    createAccount: 'Utwórz swoje konto',
+    signUp: 'Zarejestruj się',
+    noAccount: 'Nie masz konta?',
+    verifyMail: 'Kontynuuj z kodem weryfikacyjnym',
+    signIn: 'Zaloguj się',
+    haveAccount: 'Masz już konto?',
+    welcome: '👋 Witaj! Proszę wypełnić szczegóły, aby rozpocząć.',
   },
 }
 

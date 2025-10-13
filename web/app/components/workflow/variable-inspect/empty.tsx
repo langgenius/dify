@@ -18,7 +18,7 @@ const Empty: FC = () => {
           href='https://docs.dify.ai/en/guides/workflow/debug-and-preview/variable-inspect'
           target='_blank'
           rel='noopener noreferrer'>
-            {t('workflow.debug.variableInspect.emptyLink')}
+          {t('workflow.debug.variableInspect.emptyLink')}
         </a>
       </div>
     </div>

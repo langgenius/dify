@@ -1,5 +1,4 @@
 from mimetypes import guess_extension
-from typing import Optional
 
 from flask_restx import Resource, reqparse
 from flask_restx.api import HTTPStatus
@@ -73,11 +72,11 @@ class PluginUploadFileApi(Resource):
         nonce: str = args["nonce"]
         sign: str = args["sign"]
         tenant_id: str = args["tenant_id"]
-        user_id: Optional[str] = args.get("user_id")
+        user_id: str | None = args.get("user_id")
         user = get_user(tenant_id, user_id)
 
-        filename: Optional[str] = file.filename
-        mimetype: Optional[str] = file.mimetype
+        filename: str | None = file.filename
+        mimetype: str | None = file.mimetype
 
         if not filename or not mimetype:
             raise Forbidden("Invalid request.")
@@ -86,7 +85,7 @@ class PluginUploadFileApi(Resource):
             filename=filename,
             mimetype=mimetype,
             tenant_id=tenant_id,
-            user_id=user_id,
+            user_id=user.id,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,

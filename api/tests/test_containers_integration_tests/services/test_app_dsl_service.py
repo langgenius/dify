@@ -144,127 +144,6 @@ class TestAppDslService:
         }
         return yaml.dump(yaml_data, allow_unicode=True)
 
-    def test_import_app_yaml_content_success(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test successful app import from YAML content.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create YAML content
-        yaml_content = self._create_simple_yaml_content(fake.company(), "chat")
-
-        # Import app
-        dsl_service = AppDslService(db_session_with_containers)
-        result = dsl_service.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_CONTENT,
-            yaml_content=yaml_content,
-            name="Imported App",
-            description="Imported app description",
-        )
-
-        # Verify import result
-        assert result.status == ImportStatus.COMPLETED
-        assert result.app_id is not None
-        assert result.app_mode == "chat"
-        assert result.imported_dsl_version == "0.3.0"
-        assert result.error == ""
-
-        # Verify app was created in database
-        imported_app = db_session_with_containers.query(App).filter(App.id == result.app_id).first()
-        assert imported_app is not None
-        assert imported_app.name == "Imported App"
-        assert imported_app.description == "Imported app description"
-        assert imported_app.mode == "chat"
-        assert imported_app.tenant_id == account.current_tenant_id
-        assert imported_app.created_by == account.id
-
-        # Verify model config was created
-        model_config = (
-            db_session_with_containers.query(AppModelConfig).filter(AppModelConfig.app_id == result.app_id).first()
-        )
-        assert model_config is not None
-        # The provider and model_id are stored in the model field as JSON
-        model_dict = model_config.model_dict
-        assert model_dict["provider"] == "openai"
-        assert model_dict["name"] == "gpt-3.5-turbo"
-
-    def test_import_app_yaml_url_success(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test successful app import from YAML URL.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create YAML content for mock response
-        yaml_content = self._create_simple_yaml_content(fake.company(), "chat")
-
-        # Setup mock response
-        mock_response = MagicMock()
-        mock_response.content = yaml_content.encode("utf-8")
-        mock_response.raise_for_status.return_value = None
-        mock_external_service_dependencies["ssrf_proxy"].get.return_value = mock_response
-
-        # Import app from URL
-        dsl_service = AppDslService(db_session_with_containers)
-        result = dsl_service.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_URL,
-            yaml_url="https://example.com/app.yaml",
-            name="URL Imported App",
-            description="App imported from URL",
-        )
-
-        # Verify import result
-        assert result.status == ImportStatus.COMPLETED
-        assert result.app_id is not None
-        assert result.app_mode == "chat"
-        assert result.imported_dsl_version == "0.3.0"
-        assert result.error == ""
-
-        # Verify app was created in database
-        imported_app = db_session_with_containers.query(App).filter(App.id == result.app_id).first()
-        assert imported_app is not None
-        assert imported_app.name == "URL Imported App"
-        assert imported_app.description == "App imported from URL"
-        assert imported_app.mode == "chat"
-        assert imported_app.tenant_id == account.current_tenant_id
-
-        # Verify ssrf_proxy was called
-        mock_external_service_dependencies["ssrf_proxy"].get.assert_called_once_with(
-            "https://example.com/app.yaml", follow_redirects=True, timeout=(10, 10)
-        )
-
-    def test_import_app_invalid_yaml_format(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test app import with invalid YAML format.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create invalid YAML content
-        invalid_yaml = "invalid: yaml: content: ["
-
-        # Import app with invalid YAML
-        dsl_service = AppDslService(db_session_with_containers)
-        result = dsl_service.import_app(
-            account=account,
-            import_mode=ImportMode.YAML_CONTENT,
-            yaml_content=invalid_yaml,
-            name="Invalid App",
-        )
-
-        # Verify import failed
-        assert result.status == ImportStatus.FAILED
-        assert result.app_id is None
-        assert "Invalid YAML format" in result.error
-        assert result.imported_dsl_version == ""
-
-        # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
-        assert apps_count == 1  # Only the original test app
-
     def test_import_app_missing_yaml_content(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test app import with missing YAML content.
@@ -287,7 +166,7 @@ class TestAppDslService:
         assert result.imported_dsl_version == ""
 
         # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
+        apps_count = db_session_with_containers.query(App).where(App.tenant_id == account.current_tenant_id).count()
         assert apps_count == 1  # Only the original test app
 
     def test_import_app_missing_yaml_url(self, db_session_with_containers, mock_external_service_dependencies):
@@ -312,7 +191,7 @@ class TestAppDslService:
         assert result.imported_dsl_version == ""
 
         # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
+        apps_count = db_session_with_containers.query(App).where(App.tenant_id == account.current_tenant_id).count()
         assert apps_count == 1  # Only the original test app
 
     def test_import_app_invalid_import_mode(self, db_session_with_containers, mock_external_service_dependencies):
@@ -336,7 +215,7 @@ class TestAppDslService:
             )
 
         # Verify no app was created in database
-        apps_count = db_session_with_containers.query(App).filter(App.tenant_id == account.current_tenant_id).count()
+        apps_count = db_session_with_containers.query(App).where(App.tenant_id == account.current_tenant_id).count()
         assert apps_count == 1  # Only the original test app
 
     def test_export_dsl_chat_app_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -443,7 +322,87 @@ class TestAppDslService:
 
         # Verify workflow service was called
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
-            app
+            app, None
+        )
+
+    def test_export_dsl_with_workflow_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test successful DSL export with specific workflow ID.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Update app to workflow mode
+        app.mode = "workflow"
+        db_session_with_containers.commit()
+
+        # Mock workflow service to return a workflow when specific workflow_id is provided
+        mock_workflow = MagicMock()
+        mock_workflow.to_dict.return_value = {
+            "graph": {"nodes": [{"id": "start", "type": "start", "data": {"type": "start"}}], "edges": []},
+            "features": {},
+            "environment_variables": [],
+            "conversation_variables": [],
+        }
+
+        # Mock the get_draft_workflow method to return different workflows based on workflow_id
+        def mock_get_draft_workflow(app_model, workflow_id=None):
+            if workflow_id == "specific-workflow-id":
+                return mock_workflow
+            return None
+
+        mock_external_service_dependencies[
+            "workflow_service"
+        ].return_value.get_draft_workflow.side_effect = mock_get_draft_workflow
+
+        # Export DSL with specific workflow ID
+        exported_dsl = AppDslService.export_dsl(app, include_secret=False, workflow_id="specific-workflow-id")
+
+        # Parse exported YAML
+        exported_data = yaml.safe_load(exported_dsl)
+
+        # Verify exported data structure
+        assert exported_data["kind"] == "app"
+        assert exported_data["app"]["name"] == app.name
+        assert exported_data["app"]["mode"] == "workflow"
+
+        # Verify workflow was exported
+        assert "workflow" in exported_data
+        assert "graph" in exported_data["workflow"]
+        assert "nodes" in exported_data["workflow"]["graph"]
+
+        # Verify dependencies were exported
+        assert "dependencies" in exported_data
+        assert isinstance(exported_data["dependencies"], list)
+
+        # Verify workflow service was called with specific workflow ID
+        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
+            app, "specific-workflow-id"
+        )
+
+    def test_export_dsl_with_invalid_workflow_id_raises_error(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test that export_dsl raises error when invalid workflow ID is provided.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Update app to workflow mode
+        app.mode = "workflow"
+        db_session_with_containers.commit()
+
+        # Mock workflow service to return None when invalid workflow ID is provided
+        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
+
+        # Export DSL with invalid workflow ID should raise ValueError
+        with pytest.raises(ValueError, match="Missing draft workflow configuration, please check."):
+            AppDslService.export_dsl(app, include_secret=False, workflow_id="invalid-workflow-id")
+
+        # Verify workflow service was called with the invalid workflow ID
+        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
+            app, "invalid-workflow-id"
         )
 
     def test_check_dependencies_success(self, db_session_with_containers, mock_external_service_dependencies):

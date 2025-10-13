@@ -12,6 +12,8 @@ from extensions.ext_storage import storage
 from models.model import Message
 from models.workflow import WorkflowRun
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="ops_trace")
 def process_trace_tasks(file_info):
@@ -34,7 +36,7 @@ def process_trace_tasks(file_info):
     if trace_info.get("workflow_data"):
         trace_info["workflow_data"] = WorkflowRun.from_dict(data=trace_info["workflow_data"])
     if trace_info.get("documents"):
-        trace_info["documents"] = [Document(**doc) for doc in trace_info["documents"]]
+        trace_info["documents"] = [Document.model_validate(doc) for doc in trace_info["documents"]]
 
     try:
         if trace_instance:
@@ -43,11 +45,11 @@ def process_trace_tasks(file_info):
                 if trace_type:
                     trace_info = trace_type(**trace_info)
                 trace_instance.trace(trace_info)
-        logging.info("Processing trace tasks success, app_id: %s", app_id)
+        logger.info("Processing trace tasks success, app_id: %s", app_id)
     except Exception as e:
-        logging.info("error:\n\n\n%s\n\n\n\n", e)
+        logger.info("error:\n\n\n%s\n\n\n\n", e)
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)
-        logging.info("Processing trace tasks failed, app_id: %s", app_id)
+        logger.info("Processing trace tasks failed, app_id: %s", app_id)
     finally:
         storage.delete(file_path)

@@ -44,25 +44,25 @@ class MockClient:
                 "hits": [
                     {
                         "_source": {
-                            Field.CONTENT_KEY.value: "abcdef",
-                            Field.VECTOR.value: [1, 2],
-                            Field.METADATA_KEY.value: {},
+                            Field.CONTENT_KEY: "abcdef",
+                            Field.VECTOR: [1, 2],
+                            Field.METADATA_KEY: {},
                         },
                         "_score": 1.0,
                     },
                     {
                         "_source": {
-                            Field.CONTENT_KEY.value: "123456",
-                            Field.VECTOR.value: [2, 2],
-                            Field.METADATA_KEY.value: {},
+                            Field.CONTENT_KEY: "123456",
+                            Field.VECTOR: [2, 2],
+                            Field.METADATA_KEY: {},
                         },
                         "_score": 0.9,
                     },
                     {
                         "_source": {
-                            Field.CONTENT_KEY.value: "a1b2c3",
-                            Field.VECTOR.value: [3, 2],
-                            Field.METADATA_KEY.value: {},
+                            Field.CONTENT_KEY: "a1b2c3",
+                            Field.VECTOR: [3, 2],
+                            Field.METADATA_KEY: {},
                         },
                         "_score": 0.8,
                     },

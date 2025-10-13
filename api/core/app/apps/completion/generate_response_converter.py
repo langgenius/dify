@@ -16,7 +16,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = CompletionAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: CompletionAppBlockingResponse) -> dict:  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -36,7 +36,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: CompletionAppBlockingResponse) -> dict:  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -45,7 +45,10 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
         response = cls.convert_blocking_full_response(blocking_response)
 
         metadata = response.get("metadata", {})
-        response["metadata"] = cls._get_simple_metadata(metadata)
+        if isinstance(metadata, dict):
+            response["metadata"] = cls._get_simple_metadata(metadata)
+        else:
+            response["metadata"] = {}
 
         return response
 
@@ -76,7 +79,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk
 
     @classmethod
@@ -103,14 +106,16 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
             }
 
             if isinstance(sub_stream_response, MessageEndStreamResponse):
-                sub_stream_response_dict = sub_stream_response.to_dict()
+                sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
                 metadata = sub_stream_response_dict.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    metadata = {}
                 sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
                 response_chunk.update(sub_stream_response_dict)
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
 
             yield response_chunk

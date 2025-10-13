@@ -42,7 +42,7 @@ class TestAdvancedPromptTemplateService:
 
         # Test data for Baichuan model
         args = {
-            "app_mode": AppMode.CHAT.value,
+            "app_mode": AppMode.CHAT,
             "model_mode": "completion",
             "model_name": "baichuan-13b-chat",
             "has_context": "true",
@@ -77,7 +77,7 @@ class TestAdvancedPromptTemplateService:
 
         # Test data for common model
         args = {
-            "app_mode": AppMode.CHAT.value,
+            "app_mode": AppMode.CHAT,
             "model_mode": "completion",
             "model_name": "gpt-3.5-turbo",
             "has_context": "true",
@@ -116,7 +116,7 @@ class TestAdvancedPromptTemplateService:
 
         for model_name in test_cases:
             args = {
-                "app_mode": AppMode.CHAT.value,
+                "app_mode": AppMode.CHAT,
                 "model_mode": "completion",
                 "model_name": model_name,
                 "has_context": "true",
@@ -144,7 +144,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT.value, "completion", "true")
+        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "completion", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -173,7 +173,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT.value, "chat", "true")
+        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "chat", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -202,7 +202,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.COMPLETION.value, "completion", "true")
+        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.COMPLETION, "completion", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -230,7 +230,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.COMPLETION.value, "chat", "true")
+        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.COMPLETION, "chat", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -257,7 +257,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT.value, "completion", "false")
+        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "completion", "false")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -303,7 +303,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT.value, "unsupported_mode", "true")
+        result = AdvancedPromptTemplateService.get_common_prompt(AppMode.CHAT, "unsupported_mode", "true")
 
         # Assert: Verify empty dict is returned
         assert result == {}
@@ -442,7 +442,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT.value, "completion", "true")
+        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT, "completion", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -473,7 +473,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT.value, "chat", "true")
+        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT, "chat", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -502,7 +502,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.COMPLETION.value, "completion", "true")
+        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.COMPLETION, "completion", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -530,7 +530,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.COMPLETION.value, "chat", "true")
+        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.COMPLETION, "chat", "true")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -557,7 +557,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT.value, "completion", "false")
+        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT, "completion", "false")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -603,7 +603,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT.value, "unsupported_mode", "true")
+        result = AdvancedPromptTemplateService.get_baichuan_prompt(AppMode.CHAT, "unsupported_mode", "true")
 
         # Assert: Verify empty dict is returned
         assert result == {}
@@ -621,7 +621,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Test all app modes
-        app_modes = [AppMode.CHAT.value, AppMode.COMPLETION.value]
+        app_modes = [AppMode.CHAT, AppMode.COMPLETION]
         model_modes = ["completion", "chat"]
 
         for app_mode in app_modes:
@@ -653,7 +653,7 @@ class TestAdvancedPromptTemplateService:
         fake = Faker()
 
         # Test all app modes
-        app_modes = [AppMode.CHAT.value, AppMode.COMPLETION.value]
+        app_modes = [AppMode.CHAT, AppMode.COMPLETION]
         model_modes = ["completion", "chat"]
 
         for app_mode in app_modes:
@@ -686,10 +686,10 @@ class TestAdvancedPromptTemplateService:
         # Test edge cases
         edge_cases = [
             {"app_mode": "", "model_mode": "completion", "model_name": "gpt-3.5-turbo", "has_context": "true"},
-            {"app_mode": AppMode.CHAT.value, "model_mode": "", "model_name": "gpt-3.5-turbo", "has_context": "true"},
-            {"app_mode": AppMode.CHAT.value, "model_mode": "completion", "model_name": "", "has_context": "true"},
+            {"app_mode": AppMode.CHAT, "model_mode": "", "model_name": "gpt-3.5-turbo", "has_context": "true"},
+            {"app_mode": AppMode.CHAT, "model_mode": "completion", "model_name": "", "has_context": "true"},
             {
-                "app_mode": AppMode.CHAT.value,
+                "app_mode": AppMode.CHAT,
                 "model_mode": "completion",
                 "model_name": "gpt-3.5-turbo",
                 "has_context": "",
@@ -723,7 +723,7 @@ class TestAdvancedPromptTemplateService:
 
         # Test with context
         args = {
-            "app_mode": AppMode.CHAT.value,
+            "app_mode": AppMode.CHAT,
             "model_mode": "completion",
             "model_name": "gpt-3.5-turbo",
             "has_context": "true",
@@ -757,7 +757,7 @@ class TestAdvancedPromptTemplateService:
 
         # Test with context
         args = {
-            "app_mode": AppMode.CHAT.value,
+            "app_mode": AppMode.CHAT,
             "model_mode": "completion",
             "model_name": "baichuan-13b-chat",
             "has_context": "true",
@@ -786,25 +786,25 @@ class TestAdvancedPromptTemplateService:
         # Test different scenarios
         test_scenarios = [
             {
-                "app_mode": AppMode.CHAT.value,
+                "app_mode": AppMode.CHAT,
                 "model_mode": "completion",
                 "model_name": "gpt-3.5-turbo",
                 "has_context": "true",
             },
             {
-                "app_mode": AppMode.CHAT.value,
+                "app_mode": AppMode.CHAT,
                 "model_mode": "chat",
                 "model_name": "gpt-3.5-turbo",
                 "has_context": "true",
             },
             {
-                "app_mode": AppMode.COMPLETION.value,
+                "app_mode": AppMode.COMPLETION,
                 "model_mode": "completion",
                 "model_name": "gpt-3.5-turbo",
                 "has_context": "true",
             },
             {
-                "app_mode": AppMode.COMPLETION.value,
+                "app_mode": AppMode.COMPLETION,
                 "model_mode": "chat",
                 "model_name": "gpt-3.5-turbo",
                 "has_context": "true",
@@ -843,25 +843,25 @@ class TestAdvancedPromptTemplateService:
         # Test different scenarios
         test_scenarios = [
             {
-                "app_mode": AppMode.CHAT.value,
+                "app_mode": AppMode.CHAT,
                 "model_mode": "completion",
                 "model_name": "baichuan-13b-chat",
                 "has_context": "true",
             },
             {
-                "app_mode": AppMode.CHAT.value,
+                "app_mode": AppMode.CHAT,
                 "model_mode": "chat",
                 "model_name": "baichuan-13b-chat",
                 "has_context": "true",
             },
             {
-                "app_mode": AppMode.COMPLETION.value,
+                "app_mode": AppMode.COMPLETION,
                 "model_mode": "completion",
                 "model_name": "baichuan-13b-chat",
                 "has_context": "true",
             },
             {
-                "app_mode": AppMode.COMPLETION.value,
+                "app_mode": AppMode.COMPLETION,
                 "model_mode": "chat",
                 "model_name": "baichuan-13b-chat",
                 "has_context": "true",

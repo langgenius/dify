@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
@@ -15,7 +15,7 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -123,7 +123,7 @@ class OpsService:
         config_class: type[BaseTracingConfig] = provider_config["config_class"]
         other_keys: list[str] = provider_config["other_keys"]
 
-        default_config_instance: BaseTracingConfig = config_class(**tracing_config)
+        default_config_instance = config_class.model_validate(tracing_config)
         for key in other_keys:
             if key in tracing_config and tracing_config[key] == "":
                 tracing_config[key] = getattr(default_config_instance, key, None)
@@ -134,17 +134,26 @@ class OpsService:
 
         # get project url
         if tracing_provider in ("arize", "phoenix"):
-            project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            except Exception:
+                project_url = None
         elif tracing_provider == "langfuse":
-            project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
-            project_url = f"{tracing_config.get('host')}/project/{project_key}"
+            try:
+                project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
+                project_url = f"{tracing_config.get('host')}/project/{project_key}"
+            except Exception:
+                project_url = None
         elif tracing_provider in ("langsmith", "opik"):
-            project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+            except Exception:
+                project_url = None
         else:
             project_url = None
 
         # check if trace config already exists
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()

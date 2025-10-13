@@ -39,6 +39,7 @@ type Props = {
   tip?: React.JSX.Element
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  footer?: React.ReactNode
 }
 
 const Base: FC<Props> = ({
@@ -57,6 +58,7 @@ const Base: FC<Props> = ({
   showFileList,
   showCodeGenerator = false,
   tip,
+  footer,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -128,6 +130,7 @@ const Base: FC<Props> = ({
         {showFileList && fileList.length > 0 && (
           <FileListInLog fileList={fileList} />
         )}
+        {footer}
       </div>
     </Wrap>
   )

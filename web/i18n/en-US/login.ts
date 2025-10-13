@@ -1,6 +1,6 @@
 const translation = {
-  pageTitle: 'Hey, let\'s get started!',
-  welcome: '👋 Welcome to Dify, please log in to continue.',
+  pageTitle: 'Log in to Dify',
+  welcome: '👋 Welcome! Please log in to get started.',
   email: 'Email address',
   emailPlaceholder: 'Your email',
   password: 'Password',
@@ -62,6 +62,7 @@ const translation = {
     passwordLengthInValid: 'Password must be at least 8 characters',
     passwordInvalid: 'Password must contain letters and numbers, and the length must be greater than 8',
     registrationNotAllowed: 'Account not found. Please contact the system admin to register.',
+    invalidEmailOrPassword: 'Invalid email or password.',
   },
   license: {
     tip: 'Before starting Dify Community Edition, read the GitHub',
@@ -109,6 +110,15 @@ const translation = {
     noLoginMethod: 'Authentication method not configured for web app',
     noLoginMethodTip: 'Please contact the system admin to add an authentication method.',
     disabled: 'Webapp authentication is disabled. Please contact the system admin to enable it. You can try to use the app directly.',
+  },
+  signup: {
+    noAccount: 'Don’t have an account? ',
+    signUp: 'Sign Up',
+    createAccount: 'Create your account',
+    welcome: '👋 Welcome! Please fill in the details to get started.',
+    verifyMail: 'Continue with verification code',
+    haveAccount: 'Already have an account? ',
+    signIn: 'Sign In',
   },
 }
 

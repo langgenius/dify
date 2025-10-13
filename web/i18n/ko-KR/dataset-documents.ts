@@ -30,7 +30,6 @@ const translation = {
       sync: '동기화',
       resume: '재개',
       pause: '일시 중지',
-      download: '파일 다운로드',
     },
     index: {
       enable: '활성화',
@@ -99,6 +98,9 @@ const translation = {
       upload_file: '파일 업로드',
       notion: 'Notion 에서 동기화',
       github: 'GitHub 에서 동기화',
+      website_crawl: '웹사이트 크롤링',
+      local_file: '로컬 파일',
+      online_document: '온라인 문서',
     },
     type: {
       book: '도서',
@@ -336,6 +338,7 @@ const translation = {
     parentMaxTokens: '부모',
     pause: '일시 중지',
     hierarchical: '부모 - 자식',
+    waiting: '임베딩 대기 중...',
   },
   segment: {
     paragraphs: '단락',

@@ -60,6 +60,7 @@ const buildThemeCommands = (query: string, locale?: string): CommandSearchResult
 export const themeCommand: SlashCommandHandler<ThemeDeps> = {
   name: 'theme',
   description: 'Switch between light and dark themes',
+  mode: 'submenu', // Explicitly set submenu mode
 
   async search(args: string, locale: string = 'en') {
     // Return theme options directly, regardless of parameters

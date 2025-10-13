@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
@@ -22,8 +22,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -47,7 +46,7 @@ def wrap_metadata(metadata, **kwargs):
     return metadata
 
 
-def prepare_opik_uuid(user_datetime: Optional[datetime], user_uuid: Optional[str]):
+def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None):
     """Opik needs UUIDv7 while Dify uses UUIDv4 for identifier of most
     messages and objects. The type-hints of BaseTraceInfo indicates that
     objects start_time and message_id could be null which means we cannot map
@@ -109,7 +108,7 @@ class OpikDataTrace(BaseTraceInstance):
 
             trace_data = {
                 "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE.value,
+                "name": TraceTaskName.MESSAGE_TRACE,
                 "start_time": trace_info.start_time,
                 "end_time": trace_info.end_time,
                 "metadata": workflow_metadata,
@@ -126,7 +125,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "id": root_span_id,
                 "parent_span_id": None,
                 "trace_id": opik_trace_id,
-                "name": TraceTaskName.WORKFLOW_TRACE.value,
+                "name": TraceTaskName.WORKFLOW_TRACE,
                 "input": wrap_dict("input", trace_info.workflow_run_inputs),
                 "output": wrap_dict("output", trace_info.workflow_run_outputs),
                 "start_time": trace_info.start_time,
@@ -139,7 +138,7 @@ class OpikDataTrace(BaseTraceInstance):
         else:
             trace_data = {
                 "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE.value,
+                "name": TraceTaskName.MESSAGE_TRACE,
                 "start_time": trace_info.start_time,
                 "end_time": trace_info.end_time,
                 "metadata": workflow_metadata,
@@ -182,13 +181,13 @@ class OpikDataTrace(BaseTraceInstance):
             if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
@@ -202,7 +201,7 @@ class OpikDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
 
             provider = None
             model = None
@@ -264,7 +263,7 @@ class OpikDataTrace(BaseTraceInstance):
     def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
 
         if message_file_data is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -282,7 +281,7 @@ class OpikDataTrace(BaseTraceInstance):
         metadata["file_list"] = file_list
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -291,7 +290,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         trace_data = {
             "id": prepare_opik_uuid(trace_info.start_time, dify_trace_id),
-            "name": TraceTaskName.MESSAGE_TRACE.value,
+            "name": TraceTaskName.MESSAGE_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(metadata),
@@ -330,7 +329,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.MODERATION_TRACE.value,
+            "name": TraceTaskName.MODERATION_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or trace_info.message_data.updated_at,
@@ -356,7 +355,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
+            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or message_data.updated_at,
@@ -376,7 +375,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
+            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or trace_info.message_data.updated_at,
@@ -406,7 +405,7 @@ class OpikDataTrace(BaseTraceInstance):
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         trace_data = {
             "id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.GENERATE_NAME_TRACE.value,
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),
@@ -421,7 +420,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": trace.id,
-            "name": TraceTaskName.GENERATE_NAME_TRACE.value,
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),

@@ -27,7 +27,7 @@ const I18N_PREFIX = 'app.tracing'
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const { isCurrentWorkspaceEditor } = useAppContext()
   const readOnly = !isCurrentWorkspaceEditor

@@ -16,15 +16,15 @@ const VariableInspectPanel: FC = () => {
   const setVariableInspectPanelHeight = useStore(s => s.setVariableInspectPanelHeight)
 
   const maxHeight = useMemo(() => {
-      if (!workflowCanvasHeight)
-        return 480
-      return workflowCanvasHeight - 60
-    }, [workflowCanvasHeight])
+    if (!workflowCanvasHeight)
+      return 480
+    return workflowCanvasHeight - 60
+  }, [workflowCanvasHeight])
 
   const handleResize = useCallback((width: number, height: number) => {
     localStorage.setItem('workflow-variable-inpsect-panel-height', `${height}`)
     setVariableInspectPanelHeight(height)
-    }, [setVariableInspectPanelHeight])
+  }, [setVariableInspectPanelHeight])
 
   const {
     triggerRef,

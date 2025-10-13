@@ -1,8 +1,8 @@
 import json
 import logging
-from typing import Optional, TypedDict, cast
+from typing import TypedDict, cast
 
-from flask_login import current_user
+import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
@@ -17,13 +17,17 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from libs.login import current_user
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
+
+logger = logging.getLogger(__name__)
 
 
 class AppService:
@@ -38,15 +42,15 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if args["mode"] == "workflow":
-            filters.append(App.mode == AppMode.WORKFLOW.value)
+            filters.append(App.mode == AppMode.WORKFLOW)
         elif args["mode"] == "completion":
-            filters.append(App.mode == AppMode.COMPLETION.value)
+            filters.append(App.mode == AppMode.COMPLETION)
         elif args["mode"] == "chat":
-            filters.append(App.mode == AppMode.CHAT.value)
+            filters.append(App.mode == AppMode.CHAT)
         elif args["mode"] == "advanced-chat":
-            filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
+            filters.append(App.mode == AppMode.ADVANCED_CHAT)
         elif args["mode"] == "agent-chat":
-            filters.append(App.mode == AppMode.AGENT_CHAT.value)
+            filters.append(App.mode == AppMode.AGENT_CHAT)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
@@ -62,7 +66,7 @@ class AppService:
                 return None
 
         app_models = db.paginate(
-            db.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(App.created_at.desc()),
             page=args["page"],
             per_page=args["limit"],
             error_out=False,
@@ -94,8 +98,8 @@ class AppService:
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
-            except Exception as e:
-                logging.exception("Get default model instance failed, tenant_id: %s", tenant_id)
+            except Exception:
+                logger.exception("Get default model instance failed, tenant_id: %s", tenant_id)
                 model_instance = None
 
             if model_instance:
@@ -160,15 +164,22 @@ class AppService:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
+        if dify_config.BILLING_ENABLED:
+            BillingService.clean_billing_info_cache(app.tenant_id)
+
         return app
 
     def get_app(self, app: App) -> App:
         """
         Get App
         """
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get original app model config
-        if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
+        if app.mode == AppMode.AGENT_CHAT or app.is_agent:
             model_config = app.app_model_config
+            if not model_config:
+                return app
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             for tool in agent_mode.get("tools") or []:
@@ -199,11 +210,12 @@ class AppService:
 
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
-                except Exception as e:
+                except Exception:
                     pass
 
             # override agent mode
-            model_config.agent_mode = json.dumps(agent_mode)
+            if model_config:
+                model_config.agent_mode = json.dumps(agent_mode)
 
             class ModifiedApp(App):
                 """
@@ -237,6 +249,7 @@ class AppService:
         :param args: request args
         :return: App instance
         """
+        assert current_user is not None
         app.name = args["name"]
         app.description = args["description"]
         app.icon_type = args["icon_type"]
@@ -257,6 +270,7 @@ class AppService:
         :param name: new name
         :return: App instance
         """
+        assert current_user is not None
         app.name = name
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
@@ -272,6 +286,7 @@ class AppService:
         :param icon_background: new icon_background
         :return: App instance
         """
+        assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
@@ -289,7 +304,7 @@ class AppService:
         """
         if enable_site == app.enable_site:
             return app
-
+        assert current_user is not None
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
@@ -306,6 +321,7 @@ class AppService:
         """
         if enable_api == app.enable_api:
             return app
+        assert current_user is not None
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
@@ -314,7 +330,7 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App) -> None:
+    def delete_app(self, app: App):
         """
         Delete app
         :param app: App instance
@@ -326,10 +342,13 @@ class AppService:
         if FeatureService.get_system_features().webapp_auth.enabled:
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
+        if dify_config.BILLING_ENABLED:
+            BillingService.clean_billing_info_cache(app.tenant_id)
+
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
-    def get_app_meta(self, app_model: App) -> dict:
+    def get_app_meta(self, app_model: App):
         """
         Get app meta info
         :param app_model: app model
@@ -359,7 +378,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
+            app_model_config: AppModelConfig | None = app_model.app_model_config
 
             if not app_model_config:
                 return meta
@@ -382,7 +401,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: Optional[ApiToolProvider] = (
+                        provider: ApiToolProvider | None = (
                             db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
                         )
                         if provider is None:

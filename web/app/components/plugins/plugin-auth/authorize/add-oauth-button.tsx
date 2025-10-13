@@ -36,6 +36,13 @@ export type AddOAuthButtonProps = {
   dividerClassName?: string
   disabled?: boolean
   onUpdate?: () => void
+  oAuthData?: {
+    schema?: FormSchema[]
+    is_oauth_custom_client_enabled?: boolean
+    is_system_oauth_params_exists?: boolean
+    client_params?: Record<string, any>
+    redirect_uri?: string
+  }
 }
 const AddOAuthButton = ({
   pluginPayload,
@@ -47,19 +54,26 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
+  oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
+  const mergedOAuthData = useMemo(() => {
+    if (oAuthData)
+      return oAuthData
+
+    return data
+  }, [oAuthData, data])
   const {
     schema = [],
     is_oauth_custom_client_enabled,
     is_system_oauth_params_exists,
     client_params,
     redirect_uri,
-  } = data || {}
+  } = mergedOAuthData as any || {}
   const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
@@ -86,7 +100,7 @@ const AddOAuthButton = ({
             {
               redirect_uri && (
                 <div className='system-sm-medium flex w-full py-0.5'>
-                  <div className='w-0 grow break-words'>{redirect_uri}</div>
+                  <div className='w-0 grow break-words break-all'>{redirect_uri}</div>
                   <ActionButton
                     className='shrink-0'
                     onClick={() => {
@@ -112,7 +126,7 @@ const AddOAuthButton = ({
     )
   }, [t, redirect_uri, renderI18nObject])
   const memorizedSchemas = useMemo(() => {
-    const result: FormSchema[] = schema.map((item, index) => {
+    const result: FormSchema[] = (schema as FormSchema[]).map((item, index) => {
       return {
         ...item,
         label: index === 0 ? renderCustomLabel(item) : item.label,

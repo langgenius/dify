@@ -25,8 +25,13 @@ import type {
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, baseOptions, getAccessToken } from './fetch'
+import { ContentType, base, getAccessToken, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
+import type {
+  DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
+  DataSourceNodeProcessingResponse,
+} from '@/types/pipeline'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -67,6 +72,9 @@ export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
 export type IOWorkflowSuspended = (workflowSuspended: WorkflowSuspendedResponse) => void
+export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
+export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
+export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -104,6 +112,11 @@ export type IOtherOptions = {
   onAgentLog?: IOnAgentLog
   onHumanInputRequired?: IOHumanInputRequired
   onWorkflowSuspended?: IOWorkflowSuspended
+
+  // Pipeline data source node run
+  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
+  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
+  onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
 function unicodeToChar(text: string) {
@@ -169,6 +182,9 @@ const handleStream = (
   onAgentLog?: IOnAgentLog,
   onHumanInputRequired?: IOHumanInputRequired,
   onWorkflowSuspended?: IOWorkflowSuspended,
+  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
+  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
+  onDataSourceNodeError?: IOnDataSourceNodeError,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -180,9 +196,9 @@ const handleStream = (
   let isFirstMessage = true
   function read() {
     let hasError = false
-    reader?.read().then((result: any) => {
+    reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
       if (result.done) {
-        onCompleted && onCompleted()
+        onCompleted?.()
         return
       }
       buffer += decoder.decode(result.value, { stream: true })
@@ -293,6 +309,18 @@ const handleStream = (
             else if (bufferObj.event === 'workflow_suspended') {
               onWorkflowSuspended?.(bufferObj as WorkflowSuspendedResponse)
             }
+            else if (bufferObj.event === 'datasource_processing') {
+              onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
+            }
+            else if (bufferObj.event === 'datasource_completed') {
+              onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
+            }
+            else if (bufferObj.event === 'datasource_error') {
+              onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
+            }
+            else {
+              console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -316,7 +344,21 @@ const handleStream = (
 
 const baseFetch = base
 
-export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
+type UploadOptions = {
+  xhr: XMLHttpRequest
+  method: string
+  url?: string
+  headers?: Record<string, string>
+  data: FormData
+  onprogress?: (this: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => void
+}
+
+type UploadResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<UploadResponse> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   const token = await getAccessToken(isPublicAPI)
   const defaultOptions = {
@@ -325,18 +367,18 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    data: {},
   }
-  options = {
+  const mergedOptions = {
     ...defaultOptions,
     ...options,
-    headers: { ...defaultOptions.headers, ...options.headers },
+    url: options.url || defaultOptions.url,
+    headers: { ...defaultOptions.headers, ...options.headers } as Record<string, string>,
   }
   return new Promise((resolve, reject) => {
-    const xhr = options.xhr
-    xhr.open(options.method, options.url)
-    for (const key in options.headers)
-      xhr.setRequestHeader(key, options.headers[key])
+    const xhr = mergedOptions.xhr
+    xhr.open(mergedOptions.method, mergedOptions.url)
+    for (const key in mergedOptions.headers)
+      xhr.setRequestHeader(key, mergedOptions.headers[key])
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
@@ -348,8 +390,9 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
           reject(xhr)
       }
     }
-    xhr.upload.onprogress = options.onprogress
-    xhr.send(options.data)
+    if (mergedOptions.onprogress)
+      xhr.upload.onprogress = mergedOptions.onprogress
+    xhr.send(mergedOptions.data)
   })
 }
 
@@ -388,11 +431,15 @@ export const ssePost = async (
     onLoopFinish,
     onHumanInputRequired,
     onWorkflowSuspended,
+    onDataSourceNodeProcessing,
+    onDataSourceNodeCompleted,
+    onDataSourceNodeError,
   } = otherOptions
   const abortController = new AbortController()
 
   const token = localStorage.getItem('console_token')
 
+  const baseOptions = getBaseOptions()
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
@@ -420,10 +467,8 @@ export const ssePost = async (
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
-          refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
-            ssePost(url, fetchOptions, otherOptions)
-          }).catch(() => {
-            res.json().then((data: any) => {
+          if (isPublicAPI) {
+            res.json().then((data: { code?: string; message?: string }) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)
@@ -439,7 +484,14 @@ export const ssePost = async (
                 }
               }
             })
-          })
+          }
+          else {
+            refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
+              ssePost(url, fetchOptions, otherOptions)
+            }).catch((err) => {
+              console.error(err)
+            })
+          }
         }
         else {
           res.json().then((data) => {
@@ -449,16 +501,18 @@ export const ssePost = async (
         }
         return
       }
-      return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-        if (moreInfo.errorMessage) {
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
-          return
-        }
-        onData?.(str, isFirstMessage, moreInfo)
-      },
+      return handleStream(
+        res,
+        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+          if (moreInfo.errorMessage) {
+            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
+            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+            return
+          }
+          onData?.(str, isFirstMessage, moreInfo)
+        },
         onCompleted,
         onThought,
         onMessageEnd,
@@ -527,10 +581,14 @@ export const sseGet = async (
     onLoopFinish,
     onHumanInputRequired,
     onWorkflowSuspended,
+    onDataSourceNodeProcessing,
+    onDataSourceNodeCompleted,
+    onDataSourceNodeError,
   } = otherOptions
   const abortController = new AbortController()
 
   const token = localStorage.getItem('console_token')
+  const baseOptions = getBaseOptions()
   const options = Object.assign({}, baseOptions, {
     signal: abortController.signal,
     headers: new Headers({
@@ -617,9 +675,12 @@ export const sseGet = async (
         onAgentLog,
         onHumanInputRequired,
         onWorkflowSuspended,
+        onDataSourceNodeProcessing,
+        onDataSourceNodeCompleted,
+        onDataSourceNodeError,
       )
     }).catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
       onError?.(e)
     })
@@ -640,6 +701,8 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         globalThis.location.href = loginUrl
         return Promise.reject(err)
       }
+      if (/\/login/.test(url))
+        return Promise.reject(errRespData)
       // special code
       const { code, message } = errRespData
       // webapp sso

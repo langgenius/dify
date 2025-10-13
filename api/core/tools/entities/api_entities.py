@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -14,12 +15,12 @@ class ToolApiEntity(BaseModel):
     name: str  # identifier
     label: I18nObject  # label
     description: I18nObject
-    parameters: Optional[list[ToolParameter]] = None
+    parameters: list[ToolParameter] | None = None
     labels: list[str] = Field(default_factory=list)
-    output_schema: Optional[dict] = None
+    output_schema: Mapping[str, object] = Field(default_factory=dict)
 
 
-ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow", "mcp"]]
+ToolProviderTypeApiLiteral = Literal["builtin", "api", "workflow", "mcp"] | None
 
 
 class ToolProviderApiEntity(BaseModel):
@@ -27,36 +28,40 @@ class ToolProviderApiEntity(BaseModel):
     author: str
     name: str  # identifier
     description: I18nObject
-    icon: str | dict
-    icon_dark: Optional[str | dict] = Field(default=None, description="The dark icon of the tool")
+    icon: str | Mapping[str, str]
+    icon_dark: str | Mapping[str, str] = ""
     label: I18nObject  # label
     type: ToolProviderType
-    masked_credentials: Optional[dict] = None
-    original_credentials: Optional[dict] = None
+    masked_credentials: Mapping[str, object] = Field(default_factory=dict)
+    original_credentials: Mapping[str, object] = Field(default_factory=dict)
     is_team_authorization: bool = False
     allow_delete: bool = True
-    plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
-    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
-    tools: list[ToolApiEntity] = Field(default_factory=list)
+    plugin_id: str | None = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the tool")
+    tools: list[ToolApiEntity] = Field(default_factory=list[ToolApiEntity])
     labels: list[str] = Field(default_factory=list)
     # MCP
-    server_url: Optional[str] = Field(default="", description="The server url of the tool")
+    server_url: str | None = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
-    server_identifier: Optional[str] = Field(default="", description="The server identifier of the MCP tool")
+    server_identifier: str | None = Field(default="", description="The server identifier of the MCP tool")
+    timeout: float | None = Field(default=30.0, description="The timeout of the MCP tool")
+    sse_read_timeout: float | None = Field(default=300.0, description="The SSE read timeout of the MCP tool")
+    masked_headers: dict[str, str] | None = Field(default=None, description="The masked headers of the MCP tool")
+    original_headers: dict[str, str] | None = Field(default=None, description="The original headers of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
     def convert_none_to_empty_list(cls, v):
         return v if v is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         # -------------
         # overwrite tool parameter types for temp fix
         tools = jsonable_encoder(self.tools)
         for tool in tools:
             if tool.get("parameters"):
                 for parameter in tool.get("parameters"):
-                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
+                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
                     if parameter.get("input_schema") is None:
                         parameter.pop("input_schema", None)
@@ -65,6 +70,10 @@ class ToolProviderApiEntity(BaseModel):
         if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
+            optional_fields.update(self.optional_field("timeout", self.timeout))
+            optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
+            optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
+            optional_fields.update(self.optional_field("original_headers", self.original_headers))
         return {
             "id": self.id,
             "author": self.author,
@@ -84,7 +93,7 @@ class ToolProviderApiEntity(BaseModel):
             **optional_fields,
         }
 
-    def optional_field(self, key: str, value: Any) -> dict:
+    def optional_field(self, key: str, value: Any):
         """Return dict with key-value if value is truthy, empty dict otherwise."""
         return {key: value} if value else {}
 
@@ -97,11 +106,13 @@ class ToolProviderCredentialApiEntity(BaseModel):
     is_default: bool = Field(
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
-    credentials: dict = Field(description="The credentials of the provider")
+    credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):
-    supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    supported_credential_types: list[CredentialType] = Field(
+        description="The supported credential types of the provider"
+    )
     is_oauth_custom_client_enabled: bool = Field(
         default=False, description="Whether the OAuth custom client is enabled for the provider"
     )
