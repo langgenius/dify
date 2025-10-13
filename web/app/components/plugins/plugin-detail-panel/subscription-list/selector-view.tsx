@@ -24,6 +24,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const [deletedSubscription, setDeletedSubscription] = useState<TriggerSubscription | null>(null)
+  const subscriptionCount = subscriptions?.length || 0
 
   if (isLoading) {
     return (
@@ -35,10 +36,10 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
 
   return (
     <div className='w-[320px] p-1'>
-      {subscriptions?.length && <div className='ml-7 mr-1.5 mt-0.5 flex items-center justify-between'>
+      {subscriptionCount > 0 && <div className='ml-7 mr-1.5 mt-0.5 flex items-center justify-between'>
         <div className='flex shrink-0 items-center gap-1'>
           <span className='system-sm-semibold-uppercase text-text-secondary'>
-            {t('pluginTrigger.subscription.listNum', { num: subscriptions?.length || 0 })}
+            {t('pluginTrigger.subscription.listNum', { num: subscriptionCount })}
           </span>
           <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
         </div>
@@ -47,7 +48,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
         />
       </div>}
       <div className='max-h-[320px] overflow-y-auto'>
-        {subscriptions?.length ? (
+        {subscriptionCount > 0 ? (
           <>
             {subscriptions?.map(subscription => (
               <button
