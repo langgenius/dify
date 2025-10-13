@@ -15,6 +15,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { RiAppsFill, RiExpandRightLine, RiLayoutLeft2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
+import NoApps from './no-apps'
 
 export type IExploreSideBarProps = {
   controlUpdateInstalledApps: number
@@ -89,8 +90,9 @@ const SideBar: FC<IExploreSideBarProps> = ({
       </Link>
       {installedApps.length > 0 && (
         <div className='mt-5'>
-          {!isMobile && !isFold && <p className='system-xs-medium-uppercase break-all pl-2 uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>}
-          <div className='mt-1.5 space-y-0.5 overflow-y-auto overflow-x-hidden'
+          {!isMobile && !isFold && <p className='system-xs-medium-uppercase mb-1.5 break-all pl-2 uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>}
+          {installedApps.length === 0 && !isMobile && !isFold && <NoApps />}
+          <div className='space-y-0.5 overflow-y-auto overflow-x-hidden'
             style={{
               height: 'calc(100vh - 250px)',
             }}

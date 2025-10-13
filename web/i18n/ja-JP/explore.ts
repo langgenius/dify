@@ -14,6 +14,11 @@ const translation = {
       title: 'アプリを削除',
       content: 'このアプリを削除してもよろしいですか？',
     },
+    noApps: {
+      title: 'Webアプリなし',
+      description: '公開されたWebアプリがここに表示されます',
+      learnMore: '詳細',
+    },
   },
   apps: {
     title: 'Difyの厳選アプリを試して、ビジネス向けのAIソリューションを見つけましょう',

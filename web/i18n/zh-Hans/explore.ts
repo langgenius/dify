@@ -14,6 +14,11 @@ const translation = {
       title: '删除程序',
       content: '您确定要删除此程序吗？',
     },
+    noApps: {
+      title: '没有 web apps',
+      description: '已发布的 web apps 将出现在此处',
+      learnMore: '了解更多',
+    },
   },
   apps: {
     title: '试用 Dify 精选示例应用，为您的业务寻找 AI 解决方案',
