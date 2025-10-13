@@ -22,6 +22,7 @@ import {
   getFilesInLogs,
   getProcessedFiles,
 } from '@/app/components/base/file-uploader/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
@@ -167,11 +168,11 @@ const Result: FC<IResultProps> = ({
       const value = processedInputs[variable.key]
       if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
         // Convert single file entity to API format
-        processedInputs[variable.key] = getProcessedFiles([value as any])[0]
+        processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]
       }
       else if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0) {
         // Convert file entity array to API format
-        processedInputs[variable.key] = getProcessedFiles(value as any)
+        processedInputs[variable.key] = getProcessedFiles(value as FileEntity[])
       }
     })
 
