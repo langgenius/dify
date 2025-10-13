@@ -1,4 +1,3 @@
-# tools/stream_filter_demo.py
 import asyncio
 from backend.utils.stream_filter import StreamingHTMLStripper
 

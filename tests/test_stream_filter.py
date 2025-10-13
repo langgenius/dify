@@ -1,4 +1,3 @@
-# tests/test_stream_filter.py
 from backend.utils.stream_filter import StreamingHTMLStripper
 
 def collect_outputs(stripper, chunks):
