@@ -1,4 +1,3 @@
-# backend/utils/stream_filter.py
 from typing import Iterator
 
 class StreamingHTMLStripper:
@@ -57,6 +56,15 @@ class StreamingHTMLStripper:
         while self._strip_prefixes_from_buffer():
             pass
 
+        # ---- NEW: if the buffer currently *starts* with an opening <details...>
+        # and we have not yet seen the closing </summary>, do not emit anything yet.
+        # This prevents emitting partial wrapper text that later would be stripped.
+        b_lstripped = self.buffer.lstrip()
+        if b_lstripped.startswith("<details") and "</summary>" not in b_lstripped:
+            # wait for more chunks (do not yield anything yet)
+            return
+        # ---- END NEW
+
         # choose safe cut so we don't emit partial tags
         last_lt = self.buffer.rfind("<")
         last_gt = self.buffer.rfind(">")
@@ -72,6 +80,7 @@ class StreamingHTMLStripper:
             self.buffer = self.buffer[safe_cut:]
             if out:
                 yield out
+
 
     def finish(self) -> Iterator[str]:
         """Flush any remaining buffer at stream end."""
