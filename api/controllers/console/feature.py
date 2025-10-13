@@ -1,7 +1,7 @@
-from flask_login import current_user
 from flask_restx import Resource, fields
 
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from services.feature_service import FeatureService
 
 from . import api, console_ns
@@ -23,6 +23,8 @@ class FeatureApi(Resource):
     @cloud_utm_record
     def get(self):
         """Get feature configuration for current tenant"""
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         return FeatureService.get_features(current_user.current_tenant_id).model_dump()
 
 
