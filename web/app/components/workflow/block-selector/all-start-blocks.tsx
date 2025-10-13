@@ -56,7 +56,7 @@ const AllStartBlocks = ({
               {t('workflow.tabs.noPluginsFound')}
             </div>
             <Link
-              href='https://github.com/langgenius/dify-plugins/issues'
+              href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
               target='_blank'
             >
               <Button
