@@ -826,7 +826,7 @@ class TestWorkflowAppService:
             page=1, 
             limit=20
         )
-        assert result_with_old_email["total"] == 0
+        assert result_with_unknown_email["total"] == 0
 
         account.email = original_email
         db_session_with_containers.commit()
