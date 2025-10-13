@@ -16,7 +16,7 @@ const getUserTimezoneCurrentTime = (timezone: string): Date => {
 }
 
 // Format date that is already in user timezone, no timezone conversion
-const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
+const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: boolean = true, includeTimezone: boolean = true): string => {
   const dateOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
@@ -32,9 +32,15 @@ const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: bo
     hour12: true,
   }
 
-  const timezoneOffset = convertTimezoneToOffsetStr(timezone)
+  const dateStr = date.toLocaleDateString('en-US', dateOptions)
+  const timeStr = date.toLocaleTimeString('en-US', timeOptions)
 
-  return `${date.toLocaleDateString('en-US', dateOptions)}, ${date.toLocaleTimeString('en-US', timeOptions)} (${timezoneOffset})`
+  if (includeTimezone) {
+    const timezoneOffset = convertTimezoneToOffsetStr(timezone)
+    return `${dateStr}, ${timeStr} (${timezoneOffset})`
+  }
+
+  return `${dateStr}, ${timeStr}`
 }
 
 // Helper function to get default datetime - consistent with base DatePicker
@@ -233,8 +239,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
   return times
 }
 
-export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true): string => {
-  return formatUserTimezoneDate(date, timezone, includeWeekday)
+export const formatExecutionTime = (date: Date, timezone: string, includeWeekday: boolean = true, includeTimezone: boolean = true): string => {
+  return formatUserTimezoneDate(date, timezone, includeWeekday, includeTimezone)
 }
 
 export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): string[] => {
@@ -242,7 +248,7 @@ export const getFormattedExecutionTimes = (data: ScheduleTriggerNodeType, count:
 
   return times.map((date) => {
     const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
-    return formatExecutionTime(date, data.timezone, includeWeekday)
+    return formatExecutionTime(date, data.timezone, includeWeekday, true) // Panel shows timezone
   })
 }
 
@@ -253,12 +259,16 @@ export const getNextExecutionTime = (data: ScheduleTriggerNodeType): string => {
       return '--'
   }
 
-  const times = getFormattedExecutionTimes(data, 1)
+  // Get Date objects (not formatted strings)
+  const times = getNextExecutionTimes(data, 1)
   if (times.length === 0) {
     const userCurrentTime = getUserTimezoneCurrentTime(data.timezone)
     const fallbackDate = new Date(userCurrentTime.getFullYear(), userCurrentTime.getMonth(), userCurrentTime.getDate(), 12, 0, 0, 0)
     const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
-    return formatExecutionTime(fallbackDate, data.timezone, includeWeekday)
+    return formatExecutionTime(fallbackDate, data.timezone, includeWeekday, false) // Node doesn't show timezone
   }
-  return times[0]
+
+  // Format the first execution time without timezone for node display
+  const includeWeekday = data.mode === 'visual' && data.frequency === 'weekly'
+  return formatExecutionTime(times[0], data.timezone, includeWeekday, false) // Node doesn't show timezone
 }
