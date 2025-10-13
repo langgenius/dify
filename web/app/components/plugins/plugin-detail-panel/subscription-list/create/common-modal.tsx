@@ -212,10 +212,10 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     // console.log('parameterForm', parameterForm)
 
     if (!subscriptionFormValues?.isCheckValidated || (createType !== SupportedCreationMethods.MANUAL && !autoCommonParametersFormValues?.isCheckValidated)) {
-      Toast.notify({
-        type: 'error',
-        message: 'Please fill in all required fields',
-      })
+      // Toast.notify({
+      //   type: 'error',
+      //   message: 'Please fill in all required fields',
+      // })
       return
     }
 
