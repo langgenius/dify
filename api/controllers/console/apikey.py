@@ -9,6 +9,8 @@ from werkzeug.exceptions import Forbidden
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import get_current_user_and_tenant_id, login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from models.dataset import Dataset
 from models.model import ApiToken, App
 

@@ -172,7 +172,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search",
+                    retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
                     top_k=retrieval_model.get("top_k") or 4,
