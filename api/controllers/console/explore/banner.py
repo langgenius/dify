@@ -17,10 +17,10 @@ class BannerApi(Resource):
 
         # Build base query for enabled banners
         base_query = db.session.query(ExporleBanner).where(ExporleBanner.status == "enabled")
-        
+
         # Try to get banners in the requested language
         banners = base_query.where(ExporleBanner.language == language).order_by(ExporleBanner.sort).all()
-        
+
         # Fallback to en-US if no banners found and language is not en-US
         if not banners and language != "en-US":
             banners = base_query.where(ExporleBanner.language == "en-US").order_by(ExporleBanner.sort).all()

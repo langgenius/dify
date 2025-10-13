@@ -91,6 +91,8 @@ def trial_app_required(view: Callable[Concatenate[App, P], R] | None = None):
             if app is None:
                 raise TrialAppNotAllowed()
 
+            assert isinstance(current_user, Account)
+
             account_trial_app_record = (
                 db.session.query(AccountTrialAppRecord)
                 .where(AccountTrialAppRecord.account_id == current_user.id, AccountTrialAppRecord.app_id == app_id)
