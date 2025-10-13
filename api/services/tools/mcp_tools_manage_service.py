@@ -94,7 +94,6 @@ class MCPToolManageService:
         client_id: str | None = None,
         client_secret: str | None = None,
         grant_type: str = DEFAULT_GRANT_TYPE,
-        scope: str | None = None,
     ) -> ToolProviderApiEntity:
         """Create a new MCP provider."""
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
@@ -107,9 +106,7 @@ class MCPToolManageService:
         encrypted_headers = self._prepare_encrypted_dict(headers, tenant_id) if headers else None
         if client_id and client_secret:
             # Build the full credentials structure with encrypted client_id and client_secret
-            encrypted_credentials = self._build_and_encrypt_credentials(
-                client_id, client_secret, grant_type, scope, tenant_id
-            )
+            encrypted_credentials = self._build_and_encrypt_credentials(client_id, client_secret, grant_type, tenant_id)
         else:
             encrypted_credentials = None
         # Create provider
@@ -151,7 +148,6 @@ class MCPToolManageService:
         client_id: str | None = None,
         client_secret: str | None = None,
         grant_type: str | None = None,
-        scope: str | None = None,
     ) -> None:
         """Update an MCP provider."""
         mcp_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
@@ -210,15 +206,14 @@ class MCPToolManageService:
                     final_client_id,
                     final_client_secret,
                     final_grant_type,
-                    final_scope,
-                ) = self._merge_credentials_with_masked(client_id, client_secret, grant_type, scope, mcp_provider)
+                ) = self._merge_credentials_with_masked(client_id, client_secret, grant_type, mcp_provider)
 
                 # Use default grant_type if none found
                 final_grant_type = final_grant_type or DEFAULT_GRANT_TYPE
 
                 # Build and encrypt new credentials
                 encrypted_credentials = self._build_and_encrypt_credentials(
-                    final_client_id, final_client_secret, final_grant_type, final_scope, tenant_id
+                    final_client_id, final_client_secret, final_grant_type, tenant_id
                 )
                 mcp_provider.encrypted_credentials = encrypted_credentials
 
@@ -502,20 +497,18 @@ class MCPToolManageService:
         client_id: str,
         client_secret: str,
         grant_type: str | None,
-        scope: str | None,
         mcp_provider: MCPToolProvider,
-    ) -> tuple[str, str, str | None, str | None]:
+    ) -> tuple[str, str, str | None]:
         """Merge incoming credentials with existing ones, preserving unchanged masked values.
 
         Args:
             client_id: Client ID from frontend (may be masked)
             client_secret: Client secret from frontend (may be masked)
             grant_type: Grant type from frontend
-            scope: OAuth scope from frontend
             mcp_provider: The MCP provider instance
 
         Returns:
-            Tuple of (final_client_id, final_client_secret, grant_type, scope)
+            Tuple of (final_client_id, final_client_secret, grant_type)
         """
         mcp_provider_entity = mcp_provider.to_entity()
         existing_decrypted = mcp_provider_entity.decrypt_credentials()
@@ -533,14 +526,12 @@ class MCPToolManageService:
             # Use existing decrypted value
             final_client_secret = existing_decrypted.get("client_secret", client_secret)
 
-        # Grant type and scope are not masked, use as is
         final_grant_type = grant_type if grant_type is not None else existing_decrypted.get("grant_type")
-        final_scope = scope if scope is not None else existing_decrypted.get("scope")
 
-        return final_client_id, final_client_secret, final_grant_type, final_scope
+        return final_client_id, final_client_secret, final_grant_type
 
     def _build_and_encrypt_credentials(
-        self, client_id: str, client_secret: str, grant_type: str, scope: str | None, tenant_id: str
+        self, client_id: str, client_secret: str, grant_type: str, tenant_id: str
     ) -> str:
         """Build credentials and encrypt sensitive fields."""
         # Create a flat structure with all credential data
@@ -549,10 +540,8 @@ class MCPToolManageService:
             "client_secret": client_secret,
             "grant_type": grant_type,
             "client_name": CLIENT_NAME,
+            "is_dynamic_registration": False,
         }
-
-        if scope:
-            credentials_data["scope"] = scope
 
         # Add grant types and response types based on grant_type
         if grant_type == "client_credentials":

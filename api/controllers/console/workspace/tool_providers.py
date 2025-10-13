@@ -17,6 +17,7 @@ from controllers.console.wraps import (
     enterprise_license_required,
     setup_required,
 )
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration, MCPSupportGrantType
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
@@ -895,39 +896,37 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
-        parser.add_argument(
-            "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
-        )
+        parser.add_argument("configuration", type=dict, required=False, nullable=True, location="json", default={})
         parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
-        parser.add_argument("client_id", type=str, required=False, nullable=True, location="json", default="")
-        parser.add_argument("client_secret", type=str, required=False, nullable=True, location="json", default="")
-        parser.add_argument(
-            "grant_type", type=str, required=False, nullable=True, location="json", default="authorization_code"
-        )
-        parser.add_argument("scope", type=str, required=False, nullable=True, location="json", default="")
+        parser.add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
         args = parser.parse_args()
-        user = current_user
+
+        # Validate server URL
         if not is_valid_url(args["server_url"]):
             raise ValueError("Server URL is not valid.")
+
+        # Parse and validate models
+        configuration = MCPConfiguration.model_validate(args["configuration"])
+        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
+
+        # Create provider
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
             result = service.create_provider(
-                tenant_id=user.current_tenant_id,
+                tenant_id=current_user.current_tenant_id,
+                user_id=current_user.id,
                 server_url=args["server_url"],
                 name=args["name"],
                 icon=args["icon"],
                 icon_type=args["icon_type"],
                 icon_background=args["icon_background"],
-                user_id=user.id,
                 server_identifier=args["server_identifier"],
-                timeout=args["timeout"],
-                sse_read_timeout=args["sse_read_timeout"],
+                timeout=configuration.timeout,
+                sse_read_timeout=configuration.sse_read_timeout,
                 headers=args["headers"],
-                client_id=args["client_id"],
-                client_secret=args["client_secret"],
-                grant_type=args["grant_type"],
-                scope=args["scope"],
+                client_id=authentication.client_id if authentication else None,
+                client_secret=authentication.client_secret if authentication else None,
+                grant_type=authentication.grant_type if authentication else MCPSupportGrantType.AUTHORIZATION_CODE,
             )
             session.commit()
             return jsonable_encoder(result)
@@ -944,19 +943,17 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
-        parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
-        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("client_id", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("client_secret", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("grant_type", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("scope", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("configuration", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("authentication", type=dict, required=False, nullable=True, location="json")
+
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
                 pass
             else:
                 raise ValueError("Server URL is not valid.")
+        configuration = MCPConfiguration.model_validate(args["configuration"])
+        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
             service.update_provider(
@@ -968,13 +965,12 @@ class ToolProviderMCPApi(Resource):
                 icon_type=args["icon_type"],
                 icon_background=args["icon_background"],
                 server_identifier=args["server_identifier"],
-                timeout=args.get("timeout"),
-                sse_read_timeout=args.get("sse_read_timeout"),
-                headers=args.get("headers"),
-                client_id=args.get("client_id"),
-                client_secret=args.get("client_secret"),
-                grant_type=args.get("grant_type"),
-                scope=args.get("scope"),
+                timeout=configuration.timeout,
+                sse_read_timeout=configuration.sse_read_timeout,
+                headers=args["headers"],
+                client_id=authentication.client_id if authentication else None,
+                client_secret=authentication.client_secret if authentication else None,
+                grant_type=authentication.grant_type if authentication else MCPSupportGrantType.AUTHORIZATION_CODE,
             )
             session.commit()
             return {"result": "success"}

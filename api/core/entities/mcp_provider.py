@@ -1,9 +1,10 @@
 import json
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
@@ -26,6 +27,24 @@ DEFAULT_TOKEN_TYPE = "Bearer"
 DEFAULT_EXPIRES_IN = 3600
 MASK_CHAR = "*"
 MIN_UNMASK_LENGTH = 6
+
+
+class MCPSupportGrantType(StrEnum):
+    """The supported grant types for MCP"""
+
+    AUTHORIZATION_CODE = "authorization_code"
+    CLIENT_CREDENTIALS = "client_credentials"
+
+
+class MCPAuthentication(BaseModel):
+    client_id: str
+    client_secret: str | None = None
+    grant_type: MCPSupportGrantType = Field(default=MCPSupportGrantType.AUTHORIZATION_CODE)
+
+
+class MCPConfiguration(BaseModel):
+    timeout: float = 30
+    sse_read_timeout: float = 300
 
 
 class MCPProviderEntity(BaseModel):
@@ -143,19 +162,25 @@ class MCPProviderEntity(BaseModel):
             "is_team_authorization": self.authed,
             "server_url": self.masked_server_url(),
             "server_identifier": self.provider_id,
-            "timeout": self.timeout,
-            "sse_read_timeout": self.sse_read_timeout,
-            "masked_headers": self.masked_headers(),
             "updated_at": int(self.updated_at.timestamp()),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
         }
 
-        # Add masked credentials if they exist
+        # Add configuration
+        response["configuration"] = {
+            "timeout": str(self.timeout),
+            "sse_read_timeout": str(self.sse_read_timeout),
+        }
+
+        # Add masked headers
+        response["masked_headers"] = self.masked_headers()
+
+        # Add authentication info if available
         masked_creds = self.masked_credentials()
         if masked_creds:
-            response.update(masked_creds)
-
+            response["authentication"] = masked_creds
+        response["is_dynamic_registration"] = self.credentials.get("is_dynamic_registration", True)
         return response
 
     def retrieve_client_information(self) -> OAuthClientInformation | None:
@@ -255,8 +280,6 @@ class MCPProviderEntity(BaseModel):
         # Include non-sensitive fields (check both flat and nested structures)
         if "grant_type" in credentials:
             masked["grant_type"] = credentials["grant_type"]
-        if "scope" in credentials:
-            masked["scope"] = credentials["scope"]
 
         return masked
 
