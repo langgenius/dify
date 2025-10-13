@@ -70,7 +70,11 @@ class ModelConfigConverter:
         if not model_mode:
             model_mode = LLMMode.CHAT
             if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
-                model_mode = LLMMode(model_schema.model_properties[ModelPropertyKey.MODE]).value
+                try:
+                    model_mode = LLMMode(model_schema.model_properties[ModelPropertyKey.MODE])
+                except ValueError:
+                    # Fall back to CHAT mode if the stored value is invalid
+                    model_mode = LLMMode.CHAT
 
         if not model_schema:
             raise ValueError(f"Model {model_name} not exist.")
