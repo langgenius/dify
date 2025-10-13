@@ -60,7 +60,7 @@ class TestAccountInitialization:
             return "success"
 
         # Act
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=mock_user):
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")):
             result = protected_view()
 
         # Assert
@@ -77,7 +77,7 @@ class TestAccountInitialization:
             return "success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=mock_user):
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")):
             with pytest.raises(AccountNotInitializedError):
                 protected_view()
 
