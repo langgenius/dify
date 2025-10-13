@@ -130,8 +130,20 @@ class KnowledgeConfiguration(BaseModel):
         return v
 
 
-class PipelineBuiltInTemplateEntity(BaseModel):
-    template_id: str | None = None
+class PipelineBuiltInTemplateInstallEntity(BaseModel):
+    icon: IconInfo | None = None
     name: str
     description: str
     language: str
+    yaml_content: str
+    position: int = 1
+
+
+class PipelineBuiltInTemplateUpdateEntity(BaseModel):
+    template_id: str
+    icon: IconInfo
+    name: str
+    description: str
+    language: str
+    yaml_content: str | None = None
+    position: int = 1

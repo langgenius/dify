@@ -10,11 +10,12 @@ from uuid import uuid4
 
 import yaml
 from flask_login import current_user
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from controllers.console.datasets.rag_pipeline.rag_pipeline import PipelineBuiltInTemplateInstallEntity, PipelineBuiltInTemplateUpdateEntity
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
@@ -1458,8 +1459,8 @@ class RagPipelineService:
             raise ValueError("Pipeline not found")
         return pipeline
 
-    def install_built_in_pipeline_template(
-        self, args: PipelineBuiltInTemplateEntity, file_content: str, auth_token: str
+    def insert_built_in_pipeline_template(
+        self, args: PipelineBuiltInTemplateInstallEntity, auth_token: str
     ) -> None:
         """
         Install built-in pipeline template
@@ -1476,10 +1477,13 @@ class RagPipelineService:
         self._validate_auth_token(auth_token)
         
         # Parse and validate template content
-        pipeline_template_dsl = self._parse_template_content(file_content)
+        pipeline_template_dsl = self._parse_template_content(args.yaml_content)
         
         # Extract template metadata
-        icon = self._extract_icon_metadata(pipeline_template_dsl)
+        if not args.icon:
+            icon = self._extract_icon_metadata(pipeline_template_dsl)
+        else:
+            icon = args.icon.model_dump()
         chunk_structure = self._extract_chunk_structure(pipeline_template_dsl)
         
         # Prepare template data
@@ -1489,19 +1493,39 @@ class RagPipelineService:
             "chunk_structure": chunk_structure,
             "icon": icon,
             "language": args.language,
-            "yaml_content": file_content,
+            "yaml_content": args.yaml_content,
+            "position": args.position,
         }
         
         # Use transaction for database operations
         try:
-            if args.template_id:
-                self._update_existing_template(args.template_id, template_data)
-            else:
-                self._create_new_template(template_data)
+            self._create_new_template(template_data)
             db.session.commit()
         except Exception as e:
             db.session.rollback()
             raise ValueError(f"Failed to install pipeline template: {str(e)}")
+
+    def update_built_in_pipeline_template(self, args: PipelineBuiltInTemplateUpdateEntity, auth_token: str) -> None:
+        """
+        Update built-in pipeline template
+        """
+        self._validate_auth_token(auth_token)
+        template_data = {
+            "name": args.name,
+            "description": args.description,
+            "icon": args.icon.model_dump(),
+            "language": args.language,
+            "position": args.position,
+        }
+        if args.yaml_content:
+            template_data["yaml_content"] = args.yaml_content
+            chunk_structure = self._extract_chunk_structure(self._parse_template_content(args.yaml_content))
+            template_data["chunk_structure"] = chunk_structure
+
+
+        self._update_existing_template(args.template_id, template_data)
+        db.session.commit()
+        logger.info("Updated template %s with new data", args.template_id)
     
     def _validate_auth_token(self, auth_token: str) -> None:
         """Validate the authentication token"""
@@ -1554,43 +1578,167 @@ class RagPipelineService:
         return chunk_structure
     
     def _update_existing_template(self, template_id: str, template_data: dict) -> None:
-        """Update an existing pipeline template"""
+        """
+        Update an existing pipeline template with optimistic locking
+        
+        Args:
+            template_id: ID of the template to update
+            template_data: Dictionary containing updated template fields
+            
+        Raises:
+            ValueError: If template not found
+        """
+        # Use with_for_update() for row-level locking to prevent concurrent updates
         pipeline_built_in_template = (
             db.session.query(PipelineBuiltInTemplate)
             .filter(PipelineBuiltInTemplate.id == template_id)
+            .with_for_update()
             .first()
         )
         
         if not pipeline_built_in_template:
             raise ValueError(f"Pipeline built-in template not found: {template_id}")
         
+        update_position = False
+        if template_data.get("position") != pipeline_built_in_template.position:
+            update_position = True
+
+        if update_position:
+            db.session.execute(
+                update(PipelineBuiltInTemplate)
+                .where(PipelineBuiltInTemplate.language == pipeline_built_in_template.language, PipelineBuiltInTemplate.position > pipeline_built_in_template.position)
+                .values(position=PipelineBuiltInTemplate.position - 1)
+            )
+            db.session.flush()
+
+            db.session.execute(
+                update(PipelineBuiltInTemplate)
+                .where(PipelineBuiltInTemplate.language == pipeline_built_in_template.language, PipelineBuiltInTemplate.position >= template_data.get("position"))
+                .values(position=PipelineBuiltInTemplate.position + 1)
+            )
+            db.session.flush()
+
         # Update template fields
         for key, value in template_data.items():
             setattr(pipeline_built_in_template, key, value)
         
+        # Update timestamp if exists
+        if hasattr(pipeline_built_in_template, 'updated_at'):
+            pipeline_built_in_template.updated_at = datetime.now(UTC)
+        
         db.session.add(pipeline_built_in_template)
+        db.session.flush()
     
     def _create_new_template(self, template_data: dict) -> None:
-        """Create a new pipeline template"""
-        # Get the next available position
-        position = self._get_next_position(template_data["language"])
+        """
+        Create a new pipeline template with atomic position assignment
         
-        # Add additional fields for new template
-        template_data.update({
-            "position": position,
-            "install_count": 0,
-            "copyright": dify_config.KNOWLEDGE_PIPELINE_TEMPLATE_COPYRIGHT,
-            "privacy_policy": dify_config.KNOWLEDGE_PIPELINE_TEMPLATE_PRIVACY_POLICY,
-        })
-        
-        new_template = PipelineBuiltInTemplate(**template_data)
-        db.session.add(new_template)
+        Args:
+            template_data: Dictionary containing template fields
+        """
+        # Use a single query with locking to get and increment position atomically
+        with db.session.begin_nested():
+            # Lock all templates of the same language to prevent position conflicts
+            db.session.query(PipelineBuiltInTemplate).filter(
+                PipelineBuiltInTemplate.language == template_data["language"]
+            ).with_for_update().all()
+            
+            # Get the next available position
+            position = self._get_next_position(template_data["language"])
+            
+            # Add additional fields for new template
+            template_data.update({
+                "position": position,
+                "install_count": 0,
+                "copyright": dify_config.KNOWLEDGE_PIPELINE_TEMPLATE_COPYRIGHT or "",
+                "privacy_policy": dify_config.KNOWLEDGE_PIPELINE_TEMPLATE_PRIVACY_POLICY or "",
+            })
+            
+            # Add timestamp if model supports it
+            if hasattr(PipelineBuiltInTemplate, 'created_at'):
+                template_data['created_at'] = datetime.now(UTC)
+            
+            new_template = PipelineBuiltInTemplate(**template_data)
+            db.session.add(new_template)
+            
+        logger.info(
+            "Created new template '%s' at position %d for language %s",
+            template_data.get("name"), position, template_data["language"]
+        )
     
     def _get_next_position(self, language: str) -> int:
-        """Get the next available position for a template in the specified language"""
+        """
+        Get the next available position for a template in the specified language
+        
+        Args:
+            language: Language code for the template
+            
+        Returns:
+            Next available position number (1-based)
+        """
+        # Use COALESCE for database compatibility
         max_position = (
-            db.session.query(func.max(PipelineBuiltInTemplate.position))
+            db.session.query(func.coalesce(func.max(PipelineBuiltInTemplate.position), 0))
             .filter(PipelineBuiltInTemplate.language == language)
             .scalar()
         )
-        return (max_position or 0) + 1
+        return max_position + 1
+
+    def uninstall_built_in_pipeline_template(self, template_id: str, auth_token: str) -> None:
+        """
+        Uninstall a built-in pipeline template and reorder remaining templates
+        
+        Args:
+            template_id: ID of the template to uninstall
+            auth_token: Authentication token for authorization
+            
+        Raises:
+            ValueError: If template not found or authentication fails
+        """
+        # Validate authentication
+        self._validate_auth_token(auth_token)
+        
+        # Use transaction for atomic operations
+        try:
+            # Get the template to delete with lock to prevent concurrent modifications
+            pipeline_built_in_template = (
+                db.session.query(PipelineBuiltInTemplate)
+                .filter(PipelineBuiltInTemplate.id == template_id)
+                .with_for_update()
+                .first()
+            )
+            
+            if not pipeline_built_in_template:
+                raise ValueError(f"Pipeline built-in template not found: {template_id}")
+            
+            # Store position and language for reordering
+            deleted_position = pipeline_built_in_template.position
+            template_language = pipeline_built_in_template.language
+            
+            # Delete the template first
+            db.session.delete(pipeline_built_in_template)
+            db.session.flush()  # Execute delete but don't commit yet
+            
+            # Batch update positions for all templates after the deleted one
+            # Using bulk update for better performance
+            db.session.execute(
+                update(PipelineBuiltInTemplate)
+                .where(
+                    PipelineBuiltInTemplate.language == template_language,
+                    PipelineBuiltInTemplate.position > deleted_position
+                )
+                .values(position=PipelineBuiltInTemplate.position - 1)
+            )
+            
+            # Commit all changes together
+            db.session.commit()
+            
+            logger.info(
+                "Successfully uninstalled template %s at position %d for language %s",
+                template_id, deleted_position, template_language
+            )
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.exception("Failed to uninstall template %s", template_id)
+            raise ValueError(f"Failed to uninstall pipeline template: {str(e)}")

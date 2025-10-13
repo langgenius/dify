@@ -1,4 +1,6 @@
+import json
 import logging
+from typing import Any
 
 from flask import request
 from flask_restx import Resource, reqparse
@@ -16,17 +18,13 @@ from libs.login import login_required
 from models.dataset import PipelineCustomizedTemplate
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     PipelineBuiltInTemplateEntity,
+    PipelineBuiltInTemplateInstallEntity,
+    PipelineBuiltInTemplateUpdateEntity,
     PipelineTemplateInfoEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger = logging.getLogger(__name__)
-
-
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
 
 
 class PipelineTemplateListApi(Resource):
@@ -156,82 +154,8 @@ class PipelineTemplateInstallApi(Resource):
         Returns:
             Success response or error with appropriate HTTP status
         """
-        try:
-            # Extract and validate Bearer token
-            auth_token = self._extract_bearer_token()
-            
-            # Parse and validate request parameters
-            template_args = self._parse_template_args()
-            
-            # Process uploaded template file
-            file_content = self._process_template_file()
-            
-            # Create template entity
-            pipeline_built_in_template_entity = PipelineBuiltInTemplateEntity(**template_args)
-            
-            # Install the template
-            rag_pipeline_service = RagPipelineService()
-            rag_pipeline_service.install_built_in_pipeline_template(
-                pipeline_built_in_template_entity, file_content, auth_token
-            )
-            
-            return {"result": "success", "message": "Template installed successfully"}, 200
-            
-        except ValueError as e:
-            logger.exception("Validation error in template installation")
-            return {"error": str(e)}, 400
-        except Exception as e:
-            logger.exception("Unexpected error in template installation")
-            return {"error": "An unexpected error occurred during template installation"}, 500
-    
-    def _extract_bearer_token(self) -> str:
-        """
-        Extract and validate Bearer token from Authorization header
-        
-        Returns:
-            The extracted token string
-            
-        Raises:
-            ValueError: If token is missing or invalid
-        """
-        auth_header = request.headers.get("Authorization", "").strip()
-        
-        if not auth_header:
-            raise ValueError("Authorization header is required")
-        
-        if not auth_header.startswith("Bearer "):
-            raise ValueError("Authorization header must start with 'Bearer '")
-        
-        token_parts = auth_header.split(" ", 1)
-        if len(token_parts) != 2:
-            raise ValueError("Invalid Authorization header format")
-        
-        auth_token = token_parts[1].strip()
-        if not auth_token:
-            raise ValueError("Bearer token cannot be empty")
-        
-        return auth_token
-    
-    def _parse_template_args(self) -> dict:
-        """
-        Parse and validate template arguments from form data
-        
-        Args:
-            template_id: The template ID from URL
-            
-        Returns:
-            Dictionary of validated template arguments
-        """
-        # Use reqparse for consistent parameter parsing
         parser = reqparse.RequestParser()
         
-        parser.add_argument(
-            "template_id",
-            type=str,
-            location="form",
-            required=False,
-            help="Template ID for updating existing template"
-        )
         parser.add_argument(
             "language",
             type=str,
@@ -257,70 +181,260 @@ class PipelineTemplateInstallApi(Resource):
             default="",
             help="Template description (max 1000 characters)"
         )
+        parser.add_argument(
+            "position",
+            type=int,
+            location="form",
+            required=False,
+            default=1,
+            help="Template position"
+        )
+        parser.add_argument(
+            "icon",
+            type=str,
+            location="form",
+            required=False,
+            help="Template icon"
+        )
         
-        args = parser.parse_args()
+        template_args = parser.parse_args()
         
         # Additional validation
-        if args.get("name"):
-            args["name"] = self._validate_name(args["name"])
+        if template_args.get("name"):
+            template_args["name"] = _validate_name(template_args["name"])
+
+        if template_args.get("icon"):
+            template_args["icon"] = json.loads(template_args["icon"])
         
-        if args.get("description") and len(args["description"]) > 1000:
+        if template_args.get("description") and len(template_args["description"]) > 1000:
             raise ValueError("Description must not exceed 1000 characters")
-        
-        # Filter out None values
-        return {k: v for k, v in args.items() if v is not None}
-    
-    def _validate_name(self, name: str) -> str:
+        try:
+            # Extract and validate Bearer token
+            auth_token = _extract_bearer_token()
+            
+            # Process uploaded template file
+            file_content = _process_template_file()
+            template_args["yaml_content"] = file_content
+            
+            # Create template entity
+            pipeline_built_in_template_entity = PipelineBuiltInTemplateInstallEntity(**template_args)
+            
+            # Install the template
+            rag_pipeline_service = RagPipelineService()
+            rag_pipeline_service.insert_built_in_pipeline_template(
+                pipeline_built_in_template_entity, auth_token
+            )
+            
+            return {"result": "success", "message": "Template installed successfully"}, 200
+            
+        except ValueError as e:
+            logger.exception("Validation error in template installation")
+            return {"error": str(e)}, 400
+        except Exception as e:
+            logger.exception("Unexpected error in template installation")
+            return {"error": "An unexpected error occurred during template installation"}, 500
+
+
+class PipelineTemplateUnpdateApi(Resource):
+    """API endpoint for updating built-in pipeline templates"""
+    def patch(self, template_id: str):
         """
-        Validate template name
+        Update a built-in pipeline template
         
         Args:
-            name: Template name to validate
-            
-        Returns:
-            Validated and trimmed name
-            
-        Raises:
-            ValueError: If name is invalid
+            template_id: The template ID to update (from URL parameter)
         """
-        name = name.strip()
-        if not name or len(name) < 1 or len(name) > 200:
-            raise ValueError("Template name must be between 1 and 200 characters")
-        return name
-    
-    def _process_template_file(self) -> str:
-        """
-        Process and validate uploaded template file
+        parser = reqparse.RequestParser()
         
-        Returns:
-            File content as string
-            
-        Raises:
-            ValueError: If file is missing or invalid
-        """
-        if "file" not in request.files:
-            raise ValueError("Template file is required")
+        parser.add_argument(
+            "language",
+            type=str,
+            location="form",
+            required=True,
+            default="en-US",
+            choices=["en-US", "zh-CN", "ja-JP"],
+            help="Template language code"
+        )
+        parser.add_argument(
+            "name",
+            type=str,
+            location="form",
+            required=True,
+            default="New Pipeline Template",
+            help="Template name (1-200 characters)"
+        )
+        parser.add_argument(
+            "description",
+            type=str,
+            location="form",
+            required=False,
+            default="",
+            help="Template description (max 1000 characters)"
+        )
+        parser.add_argument(
+            "position",
+            type=int,
+            location="form",
+            required=False,
+            default=1,
+            help="Template position"
+        )
+        parser.add_argument(
+            "icon",
+            type=str,
+            location="form",
+            required=False,
+            help="Template icon"
+        )
         
-        file = request.files["file"]
-        
-        # Validate file
-        if not file or not file.filename:
-            raise ValueError("No file selected")
-        
-        filename = file.filename.strip()
-        if not filename:
-            raise ValueError("File name cannot be empty")
-        
-        # Check file extension
-        if not filename.lower().endswith(".pipeline"):
-            raise ValueError("Template file must be a pipeline file (.pipeline)")
-        
+        template_args = parser.parse_args()
         try:
-            file_content = file.read().decode("utf-8")
-        except UnicodeDecodeError:
-            raise ValueError("Template file must be valid UTF-8 text")
+            # Extract and validate Bearer token
+            auth_token = _extract_bearer_token()
+            
+            if template_args.get("icon"):
+                template_args["icon"] = json.loads(template_args["icon"])
+            
+            if "file" in request.files:
+                file_content = request.files["file"].read().decode("utf-8")
+                template_args["yaml_content"] = file_content
+            else:
+                template_args["yaml_content"] = None
+            
+            # Validate template_id
+            if not template_id or not template_id.strip():
+                raise ValueError("Template ID is required")
+            
+            template_args["template_id"] = template_id
+
+            pipeline_built_in_template_entity = PipelineBuiltInTemplateUpdateEntity(**template_args)
+            
+            # Update the template
+            rag_pipeline_service = RagPipelineService()
+            rag_pipeline_service.update_built_in_pipeline_template(pipeline_built_in_template_entity, auth_token)
+            
+            return {"result": "success", "message": "Template updated successfully"}, 200
+            
+        except ValueError as e:
+            logger.exception("Validation error in template update")
+            return {"error": str(e)}, 400
+        except Exception as e:
+            logger.exception("Unexpected error in template update")
+            return {"error": "An unexpected error occurred during template update"}, 500
+
+    def delete(self, template_id: str):
+        """
+        Uninstall a built-in pipeline template
         
-        return file_content
+        Args:
+            template_id: The template ID to uninstall (from URL parameter)
+        
+        Returns:
+            Success response or error with appropriate HTTP status
+        """
+        try:
+            # Extract and validate Bearer token
+            auth_token = _extract_bearer_token()
+            
+            # Validate template_id
+            if not template_id or not template_id.strip():
+                raise ValueError("Template ID is required")
+            
+            # Uninstall the template
+            rag_pipeline_service = RagPipelineService()
+            rag_pipeline_service.uninstall_built_in_pipeline_template(
+                template_id.strip(), auth_token
+            )
+            
+            return {"result": "success", "message": "Template uninstalled successfully"}, 200
+            
+        except ValueError as e:
+            logger.exception("Validation error in template uninstallation")
+            return {"error": str(e)}, 400
+        except Exception as e:
+            logger.exception("Unexpected error in template uninstallation")
+            return {"error": "An unexpected error occurred during template uninstallation"}, 500
+    
+def _extract_bearer_token() -> str:
+    """
+    Extract and validate Bearer token from Authorization header
+    
+    Returns:
+        The extracted token string
+        
+    Raises:
+        ValueError: If token is missing or invalid
+    """
+    auth_header = request.headers.get("Authorization", "").strip()
+    
+    if not auth_header:
+        raise ValueError("Authorization header is required")
+    
+    if not auth_header.startswith("Bearer "):
+        raise ValueError("Authorization header must start with 'Bearer '")
+    
+    token_parts = auth_header.split(" ", 1)
+    if len(token_parts) != 2:
+        raise ValueError("Invalid Authorization header format")
+    
+    auth_token = token_parts[1].strip()
+    if not auth_token:
+        raise ValueError("Bearer token cannot be empty")
+    
+    return auth_token
+
+
+def _validate_name(name: str) -> str:
+    """
+    Validate template name
+    
+    Args:
+        name: Template name to validate
+        
+    Returns:
+        Validated and trimmed name
+        
+    Raises:
+        ValueError: If name is invalid
+    """
+    name = name.strip()
+    if not name or len(name) < 1 or len(name) > 200:
+        raise ValueError("Template name must be between 1 and 200 characters")
+    return name
+
+def _process_template_file() -> str:
+    """
+    Process and validate uploaded template file
+    
+    Returns:
+        File content as string
+        
+    Raises:
+        ValueError: If file is missing or invalid
+    """
+    if "file" not in request.files:
+        raise ValueError("Template file is required")
+    
+    file = request.files["file"]
+    
+    # Validate file
+    if not file or not file.filename:
+        raise ValueError("No file selected")
+    
+    filename = file.filename.strip()
+    if not filename:
+        raise ValueError("File name cannot be empty")
+    
+    # Check file extension
+    if not filename.lower().endswith(".pipeline"):
+        raise ValueError("Template file must be a pipeline file (.pipeline)")
+    
+    try:
+        file_content = file.read().decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("Template file must be valid UTF-8 text")
+    
+    return file_content
 
 
 api.add_resource(
@@ -342,4 +456,8 @@ api.add_resource(
 api.add_resource(
     PipelineTemplateInstallApi,
     "/rag/pipeline/built-in/templates/install",
+)
+api.add_resource(
+    PipelineTemplateUninstallApi,
+    "/rag/pipeline/built-in/templates/<string:template_id>/uninstall",
 )
