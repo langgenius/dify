@@ -2,6 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { useReactFlow, useViewport } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
@@ -16,6 +17,7 @@ import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/servic
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { useStore } from '../store'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -41,9 +43,9 @@ const ThreadMessage: FC<{
   avatarUrl?: string | null
   createdAt: number
   content: string
-  mentionedNames?: string[]
+  mentionableNames: string[]
   className?: string
-}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames, className }) => {
+}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionableNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { userProfile } = useAppContext()
   const currentUserId = userProfile?.id
@@ -54,9 +56,11 @@ const ThreadMessage: FC<{
     if (!content)
       return ''
 
-    const normalizedNames = Array.from(new Set((mentionedNames || [])
+    // Extract valid user names from mentionableNames, sorted by length (longest first)
+    const normalizedNames = Array.from(new Set(mentionableNames
       .map(name => name.trim())
       .filter(Boolean)))
+    normalizedNames.sort((a, b) => b.length - a.length)
 
     if (normalizedNames.length === 0)
       return content
@@ -111,7 +115,7 @@ const ThreadMessage: FC<{
       segments.push(<span key={`text-${cursor}`}>{content.slice(cursor)}</span>)
 
     return segments
-  }, [content, mentionedNames])
+  }, [content, mentionableNames])
 
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
@@ -154,6 +158,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   onReplyDelete,
   onReplyDeleteDirect,
 }) => {
+  const params = useParams()
+  const appId = params.appId as string
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
@@ -167,6 +173,20 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   // Focus management refs
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
+
+  // Get mentionable users from store
+  const mentionUsersFromStore = useStore(state => (
+    appId ? state.mentionableUsersCache[appId] : undefined
+  ))
+  const mentionUsers = mentionUsersFromStore ?? []
+
+  // Extract all mentionable names for highlighting
+  const mentionableNames = useMemo(() => {
+    const names = mentionUsers
+      .map(user => user.name?.trim())
+      .filter((name): name is string => Boolean(name))
+    return Array.from(new Set(names))
+  }, [mentionUsers])
 
   useEffect(() => {
     setReplyContent('')
@@ -307,25 +327,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     previousReplyCountRef.current = replies.length
   }, [comment.id, replies.length])
 
-  const mentionsByTarget = useMemo(() => {
-    const map = new Map<string, string[]>()
-    for (const mention of comment.mentions || []) {
-      const name = mention.mentioned_user_account?.name?.trim()
-      if (!name)
-        continue
-      const key = mention.reply_id ?? 'root'
-      const existing = map.get(key)
-      if (existing) {
-        if (!existing.includes(name))
-          existing.push(name)
-      }
-      else {
-        map.set(key, [name])
-      }
-    }
-    return map
-  }, [comment.mentions])
-
   return (
     <div
       className='absolute z-50 w-[360px] max-w-[360px]'
@@ -432,7 +433,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               avatarUrl={comment.created_by_account?.avatar_url || null}
               createdAt={comment.created_at}
               content={comment.content}
-              mentionedNames={mentionsByTarget.get('root')}
+              mentionableNames={mentionableNames}
             />
           </div>
           {replies.length > 0 && (
@@ -563,7 +564,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         avatarUrl={reply.created_by_account?.avatar_url || null}
                         createdAt={reply.created_at}
                         content={reply.content}
-                        mentionedNames={mentionsByTarget.get(reply.id)}
+                        mentionableNames={mentionableNames}
                       />
                     )}
                   </div>
