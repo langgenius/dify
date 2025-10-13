@@ -64,7 +64,7 @@ class TestAccountService:
             password=password,
         )
         assert account.email == email
-        assert account.status == AccountStatus.ACTIVE.value
+        assert account.status == AccountStatus.ACTIVE
 
         # Login with correct password
         logged_in = AccountService.authenticate(email, password)
@@ -185,7 +185,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -269,14 +269,14 @@ class TestAccountService:
             interface_language="en-US",
             password=password,
         )
-        account.status = AccountStatus.PENDING.value
+        account.status = AccountStatus.PENDING
         from extensions.ext_database import db
 
         db.session.commit()
 
         # Authenticate should activate the account
         authenticated_account = AccountService.authenticate(email, password)
-        assert authenticated_account.status == AccountStatus.ACTIVE.value
+        assert authenticated_account.status == AccountStatus.ACTIVE
         assert authenticated_account.initialized_at is not None
 
     def test_update_account_password_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -539,7 +539,7 @@ class TestAccountService:
         from extensions.ext_database import db
 
         db.session.refresh(account)
-        assert account.status == AccountStatus.CLOSED.value
+        assert account.status == AccountStatus.CLOSED
 
     def test_update_account_fields(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -679,7 +679,7 @@ class TestAccountService:
             interface_language="en-US",
             password=password,
         )
-        account.status = AccountStatus.PENDING.value
+        account.status = AccountStatus.PENDING
         from extensions.ext_database import db
 
         db.session.commit()
@@ -688,7 +688,7 @@ class TestAccountService:
         token_pair = AccountService.login(account)
 
         db.session.refresh(account)
-        assert account.status == AccountStatus.ACTIVE.value
+        assert account.status == AccountStatus.ACTIVE
 
     def test_logout(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -860,7 +860,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -990,7 +990,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()

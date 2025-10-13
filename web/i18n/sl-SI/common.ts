@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Izberi vse',
     deSelectAll: 'Odberi vse',
     config: 'Konfiguracija',
+    no: 'Ne',
+    confirmAction: 'Prosimo, potrdite svoje dejanje.',
+    deleteConfirmTitle: 'Izbrisati?',
+    yes: 'Da',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
