@@ -188,6 +188,8 @@ class MCPToolManageService:
             raise
 
         user = mcp_provider.load_user()
+        if not mcp_provider.icon:
+            raise ValueError("MCP provider icon is required")
         return ToolProviderApiEntity(
             id=mcp_provider.id,
             name=mcp_provider.name,

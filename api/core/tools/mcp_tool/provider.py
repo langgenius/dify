@@ -76,7 +76,8 @@ class MCPToolProviderController(ToolProviderController):
             )
             for remote_mcp_tool in remote_mcp_tools
         ]
-
+        if not db_provider.icon:
+            raise ValueError("Database provider icon is required")
         return cls(
             entity=ToolProviderEntityWithPlugin(
                 identity=ToolProviderIdentity(
