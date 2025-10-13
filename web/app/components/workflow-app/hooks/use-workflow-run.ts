@@ -241,7 +241,7 @@ export const useWorkflowRun = () => {
       setListeningTriggerNodeId,
     } = workflowStore.getState()
 
-    if (runMode === 'webhook') {
+    if (runMode === 'webhook' || runMode === 'plugin') {
       setIsListening(true)
       setShowVariableInspectPanel(true)
       setWorkflowRunningData({
@@ -253,18 +253,6 @@ export const useWorkflowRun = () => {
         },
         tracing: [],
         resultText: '',
-      })
-    }
-    else if (runMode === 'plugin') {
-      setIsListening(true)
-      setShowVariableInspectPanel(true)
-      setWorkflowRunningData({
-        result: {
-          status: WorkflowRunningStatus.Running,
-          inputs_truncated: false,
-          process_data_truncated: false,
-          outputs_truncated: false,
-        },
       })
     }
     else {
