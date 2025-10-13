@@ -39,7 +39,7 @@ const translation = {
       regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable web app before continuing.',
       enableTooltip: {
-        description: 'To enable this feature, please add a User Input node to the canvas.',
+        description: 'To enable this feature, please add a User Input node to the canvas. (May already exist in draft, takes effect after publishing)',
         learnMore: 'Learn more',
       },
       settings: {
@@ -131,7 +131,7 @@ const translation = {
       explanation: 'Workflow trigger management',
       triggersAdded: '{{count}} Triggers added',
       noTriggerAdded: 'No trigger added',
-      triggerStatusDescription: 'Trigger node status appears here.',
+      triggerStatusDescription: 'Trigger node status appears here. (May already exist in draft, takes effect after publishing)',
       learnAboutTriggers: 'Learn about Triggers',
     },
     status: {

@@ -38,7 +38,7 @@ const translation = {
       regenerateNotice: '公開 URL を再生成しますか？',
       preUseReminder: '続行する前に Web アプリを有効にしてください。',
       enableTooltip: {
-        description: 'この機能を有効にするには、キャンバスにユーザー入力ノードを追加してください。',
+        description: 'この機能を有効にするには、キャンバスにユーザー入力ノードを追加してください。（下書きに既に存在する可能性があり、公開後に有効になります）',
         learnMore: '詳細を見る',
       },
       settings: {
@@ -131,7 +131,7 @@ const translation = {
       explanation: 'ワークフロートリガー管理',
       triggersAdded: '{{count}} 個のトリガーが追加されました',
       noTriggerAdded: 'トリガーが追加されていません',
-      triggerStatusDescription: 'トリガーノードの状態がここに表示されます。',
+      triggerStatusDescription: 'トリガーノードの状態がここに表示されます。（下書きに既に存在する可能性があり、公開後に有効になります）',
       learnAboutTriggers: 'トリガーについて学ぶ',
     },
     status: {
