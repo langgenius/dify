@@ -60,10 +60,11 @@ class RecommendedAppService:
         :param app_id: app id
         :return:
         """
-        account_trial_app_record = db.session.query(AccountTrialAppRecord).where(
-            AccountTrialAppRecord.app_id == app_id,
-            AccountTrialAppRecord.account_id == account_id
-        ).first()
+        account_trial_app_record = (
+            db.session.query(AccountTrialAppRecord)
+            .where(AccountTrialAppRecord.app_id == app_id, AccountTrialAppRecord.account_id == account_id)
+            .first()
+        )
         if account_trial_app_record:
             account_trial_app_record.count += 1
             db.session.commit()

@@ -156,11 +156,11 @@ class TrialChatApi(TrialAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            
+
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
-            
+
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
@@ -237,11 +237,11 @@ class TrialChatAudioApi(TrialAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            
+
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
-            
+
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
             RecommendedAppService.add_trial_app_record(app_id, user_id)
             return response
@@ -288,11 +288,11 @@ class TrialChatTextApi(TrialAppResource):
             voice = args.get("voice", None)
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            
+
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
-            
+
             response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             RecommendedAppService.add_trial_app_record(app_id, user_id)
             return response
@@ -343,11 +343,11 @@ class TrialCompletionApi(TrialAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            
+
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
-            
+
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
