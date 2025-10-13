@@ -20,7 +20,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model_with_trial
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -380,7 +380,7 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @trial_feature_enable
-    @get_app_model
+    @get_app_model_with_trial
     @service_api_ns.marshal_with(build_site_model(service_api_ns))
     def get(self, app_model):
         """Retrieve app site info.
@@ -403,7 +403,7 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @trial_feature_enable
-    @get_app_model
+    @get_app_model_with_trial
     @marshal_with(fields.parameters_fields)
     def get(self, app_model):
         """Retrieve app parameters."""
@@ -432,7 +432,7 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @trial_feature_enable
-    @get_app_model
+    @get_app_model_with_trial
     @marshal_with(app_detail_fields_with_site)
     def get(self, app_model):
         """Get app detail"""
