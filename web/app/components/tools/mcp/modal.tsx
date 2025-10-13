@@ -1,5 +1,5 @@
 'use client'
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDomain } from 'tldts'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
@@ -19,6 +19,9 @@ import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
+import TabSlider from '@/app/components/base/tab-slider'
+import { MCPAuthMethod } from '@/app/components/tools/types'
+import Switch from '@/app/components/base/switch'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -63,6 +66,20 @@ const MCPModal = ({
   const { t } = useTranslation()
   const isCreate = !data
 
+  const authMethods = [
+    {
+      text: t('tools.mcp.modal.authentication'),
+      value: MCPAuthMethod.authentication,
+    },
+    {
+      text: t('tools.mcp.modal.headers'),
+      value: MCPAuthMethod.headers,
+    },
+    {
+      text: t('tools.mcp.modal.configurations'),
+      value: MCPAuthMethod.configurations,
+    },
+  ]
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
@@ -78,6 +95,10 @@ const MCPModal = ({
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
+  const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
+  const [useDynamicClientRegistration, setUseDynamicClientRegistration] = useState(data?.use_dynamic_client_registration || false)
+  const [clientID, setClientID] = useState(data?.client_id || '')
+  const [credentials, setCredentials] = useState(data?.credentials || '')
 
   // Update states when data changes (for edit mode)
   React.useEffect(() => {
@@ -165,6 +186,10 @@ const MCPModal = ({
       onHide()
   }
 
+  const handleAuthMethodChange = useCallback((value: string) => {
+    setAuthMethod(value as MCPAuthMethod)
+  }, [])
+
   return (
     <>
       <Modal
@@ -239,42 +264,98 @@ const MCPModal = ({
               </div>
             )}
           </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
-            </div>
-            <Input
-              type='number'
-              value={timeout}
-              onChange={e => setMcpTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
-            </div>
-            <Input
-              type='number'
-              value={sseReadTimeout}
-              onChange={e => setSseReadTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
-            </div>
-            <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
-            <HeadersInput
-              headers={headers}
-              onChange={setHeaders}
-              readonly={false}
-              isMasked={!isCreate && Object.keys(headers).length > 0}
-            />
-          </div>
+          <TabSlider
+            className='w-full'
+            itemClassName={(isActive) => {
+              return `flex-1 ${isActive && 'text-text-accent-light-mode-only'}`
+            }}
+            value={authMethod}
+            onChange={handleAuthMethodChange}
+            options={authMethods}
+          />
+          {
+            authMethod === MCPAuthMethod.authentication && (
+              <>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <Switch
+                      defaultValue={useDynamicClientRegistration}
+                      onChange={setUseDynamicClientRegistration}
+                    />
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientID')}</span>
+                  </div>
+                  <Input
+                    value={clientID}
+                    onChange={e => setClientID(e.target.value)}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.clientID')}
+                  />
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.credentials')}</span>
+                  </div>
+                  <Input
+                    value={credentials}
+                    onChange={e => setCredentials(e.target.value)}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.credentialsPlaceholder')}
+                  />
+                </div>
+              </>
+            )
+          }
+          {
+            authMethod === MCPAuthMethod.headers && (
+              <div>
+                <div className='mb-1 flex h-6 items-center'>
+                  <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
+                </div>
+                <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
+                <HeadersInput
+                  headers={headers}
+                  onChange={setHeaders}
+                  readonly={false}
+                  isMasked={!isCreate && Object.keys(headers).length > 0}
+                />
+              </div>
+            )
+          }
+          {
+            authMethod === MCPAuthMethod.configurations && (
+              <>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
+                  </div>
+                  <Input
+                    type='number'
+                    value={timeout}
+                    onChange={e => setMcpTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
+                  </div>
+                  <Input
+                    type='number'
+                    value={sseReadTimeout}
+                    onChange={e => setSseReadTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                  />
+                </div>
+              </>
+            )
+          }
         </div>
         <div className='flex flex-row-reverse pt-5'>
           <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>

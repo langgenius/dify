@@ -191,3 +191,9 @@ export type MCPServerDetail = {
   parameters?: Record<string, string>
   headers?: Record<string, string>
 }
+
+export enum MCPAuthMethod {
+  authentication = 'authentication',
+  headers = 'headers',
+  configurations = 'configurations',
+}
