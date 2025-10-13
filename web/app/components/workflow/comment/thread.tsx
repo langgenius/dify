@@ -480,7 +480,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           </PortalToFollowElemTrigger>
                         </div>
                         <PortalToFollowElemContent
-                          className='z-[100] w-36 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
+                          className='z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
                           data-reply-menu
                         >
                           {/* Menu buttons - hidden when showing delete confirm */}
