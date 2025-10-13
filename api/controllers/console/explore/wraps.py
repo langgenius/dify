@@ -2,7 +2,6 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask_login import current_user
 from flask_restx import Resource
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
@@ -10,8 +9,9 @@ from werkzeug.exceptions import NotFound
 from controllers.console.explore.error import AppAccessDeniedError
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import InstalledApp
+from models.account import Account
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -25,8 +25,10 @@ def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | Non
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
-            installed_app = db.session.scalars(
-                select(InstalledApp)
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
+            installed_app = (
+                db.session.query(InstalledApp)
                 .where(
                     InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
                 )
@@ -57,6 +59,7 @@ def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] |
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
+                assert isinstance(current_user, Account)
                 app_id = installed_app.app_id
                 app_code = AppService.get_app_code_by_id(app_id)
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(

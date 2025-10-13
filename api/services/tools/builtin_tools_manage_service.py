@@ -346,14 +346,10 @@ class BuiltinToolManageService:
             provider_controller = ToolManager.get_builtin_provider(default_provider.provider, tenant_id)
 
             credentials: list[ToolProviderCredentialApiEntity] = []
-            encrypters = {}
             for provider in providers:
-                credential_type = provider.credential_type
-                if credential_type not in encrypters:
-                    encrypters[credential_type] = BuiltinToolManageService.create_tool_encrypter(
-                        tenant_id, provider, provider.provider, provider_controller
-                    )[0]
-                encrypter = encrypters[credential_type]
+                encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
+                    tenant_id, provider, provider.provider, provider_controller
+                )
                 decrypt_credential = encrypter.mask_tool_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
@@ -681,7 +677,7 @@ class BuiltinToolManageService:
                     cache=NoOpProviderCredentialCache(),
                 )
                 original_params = encrypter.decrypt(custom_client_params.oauth_params)
-                new_params: dict = {
+                new_params = {
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }

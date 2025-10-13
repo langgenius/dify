@@ -137,7 +137,7 @@ const Item: FC<ItemProps> = ({
   const isHovering = isItemHovering || isChildrenHovering
   const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
-    onHovering && onHovering(isHovering)
+    onHovering?.(isHovering)
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()

@@ -309,7 +309,7 @@ class ChatConversationApi(Resource):
             )
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
-            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
+            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
 
         match args["sort_by"]:
             case "created_at":

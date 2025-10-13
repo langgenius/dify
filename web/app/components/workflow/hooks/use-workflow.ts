@@ -354,7 +354,7 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
+  const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
     const {
       edges,
       getNodes,

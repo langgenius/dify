@@ -109,7 +109,7 @@ class OpikDataTrace(BaseTraceInstance):
 
             trace_data = {
                 "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE.value,
+                "name": TraceTaskName.MESSAGE_TRACE,
                 "start_time": trace_info.start_time,
                 "end_time": trace_info.end_time,
                 "metadata": workflow_metadata,
@@ -126,7 +126,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "id": root_span_id,
                 "parent_span_id": None,
                 "trace_id": opik_trace_id,
-                "name": TraceTaskName.WORKFLOW_TRACE.value,
+                "name": TraceTaskName.WORKFLOW_TRACE,
                 "input": wrap_dict("input", trace_info.workflow_run_inputs),
                 "output": wrap_dict("output", trace_info.workflow_run_outputs),
                 "start_time": trace_info.start_time,
@@ -139,7 +139,7 @@ class OpikDataTrace(BaseTraceInstance):
         else:
             trace_data = {
                 "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE.value,
+                "name": TraceTaskName.MESSAGE_TRACE,
                 "start_time": trace_info.start_time,
                 "end_time": trace_info.end_time,
                 "metadata": workflow_metadata,
@@ -291,7 +291,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         trace_data = {
             "id": prepare_opik_uuid(trace_info.start_time, dify_trace_id),
-            "name": TraceTaskName.MESSAGE_TRACE.value,
+            "name": TraceTaskName.MESSAGE_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(metadata),
@@ -330,7 +330,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.MODERATION_TRACE.value,
+            "name": TraceTaskName.MODERATION_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or trace_info.message_data.updated_at,
@@ -356,7 +356,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
+            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or message_data.updated_at,
@@ -376,7 +376,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
+            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or trace_info.message_data.updated_at,
@@ -406,7 +406,7 @@ class OpikDataTrace(BaseTraceInstance):
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         trace_data = {
             "id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
-            "name": TraceTaskName.GENERATE_NAME_TRACE.value,
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),
@@ -421,7 +421,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": trace.id,
-            "name": TraceTaskName.GENERATE_NAME_TRACE.value,
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),

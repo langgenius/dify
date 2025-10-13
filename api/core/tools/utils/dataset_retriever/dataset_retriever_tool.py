@@ -17,7 +17,7 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "reranking_mode": "reranking_model",
@@ -130,7 +130,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search",
+                    retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
                     top_k=self.top_k,

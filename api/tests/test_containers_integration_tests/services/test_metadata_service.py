@@ -73,7 +73,7 @@ class TestMetadataService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)

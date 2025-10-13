@@ -67,6 +67,10 @@ const translation = {
     sure: 'Saya yakin',
     imageCopied: 'Gambar yang disalin',
     config: 'Konfigurasi',
+    deleteConfirmTitle: 'Hapus?',
+    confirmAction: 'Silakan konfirmasi tindakan Anda.',
+    yes: 'Ya',
+    no: 'Tidak',
   },
   errorMsg: {
     urlError: 'URL harus dimulai dengan http:// atau https://',

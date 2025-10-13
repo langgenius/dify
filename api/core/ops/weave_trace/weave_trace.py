@@ -105,7 +105,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
             message_run = WeaveTraceModel(
                 id=trace_info.message_id,
-                op=str(TraceTaskName.MESSAGE_TRACE.value),
+                op=str(TraceTaskName.MESSAGE_TRACE),
                 inputs=dict(trace_info.workflow_run_inputs),
                 outputs=dict(trace_info.workflow_run_outputs),
                 total_tokens=trace_info.total_tokens,
@@ -127,7 +127,7 @@ class WeaveDataTrace(BaseTraceInstance):
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
             id=trace_info.workflow_run_id,
-            op=str(TraceTaskName.WORKFLOW_TRACE.value),
+            op=str(TraceTaskName.WORKFLOW_TRACE),
             inputs=dict(trace_info.workflow_run_inputs),
             outputs=dict(trace_info.workflow_run_outputs),
             attributes=workflow_attributes,
@@ -254,7 +254,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         message_run = WeaveTraceModel(
             id=trace_id,
-            op=str(TraceTaskName.MESSAGE_TRACE.value),
+            op=str(TraceTaskName.MESSAGE_TRACE),
             input_tokens=trace_info.message_tokens,
             output_tokens=trace_info.answer_tokens,
             total_tokens=trace_info.total_tokens,
@@ -301,7 +301,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         moderation_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.MODERATION_TRACE.value),
+            op=str(TraceTaskName.MODERATION_TRACE),
             inputs=trace_info.inputs,
             outputs={
                 "action": trace_info.action,
@@ -331,7 +331,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         suggested_question_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.SUGGESTED_QUESTION_TRACE.value),
+            op=str(TraceTaskName.SUGGESTED_QUESTION_TRACE),
             inputs=trace_info.inputs,
             outputs=trace_info.suggested_question,
             attributes=attributes,
@@ -356,7 +356,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         dataset_retrieval_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.DATASET_RETRIEVAL_TRACE.value),
+            op=str(TraceTaskName.DATASET_RETRIEVAL_TRACE),
             inputs=trace_info.inputs,
             outputs={"documents": trace_info.documents},
             attributes=attributes,
@@ -398,7 +398,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         name_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.GENERATE_NAME_TRACE.value),
+            op=str(TraceTaskName.GENERATE_NAME_TRACE),
             inputs=trace_info.inputs,
             outputs=trace_info.outputs,
             attributes=attributes,

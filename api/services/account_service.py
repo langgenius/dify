@@ -127,7 +127,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         current_tenant = db.session.scalars(
@@ -177,7 +177,7 @@ class AccountService:
         if not account:
             raise AccountPasswordError("Invalid email or password.")
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if password and invite_token and account.password is None:
@@ -192,8 +192,8 @@ class AccountService:
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
         db.session.commit()
@@ -245,10 +245,8 @@ class AccountService:
                 )
             )
 
-        account = Account()
-        account.email = email
-        account.name = name
-
+        password_to_set = None
+        salt_to_set = None
         if password:
             valid_password(password)
 
@@ -260,14 +258,18 @@ class AccountService:
             password_hashed = hash_password(password, salt)
             base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
+            password_to_set = base64_password_hashed
+            salt_to_set = base64_salt
 
-        account.interface_language = interface_language
-        account.interface_theme = interface_theme
-
-        # Set timezone based on language
-        account.timezone = language_timezone_mapping.get(interface_language, "UTC")
+        account = Account(
+            name=name,
+            email=email,
+            password=password_to_set,
+            password_salt=salt_to_set,
+            interface_language=interface_language,
+            interface_theme=interface_theme,
+            timezone=language_timezone_mapping.get(interface_language, "UTC"),
+        )
 
         db.session.add(account)
         db.session.commit()
@@ -354,7 +356,7 @@ class AccountService:
     @staticmethod
     def close_account(account: Account):
         """Close account"""
-        account.status = AccountStatus.CLOSED.value
+        account.status = AccountStatus.CLOSED
         db.session.commit()
 
     @staticmethod
@@ -396,8 +398,8 @@ class AccountService:
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             db.session.commit()
 
         access_token = AccountService.get_account_jwt_token(account=account)
@@ -765,7 +767,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
@@ -1029,7 +1031,7 @@ class TenantService:
     @staticmethod
     def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
         """Create tenant member"""
-        if role == TenantAccountRole.OWNER.value:
+        if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
@@ -1328,7 +1330,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
             )
-            account.status = AccountStatus.ACTIVE.value if not status else status.value
+            account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
             if open_id is not None and provider is not None:
@@ -1391,7 +1393,7 @@ class RegisterService:
                 TenantService.create_tenant_member(tenant, account, role)
 
             # Support resend invitation email when the account is pending status
-            if account.status != AccountStatus.PENDING.value:
+            if account.status != AccountStatus.PENDING:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         token = cls.generate_invite_token(tenant, account)

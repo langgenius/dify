@@ -6,7 +6,7 @@ from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -19,6 +19,7 @@ from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
 
+@console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
     @setup_required
     @login_required
@@ -37,6 +38,7 @@ class PluginDebuggingKeyApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
     @setup_required
     @login_required
@@ -55,6 +57,7 @@ class PluginListApi(Resource):
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
+@console_ns.route("/workspaces/current/plugin/list/latest-versions")
 class PluginListLatestVersionsApi(Resource):
     @setup_required
     @login_required
@@ -72,6 +75,7 @@ class PluginListLatestVersionsApi(Resource):
         return jsonable_encoder({"versions": versions})
 
 
+@console_ns.route("/workspaces/current/plugin/list/installations/ids")
 class PluginListInstallationsFromIdsApi(Resource):
     @setup_required
     @login_required
@@ -91,6 +95,7 @@ class PluginListInstallationsFromIdsApi(Resource):
         return jsonable_encoder({"plugins": plugins})
 
 
+@console_ns.route("/workspaces/current/plugin/icon")
 class PluginIconApi(Resource):
     @setup_required
     def get(self):
@@ -108,6 +113,7 @@ class PluginIconApi(Resource):
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 
+@console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
     @setup_required
     @login_required
@@ -131,6 +137,7 @@ class PluginUploadFromPkgApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/upload/github")
 class PluginUploadFromGithubApi(Resource):
     @setup_required
     @login_required
@@ -153,6 +160,7 @@ class PluginUploadFromGithubApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/upload/bundle")
 class PluginUploadFromBundleApi(Resource):
     @setup_required
     @login_required
@@ -176,6 +184,7 @@ class PluginUploadFromBundleApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/install/pkg")
 class PluginInstallFromPkgApi(Resource):
     @setup_required
     @login_required
@@ -201,6 +210,7 @@ class PluginInstallFromPkgApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/install/github")
 class PluginInstallFromGithubApi(Resource):
     @setup_required
     @login_required
@@ -230,6 +240,7 @@ class PluginInstallFromGithubApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/install/marketplace")
 class PluginInstallFromMarketplaceApi(Resource):
     @setup_required
     @login_required
@@ -255,6 +266,7 @@ class PluginInstallFromMarketplaceApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/marketplace/pkg")
 class PluginFetchMarketplacePkgApi(Resource):
     @setup_required
     @login_required
@@ -280,6 +292,7 @@ class PluginFetchMarketplacePkgApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/fetch-manifest")
 class PluginFetchManifestApi(Resource):
     @setup_required
     @login_required
@@ -304,6 +317,7 @@ class PluginFetchManifestApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/tasks")
 class PluginFetchInstallTasksApi(Resource):
     @setup_required
     @login_required
@@ -325,6 +339,7 @@ class PluginFetchInstallTasksApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/<task_id>")
 class PluginFetchInstallTaskApi(Resource):
     @setup_required
     @login_required
@@ -339,6 +354,7 @@ class PluginFetchInstallTaskApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete")
 class PluginDeleteInstallTaskApi(Resource):
     @setup_required
     @login_required
@@ -353,6 +369,7 @@ class PluginDeleteInstallTaskApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/delete_all")
 class PluginDeleteAllInstallTaskItemsApi(Resource):
     @setup_required
     @login_required
@@ -367,6 +384,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 class PluginDeleteInstallTaskItemApi(Resource):
     @setup_required
     @login_required
@@ -381,6 +399,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
 class PluginUpgradeFromMarketplaceApi(Resource):
     @setup_required
     @login_required
@@ -404,6 +423,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/upgrade/github")
 class PluginUpgradeFromGithubApi(Resource):
     @setup_required
     @login_required
@@ -435,6 +455,7 @@ class PluginUpgradeFromGithubApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/uninstall")
 class PluginUninstallApi(Resource):
     @setup_required
     @login_required
@@ -453,6 +474,7 @@ class PluginUninstallApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/permission/change")
 class PluginChangePermissionApi(Resource):
     @setup_required
     @login_required
@@ -475,6 +497,7 @@ class PluginChangePermissionApi(Resource):
         return {"success": PluginPermissionService.change_permission(tenant_id, install_permission, debug_permission)}
 
 
+@console_ns.route("/workspaces/current/plugin/permission/fetch")
 class PluginFetchPermissionApi(Resource):
     @setup_required
     @login_required
@@ -499,6 +522,7 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")
 class PluginFetchDynamicSelectOptionsApi(Resource):
     @setup_required
     @login_required
@@ -535,6 +559,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         return jsonable_encoder({"options": options})
 
 
+@console_ns.route("/workspaces/current/plugin/preferences/change")
 class PluginChangePreferencesApi(Resource):
     @setup_required
     @login_required
@@ -590,6 +615,7 @@ class PluginChangePreferencesApi(Resource):
         return jsonable_encoder({"success": True})
 
 
+@console_ns.route("/workspaces/current/plugin/preferences/fetch")
 class PluginFetchPreferencesApi(Resource):
     @setup_required
     @login_required
@@ -628,6 +654,7 @@ class PluginFetchPreferencesApi(Resource):
         return jsonable_encoder({"permission": permission_dict, "auto_upgrade": auto_upgrade_dict})
 
 
+@console_ns.route("/workspaces/current/plugin/preferences/autoupgrade/exclude")
 class PluginAutoUpgradeExcludePluginApi(Resource):
     @setup_required
     @login_required
@@ -641,35 +668,3 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         args = req.parse_args()
 
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
-
-
-api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
-api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
-api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
-api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
-api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
-api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
-api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
-api.add_resource(PluginUploadFromBundleApi, "/workspaces/current/plugin/upload/bundle")
-api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/pkg")
-api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/github")
-api.add_resource(PluginUpgradeFromMarketplaceApi, "/workspaces/current/plugin/upgrade/marketplace")
-api.add_resource(PluginUpgradeFromGithubApi, "/workspaces/current/plugin/upgrade/github")
-api.add_resource(PluginInstallFromMarketplaceApi, "/workspaces/current/plugin/install/marketplace")
-api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manifest")
-api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
-api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
-api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
-api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin/tasks/delete_all")
-api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
-api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
-api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
-
-api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
-api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
-
-api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
-
-api.add_resource(PluginFetchPreferencesApi, "/workspaces/current/plugin/preferences/fetch")
-api.add_resource(PluginChangePreferencesApi, "/workspaces/current/plugin/preferences/change")
-api.add_resource(PluginAutoUpgradeExcludePluginApi, "/workspaces/current/plugin/preferences/autoupgrade/exclude")

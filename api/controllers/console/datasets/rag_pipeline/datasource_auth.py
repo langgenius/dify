@@ -1,4 +1,3 @@
-from fastapi.encoders import jsonable_encoder
 from flask import make_response, redirect, request
 from flask_login import current_user
 from flask_restx import Resource, reqparse
@@ -11,6 +10,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen
 from libs.login import login_required

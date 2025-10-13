@@ -44,8 +44,7 @@ class CacheEmbedding(Embeddings):
             else:
                 embedding_queue_indices.append(i)
 
-        # release database connection, because embedding may take a long time
-        db.session.close()
+        # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
 
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]

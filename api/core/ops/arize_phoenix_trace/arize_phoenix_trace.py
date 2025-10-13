@@ -213,9 +213,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     node_metadata.update(json.loads(node_execution.execution_metadata))
 
                 # Determine the correct span kind based on node type
-                span_kind = OpenInferenceSpanKindValues.CHAIN.value
+                span_kind = OpenInferenceSpanKindValues.CHAIN
                 if node_execution.node_type == "llm":
-                    span_kind = OpenInferenceSpanKindValues.LLM.value
+                    span_kind = OpenInferenceSpanKindValues.LLM
                     provider = process_data.get("model_provider")
                     model = process_data.get("model_name")
                     if provider:
@@ -230,18 +230,18 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
                         node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
                 elif node_execution.node_type == "dataset_retrieval":
-                    span_kind = OpenInferenceSpanKindValues.RETRIEVER.value
+                    span_kind = OpenInferenceSpanKindValues.RETRIEVER
                 elif node_execution.node_type == "tool":
-                    span_kind = OpenInferenceSpanKindValues.TOOL.value
+                    span_kind = OpenInferenceSpanKindValues.TOOL
                 else:
-                    span_kind = OpenInferenceSpanKindValues.CHAIN.value
+                    span_kind = OpenInferenceSpanKindValues.CHAIN
 
                 node_span = self.tracer.start_span(
                     name=node_execution.node_type,
                     attributes={
                         SpanAttributes.INPUT_VALUE: node_execution.inputs or "{}",
                         SpanAttributes.OUTPUT_VALUE: node_execution.outputs or "{}",
-                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind,
+                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.METADATA: json.dumps(node_metadata, ensure_ascii=False),
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },

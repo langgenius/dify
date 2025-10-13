@@ -33,7 +33,10 @@ const SelectField = ({
       <PureSelect
         value={field.state.value}
         options={options}
-        onChange={value => field.handleChange(value)}
+        onChange={(value) => {
+          field.handleChange(value)
+          onChange?.(value)
+        }}
         {...selectProps}
       />
     </div>

@@ -109,7 +109,7 @@ class Provider(Base):
         """
         Returns True if the provider is enabled.
         """
-        if self.provider_type == ProviderType.SYSTEM.value:
+        if self.provider_type == ProviderType.SYSTEM:
             return self.is_valid
         else:
             return self.is_valid and self.token_is_set

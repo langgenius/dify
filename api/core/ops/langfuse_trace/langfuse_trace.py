@@ -74,7 +74,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         if trace_info.message_id:
             trace_id = trace_info.trace_id or trace_info.message_id
-            name = TraceTaskName.MESSAGE_TRACE.value
+            name = TraceTaskName.MESSAGE_TRACE
             trace_data = LangfuseTrace(
                 id=trace_id,
                 user_id=user_id,
@@ -89,7 +89,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.add_trace(langfuse_trace_data=trace_data)
             workflow_span_data = LangfuseSpan(
                 id=trace_info.workflow_run_id,
-                name=TraceTaskName.WORKFLOW_TRACE.value,
+                name=TraceTaskName.WORKFLOW_TRACE,
                 input=dict(trace_info.workflow_run_inputs),
                 output=dict(trace_info.workflow_run_outputs),
                 trace_id=trace_id,
@@ -104,7 +104,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             trace_data = LangfuseTrace(
                 id=trace_id,
                 user_id=user_id,
-                name=TraceTaskName.WORKFLOW_TRACE.value,
+                name=TraceTaskName.WORKFLOW_TRACE,
                 input=dict(trace_info.workflow_run_inputs),
                 output=dict(trace_info.workflow_run_outputs),
                 metadata=metadata,
@@ -254,7 +254,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         trace_data = LangfuseTrace(
             id=trace_id,
             user_id=user_id,
-            name=TraceTaskName.MESSAGE_TRACE.value,
+            name=TraceTaskName.MESSAGE_TRACE,
             input={
                 "message": trace_info.inputs,
                 "files": file_list,
@@ -304,7 +304,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
         span_data = LangfuseSpan(
-            name=TraceTaskName.MODERATION_TRACE.value,
+            name=TraceTaskName.MODERATION_TRACE,
             input=trace_info.inputs,
             output={
                 "action": trace_info.action,
@@ -332,7 +332,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
 
         generation_data = LangfuseGeneration(
-            name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
+            name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
             input=trace_info.inputs,
             output=str(trace_info.suggested_question),
             trace_id=trace_info.trace_id or trace_info.message_id,
@@ -350,7 +350,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
         dataset_retrieval_span_data = LangfuseSpan(
-            name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
+            name=TraceTaskName.DATASET_RETRIEVAL_TRACE,
             input=trace_info.inputs,
             output={"documents": trace_info.documents},
             trace_id=trace_info.trace_id or trace_info.message_id,
@@ -378,7 +378,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         name_generation_trace_data = LangfuseTrace(
-            name=TraceTaskName.GENERATE_NAME_TRACE.value,
+            name=TraceTaskName.GENERATE_NAME_TRACE,
             input=trace_info.inputs,
             output=trace_info.outputs,
             user_id=trace_info.tenant_id,
@@ -389,7 +389,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         self.add_trace(langfuse_trace_data=name_generation_trace_data)
 
         name_generation_span_data = LangfuseSpan(
-            name=TraceTaskName.GENERATE_NAME_TRACE.value,
+            name=TraceTaskName.GENERATE_NAME_TRACE,
             input=trace_info.inputs,
             output=trace_info.outputs,
             trace_id=trace_info.conversation_id,
