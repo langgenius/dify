@@ -20,6 +20,11 @@ type Props = {
   className?: string
 }
 
+enum LogTypeEnum {
+  REQUEST = 'REQUEST',
+  RESPONSE = 'RESPONSE',
+}
+
 const LogViewer = ({ logs, className }: Props) => {
   const { t } = useTranslation()
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
@@ -56,8 +61,8 @@ const LogViewer = ({ logs, className }: Props) => {
     }
   }
 
-  const renderJsonContent = (data: any, title: string) => {
-    const parsedData = title === 'REQUEST' ? parseRequestData(data) : data
+  const renderJsonContent = (originalData: any, title: LogTypeEnum) => {
+    const parsedData = title === LogTypeEnum.REQUEST ? { headers: originalData.headers, data: parseRequestData(originalData.data) } : originalData
     const isJsonObject = typeof parsedData === 'object'
 
     if (isJsonObject) {
@@ -127,13 +132,13 @@ const LogViewer = ({ logs, className }: Props) => {
               <div className='pointer-events-none absolute left-0 top-0 h-7 w-[179px]'>
                 <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className='h-full w-full'>
                   <g filter="url(#filter0_f_error_glow)">
-                    <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25"/>
+                    <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25" />
                   </g>
                   <defs>
                     <filter id="filter0_f_error_glow" x="-125" y="-138" width="304" height="304" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                      <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
-                      <feGaussianBlur stdDeviation="60" result="effect1_foregroundBlur"/>
+                      <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                      <feGaussianBlur stdDeviation="60" result="effect1_foregroundBlur" />
                     </filter>
                   </defs>
                 </svg>
@@ -174,8 +179,8 @@ const LogViewer = ({ logs, className }: Props) => {
 
             {isExpanded && (
               <div className='flex flex-col gap-1 px-1 pb-1'>
-                {renderJsonContent(log.request.data, 'REQUEST')}
-                {renderJsonContent(log.response.data, 'RESPONSE')}
+                {renderJsonContent(log.request, LogTypeEnum.REQUEST)}
+                {renderJsonContent(log.response, LogTypeEnum.RESPONSE)}
               </div>
             )}
           </div>

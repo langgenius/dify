@@ -71,6 +71,7 @@ export type FormSchema = {
   validators?: AnyValidators
   showRadioUI?: boolean
   disabled?: boolean
+  showCopy?: boolean
   dynamicSelectParams?: {
     plugin_id: string
     provider: string

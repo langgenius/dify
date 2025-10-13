@@ -90,6 +90,7 @@ const BaseField = ({
     dynamicSelectParams,
     multiple = false,
     tooltip,
+    showCopy,
   } = formSchema
   const disabled = propsDisabled || formSchemaDisabled
 
@@ -202,6 +203,7 @@ const BaseField = ({
               disabled={disabled}
               placeholder={memorizedPlaceholder}
               {...getExtraProps(formItemType)}
+              showCopyIcon={showCopy}
             />
           )
         }

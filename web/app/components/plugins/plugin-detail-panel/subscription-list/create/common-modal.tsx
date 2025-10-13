@@ -284,6 +284,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       onConfirm={handleConfirm}
       disabled={isVerifyingCredentials || isBuilding}
       bottomSlot={currentStep === ApiKeyStep.Verify ? <EncryptedBottom /> : null}
+      size={createType === SupportedCreationMethods.MANUAL ? 'md' : 'sm'}
     >
       {createType === SupportedCreationMethods.APIKEY && <MultiSteps currentStep={currentStep} />}
       {currentStep === ApiKeyStep.Verify && (
@@ -321,12 +322,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               default: subscriptionBuilder?.endpoint || '',
               disabled: true,
               tooltip: t('pluginTrigger.modal.form.callbackUrl.tooltip'),
-              // extra: subscriptionBuilder?.endpoint ? (
-              //   <CopyFeedbackNew
-              //     className='absolute right-1 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary'
-              //     content={subscriptionBuilder?.endpoint || ''}
-              //   />
-              // ) : undefined,
+              showCopy: true,
             },
           ]}
           ref={subscriptionFormRef}
