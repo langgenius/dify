@@ -1,5 +1,5 @@
 const translation = {
-  pageTitle: 'Log in to Dify',
+  pageTitle: 'Log in to AIF',
   welcome: '👋 Welcome! Please log in to get started.',
   email: 'Email address',
   emailPlaceholder: 'Your email',
@@ -24,7 +24,7 @@ const translation = {
   invitationCodePlaceholder: 'Your invitation code',
   interfaceLanguage: 'Interface Language',
   timezone: 'Time zone',
-  go: 'Go to Dify',
+  go: 'Go to AIF',
   sendUsMail: 'Email us your introduction, and we\'ll handle the invitation request.',
   acceptPP: 'I have read and accept the privacy policy',
   reset: 'Please run following command to reset your password',

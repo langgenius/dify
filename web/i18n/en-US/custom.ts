@@ -8,7 +8,7 @@ const translation = {
   },
   webapp: {
     title: 'Customize web app brand',
-    removeBrand: 'Remove Powered by Dify',
+    removeBrand: 'Remove Powered by AIF',
     changeLogo: 'Change Powered by Brand Image',
     changeLogoTip: 'SVG or PNG format with a minimum size of 40x40px',
   },

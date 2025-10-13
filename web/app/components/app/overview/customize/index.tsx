@@ -85,7 +85,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
           <pre className='box-border select-text overflow-x-scroll rounded-lg border-[0.5px] border-components-panel-border bg-background-section px-4 py-3 text-xs font-medium text-text-secondary'>
             NEXT_PUBLIC_APP_ID={`'${appId}'`} <br />
-            NEXT_PUBLIC_APP_KEY={'\'<Web API Key From Dify>\''} <br />
+            NEXT_PUBLIC_APP_KEY={'\'<Web API Key From AIF>\''} <br />
             NEXT_PUBLIC_API_URL={`'${api_base_url}'`}
           </pre>
         </div>

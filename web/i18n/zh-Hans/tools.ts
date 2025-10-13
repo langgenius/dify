@@ -1,7 +1,7 @@
 const translation = {
   title: '工具',
   createCustomTool: '创建自定义工具',
-  customToolTip: '了解更多关于 Dify 自定义工具的信息',
+  customToolTip: '了解更多关于 AIF 自定义工具的信息',
   type: {
     all: '全部',
     builtIn: '工具',
@@ -10,7 +10,7 @@ const translation = {
   },
   contribute: {
     line1: '我有兴趣为 ',
-    line2: 'Dify 贡献工具。',
+    line2: 'AIF 贡献工具。',
     viewGuide: '查看指南',
   },
   author: '作者',

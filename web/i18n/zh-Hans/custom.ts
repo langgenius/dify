@@ -8,7 +8,7 @@ const translation = {
   },
   webapp: {
     title: '定制 web app 品牌',
-    removeBrand: '移除 Powered by Dify',
+    removeBrand: '移除 Powered by AIF',
     changeLogo: '更改 Powered by Brand 图片',
     changeLogoTip: 'SVG 或 PNG 格式，最小尺寸为 40x40px',
   },
@@ -24,7 +24,7 @@ const translation = {
   restore: '恢复默认',
   customize: {
     contactUs: '联系我们',
-    prefix: '如需在 Dify 内自定义品牌图标，请',
+    prefix: '如需在 AIF 内自定义品牌图标，请',
     suffix: '升级至企业版。',
   },
 }

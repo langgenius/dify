@@ -40,7 +40,7 @@ export default function VerifyEmail(props: DeleteAccountProps) {
     </div>
     <div className='body-md-regular pb-2 pt-1 text-text-secondary'>
       {t('common.account.deletePrivacyLinkTip')}
-      <Link href='https://dify.ai/privacy' className='text-text-accent'>{t('common.account.deletePrivacyLink')}</Link>
+      <Link href='/privacy' className='text-text-accent'>{t('common.account.deletePrivacyLink')}</Link>
     </div>
     <label className='system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary'>{t('common.account.verificationLabel')}</label>
     <Input minLength={6} maxLength={6} placeholder={t('common.account.verificationPlaceholder') as string} onChange={(e) => {

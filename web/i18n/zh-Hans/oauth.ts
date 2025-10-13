@@ -1,7 +1,7 @@
 const translation = {
   tips: {
-    loggedIn: '想要访问您的 Dify Cloud 账号中的以下信息。',
-    notLoggedIn: '想要访问您的 Dify Cloud 账号',
+    loggedIn: '想要访问您的 AIF 账号中的以下信息。',
+    notLoggedIn: '想要访问您的 AIF 账号',
     needLogin: '请先登录以授权',
     common: '我们尊重您的隐私，并仅使用此信息来增强您对我们开发工具的使用体验。',
   },

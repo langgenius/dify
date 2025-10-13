@@ -123,9 +123,9 @@ const EducationApplyAge = () => {
             </div>
             <div className='system-md-regular mb-1 text-text-tertiary'>
               {t('education.form.terms.desc.front')}&nbsp;
-              <a href='https://dify.ai/terms' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.termsOfService')}</a>&nbsp;
+              <a href='/terms' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.termsOfService')}</a>&nbsp;
               {t('education.form.terms.desc.and')}&nbsp;
-              <a href='https://dify.ai/privacy' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>
+              <a href='/privacy' target='_blank' className='text-text-secondary hover:underline'>{t('education.form.terms.desc.privacyPolicy')}</a>
               {t('education.form.terms.desc.end')}
             </div>
             <div className='system-md-regular py-2 text-text-primary'>

@@ -183,7 +183,7 @@ const Popup = () => {
               {t('datasetPipeline.publishTemplate.success.tip')}
             </span>
             <Link
-              href='https://docs.dify.ai'
+              href='/docs'
               target='_blank'
               className='system-xs-medium-uppercase inline-block text-text-accent'
             >
