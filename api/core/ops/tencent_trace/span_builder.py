@@ -54,7 +54,7 @@ class TencentSpanBuilder:
     """Builder class for constructing different types of spans"""
 
     @staticmethod
-    def _get_time_nanoseconds(time_value: Optional[datetime]) -> int:
+    def _get_time_nanoseconds(time_value: datetime | None) -> int:
         """Convert datetime to nanoseconds for span creation."""
         return TencentTraceUtils.convert_datetime_to_nanoseconds(time_value)
 
@@ -119,7 +119,7 @@ class TencentSpanBuilder:
         trace_info: WorkflowTraceInfo,
         trace_id: int,
         workflow_span_id: int,
-        message_span_id: Optional[int],
+        message_span_id: int | None,
         user_id: str,
         status: Status,
         links: list,
@@ -242,7 +242,7 @@ class TencentSpanBuilder:
     def build_retrieval_span(trace_info: DatasetRetrievalTraceInfo, trace_id: int, parent_span_id: int) -> SpanData:
         """Build dataset retrieval span."""
         status = Status(StatusCode.OK)
-        if getattr(trace_info, 'error', None):
+        if getattr(trace_info, "error", None):
             status = Status(StatusCode.ERROR, trace_info.error)  # type: ignore[arg-type]
 
         documents_data = TencentSpanBuilder._extract_retrieval_documents(trace_info.documents)

@@ -85,9 +85,9 @@ class TencentTraceClient:
         # Store span contexts for parent-child relationships
         self.span_contexts: dict[int, trace_api.SpanContext] = {}
 
-        self.meter: Optional[Meter] = None
-        self.hist_llm_duration: Optional[Histogram] = None
-        self.metric_reader: Optional[MetricReader] = None
+        self.meter: Meter | None = None
+        self.hist_llm_duration: Histogram | None = None
+        self.metric_reader: MetricReader | None = None
 
         # Metrics exporter and instruments
         try:

@@ -11,7 +11,7 @@ class SpanData(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     trace_id: int = Field(..., description="The unique identifier for the trace.")
-    parent_span_id: Optional[int] = Field(None, description="The ID of the parent span, if any.")
+    parent_span_id: int | None = Field(None, description="The ID of the parent span, if any.")
     span_id: int = Field(..., description="The unique identifier for this span.")
     name: str = Field(..., description="The name of the span.")
     attributes: dict[str, str] = Field(default_factory=dict, description="Attributes associated with the span.")

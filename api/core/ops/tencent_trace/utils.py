@@ -18,7 +18,7 @@ class TencentTraceUtils:
     INVALID_TRACE_ID = 0x00000000000000000000000000000000
 
     @staticmethod
-    def convert_to_trace_id(uuid_v4: Optional[str]) -> int:
+    def convert_to_trace_id(uuid_v4: str | None) -> int:
         try:
             uuid_obj = uuid.UUID(uuid_v4) if uuid_v4 else uuid.uuid4()
         except Exception as e:
@@ -26,7 +26,7 @@ class TencentTraceUtils:
         return cast(int, uuid_obj.int)
 
     @staticmethod
-    def convert_to_span_id(uuid_v4: Optional[str], span_type: str) -> int:
+    def convert_to_span_id(uuid_v4: str | None, span_type: str) -> int:
         try:
             uuid_obj = uuid.UUID(uuid_v4) if uuid_v4 else uuid.uuid4()
         except Exception as e:
@@ -43,7 +43,7 @@ class TencentTraceUtils:
         return span_id
 
     @staticmethod
-    def convert_datetime_to_nanoseconds(start_time: Optional[datetime]) -> int:
+    def convert_datetime_to_nanoseconds(start_time: datetime | None) -> int:
         if start_time is None:
             start_time = datetime.now()
         timestamp_in_seconds = start_time.timestamp()

@@ -22,11 +22,11 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
-from typing import cast
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
