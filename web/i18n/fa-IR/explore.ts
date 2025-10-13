@@ -1,7 +1,6 @@
 const translation = {
   title: 'کاوش',
   sidebar: {
-    discovery: 'کشف',
     chat: 'چت',
     workspace: 'فضای کاری',
     action: {

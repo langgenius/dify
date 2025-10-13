@@ -1,7 +1,6 @@
 const translation = {
   title: 'अन्वेषण करें',
   sidebar: {
-    discovery: 'खोज',
     chat: 'चैट',
     workspace: 'कार्यक्षेत्र',
     action: {

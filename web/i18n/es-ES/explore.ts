@@ -1,7 +1,6 @@
 const translation = {
   title: 'Explorar',
   sidebar: {
-    discovery: 'Descubrimiento',
     chat: 'Chat',
     workspace: 'Espacio de trabajo',
     action: {

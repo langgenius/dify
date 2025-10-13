@@ -11,7 +11,6 @@ const translation = {
       title: 'Hapus aplikasi',
     },
     workspace: 'Workspace',
-    discovery: 'Penemuan',
     chat: 'Mengobrol',
   },
   apps: {
