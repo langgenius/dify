@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ScheduleTriggerNodeType } from '../types'
 import { getFormattedExecutionTimes } from '../utils/execution-time-calculator'
+import TimezoneLabel from '@/app/components/base/timezone-label'
 
 type NextExecutionTimesProps = {
   data: ScheduleTriggerNodeType
@@ -31,6 +32,8 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
             </span>
             <span className="pl-2 pr-3 font-mono font-normal leading-[150%] tracking-wider text-text-secondary">
               {time}
+              {' '}
+              <TimezoneLabel timezone={data.timezone} inline className="text-xs" />
             </span>
           </div>
         ))}

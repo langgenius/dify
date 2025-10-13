@@ -12,6 +12,7 @@ import NextExecutionTimes from './components/next-execution-times'
 import MonthlyDaysSelector from './components/monthly-days-selector'
 import OnMinuteSelector from './components/on-minute-selector'
 import Input from '@/app/components/base/input'
+import TimezoneLabel from '@/app/components/base/timezone-label'
 import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.triggerSchedule'
@@ -69,21 +70,24 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                         <label className="mb-2 block text-xs font-medium text-gray-500">
                           {t('workflow.nodes.triggerSchedule.time')}
                         </label>
-                        <TimePicker
-                          notClearable={true}
-                          timezone={inputs.timezone}
-                          value={inputs.visual_config?.time || '12:00 AM'}
-                          onChange={(time) => {
-                            if (time) {
-                              const timeString = time.format('h:mm A')
-                              handleTimeChange(timeString)
-                            }
-                          }}
-                          onClear={() => {
-                            handleTimeChange('12:00 AM')
-                          }}
-                          placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
-                        />
+                        <div className="flex items-center gap-2">
+                          <TimePicker
+                            notClearable={true}
+                            timezone={inputs.timezone}
+                            value={inputs.visual_config?.time || '12:00 AM'}
+                            onChange={(time) => {
+                              if (time) {
+                                const timeString = time.format('h:mm A')
+                                handleTimeChange(timeString)
+                              }
+                            }}
+                            onClear={() => {
+                              handleTimeChange('12:00 AM')
+                            }}
+                            placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
+                          />
+                          <TimezoneLabel timezone={inputs.timezone} />
+                        </div>
                       </>
                     )}
                   </div>

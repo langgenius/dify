@@ -107,7 +107,15 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
   const tzItem = tz.find(item => item.value === timezone)
   if (!tzItem)
     return DEFAULT_OFFSET_STR
-  return `UTC${tzItem.name.charAt(0)}${tzItem.name.charAt(2)}`
+  // Extract offset from name format like "-11:00 Niue Time - Alofi"
+  // Name format is always "{offset}:00 {timezone name}"
+  const offsetMatch = tzItem.name.match(/^([+-]?\d{1,2}):00/)
+  if (!offsetMatch)
+    return DEFAULT_OFFSET_STR
+  // Parse offset as integer to remove leading zeros (e.g., "-05" → "-5")
+  const offsetNum = Number.parseInt(offsetMatch[1], 10)
+  const sign = offsetNum >= 0 ? '+' : ''
+  return `UTC${sign}${offsetNum}`
 }
 
 export const isDayjsObject = (value: unknown): value is Dayjs => dayjs.isDayjs(value)
