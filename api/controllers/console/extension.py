@@ -47,9 +47,7 @@ class APIBasedExtensionAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def get(self):
-        _, current_tenant_id = current_account_with_tenant()
-
-        tenant_id = current_tenant_id
+        _, tenant_id = current_account_with_tenant()
         return APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
 
     @api.doc("create_api_based_extension")
