@@ -456,6 +456,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generate content',
+        reasoning_content: 'Reasoning Content',
         usage: 'Model Usage Information',
       },
       singleRun: {

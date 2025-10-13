@@ -14,6 +14,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models.account import Account
 from models.model import AppMode, AppModelConfig
@@ -90,7 +91,7 @@ class ModelConfigResource(Resource):
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
 
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity.model_validate(tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
@@ -124,7 +125,7 @@ class ModelConfigResource(Resource):
             # encrypt agent tool parameters if it's secret-input
             agent_mode = new_app_model_config.agent_mode_dict
             for tool in agent_mode.get("tools") or []:
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity.model_validate(tool)
 
                 # get tool
                 key = f"{agent_tool_entity.provider_id}.{agent_tool_entity.provider_type}.{agent_tool_entity.tool_name}"
@@ -172,6 +173,8 @@ class ModelConfigResource(Resource):
         db.session.flush()
 
         app_model.app_model_config_id = new_app_model_config.id
+        app_model.updated_by = current_user.id
+        app_model.updated_at = naive_utc_now()
         db.session.commit()
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)

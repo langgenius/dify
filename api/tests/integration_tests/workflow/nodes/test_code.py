@@ -1,9 +1,9 @@
 import time
 import uuid
-from os import getenv
 
 import pytest
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper import encrypter
 from core.variables import SecretVariable
@@ -17,7 +17,7 @@ from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
-CODE_MAX_STRING_LENGTH = int(getenv("CODE_MAX_STRING_LENGTH", "10000"))
+CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 
 
 def init_code_node(code_config: dict, with_defaults=True):

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import type { Timeout as TimeoutPayloadType } from '../../types'
 import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type Props = {
   readonly: boolean
@@ -61,6 +63,11 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
   const { t } = useTranslation()
   const { connect, read, write, max_connect_timeout, max_read_timeout, max_write_timeout } = payload ?? {}
 
+  // Get default config from store for max timeout values
+  const nodesDefaultConfigs = useStore(s => s.nodesDefaultConfigs)
+  const defaultConfig = nodesDefaultConfigs?.[BlockEnum.HttpRequest]
+  const defaultTimeout = defaultConfig?.timeout || {}
+
   return (
     <FieldCollapse title={t(`${i18nPrefix}.timeout.title`)}>
       <div className='mt-2 space-y-1'>
@@ -73,7 +80,7 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
             value={connect}
             onChange={v => onChange?.({ ...payload, connect: v })}
             min={1}
-            max={max_connect_timeout || 300}
+            max={max_connect_timeout || defaultTimeout.max_connect_timeout || 10}
           />
           <InputField
             title={t('workflow.nodes.http.timeout.readLabel')!}
@@ -83,7 +90,7 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
             value={read}
             onChange={v => onChange?.({ ...payload, read: v })}
             min={1}
-            max={max_read_timeout || 600}
+            max={max_read_timeout || defaultTimeout.max_read_timeout || 600}
           />
           <InputField
             title={t('workflow.nodes.http.timeout.writeLabel')!}
@@ -93,7 +100,7 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
             value={write}
             onChange={v => onChange?.({ ...payload, write: v })}
             min={1}
-            max={max_write_timeout || 600}
+            max={max_write_timeout || defaultTimeout.max_write_timeout || 600}
           />
         </div>
       </div>
