@@ -8,7 +8,6 @@ import ModeToggle from './components/mode-toggle'
 import FrequencySelector from './components/frequency-selector'
 import WeekdaySelector from './components/weekday-selector'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import dayjs from 'dayjs'
 import NextExecutionTimes from './components/next-execution-times'
 import MonthlyDaysSelector from './components/monthly-days-selector'
 import OnMinuteSelector from './components/on-minute-selector'
@@ -73,10 +72,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                         <TimePicker
                           notClearable={true}
                           timezone={inputs.timezone}
-                          value={inputs.visual_config?.time
-                            ? dayjs(`1/1/2000 ${inputs.visual_config.time}`)
-                            : dayjs('1/1/2000 12:00 AM')
-                          }
+                          value={inputs.visual_config?.time || '12:00 AM'}
                           onChange={(time) => {
                             if (time) {
                               const timeString = time.format('h:mm A')
