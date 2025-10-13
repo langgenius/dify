@@ -252,7 +252,7 @@ class DatasetSegmentApi(DatasetApiResource):
         args = segment_update_parser.parse_args()
 
         updated_segment = SegmentService.update_segment(
-            SegmentUpdateArgs(**args["segment"]), segment, document, dataset
+            SegmentUpdateArgs.model_validate(args["segment"]), segment, document, dataset
         )
         return {"data": marshal(updated_segment, segment_fields), "doc_form": document.doc_form}, 200
 

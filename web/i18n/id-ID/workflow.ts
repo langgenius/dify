@@ -427,6 +427,7 @@ const translation = {
       },
       outputVars: {
         output: 'Hasilkan konten',
+        reasoning_content: 'Konten penalaran',
         usage: 'Informasi Penggunaan Model',
       },
       singleRun: {

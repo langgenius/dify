@@ -95,7 +95,7 @@ class IterationNode(Node):
             "config": {
                 "is_parallel": False,
                 "parallel_nums": 10,
-                "error_handle_mode": ErrorHandleMode.TERMINATED.value,
+                "error_handle_mode": ErrorHandleMode.TERMINATED,
             },
         }
 
@@ -342,10 +342,13 @@ class IterationNode(Node):
         iterator_list_value: Sequence[object],
         iter_run_map: dict[str, float],
     ) -> Generator[NodeEventBase, None, None]:
+        # Flatten the list of lists if all outputs are lists
+        flattened_outputs = self._flatten_outputs_if_needed(outputs)
+
         yield IterationSucceededEvent(
             start_at=started_at,
             inputs=inputs,
-            outputs={"output": outputs},
+            outputs={"output": flattened_outputs},
             steps=len(iterator_list_value),
             metadata={
                 WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
@@ -357,12 +360,38 @@ class IterationNode(Node):
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"output": outputs},
+                outputs={"output": flattened_outputs},
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
                 },
             )
         )
+
+    def _flatten_outputs_if_needed(self, outputs: list[object]) -> list[object]:
+        """
+        Flatten the outputs list if all elements are lists.
+        This maintains backward compatibility with version 1.8.1 behavior.
+        """
+        if not outputs:
+            return outputs
+
+        # Check if all non-None outputs are lists
+        non_none_outputs = [output for output in outputs if output is not None]
+        if not non_none_outputs:
+            return outputs
+
+        if all(isinstance(output, list) for output in non_none_outputs):
+            # Flatten the list of lists
+            flattened: list[Any] = []
+            for output in outputs:
+                if isinstance(output, list):
+                    flattened.extend(output)
+                elif output is not None:
+                    # This shouldn't happen based on our check, but handle it gracefully
+                    flattened.append(output)
+            return flattened
+
+        return outputs
 
     def _handle_iteration_failure(
         self,
@@ -373,10 +402,13 @@ class IterationNode(Node):
         iter_run_map: dict[str, float],
         error: IterationNodeError,
     ) -> Generator[NodeEventBase, None, None]:
+        # Flatten the list of lists if all outputs are lists (even in failure case)
+        flattened_outputs = self._flatten_outputs_if_needed(outputs)
+
         yield IterationFailedEvent(
             start_at=started_at,
             inputs=inputs,
-            outputs={"output": outputs},
+            outputs={"output": flattened_outputs},
             steps=len(iterator_list_value),
             metadata={
                 WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,

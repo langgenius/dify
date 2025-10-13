@@ -1,7 +1,7 @@
-import os
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
@@ -9,7 +9,7 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 
-MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MAX_LENGTH", "80000"))
+MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
 
 
 class TemplateTransformNode(Node):
