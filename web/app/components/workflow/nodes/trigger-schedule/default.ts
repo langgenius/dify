@@ -115,7 +115,6 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
   defaultValue: {
     ...getDefaultScheduleConfig(),
     cron_expression: '',
-    timezone: 'UTC',
   } as ScheduleTriggerNodeType,
   checkValid(payload: ScheduleTriggerNodeType, t: any) {
     const i18nPrefix = 'workflow.errorMsg'
