@@ -25,11 +25,6 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def _current_account() -> Account:
-    assert isinstance(current_user, Account)
-    return current_user
-
-
 def account_initialization_required(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
