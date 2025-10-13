@@ -16,7 +16,6 @@ const translation = {
     },
   },
   apps: {
-    allCategories: '모든 카테고리',
   },
   appCard: {
     addToWorkspace: '작업 공간에 추가',

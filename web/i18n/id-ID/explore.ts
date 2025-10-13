@@ -15,7 +15,6 @@ const translation = {
     chat: 'Mengobrol',
   },
   apps: {
-    allCategories: 'Direkomendasikan',
   },
   appCard: {
     customize: 'Menyesuaikan',

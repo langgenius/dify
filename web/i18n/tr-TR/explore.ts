@@ -16,7 +16,6 @@ const translation = {
     },
   },
   apps: {
-    allCategories: 'Önerilen',
   },
   appCard: {
     addToWorkspace: 'Çalışma Alanına Ekle',

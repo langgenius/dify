@@ -16,7 +16,6 @@ const translation = {
     },
   },
   apps: {
-    allCategories: 'Recomandate',
   },
   appCard: {
     addToWorkspace: 'Adăugați la spațiul de lucru',

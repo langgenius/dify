@@ -17,7 +17,7 @@ const translation = {
   },
   apps: {
     title: 'Try Dify\'s curated apps to find AI solutions for your business',
-    allCategories: 'Recommended',
+    allCategories: 'All',
   },
   appCard: {
     addToWorkspace: 'Add to Workspace',

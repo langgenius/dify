@@ -16,7 +16,6 @@ const translation = {
     },
   },
   apps: {
-    allCategories: 'अनुशंसित',
   },
   appCard: {
     addToWorkspace: 'कार्यक्षेत्र में जोड़ें',

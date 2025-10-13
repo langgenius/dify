@@ -16,7 +16,6 @@ const translation = {
     },
   },
   apps: {
-    allCategories: 'Priporočeno',
   },
   appCard: {
     addToWorkspace: 'Dodaj v delovni prostor',
