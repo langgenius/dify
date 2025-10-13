@@ -5,7 +5,9 @@ from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
+from typing import cast
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
@@ -267,7 +269,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Build and execute the update statement
             stmt = update(Provider).where(*where_conditions).values(**update_values)
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             rows_affected = result.rowcount
 
             logger.debug(

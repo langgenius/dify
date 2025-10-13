@@ -9,7 +9,9 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import asc, delete, desc, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
+from typing import cast
 
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
@@ -181,7 +183,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
                 # Delete the batch
                 delete_stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
-                result = session.execute(delete_stmt)
+                result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
                 total_deleted += result.rowcount
 
@@ -228,7 +230,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
                 # Delete the batch
                 delete_stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
-                result = session.execute(delete_stmt)
+                result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
                 total_deleted += result.rowcount
 
@@ -285,6 +287,6 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         with self._session_maker() as session:
             stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             session.commit()
             return result.rowcount

@@ -24,7 +24,9 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
+from typing import cast
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
@@ -150,7 +152,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         with self._session_maker() as session:
             stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             session.commit()
 
             deleted_count = result.rowcount
@@ -186,7 +188,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
                 # Delete the batch
                 delete_stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
-                result = session.execute(delete_stmt)
+                result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
 
                 batch_deleted = result.rowcount

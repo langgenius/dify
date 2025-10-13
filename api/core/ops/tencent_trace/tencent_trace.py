@@ -28,7 +28,8 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
 from core.workflow.nodes import NodeType
-from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom, db
+from extensions.ext_database import db
+from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
