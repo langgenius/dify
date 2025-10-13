@@ -13,7 +13,8 @@ import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
-import { RiAppsFill } from '@remixicon/react'
+import { RiAppsFill, RiExpandRightLine, RiLayoutLeft2Line } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
 
 export type IExploreSideBarProps = {
   controlUpdateInstalledApps: number
@@ -33,6 +34,9 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const [isFold, {
+    toggle: toggleIsFold,
+  }] = useBoolean(false)
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')
@@ -72,7 +76,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
-    <div className='w-fit shrink-0 cursor-pointer px-4 pt-6 sm:w-[240px]'>
+    <div className={cn('relative w-fit shrink-0 cursor-pointer px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
       <Link
         href='/explore/apps'
         className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover',
@@ -81,11 +85,11 @@ const SideBar: FC<IExploreSideBarProps> = ({
         <div className='flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
           <RiAppsFill className='size-3.5 text-components-avatar-shape-fill-stop-100' />
         </div>
-        {!isMobile && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('explore.sidebar.title')}</div>}
+        {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('explore.sidebar.title')}</div>}
       </Link>
       {installedApps.length > 0 && (
         <div className='mt-5'>
-          <p className='system-xs-medium-uppercase break-all pl-2 uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>
+          {!isMobile && !isFold && <p className='system-xs-medium-uppercase break-all pl-2 uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>}
           <div className='mt-1.5 space-y-0.5 overflow-y-auto overflow-x-hidden'
             style={{
               height: 'calc(100vh - 250px)',
@@ -94,7 +98,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
             {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
               <React.Fragment key={id}>
                 <Item
-                  isMobile={isMobile}
+                  isMobile={isMobile || isFold}
                   name={name}
                   icon_type={icon_type}
                   icon={icon}
@@ -116,6 +120,15 @@ const SideBar: FC<IExploreSideBarProps> = ({
           </div>
         </div>
       )}
+
+      {!isMobile && (
+        <div className='absolute bottom-3 left-3 flex size-8 cursor-pointer items-center justify-center text-text-tertiary' onClick={toggleIsFold}>
+          {isFold ? <RiExpandRightLine className='size-4.5' /> : (
+            <RiLayoutLeft2Line className='size-4.5' />
+          )}
+        </div>
+      )}
+
       {showConfirm && (
         <Confirm
           title={t('explore.sidebar.delete.title')}
