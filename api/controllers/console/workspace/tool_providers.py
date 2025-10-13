@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
@@ -48,6 +48,7 @@ def is_valid_url(url: str) -> bool:
         return False
 
 
+@console_ns.route("/workspaces/current/tool-providers")
 class ToolProviderListApi(Resource):
     @setup_required
     @login_required
@@ -72,6 +73,7 @@ class ToolProviderListApi(Resource):
         return ToolCommonService.list_tool_providers(user_id, tenant_id, args.get("type", None))
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")
 class ToolBuiltinProviderListToolsApi(Resource):
     @setup_required
     @login_required
@@ -89,6 +91,7 @@ class ToolBuiltinProviderListToolsApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/info")
 class ToolBuiltinProviderInfoApi(Resource):
     @setup_required
     @login_required
@@ -101,6 +104,7 @@ class ToolBuiltinProviderInfoApi(Resource):
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/delete")
 class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -122,6 +126,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/add")
 class ToolBuiltinProviderAddApi(Resource):
     @setup_required
     @login_required
@@ -151,6 +156,7 @@ class ToolBuiltinProviderAddApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/update")
 class ToolBuiltinProviderUpdateApi(Resource):
     @setup_required
     @login_required
@@ -182,6 +188,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
         return result
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credentials")
 class ToolBuiltinProviderGetCredentialsApi(Resource):
     @setup_required
     @login_required
@@ -197,6 +204,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/icon")
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
@@ -205,6 +213,7 @@ class ToolBuiltinProviderIconApi(Resource):
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/add")
 class ToolApiProviderAddApi(Resource):
     @setup_required
     @login_required
@@ -244,6 +253,7 @@ class ToolApiProviderAddApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/remote")
 class ToolApiProviderGetRemoteSchemaApi(Resource):
     @setup_required
     @login_required
@@ -267,6 +277,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/tools")
 class ToolApiProviderListToolsApi(Resource):
     @setup_required
     @login_required
@@ -292,6 +303,7 @@ class ToolApiProviderListToolsApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/update")
 class ToolApiProviderUpdateApi(Resource):
     @setup_required
     @login_required
@@ -333,6 +345,7 @@ class ToolApiProviderUpdateApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/delete")
 class ToolApiProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -359,6 +372,7 @@ class ToolApiProviderDeleteApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/get")
 class ToolApiProviderGetApi(Resource):
     @setup_required
     @login_required
@@ -382,6 +396,7 @@ class ToolApiProviderGetApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credential/schema/<path:credential_type>")
 class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @setup_required
     @login_required
@@ -397,6 +412,7 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/schema")
 class ToolApiProviderSchemaApi(Resource):
     @setup_required
     @login_required
@@ -413,6 +429,7 @@ class ToolApiProviderSchemaApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/api/test/pre")
 class ToolApiProviderPreviousTestApi(Resource):
     @setup_required
     @login_required
@@ -440,6 +457,7 @@ class ToolApiProviderPreviousTestApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/workflow/create")
 class ToolWorkflowProviderCreateApi(Resource):
     @setup_required
     @login_required
@@ -479,6 +497,7 @@ class ToolWorkflowProviderCreateApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/workflow/update")
 class ToolWorkflowProviderUpdateApi(Resource):
     @setup_required
     @login_required
@@ -521,6 +540,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/workflow/delete")
 class ToolWorkflowProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -546,6 +566,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/workflow/get")
 class ToolWorkflowProviderGetApi(Resource):
     @setup_required
     @login_required
@@ -580,6 +601,7 @@ class ToolWorkflowProviderGetApi(Resource):
         return jsonable_encoder(tool)
 
 
+@console_ns.route("/workspaces/current/tool-provider/workflow/tools")
 class ToolWorkflowProviderListToolApi(Resource):
     @setup_required
     @login_required
@@ -604,6 +626,7 @@ class ToolWorkflowProviderListToolApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tools/builtin")
 class ToolBuiltinListApi(Resource):
     @setup_required
     @login_required
@@ -625,6 +648,7 @@ class ToolBuiltinListApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tools/api")
 class ToolApiListApi(Resource):
     @setup_required
     @login_required
@@ -643,6 +667,7 @@ class ToolApiListApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tools/workflow")
 class ToolWorkflowListApi(Resource):
     @setup_required
     @login_required
@@ -664,6 +689,7 @@ class ToolWorkflowListApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-labels")
 class ToolLabelsApi(Resource):
     @setup_required
     @login_required
@@ -673,6 +699,7 @@ class ToolLabelsApi(Resource):
         return jsonable_encoder(ToolLabelsService.list_tool_labels())
 
 
+@console_ns.route("/oauth/plugin/<path:provider>/tool/authorization-url")
 class ToolPluginOAuthApi(Resource):
     @setup_required
     @login_required
@@ -717,6 +744,7 @@ class ToolPluginOAuthApi(Resource):
         return response
 
 
+@console_ns.route("/oauth/plugin/<path:provider>/tool/callback")
 class ToolOAuthCallback(Resource):
     @setup_required
     def get(self, provider):
@@ -767,6 +795,7 @@ class ToolOAuthCallback(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")
 class ToolBuiltinProviderSetDefaultApi(Resource):
     @setup_required
     @login_required
@@ -780,6 +809,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
 class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
@@ -823,6 +853,7 @@ class ToolOAuthCustomClient(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/client-schema")
 class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
     @setup_required
     @login_required
@@ -835,6 +866,7 @@ class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credential/info")
 class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @setup_required
     @login_required
@@ -850,6 +882,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/tool-provider/mcp")
 class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
@@ -960,6 +993,7 @@ class ToolProviderMCPApi(Resource):
             return {"result": "success"}
 
 
+@console_ns.route("/workspaces/current/tool-provider/mcp/auth")
 class ToolMCPAuthApi(Resource):
     @setup_required
     @login_required
@@ -1013,6 +1047,7 @@ class ToolMCPAuthApi(Resource):
                 raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 
+@console_ns.route("/workspaces/current/tool-provider/mcp/tools/<path:provider_id>")
 class ToolMCPDetailApi(Resource):
     @setup_required
     @login_required
@@ -1025,6 +1060,7 @@ class ToolMCPDetailApi(Resource):
             return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
 
 
+@console_ns.route("/workspaces/current/tools/mcp")
 class ToolMCPListAllApi(Resource):
     @setup_required
     @login_required
@@ -1040,6 +1076,7 @@ class ToolMCPListAllApi(Resource):
             return [tool.to_dict() for tool in tools]
 
 
+@console_ns.route("/workspaces/current/tool-provider/mcp/update/<path:provider_id>")
 class ToolMCPUpdateApi(Resource):
     @setup_required
     @login_required
@@ -1055,6 +1092,7 @@ class ToolMCPUpdateApi(Resource):
             return jsonable_encoder(tools)
 
 
+@console_ns.route("/mcp/oauth/callback")
 class ToolMCPCallbackApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
@@ -1071,67 +1109,3 @@ class ToolMCPCallbackApi(Resource):
             session.commit()
 
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
-
-
-# tool provider
-api.add_resource(ToolProviderListApi, "/workspaces/current/tool-providers")
-
-# tool oauth
-api.add_resource(ToolPluginOAuthApi, "/oauth/plugin/<path:provider>/tool/authorization-url")
-api.add_resource(ToolOAuthCallback, "/oauth/plugin/<path:provider>/tool/callback")
-api.add_resource(ToolOAuthCustomClient, "/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
-
-# builtin tool provider
-api.add_resource(ToolBuiltinProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/tools")
-api.add_resource(ToolBuiltinProviderInfoApi, "/workspaces/current/tool-provider/builtin/<path:provider>/info")
-api.add_resource(ToolBuiltinProviderAddApi, "/workspaces/current/tool-provider/builtin/<path:provider>/add")
-api.add_resource(ToolBuiltinProviderDeleteApi, "/workspaces/current/tool-provider/builtin/<path:provider>/delete")
-api.add_resource(ToolBuiltinProviderUpdateApi, "/workspaces/current/tool-provider/builtin/<path:provider>/update")
-api.add_resource(
-    ToolBuiltinProviderSetDefaultApi, "/workspaces/current/tool-provider/builtin/<path:provider>/default-credential"
-)
-api.add_resource(
-    ToolBuiltinProviderGetCredentialInfoApi, "/workspaces/current/tool-provider/builtin/<path:provider>/credential/info"
-)
-api.add_resource(
-    ToolBuiltinProviderGetCredentialsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/credentials"
-)
-api.add_resource(
-    ToolBuiltinProviderCredentialsSchemaApi,
-    "/workspaces/current/tool-provider/builtin/<path:provider>/credential/schema/<path:credential_type>",
-)
-api.add_resource(
-    ToolBuiltinProviderGetOauthClientSchemaApi,
-    "/workspaces/current/tool-provider/builtin/<path:provider>/oauth/client-schema",
-)
-api.add_resource(ToolBuiltinProviderIconApi, "/workspaces/current/tool-provider/builtin/<path:provider>/icon")
-
-# api tool provider
-api.add_resource(ToolApiProviderAddApi, "/workspaces/current/tool-provider/api/add")
-api.add_resource(ToolApiProviderGetRemoteSchemaApi, "/workspaces/current/tool-provider/api/remote")
-api.add_resource(ToolApiProviderListToolsApi, "/workspaces/current/tool-provider/api/tools")
-api.add_resource(ToolApiProviderUpdateApi, "/workspaces/current/tool-provider/api/update")
-api.add_resource(ToolApiProviderDeleteApi, "/workspaces/current/tool-provider/api/delete")
-api.add_resource(ToolApiProviderGetApi, "/workspaces/current/tool-provider/api/get")
-api.add_resource(ToolApiProviderSchemaApi, "/workspaces/current/tool-provider/api/schema")
-api.add_resource(ToolApiProviderPreviousTestApi, "/workspaces/current/tool-provider/api/test/pre")
-
-# workflow tool provider
-api.add_resource(ToolWorkflowProviderCreateApi, "/workspaces/current/tool-provider/workflow/create")
-api.add_resource(ToolWorkflowProviderUpdateApi, "/workspaces/current/tool-provider/workflow/update")
-api.add_resource(ToolWorkflowProviderDeleteApi, "/workspaces/current/tool-provider/workflow/delete")
-api.add_resource(ToolWorkflowProviderGetApi, "/workspaces/current/tool-provider/workflow/get")
-api.add_resource(ToolWorkflowProviderListToolApi, "/workspaces/current/tool-provider/workflow/tools")
-
-# mcp tool provider
-api.add_resource(ToolMCPDetailApi, "/workspaces/current/tool-provider/mcp/tools/<path:provider_id>")
-api.add_resource(ToolProviderMCPApi, "/workspaces/current/tool-provider/mcp")
-api.add_resource(ToolMCPUpdateApi, "/workspaces/current/tool-provider/mcp/update/<path:provider_id>")
-api.add_resource(ToolMCPAuthApi, "/workspaces/current/tool-provider/mcp/auth")
-api.add_resource(ToolMCPCallbackApi, "/mcp/oauth/callback")
-
-api.add_resource(ToolBuiltinListApi, "/workspaces/current/tools/builtin")
-api.add_resource(ToolApiListApi, "/workspaces/current/tools/api")
-api.add_resource(ToolMCPListAllApi, "/workspaces/current/tools/mcp")
-api.add_resource(ToolWorkflowListApi, "/workspaces/current/tools/workflow")
-api.add_resource(ToolLabelsApi, "/workspaces/current/tool-labels")

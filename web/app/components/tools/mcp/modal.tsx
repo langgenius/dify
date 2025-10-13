@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDomain } from 'tldts'
 import { RiArrowDownSLine, RiCloseLine, RiEditLine } from '@remixicon/react'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIcon from '@/app/components/base/app-icon'
@@ -18,6 +19,7 @@ import Toast from '@/app/components/base/toast'
 import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
+import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -40,7 +42,7 @@ export type DuplicateAppModalProps = {
   onHide: () => void
 }
 
-const DEFAULT_ICON = { type: 'emoji', icon: '🧿', background: '#EFF1F5' }
+const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
 const extractFileId = (url: string) => {
   const match = url.match(/files\/(.+?)\/file-preview/)
   return match ? match[1] : null
@@ -232,6 +234,7 @@ const MCPModal = ({
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-8 w-8 text-text-primary-on-surface' /> : undefined}
                 size='xxl'
                 className='relative cursor-pointer rounded-2xl'
                 coverElement={

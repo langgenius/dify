@@ -21,6 +21,7 @@ import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/u
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { ToolTypeEnum } from '../workflow/block-selector/types'
 import { useMarketplace } from './marketplace/hooks'
+import { useTags } from '@/app/components/plugins/hooks'
 
 const getToolType = (type: string) => {
   switch (type) {
@@ -40,6 +41,7 @@ const ProviderList = () => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
+  const { getTagLabel } = useTags()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -180,7 +182,7 @@ const ProviderList = () => {
                     } as any}
                     footer={
                       <CardMoreInfo
-                        tags={collection.labels}
+                        tags={collection.labels?.map(label => getTagLabel(label)) || []}
                       />
                     }
                   />
