@@ -362,6 +362,114 @@ const useOneStepRun = <T>({
 
     return null
   }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun])
+
+  const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
+    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger`
+    const urlWithPrefix = `${API_PREFIX}${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`
+
+    webhookSingleRunActiveRef.current = true
+    const token = ++webhookSingleRunTokenRef.current
+
+    while (webhookSingleRunActiveRef.current && token === webhookSingleRunTokenRef.current) {
+      const controller = new AbortController()
+      webhookSingleRunAbortRef.current = controller
+
+      try {
+        const baseOptions = getBaseOptions()
+        const headers = new Headers(baseOptions.headers as Headers)
+        const accessToken = await getAccessToken()
+        headers.set('Authorization', `Bearer ${accessToken}`)
+        headers.set('Content-Type', 'application/json')
+
+        // Reason: Plugin trigger requires event_name, subscription_id, provider_id from node data
+        const requestBody = {
+          event_name: (data as any).event_name,
+          subscription_id: (data as any).subscription_id,
+          provider_id: (data as any).provider_id,
+        }
+
+        const response = await fetch(urlWithPrefix, {
+          ...baseOptions,
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        })
+
+        if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+          return null
+
+        const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
+        const responseData = contentType.includes('application/json') ? await response.json() : undefined
+
+        if (!response.ok) {
+          const message = responseData?.message || 'Plugin debug failed'
+          Toast.notify({ type: 'error', message })
+          cancelWebhookSingleRun()
+          throw new Error(message)
+        }
+
+        if (responseData?.status === 'waiting') {
+          const delay = Number(responseData.retry_in) || 2000
+          webhookSingleRunAbortRef.current = null
+          if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+            return null
+
+          await new Promise<void>((resolve) => {
+            const timeoutId = window.setTimeout(resolve, delay)
+            webhookSingleRunTimeoutRef.current = timeoutId
+            webhookSingleRunDelayResolveRef.current = resolve
+            controller.signal.addEventListener('abort', () => {
+              window.clearTimeout(timeoutId)
+              resolve()
+            }, { once: true })
+          })
+
+          webhookSingleRunTimeoutRef.current = undefined
+          webhookSingleRunDelayResolveRef.current = null
+          continue
+        }
+
+        if (responseData?.status === 'error') {
+          const message = responseData.message || 'Plugin debug failed'
+          Toast.notify({ type: 'error', message })
+          cancelWebhookSingleRun()
+          throw new Error(message)
+        }
+
+        handleNodeDataUpdate({
+          id,
+          data: {
+            ...data,
+            _isSingleRun: false,
+            _singleRunningStatus: NodeRunningStatus.Running,
+          },
+        })
+
+        cancelWebhookSingleRun()
+        return responseData
+      }
+      catch (error) {
+        if (controller.signal.aborted && (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current))
+          return null
+        if (controller.signal.aborted)
+          return null
+
+        console.error('handleRun: plugin debug polling error', error)
+        Toast.notify({ type: 'error', message: 'Plugin debug request failed' })
+        cancelWebhookSingleRun()
+        if (error instanceof Error)
+          throw error
+        throw new Error(String(error))
+      }
+      finally {
+        webhookSingleRunAbortRef.current = null
+      }
+    }
+
+    return null
+  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun])
+
   const checkValidWrap = () => {
     if (!checkValid)
       return { isValid: true, errorMessage: '' }
@@ -424,7 +532,10 @@ const useOneStepRun = <T>({
 
   const handleRun = async (submitData: Record<string, any>) => {
     const isWebhookNode = data.type === BlockEnum.TriggerWebhook
-    if (isWebhookNode)
+    const isPluginNode = data.type === BlockEnum.TriggerPlugin
+    const isTriggerNode = isWebhookNode || isPluginNode
+
+    if (isTriggerNode)
       cancelWebhookSingleRun()
 
     handleNodeDataUpdate({
@@ -432,7 +543,7 @@ const useOneStepRun = <T>({
       data: {
         ...data,
         _isSingleRun: false,
-        _singleRunningStatus: isWebhookNode ? NodeRunningStatus.Waiting : NodeRunningStatus.Running,
+        _singleRunningStatus: isTriggerNode ? NodeRunningStatus.Waiting : NodeRunningStatus.Running,
       },
     })
     let res: any
@@ -441,6 +552,20 @@ const useOneStepRun = <T>({
       if (!isIteration && !isLoop) {
         if (isWebhookNode) {
           res = await runWebhookSingleRun()
+          if (!res) {
+            handleNodeDataUpdate({
+              id,
+              data: {
+                ...data,
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.NotStart,
+              },
+            })
+            return false
+          }
+        }
+        else if (isPluginNode) {
+          res = await runPluginSingleRun()
           if (!res) {
             handleNodeDataUpdate({
               id,
@@ -700,7 +825,7 @@ const useOneStepRun = <T>({
       }
     }
     finally {
-      if (data.type === BlockEnum.TriggerWebhook)
+      if (isTriggerNode)
         cancelWebhookSingleRun()
       if (!isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
