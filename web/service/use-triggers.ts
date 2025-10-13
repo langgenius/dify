@@ -37,7 +37,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
       name: event.name,
       author: provider.author,
       label: event.identity.label,
-      description: event.description.llm,
+      description: event.description,
       parameters: event.parameters.map(param => ({
         name: param.name,
         label: param.label,

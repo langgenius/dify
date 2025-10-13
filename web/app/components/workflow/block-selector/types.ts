@@ -184,7 +184,7 @@ export type TriggerDescription = {
 export type TriggerApiEntity = {
   name: string
   identity: TriggerIdentity
-  description: TriggerDescription
+  description: TypeWithI18N
   parameters: TriggerParameter[]
   output_schema?: Record<string, any>
 }
