@@ -101,9 +101,7 @@ class APIBasedExtensionDetailAPI(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
-        _, current_tenant_id = current_account_with_tenant()
-
-        tenant_id = current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
 
