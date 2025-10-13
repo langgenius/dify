@@ -47,6 +47,9 @@ import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -96,6 +99,7 @@ const AppPublisher = ({
   const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
 
   useEffect(() => {
     if (systemFeatures.webapp_auth.enabled && open && appDetail)
@@ -120,11 +124,27 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+
+      const appId = appDetail?.id
+      const socket = appId ? webSocketClient.getSocket(appId) : null
+      if (appId)
+        invalidateAppWorkflow(appId)
+      if (socket) {
+        const timestamp = Date.now()
+        socket.emit('collaboration_event', {
+          type: 'app_publish_update',
+          data: {
+            action: 'published',
+            timestamp,
+          },
+          timestamp,
+        })
+      }
     }
     catch {
       setPublished(false)
     }
-  }, [onPublish])
+  }, [appDetail?.id, onPublish, invalidateAppWorkflow])
 
   const handleRestore = useCallback(async () => {
     try {
@@ -177,6 +197,18 @@ const AppPublisher = ({
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
+
+  useEffect(() => {
+    const appId = appDetail?.id
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onAppPublishUpdate((update: any) => {
+      if (update?.data?.action === 'published')
+        invalidateAppWorkflow(appId)
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, invalidateAppWorkflow])
 
   return (
     <>

@@ -25,6 +25,8 @@ def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | Non
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
+            assert isinstance(current_user, Account)
+            assert current_user.current_tenant_id is not None
             installed_app = (
                 db.session.query(InstalledApp)
                 .where(
@@ -57,6 +59,7 @@ def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] |
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
+                assert isinstance(current_user, Account)
                 app_id = installed_app.app_id
                 app_code = AppService.get_app_code_by_id(app_id)
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(

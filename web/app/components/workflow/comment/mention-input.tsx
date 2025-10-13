@@ -22,6 +22,7 @@ import Avatar from '@/app/components/base/avatar'
 import cn from '@/utils/classnames'
 import { type UserProfile, fetchMentionableUsers } from '@/service/workflow-comment'
 import { useStore, useWorkflowStore } from '../store'
+import { EnterKey } from '@/app/components/base/icons/src/public/common'
 
 type MentionInputProps = {
   value: string
@@ -431,6 +432,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [value, mentionedUserIds, onSubmit])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Ignore key events during IME composition (e.g., Chinese, Japanese input)
+    if (e.nativeEvent.isComposing)
+      return
+
     if (showMentionDropdown) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
@@ -583,9 +588,13 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
                 size='small'
                 disabled={loading || !value.trim()}
                 onClick={() => handleSubmit()}
+                className='gap-1'
               >
                 {loading && <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />}
-                {t('common.operation.save')}
+                <span>{t('common.operation.save')}</span>
+                {!loading && (
+                  <EnterKey className='h-4 w-4' />
+                )}
               </Button>
             </div>
           </div>
@@ -594,7 +603,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg"
+          className="bg-components-panel-bg/95 fixed z-[9999] max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[10px]"
           style={{
             left: dropdownPosition.x,
             [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'
@@ -607,7 +616,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
             <div
               key={user.id}
               className={cn(
-                'flex cursor-pointer items-center gap-2 p-2 hover:bg-state-base-hover',
+                'flex cursor-pointer items-center gap-2 rounded-md py-1 pl-2 pr-3 hover:bg-state-base-hover',
                 index === selectedMentionIndex && 'bg-state-base-hover',
               )}
               onClick={() => insertMention(user)}

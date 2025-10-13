@@ -2,6 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { useReactFlow, useViewport } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
@@ -16,6 +17,7 @@ import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/servic
 import { useAppContext } from '@/context/app-context'
 import { MentionInput } from './mention-input'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { useStore } from '../store'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -41,9 +43,9 @@ const ThreadMessage: FC<{
   avatarUrl?: string | null
   createdAt: number
   content: string
-  mentionedNames?: string[]
+  mentionableNames: string[]
   className?: string
-}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionedNames, className }) => {
+}> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionableNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { userProfile } = useAppContext()
   const currentUserId = userProfile?.id
@@ -54,9 +56,11 @@ const ThreadMessage: FC<{
     if (!content)
       return ''
 
-    const normalizedNames = Array.from(new Set((mentionedNames || [])
+    // Extract valid user names from mentionableNames, sorted by length (longest first)
+    const normalizedNames = Array.from(new Set(mentionableNames
       .map(name => name.trim())
       .filter(Boolean)))
+    normalizedNames.sort((a, b) => b.length - a.length)
 
     if (normalizedNames.length === 0)
       return content
@@ -111,7 +115,7 @@ const ThreadMessage: FC<{
       segments.push(<span key={`text-${cursor}`}>{content.slice(cursor)}</span>)
 
     return segments
-  }, [content, mentionedNames])
+  }, [content, mentionableNames])
 
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
@@ -154,6 +158,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   onReplyDelete,
   onReplyDeleteDirect,
 }) => {
+  const params = useParams()
+  const appId = params.appId as string
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { userProfile } = useAppContext()
@@ -162,10 +168,25 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
   const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
   const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
 
   // Focus management refs
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
+
+  // Get mentionable users from store
+  const mentionUsersFromStore = useStore(state => (
+    appId ? state.mentionableUsersCache[appId] : undefined
+  ))
+  const mentionUsers = mentionUsersFromStore ?? []
+
+  // Extract all mentionable names for highlighting
+  const mentionableNames = useMemo(() => {
+    const names = mentionUsers
+      .map(user => user.name?.trim())
+      .filter((name): name is string => Boolean(name))
+    return Array.from(new Set(names))
+  }, [mentionUsers])
 
   useEffect(() => {
     setReplyContent('')
@@ -245,13 +266,23 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     if (!onReplyEdit || !editingReply) return
     const trimmed = content.trim()
     if (!trimmed) return
-    await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
-    setEditingReply({ id: '', content: '' })
 
-    // P1: Restore focus to reply input after saving edit
-    setTimeout(() => {
-      replyInputRef.current?.focus()
-    }, 0)
+    setIsSubmittingEdit(true)
+    try {
+      await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
+      setEditingReply({ id: '', content: '' })
+
+      // P1: Restore focus to reply input after saving edit
+      setTimeout(() => {
+        replyInputRef.current?.focus()
+      }, 0)
+    }
+    catch (error) {
+      console.error('Failed to edit reply', error)
+    }
+    finally {
+      setIsSubmittingEdit(false)
+    }
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
@@ -295,25 +326,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     previousCommentIdRef.current = comment.id
     previousReplyCountRef.current = replies.length
   }, [comment.id, replies.length])
-
-  const mentionsByTarget = useMemo(() => {
-    const map = new Map<string, string[]>()
-    for (const mention of comment.mentions || []) {
-      const name = mention.mentioned_user_account?.name?.trim()
-      if (!name)
-        continue
-      const key = mention.reply_id ?? 'root'
-      const existing = map.get(key)
-      if (existing) {
-        if (!existing.includes(name))
-          existing.push(name)
-      }
-      else {
-        map.set(key, [name])
-      }
-    }
-    return map
-  }, [comment.mentions])
 
   return (
     <div
@@ -414,14 +426,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           ref={messageListRef}
           className='relative mt-2 flex-1 overflow-y-auto px-4 pb-4'
         >
-          <div className='rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'>
+          <div className='-mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'>
             <ThreadMessage
               authorId={comment.created_by_account?.id || ''}
               authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
               avatarUrl={comment.created_by_account?.avatar_url || null}
               createdAt={comment.created_at}
               content={comment.content}
-              mentionedNames={mentionsByTarget.get('root')}
+              mentionableNames={mentionableNames}
             />
           </div>
           {replies.length > 0 && (
@@ -432,7 +444,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 return (
                   <div
                     key={reply.id}
-                    className='group relative rounded-lg py-2 pl-1 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
+                    className='group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
                   >
                     {isOwnReply && !isReplyEditing && (
                       <PortalToFollowElem
@@ -468,7 +480,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           </PortalToFollowElemTrigger>
                         </div>
                         <PortalToFollowElemContent
-                          className='z-[100] w-36 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
+                          className='z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
                           data-reply-menu
                         >
                           {/* Menu buttons - hidden when showing delete confirm */}
@@ -519,19 +531,31 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                       </PortalToFollowElem>
                     )}
                     {isReplyEditing ? (
-                      <div className='rounded-lg border border-components-chat-input-border bg-components-panel-bg-blur px-3 py-2 shadow-sm'>
-                        <MentionInput
-                          value={editingReply?.content ?? ''}
-                          onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
-                          onSubmit={handleEditSubmit}
-                          onCancel={handleCancelEdit}
-                          placeholder={t('workflow.comments.placeholder.editReply')}
-                          disabled={loading}
-                          loading={replyUpdating}
-                          isEditing={true}
-                          className="system-sm-regular"
-                          autoFocus
-                        />
+                      <div className='flex gap-3 pt-1'>
+                        <div className='shrink-0'>
+                          <Avatar
+                            name={reply.created_by_account?.name || t('workflow.comments.fallback.user')}
+                            avatar={reply.created_by_account?.avatar_url || null}
+                            size={24}
+                            className='h-8 w-8 rounded-full'
+                          />
+                        </div>
+                        <div className='min-w-0 flex-1'>
+                          <div className='rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]'>
+                            <MentionInput
+                              value={editingReply?.content ?? ''}
+                              onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
+                              onSubmit={handleEditSubmit}
+                              onCancel={handleCancelEdit}
+                              placeholder={t('workflow.comments.placeholder.editReply')}
+                              disabled={loading}
+                              loading={replyUpdating || isSubmittingEdit}
+                              isEditing={true}
+                              className="system-sm-regular"
+                              autoFocus
+                            />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <ThreadMessage
@@ -540,7 +564,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         avatarUrl={reply.created_by_account?.avatar_url || null}
                         createdAt={reply.created_at}
                         content={reply.content}
-                        mentionedNames={mentionsByTarget.get(reply.id)}
+                        mentionableNames={mentionableNames}
                       />
                     )}
                   </div>

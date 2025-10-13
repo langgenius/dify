@@ -372,6 +372,14 @@ export class CollaborationManager {
     return this.eventEmitter.on('appStateUpdate', callback)
   }
 
+  onAppPublishUpdate(callback: (update: any) => void): () => void {
+    return this.eventEmitter.on('appPublishUpdate', callback)
+  }
+
+  onAppMetaUpdate(callback: (update: any) => void): () => void {
+    return this.eventEmitter.on('appMetaUpdate', callback)
+  }
+
   onMcpServerUpdate(callback: (update: any) => void): () => void {
     return this.eventEmitter.on('mcpServerUpdate', callback)
   }
@@ -540,7 +548,7 @@ export class CollaborationManager {
 
     const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
     const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
-    const syncDataAllowList = new Set(['_children'])
+    const syncDataAllowList = new Set(['_children', '_connectedSourceHandleIds', '_connectedTargetHandleIds', '_targetBranches'])
     const shouldSyncDataKey = (key: string) => (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
 
     // Delete removed nodes
@@ -811,6 +819,14 @@ export class CollaborationManager {
       else if (update.type === 'app_state_update') {
         console.log('Processing app_state_update event:', update)
         this.eventEmitter.emit('appStateUpdate', update)
+      }
+      else if (update.type === 'app_meta_update') {
+        console.log('Processing app_meta_update event:', update)
+        this.eventEmitter.emit('appMetaUpdate', update)
+      }
+      else if (update.type === 'app_publish_update') {
+        console.log('Processing app_publish_update event:', update)
+        this.eventEmitter.emit('appPublishUpdate', update)
       }
       else if (update.type === 'mcp_server_update') {
         console.log('Processing mcp_server_update event:', update)

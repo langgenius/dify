@@ -15,11 +15,12 @@ const ContentDialog = ({
   onClose,
   children,
 }: ContentDialogProps) => {
+  // z-[70]: Ensures dialog appears above workflow operators (z-[60]) and other UI elements
   return (
     <Transition
       show={show}
       as='div'
-      className='absolute left-0 top-0 z-30 box-border h-full w-full p-2'
+      className='absolute left-0 top-0 z-[70] box-border h-full w-full p-2'
     >
       <TransitionChild>
         <div
