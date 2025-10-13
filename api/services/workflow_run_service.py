@@ -94,6 +94,36 @@ class WorkflowRunService:
             run_id=run_id,
         )
 
+    def get_workflow_runs_count(self, app_model: App, status: str | None = None) -> dict[str, int]:
+        """
+        Get workflow runs count statistics
+
+        :param app_model: app model
+        :param status: optional status filter
+        :return: dict with total and status counts
+        """
+        return self._workflow_run_repo.get_workflow_runs_count(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            status=status,
+        )
+
+    def get_advanced_chat_workflow_runs_count(self, app_model: App, status: str | None = None) -> dict[str, int]:
+        """
+        Get advanced chat workflow runs count statistics
+
+        :param app_model: app model
+        :param status: optional status filter
+        :return: dict with total and status counts
+        """
+        return self._workflow_run_repo.get_workflow_runs_count(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            status=status,
+        )
+
     def get_workflow_run_node_executions(
         self,
         app_model: App,

@@ -24,7 +24,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -124,6 +124,78 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.id == run_id,
             )
             return session.scalar(stmt)
+
+    def get_workflow_runs_count(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        status: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get workflow runs count statistics grouped by status.
+        """
+        with self._session_maker() as session:
+            # If status filter is provided, return simple count
+            if status:
+                count_stmt = select(
+                    func.count(WorkflowRun.id)
+                ).where(
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.triggered_from == triggered_from,
+                    WorkflowRun.status == status,
+                )
+                total = session.scalar(count_stmt) or 0
+
+                # Initialize all status counts to 0
+                result = {
+                    "total": total,
+                    "running": 0,
+                    "succeeded": 0,
+                    "failed": 0,
+                    "stopped": 0,
+                    "partial-succeeded": 0,
+                }
+
+                # Set the count for the filtered status
+                if status in result:
+                    result[status] = total
+
+                return result
+
+            # No status filter - get counts grouped by status
+            base_stmt = select(
+                WorkflowRun.status,
+                func.count(WorkflowRun.id).label("count")
+            ).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from == triggered_from,
+            ).group_by(WorkflowRun.status)
+
+            # Execute query
+            results = session.execute(base_stmt).all()
+
+            # Build response dictionary
+            status_counts = {
+                "running": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "stopped": 0,
+                "partial-succeeded": 0,
+            }
+
+            total = 0
+            for status, count in results:
+                total += count
+                if status in status_counts:
+                    status_counts[status] = count
+
+            return {
+                "total": total,
+                **status_counts,
+            }
 
     def get_expired_runs_batch(
         self,

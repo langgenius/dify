@@ -109,6 +109,38 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_workflow_runs_count(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        status: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get workflow runs count statistics.
+
+        Retrieves total count and count by status for workflow runs
+        matching the specified filters.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
+            status: Optional filter by specific status
+
+        Returns:
+            Dictionary containing:
+            - total: Total count of all workflow runs (or filtered by status)
+            - running: Count of workflow runs with status "running"
+            - succeeded: Count of workflow runs with status "succeeded"
+            - failed: Count of workflow runs with status "failed"
+            - stopped: Count of workflow runs with status "stopped"
+            - partial_succeeded: Count of workflow runs with status "partial-succeeded"
+
+            Note: If status is provided, only total will have value and other counts will be 0
+        """
+        ...
+
     def get_expired_runs_batch(
         self,
         tenant_id: str,

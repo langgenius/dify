@@ -9,6 +9,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.workflow_run_fields import (
     advanced_chat_workflow_run_pagination_fields,
+    workflow_run_count_fields,
     workflow_run_detail_fields,
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
@@ -48,6 +49,34 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         return result
 
 
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
+class AdvancedChatAppWorkflowRunCountApi(Resource):
+    @api.doc("get_advanced_chat_workflow_runs_count")
+    @api.doc(description="Get advanced chat workflow runs count statistics")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
+    @api.response(200, "Workflow runs count retrieved successfully", workflow_run_count_fields)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @marshal_with(workflow_run_count_fields)
+    def get(self, app_model: App):
+        """
+        Get advanced chat workflow runs count statistics
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument("status", type=str, location="args", required=False)
+        args = parser.parse_args()
+
+        workflow_run_service = WorkflowRunService()
+        result = workflow_run_service.get_advanced_chat_workflow_runs_count(
+            app_model=app_model, status=args.get("status")
+        )
+
+        return result
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs")
 class WorkflowRunListApi(Resource):
     @api.doc("get_workflow_runs")
@@ -73,6 +102,34 @@ class WorkflowRunListApi(Resource):
 
         workflow_run_service = WorkflowRunService()
         result = workflow_run_service.get_paginate_workflow_runs(app_model=app_model, args=args)
+
+        return result
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
+class WorkflowRunCountApi(Resource):
+    @api.doc("get_workflow_runs_count")
+    @api.doc(description="Get workflow runs count statistics")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
+    @api.response(200, "Workflow runs count retrieved successfully", workflow_run_count_fields)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_run_count_fields)
+    def get(self, app_model: App):
+        """
+        Get workflow runs count statistics
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument("status", type=str, location="args", required=False)
+        args = parser.parse_args()
+
+        workflow_run_service = WorkflowRunService()
+        result = workflow_run_service.get_workflow_runs_count(
+            app_model=app_model, status=args.get("status")
+        )
 
         return result
 
