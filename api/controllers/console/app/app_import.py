@@ -1,4 +1,3 @@
-from typing import cast
 
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session

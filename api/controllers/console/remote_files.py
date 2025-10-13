@@ -3,7 +3,6 @@ import urllib.parse
 import httpx
 from flask_restx import Resource, marshal_with, reqparse
 
-from libs.login import get_current_user_and_tenant_id
 import services
 from controllers.common import helpers
 from controllers.common.errors import (
@@ -15,6 +14,7 @@ from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
+from libs.login import get_current_user_and_tenant_id
 from services.file_service import FileService
 
 from . import console_ns
