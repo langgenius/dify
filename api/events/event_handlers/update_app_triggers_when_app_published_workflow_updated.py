@@ -65,7 +65,7 @@ def handle(sender, **kwargs):
                     title=trigger_info["node_title"],
                     node_id=node_id,
                     provider_name=trigger_info.get("node_provider_name", ""),
-                    status=AppTriggerStatus.DISABLED,
+                    status=AppTriggerStatus.ENABLED,
                 )
                 session.add(app_trigger)
             elif node_id in existing_node_ids:

@@ -1882,7 +1882,7 @@ class AppTrigger(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), server_default="", nullable=True)
     status: Mapped[str] = mapped_column(
-        EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.DISABLED
+        EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.ENABLED
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
