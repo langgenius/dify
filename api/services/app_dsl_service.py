@@ -607,6 +607,9 @@ class AppDslService:
                 # clear the webhook_url
                 node_data["webhook_url"] = ""
                 node_data["webhook_debug_url"] = ""
+            if data_type == NodeType.TRIGGER_PLUGIN.value:
+                # clear the subscription_id
+                node_data["subscription_id"] = ""
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
