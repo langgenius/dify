@@ -432,6 +432,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [value, mentionedUserIds, onSubmit])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Ignore key events during IME composition (e.g., Chinese, Japanese input)
+    if (e.nativeEvent.isComposing)
+      return
+
     if (showMentionDropdown) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
