@@ -159,6 +159,7 @@ class TriggerManager:
         parameters: Mapping[str, Any],
         credentials: Mapping[str, str],
         credential_type: CredentialType,
+        subscription: Subscription,
         request: Request,
     ) -> TriggerInvokeEventResponse:
         """
@@ -171,6 +172,7 @@ class TriggerManager:
         :param parameters: Trigger parameters
         :param credentials: Provider credentials
         :param credential_type: Credential type
+        :param subscription: Subscription
         :param request: Request
         :return: Trigger execution result
         """
@@ -184,6 +186,7 @@ class TriggerManager:
                 parameters=parameters,
                 credentials=credentials,
                 credential_type=credential_type,
+                subscription=subscription,
                 request=request,
             )
         except PluginInvokeError as e:

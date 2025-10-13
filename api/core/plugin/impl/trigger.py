@@ -89,6 +89,7 @@ class PluginTriggerManager(BasePluginClient):
         credential_type: CredentialType,
         request: Request,
         parameters: Mapping[str, Any],
+        subscription: Subscription,
     ) -> TriggerInvokeEventResponse:
         """
         Invoke a trigger with the given parameters.
@@ -105,6 +106,7 @@ class PluginTriggerManager(BasePluginClient):
                     "event": event_name,
                     "credentials": credentials,
                     "credential_type": credential_type,
+                    "subscription": subscription,
                     "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
                     "parameters": parameters,
                 },

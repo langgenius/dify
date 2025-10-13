@@ -8,7 +8,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.entities.request import TriggerDispatchResponse
+from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.entities.entities import EventEntity
 from core.trigger.provider import PluginTriggerProviderController
@@ -124,7 +124,7 @@ class TriggerService:
                     continue
 
                 # invoke triger
-                invoke_response = TriggerManager.invoke_trigger_event(
+                invoke_response: TriggerInvokeEventResponse = TriggerManager.invoke_trigger_event(
                     tenant_id=subscription.tenant_id,
                     user_id=subscription.user_id,
                     provider_id=TriggerProviderID(subscription.provider_id),
@@ -132,6 +132,7 @@ class TriggerService:
                     parameters=event_node.get("config", {}),
                     credentials=subscription.credentials,
                     credential_type=CredentialType.of(subscription.credential_type),
+                    subscription=subscription.to_entity(),
                     request=request,
                 )
                 if invoke_response.cancelled:

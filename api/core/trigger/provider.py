@@ -289,6 +289,7 @@ class PluginTriggerProviderController:
         parameters: Mapping[str, Any],
         credentials: Mapping[str, str],
         credential_type: CredentialType,
+        subscription: Subscription,
         request: Request,
     ) -> TriggerInvokeEventResponse:
         """
@@ -315,6 +316,7 @@ class PluginTriggerProviderController:
             credential_type=credential_type,
             request=request,
             parameters=parameters,
+            subscription=subscription,
         )
 
     def subscribe_trigger(
