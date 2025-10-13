@@ -2,6 +2,8 @@ import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
+from pydantic import BaseModel
+
 from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
@@ -24,8 +26,6 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
 from models.provider_ids import GenericProviderID
-from pydantic import BaseModel
-
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
