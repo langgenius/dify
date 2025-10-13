@@ -50,16 +50,16 @@ class ToolTransformService:
             URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
         )
 
-        if provider_type == ToolProviderType.BUILT_IN.value:
+        if provider_type == ToolProviderType.BUILT_IN:
             return str(url_prefix / "builtin" / provider_name / "icon")
-        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
+        elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
             try:
                 if isinstance(icon, str):
                     return json.loads(icon)
                 return icon
             except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
-        elif provider_type == ToolProviderType.MCP.value:
+        elif provider_type == ToolProviderType.MCP:
             return icon
         return ""
 
@@ -152,7 +152,8 @@ class ToolTransformService:
 
             if decrypt_credentials:
                 credentials = db_provider.credentials
-
+                if not db_provider.tenant_id:
+                    raise ValueError(f"Required tenant_id is missing for BuiltinToolProvider with id {db_provider.id}")
                 # init tool configuration
                 encrypter, _ = create_provider_encrypter(
                     tenant_id=db_provider.tenant_id,

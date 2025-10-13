@@ -95,7 +95,7 @@ class TestMailInviteMemberTask:
             name=fake.name(),
             password=fake.password(),
             interface_language="en-US",
-            status=AccountStatus.ACTIVE.value,
+            status=AccountStatus.ACTIVE,
         )
         account.created_at = datetime.now(UTC)
         account.updated_at = datetime.now(UTC)
@@ -117,7 +117,7 @@ class TestMailInviteMemberTask:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
         )
         tenant_join.created_at = datetime.now(UTC)
         db_session_with_containers.add(tenant_join)
@@ -163,7 +163,7 @@ class TestMailInviteMemberTask:
             name=email.split("@")[0],
             password="",
             interface_language="en-US",
-            status=AccountStatus.PENDING.value,
+            status=AccountStatus.PENDING,
         )
 
         account.created_at = datetime.now(UTC)
@@ -176,7 +176,7 @@ class TestMailInviteMemberTask:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.NORMAL.value,
+            role=TenantAccountRole.NORMAL,
         )
         tenant_join.created_at = datetime.now(UTC)
         db_session_with_containers.add(tenant_join)
@@ -486,7 +486,7 @@ class TestMailInviteMemberTask:
         db_session_with_containers.refresh(pending_account)
         db_session_with_containers.refresh(tenant)
 
-        assert pending_account.status == AccountStatus.PENDING.value
+        assert pending_account.status == AccountStatus.PENDING
         assert pending_account.email == invitee_email
         assert tenant.name is not None
 
@@ -497,7 +497,7 @@ class TestMailInviteMemberTask:
             .first()
         )
         assert tenant_join is not None
-        assert tenant_join.role == TenantAccountRole.NORMAL.value
+        assert tenant_join.role == TenantAccountRole.NORMAL
 
     def test_send_invite_member_mail_token_lifecycle_management(
         self, db_session_with_containers, mock_external_service_dependencies
