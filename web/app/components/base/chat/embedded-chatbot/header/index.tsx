@@ -35,7 +35,7 @@ const Header: FC<IHeaderProps> = ({
   const {
     appData,
     currentConversationId,
-    inputsForms,
+    allInputsHidden,
   } = useEmbeddedChatbotContext()
 
   const isClient = typeof window !== 'undefined'
@@ -124,7 +124,7 @@ const Header: FC<IHeaderProps> = ({
               </ActionButton>
             </Tooltip>
           )}
-          {currentConversationId && inputsForms.length > 0 && (
+          {currentConversationId && !allInputsHidden && (
             <ViewFormDropdown />
           )}
         </div>
@@ -171,7 +171,7 @@ const Header: FC<IHeaderProps> = ({
             </ActionButton>
           </Tooltip>
         )}
-        {currentConversationId && inputsForms.length > 0 && (
+        {currentConversationId && !allInputsHidden && (
           <ViewFormDropdown iconColor={theme?.colorPathOnHeader} />
         )}
       </div>
