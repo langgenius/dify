@@ -442,6 +442,7 @@ const translation = {
       },
       outputVars: {
         output: 'Ustvari vsebino',
+        reasoning_content: 'Vsebina razmišljanja',
         usage: 'Informacije o uporabi modela',
       },
       singleRun: {

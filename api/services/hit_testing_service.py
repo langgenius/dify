@@ -15,7 +15,7 @@ from models.dataset import Dataset, DatasetQuery
 logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
@@ -46,7 +46,7 @@ class HitTestingService:
 
             from core.app.app_config.entities import MetadataFilteringCondition
 
-            metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
+            metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],

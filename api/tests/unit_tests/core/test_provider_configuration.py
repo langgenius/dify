@@ -14,7 +14,13 @@ from core.entities.provider_entities import (
 )
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from core.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormOption,
+    FormType,
+    ProviderEntity,
+)
 from models.provider import Provider, ProviderType
 
 
@@ -306,3 +312,174 @@ class TestProviderConfiguration:
 
         # Assert
         assert credentials == {"openai_api_key": "test_key"}
+
+    def test_extract_secret_variables_with_secret_input(self, provider_configuration):
+        """Test extracting secret variables from credential form schemas"""
+        # Arrange
+        credential_form_schemas = [
+            CredentialFormSchema(
+                variable="api_key",
+                label=I18nObject(en_US="API Key", zh_Hans="API 密钥"),
+                type=FormType.SECRET_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="model_name",
+                label=I18nObject(en_US="Model Name", zh_Hans="模型名称"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="secret_token",
+                label=I18nObject(en_US="Secret Token", zh_Hans="密钥令牌"),
+                type=FormType.SECRET_INPUT,
+                required=False,
+            ),
+        ]
+
+        # Act
+        secret_variables = provider_configuration.extract_secret_variables(credential_form_schemas)
+
+        # Assert
+        assert len(secret_variables) == 2
+        assert "api_key" in secret_variables
+        assert "secret_token" in secret_variables
+        assert "model_name" not in secret_variables
+
+    def test_extract_secret_variables_no_secret_input(self, provider_configuration):
+        """Test extracting secret variables when no secret input fields exist"""
+        # Arrange
+        credential_form_schemas = [
+            CredentialFormSchema(
+                variable="model_name",
+                label=I18nObject(en_US="Model Name", zh_Hans="模型名称"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="temperature",
+                label=I18nObject(en_US="Temperature", zh_Hans="温度"),
+                type=FormType.SELECT,
+                required=True,
+                options=[FormOption(label=I18nObject(en_US="0.1", zh_Hans="0.1"), value="0.1")],
+            ),
+        ]
+
+        # Act
+        secret_variables = provider_configuration.extract_secret_variables(credential_form_schemas)
+
+        # Assert
+        assert len(secret_variables) == 0
+
+    def test_extract_secret_variables_empty_list(self, provider_configuration):
+        """Test extracting secret variables from empty credential form schemas"""
+        # Arrange
+        credential_form_schemas = []
+
+        # Act
+        secret_variables = provider_configuration.extract_secret_variables(credential_form_schemas)
+
+        # Assert
+        assert len(secret_variables) == 0
+
+    @patch("core.entities.provider_configuration.encrypter")
+    def test_obfuscated_credentials_with_secret_variables(self, mock_encrypter, provider_configuration):
+        """Test obfuscating credentials with secret variables"""
+        # Arrange
+        credentials = {
+            "api_key": "sk-1234567890abcdef",
+            "model_name": "gpt-4",
+            "secret_token": "secret_value_123",
+            "temperature": "0.7",
+        }
+
+        credential_form_schemas = [
+            CredentialFormSchema(
+                variable="api_key",
+                label=I18nObject(en_US="API Key", zh_Hans="API 密钥"),
+                type=FormType.SECRET_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="model_name",
+                label=I18nObject(en_US="Model Name", zh_Hans="模型名称"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="secret_token",
+                label=I18nObject(en_US="Secret Token", zh_Hans="密钥令牌"),
+                type=FormType.SECRET_INPUT,
+                required=False,
+            ),
+            CredentialFormSchema(
+                variable="temperature",
+                label=I18nObject(en_US="Temperature", zh_Hans="温度"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+        ]
+
+        mock_encrypter.obfuscated_token.side_effect = lambda x: f"***{x[-4:]}"
+
+        # Act
+        obfuscated = provider_configuration.obfuscated_credentials(credentials, credential_form_schemas)
+
+        # Assert
+        assert obfuscated["api_key"] == "***cdef"
+        assert obfuscated["model_name"] == "gpt-4"  # Not obfuscated
+        assert obfuscated["secret_token"] == "***_123"
+        assert obfuscated["temperature"] == "0.7"  # Not obfuscated
+
+        # Verify encrypter was called for secret fields only
+        assert mock_encrypter.obfuscated_token.call_count == 2
+        mock_encrypter.obfuscated_token.assert_any_call("sk-1234567890abcdef")
+        mock_encrypter.obfuscated_token.assert_any_call("secret_value_123")
+
+    def test_obfuscated_credentials_no_secret_variables(self, provider_configuration):
+        """Test obfuscating credentials when no secret variables exist"""
+        # Arrange
+        credentials = {
+            "model_name": "gpt-4",
+            "temperature": "0.7",
+            "max_tokens": "1000",
+        }
+
+        credential_form_schemas = [
+            CredentialFormSchema(
+                variable="model_name",
+                label=I18nObject(en_US="Model Name", zh_Hans="模型名称"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="temperature",
+                label=I18nObject(en_US="Temperature", zh_Hans="温度"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+            CredentialFormSchema(
+                variable="max_tokens",
+                label=I18nObject(en_US="Max Tokens", zh_Hans="最大令牌数"),
+                type=FormType.TEXT_INPUT,
+                required=True,
+            ),
+        ]
+
+        # Act
+        obfuscated = provider_configuration.obfuscated_credentials(credentials, credential_form_schemas)
+
+        # Assert
+        assert obfuscated == credentials  # No changes expected
+
+    def test_obfuscated_credentials_empty_credentials(self, provider_configuration):
+        """Test obfuscating empty credentials"""
+        # Arrange
+        credentials = {}
+        credential_form_schemas = []
+
+        # Act
+        obfuscated = provider_configuration.obfuscated_credentials(credentials, credential_form_schemas)
+
+        # Assert
+        assert obfuscated == {}
