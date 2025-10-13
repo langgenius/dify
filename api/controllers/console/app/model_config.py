@@ -14,6 +14,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models.account import Account
 from models.model import AppMode, AppModelConfig
@@ -172,6 +173,8 @@ class ModelConfigResource(Resource):
         db.session.flush()
 
         app_model.app_model_config_id = new_app_model_config.id
+        app_model.updated_by = current_user.id
+        app_model.updated_at = naive_utc_now()
         db.session.commit()
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)

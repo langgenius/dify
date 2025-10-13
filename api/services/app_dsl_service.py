@@ -29,6 +29,7 @@ from core.workflow.nodes.tool.entities import ToolNodeData
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig
 from models.workflow import Workflow
@@ -439,6 +440,7 @@ class AppDslService:
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
+            app.updated_at = naive_utc_now()
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")
