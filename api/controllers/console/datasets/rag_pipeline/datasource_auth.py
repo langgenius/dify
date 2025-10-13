@@ -1,16 +1,16 @@
-from fastapi.encoders import jsonable_encoder
 from flask import make_response, redirect, request
 from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen
 from libs.login import login_required
@@ -19,6 +19,7 @@ from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
 
+@console_ns.route("/oauth/plugin/<path:provider_id>/datasource/get-authorization-url")
 class DatasourcePluginOAuthAuthorizationUrl(Resource):
     @setup_required
     @login_required
@@ -68,6 +69,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         return response
 
 
+@console_ns.route("/oauth/plugin/<path:provider_id>/datasource/callback")
 class DatasourceOAuthCallback(Resource):
     @setup_required
     def get(self, provider_id: str):
@@ -123,6 +125,7 @@ class DatasourceOAuthCallback(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>")
 class DatasourceAuth(Resource):
     @setup_required
     @login_required
@@ -165,6 +168,7 @@ class DatasourceAuth(Resource):
         return {"result": datasources}, 200
 
 
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
     @setup_required
     @login_required
@@ -188,6 +192,7 @@ class DatasourceAuthDeleteApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
 class DatasourceAuthUpdateApi(Resource):
     @setup_required
     @login_required
@@ -213,6 +218,7 @@ class DatasourceAuthUpdateApi(Resource):
         return {"result": "success"}, 201
 
 
+@console_ns.route("/auth/plugin/datasource/list")
 class DatasourceAuthListApi(Resource):
     @setup_required
     @login_required
@@ -225,6 +231,7 @@ class DatasourceAuthListApi(Resource):
         return {"result": jsonable_encoder(datasources)}, 200
 
 
+@console_ns.route("/auth/plugin/datasource/default-list")
 class DatasourceHardCodeAuthListApi(Resource):
     @setup_required
     @login_required
@@ -237,6 +244,7 @@ class DatasourceHardCodeAuthListApi(Resource):
         return {"result": jsonable_encoder(datasources)}, 200
 
 
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
 class DatasourceAuthOauthCustomClient(Resource):
     @setup_required
     @login_required
@@ -271,6 +279,7 @@ class DatasourceAuthOauthCustomClient(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
     @setup_required
     @login_required
@@ -291,6 +300,7 @@ class DatasourceAuthDefaultApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
     @setup_required
     @login_required
@@ -311,52 +321,3 @@ class DatasourceUpdateProviderNameApi(Resource):
             credential_id=args["credential_id"],
         )
         return {"result": "success"}, 200
-
-
-api.add_resource(
-    DatasourcePluginOAuthAuthorizationUrl,
-    "/oauth/plugin/<path:provider_id>/datasource/get-authorization-url",
-)
-api.add_resource(
-    DatasourceOAuthCallback,
-    "/oauth/plugin/<path:provider_id>/datasource/callback",
-)
-api.add_resource(
-    DatasourceAuth,
-    "/auth/plugin/datasource/<path:provider_id>",
-)
-
-api.add_resource(
-    DatasourceAuthUpdateApi,
-    "/auth/plugin/datasource/<path:provider_id>/update",
-)
-
-api.add_resource(
-    DatasourceAuthDeleteApi,
-    "/auth/plugin/datasource/<path:provider_id>/delete",
-)
-
-api.add_resource(
-    DatasourceAuthListApi,
-    "/auth/plugin/datasource/list",
-)
-
-api.add_resource(
-    DatasourceHardCodeAuthListApi,
-    "/auth/plugin/datasource/default-list",
-)
-
-api.add_resource(
-    DatasourceAuthOauthCustomClient,
-    "/auth/plugin/datasource/<path:provider_id>/custom-client",
-)
-
-api.add_resource(
-    DatasourceAuthDefaultApi,
-    "/auth/plugin/datasource/<path:provider_id>/default",
-)
-
-api.add_resource(
-    DatasourceUpdateProviderNameApi,
-    "/auth/plugin/datasource/<path:provider_id>/update-name",
-)

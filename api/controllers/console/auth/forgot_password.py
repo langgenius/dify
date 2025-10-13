@@ -221,8 +221,3 @@ class ForgotPasswordResetApi(Resource):
             TenantService.create_tenant_member(tenant, account, role="owner")
             account.current_tenant = tenant
             tenant_was_created.send(tenant)
-
-
-api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")
-api.add_resource(ForgotPasswordCheckApi, "/forgot-password/validity")
-api.add_resource(ForgotPasswordResetApi, "/forgot-password/resets")

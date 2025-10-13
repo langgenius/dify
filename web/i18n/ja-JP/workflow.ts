@@ -456,6 +456,7 @@ const translation = {
       },
       outputVars: {
         output: '生成内容',
+        reasoning_content: '推論内容',
         usage: 'モデル使用量',
       },
       singleRun: {
@@ -956,6 +957,9 @@ const translation = {
       indexMethodIsRequired: 'インデックスメソッドが必要です',
       chunksInput: 'チャンク',
       chunksInputTip: '知識ベースノードの入力変数はチャンクです。変数のタイプは、選択されたチャンク構造と一貫性のある特定のJSONスキーマを持つオブジェクトです。',
+      chunksVariableIsRequired: 'Chunks変数は必須です',
+      embeddingModelIsRequired: '埋め込みモデルが必要です',
+      rerankingModelIsRequired: '再ランキングモデルが必要です',
     },
   },
   tracing: {

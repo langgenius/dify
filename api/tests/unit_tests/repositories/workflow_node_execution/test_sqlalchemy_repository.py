@@ -59,12 +59,11 @@ def session():
 @pytest.fixture
 def mock_user():
     """Create a user instance for testing."""
-    user = Account()
+    user = Account(name="test", email="test@example.com")
     user.id = "test-user-id"
 
-    tenant = Tenant()
+    tenant = Tenant(name="Test Workspace")
     tenant.id = "test-tenant"
-    tenant.name = "Test Workspace"
     user._current_tenant = MagicMock()
     user._current_tenant.id = "test-tenant"
 
@@ -299,7 +298,7 @@ def test_to_domain_model(repository):
     db_model.predecessor_node_id = "test-predecessor-id"
     db_model.node_execution_id = "test-node-execution-id"
     db_model.node_id = "test-node-id"
-    db_model.node_type = NodeType.START.value
+    db_model.node_type = NodeType.START
     db_model.title = "Test Node"
     db_model.inputs = json.dumps(inputs_dict)
     db_model.process_data = json.dumps(process_data_dict)

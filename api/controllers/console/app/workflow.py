@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
 from controllers.console import api, console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
@@ -26,6 +25,7 @@ from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models import Account, App
@@ -674,8 +674,12 @@ class PublishedWorkflowApi(Resource):
                 marked_comment=args.marked_comment or "",
             )
 
-            app_model.workflow_id = workflow.id
-            db.session.commit()  # NOTE: this is necessary for update app_model.workflow_id
+            # Update app_model within the same session to ensure atomicity
+            app_model_in_session = session.get(App, app_model.id)
+            if app_model_in_session:
+                app_model_in_session.workflow_id = workflow.id
+                app_model_in_session.updated_by = current_user.id
+                app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
@@ -793,24 +797,6 @@ class ConvertToWorkflowApi(Resource):
         # return app id
         return {
             "new_app_id": new_app_model.id,
-        }
-
-
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/config")
-class WorkflowConfigApi(Resource):
-    """Resource for workflow configuration."""
-
-    @api.doc("get_workflow_config")
-    @api.doc(description="Get workflow configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Workflow configuration retrieved successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }
 
 

@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
@@ -51,6 +50,7 @@ from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTran
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft")
 class DraftRagPipelineApi(Resource):
     @setup_required
     @login_required
@@ -148,6 +148,7 @@ class DraftRagPipelineApi(Resource):
         }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class RagPipelineDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
@@ -182,6 +183,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class RagPipelineDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
@@ -216,6 +218,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
     @setup_required
     @login_required
@@ -250,6 +253,7 @@ class DraftRagPipelineRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
 class PublishedRagPipelineRunApi(Resource):
     @setup_required
     @login_required
@@ -370,6 +374,7 @@ class PublishedRagPipelineRunApi(Resource):
 #
 #         return result
 #
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -412,6 +417,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         )
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -454,6 +460,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         )
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
 class RagPipelineDraftNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -487,6 +494,7 @@ class RagPipelineDraftNodeRunApi(Resource):
         return workflow_node_execution
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop")
 class RagPipelineTaskStopApi(Resource):
     @setup_required
     @login_required
@@ -505,6 +513,7 @@ class RagPipelineTaskStopApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/publish")
 class PublishedRagPipelineApi(Resource):
     @setup_required
     @login_required
@@ -560,6 +569,7 @@ class PublishedRagPipelineApi(Resource):
         }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs")
 class DefaultRagPipelineBlockConfigsApi(Resource):
     @setup_required
     @login_required
@@ -578,6 +588,7 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
         return rag_pipeline_service.get_default_block_configs()
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultRagPipelineBlockConfigApi(Resource):
     @setup_required
     @login_required
@@ -609,18 +620,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         return rag_pipeline_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
-class RagPipelineConfigApi(Resource):
-    """Resource for rag pipeline configuration."""
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, pipeline_id):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
-        }
-
-
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows")
 class PublishedAllRagPipelineApi(Resource):
     @setup_required
     @login_required
@@ -669,6 +669,7 @@ class PublishedAllRagPipelineApi(Resource):
             }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
     @setup_required
     @login_required
@@ -726,6 +727,7 @@ class RagPipelineByIdApi(Resource):
         return workflow
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")
 class PublishedRagPipelineSecondStepApi(Resource):
     @setup_required
     @login_required
@@ -751,6 +753,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters")
 class PublishedRagPipelineFirstStepApi(Resource):
     @setup_required
     @login_required
@@ -776,6 +779,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters")
 class DraftRagPipelineFirstStepApi(Resource):
     @setup_required
     @login_required
@@ -801,6 +805,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters")
 class DraftRagPipelineSecondStepApi(Resource):
     @setup_required
     @login_required
@@ -827,6 +832,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
 class RagPipelineWorkflowRunListApi(Resource):
     @setup_required
     @login_required
@@ -848,6 +854,7 @@ class RagPipelineWorkflowRunListApi(Resource):
         return result
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>")
 class RagPipelineWorkflowRunDetailApi(Resource):
     @setup_required
     @login_required
@@ -866,6 +873,7 @@ class RagPipelineWorkflowRunDetailApi(Resource):
         return workflow_run
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions")
 class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @setup_required
     @login_required
@@ -889,6 +897,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
         return {"data": node_executions}
 
 
+@console_ns.route("/rag/pipelines/datasource-plugins")
 class DatasourceListApi(Resource):
     @setup_required
     @login_required
@@ -904,6 +913,7 @@ class DatasourceListApi(Resource):
         return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(tenant_id))
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run")
 class RagPipelineWorkflowLastRunApi(Resource):
     @setup_required
     @login_required
@@ -925,6 +935,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
         return node_exec
 
 
+@console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
 class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
@@ -942,6 +953,7 @@ class RagPipelineTransformApi(Resource):
         return result
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")
 class RagPipelineDatasourceVariableApi(Resource):
     @setup_required
     @login_required
@@ -971,6 +983,7 @@ class RagPipelineDatasourceVariableApi(Resource):
         return workflow_node_execution
 
 
+@console_ns.route("/rag/pipelines/recommended-plugins")
 class RagPipelineRecommendedPluginApi(Resource):
     @setup_required
     @login_required
@@ -979,118 +992,3 @@ class RagPipelineRecommendedPluginApi(Resource):
         rag_pipeline_service = RagPipelineService()
         recommended_plugins = rag_pipeline_service.get_recommended_plugins()
         return recommended_plugins
-
-
-api.add_resource(
-    DraftRagPipelineApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft",
-)
-api.add_resource(
-    RagPipelineConfigApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/config",
-)
-api.add_resource(
-    DraftRagPipelineRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run",
-)
-api.add_resource(
-    PublishedRagPipelineRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/run",
-)
-api.add_resource(
-    RagPipelineTaskStopApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop",
-)
-api.add_resource(
-    RagPipelineDraftNodeRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run",
-)
-api.add_resource(
-    RagPipelinePublishedDatasourceNodeRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run",
-)
-
-api.add_resource(
-    RagPipelineDraftDatasourceNodeRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run",
-)
-
-api.add_resource(
-    RagPipelineDraftRunIterationNodeApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
-)
-
-api.add_resource(
-    RagPipelineDraftRunLoopNodeApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run",
-)
-
-api.add_resource(
-    PublishedRagPipelineApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/publish",
-)
-api.add_resource(
-    PublishedAllRagPipelineApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows",
-)
-api.add_resource(
-    DefaultRagPipelineBlockConfigsApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs",
-)
-api.add_resource(
-    DefaultRagPipelineBlockConfigApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>",
-)
-api.add_resource(
-    RagPipelineByIdApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>",
-)
-api.add_resource(
-    RagPipelineWorkflowRunListApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs",
-)
-api.add_resource(
-    RagPipelineWorkflowRunDetailApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>",
-)
-api.add_resource(
-    RagPipelineWorkflowRunNodeExecutionListApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions",
-)
-api.add_resource(
-    DatasourceListApi,
-    "/rag/pipelines/datasource-plugins",
-)
-api.add_resource(
-    PublishedRagPipelineSecondStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters",
-)
-api.add_resource(
-    PublishedRagPipelineFirstStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters",
-)
-api.add_resource(
-    DraftRagPipelineSecondStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters",
-)
-api.add_resource(
-    DraftRagPipelineFirstStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters",
-)
-api.add_resource(
-    RagPipelineWorkflowLastRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run",
-)
-api.add_resource(
-    RagPipelineTransformApi,
-    "/rag/pipelines/transform/datasets/<uuid:dataset_id>",
-)
-api.add_resource(
-    RagPipelineDatasourceVariableApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect",
-)
-
-api.add_resource(
-    RagPipelineRecommendedPluginApi,
-    "/rag/pipelines/recommended-plugins",
-)

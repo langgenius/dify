@@ -107,7 +107,6 @@ class MessageCycleManager:
                     if dify_config.DEBUG:
                         logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
 
-                db.session.merge(conversation)
                 db.session.commit()
                 db.session.close()
 

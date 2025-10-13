@@ -36,9 +36,15 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages",
+    endpoint="installed_app_messages",
+)
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
@@ -66,6 +72,10 @@ class MessageListApi(InstalledAppResource):
             raise NotFound("First Message Not Exists.")
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks",
+    endpoint="installed_app_message_feedback",
+)
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
         app_model = installed_app.app
@@ -93,6 +103,10 @@ class MessageFeedbackApi(InstalledAppResource):
         return {"result": "success"}
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this",
+    endpoint="installed_app_more_like_this",
+)
 class MessageMoreLikeThisApi(InstalledAppResource):
     def get(self, installed_app, message_id):
         app_model = installed_app.app
@@ -139,6 +153,10 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="installed_app_suggested_question",
+)
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
         app_model = installed_app.app

@@ -51,7 +51,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
         args = metadata_create_parser.parse_args()
-        metadata_args = MetadataArgs(**args)
+        metadata_args = MetadataArgs.model_validate(args)
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -106,7 +106,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args["name"])
         return marshal(metadata, dataset_metadata_fields), 200
 
     @service_api_ns.doc("delete_dataset_metadata")
@@ -200,7 +200,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         args = document_metadata_parser.parse_args()
-        metadata_args = MetadataOperationData(**args)
+        metadata_args = MetadataOperationData.model_validate(args)
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 

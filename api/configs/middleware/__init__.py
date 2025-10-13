@@ -18,6 +18,7 @@ from .storage.opendal_storage_config import OpenDALStorageConfig
 from .storage.supabase_storage_config import SupabaseStorageConfig
 from .storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
+from .vdb.alibabacloud_mysql_config import AlibabaCloudMySQLConfig
 from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
@@ -330,6 +331,7 @@ class MiddlewareConfig(
     ClickzettaConfig,
     HuaweiCloudConfig,
     MilvusConfig,
+    AlibabaCloudMySQLConfig,
     MyScaleConfig,
     OpenSearchConfig,
     OracleConfig,

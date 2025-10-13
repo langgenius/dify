@@ -19,7 +19,10 @@ from services.app_dsl_service import AppDslService, ImportStatus
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
+from .. import console_ns
 
+
+@console_ns.route("/apps/imports")
 class AppImportApi(Resource):
     @setup_required
     @login_required
@@ -67,13 +70,14 @@ class AppImportApi(Resource):
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED.value:
+        if status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING.value:
+        elif status == ImportStatus.PENDING:
             return result.model_dump(mode="json"), 202
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/apps/imports/<string:import_id>/confirm")
 class AppImportConfirmApi(Resource):
     @setup_required
     @login_required
@@ -94,11 +98,12 @@ class AppImportConfirmApi(Resource):
             session.commit()
 
         # Return appropriate status code based on result
-        if result.status == ImportStatus.FAILED.value:
+        if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
 class AppImportCheckDependenciesApi(Resource):
     @setup_required
     @login_required

@@ -25,9 +25,12 @@ from libs.login import current_user, login_required
 from models import Account
 from services.file_service import FileService
 
+from . import console_ns
+
 PREVIEW_WORDS_LIMIT = 3000
 
 
+@console_ns.route("/files/upload")
 class FileApi(Resource):
     @setup_required
     @login_required
@@ -87,6 +90,7 @@ class FileApi(Resource):
         return upload_file, 201
 
 
+@console_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
     @setup_required
     @login_required
@@ -97,6 +101,7 @@ class FilePreviewApi(Resource):
         return {"content": text}
 
 
+@console_ns.route("/files/support-type")
 class FileSupportTypeApi(Resource):
     @setup_required
     @login_required

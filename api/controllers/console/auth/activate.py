@@ -103,7 +103,7 @@ class ActivateApi(Resource):
         account.interface_language = args["interface_language"]
         account.timezone = args["timezone"]
         account.interface_theme = "light"
-        account.status = AccountStatus.ACTIVE.value
+        account.status = AccountStatus.ACTIVE
         account.initialized_at = naive_utc_now()
         db.session.commit()
 

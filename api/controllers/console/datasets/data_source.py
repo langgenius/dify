@@ -9,13 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
@@ -27,6 +27,10 @@ from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
+@console_ns.route(
+    "/data-source/integrates",
+    "/data-source/integrates/<uuid:binding_id>/<string:action>",
+)
 class DataSourceApi(Resource):
     @setup_required
     @login_required
@@ -109,6 +113,7 @@ class DataSourceApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/notion/pre-import/pages")
 class DataSourceNotionListApi(Resource):
     @setup_required
     @login_required
@@ -196,6 +201,10 @@ class DataSourceNotionListApi(Resource):
             return {"notion_info": {**workspace_info, "pages": pages}}, 200
 
 
+@console_ns.route(
+    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
+    "/datasets/notion-indexing-estimate",
+)
 class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
@@ -247,14 +256,16 @@ class DataSourceNotionApi(Resource):
             credential_id = notion_info.get("credential_id")
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.NOTION.value,
-                    notion_info={
-                        "credential_id": credential_id,
-                        "notion_workspace_id": workspace_id,
-                        "notion_obj_id": page["page_id"],
-                        "notion_page_type": page["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    },
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": credential_id,
+                            "notion_workspace_id": workspace_id,
+                            "notion_obj_id": page["page_id"],
+                            "notion_page_type": page["type"],
+                            "tenant_id": current_user.current_tenant_id,
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
@@ -269,6 +280,7 @@ class DataSourceNotionApi(Resource):
         return response.model_dump(), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
 class DataSourceNotionDatasetSyncApi(Resource):
     @setup_required
     @login_required
@@ -285,6 +297,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
 class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required
     @login_required
@@ -301,16 +314,3 @@ class DataSourceNotionDocumentSyncApi(Resource):
             raise NotFound("Document not found.")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)
         return {"result": "success"}, 200
-
-
-api.add_resource(DataSourceApi, "/data-source/integrates", "/data-source/integrates/<uuid:binding_id>/<string:action>")
-api.add_resource(DataSourceNotionListApi, "/notion/pre-import/pages")
-api.add_resource(
-    DataSourceNotionApi,
-    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
-    "/datasets/notion-indexing-estimate",
-)
-api.add_resource(DataSourceNotionDatasetSyncApi, "/datasets/<uuid:dataset_id>/notion/sync")
-api.add_resource(
-    DataSourceNotionDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync"
-)

@@ -76,7 +76,7 @@ class TestMetadataNullableBug:
             # Step 2: Try to create MetadataArgs with None values
             # This should fail at Pydantic validation level
             with pytest.raises((ValueError, TypeError)):
-                metadata_args = MetadataArgs(**args)
+                metadata_args = MetadataArgs.model_validate(args)
 
         # Step 3: If we bypass Pydantic (simulating the bug scenario)
         # Move this outside the request context to avoid Flask-Login issues
