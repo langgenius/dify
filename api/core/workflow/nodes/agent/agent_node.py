@@ -141,14 +141,18 @@ class AgentNode(Node):
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
 
-        env_vars = self.graph_runtime_state.variable_pool.variable_dictionary.get("env", {})
-
-        # get secret variables used
-        secret_variables = {
-            var.name
-            for var in env_vars.values()  # iterate over the values directly
-            if isinstance(var, SecretVariable)
-        }
+        # to store secret variables used in the Agent block.
+        secret_variables = set()
+        # get secret variables used.
+        for section_vars in self.graph_runtime_state.variable_pool.variable_dictionary.values():
+            # Iterate over all the sections. e.g. sys, env etc.
+            if isinstance(section_vars, dict):
+                # Iterate over each variable in the section
+                for variable in section_vars.values():
+                    # Check if the variable is a SecretVariable
+                    if isinstance(variable, SecretVariable):
+                        # Add the variable name to the set
+                        secret_variables.add(variable.name)
 
         try:
             message_stream = strategy.invoke(

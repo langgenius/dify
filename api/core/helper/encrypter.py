@@ -88,7 +88,7 @@ def encrypt_secret_keys(
     if secret_variables is None:
         secret_variables = set()
 
-    if isinstance(obj, dict):
+    if isinstance(obj, Mapping):
         # recurse into dict
         return {key: encrypt_secret_keys(value, secret_variables, key) for key, value in obj.items()}
 
