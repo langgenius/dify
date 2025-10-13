@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
   useEffect,
+  useState,
 } from 'react'
 import {
   Background,
@@ -27,19 +28,20 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
   const { t } = useTranslation()
+  const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {
     if (nodesInitialized)
       handleNodeIterationRerender(id)
-    if (data.is_parallel && data._isShowTips) {
+    if (data.is_parallel && showTips) {
       Toast.notify({
         type: 'warning',
         message: t(`${i18nPrefix}.answerNodeWarningDesc`),
         duration: 5000,
       })
-      data._isShowTips = false
+      setShowTips(false)
     }
-  }, [nodesInitialized, id, handleNodeIterationRerender, data, t])
+  }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])
 
   return (
     <div className={cn(

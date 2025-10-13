@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'सभी चुनें',
     deSelectAll: 'सभी चयन हटाएँ',
     config: 'कॉन्फ़िगरेशन',
+    no: 'नहीं',
+    yes: 'हाँ',
+    deleteConfirmTitle: 'हटाएं?',
+    confirmAction: 'कृपया अपनी क्रिया की पुष्टि करें।',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -520,6 +524,8 @@ const translation = {
       customModelCredentials: 'कस्टम मॉडल क्रेडेंशियल्स',
       editModelCredential: 'मॉडल की क्रेडेंशियल संपादित करें',
     },
+    parametersInvalidRemoved: 'कुछ पैरामीटर अमान्य हैं और हटा दिए गए हैं',
+    installDataSourceProvider: 'डेटा स्रोत प्रदाताओं को स्थापित करें',
   },
   dataSource: {
     add: 'डेटा स्रोत जोड़ें',

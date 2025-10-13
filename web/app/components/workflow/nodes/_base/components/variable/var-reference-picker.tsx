@@ -127,7 +127,7 @@ const VarReferencePicker: FC<Props> = ({
 
   const reactflow = useReactFlow()
 
-  const startNode = availableNodes.find((node: any) => {
+  const startNode = availableNodes.find((node: Node) => {
     return node.data.type === BlockEnum.Start
   })
 
@@ -407,7 +407,10 @@ const VarReferencePicker: FC<Props> = ({
         <WrapElem onClick={() => {
           if (readonly)
             return
-          !isConstant ? setOpen(!open) : setControlFocus(Date.now())
+          if (!isConstant)
+            setOpen(!open)
+          else
+            setControlFocus(Date.now())
         }} className='group/picker-trigger-wrap relative !flex'>
           <>
             {isAddBtnTrigger
@@ -457,7 +460,10 @@ const VarReferencePicker: FC<Props> = ({
                       onClick={() => {
                         if (readonly)
                           return
-                        !isConstant ? setOpen(!open) : setControlFocus(Date.now())
+                        if (!isConstant)
+                          setOpen(!open)
+                        else
+                          setControlFocus(Date.now())
                       }}
                       className='h-full grow'
                     >

@@ -71,7 +71,6 @@ import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
-import LimitTips from './limit-tips'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import {
   useStore,
@@ -378,7 +377,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
           />
         )
       }
-      <LimitTips />
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
@@ -414,10 +412,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
         panOnScroll={false}
-        panOnDrag={controlMode === ControlMode.Hand && !workflowReadOnly}
-        zoomOnPinch={!workflowReadOnly}
-        zoomOnScroll={!workflowReadOnly}
-        zoomOnDoubleClick={!workflowReadOnly}
+        panOnDrag={controlMode === ControlMode.Hand}
+        zoomOnPinch={true}
+        zoomOnScroll={true}
+        zoomOnDoubleClick={true}
         isValidConnection={isValidConnection}
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from enum import Enum, StrEnum, auto
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
@@ -46,10 +46,11 @@ class FormOption(BaseModel):
     value: str
     show_on: list[FormShowOnObject] = []
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    @model_validator(mode="after")
+    def _(self):
         if not self.label:
             self.label = I18nObject(en_US=self.value)
+        return self
 
 
 class CredentialFormSchema(BaseModel):

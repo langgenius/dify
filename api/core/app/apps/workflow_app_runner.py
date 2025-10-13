@@ -1,3 +1,4 @@
+import time
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -99,8 +100,8 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow_id,
             graph_config=graph_config,
             user_id=user_id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         )
 
@@ -119,15 +120,81 @@ class WorkflowBasedAppRunner:
 
         return graph
 
-    def _get_graph_and_variable_pool_of_single_iteration(
+    def _prepare_single_node_execution(
+        self,
+        workflow: Workflow,
+        single_iteration_run: Any | None = None,
+        single_loop_run: Any | None = None,
+    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
+        """
+        Prepare graph, variable pool, and runtime state for single node execution
+        (either single iteration or single loop).
+
+        Args:
+            workflow: The workflow instance
+            single_iteration_run: SingleIterationRunEntity if running single iteration, None otherwise
+            single_loop_run: SingleLoopRunEntity if running single loop, None otherwise
+
+        Returns:
+            A tuple containing (graph, variable_pool, graph_runtime_state)
+
+        Raises:
+            ValueError: If neither single_iteration_run nor single_loop_run is specified
+        """
+        # Create initial runtime state with variable pool containing environment variables
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(
+                system_variables=SystemVariable.empty(),
+                user_inputs={},
+                environment_variables=workflow.environment_variables,
+            ),
+            start_at=time.time(),
+        )
+
+        # Determine which type of single node execution and get graph/variable_pool
+        if single_iteration_run:
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
+                workflow=workflow,
+                node_id=single_iteration_run.node_id,
+                user_inputs=dict(single_iteration_run.inputs),
+                graph_runtime_state=graph_runtime_state,
+            )
+        elif single_loop_run:
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
+                workflow=workflow,
+                node_id=single_loop_run.node_id,
+                user_inputs=dict(single_loop_run.inputs),
+                graph_runtime_state=graph_runtime_state,
+            )
+        else:
+            raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
+
+        # Return the graph, variable_pool, and the same graph_runtime_state used during graph creation
+        # This ensures all nodes in the graph reference the same GraphRuntimeState instance
+        return graph, variable_pool, graph_runtime_state
+
+    def _get_graph_and_variable_pool_for_single_node_run(
         self,
         workflow: Workflow,
         node_id: str,
-        user_inputs: dict,
+        user_inputs: dict[str, Any],
         graph_runtime_state: GraphRuntimeState,
+        node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
+        node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
     ) -> tuple[Graph, VariablePool]:
         """
-        Get variable pool of single iteration
+        Get graph and variable pool for single node execution (iteration or loop).
+
+        Args:
+            workflow: The workflow instance
+            node_id: The node ID to execute
+            user_inputs: User inputs for the node
+            graph_runtime_state: The graph runtime state
+            node_type_filter_key: The key to filter nodes ('iteration_id' or 'loop_id')
+            node_type_label: Label for error messages ('iteration' or 'loop')
+
+        Returns:
+            A tuple containing (graph, variable_pool)
         """
         # fetch workflow graph
         graph_config = workflow.graph_dict
@@ -145,18 +212,22 @@ class WorkflowBasedAppRunner:
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
 
-        # filter nodes only in iteration
+        # filter nodes only in the specified node type (iteration or loop)
+        main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
+        start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
         node_configs = [
             node
             for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id or node.get("data", {}).get("iteration_id", "") == node_id
+            if node.get("id") == node_id
+            or node.get("data", {}).get(node_type_filter_key, "") == node_id
+            or (start_node_id and node.get("id") == start_node_id)
         ]
 
         graph_config["nodes"] = node_configs
 
         node_ids = [node.get("id") for node in node_configs]
 
-        # filter edges only in iteration
+        # filter edges only in the specified node type
         edge_configs = [
             edge
             for edge in graph_config.get("edges", [])
@@ -173,8 +244,8 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow.id,
             graph_config=graph_config,
             user_id="",
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         )
 
@@ -190,30 +261,26 @@ class WorkflowBasedAppRunner:
             raise ValueError("graph not found in workflow")
 
         # fetch node config from node id
-        iteration_node_config = None
+        target_node_config = None
         for node in node_configs:
             if node.get("id") == node_id:
-                iteration_node_config = node
+                target_node_config = node
                 break
 
-        if not iteration_node_config:
-            raise ValueError("iteration node id not found in workflow graph")
+        if not target_node_config:
+            raise ValueError(f"{node_type_label} node id not found in workflow graph")
 
         # Get node class
-        node_type = NodeType(iteration_node_config.get("data", {}).get("type"))
-        node_version = iteration_node_config.get("data", {}).get("version", "1")
+        node_type = NodeType(target_node_config.get("data", {}).get("type"))
+        node_version = target_node_config.get("data", {}).get("version", "1")
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
-            user_inputs={},
-            environment_variables=workflow.environment_variables,
-        )
+        # Use the variable pool from graph_runtime_state instead of creating a new one
+        variable_pool = graph_runtime_state.variable_pool
 
         try:
             variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=iteration_node_config
+                graph_config=workflow.graph_dict, config=target_node_config
             )
         except NotImplementedError:
             variable_mapping = {}
@@ -234,119 +301,43 @@ class WorkflowBasedAppRunner:
 
         return graph, variable_pool
 
+    def _get_graph_and_variable_pool_of_single_iteration(
+        self,
+        workflow: Workflow,
+        node_id: str,
+        user_inputs: dict[str, Any],
+        graph_runtime_state: GraphRuntimeState,
+    ) -> tuple[Graph, VariablePool]:
+        """
+        Get variable pool of single iteration
+        """
+        return self._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="iteration_id",
+            node_type_label="iteration",
+        )
+
     def _get_graph_and_variable_pool_of_single_loop(
         self,
         workflow: Workflow,
         node_id: str,
-        user_inputs: dict,
+        user_inputs: dict[str, Any],
         graph_runtime_state: GraphRuntimeState,
     ) -> tuple[Graph, VariablePool]:
         """
         Get variable pool of single loop
         """
-        # fetch workflow graph
-        graph_config = workflow.graph_dict
-        if not graph_config:
-            raise ValueError("workflow graph not found")
-
-        graph_config = cast(dict[str, Any], graph_config)
-
-        if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
-
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
-
-        # filter nodes only in loop
-        node_configs = [
-            node
-            for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id or node.get("data", {}).get("loop_id", "") == node_id
-        ]
-
-        graph_config["nodes"] = node_configs
-
-        node_ids = [node.get("id") for node in node_configs]
-
-        # filter edges only in loop
-        edge_configs = [
-            edge
-            for edge in graph_config.get("edges", [])
-            if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
-        ]
-
-        graph_config["edges"] = edge_configs
-
-        # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
-            workflow_id=workflow.id,
-            graph_config=graph_config,
-            user_id="",
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
-            call_depth=0,
-        )
-
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        return self._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
             graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="loop_id",
+            node_type_label="loop",
         )
-
-        # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
-
-        if not graph:
-            raise ValueError("graph not found in workflow")
-
-        # fetch node config from node id
-        loop_node_config = None
-        for node in node_configs:
-            if node.get("id") == node_id:
-                loop_node_config = node
-                break
-
-        if not loop_node_config:
-            raise ValueError("loop node id not found in workflow graph")
-
-        # Get node class
-        node_type = NodeType(loop_node_config.get("data", {}).get("type"))
-        node_version = loop_node_config.get("data", {}).get("version", "1")
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
-
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
-            user_inputs={},
-            environment_variables=workflow.environment_variables,
-        )
-
-        try:
-            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=loop_node_config
-            )
-        except NotImplementedError:
-            variable_mapping = {}
-        load_into_variable_pool(
-            self._variable_loader,
-            variable_pool=variable_pool,
-            variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
-        )
-
-        WorkflowEntry.mapping_user_inputs_to_variable_pool(
-            variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
-            variable_pool=variable_pool,
-            tenant_id=workflow.tenant_id,
-        )
-
-        return graph, variable_pool
 
     def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """

@@ -27,9 +27,12 @@ from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp):
         """
@@ -70,6 +73,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp, task_id: str):
         """

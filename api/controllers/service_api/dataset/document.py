@@ -30,7 +30,6 @@ from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
-from models.model import EndUser
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService
@@ -109,19 +108,21 @@ class DocumentAddByTextApi(DatasetApiResource):
         if text is None or name is None:
             raise ValueError("Both 'text' and 'name' must be non-null values.")
 
-        if args.get("embedding_model_provider"):
-            DatasetService.check_embedding_model_setting(
-                tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
-            )
+        embedding_model_provider = args.get("embedding_model_provider")
+        embedding_model = args.get("embedding_model")
+        if embedding_model_provider and embedding_model:
+            DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
+
+        retrieval_model = args.get("retrieval_model")
         if (
-            args.get("retrieval_model")
-            and args.get("retrieval_model").get("reranking_model")
-            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+            retrieval_model
+            and retrieval_model.get("reranking_model")
+            and retrieval_model.get("reranking_model").get("reranking_provider_name")
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+                retrieval_model.get("reranking_model").get("reranking_provider_name"),
+                retrieval_model.get("reranking_model").get("reranking_model_name"),
             )
 
         if not current_user:
@@ -135,7 +136,7 @@ class DocumentAddByTextApi(DatasetApiResource):
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
         }
         args["data_source"] = data_source
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
 
@@ -188,15 +189,16 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
+        retrieval_model = args.get("retrieval_model")
         if (
-            args.get("retrieval_model")
-            and args.get("retrieval_model").get("reranking_model")
-            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+            retrieval_model
+            and retrieval_model.get("reranking_model")
+            and retrieval_model.get("reranking_model").get("reranking_provider_name")
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+                retrieval_model.get("reranking_model").get("reranking_provider_name"),
+                retrieval_model.get("reranking_model").get("reranking_model_name"),
             )
 
         # indexing_technique is already set in dataset since this is an update
@@ -219,7 +221,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
@@ -311,8 +313,6 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        if not isinstance(current_user, EndUser):
-            raise ValueError("Invalid user account")
         if not current_user:
             raise ValueError("current_user is required")
         upload_file = FileService(db.engine).upload_file(
@@ -328,7 +328,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         }
         args["data_source"] = data_source
         # validate args
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
@@ -406,9 +406,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if not current_user:
                 raise ValueError("current_user is required")
 
-            if not isinstance(current_user, EndUser):
-                raise ValueError("Invalid user account")
-
             try:
                 upload_file = FileService(db.engine).upload_file(
                     filename=file.filename,
@@ -429,7 +426,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         # validate args
         args["original_document_id"] = str(document_id)
 
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:

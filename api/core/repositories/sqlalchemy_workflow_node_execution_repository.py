@@ -417,12 +417,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         if db_model is not None:
             offload_data = db_model.offload_data
-
         else:
             db_model = self._to_db_model(domain_model)
-            offload_data = []
+            offload_data = db_model.offload_data
 
-        offload_data = db_model.offload_data
         if domain_model.inputs is not None:
             result = self._truncate_and_upload(
                 domain_model.inputs,

@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Odznacz wszystkie',
     selectAll: 'Zaznacz wszystkie',
     config: 'Konfiguracja',
+    yes: 'Tak',
+    no: 'Nie',
+    deleteConfirmTitle: 'Usunąć?',
+    confirmAction: 'Proszę potwierdzić swoją akcję.',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -513,6 +517,8 @@ const translation = {
       selectModelCredential: 'Wybieranie poświadczeń modelu',
       editModelCredential: 'Edytowanie poświadczeń modelu',
     },
+    parametersInvalidRemoved: 'Niektóre parametry są nieprawidłowe i zostały usunięte.',
+    installDataSourceProvider: 'Zainstaluj dostawców źródeł danych',
   },
   dataSource: {
     add: 'Dodaj źródło danych',

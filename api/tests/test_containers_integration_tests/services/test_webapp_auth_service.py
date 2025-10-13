@@ -87,7 +87,7 @@ class TestWebAppAuthService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -150,7 +150,7 @@ class TestWebAppAuthService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -232,7 +232,7 @@ class TestWebAppAuthService:
         assert result.id == account.id
         assert result.email == account.email
         assert result.name == account.name
-        assert result.status == AccountStatus.ACTIVE.value
+        assert result.status == AccountStatus.ACTIVE
 
         # Verify database state
         from extensions.ext_database import db
@@ -280,7 +280,7 @@ class TestWebAppAuthService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.BANNED.value,
+            status=AccountStatus.BANNED,
         )
 
         # Hash password
@@ -411,7 +411,7 @@ class TestWebAppAuthService:
         assert result.id == account.id
         assert result.email == account.email
         assert result.name == account.name
-        assert result.status == AccountStatus.ACTIVE.value
+        assert result.status == AccountStatus.ACTIVE
 
         # Verify database state
         from extensions.ext_database import db
@@ -455,7 +455,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.BANNED.value,
+            status=AccountStatus.BANNED,
         )
 
         from extensions.ext_database import db

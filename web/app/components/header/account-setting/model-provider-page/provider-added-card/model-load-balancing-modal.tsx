@@ -159,7 +159,7 @@ const ModelLoadBalancingModal = ({
       )
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        handleRefreshModel(provider, configurateMethod, currentCustomConfigurationModelFixedFields)
+        handleRefreshModel(provider, currentCustomConfigurationModelFixedFields, false)
         onSave?.(provider.provider)
         onClose?.()
       }

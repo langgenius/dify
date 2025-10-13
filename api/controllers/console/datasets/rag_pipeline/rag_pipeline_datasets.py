@@ -1,10 +1,10 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restx import Resource, marshal, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restx import Resource, marshal, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -20,18 +20,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description):
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
+@console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
     @setup_required
     @login_required
@@ -84,6 +73,7 @@ class CreateRagPipelineDatasetApi(Resource):
         return import_info, 201
 
 
+@console_ns.route("/rag/pipeline/empty-dataset")
 class CreateEmptyRagPipelineDatasetApi(Resource):
     @setup_required
     @login_required
@@ -108,7 +98,3 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
             ),
         )
         return marshal(dataset, dataset_detail_fields), 201
-
-
-api.add_resource(CreateRagPipelineDatasetApi, "/rag/pipeline/dataset")
-api.add_resource(CreateEmptyRagPipelineDatasetApi, "/rag/pipeline/empty-dataset")

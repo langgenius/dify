@@ -1,15 +1,15 @@
 const translation = {
   creation: {
     createFromScratch: {
-      title: '空白の知識パイプライン',
+      title: '空白のナレッジパイプライン',
       description: 'データ処理と構造を完全に制御できるカスタムパイプラインをゼロから作成します。',
     },
-    backToKnowledge: '知識に戻る',
+    backToKnowledge: 'ナレッジベースに戻る',
     caution: '注意',
     importDSL: 'DSLファイルからインポートする',
     errorTip: 'ナレッジベースの作成に失敗しました',
-    createKnowledge: '知識を創造する',
-    successTip: '知識ベースが正常に作成されました',
+    createKnowledge: 'ナレッジベースを作成する',
+    successTip: 'ナレッジベースが正常に作成されました',
   },
   templates: {
     customized: 'カスタマイズされた',
@@ -21,10 +21,10 @@ const translation = {
     preview: 'プレビュー',
     dataSource: 'データソース',
     editInfo: '情報を編集する',
-    exportPipeline: '輸出パイプライン',
+    exportPipeline: 'パイプラインをエクスポートする',
     saveAndProcess: '保存して処理する',
     backToDataSource: 'データソースに戻る',
-    useTemplate: 'この知識パイプラインを使用してください',
+    useTemplate: 'このナレッジパイプラインを使用してください',
     process: 'プロセス',
   },
   deletePipeline: {
@@ -37,7 +37,7 @@ const translation = {
       tip: '<CustomLink>ドキュメントに移動</CustomLink>して、ドキュメントを追加または管理してください。',
     },
     error: {
-      message: '知識パイプラインの公開に失敗しました',
+      message: 'ナレッジパイプラインの公開に失敗しました',
     },
   },
   publishTemplate: {
@@ -77,11 +77,11 @@ const translation = {
   inputFieldPanel: {
     uniqueInputs: {
       title: '各入口のユニークな入力',
-      tooltip: 'ユニークな入力は、選択したデータソースおよびその下流ノードにのみアクセス可能です。他のデータソースを選択する際、ユーザーはこれを記入する必要はありません。最初のステップ（データソース）には、データソース変数で参照される入力フィールドのみが表示されます。他のフィールドは、第二のステップ（ドキュメントの処理）で表示されます。',
+      tooltip: 'ユニークな入力は選択したデータソースとその下流ノードのみがアクセス可能です。他のデータソースを選択する際、ユーザーはこれを記入する必要がありません。データソース変数で参照される入力フィールドのみが最初のステップ（データソース）に表示され、他のフィールドは第二のステップ（ドキュメント処理）で表示されます。',
     },
     globalInputs: {
       title: 'すべての入口に対するグローバル入力',
-      tooltip: 'グローバル入力はすべてのノードで共有されます。ユーザーは任意のデータソースを選択するときにそれらを入力する必要があります。たとえば、区切り文字や最大チャンク長のようなフィールドは、複数のデータソースに一様に適用できます。データソース変数によって参照される入力フィールドのみが最初のステップ（データソース）に表示されます。他のフィールドは2番目のステップ（文書処理）に表示されます。',
+      tooltip: 'グローバル入力はすべてのノードで共有されます。ユーザーは任意のデータソースを選択する際にこれらを入力する必要があります。区切り文字や最大チャンク長などのフィールドは複数のデータソースに一様に適用できます。データソース変数で参照される入力フィールドのみが最初のステップ（データソース）に表示され、他のフィールドは第二のステップ（ドキュメント処理）に表示されます。',
     },
     preview: {
       stepOneTitle: 'データソース',
@@ -147,19 +147,19 @@ const translation = {
       content: 'この操作は永久的です。以前の方法に戻すことはできません。変換することを確認してください。',
     },
     warning: 'この操作は元に戻せません。',
-    title: '知識パイプラインに変換する',
+    title: 'ナレッジパイプラインに変換する',
     successMessage: 'データセットをパイプラインに正常に変換しました',
     errorMessage: 'データセットをパイプラインに変換できませんでした',
-    descriptionChunk1: '既存の知識ベースを文書処理のためにナレッジパイプラインを使用するように変換できます。',
+    descriptionChunk1: '既存のナレッジベースを文書処理のためにナレッジパイプラインを使用するように変換できます。',
     descriptionChunk2: '— よりオープンで柔軟なアプローチを採用し、私たちのマーケットプレイスからのプラグインへのアクセスを提供します。これにより、すべての将来のドキュメントに新しい処理方法が適用されることになります。',
   },
-  knowledgeNameAndIcon: '知識の名前とアイコン',
+  knowledgeNameAndIcon: 'ナレッジベースの名前とアイコン',
   inputField: '入力フィールド',
   pipelineNameAndIcon: 'パイプライン名とアイコン',
   knowledgePermissions: '権限',
   knowledgeNameAndIconPlaceholder: 'ナレッジベースの名前を入力してください',
   editPipelineInfo: 'パイプライン情報を編集する',
-  knowledgeDescription: '知識の説明',
+  knowledgeDescription: 'ナレッジベースの説明',
   knowledgeDescriptionPlaceholder: 'このナレッジベースに何が含まれているかを説明してください。詳細な説明は、AIがデータセットの内容により正確にアクセスできるようにします。空の場合、Difyはデフォルトのヒット戦略を使用します。（オプション）',
 }
 

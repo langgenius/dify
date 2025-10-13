@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Вимкнути все',
     selectAll: 'Вибрати все',
     config: 'Конфігурація',
+    yes: 'Так',
+    no: 'Ні',
+    deleteConfirmTitle: 'Видалити?',
+    confirmAction: 'Будь ласка, підтвердіть свої дії.',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -501,6 +505,8 @@ const translation = {
       editModelCredential: 'Редагувати облікові дані моделі',
       customModelCredentialsDeleteTip: 'Облікові дані використовуються і не можуть бути видалені',
     },
+    parametersInvalidRemoved: 'Деякі параметри є недійсними і були видалені',
+    installDataSourceProvider: 'Встановіть постачальників джерел даних',
   },
   dataSource: {
     add: 'Додати джерело даних',

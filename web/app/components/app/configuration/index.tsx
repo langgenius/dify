@@ -284,18 +284,28 @@ const Configuration: FC = () => {
       setRerankSettingModalOpen(true)
 
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
+    const {
+      top_k,
+      score_threshold,
+      reranking_model,
+      reranking_mode,
+      weights,
+      reranking_enable,
+    } = restConfigs
 
-    const retrievalConfig = getMultipleRetrievalConfig({
-      top_k: restConfigs.top_k,
-      score_threshold: restConfigs.score_threshold,
-      reranking_model: restConfigs.reranking_model && {
-        provider: restConfigs.reranking_model.reranking_provider_name,
-        model: restConfigs.reranking_model.reranking_model_name,
-      },
-      reranking_mode: restConfigs.reranking_mode,
-      weights: restConfigs.weights,
-      reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets, dataSets, {
+    const oldRetrievalConfig = {
+      top_k,
+      score_threshold,
+      reranking_model: (reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
+        provider: reranking_model.reranking_provider_name,
+        model: reranking_model.reranking_model_name,
+      } : undefined,
+      reranking_mode,
+      weights,
+      reranking_enable,
+    }
+
+    const retrievalConfig = getMultipleRetrievalConfig(oldRetrievalConfig, newDatasets, dataSets, {
       provider: currentRerankProvider?.provider,
       model: currentRerankModel?.model,
     })
@@ -464,12 +474,13 @@ const Configuration: FC = () => {
         provider,
         modelId,
         completionParams,
+        isAdvancedMode,
       )
       if (Object.keys(removedDetails).length)
         Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
       setCompletionParams(filtered)
     }
-    catch (e) {
+    catch {
       Toast.notify({ type: 'error', message: t('common.error') })
       setCompletionParams({})
     }

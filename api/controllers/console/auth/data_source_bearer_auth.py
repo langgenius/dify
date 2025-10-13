@@ -2,7 +2,7 @@ from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import ApiKeyAuthFailedError
 from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -10,6 +10,7 @@ from services.auth.api_key_auth_service import ApiKeyAuthService
 from ..wraps import account_initialization_required, setup_required
 
 
+@console_ns.route("/api-key-auth/data-source")
 class ApiKeyAuthDataSource(Resource):
     @setup_required
     @login_required
@@ -33,6 +34,7 @@ class ApiKeyAuthDataSource(Resource):
         return {"sources": []}
 
 
+@console_ns.route("/api-key-auth/data-source/binding")
 class ApiKeyAuthDataSourceBinding(Resource):
     @setup_required
     @login_required
@@ -54,6 +56,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/api-key-auth/data-source/<uuid:binding_id>")
 class ApiKeyAuthDataSourceBindingDelete(Resource):
     @setup_required
     @login_required
@@ -66,8 +69,3 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
         ApiKeyAuthService.delete_provider_auth(current_user.current_tenant_id, binding_id)
 
         return {"result": "success"}, 204
-
-
-api.add_resource(ApiKeyAuthDataSource, "/api-key-auth/data-source")
-api.add_resource(ApiKeyAuthDataSourceBinding, "/api-key-auth/data-source/binding")
-api.add_resource(ApiKeyAuthDataSourceBindingDelete, "/api-key-auth/data-source/<uuid:binding_id>")

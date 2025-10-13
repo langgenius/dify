@@ -155,7 +155,10 @@ class OpsTraceManager:
             if key in tracing_config:
                 if "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
-                    new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    if current_trace_config:
+                        new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    else:
+                        new_config[key] = tracing_config[key]
                 else:
                     # Otherwise, encrypt the key
                     new_config[key] = encrypt_token(tenant_id, tracing_config[key])

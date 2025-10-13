@@ -147,7 +147,7 @@ class TestRedisChannel:
         """Test deserializing an abort command."""
         channel = RedisChannel(MagicMock(), "test:key")
 
-        abort_data = {"command_type": CommandType.ABORT.value}
+        abort_data = {"command_type": CommandType.ABORT}
         command = channel._deserialize_command(abort_data)
 
         assert isinstance(command, AbortCommand)
@@ -158,7 +158,7 @@ class TestRedisChannel:
         channel = RedisChannel(MagicMock(), "test:key")
 
         # For now, only ABORT is supported, but test generic handling
-        generic_data = {"command_type": CommandType.ABORT.value}
+        generic_data = {"command_type": CommandType.ABORT}
         command = channel._deserialize_command(generic_data)
 
         assert command is not None

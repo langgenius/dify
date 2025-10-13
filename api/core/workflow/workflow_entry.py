@@ -227,7 +227,7 @@ class WorkflowEntry:
             "height": node_height,
             "type": "custom",
             "data": {
-                "type": NodeType.START.value,
+                "type": NodeType.START,
                 "title": "Start",
                 "desc": "Start",
             },
@@ -402,6 +402,8 @@ class WorkflowEntry:
             input_value = user_inputs.get(node_variable)
             if not input_value:
                 input_value = user_inputs.get(node_variable_key)
+            if input_value is None:
+                continue
 
             if isinstance(input_value, dict) and "type" in input_value and "transfer_method" in input_value:
                 input_value = file_factory.build_from_mapping(mapping=input_value, tenant_id=tenant_id)
@@ -414,4 +416,8 @@ class WorkflowEntry:
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
+                # In single run, the input_value is set as the LLM's structured output value within the variable_pool.
+                if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
+                    input_value = {variable_key_list[1]: input_value}
+                    variable_key_list = variable_key_list[0:1]
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)

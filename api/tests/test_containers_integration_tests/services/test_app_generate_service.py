@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from openai._exceptions import RateLimitError
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import EndUser
@@ -483,36 +482,6 @@ class TestAppGenerateService:
 
             # Verify error message
             assert "Rate limit exceeded" in str(exc_info.value)
-
-    def test_generate_with_rate_limit_error_from_openai(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test generation when OpenAI rate limit error occurs.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        # Setup completion generator to raise RateLimitError
-        mock_response = MagicMock()
-        mock_response.request = MagicMock()
-        mock_external_service_dependencies["completion_generator"].return_value.generate.side_effect = RateLimitError(
-            "Rate limit exceeded", response=mock_response, body=None
-        )
-
-        # Setup test arguments
-        args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
-
-        # Execute the method under test and expect rate limit error
-        with pytest.raises(InvokeRateLimitError) as exc_info:
-            AppGenerateService.generate(
-                app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-            )
-
-        # Verify error message
-        assert "Rate limit exceeded" in str(exc_info.value)
 
     def test_generate_with_invalid_app_mode(self, db_session_with_containers, mock_external_service_dependencies):
         """

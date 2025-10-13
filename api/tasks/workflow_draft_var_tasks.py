@@ -5,15 +5,10 @@ These tasks provide asynchronous storage capabilities for workflow execution dat
 improving performance by offloading storage operations to background workers.
 """
 
-import logging
-
 from celery import shared_task  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
-
-_logger = logging.getLogger(__name__)
-
 from services.workflow_draft_variable_service import DraftVarFileDeletion, WorkflowDraftVariableService
 
 

@@ -4,6 +4,7 @@ import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { DatasetAttr } from '@/types/feature'
 import pkg from '../package.json'
+import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const getBooleanConfig = (
   envVar: string | undefined,
@@ -403,3 +404,24 @@ export const ZENDESK_FIELD_IDS = {
 export const APP_VERSION = pkg.version
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
+
+export const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
+
+export const STOP_PARAMETER_RULE: ModelParameterRule = {
+  default: [],
+  help: {
+    en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
+    zh_Hans: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
+  },
+  label: {
+    en_US: 'Stop sequences',
+    zh_Hans: '停止序列',
+  },
+  name: 'stop',
+  required: false,
+  type: 'tag',
+  tagPlaceholder: {
+    en_US: 'Enter sequence and press Tab',
+    zh_Hans: '输入序列并按 Tab 键',
+  },
+}

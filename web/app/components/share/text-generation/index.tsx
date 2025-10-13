@@ -363,7 +363,8 @@ const TextGeneration: FC<IMainProps> = ({
     (async () => {
       if (!appData || !appParams)
         return
-      !isWorkflow && fetchSavedMessage()
+      if (!isWorkflow)
+        fetchSavedMessage()
       const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)

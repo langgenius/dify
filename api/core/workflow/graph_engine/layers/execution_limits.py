@@ -147,4 +147,4 @@ class ExecutionLimitsLayer(GraphEngineLayer):
             self.logger.debug("Abort command sent to engine")
 
         except Exception:
-            self.logger.exception("Failed to send abort command: %s")
+            self.logger.exception("Failed to send abort command")

@@ -262,6 +262,14 @@ class VariableTruncator:
         target_length = self._array_element_limit
 
         for i, item in enumerate(value):
+            # Dirty fix:
+            # The output of `Start` node may contain list of `File` elements,
+            # causing `AssertionError` while invoking `_truncate_json_primitives`.
+            #
+            # This check ensures that `list[File]` are handled separately
+            if isinstance(item, File):
+                truncated_value.append(item)
+                continue
             if i >= target_length:
                 return _PartResult(truncated_value, used_size, True)
             if i > 0:

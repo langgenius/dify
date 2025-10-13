@@ -144,7 +144,7 @@ class TestWebConversationService:
             system_instruction=fake.text(max_nb_chars=300),
             system_instruction_tokens=50,
             status="normal",
-            invoke_from=InvokeFrom.WEB_APP.value,
+            invoke_from=InvokeFrom.WEB_APP,
             from_source="console" if isinstance(user, Account) else "api",
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,

@@ -34,7 +34,7 @@ const ClassItem: FC<Props> = ({
   filterVar,
 }) => {
   const { t } = useTranslation()
-  const [instanceId, setInstanceId] = useState(uniqueId())
+  const [instanceId, setInstanceId] = useState(() => uniqueId())
 
   useEffect(() => {
     setInstanceId(`${nodeId}-${uniqueId()}`)

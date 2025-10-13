@@ -3,6 +3,7 @@ import type { FormValue, ModelParameterRule } from '@/app/components/header/acco
 export const mergeValidCompletionParams = (
   oldParams: FormValue | undefined,
   rules: ModelParameterRule[],
+  isAdvancedMode: boolean = false,
 ): { params: FormValue; removedDetails: Record<string, string> } => {
   if (!oldParams || Object.keys(oldParams).length === 0)
     return { params: {}, removedDetails: {} }
@@ -16,6 +17,11 @@ export const mergeValidCompletionParams = (
   const removedDetails: Record<string, string> = {}
 
   Object.entries(oldParams).forEach(([key, value]) => {
+    if (key === 'stop' && isAdvancedMode) {
+      // keep stop in advanced mode
+      nextParams[key] = value
+      return
+    }
     const rule = ruleMap[key]
     if (!rule) {
       removedDetails[key] = 'unsupported'
@@ -74,9 +80,10 @@ export const fetchAndMergeValidCompletionParams = async (
   provider: string,
   modelId: string,
   oldParams: FormValue | undefined,
+  isAdvancedMode: boolean = false,
 ): Promise<{ params: FormValue; removedDetails: Record<string, string> }> => {
   const { fetchModelParameterRules } = await import('@/service/common')
   const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
   const { data: parameterRules } = await fetchModelParameterRules(url)
-  return mergeValidCompletionParams(oldParams, parameterRules ?? [])
+  return mergeValidCompletionParams(oldParams, parameterRules ?? [], isAdvancedMode)
 }

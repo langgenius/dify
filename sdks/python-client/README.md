@@ -10,6 +10,8 @@ First, install `dify-client` python sdk package:
 pip install dify-client
 ```
 
+### Synchronous Usage
+
 Write your code with sdk:
 
 - completion generate with `blocking` response_mode
@@ -220,4 +222,188 @@ answer = result.get("data").get("outputs")
 
 print(answer["answer"])
 
+```
+
+- Dataset Management
+
+```python
+from dify_client import KnowledgeBaseClient
+
+api_key = "your_api_key"
+dataset_id = "your_dataset_id"
+
+# Use context manager to ensure proper resource cleanup
+with KnowledgeBaseClient(api_key, dataset_id) as kb_client:
+    # Get dataset information
+    dataset_info = kb_client.get_dataset()
+    dataset_info.raise_for_status()
+    print(dataset_info.json())
+
+    # Update dataset configuration
+    update_response = kb_client.update_dataset(
+        name="Updated Dataset Name",
+        description="Updated description",
+        indexing_technique="high_quality"
+    )
+    update_response.raise_for_status()
+    print(update_response.json())
+
+    # Batch update document status
+    batch_response = kb_client.batch_update_document_status(
+        action="enable",
+        document_ids=["doc_id_1", "doc_id_2", "doc_id_3"]
+    )
+    batch_response.raise_for_status()
+    print(batch_response.json())
+```
+
+- Conversation Variables Management
+
+```python
+from dify_client import ChatClient
+
+api_key = "your_api_key"
+
+# Use context manager to ensure proper resource cleanup
+with ChatClient(api_key) as chat_client:
+    # Get all conversation variables
+    variables = chat_client.get_conversation_variables(
+        conversation_id="conversation_id",
+        user="user_id"
+    )
+    variables.raise_for_status()
+    print(variables.json())
+
+    # Update a specific conversation variable
+    update_var = chat_client.update_conversation_variable(
+        conversation_id="conversation_id",
+        variable_id="variable_id",
+        value="new_value",
+        user="user_id"
+    )
+    update_var.raise_for_status()
+    print(update_var.json())
+```
+
+### Asynchronous Usage
+
+The SDK provides full async/await support for all API operations using `httpx.AsyncClient`. All async clients mirror their synchronous counterparts but require `await` for method calls.
+
+- async chat with `blocking` response_mode
+
+```python
+import asyncio
+from dify_client import AsyncChatClient
+
+api_key = "your_api_key"
+
+async def main():
+    # Use async context manager for proper resource cleanup
+    async with AsyncChatClient(api_key) as client:
+        response = await client.create_chat_message(
+            inputs={},
+            query="Hello, how are you?",
+            user="user_id",
+            response_mode="blocking"
+        )
+        response.raise_for_status()
+        result = response.json()
+        print(result.get('answer'))
+
+# Run the async function
+asyncio.run(main())
+```
+
+- async completion with `streaming` response_mode
+
+```python
+import asyncio
+import json
+from dify_client import AsyncCompletionClient
+
+api_key = "your_api_key"
+
+async def main():
+    async with AsyncCompletionClient(api_key) as client:
+        response = await client.create_completion_message(
+            inputs={"query": "What's the weather?"},
+            response_mode="streaming",
+            user="user_id"
+        )
+        response.raise_for_status()
+
+        # Stream the response
+        async for line in response.aiter_lines():
+            if line.startswith('data:'):
+                data = line[5:].strip()
+                if data:
+                    chunk = json.loads(data)
+                    print(chunk.get('answer', ''), end='', flush=True)
+
+asyncio.run(main())
+```
+
+- async workflow execution
+
+```python
+import asyncio
+from dify_client import AsyncWorkflowClient
+
+api_key = "your_api_key"
+
+async def main():
+    async with AsyncWorkflowClient(api_key) as client:
+        response = await client.run(
+            inputs={"query": "What is machine learning?"},
+            response_mode="blocking",
+            user="user_id"
+        )
+        response.raise_for_status()
+        result = response.json()
+        print(result.get("data").get("outputs"))
+
+asyncio.run(main())
+```
+
+- async dataset management
+
+```python
+import asyncio
+from dify_client import AsyncKnowledgeBaseClient
+
+api_key = "your_api_key"
+dataset_id = "your_dataset_id"
+
+async def main():
+    async with AsyncKnowledgeBaseClient(api_key, dataset_id) as kb_client:
+        # Get dataset information
+        dataset_info = await kb_client.get_dataset()
+        dataset_info.raise_for_status()
+        print(dataset_info.json())
+
+        # List documents
+        docs = await kb_client.list_documents(page=1, page_size=10)
+        docs.raise_for_status()
+        print(docs.json())
+
+asyncio.run(main())
+```
+
+**Benefits of Async Usage:**
+
+- **Better Performance**: Handle multiple concurrent API requests efficiently
+- **Non-blocking I/O**: Don't block the event loop during network operations
+- **Scalability**: Ideal for applications handling many simultaneous requests
+- **Modern Python**: Leverages Python's native async/await syntax
+
+**Available Async Clients:**
+
+- `AsyncDifyClient` - Base async client
+- `AsyncChatClient` - Async chat operations
+- `AsyncCompletionClient` - Async completion operations
+- `AsyncWorkflowClient` - Async workflow operations
+- `AsyncKnowledgeBaseClient` - Async dataset/knowledge base operations
+- `AsyncWorkspaceClient` - Async workspace operations
+
+```
 ```

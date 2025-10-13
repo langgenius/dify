@@ -47,7 +47,8 @@ class TestDraftVariableSaver:
 
     def test__should_variable_be_visible(self):
         mock_session = MagicMock(spec=Session)
-        mock_user = Account(id=str(uuid.uuid4()))
+        mock_user = Account(name="test", email="test@example.com")
+        mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=mock_session,

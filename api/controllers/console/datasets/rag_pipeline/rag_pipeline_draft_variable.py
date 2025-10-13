@@ -1,24 +1,22 @@
 import logging
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from flask import Response
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.workflow_draft_variable import (
-    _WORKFLOW_DRAFT_VARIABLE_FIELDS,
-    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
+    _WORKFLOW_DRAFT_VARIABLE_FIELDS,  # type: ignore[private-usage]
+    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,  # type: ignore[private-usage]
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from core.variables.segment_group import SegmentGroup
-from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
@@ -32,32 +30,6 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
-
-
-def _convert_values_to_json_serializable_object(value: Segment) -> Any:
-    if isinstance(value, FileSegment):
-        return value.value.model_dump()
-    elif isinstance(value, ArrayFileSegment):
-        return [i.model_dump() for i in value.value]
-    elif isinstance(value, SegmentGroup):
-        return [_convert_values_to_json_serializable_object(i) for i in value.value]
-    else:
-        return value.value
-
-
-def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
-    value = variable.get_value()
-    # create a copy of the value to avoid affecting the model cache.
-    value = value.model_copy(deep=True)
-    # Refresh the url signature before returning it to client.
-    if isinstance(value, FileSegment):
-        file = value.value
-        file.remote_url = file.generate_url()
-    elif isinstance(value, ArrayFileSegment):
-        files = value.value
-        for file in files:
-            file.remote_url = file.generate_url()
-    return _convert_values_to_json_serializable_object(value)
 
 
 def _create_pagination_parser():
@@ -104,13 +76,14 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_rag_pipeline
     def wrapper(*args, **kwargs):
-        if not isinstance(current_user, Account) or not current_user.is_editor:
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
         return f(*args, **kwargs)
 
     return wrapper
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
 class RagPipelineVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
@@ -168,6 +141,7 @@ def validate_node_id(node_id: str) -> NoReturn | None:
     return None
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
 class RagPipelineNodeVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
@@ -190,6 +164,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
         return Response("", 204)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>")
 class RagPipelineVariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
@@ -284,6 +259,7 @@ class RagPipelineVariableApi(Resource):
         return Response("", 204)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class RagPipelineVariableResetApi(Resource):
     @_api_prerequisite
     def put(self, pipeline: Pipeline, variable_id: str):
@@ -325,6 +301,7 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
     return draft_vars
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables")
 class RagPipelineSystemVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
@@ -332,6 +309,7 @@ class RagPipelineSystemVariableCollectionApi(Resource):
         return _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID)
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
 class RagPipelineEnvironmentVariableCollectionApi(Resource):
     @_api_prerequisite
     def get(self, pipeline: Pipeline):
@@ -364,26 +342,3 @@ class RagPipelineEnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
-
-
-api.add_resource(
-    RagPipelineVariableCollectionApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables",
-)
-api.add_resource(
-    RagPipelineNodeVariableCollectionApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables",
-)
-api.add_resource(
-    RagPipelineVariableApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>"
-)
-api.add_resource(
-    RagPipelineVariableResetApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset"
-)
-api.add_resource(
-    RagPipelineSystemVariableCollectionApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables"
-)
-api.add_resource(
-    RagPipelineEnvironmentVariableCollectionApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables",
-)

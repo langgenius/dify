@@ -199,7 +199,7 @@ class TestWorkflowAppService:
             elapsed_time=1.5,
             total_tokens=100,
             total_steps=3,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
@@ -215,7 +215,7 @@ class TestWorkflowAppService:
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
             created_from="service-api",
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
@@ -356,7 +356,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.0 + i,
                 total_tokens=100 + i * 10,
                 total_steps=3,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status != "running" else None,
@@ -371,7 +371,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="service-api",
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
@@ -464,7 +464,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.0,
                 total_tokens=100,
                 total_steps=3,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=timestamp,
                 finished_at=timestamp + timedelta(minutes=1),
@@ -479,7 +479,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="service-api",
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=timestamp,
             )
@@ -571,7 +571,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.0,
                 total_tokens=100,
                 total_steps=3,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1),
@@ -586,7 +586,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="service-api",
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
@@ -701,7 +701,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.0,
                 total_tokens=100,
                 total_steps=3,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1),
@@ -716,7 +716,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="service-api",
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
@@ -743,7 +743,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.0,
                 total_tokens=100,
                 total_steps=3,
-                created_by_role=CreatorUserRole.END_USER.value,
+                created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i + 10),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 11),
@@ -758,7 +758,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="web-app",
-                created_by_role=CreatorUserRole.END_USER.value,
+                created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i + 10),
             )
@@ -780,14 +780,14 @@ class TestWorkflowAppService:
             limit=20,
         )
         assert result_session_filter["total"] == 2
-        assert all(log.created_by_role == CreatorUserRole.END_USER.value for log in result_session_filter["data"])
+        assert all(log.created_by_role == CreatorUserRole.END_USER for log in result_session_filter["data"])
 
         # Test filtering by account email
         result_account_filter = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers, app_model=app, created_by_account=account.email, page=1, limit=20
         )
         assert result_account_filter["total"] == 3
-        assert all(log.created_by_role == CreatorUserRole.ACCOUNT.value for log in result_account_filter["data"])
+        assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_account_filter["data"])
 
         # Test filtering by non-existent session ID
         result_no_session = service.get_paginate_workflow_app_logs(
@@ -853,7 +853,7 @@ class TestWorkflowAppService:
             elapsed_time=1.0,
             total_tokens=100,
             total_steps=3,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC) + timedelta(minutes=1),
@@ -869,7 +869,7 @@ class TestWorkflowAppService:
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
             created_from="service-api",
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
@@ -943,7 +943,7 @@ class TestWorkflowAppService:
             elapsed_time=0.0,  # Edge case: 0 elapsed time
             total_tokens=0,  # Edge case: 0 tokens
             total_steps=0,  # Edge case: 0 steps
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
@@ -959,7 +959,7 @@ class TestWorkflowAppService:
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
             created_from="service-api",
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
@@ -1098,7 +1098,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.5,
                 total_tokens=100,
                 total_steps=3,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status == "succeeded" else None,
@@ -1113,7 +1113,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="service-api",
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
@@ -1198,7 +1198,7 @@ class TestWorkflowAppService:
                 elapsed_time=1.5,
                 total_tokens=100,
                 total_steps=3,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
                 finished_at=datetime.now(UTC) + timedelta(minutes=i + 1) if status != "running" else None,
@@ -1213,7 +1213,7 @@ class TestWorkflowAppService:
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
                 created_from="service-api",
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
@@ -1300,7 +1300,7 @@ class TestWorkflowAppService:
                     elapsed_time=1.5,
                     total_tokens=100,
                     total_steps=3,
-                    created_by_role=CreatorUserRole.ACCOUNT.value,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
                     created_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j),
                     finished_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j + 1),
@@ -1315,7 +1315,7 @@ class TestWorkflowAppService:
                     workflow_id=workflow.id,
                     workflow_run_id=workflow_run.id,
                     created_from="service-api",
-                    created_by_role=CreatorUserRole.ACCOUNT.value,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
                     created_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j),
                 )

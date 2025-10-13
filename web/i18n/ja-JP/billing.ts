@@ -36,6 +36,8 @@ const translation = {
     save: '節約 ',
     free: '無料',
     annualBilling: '年次請求',
+    taxTip: 'すべてのサブスクリプション料金（月額／年額）は、適用される税金（例：消費税、付加価値税）を含みません。',
+    taxTipSecond: 'お客様の地域に適用税がない場合、チェックアウト時に税金は表示されず、サブスクリプション期間中に追加料金が請求されることもありません。',
     comparePlanAndFeatures: 'プランと機能を比較する',
     priceTip: 'ワークスペース/',
     currentPlan: '現在のプラン',

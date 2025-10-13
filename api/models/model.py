@@ -186,13 +186,13 @@ class App(Base):
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-                if provider_type == ToolProviderType.API.value:
+                if provider_type == ToolProviderType.API:
                     try:
                         uuid.UUID(provider_id)
                     except Exception:
                         continue
                     api_provider_ids.append(provider_id)
-                if provider_type == ToolProviderType.BUILT_IN.value:
+                if provider_type == ToolProviderType.BUILT_IN:
                     try:
                         # check if it's hardcoded
                         try:
@@ -251,23 +251,23 @@ class App(Base):
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
 
-                if provider_type == ToolProviderType.API.value:
+                if provider_type == ToolProviderType.API:
                     if uuid.UUID(provider_id) not in existing_api_providers:
                         deleted_tools.append(
                             {
-                                "type": ToolProviderType.API.value,
+                                "type": ToolProviderType.API,
                                 "tool_name": tool["tool_name"],
                                 "provider_id": provider_id,
                             }
                         )
 
-                if provider_type == ToolProviderType.BUILT_IN.value:
+                if provider_type == ToolProviderType.BUILT_IN:
                     generic_provider_id = GenericProviderID(provider_id)
 
                     if not existing_builtin_providers[generic_provider_id.provider_name]:
                         deleted_tools.append(
                             {
-                                "type": ToolProviderType.BUILT_IN.value,
+                                "type": ToolProviderType.BUILT_IN,
                                 "tool_name": tool["tool_name"],
                                 "provider_id": provider_id,  # use the original one
                             }
@@ -1044,7 +1044,7 @@ class Message(Base):
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1055,7 +1055,7 @@ class Message(Base):
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             elif "image-preview" in url:
                 # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1154,7 +1154,7 @@ class Message(Base):
 
         files: list[File] = []
         for message_file in message_files:
-            if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
+            if message_file.transfer_method == FileTransferMethod.LOCAL_FILE:
                 if message_file.upload_file_id is None:
                     raise ValueError(f"MessageFile {message_file.id} is a local file but has no upload_file_id")
                 file = file_factory.build_from_mapping(
@@ -1166,7 +1166,7 @@ class Message(Base):
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL.value:
+            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL:
                 if message_file.url is None:
                     raise ValueError(f"MessageFile {message_file.id} is a remote url but has no url")
                 file = file_factory.build_from_mapping(
@@ -1179,7 +1179,7 @@ class Message(Base):
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+            elif message_file.transfer_method == FileTransferMethod.TOOL_FILE:
                 if message_file.upload_file_id is None:
                     assert message_file.url is not None
                     message_file.upload_file_id = message_file.url.split("/")[-1].split(".")[0]
@@ -1731,7 +1731,7 @@ class MessageChain(Base):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input = mapped_column(sa.Text, nullable=True)
     output = mapped_column(sa.Text, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class MessageAgentThought(Base):
@@ -1769,7 +1769,7 @@ class MessageAgentThought(Base):
     latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
     @property
     def files(self) -> list[Any]:
@@ -1872,7 +1872,7 @@ class DatasetRetrieverResource(Base):
     index_node_hash = mapped_column(sa.Text, nullable=True)
     retriever_from = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class Tag(Base):

@@ -38,7 +38,7 @@ const Annotation: FC<Props> = (props) => {
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== 'completion')
-  const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
+  const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
   const { plan, enableBilling } = useProviderContext()
   const isAnnotationFull = enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
@@ -48,7 +48,7 @@ const Annotation: FC<Props> = (props) => {
   const [list, setList] = useState<AnnotationItem[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  const [controlUpdateList, setControlUpdateList] = useState(Date.now())
+  const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
   const [isShowViewModal, setIsShowViewModal] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])

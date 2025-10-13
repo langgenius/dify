@@ -102,6 +102,8 @@ const translation = {
     annualBilling: 'Fatturazione annuale',
     documentsRequestQuotaTooltip: 'Specifica il numero totale di azioni che un\'area di lavoro può eseguire al minuto all\'interno della base di conoscenza, compresi la creazione, l\'eliminazione, gli aggiornamenti dei dataset, il caricamento di documenti, le modifiche, l\'archiviazione e le query sulla base di conoscenza. Questa metrica viene utilizzata per valutare le prestazioni delle richieste alla base di conoscenza. Ad esempio, se un utente di Sandbox esegue 10 test consecutivi in un minuto, la sua area di lavoro sarà temporaneamente limitata dall\'eseguire le seguenti azioni per il minuto successivo: creazione, eliminazione, aggiornamenti dei dataset e caricamento o modifica di documenti.',
     startBuilding: 'Inizia a costruire',
+    taxTip: 'Tutti i prezzi degli abbonamenti (mensili/annuali) non includono le tasse applicabili (ad esempio, IVA, imposta sulle vendite).',
+    taxTipSecond: 'Se nella tua regione non ci sono requisiti fiscali applicabili, nessuna tassa apparirà al momento del pagamento e non ti verranno addebitate spese aggiuntive per l\'intera durata dell\'abbonamento.',
   },
   plans: {
     sandbox: {

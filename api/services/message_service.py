@@ -217,7 +217,7 @@ class MessageService:
     @classmethod
     def get_suggested_questions_after_answer(
         cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str, invoke_from: InvokeFrom
-    ) -> list[Message]:
+    ) -> list[str]:
         if not user:
             raise ValueError("user cannot be None")
 
@@ -288,7 +288,7 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions: list[Message] = LLMGenerator.generate_suggested_questions_after_answer(
+            questions: list[str] = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
 

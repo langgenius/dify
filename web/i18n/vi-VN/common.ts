@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Bỏ chọn tất cả',
     selectAll: 'Chọn Tất Cả',
     config: 'Cấu hình',
+    no: 'Không',
+    yes: 'Vâng',
+    deleteConfirmTitle: 'Xóa?',
+    confirmAction: 'Vui lòng xác nhận hành động của bạn.',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -500,6 +504,8 @@ const translation = {
       addNewModelCredential: 'Thêm thông tin xác thực mô hình mới',
       selectModelCredential: 'Chọn thông tin xác thực mô hình',
     },
+    parametersInvalidRemoved: 'Một số tham số không hợp lệ và đã được loại bỏ',
+    installDataSourceProvider: 'Cài đặt các nhà cung cấp nguồn dữ liệu',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',

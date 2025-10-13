@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -127,11 +128,13 @@ class LoopNode(Node):
         try:
             reach_break_condition = False
             if break_conditions:
-                _, _, reach_break_condition = condition_processor.process_conditions(
-                    variable_pool=self.graph_runtime_state.variable_pool,
-                    conditions=break_conditions,
-                    operator=logical_operator,
-                )
+                with contextlib.suppress(ValueError):
+                    _, _, reach_break_condition = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=break_conditions,
+                        operator=logical_operator,
+                    )
+
             if reach_break_condition:
                 loop_count = 0
             cost_tokens = 0
@@ -295,42 +298,11 @@ class LoopNode(Node):
 
         variable_mapping = {}
 
-        # init graph
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
-        from core.workflow.graph import Graph
-        from core.workflow.nodes.node_factory import DifyNodeFactory
+        # Extract loop node IDs statically from graph_config
 
-        # Create minimal GraphInitParams for static analysis
-        graph_init_params = GraphInitParams(
-            tenant_id="",
-            app_id="",
-            workflow_id="",
-            graph_config=graph_config,
-            user_id="",
-            user_from="",
-            invoke_from="",
-            call_depth=0,
-        )
+        loop_node_ids = cls._extract_loop_node_ids_from_config(graph_config, node_id)
 
-        # Create minimal GraphRuntimeState for static analysis
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(),
-            start_at=0,
-        )
-
-        # Create node factory for static analysis
-        node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
-
-        loop_graph = Graph.init(
-            graph_config=graph_config,
-            node_factory=node_factory,
-            root_node_id=typed_node_data.start_node_id,
-        )
-
-        if not loop_graph:
-            raise ValueError("loop graph not found")
-
-        # Get node configs from graph_config instead of non-existent node_id_config_mapping
+        # Get node configs from graph_config
         node_configs = {node["id"]: node for node in graph_config.get("nodes", []) if "id" in node}
         for sub_node_id, sub_node_config in node_configs.items():
             if sub_node_config.get("data", {}).get("loop_id") != node_id:
@@ -371,11 +343,34 @@ class LoopNode(Node):
                 variable_mapping[f"{node_id}.{loop_variable.label}"] = selector
 
         # remove variable out from loop
-        variable_mapping = {
-            key: value for key, value in variable_mapping.items() if value[0] not in loop_graph.node_ids
-        }
+        variable_mapping = {key: value for key, value in variable_mapping.items() if value[0] not in loop_node_ids}
 
         return variable_mapping
+
+    @classmethod
+    def _extract_loop_node_ids_from_config(cls, graph_config: Mapping[str, Any], loop_node_id: str) -> set[str]:
+        """
+        Extract node IDs that belong to a specific loop from graph configuration.
+
+        This method statically analyzes the graph configuration to find all nodes
+        that are part of the specified loop, without creating actual node instances.
+
+        :param graph_config: the complete graph configuration
+        :param loop_node_id: the ID of the loop node
+        :return: set of node IDs that belong to the loop
+        """
+        loop_node_ids = set()
+
+        # Find all nodes that belong to this loop
+        nodes = graph_config.get("nodes", [])
+        for node in nodes:
+            node_data = node.get("data", {})
+            if node_data.get("loop_id") == loop_node_id:
+                node_id = node.get("id")
+                if node_id:
+                    loop_node_ids.add(node_id)
+
+        return loop_node_ids
 
     @staticmethod
     def _get_segment_for_constant(var_type: SegmentType, original_value: Any) -> Segment:

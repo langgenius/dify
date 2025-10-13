@@ -15,7 +15,7 @@ import { useNodeLoopInteractions } from './hooks'
 
 const Node: FC<NodeProps<LoopNodeType>> = ({
   id,
-  data,
+  data: _data,
 }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()

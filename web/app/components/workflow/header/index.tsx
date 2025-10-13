@@ -38,7 +38,7 @@ const Header = ({
 
   return (
     <div
-      className='absolute left-0 top-0 z-10 flex h-14 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3'
+      className='absolute left-0 top-7 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3'
     >
       {(inWorkflowCanvas || isPipelineCanvas) && maximizeCanvas && <div className='h-14 w-[52px]' />}
       {

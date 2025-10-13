@@ -30,7 +30,7 @@ export default function InviteSettingsPage() {
   const { setLocaleOnClient } = useContext(I18n)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
 
   const checkParams = {
     url: '/activate/check',

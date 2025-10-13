@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Создать контент',
+        reasoning_content: 'Содержимое рассуждений',
         usage: 'Информация об использовании модели',
       },
       singleRun: {
@@ -944,6 +945,9 @@ const translation = {
       retrievalSettingIsRequired: 'Настройка извлечения обязательна',
       chunksInput: 'Куски',
       chunksInputTip: 'Входная переменная узла базы знаний - это Чанки. Тип переменной является объектом с определенной схемой JSON, которая должна соответствовать выбранной структуре чанка.',
+      chunksVariableIsRequired: 'Переменная chunks обязательна',
+      embeddingModelIsRequired: 'Требуется модель встраивания',
+      rerankingModelIsRequired: 'Требуется модель перераспределения рангов',
     },
   },
   tracing: {

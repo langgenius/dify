@@ -14,7 +14,7 @@ from models.account import Account
 from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
-from .. import api
+from .. import console_ns
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -86,6 +86,7 @@ def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProvid
     return decorated
 
 
+@console_ns.route("/oauth/provider")
 class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
@@ -108,6 +109,7 @@ class OAuthServerAppApi(Resource):
         )
 
 
+@console_ns.route("/oauth/provider/authorize")
 class OAuthServerUserAuthorizeApi(Resource):
     @setup_required
     @login_required
@@ -125,6 +127,7 @@ class OAuthServerUserAuthorizeApi(Resource):
         )
 
 
+@console_ns.route("/oauth/provider/token")
 class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
@@ -180,6 +183,7 @@ class OAuthServerUserTokenApi(Resource):
             )
 
 
+@console_ns.route("/oauth/provider/account")
 class OAuthServerUserAccountApi(Resource):
     @setup_required
     @oauth_server_client_id_required
@@ -194,9 +198,3 @@ class OAuthServerUserAccountApi(Resource):
                 "timezone": account.timezone,
             }
         )
-
-
-api.add_resource(OAuthServerAppApi, "/oauth/provider")
-api.add_resource(OAuthServerUserAuthorizeApi, "/oauth/provider/authorize")
-api.add_resource(OAuthServerUserTokenApi, "/oauth/provider/token")
-api.add_resource(OAuthServerUserAccountApi, "/oauth/provider/account")

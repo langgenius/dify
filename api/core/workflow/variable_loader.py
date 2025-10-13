@@ -66,8 +66,8 @@ def load_into_variable_pool(
         # NOTE(QuantumGhost): this logic needs to be in sync with
         # `WorkflowEntry.mapping_user_inputs_to_variable_pool`.
         node_variable_list = key.split(".")
-        if len(node_variable_list) < 1:
-            raise ValueError(f"Invalid variable key: {key}. It should have at least one element.")
+        if len(node_variable_list) < 2:
+            raise ValueError(f"Invalid variable key: {key}. It should have at least two elements.")
         if key in user_inputs:
             continue
         node_variable_key = ".".join(node_variable_list[1:])

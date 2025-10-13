@@ -55,13 +55,13 @@ class TiDBVector(BaseVector):
         return Table(
             self._collection_name,
             self._orm_base.metadata,
-            Column(Field.PRIMARY_KEY.value, String(36), primary_key=True, nullable=False),
+            Column(Field.PRIMARY_KEY, String(36), primary_key=True, nullable=False),
             Column(
-                Field.VECTOR.value,
+                Field.VECTOR,
                 VectorType(dim),
                 nullable=False,
             ),
-            Column(Field.TEXT_KEY.value, TEXT, nullable=False),
+            Column(Field.TEXT_KEY, TEXT, nullable=False),
             Column("meta", JSON, nullable=False),
             Column("create_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP")),
             Column(
@@ -164,8 +164,8 @@ class TiDBVector(BaseVector):
                 delete_condition = table.c.id.in_(ids)
                 conn.execute(table.delete().where(delete_condition))
                 return True
-        except Exception as e:
-            print("Delete operation failed:", str(e))
+        except Exception:
+            logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
     def get_ids_by_metadata_field(self, key: str, value: str):

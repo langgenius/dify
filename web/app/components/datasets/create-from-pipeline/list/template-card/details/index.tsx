@@ -63,7 +63,7 @@ const Details = ({
         >
           <RiCloseLine className='size-4 text-text-tertiary' />
         </button>
-        <div className='flex items-center gap-x-3 pb-2 pl-4 pr-12 pt-6'>
+        <div className='flex items-start gap-x-3 pb-2 pl-4 pr-12 pt-6'>
           <AppIcon
             size='large'
             iconType={appIcon.type as AppIconType}
@@ -72,15 +72,23 @@ const Details = ({
             imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
             showEditIcon
           />
-          <div className='flex grow flex-col gap-y-1 py-px'>
-            <div className='system-md-semibold text-text-secondary'>
+          <div className='flex grow flex-col gap-y-1 overflow-hidden py-px'>
+            <div
+              className='system-md-semibold truncate text-text-secondary'
+              title={pipelineTemplateInfo.name}
+            >
               {pipelineTemplateInfo.name}
             </div>
-            <div className='system-2xs-medium-uppercase text-text-tertiary'>
-              {t('datasetPipeline.details.createdBy', {
-                author: pipelineTemplateInfo.created_by,
-              })}
-            </div>
+            {pipelineTemplateInfo.created_by && (
+              <div
+                className='system-2xs-medium-uppercase truncate text-text-tertiary'
+                title={pipelineTemplateInfo.created_by}
+              >
+                {t('datasetPipeline.details.createdBy', {
+                  author: pipelineTemplateInfo.created_by,
+                })}
+              </div>
+            )}
           </div>
         </div>
         <p className='system-sm-regular px-4 pb-2 pt-1 text-text-secondary'>

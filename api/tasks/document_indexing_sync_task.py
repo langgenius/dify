@@ -2,6 +2,7 @@ import logging
 import time
 
 import click
+import sqlalchemy as sa
 from celery import shared_task
 from sqlalchemy import select
 
@@ -51,7 +52,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         data_source_binding = (
             db.session.query(DataSourceOauthBinding)
             .where(
-                db.and_(
+                sa.and_(
                     DataSourceOauthBinding.tenant_id == document.tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.disabled == False,

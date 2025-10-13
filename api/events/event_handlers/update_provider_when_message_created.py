@@ -139,7 +139,7 @@ def handle(sender: Message, **kwargs):
                 filters=_ProviderUpdateFilters(
                     tenant_id=tenant_id,
                     provider_name=ModelProviderID(model_config.provider).provider_name,
-                    provider_type=ProviderType.SYSTEM.value,
+                    provider_type=ProviderType.SYSTEM,
                     quota_type=provider_configuration.system_configuration.current_quota_type.value,
                 ),
                 values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),

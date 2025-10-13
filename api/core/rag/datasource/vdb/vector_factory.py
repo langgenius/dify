@@ -71,6 +71,12 @@ class Vector:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
 
                 return MilvusVectorFactory
+            case VectorType.ALIBABACLOUD_MYSQL:
+                from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
+                    AlibabaCloudMySQLVectorFactory,
+                )
+
+                return AlibabaCloudMySQLVectorFactory
             case VectorType.MYSCALE:
                 from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
 

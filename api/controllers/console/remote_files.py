@@ -19,7 +19,10 @@ from fields.file_fields import file_fields_with_signed_url, remote_file_info_fie
 from models.account import Account
 from services.file_service import FileService
 
+from . import console_ns
 
+
+@console_ns.route("/remote-files/<path:url>")
 class RemoteFileInfoApi(Resource):
     @marshal_with(remote_file_info_fields)
     def get(self, url):
@@ -35,6 +38,7 @@ class RemoteFileInfoApi(Resource):
         }
 
 
+@console_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(Resource):
     @marshal_with(file_fields_with_signed_url)
     def post(self):
