@@ -12,10 +12,10 @@ from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.login import login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
+from models.account import Account
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
-from models.account import Account
 
 P = ParamSpec("P")
 R = TypeVar("R")
