@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask_login import current_user
 from sqlalchemy.orm import Session
 
 from configs import dify_config
