@@ -135,7 +135,7 @@ const Header: FC<IHeaderProps> = ({
   return (
     <div
       className={cn('flex h-14 shrink-0 items-center justify-between rounded-t-2xl px-3')}
-      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? ''))}
+      style={Object.assign({}, CssTransform(theme?.headerBorderBottomStyle ?? ''))}
     >
       <div className="flex grow items-center space-x-3">
         {customerIcon}
