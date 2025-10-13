@@ -53,7 +53,7 @@ const DataSources = ({
         return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
       })
     })
-  }, [searchText])
+  }, [searchText, dataSources, language])
 
   const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
     let defaultValue: DataSourceDefaultValue = {
