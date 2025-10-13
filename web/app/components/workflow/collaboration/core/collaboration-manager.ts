@@ -544,7 +544,7 @@ export class CollaborationManager {
 
     const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
     const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
-    const syncDataAllowList = new Set(['_children'])
+    const syncDataAllowList = new Set(['_children', '_connectedSourceHandleIds', '_connectedTargetHandleIds', '_targetBranches'])
     const shouldSyncDataKey = (key: string) => (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
 
     // Delete removed nodes
