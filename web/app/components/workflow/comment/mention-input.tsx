@@ -594,7 +594,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed z-[9999] max-h-40 w-64 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg shadow-lg"
+          className="bg-components-panel-bg/95 fixed z-[9999] max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[10px]"
           style={{
             left: dropdownPosition.x,
             [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'
@@ -607,7 +607,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
             <div
               key={user.id}
               className={cn(
-                'flex cursor-pointer items-center gap-2 p-2 hover:bg-state-base-hover',
+                'flex cursor-pointer items-center gap-2 rounded-md py-1 pl-2 pr-3 hover:bg-state-base-hover',
                 index === selectedMentionIndex && 'bg-state-base-hover',
               )}
               onClick={() => insertMention(user)}
