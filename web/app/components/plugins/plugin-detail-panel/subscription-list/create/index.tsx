@@ -26,11 +26,12 @@ export enum CreateButtonType {
 type Props = {
   className?: string
   buttonType?: CreateButtonType
+  shape?: 'square' | 'circle'
 }
 
 export const DEFAULT_METHOD = 'default'
 
-export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON }: Props) => {
+export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON, shape = 'square' }: Props) => {
   const { t } = useTranslation()
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{ type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder } | null>(null)
 
@@ -38,7 +39,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
   const supportedMethods = providerInfo?.supported_creation_methods || []
-  const { data: oauthConfig } = useTriggerOAuthConfig(detail?.provider || '', supportedMethods.includes(SupportedCreationMethods.OAUTH))
+  const { data: oauthConfig, refetch: refetchOAuthConfig } = useTriggerOAuthConfig(detail?.provider || '', supportedMethods.includes(SupportedCreationMethods.OAUTH))
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
 
   const methodType = supportedMethods.length === 1 ? supportedMethods[0] : DEFAULT_METHOD
@@ -173,7 +174,13 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
             }
           </Button>
         ) : (
-          <ActionButton onClick={onClickCreate} className='float-right'>
+          <ActionButton
+            onClick={onClickCreate}
+            className={cn(
+              'float-right',
+              shape === 'circle' && '!rounded-full border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs',
+            )}
+          >
             <RiAddLine className='size-4' />
           </ActionButton>
         )
@@ -198,7 +205,10 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     {isShowClientSettingsModal && (
       <OAuthClientSettingsModal
         oauthConfig={oauthConfig}
-        onClose={hideClientSettingsModal}
+        onClose={() => {
+          hideClientSettingsModal()
+          refetchOAuthConfig()
+        }}
         showOAuthCreateModal={builder => setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder })}
       />
     )}

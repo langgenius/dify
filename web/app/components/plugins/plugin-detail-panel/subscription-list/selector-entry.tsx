@@ -4,10 +4,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Indicator from '@/app/components/header/indicator'
 import { SubscriptionList, SubscriptionListMode } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import cn from '@/utils/classnames'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSubscriptionList } from './use-subscription-list'
@@ -58,10 +57,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       )}
       onClick={onClick}
     >
-      <Indicator
-        className='shrink-0'
-        color={statusConfig.color}
-      />
+      <RiWebhookLine className='h-3.5 w-3.5 shrink-0 text-text-secondary' />
       <span className={cn('system-xs-medium truncate text-components-button-ghost-text', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}>
         {statusConfig.label}
       </span>

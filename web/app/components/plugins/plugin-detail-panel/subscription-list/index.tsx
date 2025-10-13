@@ -1,4 +1,5 @@
 import { withErrorBoundary } from '@/app/components/base/error-boundary'
+import Loading from '@/app/components/base/loading'
 import { SubscriptionListView } from './list-view'
 import { SubscriptionSelectorView } from './selector-view'
 import { useSubscriptionList } from './use-subscription-list'
@@ -22,12 +23,18 @@ export const SubscriptionList = withErrorBoundary(({
   onSelect,
 }: SubscriptionListProps) => {
   const { subscriptions, isLoading } = useSubscriptionList()
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center py-4'>
+        <Loading />
+      </div>
+    )
+  }
 
   if (mode === SubscriptionListMode.SELECTOR) {
     return (
       <SubscriptionSelectorView
         subscriptions={subscriptions}
-        isLoading={isLoading}
         selectedId={selectedId}
         onSelect={onSelect}
       />
@@ -37,7 +44,6 @@ export const SubscriptionList = withErrorBoundary(({
   return (
     <SubscriptionListView
       subscriptions={subscriptions}
-      isLoading={isLoading}
     />
   )
 })

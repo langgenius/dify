@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { PluginDetail } from '../../types'
 
-type SimpleDetail = Pick<PluginDetail, 'plugin_id' | 'declaration'> & { provider: string }
+type SimpleDetail = Pick<PluginDetail, 'plugin_id' | 'declaration' | 'name'> & { provider: string }
 
 type Shape = {
   detail: SimpleDetail | undefined

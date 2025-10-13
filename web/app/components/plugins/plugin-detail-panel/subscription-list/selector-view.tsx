@@ -11,14 +11,12 @@ import { DeleteConfirm } from './delete-confirm'
 
 type SubscriptionSelectorProps = {
   subscriptions?: TriggerSubscription[]
-  isLoading: boolean
   selectedId?: string
   onSelect?: ({ id, name }: { id: string, name: string }) => void
 }
 
 export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
   subscriptions,
-  isLoading,
   selectedId,
   onSelect,
 }) => {
@@ -26,17 +24,9 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
   const [deletedSubscription, setDeletedSubscription] = useState<TriggerSubscription | null>(null)
   const subscriptionCount = subscriptions?.length || 0
 
-  if (isLoading) {
-    return (
-      <div className='flex items-center justify-center py-8'>
-        <div className='text-text-tertiary'>{t('common.dataLoading')}</div>
-      </div>
-    )
-  }
-
   return (
     <div className='w-[320px] p-1'>
-      {subscriptionCount > 0 && <div className='ml-7 mr-1.5 mt-0.5 flex items-center justify-between'>
+      {subscriptionCount > 0 && <div className='ml-7 mr-1.5 flex h-8 items-center justify-between'>
         <div className='flex shrink-0 items-center gap-1'>
           <span className='system-sm-semibold-uppercase text-text-secondary'>
             {t('pluginTrigger.subscription.listNum', { num: subscriptionCount })}
@@ -45,6 +35,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
         </div>
         <CreateSubscriptionButton
           buttonType={CreateButtonType.ICON_BUTTON}
+          shape='circle'
         />
       </div>}
       <div className='max-h-[320px] overflow-y-auto'>
@@ -100,6 +91,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
           isShow={!!deletedSubscription}
           currentId={deletedSubscription.id}
           currentName={deletedSubscription.name}
+          workflowsInUse={deletedSubscription.workflows_in_use}
         />
       )}
     </div>

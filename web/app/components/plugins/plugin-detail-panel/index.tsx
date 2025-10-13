@@ -37,6 +37,7 @@ const PluginDetailPanel: FC<Props> = ({
       plugin_id: detail.plugin_id,
       provider: `${detail.plugin_id}/${detail.declaration.name}`,
       declaration: detail.declaration,
+      name: detail.name,
     })
   }, [detail])
 

@@ -9,18 +9,14 @@ import SubscriptionCard from './subscription-card'
 
 type SubscriptionListViewProps = {
   subscriptions?: TriggerSubscription[]
-  isLoading: boolean
   showTopBorder?: boolean
 }
 
 export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
   subscriptions,
-  isLoading,
   showTopBorder = false,
 }) => {
   const { t } = useTranslation()
-
-  if (isLoading) return null
 
   const subscriptionCount = subscriptions?.length || 0
 

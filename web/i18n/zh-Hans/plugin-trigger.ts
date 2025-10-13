@@ -128,20 +128,8 @@ const translation = {
       },
       logs: {
         title: '请求日志',
-        description: '监控传入的Webhook请求',
-        empty: '尚未收到任何请求。请确保测试您的Webhook配置。',
-        status: {
-          success: '成功',
-          error: '错误',
-        },
-        expandAll: '展开全部',
-        collapseAll: '收起全部',
-        timestamp: '时间戳',
-        method: '方法',
-        path: '路径',
-        headers: '请求头',
-        body: '请求体',
-        response: '响应',
+        request: '请求',
+        loading: '等待 {{pluginName}} 的请求...',
       },
     },
     form: {
@@ -151,12 +139,10 @@ const translation = {
         required: '订阅名称为必填项',
       },
       callbackUrl: {
-        label: '回调URL',
-        description: '此URL将接收Webhook事件',
+        label: '回调 URL',
+        description: '此 URL 将接收Webhook事件',
         tooltip: '填写能被触发器提供方访问的公网地址，用于接收回调请求。',
-        placeholder: 'https://example.com/webhooks/github',
-        copy: '复制',
-        copied: '已复制！',
+        placeholder: '生成中...',
       },
     },
     errors: {

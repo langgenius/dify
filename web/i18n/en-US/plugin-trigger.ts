@@ -128,20 +128,8 @@ const translation = {
       },
       logs: {
         title: 'Request Logs',
-        description: 'Monitor incoming webhook requests',
-        empty: 'No requests received yet. Make sure to test your webhook configuration.',
-        status: {
-          success: 'Success',
-          error: 'Error',
-        },
-        expandAll: 'Expand All',
-        collapseAll: 'Collapse All',
-        timestamp: 'Timestamp',
-        method: 'Method',
-        path: 'Path',
-        headers: 'Headers',
-        body: 'Body',
-        response: 'Response',
+        request: 'Request',
+        loading: 'Awaiting request from {{pluginName}}...',
       },
     },
     form: {
@@ -154,9 +142,7 @@ const translation = {
         label: 'Callback URL',
         description: 'This URL will receive webhook events',
         tooltip: 'Provide a publicly accessible endpoint that can receive callback requests from the trigger provider.',
-        placeholder: 'https://example.com/webhooks/github',
-        copy: 'Copy',
-        copied: 'Copied!',
+        placeholder: 'Generating...',
       },
     },
     errors: {

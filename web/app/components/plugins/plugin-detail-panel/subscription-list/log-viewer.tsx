@@ -21,8 +21,8 @@ type Props = {
 }
 
 enum LogTypeEnum {
-  REQUEST = 'REQUEST',
-  RESPONSE = 'RESPONSE',
+  REQUEST = 'request',
+  RESPONSE = 'response',
 }
 
 const LogViewer = ({ logs, className }: Props) => {
@@ -159,7 +159,7 @@ const LogViewer = ({ logs, className }: Props) => {
                   <RiArrowRightSLine className='h-4 w-4 text-text-tertiary' />
                 )}
                 <div className='system-xs-semibold-uppercase text-text-secondary'>
-                  REQUEST #{index + 1}
+                  {t(`pluginTrigger.modal.manual.logs.${LogTypeEnum.REQUEST}`)} #{index + 1}
                 </div>
               </div>
 

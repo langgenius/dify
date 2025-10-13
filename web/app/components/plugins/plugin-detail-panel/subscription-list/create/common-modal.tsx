@@ -364,7 +364,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           <div className='mb-6'>
             <div className='mb-3 flex items-center gap-2'>
               <div className='system-xs-medium-uppercase text-text-tertiary'>
-                REQUESTS HISTORY
+                {t('pluginTrigger.modal.manual.logs.title')}
               </div>
               <div className='h-px flex-1 bg-gradient-to-r from-divider-regular to-transparent' />
             </div>
@@ -374,7 +374,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                 <RiLoader2Line className='h-full w-full animate-spin' />
               </div>
               <div className='system-xs-regular text-text-tertiary'>
-                Awaiting request from {detail?.plugin_id}...
+                {t('pluginTrigger.modal.manual.logs.loading', { pluginName: detail?.name || '' })}
               </div>
             </div>
             <LogViewer logs={logData?.logs || []} />
