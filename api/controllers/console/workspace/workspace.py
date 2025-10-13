@@ -1,7 +1,6 @@
 import logging
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
@@ -24,7 +23,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models.account import Account, Tenant, TenantStatus
 from services.account_service import TenantService
 from services.feature_service import FeatureService
@@ -120,8 +119,8 @@ class WorkspaceListApi(Resource):
         }, 200
 
 
-@console_ns.route("/workspaces/current")
-@console_ns.route("/info")  # Deprecated
+@console_ns.route("/workspaces/current", endpoint="workspaces_current")
+@console_ns.route("/info", endpoint="info")  # Deprecated
 class TenantApi(Resource):
     @setup_required
     @login_required
