@@ -2,8 +2,6 @@ import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
-from pydantic import BaseModel
-
 from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
@@ -26,6 +24,8 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
 from models.provider_ids import GenericProviderID
+from pydantic import BaseModel
+
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
@@ -330,17 +330,14 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
-
-        for plugin_unique_identifier in plugin_unique_identifiers:
-            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-            PluginService._check_plugin_installation_scope(resp.verification)
-
         features = FeatureService.get_system_features()
         response = manager.upload_pkg(
             tenant_id,
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        PluginService._check_plugin_installation_scope(response.verification)
+
         return response
 
     @staticmethod
@@ -358,15 +355,13 @@ class PluginService:
         features = FeatureService.get_system_features()
 
         manager = PluginInstaller()
-        for plugin_unique_identifier in plugin_unique_identifiers:
-            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-            PluginService._check_plugin_installation_scope(resp.verification)
-
         response = manager.upload_pkg(
             tenant_id,
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        PluginService._check_plugin_installation_scope(response.verification)
+
         return response
 
     @staticmethod
