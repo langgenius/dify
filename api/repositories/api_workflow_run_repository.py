@@ -137,7 +137,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
             - stopped: Count of workflow runs with status "stopped"
             - partial_succeeded: Count of workflow runs with status "partial-succeeded"
 
-            Note: If status is provided, only total will have value and other counts will be 0
+            Note: If a status is provided, 'total' will be the count for that status, and the specific status count will also be set to this value, with all other status counts being 0.
         """
         ...
 

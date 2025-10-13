@@ -40,7 +40,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("status", type=str, location="args", required=False)
+        parser.add_argument("status", type=str, choices=["running", "succeeded", "failed", "stopped", "partial-succeeded"], location="args", required=False)
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
@@ -66,11 +66,11 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         Get advanced chat workflow runs count statistics
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("status", type=str, location="args", required=False)
+        parser.add_argument("status", type=str, choices=["running", "succeeded", "failed", "stopped", "partial-succeeded"], location="args", required=False)
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_advanced_chat_workflow_runs_count(
+        result = workflow_run_service.get_workflow_runs_count(
             app_model=app_model, status=args.get("status")
         )
 
@@ -97,7 +97,7 @@ class WorkflowRunListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("status", type=str, location="args", required=False)
+        parser.add_argument("status", type=str, choices=["running", "succeeded", "failed", "stopped", "partial-succeeded"], location="args", required=False)
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
@@ -123,13 +123,11 @@ class WorkflowRunCountApi(Resource):
         Get workflow runs count statistics
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("status", type=str, location="args", required=False)
+        parser.add_argument("status", type=str, choices=["running", "succeeded", "failed", "stopped", "partial-succeeded"], location="args", required=False)
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_runs_count(
-            app_model=app_model, status=args.get("status")
-        )
+        result = workflow_run_service.get_workflow_runs_count(app_model=app_model, status=args.get("status"))
 
         return result
 

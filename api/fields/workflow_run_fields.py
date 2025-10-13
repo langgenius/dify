@@ -70,7 +70,7 @@ workflow_run_count_fields = {
     "succeeded": fields.Integer,
     "failed": fields.Integer,
     "stopped": fields.Integer,
-    "partial-succeeded": fields.Integer,
+    "partial_succeeded": fields.Integer(attribute="partial-succeeded"),
 }
 
 workflow_run_detail_fields = {
