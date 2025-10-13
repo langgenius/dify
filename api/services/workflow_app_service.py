@@ -86,14 +86,20 @@ class WorkflowAppService:
                 ),
             )
         if created_by_account:
-            stmt = stmt.join(
-                Account,
-                and_(
-                    WorkflowAppLog.created_by == Account.id,
-                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
-                    Account.email == created_by_account,
-                ),
+            account = session.scalar(
+                select(Account).where(Account.email == created_by_account)
             )
+            if account:
+                stmt = stmt.join(
+                    Account,
+                    and_(
+                        WorkflowAppLog.created_by == Account.id,
+                        WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
+                        Account.id == account.id,
+                    ),
+                )
+            else:
+                stmt = stmt.where(False)
 
         stmt = stmt.order_by(WorkflowAppLog.created_at.desc())
 
