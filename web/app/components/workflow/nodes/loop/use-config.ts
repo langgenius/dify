@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
 } from 'react'
 import produce from 'immer'
@@ -26,6 +27,9 @@ const useConfig = (id: string, payload: LoopNodeType) => {
 
   const { inputs, setInputs } = useNodeCrud<LoopNodeType>(id, payload)
   const inputsRef = useRef(inputs)
+  useEffect(() => {
+    inputsRef.current = inputs
+  }, [inputs])
   const handleInputsChange = useCallback((newInputs: LoopNodeType) => {
     inputsRef.current = newInputs
     setInputs(newInputs)
