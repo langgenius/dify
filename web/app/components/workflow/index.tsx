@@ -528,7 +528,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable={!nodesReadOnly}
+        nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
