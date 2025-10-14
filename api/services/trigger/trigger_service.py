@@ -2,11 +2,13 @@ import logging
 import time
 import uuid
 from collections.abc import Mapping, Sequence
+from typing import Any
 
-from flask import Request, Response
+from flask import Request, Response, request
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
+from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
@@ -20,12 +22,15 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
+from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from models.workflow import AppTrigger, AppTriggerStatus, Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
+from services.trigger.trigger_debug_service import PluginTriggerDebugEvent, TriggerDebugService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +40,86 @@ class TriggerService:
     __ENDPOINT_REQUEST_CACHE_COUNT__ = 10
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
 
-    __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
+    @classmethod
+    def invoke_trigger_event(
+        cls, tenant_id: str, user_id: str, node_config: Mapping[str, Any], event: PluginTriggerDebugEvent
+    ) -> TriggerInvokeEventResponse:
+        """Invoke a trigger event."""
+        subscription: TriggerSubscription | None = TriggerProviderService.get_subscription_by_id(
+            tenant_id=tenant_id,
+            subscription_id=event.subscription_id,
+        )
+        if not subscription:
+            raise ValueError("Subscription not found")
+        node_data = node_config.get("data")
+        if not node_data:
+            raise ValueError("Node data not found")
+        request = deserialize_request(storage.load_once(f"triggers/{event.request_id}"))
+        if not request:
+            raise ValueError("Request not found")
+        # invoke triger
+        return TriggerManager.invoke_trigger_event(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=TriggerProviderID(event.provider_id),
+            event_name=event.name,
+            parameters=node_data.get("parameters", {}),
+            credentials=subscription.credentials,
+            credential_type=CredentialType.of(subscription.credential_type),
+            subscription=subscription.to_entity(),
+            request=request,
+        )
+
+    @classmethod
+    def build_workflow_args(cls, event: PluginTriggerDebugEvent) -> Mapping[str, Any]:
+        """Build workflow args from plugin trigger debug event."""
+        workflow_args = {
+            "inputs": event.model_dump(),
+            "query": "",
+            "files": [],
+        }
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            workflow_args["external_trace_id"] = external_trace_id
+
+        return workflow_args
+
+    @classmethod
+    def poll_debug_event(cls, app_model: App, user_id: str, node_id: str) -> PluginTriggerDebugEvent | None:
+        """Poll webhook debug event for a given node ID."""
+        workflow_service = WorkflowService()
+        workflow: Workflow | None = workflow_service.get_draft_workflow(
+            app_model=app_model,
+            workflow_id=None,
+        )
+
+        if not workflow:
+            raise ValueError("Workflow not found")
+
+        node_data = workflow.get_node_config_by_id(node_id=node_id).get("data")
+        if not node_data:
+            raise ValueError("Node config not found")
+
+        event_name = node_data.get("event_name")
+        subscription_id = node_data.get("subscription_id")
+        if not subscription_id:
+            raise ValueError("Subscription ID not found")
+
+        provider_id = TriggerProviderID(node_data.get("provider_id"))
+        pool_key: str = PluginTriggerDebugEvent.build_pool_key(
+            name=event_name,
+            provider_id=provider_id,
+            tenant_id=app_model.tenant_id,
+            subscription_id=subscription_id,
+        )
+        return TriggerDebugService.poll(
+            event_type=PluginTriggerDebugEvent,
+            pool_key=pool_key,
+            tenant_id=app_model.tenant_id,
+            user_id=user_id,
+            app_id=app_model.id,
+            node_id=node_id,
+        )
 
     @classmethod
     def _get_latest_workflows_by_app_ids(
@@ -129,7 +213,7 @@ class TriggerService:
                     user_id=subscription.user_id,
                     provider_id=TriggerProviderID(subscription.provider_id),
                     event_name=event.identity.name,
-                    parameters=event_node.get("config", {}),
+                    parameters=event_node.get("config", {}).get("parameters", {}),
                     credentials=subscription.credentials,
                     credential_type=CredentialType.of(subscription.credential_type),
                     subscription=subscription.to_entity(),

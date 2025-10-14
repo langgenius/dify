@@ -3,7 +3,8 @@
 import hashlib
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TypeVar
+from collections.abc import Mapping
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 from redis import RedisError
@@ -39,24 +40,25 @@ class BaseDebugEvent(ABC, BaseModel):
 class PluginTriggerDebugEvent(BaseDebugEvent):
     """Debug event for plugin triggers."""
 
+    name: str
     request_id: str
     subscription_id: str
-    event_name: str
+    provider_id: str
 
     @classmethod
     def build_pool_key(cls, **kwargs: Any) -> str:
         """Generate pool key for plugin trigger events.
 
         Args:
+            name: Event name
             tenant_id: Tenant ID
             provider_id: Provider ID
             subscription_id: Subscription ID
-            event_name: Event name
         """
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
         subscription_id = kwargs["subscription_id"]
-        event_name = kwargs["event_name"]
+        event_name = kwargs["name"]
         return f"plugin_trigger_debug_waiting_pool:{tenant_id}:{str(provider_id)}:{subscription_id}:{event_name}"
 
 
@@ -80,6 +82,27 @@ class WebhookDebugEvent(BaseDebugEvent):
         app_id = kwargs["app_id"]
         node_id = kwargs["node_id"]
         return f"webhook_trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
+
+
+class ScheduleDebugEvent(BaseDebugEvent):
+    """Debug event for schedule triggers."""
+
+    node_id: str
+    inputs: Mapping[str, Any]
+
+    @classmethod
+    def build_pool_key(cls, **kwargs: Any) -> str:
+        """Generate pool key for schedule events.
+
+        Args:
+            tenant_id: Tenant ID
+            app_id: App ID
+            node_id: Node ID
+        """
+        tenant_id = kwargs["tenant_id"]
+        app_id = kwargs["app_id"]
+        node_id = kwargs["node_id"]
+        return f"schedule_trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
 
 
 class TriggerDebugService:
@@ -157,7 +180,7 @@ class TriggerDebugService:
         user_id: str,
         app_id: str,
         node_id: str,
-    ) -> Optional[TEvent]:
+    ) -> TEvent | None:
         """
         Poll for an event or register to the waiting pool.
 

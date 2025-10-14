@@ -11,12 +11,29 @@ from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, Schedu
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
+from models.model import App
 from models.workflow import Workflow, WorkflowSchedulePlan
+from services.trigger.trigger_debug_service import ScheduleDebugEvent, TriggerDebugService
 
 logger = logging.getLogger(__name__)
 
 
 class ScheduleService:
+    @classmethod
+    def poll_debug_event(cls, app_model: App, user_id: str, node_id: str) -> ScheduleDebugEvent | None:
+        """Poll a debug event for a schedule trigger."""
+        pool_key = ScheduleDebugEvent.build_pool_key(
+            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id
+        )
+        return TriggerDebugService.poll(
+            event_type=ScheduleDebugEvent,
+            pool_key=pool_key,
+            tenant_id=app_model.tenant_id,
+            user_id=user_id,
+            app_id=app_model.id,
+            node_id=node_id,
+        )
+
     @staticmethod
     def create_schedule(
         session: Session,

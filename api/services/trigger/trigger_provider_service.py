@@ -192,9 +192,7 @@ class TriggerProviderService:
             raise ValueError(str(e))
 
     @classmethod
-    def get_subscription_by_id(
-        cls, tenant_id: str, subscription_id: str | None = None
-    ) -> TriggerProviderSubscriptionApiEntity | None:
+    def get_subscription_by_id(cls, tenant_id: str, subscription_id: str | None = None) -> TriggerSubscription | None:
         """
         Get a trigger subscription by the ID.
         """
@@ -216,7 +214,13 @@ class TriggerProviderService:
                     subscription=subscription,
                 )
                 subscription.credentials = encrypter.decrypt(subscription.credentials)
-                return subscription.to_api_entity()
+                properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
+                    tenant_id=subscription.tenant_id,
+                    controller=provider_controller,
+                    subscription=subscription,
+                )
+                subscription.properties = properties_encrypter.decrypt(subscription.properties)
+                return subscription
             return None
 
     @classmethod

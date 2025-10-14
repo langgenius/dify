@@ -381,18 +381,10 @@ const useOneStepRun = <T>({
         headers.set('Authorization', `Bearer ${accessToken}`)
         headers.set('Content-Type', 'application/json')
 
-        // Reason: Plugin trigger requires event_name, subscription_id, provider_id from node data
-        const requestBody = {
-          event_name: (data as any).event_name,
-          subscription_id: (data as any).subscription_id,
-          provider_id: (data as any).provider_id,
-        }
-
         const response = await fetch(urlWithPrefix, {
           ...baseOptions,
           method: 'POST',
           headers,
-          body: JSON.stringify(requestBody),
           signal: controller.signal,
         })
 

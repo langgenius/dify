@@ -140,16 +140,17 @@ def dispatch_triggered_workflows_async(
             try:
                 for event_name in events:
                     pool_key: str = PluginTriggerDebugEvent.build_pool_key(
+                        name=event_name,
                         tenant_id=subscription.tenant_id,
                         subscription_id=subscription_id,
-                        event_name=event_name,
                         provider_id=provider_id,
                     )
                     event = PluginTriggerDebugEvent(
+                        provider_id=provider_id,
                         subscription_id=subscription_id,
                         request_id=request_id,
                         timestamp=timestamp,
-                        event_name=event_name,
+                        name=event_name,
                     )
                     debug_dispatched += TriggerDebugService.dispatch(
                         tenant_id=subscription.tenant_id,
