@@ -88,10 +88,6 @@ export const useCreateMCP = () => {
       timeout?: number
       sse_read_timeout?: number
       headers?: Record<string, string>
-      client_id?: string
-      client_secret?: string
-      grant_type?: string
-      scope?: string
     }) => {
       return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
@@ -119,10 +115,6 @@ export const useUpdateMCP = ({
       timeout?: number
       sse_read_timeout?: number
       headers?: Record<string, string>
-      client_id?: string
-      client_secret?: string
-      grant_type?: string
-      scope?: string
     }) => {
       return put('workspaces/current/tool-provider/mcp', {
         body: {
