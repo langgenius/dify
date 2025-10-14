@@ -163,6 +163,10 @@ const translation = {
       title: 'Giám sát Đám mây',
       description: 'Nền tảng quan sát được quản lý hoàn toàn và không cần bảo trì do Alibaba Cloud cung cấp, cho phép giám sát, theo dõi và đánh giá các ứng dụng Dify ngay lập tức.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Giám sát hiệu suất ứng dụng của Tencent cung cấp khả năng theo dõi toàn diện và phân tích đa chiều cho các ứng dụng LLM.',
+    },
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',

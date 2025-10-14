@@ -145,12 +145,12 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
         db_model.index = 1
         db_model.predecessor_node_id = None
         db_model.node_id = "node-id"
-        db_model.node_type = NodeType.LLM.value
+        db_model.node_type = NodeType.LLM
         db_model.title = "Test Node"
         db_model.inputs = json.dumps({"value": "inputs"})
         db_model.process_data = json.dumps({"value": "process_data"})
         db_model.outputs = json.dumps({"value": "outputs"})
-        db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+        db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
         db_model.error = None
         db_model.elapsed_time = 1.0
         db_model.execution_metadata = "{}"

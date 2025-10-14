@@ -1,10 +1,9 @@
 import logging
 
-from flask_login import current_user
 from flask_restx import marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services.dataset_service
+import services
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -20,6 +19,8 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from fields.hit_testing_fields import hit_testing_record_fields
+from libs.login import current_user
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
 
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 class DatasetsHitTestingBase:
     @staticmethod
     def get_and_validate_dataset(dataset_id: str):
+        assert isinstance(current_user, Account)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -55,6 +57,7 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def perform_hit_testing(dataset, args):
+        assert isinstance(current_user, Account)
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,

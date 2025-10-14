@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -55,7 +55,7 @@ class MCPToolManageService:
             cache=NoOpProviderCredentialCache(),
         )
 
-        return cast(dict[str, str], encrypter_instance.encrypt(headers))
+        return encrypter_instance.encrypt(headers)
 
     @staticmethod
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
@@ -188,6 +188,8 @@ class MCPToolManageService:
             raise
 
         user = mcp_provider.load_user()
+        if not mcp_provider.icon:
+            raise ValueError("MCP provider icon is required")
         return ToolProviderApiEntity(
             id=mcp_provider.id,
             name=mcp_provider.name,

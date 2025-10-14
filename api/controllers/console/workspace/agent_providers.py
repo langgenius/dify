@@ -1,10 +1,10 @@
-from flask_login import current_user
 from flask_restx import Resource, fields
 
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from libs.login import login_required
+from libs.login import current_user, login_required
+from models.account import Account
 from services.agent_service import AgentService
 
 
@@ -21,7 +21,9 @@ class AgentProviderListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        assert isinstance(current_user, Account)
         user = current_user
+        assert user.current_tenant_id is not None
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -43,7 +45,9 @@ class AgentProviderApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_name: str):
+        assert isinstance(current_user, Account)
         user = current_user
+        assert user.current_tenant_id is not None
         user_id = user.id
         tenant_id = user.current_tenant_id
         return jsonable_encoder(AgentService.get_agent_provider(user_id, tenant_id, provider_name))

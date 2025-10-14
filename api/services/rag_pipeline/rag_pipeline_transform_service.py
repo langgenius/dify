@@ -9,6 +9,7 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
@@ -149,23 +150,22 @@ class RagPipelineTransformService:
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
-        file_extensions = [file_extension.lower() for file_extension in file_extensions]
-        node["data"]["fileExtensions"] = DOCUMENT_EXTENSIONS
+        node["data"]["fileExtensions"] = [ext.lower() for ext in file_extensions if ext in DOCUMENT_EXTENSIONS]
         return node
 
     def _deal_knowledge_index(
         self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)
+        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            retrieval_setting = RetrievalSetting(**retrieval_model)
+            retrieval_setting = RetrievalSetting.model_validate(retrieval_model)
             if indexing_technique == "economy":
-                retrieval_setting.search_method = "keyword_search"
+                retrieval_setting.search_method = RetrievalMethod.KEYWORD_SEARCH
             knowledge_configuration.retrieval_model = retrieval_setting
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
@@ -215,7 +215,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=current_user.id,
@@ -227,7 +227,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=current_user.id,

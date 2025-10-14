@@ -15,7 +15,6 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
@@ -51,6 +50,8 @@ const RunOnce: FC<IRunOnceProps> = ({
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = ''
+      else if (item.type === 'checkbox')
+        newInputs[item.key] = false
       else
         newInputs[item.key] = undefined
     })
@@ -77,10 +78,12 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = item.default || ''
       else if (item.type === 'number')
         newInputs[item.key] = item.default
+      else if (item.type === 'checkbox')
+        newInputs[item.key] = item.default || false
       else if (item.type === 'file')
-        newInputs[item.key] = item.default
+        newInputs[item.key] = undefined
       else if (item.type === 'file-list')
-        newInputs[item.key] = item.default || []
+        newInputs[item.key] = []
       else
         newInputs[item.key] = undefined
     })
@@ -96,7 +99,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized ? null
             : promptConfig.prompt_variables.map(item => (
               <div className='mt-4 w-full' key={item.key}>
-                {item.type !== 'boolean' && (
+                {item.type !== 'checkbox' && (
                   <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
                 )}
                 <div className='mt-1'>
@@ -134,7 +137,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                       onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
                   )}
-                  {item.type === 'boolean' && (
+                  {item.type === 'checkbox' && (
                     <BoolInput
                       name={item.name || item.key}
                       value={!!inputs[item.key]}
@@ -144,8 +147,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file' && (
                     <FileUploaderInAttachmentWrapper
-                      value={inputs[item.key] ? [inputs[item.key]] : []}
-                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
+                      value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                       fileConfig={{
                         ...item.config,
                         fileUploadConfig: (visionConfig as any).fileUploadConfig,
@@ -154,8 +157,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file-list' && (
                     <FileUploaderInAttachmentWrapper
-                      value={inputs[item.key]}
-                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
+                      value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                       fileConfig={{
                         ...item.config,
                         fileUploadConfig: (visionConfig as any).fileUploadConfig,

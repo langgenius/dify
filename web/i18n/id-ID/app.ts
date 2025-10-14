@@ -155,6 +155,10 @@ const translation = {
     description: 'Mengonfigurasi penyedia LLMOps Pihak Ketiga dan melacak performa aplikasi.',
     inUse: 'Sedang digunakan',
     tracingDescription: 'Tangkap konteks lengkap eksekusi aplikasi, termasuk panggilan LLM, konteks, perintah, permintaan HTTP, dan lainnya, ke platform pelacakan pihak ketiga.',
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring menyediakan pelacakan komprehensif dan analisis multi-dimensi untuk aplikasi LLM.',
+    },
   },
   appSelector: {
     placeholder: 'Pilih aplikasi...',

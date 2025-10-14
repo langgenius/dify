@@ -17,7 +17,7 @@ def test_init_question_classifier_node_data():
         "vision": {"enabled": True, "configs": {"variable_selector": ["image"], "detail": "low"}},
     }
 
-    node_data = QuestionClassifierNodeData(**data)
+    node_data = QuestionClassifierNodeData.model_validate(data)
 
     assert node_data.query_variable_selector == ["id", "name"]
     assert node_data.model.provider == "openai"
@@ -49,7 +49,7 @@ def test_init_question_classifier_node_data_without_vision_config():
         },
     }
 
-    node_data = QuestionClassifierNodeData(**data)
+    node_data = QuestionClassifierNodeData.model_validate(data)
 
     assert node_data.query_variable_selector == ["id", "name"]
     assert node_data.model.provider == "openai"

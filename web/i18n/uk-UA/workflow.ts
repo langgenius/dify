@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'Генерований вміст',
+        reasoning_content: 'Зміст міркування',
         usage: 'Інформація про використання моделі',
       },
       singleRun: {
@@ -944,6 +945,9 @@ const translation = {
       retrievalSettingIsRequired: 'Потрібне налаштування для отримання',
       chunksInput: 'Частини',
       chunksInputTip: 'Вхідна змінна вузла бази знань - це Частини. Тип змінної - об\'єкт з певною JSON-схемою, яка повинна відповідати вибраній структурі частин.',
+      chunksVariableIsRequired: 'Змінна chunks є обов\'язковою',
+      embeddingModelIsRequired: 'Потрібна модель вбудовування',
+      rerankingModelIsRequired: 'Потрібна модель повторного ранжування',
     },
   },
   tracing: {

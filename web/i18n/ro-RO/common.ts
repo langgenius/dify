@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Deselectați tot',
     selectAll: 'Selectați tot',
     config: 'Configurație',
+    yes: 'Da',
+    deleteConfirmTitle: 'Ștergere?',
+    no: 'Nu',
+    confirmAction: 'Vă rugăm să confirmați acțiunea dumneavoastră.',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -501,6 +505,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Acreditarea este în uz și nu poate fi ștearsă',
     },
     parametersInvalidRemoved: 'Unele parametrii sunt invalizi și au fost eliminați.',
+    installDataSourceProvider: 'Instalați furnizorii de surse de date',
   },
   dataSource: {
     add: 'Adăugați o sursă de date',

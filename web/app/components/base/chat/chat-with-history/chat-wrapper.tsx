@@ -53,9 +53,6 @@ const ChatWrapper = () => {
     initUserVariables,
   } = useChatWithHistoryContext()
 
-  // Semantic variable for better code readability
-  const isHistoryConversation = !!currentConversationId
-
   const appConfig = useMemo(() => {
     const config = appParams || {}
 
@@ -66,9 +63,9 @@ const ChatWrapper = () => {
         fileUploadConfig: (config as any).system_parameters,
       },
       supportFeedback: true,
-      opening_statement: isHistoryConversation ? currentConversationItem?.introduction : (config as any).opening_statement,
+      opening_statement: currentConversationItem?.introduction || (config as any).opening_statement,
     } as ChatConfig
-  }, [appParams, currentConversationItem?.introduction, isHistoryConversation])
+  }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
     setTargetMessageId,
@@ -79,7 +76,7 @@ const ChatWrapper = () => {
   } = useChat(
     appConfig,
     {
-      inputs: (isHistoryConversation ? currentConversationInputs : newConversationInputs) as any,
+      inputs: (currentConversationId ? currentConversationInputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
     appPrevChatTree,
@@ -87,7 +84,7 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
   )
-  const inputsFormValue = isHistoryConversation ? currentConversationInputs : newConversationInputsRef?.current
+  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
     if (allInputsHidden)
       return false
@@ -136,7 +133,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: formatBooleanInputs(inputsForms, isHistoryConversation ? currentConversationInputs : newConversationInputs),
+      inputs: formatBooleanInputs(inputsForms, currentConversationId ? currentConversationInputs : newConversationInputs),
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -146,11 +143,11 @@ const ChatWrapper = () => {
       data,
       {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
-        onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
+        onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: !isInstalledApp,
       },
     )
-  }, [chatList, handleNewConversationCompleted, handleSend, isHistoryConversation, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
+  }, [chatList, handleNewConversationCompleted, handleSend, currentConversationId, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
 
   const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
@@ -163,30 +160,38 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
-    // Always filter out opening statement from message list as it's handled separately in welcome component
+    if (currentConversationId || chatList.length > 1)
+      return chatList
+    // Without messages we are in the welcome screen, so hide the opening statement from chatlist
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList])
 
-  const [collapsed, setCollapsed] = useState(isHistoryConversation)
+  const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length)
       return null
     if (isMobile) {
-      if (!isHistoryConversation)
+      if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return null
     }
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, isHistoryConversation, collapsed, allInputsHidden])
+  },
+  [
+    inputsForms.length,
+    isMobile,
+    currentConversationId,
+    collapsed, allInputsHidden,
+  ])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
     if (respondingState)
       return null
-    if (isHistoryConversation)
+    if (currentConversationId)
       return null
     if (!welcomeMessage)
       return null
@@ -227,7 +232,18 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, isHistoryConversation, inputsForms.length, respondingState, allInputsHidden])
+  },
+  [
+    appData?.site.icon,
+    appData?.site.icon_background,
+    appData?.site.icon_type,
+    appData?.site.icon_url,
+    chatList, collapsed,
+    currentConversationId,
+    inputsForms.length,
+    respondingState,
+    allInputsHidden,
+  ])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon
@@ -251,7 +267,7 @@ const ChatWrapper = () => {
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
-        inputs={isHistoryConversation ? currentConversationInputs as any : newConversationInputs}
+        inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}

@@ -45,7 +45,7 @@ def build_from_message_file(
     }
 
     # Set the correct ID field based on transfer method
-    if message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+    if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
         mapping["tool_file_id"] = message_file.upload_file_id
     else:
         mapping["upload_file_id"] = message_file.upload_file_id
@@ -64,7 +64,10 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
 ) -> File:
-    transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
+    transfer_method_value = mapping.get("transfer_method")
+    if not transfer_method_value:
+        raise ValueError("transfer_method is required in file mapping")
+    transfer_method = FileTransferMethod.value_of(transfer_method_value)
 
     build_functions: dict[FileTransferMethod, Callable] = {
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
@@ -104,6 +107,8 @@ def build_from_mappings(
 ) -> Sequence[File]:
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
+    # Filter out None/empty mappings to avoid errors
+    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -111,7 +116,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
         )
-        for mapping in mappings
+        for mapping in valid_mappings
     ]
 
     if (
@@ -368,9 +373,7 @@ def _build_from_datasource_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("datasource_file_id"),

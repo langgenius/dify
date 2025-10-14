@@ -116,7 +116,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             rag_pipeline_variables = []
             if workflow.rag_pipeline_variables:
                 for v in workflow.rag_pipeline_variables:
-                    rag_pipeline_variable = RAGPipelineVariable(**v)
+                    rag_pipeline_variable = RAGPipelineVariable.model_validate(v)
                     if (
                         rag_pipeline_variable.belong_to_node_id
                         in (self.application_generate_entity.start_node_id, "shared")
@@ -229,8 +229,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
             workflow_id=workflow.id,
             graph_config=graph_config,
             user_id=self.application_generate_entity.user_id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         )
 

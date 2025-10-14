@@ -164,6 +164,10 @@ const translation = {
       title: 'Monitor Chmury',
       description: 'W pełni zarządzana i wolna od konserwacji platforma obserwowalności oferowana przez Alibaba Cloud umożliwia gotowe monitorowanie, śledzenie i oceny aplikacji Dify.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring zapewnia kompleksowe śledzenie i wielowymiarową analizę dla aplikacji LLM.',
+    },
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',

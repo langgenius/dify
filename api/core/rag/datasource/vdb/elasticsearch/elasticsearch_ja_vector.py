@@ -57,18 +57,18 @@ class ElasticSearchJaVector(ElasticSearchVector):
                 }
                 mappings = {
                     "properties": {
-                        Field.CONTENT_KEY.value: {
+                        Field.CONTENT_KEY: {
                             "type": "text",
                             "analyzer": "ja_analyzer",
                             "search_analyzer": "ja_analyzer",
                         },
-                        Field.VECTOR.value: {  # Make sure the dimension is correct here
+                        Field.VECTOR: {  # Make sure the dimension is correct here
                             "type": "dense_vector",
                             "dims": dim,
                             "index": True,
                             "similarity": "cosine",
                         },
-                        Field.METADATA_KEY.value: {
+                        Field.METADATA_KEY: {
                             "type": "object",
                             "properties": {
                                 "doc_id": {"type": "keyword"}  # Map doc_id to keyword type

@@ -22,7 +22,7 @@ type ConditionValueProps = {
 }
 const ConditionValue = ({
   variableSelector,
-  labelName,
+  labelName: _labelName,
   operator,
   value,
 }: ConditionValueProps) => {

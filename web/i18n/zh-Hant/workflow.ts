@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: '生成內容',
+        reasoning_content: '推理內容',
         usage: '模型用量信息',
       },
       singleRun: {
@@ -944,6 +945,9 @@ const translation = {
       retrievalSettingIsRequired: '需要檢索設定',
       chunksInput: '區塊',
       chunksInputTip: '知識庫節點的輸入變數是 Chunks。該變數類型是一個物件，具有特定的 JSON Schema，必須與所選的塊結構一致。',
+      rerankingModelIsRequired: '需要重新排序模型',
+      chunksVariableIsRequired: 'Chunks 變數是必需的',
+      embeddingModelIsRequired: '需要嵌入模型',
     },
   },
   tracing: {

@@ -46,7 +46,7 @@ class DataPostProcessor:
         reranking_model: dict | None = None,
         weights: dict | None = None,
     ) -> BaseRerankRunner | None:
-        if reranking_mode == RerankMode.WEIGHTED_SCORE.value and weights:
+        if reranking_mode == RerankMode.WEIGHTED_SCORE and weights:
             runner = RerankRunnerFactory.create_rerank_runner(
                 runner_type=reranking_mode,
                 tenant_id=tenant_id,
@@ -62,7 +62,7 @@ class DataPostProcessor:
                 ),
             )
             return runner
-        elif reranking_mode == RerankMode.RERANKING_MODEL.value:
+        elif reranking_mode == RerankMode.RERANKING_MODEL:
             rerank_model_instance = self._get_rerank_model_instance(tenant_id, reranking_model)
             if rerank_model_instance is None:
                 return None

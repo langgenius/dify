@@ -87,7 +87,7 @@ def test_overwrite_string_variable():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.OVER_WRITE.value,
+            "write_mode": WriteMode.OVER_WRITE,
             "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
         },
     }
@@ -189,7 +189,7 @@ def test_append_variable_to_array():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.APPEND.value,
+            "write_mode": WriteMode.APPEND,
             "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
         },
     }
@@ -282,7 +282,7 @@ def test_clear_array():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.CLEAR.value,
+            "write_mode": WriteMode.CLEAR,
             "input_variable_selector": [],
         },
     }

@@ -40,7 +40,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       onChange({
         ...value,
         search_method: retrieveMethod,
-        ...(!value.reranking_model.reranking_model_name
+        ...((!value.reranking_model.reranking_model_name || !value.reranking_model.reranking_provider_name)
           ? {
             reranking_model: {
               reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
@@ -57,7 +57,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       onChange({
         ...value,
         search_method: retrieveMethod,
-        ...(!value.reranking_model.reranking_model_name
+        ...((!value.reranking_model.reranking_model_name || !value.reranking_model.reranking_provider_name)
           ? {
             reranking_model: {
               reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',

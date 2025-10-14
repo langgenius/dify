@@ -542,7 +542,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             index=1,
             node_execution_id=str(uuid.uuid4()),
             node_id=self._node_id,
-            node_type=NodeType.LLM.value,
+            node_type=NodeType.LLM,
             title="Test Node",
             inputs='{"input": "test input"}',
             process_data='{"test_var": "process_value", "other_var": "other_process"}',

@@ -25,12 +25,12 @@ type Props = {
 } & Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
-  appId,
+  appId: _appId,
   nodeId,
   canSingleRun,
   isRunAfterSingleRun,
   updateNodeRunningStatus,
-  nodeInfo,
+  nodeInfo: _nodeInfo,
   runningStatus: oneStepRunRunningStatus,
   onSingleRunClicked,
   singleRunResult,

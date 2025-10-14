@@ -1,5 +1,5 @@
 import logging
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from flask import Response
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
@@ -11,14 +11,12 @@ from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.workflow_draft_variable import (
-    _WORKFLOW_DRAFT_VARIABLE_FIELDS,
-    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
+    _WORKFLOW_DRAFT_VARIABLE_FIELDS,  # type: ignore[private-usage]
+    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,  # type: ignore[private-usage]
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from core.variables.segment_group import SegmentGroup
-from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
@@ -32,32 +30,6 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
-
-
-def _convert_values_to_json_serializable_object(value: Segment) -> Any:
-    if isinstance(value, FileSegment):
-        return value.value.model_dump()
-    elif isinstance(value, ArrayFileSegment):
-        return [i.model_dump() for i in value.value]
-    elif isinstance(value, SegmentGroup):
-        return [_convert_values_to_json_serializable_object(i) for i in value.value]
-    else:
-        return value.value
-
-
-def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
-    value = variable.get_value()
-    # create a copy of the value to avoid affecting the model cache.
-    value = value.model_copy(deep=True)
-    # Refresh the url signature before returning it to client.
-    if isinstance(value, FileSegment):
-        file = value.value
-        file.remote_url = file.generate_url()
-    elif isinstance(value, ArrayFileSegment):
-        files = value.value
-        for file in files:
-            file.remote_url = file.generate_url()
-    return _convert_values_to_json_serializable_object(value)
 
 
 def _create_pagination_parser():
@@ -104,7 +76,7 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_rag_pipeline
     def wrapper(*args, **kwargs):
-        if not isinstance(current_user, Account) or not current_user.is_editor:
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
         return f(*args, **kwargs)
 

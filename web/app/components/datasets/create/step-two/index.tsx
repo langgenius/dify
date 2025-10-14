@@ -568,9 +568,9 @@ const StepTwo = ({
         params,
         {
           onSuccess(data) {
-            updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-            updateResultCache && updateResultCache(data)
-            updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+            updateIndexingTypeCache?.(indexType as string)
+            updateResultCache?.(data)
+            updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
           },
         },
       )
@@ -578,17 +578,18 @@ const StepTwo = ({
     else {
       await createDocumentMutation.mutateAsync(params, {
         onSuccess(data) {
-          updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-          updateResultCache && updateResultCache(data)
-          updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+          updateIndexingTypeCache?.(indexType as string)
+          updateResultCache?.(data)
+          updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
         },
       })
     }
     if (mutateDatasetRes)
       mutateDatasetRes()
     invalidDatasetList()
-    onStepChange && onStepChange(+1)
-    isSetting && onSave && onSave()
+    onStepChange?.(+1)
+    if (isSetting)
+      onSave?.()
   }
 
   useEffect(() => {
@@ -1026,7 +1027,7 @@ const StepTwo = ({
         {!isSetting
           ? (
             <div className='mt-8 flex items-center py-2'>
-              <Button onClick={() => onStepChange && onStepChange(-1)}>
+              <Button onClick={() => onStepChange?.(-1)}>
                 <RiArrowLeftLine className='mr-1 h-4 w-4' />
                 {t('datasetCreation.stepTwo.previousStep')}
               </Button>

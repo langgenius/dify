@@ -80,7 +80,8 @@ const TextAreaWithButton = ({
       onUpdateList?.()
     }
     setLoading(false)
-    _onSubmit && _onSubmit()
+    if (_onSubmit)
+      _onSubmit()
   }
 
   const externalRetrievalTestingOnSubmit = async () => {

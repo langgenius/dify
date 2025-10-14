@@ -1,6 +1,6 @@
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
-import { checkoutRerankModelConfigedInRetrievalSettings } from './utils'
+import { checkoutRerankModelConfiguredInRetrievalSettings } from './utils'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
@@ -36,7 +36,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
 
     const { _datasets, multiple_retrieval_config, retrieval_mode } = payload
     if (retrieval_mode === RETRIEVE_TYPE.multiWay) {
-      const checked = checkoutRerankModelConfigedInRetrievalSettings(_datasets || [], multiple_retrieval_config)
+      const checked = checkoutRerankModelConfiguredInRetrievalSettings(_datasets || [], multiple_retrieval_config)
 
       if (!errorMessages && !checked)
         errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.rerankModel`) })

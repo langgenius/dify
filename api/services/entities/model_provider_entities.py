@@ -1,6 +1,7 @@
-from enum import Enum
+from collections.abc import Sequence
+from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from configs import dify_config
 from core.entities.model_entities import (
@@ -26,7 +27,7 @@ from core.model_runtime.entities.provider_entities import (
 from models.provider import ProviderType
 
 
-class CustomConfigurationStatus(Enum):
+class CustomConfigurationStatus(StrEnum):
     """
     Enum class for custom configuration status.
     """
@@ -71,7 +72,7 @@ class ProviderResponse(BaseModel):
     icon_large: I18nObject | None = None
     background: str | None = None
     help: ProviderHelpEntity | None = None
-    supported_model_types: list[ModelType]
+    supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
     provider_credential_schema: ProviderCredentialSchema | None = None
     model_credential_schema: ModelCredentialSchema | None = None
@@ -82,9 +83,8 @@ class ProviderResponse(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -97,6 +97,7 @@ class ProviderResponse(BaseModel):
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
+        return self
 
 
 class ProviderWithModelsResponse(BaseModel):
@@ -112,9 +113,8 @@ class ProviderWithModelsResponse(BaseModel):
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -127,6 +127,7 @@ class ProviderWithModelsResponse(BaseModel):
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
+        return self
 
 
 class SimpleProviderEntityResponse(SimpleProviderEntity):
@@ -136,9 +137,8 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
 
     tenant_id: str
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -151,6 +151,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
+        return self
 
 
 class DefaultModelResponse(BaseModel):

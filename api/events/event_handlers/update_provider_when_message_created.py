@@ -1,10 +1,11 @@
 import logging
 import time as time_module
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy import update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -139,7 +140,7 @@ def handle(sender: Message, **kwargs):
                 filters=_ProviderUpdateFilters(
                     tenant_id=tenant_id,
                     provider_name=ModelProviderID(model_config.provider).provider_name,
-                    provider_type=ProviderType.SYSTEM.value,
+                    provider_type=ProviderType.SYSTEM,
                     quota_type=provider_configuration.system_configuration.current_quota_type.value,
                 ),
                 values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),
@@ -267,7 +268,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Build and execute the update statement
             stmt = update(Provider).where(*where_conditions).values(**update_values)
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             rows_affected = result.rowcount
 
             logger.debug(

@@ -1,5 +1,7 @@
 from unittest import mock
 
+from pytest_mock import MockerFixture
+
 from core.rag.extractor import notion_extractor
 
 user_id = "user1"
@@ -57,7 +59,7 @@ def _remove_multiple_new_lines(text):
     return text.strip()
 
 
-def test_notion_page(mocker):
+def test_notion_page(mocker: MockerFixture):
     texts = ["Head 1", "1.1", "paragraph 1", "1.1.1"]
     mocked_notion_page = {
         "object": "list",
@@ -69,7 +71,7 @@ def test_notion_page(mocker):
         ],
         "next_cursor": None,
     }
-    mocker.patch("requests.request", return_value=_mock_response(mocked_notion_page))
+    mocker.patch("httpx.request", return_value=_mock_response(mocked_notion_page))
 
     page_docs = extractor._load_data_as_documents(page_id, "page")
     assert len(page_docs) == 1
@@ -77,14 +79,14 @@ def test_notion_page(mocker):
     assert content == "# Head 1\n## 1.1\nparagraph 1\n### 1.1.1"
 
 
-def test_notion_database(mocker):
+def test_notion_database(mocker: MockerFixture):
     page_title_list = ["page1", "page2", "page3"]
     mocked_notion_database = {
         "object": "list",
         "results": [_generate_page(i) for i in page_title_list],
         "next_cursor": None,
     }
-    mocker.patch("requests.post", return_value=_mock_response(mocked_notion_database))
+    mocker.patch("httpx.post", return_value=_mock_response(mocked_notion_database))
     database_docs = extractor._load_data_as_documents(database_id, "database")
     assert len(database_docs) == 1
     content = _remove_multiple_new_lines(database_docs[0].page_content)

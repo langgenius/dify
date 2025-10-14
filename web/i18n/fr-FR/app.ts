@@ -163,6 +163,10 @@ const translation = {
       title: 'Surveillance Cloud',
       description: 'La plateforme d\'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l\'emploi des applications Dify.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring fournit une traçabilité complète et une analyse multidimensionnelle pour les applications LLM.',
+    },
   },
   answerIcon: {
     description: 'S’il faut utiliser l’icône web app pour remplacer 🤖 dans l’application partagée',

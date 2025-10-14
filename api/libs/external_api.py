@@ -94,7 +94,7 @@ def register_external_error_handlers(api: Api):
         got_request_exception.send(current_app, exception=e)
 
         status_code = 500
-        data = getattr(e, "data", {"message": http_status_message(status_code)})
+        data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
 
         # 🔒 Normalize non-mapping data (e.g., if someone set e.data = Response)
         if not isinstance(data, dict):

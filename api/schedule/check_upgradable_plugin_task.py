@@ -52,7 +52,8 @@ def check_upgradable_plugin_task():
                 strategy.include_plugins,
             )
 
-        if batch_interval_time > 0.0001:  # if lower than 1ms, skip
+        # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one
+        if batch_interval_time > 0.0001 and i + MAX_CONCURRENT_CHECK_TASKS < total_strategies:
             time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()

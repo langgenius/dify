@@ -86,7 +86,7 @@ class TestFileService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -187,7 +187,7 @@ class TestFileService:
         assert upload_file.extension == "pdf"
         assert upload_file.mime_type == mimetype
         assert upload_file.created_by == account.id
-        assert upload_file.created_by_role == CreatorUserRole.ACCOUNT.value
+        assert upload_file.created_by_role == CreatorUserRole.ACCOUNT
         assert upload_file.used is False
         assert upload_file.hash == hashlib.sha3_256(content).hexdigest()
 
@@ -216,7 +216,7 @@ class TestFileService:
 
         assert upload_file is not None
         assert upload_file.created_by == end_user.id
-        assert upload_file.created_by_role == CreatorUserRole.END_USER.value
+        assert upload_file.created_by_role == CreatorUserRole.END_USER
 
     def test_upload_file_with_datasets_source(
         self, db_session_with_containers, engine, mock_external_service_dependencies

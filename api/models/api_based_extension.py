@@ -9,7 +9,7 @@ from .base import Base
 from .types import StringUUID
 
 
-class APIBasedExtensionPoint(enum.Enum):
+class APIBasedExtensionPoint(enum.StrEnum):
     APP_EXTERNAL_DATA_TOOL_QUERY = "app.external_data_tool.query"
     PING = "ping"
     APP_MODERATION_INPUT = "app.moderation.input"

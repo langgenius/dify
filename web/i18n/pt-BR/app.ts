@@ -163,6 +163,10 @@ const translation = {
       title: 'Monitoramento em Nuvem',
       description: 'A plataforma de observabilidade totalmente gerenciada e sem manutenção fornecida pela Alibaba Cloud, permite monitoramento, rastreamento e avaliação prontos para uso de aplicações Dify.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'O Monitoramento de Desempenho de Aplicações da Tencent fornece rastreamento abrangente e análise multidimensional para aplicações LLM.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',

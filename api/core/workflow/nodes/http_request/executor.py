@@ -87,7 +87,7 @@ class Executor:
                 node_data.authorization.config.api_key
             ).text
 
-        self.url: str = node_data.url
+        self.url = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
@@ -349,11 +349,10 @@ class Executor:
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
-            "max_retries": self.max_retries,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[method_lc](**request_args)
+            response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue

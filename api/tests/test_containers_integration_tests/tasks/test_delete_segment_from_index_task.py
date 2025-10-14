@@ -48,11 +48,8 @@ class TestDeleteSegmentFromIndexTask:
             Tenant: Created test tenant instance
         """
         fake = fake or Faker()
-        tenant = Tenant()
+        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="active")
         tenant.id = fake.uuid4()
-        tenant.name = f"Test Tenant {fake.company()}"
-        tenant.plan = "basic"
-        tenant.status = "active"
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
@@ -73,16 +70,14 @@ class TestDeleteSegmentFromIndexTask:
             Account: Created test account instance
         """
         fake = fake or Faker()
-        account = Account()
+        account = Account(
+            name=fake.name(),
+            email=fake.email(),
+            avatar=fake.url(),
+            status="active",
+            interface_language="en-US",
+        )
         account.id = fake.uuid4()
-        account.email = fake.email()
-        account.name = fake.name()
-        account.avatar_url = fake.url()
-        account.tenant_id = tenant.id
-        account.status = "active"
-        account.type = "normal"
-        account.role = "owner"
-        account.interface_language = "en-US"
         account.created_at = fake.date_time_this_year()
         account.updated_at = account.created_at
 

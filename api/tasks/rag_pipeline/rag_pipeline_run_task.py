@@ -30,23 +30,10 @@ def rag_pipeline_run_task(
     tenant_id: str,
 ):
     """
-    Async Run rag pipeline
-    :param rag_pipeline_invoke_entities: Rag pipeline invoke entities
-    rag_pipeline_invoke_entities include:
-    :param pipeline_id: Pipeline ID
-    :param user_id: User ID
-    :param tenant_id: Tenant ID
-    :param workflow_id: Workflow ID
-    :param invoke_from: Invoke source (debugger, published, etc.)
-    :param streaming: Whether to stream results
-    :param datasource_type: Type of datasource
-    :param datasource_info: Datasource information dict
-    :param batch: Batch identifier
-    :param document_id: Document ID (optional)
-    :param start_node_id: Starting node ID
-    :param inputs: Input parameters dict
-    :param workflow_execution_id: Workflow execution ID
-    :param workflow_thread_pool_id: Thread pool ID for workflow execution
+    Async Run rag pipeline task using regular priority queue.
+
+    :param rag_pipeline_invoke_entities_file_id: File ID containing serialized RAG pipeline invoke entities
+    :param tenant_id: Tenant ID for the pipeline execution
     """
     # run with threading, thread pool size is 10
 
@@ -113,7 +100,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
     # Create Flask application context for this thread
     with flask_app.app_context():
         try:
-            rag_pipeline_invoke_entity_model = RagPipelineInvokeEntity(**rag_pipeline_invoke_entity)
+            rag_pipeline_invoke_entity_model = RagPipelineInvokeEntity.model_validate(rag_pipeline_invoke_entity)
             user_id = rag_pipeline_invoke_entity_model.user_id
             tenant_id = rag_pipeline_invoke_entity_model.tenant_id
             pipeline_id = rag_pipeline_invoke_entity_model.pipeline_id
@@ -146,7 +133,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     workflow_execution_id = str(uuid.uuid4())
 
                 # Create application generate entity from dict
-                entity = RagPipelineGenerateEntity(**application_generate_entity)
+                entity = RagPipelineGenerateEntity.model_validate(application_generate_entity)
 
                 # Create workflow repositories
                 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)

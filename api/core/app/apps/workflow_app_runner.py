@@ -100,8 +100,8 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow_id,
             graph_config=graph_config,
             user_id=user_id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         )
 
@@ -244,8 +244,8 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow.id,
             graph_config=graph_config,
             user_id="",
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.SERVICE_API.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         )
 

@@ -43,27 +43,30 @@ class TestDisableSegmentsFromIndexTask:
             Account: Created test account instance
         """
         fake = fake or Faker()
-        account = Account()
+        account = Account(
+            email=fake.email(),
+            name=fake.name(),
+            avatar=fake.url(),
+            status="active",
+            interface_language="en-US",
+        )
         account.id = fake.uuid4()
-        account.email = fake.email()
-        account.name = fake.name()
-        account.avatar_url = fake.url()
+        # monkey-patch attributes for test setup
         account.tenant_id = fake.uuid4()
-        account.status = "active"
         account.type = "normal"
         account.role = "owner"
-        account.interface_language = "en-US"
         account.created_at = fake.date_time_this_year()
         account.updated_at = account.created_at
 
         # Create a tenant for the account
         from models.account import Tenant
 
-        tenant = Tenant()
+        tenant = Tenant(
+            name=f"Test Tenant {fake.company()}",
+            plan="basic",
+            status="active",
+        )
         tenant.id = account.tenant_id
-        tenant.name = f"Test Tenant {fake.company()}"
-        tenant.plan = "basic"
-        tenant.status = "active"
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
@@ -91,20 +94,21 @@ class TestDisableSegmentsFromIndexTask:
             Dataset: Created test dataset instance
         """
         fake = fake or Faker()
-        dataset = Dataset()
-        dataset.id = fake.uuid4()
-        dataset.tenant_id = account.tenant_id
-        dataset.name = f"Test Dataset {fake.word()}"
-        dataset.description = fake.text(max_nb_chars=200)
-        dataset.provider = "vendor"
-        dataset.permission = "only_me"
-        dataset.data_source_type = "upload_file"
-        dataset.indexing_technique = "high_quality"
-        dataset.created_by = account.id
-        dataset.updated_by = account.id
-        dataset.embedding_model = "text-embedding-ada-002"
-        dataset.embedding_model_provider = "openai"
-        dataset.built_in_field_enabled = False
+        dataset = Dataset(
+            id=fake.uuid4(),
+            tenant_id=account.tenant_id,
+            name=f"Test Dataset {fake.word()}",
+            description=fake.text(max_nb_chars=200),
+            provider="vendor",
+            permission="only_me",
+            data_source_type="upload_file",
+            indexing_technique="high_quality",
+            created_by=account.id,
+            updated_by=account.id,
+            embedding_model="text-embedding-ada-002",
+            embedding_model_provider="openai",
+            built_in_field_enabled=False,
+        )
 
         from extensions.ext_database import db
 
@@ -128,6 +132,7 @@ class TestDisableSegmentsFromIndexTask:
         """
         fake = fake or Faker()
         document = DatasetDocument()
+
         document.id = fake.uuid4()
         document.tenant_id = dataset.tenant_id
         document.dataset_id = dataset.id
@@ -153,7 +158,6 @@ class TestDisableSegmentsFromIndexTask:
         document.archived = False
         document.doc_form = "text_model"  # Use text_model form for testing
         document.doc_language = "en"
-
         from extensions.ext_database import db
 
         db.session.add(document)

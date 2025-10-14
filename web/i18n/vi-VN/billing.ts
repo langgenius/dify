@@ -94,6 +94,8 @@ const translation = {
     freeTrialTipSuffix: 'Không cần thẻ tín dụng',
     documentsRequestQuotaTooltip: 'Chỉ định tổng số hành động mà một không gian làm việc có thể thực hiện mỗi phút trong cơ sở tri thức, bao gồm tạo mới tập dữ liệu, xóa, cập nhật, tải tài liệu lên, thay đổi, lưu trữ và truy vấn cơ sở tri thức. Chỉ số này được sử dụng để đánh giá hiệu suất của các yêu cầu cơ sở tri thức. Ví dụ, nếu một người dùng Sandbox thực hiện 10 lần kiểm tra liên tiếp trong một phút, không gian làm việc của họ sẽ bị hạn chế tạm thời không thực hiện các hành động sau trong phút tiếp theo: tạo mới tập dữ liệu, xóa, cập nhật và tải tài liệu lên hoặc thay đổi.',
     startBuilding: 'Bắt đầu xây dựng',
+    taxTipSecond: 'Nếu khu vực của bạn không có yêu cầu thuế áp dụng, sẽ không có thuế xuất hiện trong quá trình thanh toán của bạn và bạn sẽ không bị tính bất kỳ khoản phí bổ sung nào trong suốt thời gian đăng ký.',
+    taxTip: 'Tất cả giá đăng ký (hàng tháng/hàng năm) chưa bao gồm các loại thuế áp dụng (ví dụ: VAT, thuế bán hàng).',
   },
   plans: {
     sandbox: {

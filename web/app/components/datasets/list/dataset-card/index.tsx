@@ -157,12 +157,12 @@ const DatasetCard = ({
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
-          isExternalProvider
-            ? push(`/datasets/${dataset.id}/hitTesting`)
-            // eslint-disable-next-line sonarjs/no-nested-conditional
-            : isPipelineUnpublished
-              ? push(`/datasets/${dataset.id}/pipeline`)
-              : push(`/datasets/${dataset.id}/documents`)
+          if (isExternalProvider)
+            push(`/datasets/${dataset.id}/hitTesting`)
+          else if (isPipelineUnpublished)
+            push(`/datasets/${dataset.id}/pipeline`)
+          else
+            push(`/datasets/${dataset.id}/documents`)
         }}
       >
         {!dataset.embedding_available && (

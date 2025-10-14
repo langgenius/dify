@@ -25,8 +25,8 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     As a result, it could only be considered as an end user id.
     """
     if not user_id:
-        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
-    is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
+    is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
     try:
         with Session(db.engine) as session:
             user_model = None
@@ -85,7 +85,7 @@ def get_user_tenant(view: Callable[P, R] | None = None):
                 raise ValueError("tenant_id is required")
 
             if not user_id:
-                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
+                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
             try:
                 tenant_model = (
@@ -128,7 +128,7 @@ def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseMo
                 raise ValueError("invalid json")
 
             try:
-                payload = payload_type(**data)
+                payload = payload_type.model_validate(data)
             except Exception as e:
                 raise ValueError(f"invalid payload: {str(e)}")
 

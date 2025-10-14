@@ -148,7 +148,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           })
         }
       }
-      catch (e) {
+      catch {
         Toast.notify({ type: 'error', message: t('common.error') })
       }
     }
