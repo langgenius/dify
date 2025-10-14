@@ -19,6 +19,7 @@ language_timezone_mapping = {
     "fa-IR": "Asia/Tehran",
     "sl-SI": "Europe/Ljubljana",
     "th-TH": "Asia/Bangkok",
+    "id-ID": "Asia/Jakarta",
 }
 
 languages = list(language_timezone_mapping.keys())

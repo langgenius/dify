@@ -45,6 +45,10 @@ const Description = async ({
         </span>
         ,
         <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className='relative z-[2] lowercase'>{t('category.datasources')}</span>
+        </span>
+        ,
+        <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
           <span className='relative z-[2] lowercase'>{t('category.agents')}</span>
         </span>
         ,

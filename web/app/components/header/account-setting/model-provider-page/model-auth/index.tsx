@@ -4,3 +4,5 @@ export { default as AddCredentialInLoadBalancing } from './add-credential-in-loa
 export { default as AddCustomModel } from './add-custom-model'
 export { default as ConfigProvider } from './config-provider'
 export { default as ConfigModel } from './config-model'
+export { default as ManageCustomModelCredentials } from './manage-custom-model-credentials'
+export { default as CredentialSelector } from './credential-selector'

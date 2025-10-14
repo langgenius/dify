@@ -23,7 +23,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
             storage_key="storage_key_123",
         )
 
-    def create_file_dict(self, file_id: str = "test_file_dict") -> dict:
+    def create_file_dict(self, file_id: str = "test_file_dict"):
         """Create a file dictionary with correct dify_model_identity"""
         return {
             "dify_model_identity": FILE_MODEL_IDENTITY,

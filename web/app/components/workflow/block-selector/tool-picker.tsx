@@ -13,7 +13,7 @@ import type {
 } from '@floating-ui/react'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
 import type { ToolDefaultValue, ToolValue } from './types'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
@@ -158,13 +158,11 @@ const ToolPicker: FC<Props> = ({
               onSearchChange={setSearchText}
               tags={tags}
               onTagsChange={setTags}
-              size='small'
               placeholder={t('plugin.searchTools')!}
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}
               inputClassName='grow'
-
             />
           </div>
           <AllTools
@@ -172,7 +170,7 @@ const ToolPicker: FC<Props> = ({
             toolContentClassName='max-w-[100%]'
             tags={tags}
             searchText={searchText}
-            onSelect={handleSelect}
+            onSelect={handleSelect as OnSelectBlock}
             onSelectMultiple={handleSelectMultiple}
             buildInTools={builtinToolList || []}
             customTools={customToolList || []}

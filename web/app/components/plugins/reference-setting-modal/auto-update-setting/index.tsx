@@ -101,19 +101,19 @@ const AutoUpdateSetting: FC<Props> = ({
 
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
-        <div
-          className='group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt'
-          onClick={onClick}
-        >
-          <div className='flex w-0 grow items-center gap-x-1'>
-            <RiTimeLine className={cn(
-              'h-4 w-4 shrink-0 text-text-tertiary',
-              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-            )} />
-            {inputElem}
-          </div>
-          <div className='system-sm-regular text-text-tertiary'>{convertTimezoneToOffsetStr(timezone)}</div>
+      <div
+        className='group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt'
+        onClick={onClick}
+      >
+        <div className='flex w-0 grow items-center gap-x-1'>
+          <RiTimeLine className={cn(
+            'h-4 w-4 shrink-0 text-text-tertiary',
+            isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+          )} />
+          {inputElem}
         </div>
+        <div className='system-sm-regular text-text-tertiary'>{convertTimezoneToOffsetStr(timezone)}</div>
+      </div>
     )
   }, [timezone])
 

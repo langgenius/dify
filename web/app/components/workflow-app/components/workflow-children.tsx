@@ -5,7 +5,7 @@ import {
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useStore } from '@/app/components/workflow/store'
-import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import PluginDependency from '../../workflow/plugin-dependency'
 import {
   useDSL,
   usePanelInteractions,
@@ -54,7 +54,7 @@ const WorkflowChildren = () => {
         showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
-            onBackup={exportCheck}
+            onBackup={exportCheck!}
             onImport={handlePaneContextmenuCancel}
           />
         )
@@ -63,7 +63,7 @@ const WorkflowChildren = () => {
         secretEnvList.length > 0 && (
           <DSLExportConfirmModal
             envList={secretEnvList}
-            onConfirm={handleExportDSL}
+            onConfirm={handleExportDSL!}
             onClose={() => setSecretEnvList([])}
           />
         )

@@ -84,6 +84,7 @@ const translation = {
     chooseAppType: 'เลือกประเภทแอป',
     advancedShortDescription: 'โฟลว์ที่เสริมประสิทธิภาพสำหรับการสนทนาหลายรอบ',
     dropDSLToCreateApp: 'ลากไฟล์ DSL มาที่นี่เพื่สร้างแอป',
+    import: 'นําเข้า',
   },
   editApp: 'แก้ไขข้อมูล',
   editAppTitle: 'แก้ไขข้อมูลโปรเจกต์',
@@ -170,6 +171,10 @@ const translation = {
     aliyun: {
       title: 'การตรวจสอบคลาวด์',
       description: 'แพลตฟอร์มการสังเกตการณ์ที่จัดการโดย Alibaba Cloud ซึ่งไม่ต้องดูแลและบำรุงรักษา ช่วยให้สามารถติดตาม ตรวจสอบ และประเมินแอปพลิเคชัน Dify ได้ทันที',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'การติดตามประสิทธิภาพแอปพลิเคชันของ Tencent มอบการตรวจสอบแบบครบวงจรและการวิเคราะห์หลายมิติสำหรับแอป LLM',
     },
   },
   mermaid: {
@@ -273,6 +278,10 @@ const translation = {
       themeLightDesc: 'ใช้รูปลักษณ์ที่มีความสว่าง',
       themeSystemDesc: 'ติดตามรูปลักษณ์ของระบบปฏิบัติการของคุณ',
       slashDesc: 'ใช้คำสั่งเช่น /theme, /lang',
+      feedbackDesc: 'การอภิปรายข้อเสนอแนะแบบเปิดในชุมชน',
+      accountDesc: 'ไปที่หน้าบัญชี',
+      docDesc: 'เปิดเอกสารช่วยเหลือ',
+      communityDesc: 'เปิดชุมชน Discord',
     },
     emptyState: {
       noPluginsFound: 'ไม่พบปลั๊กอิน',
@@ -307,6 +316,11 @@ const translation = {
     inScope: 'ใน {{scope}}s',
     noMatchingCommands: 'ไม่พบคำสั่งที่ตรงกัน',
     tryDifferentSearch: 'ลองใช้ข้อความค้นหาอื่น',
+    slashHint: 'พิมพ์ / เพื่อดูคำสั่งที่มีให้ทั้งหมด',
+    pressEscToClose: 'กด ESC เพื่อปิด',
+    selectToNavigate: 'เลือกเพื่อนำทาง',
+    startTyping: 'เริ่มพิมพ์เพื่อค้นหา',
+    tips: 'กด ↑↓ เพื่อเลื่อนดู',
   },
 }
 

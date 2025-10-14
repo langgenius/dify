@@ -25,10 +25,10 @@ const Nav = ({
   activeSegment,
   link,
   curNav,
-  navs,
+  navigationItems,
   createText,
   onCreate,
-  onLoadmore,
+  onLoadMore,
   isApp,
 }: INavProps) => {
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -53,11 +53,11 @@ const Nav = ({
       <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
         <div
           onClick={() => setAppDetail()}
-          className={classNames(`
-            flex h-7 cursor-pointer items-center rounded-[10px] px-2.5
-            ${isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text'}
-            ${curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover'}
-          `)}
+          className={classNames(
+            'flex h-7 cursor-pointer items-center rounded-[10px] px-2.5',
+            isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text',
+            curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover',
+          )}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -82,10 +82,10 @@ const Nav = ({
             <NavSelector
               isApp={isApp}
               curNav={curNav}
-              navs={navs}
+              navigationItems={navigationItems}
               createText={createText}
               onCreate={onCreate}
-              onLoadmore={onLoadmore}
+              onLoadMore={onLoadMore}
             />
           </>
         )

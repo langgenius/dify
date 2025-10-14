@@ -77,6 +77,7 @@ const translation = {
     agentUserDescription: 'Ein intelligenter Agent, der in der Lage ist, iteratives Denken zu führen und autonome Werkzeuge zu verwenden, um Aufgabenziele zu erreichen.',
     agentShortDescription: 'Intelligenter Agent mit logischem Denken und autonomer Werkzeugnutzung',
     dropDSLToCreateApp: 'Ziehen Sie die DSL-Datei hierher, um die App zu erstellen',
+    import: 'Importieren',
   },
   editApp: 'App bearbeiten',
   editAppTitle: 'App-Informationen bearbeiten',
@@ -158,6 +159,10 @@ const translation = {
     aliyun: {
       title: 'Cloud-Monitor',
       description: 'Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring bietet umfassendes Tracing und multidimensionale Analyse für LLM-Anwendungen.',
     },
   },
   answerIcon: {
@@ -279,6 +284,10 @@ const translation = {
       runDesc: 'Führen Sie schnelle Befehle aus (Thema, Sprache, ...)',
       themeCategoryTitle: 'Thema',
       slashDesc: 'Führen Sie Befehle wie /theme, /lang aus',
+      accountDesc: 'Gehe zur Kontoseite',
+      feedbackDesc: 'Offene Diskussionen zum Feedback der Gemeinschaft',
+      communityDesc: 'Offene Discord-Community',
+      docDesc: 'Öffnen Sie die Hilfedokumentation',
     },
     emptyState: {
       noPluginsFound: 'Keine Plugins gefunden',
@@ -313,6 +322,11 @@ const translation = {
     inScope: 'in {{scope}}s',
     noMatchingCommands: 'Keine übereinstimmenden Befehle gefunden',
     tryDifferentSearch: 'Versuchen Sie es mit einem anderen Suchbegriff',
+    slashHint: 'Geben Sie / ein, um alle verfügbaren Befehle anzuzeigen.',
+    tips: 'Drücken Sie ↑↓, um zu navigieren',
+    pressEscToClose: 'Drücken Sie ESC, um zu schließen',
+    startTyping: 'Beginnen Sie mit der Eingabe, um zu suchen',
+    selectToNavigate: 'Auswählen, um zu navigieren',
   },
 }
 

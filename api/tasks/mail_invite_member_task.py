@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="mail")
-def send_invite_member_mail_task(language: str, to: str, token: str, inviter_name: str, workspace_name: str) -> None:
+def send_invite_member_mail_task(language: str, to: str, token: str, inviter_name: str, workspace_name: str):
     """
     Send invite member email with internationalization support.
 

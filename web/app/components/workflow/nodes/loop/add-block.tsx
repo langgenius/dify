@@ -32,7 +32,7 @@ const AddBlock = ({
   const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeAdd } = useNodesInteractions()
-  const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false, true)
+  const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeAdd(

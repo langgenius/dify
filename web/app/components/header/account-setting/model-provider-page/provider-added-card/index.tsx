@@ -25,7 +25,10 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
-import { AddCustomModel } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import {
+  AddCustomModel,
+  ManageCustomModelCredentials,
+} from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -155,10 +158,17 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             )}
             {
               configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
-                <AddCustomModel
-                  provider={provider}
-                  configurationMethod={ConfigurationMethodEnum.customizableModel}
-                />
+                <div className='flex grow justify-end'>
+                  <ManageCustomModelCredentials
+                    provider={provider}
+                    currentCustomConfigurationModelFixedFields={undefined}
+                  />
+                  <AddCustomModel
+                    provider={provider}
+                    configurationMethod={ConfigurationMethodEnum.customizableModel}
+                    currentCustomConfigurationModelFixedFields={undefined}
+                  />
+                </div>
               )
             }
           </div>

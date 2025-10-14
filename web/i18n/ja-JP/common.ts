@@ -67,6 +67,10 @@ const translation = {
     selectAll: 'すべて選択',
     deSelectAll: 'すべて選択解除',
     config: 'コンフィグ',
+    yes: 'はい',
+    no: 'いいえ',
+    deleteConfirmTitle: '削除しますか？',
+    confirmAction: '操作を確認してください。',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -484,6 +488,7 @@ const translation = {
     emptyProviderTitle: 'モデルプロバイダーが設定されていません',
     discoverMore: 'もっと発見する',
     installProvider: 'モデルプロバイダーをインストールする',
+    installDataSourceProvider: 'データソースプロバイダーをインストールする',
     configureTip: 'API キーを設定するか、使用するモデルを追加してください',
     toBeConfigured: '設定中',
     emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',
@@ -508,7 +513,17 @@ const translation = {
       providerManagedTip: '現在の設定はプロバイダーによってホストされています。',
       specifyModelCredential: 'モデルの資格情報を指定してください',
       specifyModelCredentialTip: '構成されたモデルの認証情報を使用してください。',
+      addModel: 'モデルを追加する',
+      addNewModelCredential: '新しいモデルの認証情報を追加する',
+      editModelCredential: 'モデルの資格情報を編集する',
+      removeModel: 'モデルを削除する',
+      customModelCredentialsDeleteTip: '認証情報は使用中で、削除できません。',
+      modelCredential: 'モデルの資格情報',
+      manageCredentials: '認証情報を管理する',
+      customModelCredentials: 'カスタムモデルの認証情報',
+      selectModelCredential: 'モデルの資格情報を選択する',
     },
+    parametersInvalidRemoved: 'いくつかのパラメータが無効であり、削除されました。',
   },
   dataSource: {
     add: 'データソースの追加',
@@ -607,6 +622,7 @@ const translation = {
     viewDoc: 'ドキュメントを表示',
     relatedApp: '関連アプリ',
     noRelatedApp: '関連付けられたアプリはありません',
+    pipeline: 'パイプライン',
   },
   voiceInput: {
     speaking: '今話しています...',
@@ -741,6 +757,15 @@ const translation = {
   avatar: {
     deleteTitle: 'アバターを削除する',
     deleteDescription: '本当にプロフィール写真を削除してもよろしいですか？あなたのアカウントはデフォルトの初期アバターを使用します。',
+  },
+  feedback: {
+    content: 'フィードバックコンテンツ',
+    title: 'フィードバックを提供する',
+    subtitle: 'この回答で何が間違っていたのか教えてください。',
+    placeholder: '何が間違っていたか、またはどのように改善できるかを教えてください...',
+  },
+  label: {
+    optional: '(オプション)',
   },
 }
 

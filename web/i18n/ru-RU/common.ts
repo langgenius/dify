@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Выбрать все',
     deSelectAll: 'Снять выделение со всех',
     config: 'Конфигурация',
+    yes: 'Да',
+    no: 'Нет',
+    deleteConfirmTitle: 'Удалить?',
+    confirmAction: 'Пожалуйста, подтвердите ваше действие.',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -202,7 +206,6 @@ const translation = {
     showAppLength: 'Показать {{length}} приложений',
     delete: 'Удалить учетную запись',
     deleteTip: 'Удаление вашей учетной записи приведет к безвозвратному удалению всех ваших данных, и их невозможно будет восстановить.',
-    deleteConfirmTip: 'Для подтверждения, пожалуйста, отправьте следующее с вашего зарегистрированного адреса электронной почты на ',
     account: 'Счет',
     studio: 'Студия Dify',
     myAccount: 'Моя учетная запись',
@@ -495,7 +498,18 @@ const translation = {
       configLoadBalancing: 'Конфигурация балансировки нагрузки',
       providerManagedTip: 'Текущая конфигурация размещена у провайдера.',
       specifyModelCredentialTip: 'Используйте конфигурированные учетные данные модели.',
+      removeModel: 'Удалить модель',
+      addModel: 'Добавить модель',
+      modelCredential: 'Удостоверение модели',
+      editModelCredential: 'Редактирование учетных данных модели',
+      selectModelCredential: 'Выбор учетных данных модели',
+      addNewModelCredential: 'Добавление новых учетных данных модели',
+      customModelCredentials: 'Учетные данные пользовательской модели',
+      manageCredentials: 'Управление учетными данными',
+      customModelCredentialsDeleteTip: 'Учетные данные используются и не могут быть удалены',
     },
+    parametersInvalidRemoved: 'Некоторые параметры недействительны и были удалены',
+    installDataSourceProvider: 'Установить поставщиков источников данных',
   },
   dataSource: {
     add: 'Добавить источник данных',
@@ -594,6 +608,7 @@ const translation = {
     viewDoc: 'Просмотреть документацию',
     relatedApp: 'связанные приложения',
     noRelatedApp: 'Нет связанных приложений',
+    pipeline: 'Трубопровод',
   },
   voiceInput: {
     speaking: 'Говорите сейчас...',
@@ -742,6 +757,15 @@ const translation = {
   avatar: {
     deleteTitle: 'Удалить аватар',
     deleteDescription: 'Вы уверены, что хотите удалить свою фотографию профиля? Ваш аккаунт будет использовать стандартный аватар.',
+  },
+  feedback: {
+    title: 'Оставить отзыв',
+    content: 'Содержимое обратной связи',
+    placeholder: 'Пожалуйста, опишите, что пошло не так или как мы можем улучшиться...',
+    subtitle: 'Пожалуйста, сообщите нам, что пошло не так с этим ответом',
+  },
+  label: {
+    optional: '(необязательно)',
   },
 }
 

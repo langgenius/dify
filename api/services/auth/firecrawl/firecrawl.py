@@ -1,6 +1,6 @@
 import json
 
-import requests
+import httpx
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase
 
@@ -36,7 +36,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
     def _post_request(self, url, data, headers):
-        return requests.post(url, headers=headers, json=data)
+        return httpx.post(url, headers=headers, json=data)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:

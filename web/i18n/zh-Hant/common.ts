@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: '全不選',
     selectAll: '全選',
     config: '配置',
+    yes: '是',
+    confirmAction: '請確認您的操作。',
+    deleteConfirmTitle: '刪除？',
+    no: '不',
   },
   placeholder: {
     input: '請輸入',
@@ -489,7 +493,19 @@ const translation = {
       configLoadBalancing: '配置負載均衡',
       unAuthorized: '未經授權',
       authorizationError: '授權錯誤',
+      providerManagedTip: '當前的配置由提供者主辦。',
+      manageCredentials: '管理憑證',
+      addModel: '新增模型',
+      removeModel: '移除模型',
+      editModelCredential: '編輯模型認證',
+      customModelCredentialsDeleteTip: '認證正在使用中，無法刪除',
+      modelCredential: '模型認證',
+      customModelCredentials: '自訂模型認證',
+      addNewModelCredential: '新增模型認證',
+      selectModelCredential: '選取模型認證',
     },
+    parametersInvalidRemoved: '一些參數無效，已被移除',
+    installDataSourceProvider: '安裝資料來源提供者',
   },
   dataSource: {
     add: '新增資料來源',
@@ -588,6 +604,7 @@ const translation = {
     viewDoc: '檢視文件',
     relatedApp: '個關聯應用',
     noRelatedApp: '沒有連結的應用程式',
+    pipeline: '管道',
   },
   voiceInput: {
     speaking: '現在講...',
@@ -740,6 +757,15 @@ const translation = {
   avatar: {
     deleteTitle: '移除頭像',
     deleteDescription: '您確定要刪除您的個人資料照片嗎？您的帳戶將使用默認的初始頭像。',
+  },
+  feedback: {
+    title: '提供反饋',
+    content: '反饋內容',
+    placeholder: '請描述發生了什麼問題或我們可以如何改進...',
+    subtitle: '請告訴我們這個回應出了什麼問題',
+  },
+  label: {
+    optional: '（選用）',
   },
 }
 

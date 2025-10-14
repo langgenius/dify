@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',
+    keyword_search: {
+      title: 'Chỉ số đảo ngược',
+      description: 'Chỉ số đảo ngược là một cấu trúc được sử dụng để truy xuất hiệu quả. Được sắp xếp theo thuật ngữ, mỗi thuật ngữ trỏ đến các tài liệu hoặc trang web có chứa nó.',
+    },
   },
   docsFailedNotice: 'tài liệu không được lập chỉ mục',
   retry: 'Thử lại',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Tổng quát',
     parentChild: 'Cha mẹ-con cái',
+    graph: 'Đồ thị',
+    qa: 'Hỏi & Đáp',
   },
   parentMode: {
     paragraph: 'Đoạn',
@@ -217,6 +223,9 @@ const translation = {
     metadata: 'Siêu dữ liệu',
   },
   embeddingModelNotAvailable: 'Mô hình nhúng không khả dụng.',
+  updated: 'Cập nhật',
+  createFromPipeline: 'Tạo từ quy trình kiến thức',
+  externalKnowledgeBase: 'Cơ sở kiến thức bên ngoài',
 }
 
 export default translation

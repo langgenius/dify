@@ -84,10 +84,10 @@ const ClassList: FC<Props> = ({
             })()
             return (
               <div key={item.id}
-                  className={cn(
-                    'group relative rounded-[10px] bg-components-panel-bg',
-                    `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
-              )}>
+                className={cn(
+                  'group relative rounded-[10px] bg-components-panel-bg',
+                  `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
+                )}>
                 <div >
                   <Item
                     className={cn(canDrag && 'handle')}

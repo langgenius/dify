@@ -40,12 +40,12 @@ const OPTION_MAP = {
       `<script>
  window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
-        ? `,
+    ? `,
   isDev: true`
-        : ''}${IS_CE_EDITION
-          ? `,
+    : ''}${IS_CE_EDITION
+    ? `,
   baseUrl: '${url}${basePath}'`
-          : ''},
+    : ''},
   inputs: {
     // You can define the inputs from the Start node here
     // key is the variable name

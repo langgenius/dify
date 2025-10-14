@@ -24,6 +24,8 @@ type CredentialItemProps = {
   disableRename?: boolean
   disableEdit?: boolean
   disableDelete?: boolean
+  disableDeleteButShowAction?: boolean
+  disableDeleteTip?: string
   showSelectedIcon?: boolean
   selectedCredentialId?: string
 }
@@ -36,6 +38,8 @@ const CredentialItem = ({
   disableRename,
   disableEdit,
   disableDelete,
+  disableDeleteButShowAction,
+  disableDeleteTip,
   showSelectedIcon,
   selectedCredentialId,
 }: CredentialItemProps) => {
@@ -43,6 +47,9 @@ const CredentialItem = ({
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete)
   }, [disableRename, disableEdit, disableDelete])
+  const disableDeleteWhenSelected = useMemo(() => {
+    return disableDeleteButShowAction && selectedCredentialId === credential.credential_id
+  }, [disableDeleteButShowAction, selectedCredentialId, credential.credential_id])
 
   const Item = (
     <div
@@ -85,10 +92,10 @@ const CredentialItem = ({
         )
       }
       {
-        showAction && (
+        showAction && !credential.from_enterprise && (
           <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
             {
-              !disableEdit && !credential.not_allowed_to_use && !credential.from_enterprise && (
+              !disableEdit && !credential.not_allowed_to_use && (
                 <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
                     disabled={disabled}
@@ -103,17 +110,22 @@ const CredentialItem = ({
               )
             }
             {
-              !disableDelete && !credential.from_enterprise && (
-                <Tooltip popupContent={t('common.operation.delete')}>
+              !disableDelete && (
+                <Tooltip popupContent={disableDeleteWhenSelected ? disableDeleteTip : t('common.operation.delete')}>
                   <ActionButton
                     className='hover:bg-transparent'
-                    disabled={disabled}
                     onClick={(e) => {
+                      if (disabled || disableDeleteWhenSelected)
+                        return
                       e.stopPropagation()
                       onDelete?.(credential)
                     }}
                   >
-                    <RiDeleteBinLine className='h-4 w-4 text-text-tertiary hover:text-text-destructive' />
+                    <RiDeleteBinLine className={cn(
+                      'h-4 w-4 text-text-tertiary',
+                      !disableDeleteWhenSelected && 'hover:text-text-destructive',
+                      disableDeleteWhenSelected && 'opacity-50',
+                    )} />
                   </ActionButton>
                 </Tooltip>
               )

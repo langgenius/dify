@@ -8,7 +8,10 @@ import type {
   AnyFieldApi,
   AnyFormApi,
 } from '@tanstack/react-form'
-import { useForm } from '@tanstack/react-form'
+import {
+  useForm,
+  useStore,
+} from '@tanstack/react-form'
 import type {
   FormRef,
   FormSchema,
@@ -32,6 +35,7 @@ export type BaseFormProps = {
   ref?: FormRef
   disabled?: boolean
   formFromProps?: AnyFormApi
+  onChange?: (field: string, value: any) => void
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -45,6 +49,7 @@ const BaseForm = ({
   ref,
   disabled,
   formFromProps,
+  onChange,
 }: BaseFormProps) => {
   const initialDefaultValues = useMemo(() => {
     if (defaultValues)
@@ -62,6 +67,19 @@ const BaseForm = ({
   const form: any = formFromProps || formFromHook
   const { getFormValues } = useGetFormValues(form, formSchemas)
   const { getValidators } = useGetValidators()
+
+  const showOnValues = useStore(form.store, (s: any) => {
+    const result: Record<string, any> = {}
+    formSchemas.forEach((schema) => {
+      const { show_on } = schema
+      if (show_on?.length) {
+        show_on.forEach((condition) => {
+          result[condition.variable] = s.values[condition.variable]
+        })
+      }
+    })
+    return result
+  })
 
   useImperativeHandle(ref, () => {
     return {
@@ -87,18 +105,28 @@ const BaseForm = ({
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
           disabled={disabled}
+          onChange={onChange}
         />
       )
     }
 
     return null
-  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled])
+  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange])
 
   const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
     const validators = getValidators(formSchema)
     const {
       name,
+      show_on = [],
     } = formSchema
+
+    const show = show_on?.every((condition) => {
+      const conditionValue = showOnValues[condition.variable]
+      return conditionValue === condition.value
+    })
+
+    if (!show)
+      return null
 
     return (
       <form.Field
@@ -109,7 +137,7 @@ const BaseForm = ({
         {renderField}
       </form.Field>
     )
-  }, [renderField, form, getValidators])
+  }, [renderField, form, getValidators, showOnValues])
 
   if (!formSchemas?.length)
     return null

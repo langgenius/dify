@@ -5,6 +5,7 @@ import {
   PRE_PROMPT_PLACEHOLDER_TEXT,
   QUERY_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
+import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
 
 const otherAllowedRegex = /^\w+$/
@@ -27,8 +28,8 @@ export const getNewVar = (key: string, type: string) => {
   }
 }
 
-export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) => {
-  const { max_length, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
+export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
+  const { max_length: _maxLength, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
       ...rest,
@@ -42,10 +43,13 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) 
     type,
     variable: key,
     label: key.slice(0, getMaxVarNameLength(key)),
+    placeholder: '',
+    default: '',
+    hint: '',
   }
 }
 
-export const checkKey = (key: string, canBeEmpty?: boolean, keys?: string[]) => {
+export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]) => {
   if (key.length === 0 && !canBeEmpty)
     return 'canNoBeEmpty'
 
@@ -118,7 +122,7 @@ export const getVars = (value: string) => {
 
 // Set the value of basePath
 // example: /dify
-export const basePath = ''
+export const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
   const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })

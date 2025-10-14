@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Deselectați tot',
     selectAll: 'Selectați tot',
     config: 'Configurație',
+    yes: 'Da',
+    deleteConfirmTitle: 'Ștergere?',
+    no: 'Nu',
+    confirmAction: 'Vă rugăm să confirmați acțiunea dumneavoastră.',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -198,7 +202,6 @@ const translation = {
     showAppLength: 'Afișează {{length}} aplicații',
     delete: 'Șterge contul',
     deleteTip: 'Ștergerea contului vă va șterge definitiv toate datele și nu pot fi recuperate.',
-    deleteConfirmTip: 'Pentru a confirma, trimiteți următoarele din e-mailul înregistrat la ',
     account: 'Cont',
     studio: 'Dify Studio',
     myAccount: 'Contul meu',
@@ -491,7 +494,18 @@ const translation = {
       providerManagedTip: 'Configurarea curentă este găzduită de furnizor.',
       modelCredentials: 'Credențiale model',
       specifyModelCredentialTip: 'Utilizați un acreditiv de model configurat.',
+      addNewModelCredential: 'Adăugați acreditive noi pentru model',
+      modelCredential: 'Model de acreditare',
+      removeModel: 'Eliminați modelul',
+      addModel: 'Adăugați model',
+      selectModelCredential: 'Selectați o acreditare model',
+      editModelCredential: 'Editarea acreditării modelului',
+      customModelCredentials: 'Acreditări model personalizate',
+      manageCredentials: 'Gestionați acreditările',
+      customModelCredentialsDeleteTip: 'Acreditarea este în uz și nu poate fi ștearsă',
     },
+    parametersInvalidRemoved: 'Unele parametrii sunt invalizi și au fost eliminați.',
+    installDataSourceProvider: 'Instalați furnizorii de surse de date',
   },
   dataSource: {
     add: 'Adăugați o sursă de date',
@@ -590,6 +604,7 @@ const translation = {
     viewDoc: 'Vizualizați documentația',
     relatedApp: 'aplicații asociate',
     noRelatedApp: 'Fără aplicații conectate',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Vorbiți acum...',
@@ -742,6 +757,15 @@ const translation = {
   avatar: {
     deleteDescription: 'Ești sigur că vrei să îți ștergi fotografia de profil? Contul tău va folosi avatarul inițial implicit.',
     deleteTitle: 'Îndepărtează avatarul',
+  },
+  feedback: {
+    content: 'Conținut de feedback',
+    subtitle: 'Te rog să ne spui ce a mers prost cu acest răspuns',
+    placeholder: 'Vă rugăm să descrieți ce a mers prost sau cum putem îmbunătăți...',
+    title: 'Oferiți feedback',
+  },
+  label: {
+    optional: '(opțional)',
   },
 }
 

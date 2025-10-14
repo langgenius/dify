@@ -90,7 +90,6 @@ const translation = {
       depthLimit: '{{num}} परतों की समानांतर नेस्टिंग परत सीमा',
     },
     disconnect: 'अलग करना',
-    parallelRun: 'समानांतर रन',
     jumpToNode: 'इस नोड पर जाएं',
     addParallelNode: 'समानांतर नोड जोड़ें',
     parallel: 'समानांतर',
@@ -221,6 +220,8 @@ const translation = {
     back: 'वापस',
     iteration: 'पुनरावृत्ति',
     loop: 'लूप',
+    reRun: 'फिर से चलाएँ',
+    preparingDataSource: 'डेटा स्रोत की तैयारी करना',
   },
   tabs: {
     'tools': 'टूल्स',
@@ -239,6 +240,8 @@ const translation = {
     'blocks': 'नोड्स',
     'addAll': 'सभी जोड़ें',
     'allAdded': 'सभी जोड़े गए',
+    'sources': 'स्रोत',
+    'searchDataSource': 'डेटा स्रोत की खोज करें',
   },
   blocks: {
     'start': 'प्रारंभ',
@@ -263,6 +266,8 @@ const translation = {
     'loop-end': 'लूप से बाहर निकलें',
     'loop': 'लूप',
     'loop-start': 'लूप प्रारंभ',
+    'knowledge-index': 'ज्ञान आधार',
+    'datasource': 'डेटा स्रोत',
   },
   blocksAbout: {
     'start': 'वर्कफ़्लो लॉन्च करने के लिए प्रारंभिक पैरामीटर को परिभाषित करें',
@@ -293,6 +298,8 @@ const translation = {
     'agent': 'प्रश्नों का उत्तर देने या प्राकृतिक भाषा को संसाधित करने के लिए बड़े भाषा मॉडलों को आमंत्रित करना',
     'loop': 'एक लूप को निष्पादित करें जब तक समाप्ति की शर्त पूरी न हो जाए या अधिकतम लूप संख्या प्राप्त न हो जाए।',
     'loop-end': '"ब्रेक" के समान। इस नोड में कोई विन्यास आइटम नहीं हैं। जब लूप का शरीर इस नोड पर पहुँचता है, तो लूप समाप्त होता है।',
+    'knowledge-index': 'ज्ञान आधार के बारे में',
+    'datasource': 'डेटा स्रोत के बारे में',
   },
   operator: {
     zoomIn: 'ज़ूम इन',
@@ -394,6 +401,7 @@ const translation = {
         input: 'इनपुट मान',
         variable: 'चर का प्रयोग करें',
       },
+      inputVars: 'इनपुट चर',
     },
     start: {
       required: 'आवश्यक',
@@ -449,6 +457,7 @@ const translation = {
       },
       outputVars: {
         output: 'सामग्री उत्पन्न करें',
+        reasoning_content: 'तर्क सामग्री',
         usage: 'मॉडल उपयोग जानकारी',
       },
       singleRun: {
@@ -482,6 +491,12 @@ const translation = {
         generationTip: 'आप प्राकृतिक भाषा का उपयोग करके जल्दी से एक JSON स्कीमा बना सकते हैं।',
         required: 'आवश्यक',
         addChildField: 'बच्चे का क्षेत्र जोड़ें',
+      },
+      reasoningFormat: {
+        title: 'कारण संबंध टैग विभाजन सक्षम करें',
+        separated: 'अलग सोच टैग',
+        tagged: 'टैग्स के बारे में सोचते रहें',
+        tooltip: 'थिंक टैग से सामग्री निकाले और इसे reasoning_content क्षेत्र में संग्रहित करें।',
       },
     },
     knowledgeRetrieval: {
@@ -930,6 +945,30 @@ const translation = {
       loopVariables: 'लूप वेरियेबल्स',
       breakConditionTip: 'सिर्फ उन चर को संदर्भित किया जा सकता है जो लूप के भीतर हैं जिनमें समाप्ति की शर्तें और बातचीत के चर हैं।',
     },
+    dataSource: {
+      supportedFileFormats: 'समर्थित फ़ाइल प्रारूप',
+      add: 'डेटा स्रोत जोड़ें',
+      supportedFileFormatsPlaceholder: 'फाइल एक्सटेंशन, जैसे कि doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'और अधिक सीखें',
+        title: 'कृपया एक भाग संरचना चुनें',
+        message: 'Dify ज्ञान आधार तीन चंकिंग संरचनाओं का समर्थन करता है: सामान्य, माता-पिता-बच्चे, और प्रश्नोत्तर। प्रत्येक ज्ञान आधार केवल एक संरचना रख सकता है। पूर्ववर्ती नोड से आउटपुट को चयनित चंक संरचना के साथ मेल खाना चाहिए। ध्यान दें कि चंकिंग संरचना का चुनाव उपलब्ध अनुक्रमण विधियों को प्रभावित करता है।',
+      },
+      chunkStructure: 'खंड संरचना',
+      chunkIsRequired: 'चंक संरचना आवश्यक है',
+      indexMethodIsRequired: 'सूची विधि आवश्यक है',
+      retrievalSettingIsRequired: 'पुनप्राप्ति सेटिंग आवश्यक है',
+      changeChunkStructure: 'चंक संरचना बदलें',
+      aboutRetrieval: 'पुनर्प्राप्ति विधि के बारे में।',
+      chooseChunkStructure: 'एक चंक संरचना चुनें',
+      chunksInput: 'टुकड़े',
+      chunksInputTip: 'ज्ञान आधार नोड का इनपुट वेरिएबल टुकड़े है। वेरिएबल प्रकार एक ऑब्जेक्ट है जिसमें एक विशेष JSON स्कीमा है जो चयनित चंक संरचना के साथ सुसंगत होना चाहिए।',
+      chunksVariableIsRequired: 'टुकड़े चर आवश्यक है',
+      embeddingModelIsRequired: 'एम्बेडिंग मॉडल आवश्यक है',
+      rerankingModelIsRequired: 'पुनः क्रमांकन मॉडल की आवश्यकता है',
+    },
   },
   tracing: {
     stopBy: '{{user}} द्वारा रोका गया',
@@ -1000,6 +1039,10 @@ const translation = {
       clearNode: 'कैश की गई वैरिएबल को साफ करें',
       resetConversationVar: 'संवाद चर को डिफ़ॉल्ट मान पर रीसेट करें',
       emptyTip: 'कैनवास पर एक नोड पर कदम रखने के बाद या चरण दर चरण एक नोड चलाने के बाद, आप वेरिएबल इंस्पेक्ट में नोड वेरिएबल का वर्तमान मान देख सकते हैं।',
+      export: 'निर्यात',
+      exportToolTip: 'फ़ाइल के रूप में निर्यात चर',
+      largeDataNoExport: 'विशाल डेटा - केवल आंशिक पूर्वावलोकन',
+      largeData: 'बड़ा डाटा, केवल पढ़ने के लिए पूर्वावलोकन। सभी देखने के लिए निर्यात करें।',
     },
     settingsTab: 'सेटिंग्स',
     lastRunTab: 'अंतिम रन',
@@ -1017,6 +1060,10 @@ const translation = {
     noMatchingInputsFound: 'अंतिम रन से कोई मेल खाने वाले इनपुट नहीं मिले',
     copyLastRunError: 'अंतिम रन इनपुट को कॉपी करने में विफल',
     lastOutput: 'अंतिम आउटपुट',
+  },
+  sidebar: {
+    exportWarning: 'वर्तमान सहेजी गई संस्करण निर्यात करें',
+    exportWarningDesc: 'यह आपके कार्यप्रवाह का वर्तमान सहेजा हुआ संस्करण निर्यात करेगा। यदि आपके संपादक में कोई असहेजा किए गए परिवर्तन हैं, तो कृपया पहले उन्हें सहेजें, कार्यप्रवाह कैनवास में निर्यात विकल्प का उपयोग करके।',
   },
 }
 

@@ -6,7 +6,7 @@ Create Date: 2025-08-13 16:05:42.657730
 
 """
 
-from alembic import op
+from alembic import op, context
 from libs.uuid_utils import uuidv7
 import models as models
 import sqlalchemy as sa
@@ -48,8 +48,16 @@ def upgrade():
     with op.batch_alter_table('load_balancing_model_configs', schema=None) as batch_op:
         batch_op.add_column(sa.Column('credential_source_type', sa.String(length=40), nullable=True))
 
-    # Migrate existing provider_models data
-    migrate_existing_provider_models_data()
+    if not context.is_offline_mode():
+        # Migrate existing provider_models data
+        migrate_existing_provider_models_data()
+    else:
+        op.execute(
+            '-- [IMPORTANT] Data migration skipped!!!\n'
+            "-- You should manually run data migration function `migrate_existing_provider_models_data`\n"
+            f"-- inside file {__file__}\n"
+            "-- Please review the migration script carefully!"
+        )
 
     # Remove encrypted_config column from provider_models table after migration
     with op.batch_alter_table('provider_models', schema=None) as batch_op:
@@ -132,8 +140,16 @@ def downgrade():
     with op.batch_alter_table('provider_models', schema=None) as batch_op:
         batch_op.add_column(sa.Column('encrypted_config', sa.Text(), nullable=True))
 
-    # Migrate data back from provider_model_credentials to provider_models
-    migrate_data_back_to_provider_models()
+    if not context.is_offline_mode():
+        # Migrate data back from provider_model_credentials to provider_models
+        migrate_data_back_to_provider_models()
+    else:
+        op.execute(
+            '-- [IMPORTANT] Data migration skipped!!!\n'
+            "-- You should manually run data migration function `migrate_data_back_to_provider_models`\n"
+            f"-- inside file {__file__}\n"
+            "-- Please review the migration script carefully!"
+        )
 
     with op.batch_alter_table('provider_models', schema=None) as batch_op:
         batch_op.drop_column('credential_id')

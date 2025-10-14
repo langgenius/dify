@@ -16,9 +16,9 @@ const LastRunBlockComponent: FC<Props> = ({
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_LAST_RUN_COMMAND)
 
   useEffect(() => {
-      if (!editor.hasNodes([LastRunBlockNode]))
-        throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
-    }, [editor])
+    if (!editor.hasNodes([LastRunBlockNode]))
+      throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
+  }, [editor])
 
   return (
     <div

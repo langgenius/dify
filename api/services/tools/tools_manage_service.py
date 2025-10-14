@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from core.tools.entities.api_entities import ToolProviderTypeApiLiteral
 from core.tools.tool_manager import ToolManager
@@ -10,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class ToolCommonService:
     @staticmethod
-    def list_tool_providers(user_id: str, tenant_id: str, typ: Optional[ToolProviderTypeApiLiteral] = None):
+    def list_tool_providers(user_id: str, tenant_id: str, typ: ToolProviderTypeApiLiteral | None = None):
         """
         list tool providers
 

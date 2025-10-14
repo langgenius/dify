@@ -45,8 +45,8 @@ const ICON_MAP = {
   </div>,
   dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,
   webapp: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
-  <WindowCursor className='h-4 w-4 text-text-primary-on-surface' />
-</div>,
+    <WindowCursor className='h-4 w-4 text-text-primary-on-surface' />
+  </div>,
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 

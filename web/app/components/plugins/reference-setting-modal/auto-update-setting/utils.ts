@@ -28,10 +28,10 @@ export const dayjsToTimeOfDay = (date?: Dayjs): number => {
 }
 
 export const convertUTCDaySecondsToLocalSeconds = (utcDaySeconds: number, localTimezone: string): number => {
-    const utcDayStart = dayjs().utc().startOf('day')
-    const utcTargetTime = utcDayStart.add(utcDaySeconds, 'second')
-    const localTargetTime = utcTargetTime.tz(localTimezone)
-    const localDayStart = localTargetTime.startOf('day')
-    const secondsInLocalDay = localTargetTime.diff(localDayStart, 'second')
-    return secondsInLocalDay
+  const utcDayStart = dayjs().utc().startOf('day')
+  const utcTargetTime = utcDayStart.add(utcDaySeconds, 'second')
+  const localTargetTime = utcTargetTime.tz(localTimezone)
+  const localDayStart = localTargetTime.startOf('day')
+  const secondsInLocalDay = localTargetTime.diff(localDayStart, 'second')
+  return secondsInLocalDay
 }

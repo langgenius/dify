@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Bỏ chọn tất cả',
     selectAll: 'Chọn Tất Cả',
     config: 'Cấu hình',
+    no: 'Không',
+    yes: 'Vâng',
+    deleteConfirmTitle: 'Xóa?',
+    confirmAction: 'Vui lòng xác nhận hành động của bạn.',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -198,7 +202,6 @@ const translation = {
     showAppLength: 'Hiển thị {{length}} ứng dụng',
     delete: 'Xóa tài khoản',
     deleteTip: 'Xóa tài khoản của bạn sẽ xóa vĩnh viễn tất cả dữ liệu của bạn và không thể khôi phục được.',
-    deleteConfirmTip: 'Để xác nhận, vui lòng gửi thông tin sau từ email đã đăng ký của bạn tới ',
     studio: 'Dify Studio',
     myAccount: 'Tài khoản của tôi',
     account: 'Tài khoản',
@@ -491,7 +494,18 @@ const translation = {
       addModelCredential: 'Thêm thông tin đăng nhập mô hình',
       authRemoved: 'Chính quyền đã loại bỏ',
       providerManaged: 'Nhà cung cấp đã được quản lý',
+      modelCredential: 'Thông tin đăng nhập mô hình',
+      addModel: 'Thêm mô hình',
+      removeModel: 'Loại bỏ mô hình',
+      manageCredentials: 'Quản lý thông tin đăng nhập',
+      editModelCredential: 'Chỉnh sửa thông tin xác thực mô hình',
+      customModelCredentials: 'Thông tin đăng nhập mô hình tùy chỉnh',
+      customModelCredentialsDeleteTip: 'Thông tin đăng nhập đang được sử dụng và không thể xóa',
+      addNewModelCredential: 'Thêm thông tin xác thực mô hình mới',
+      selectModelCredential: 'Chọn thông tin xác thực mô hình',
     },
+    parametersInvalidRemoved: 'Một số tham số không hợp lệ và đã được loại bỏ',
+    installDataSourceProvider: 'Cài đặt các nhà cung cấp nguồn dữ liệu',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',
@@ -590,6 +604,7 @@ const translation = {
     viewDoc: 'Xem tài liệu',
     relatedApp: 'các ứng dụng liên kết',
     noRelatedApp: 'Không có ứng dụng được liên kết',
+    pipeline: 'Đường ống',
   },
   voiceInput: {
     speaking: 'Hãy nói...',
@@ -742,6 +757,15 @@ const translation = {
   avatar: {
     deleteTitle: 'Xóa Ảnh Đại Diện',
     deleteDescription: 'Bạn có chắc chắn muốn xóa ảnh đại diện của mình không? Tài khoản của bạn sẽ sử dụng avatar mặc định.',
+  },
+  feedback: {
+    content: 'Nội dung phản hồi',
+    title: 'Cung cấp phản hồi',
+    placeholder: 'Xin vui lòng miêu tả những gì đã xảy ra không đúng hoặc chúng tôi có thể cải thiện như thế nào...',
+    subtitle: 'Xin vui lòng cho chúng tôi biết điều gì đã sai với phản hồi này',
+  },
+  label: {
+    optional: '(tùy chọn)',
   },
 }
 

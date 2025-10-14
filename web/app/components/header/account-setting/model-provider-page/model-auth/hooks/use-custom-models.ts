@@ -7,3 +7,9 @@ export const useCustomModels = (provider: ModelProvider) => {
 
   return custom_models || []
 }
+
+export const useCanAddedModels = (provider: ModelProvider) => {
+  const { can_added_models } = provider.custom_configuration
+
+  return can_added_models || []
+}

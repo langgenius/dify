@@ -8,12 +8,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -27,7 +27,7 @@ const I18N_PREFIX = 'app.tracing'
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const { isCurrentWorkspaceEditor } = useAppContext()
   const readOnly = !isCurrentWorkspaceEditor
@@ -71,6 +71,7 @@ const Panel: FC = () => {
     [TracingProvider.opik]: OpikIcon,
     [TracingProvider.weave]: WeaveIcon,
     [TracingProvider.aliyun]: AliyunIcon,
+    [TracingProvider.tencent]: TencentIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
@@ -81,7 +82,8 @@ const Panel: FC = () => {
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
   const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig)
+  const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || tencentConfig)
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
@@ -119,6 +121,11 @@ const Panel: FC = () => {
       if (!aliyunHasNotConfig)
         setAliyunConfig(aliyunConfig as AliyunConfig)
     }
+    const getTencentConfig = async () => {
+      const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
+      if (!tencentHasNotConfig)
+        setTencentConfig(tencentConfig as TencentConfig)
+    }
     Promise.all([
       getArizeConfig(),
       getPhoenixConfig(),
@@ -127,6 +134,7 @@ const Panel: FC = () => {
       getOpikConfig(),
       getWeaveConfig(),
       getAliyunConfig(),
+      getTencentConfig(),
     ])
   }
 
@@ -147,6 +155,8 @@ const Panel: FC = () => {
       setWeaveConfig(tracing_config as WeaveConfig)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(tracing_config as AliyunConfig)
+    else if (provider === TracingProvider.tencent)
+      setTencentConfig(tracing_config as TencentConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
@@ -164,6 +174,8 @@ const Panel: FC = () => {
       setWeaveConfig(null)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(null)
+    else if (provider === TracingProvider.tencent)
+      setTencentConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -209,6 +221,7 @@ const Panel: FC = () => {
           opikConfig={opikConfig}
           weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
+          tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >
@@ -245,6 +258,7 @@ const Panel: FC = () => {
           opikConfig={opikConfig}
           weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
+          tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >

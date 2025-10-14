@@ -55,11 +55,11 @@ const VarList: FC<Props> = ({
     const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
     if (!isValid) {
       setToastHandle(Toast.notify({
-          type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-        }))
-        return
-      }
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+      }))
+      return
+    }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
       console.log('new key', newKey.trim())
       setToastHandle(Toast.notify({

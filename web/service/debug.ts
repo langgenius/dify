@@ -80,7 +80,7 @@ export const fetchConversationMessages = (appId: string, conversation_id: string
   })
 }
 
-export const generateBasicAppFistTimeRule = (body: Record<string, any>) => {
+export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
   return post<BasicAppFirstRes>('/rule-generate', {
     body,
   })

@@ -83,7 +83,7 @@ def test_client_session_initialize():
     # Create message handler
     def message_handler(
         message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
-    ) -> None:
+    ):
         if isinstance(message, Exception):
             raise message
 

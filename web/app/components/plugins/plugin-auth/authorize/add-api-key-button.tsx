@@ -6,6 +6,7 @@ import Button from '@/app/components/base/button'
 import type { ButtonProps } from '@/app/components/base/button'
 import ApiKeyModal from './api-key-modal'
 import type { PluginPayload } from '../types'
+import type { FormSchema } from '@/app/components/base/form/types'
 
 export type AddApiKeyButtonProps = {
   pluginPayload: PluginPayload
@@ -13,13 +14,15 @@ export type AddApiKeyButtonProps = {
   buttonText?: string
   disabled?: boolean
   onUpdate?: () => void
+  formSchemas?: FormSchema[]
 }
 const AddApiKeyButton = ({
   pluginPayload,
   buttonVariant = 'secondary-accent',
-  buttonText = 'use api key',
+  buttonText = 'Use Api Key',
   disabled,
   onUpdate,
+  formSchemas = [],
 }: AddApiKeyButtonProps) => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
 
@@ -39,6 +42,7 @@ const AddApiKeyButton = ({
             pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}
             onUpdate={onUpdate}
+            formSchemas={formSchemas}
           />
         )
       }

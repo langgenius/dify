@@ -80,6 +80,7 @@ const translation = {
     optional: 'Optionnel',
     advancedShortDescription: 'Workflow amélioré pour conversations multi-tours',
     dropDSLToCreateApp: 'Déposez le fichier DSL ici pour créer une application',
+    import: 'Importation',
   },
   editApp: 'Modifier les informations',
   editAppTitle: 'Modifier les informations de l\'application',
@@ -161,6 +162,10 @@ const translation = {
     aliyun: {
       title: 'Surveillance Cloud',
       description: 'La plateforme d\'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l\'emploi des applications Dify.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring fournit une traçabilité complète et une analyse multidimensionnelle pour les applications LLM.',
     },
   },
   answerIcon: {
@@ -277,6 +282,10 @@ const translation = {
       languageCategoryDesc: 'Changer la langue de l\'interface',
       runDesc: 'Exécuter des commandes rapides (thème, langue, ...)',
       slashDesc: 'Exécutez des commandes telles que /theme, /lang',
+      communityDesc: 'Ouvrir la communauté Discord',
+      docDesc: 'Ouvrir la documentation d\'aide',
+      accountDesc: 'Accédez à la page de compte',
+      feedbackDesc: 'Discussions de rétroaction de la communauté ouverte',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Aucune base de connaissances trouvée',
@@ -311,6 +320,11 @@ const translation = {
     inScope: 'dans {{scope}}s',
     noMatchingCommands: 'Aucune commande correspondante n’a été trouvée',
     tryDifferentSearch: 'Essayez un autre terme de recherche',
+    slashHint: 'Tapez / pour voir toutes les commandes disponibles',
+    pressEscToClose: 'Appuyez sur Échap pour fermer',
+    tips: 'Appuyez sur ↑↓ pour naviguer',
+    startTyping: 'Commencez à taper pour rechercher',
+    selectToNavigate: 'Sélectionnez pour naviguer',
   },
 }
 

@@ -64,7 +64,7 @@ const AddVariablePopupWithPosition = ({
         } as any,
       ],
       hideEnv: true,
-      hideChatVar: true,
+      hideChatVar: !isChatMode,
       isChatMode,
       filterVar: filterVar(outputType as VarType),
     })

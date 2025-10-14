@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Optional, TypedDict, Union
+from typing import Any, TypedDict, Union
 
 from pydantic import BaseModel, Field
 
@@ -150,12 +150,13 @@ class LLMResult(BaseModel):
     Model class for llm result.
     """
 
-    id: Optional[str] = None
+    id: str | None = None
     model: str
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     message: AssistantPromptMessage
     usage: LLMUsage
-    system_fingerprint: Optional[str] = None
+    system_fingerprint: str | None = None
+    reasoning_content: str | None = None
 
 
 class LLMStructuredOutput(BaseModel):
@@ -163,7 +164,7 @@ class LLMStructuredOutput(BaseModel):
     Model class for llm structured output.
     """
 
-    structured_output: Optional[Mapping[str, Any]] = None
+    structured_output: Mapping[str, Any] | None = None
 
 
 class LLMResultWithStructuredOutput(LLMResult, LLMStructuredOutput):
@@ -179,8 +180,8 @@ class LLMResultChunkDelta(BaseModel):
 
     index: int
     message: AssistantPromptMessage
-    usage: Optional[LLMUsage] = None
-    finish_reason: Optional[str] = None
+    usage: LLMUsage | None = None
+    finish_reason: str | None = None
 
 
 class LLMResultChunk(BaseModel):
@@ -190,7 +191,7 @@ class LLMResultChunk(BaseModel):
 
     model: str
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
-    system_fingerprint: Optional[str] = None
+    system_fingerprint: str | None = None
     delta: LLMResultChunkDelta
 
 

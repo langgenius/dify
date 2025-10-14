@@ -80,6 +80,7 @@ const translation = {
     chatbotUserDescription: 'Cree rápidamente un chatbot basado en LLM con una configuración sencilla. Puedes cambiar a Chatflow más tarde.',
     completionUserDescription: 'Cree rápidamente un asistente de IA para tareas de generación de texto con una configuración sencilla.',
     dropDSLToCreateApp: 'Suelta el archivo DSL aquí para crear la aplicación',
+    import: 'Importación',
   },
   editApp: 'Editar información',
   editAppTitle: 'Editar información de la app',
@@ -161,6 +162,10 @@ const translation = {
     aliyun: {
       title: 'Monitor de Nubes',
       description: 'La plataforma de observabilidad totalmente gestionada y sin mantenimiento proporcionada por Alibaba Cloud, permite la monitorización, trazado y evaluación de aplicaciones Dify de manera inmediata.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring proporciona rastreo integral y análisis multidimensional para aplicaciones LLM.',
     },
   },
   answerIcon: {
@@ -277,6 +282,10 @@ const translation = {
       languageCategoryDesc: 'Cambiar el idioma de la interfaz',
       themeCategoryDesc: 'Cambiar el tema de la aplicación',
       slashDesc: 'Ejecuta comandos como /tema, /idioma',
+      accountDesc: 'Navegar a la página de cuenta',
+      communityDesc: 'Abrir comunidad de Discord',
+      feedbackDesc: 'Discusiones de retroalimentación de la comunidad abierta',
+      docDesc: 'Abrir la documentación de ayuda',
     },
     emptyState: {
       noAppsFound: 'No se encontraron aplicaciones',
@@ -311,6 +320,11 @@ const translation = {
     inScope: 'en {{scope}}s',
     tryDifferentSearch: 'Prueba con un término de búsqueda diferente',
     noMatchingCommands: 'No se encontraron comandos coincidentes',
+    slashHint: 'Escribe / para ver todos los comandos disponibles',
+    selectToNavigate: 'Seleccionar para navegar',
+    pressEscToClose: 'Presiona ESC para cerrar',
+    startTyping: 'Empieza a escribir para buscar',
+    tips: 'Presiona ↑↓ para navegar',
   },
 }
 

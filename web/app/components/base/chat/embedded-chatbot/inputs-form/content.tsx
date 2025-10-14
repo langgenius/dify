@@ -46,12 +46,12 @@ const InputsFormContent = ({ showTip }: Props) => {
       {visibleInputsForms.map(form => (
         <div key={form.variable} className='space-y-1'>
           {form.type !== InputVarType.checkbox && (
-          <div className='flex h-6 items-center gap-1'>
-            <div className='system-md-semibold text-text-secondary'>{form.label}</div>
-            {!form.required && (
-              <div className='system-xs-regular text-text-tertiary'>{t('appDebug.variableTable.optional')}</div>
-            )}
-          </div>
+            <div className='flex h-6 items-center gap-1'>
+              <div className='system-md-semibold text-text-secondary'>{form.label}</div>
+              {!form.required && (
+                <div className='system-xs-regular text-text-tertiary'>{t('appDebug.variableTable.optional')}</div>
+              )}
+            </div>
           )}
           {form.type === InputVarType.textInput && (
             <Input

@@ -1,23 +1,51 @@
 import logging
 import time as time_module
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy import update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit, SystemConfiguration
-from core.plugin.entities.plugin import ModelProviderID
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client, redis_fallback
 from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
+
+# Redis cache key prefix for provider last used timestamps
+_PROVIDER_LAST_USED_CACHE_PREFIX = "provider:last_used"
+# Default TTL for cache entries (10 minutes)
+_CACHE_TTL_SECONDS = 600
+LAST_USED_UPDATE_WINDOW_SECONDS = 60 * 5
+
+
+def _get_provider_cache_key(tenant_id: str, provider_name: str) -> str:
+    """Generate Redis cache key for provider last used timestamp."""
+    return f"{_PROVIDER_LAST_USED_CACHE_PREFIX}:{tenant_id}:{provider_name}"
+
+
+@redis_fallback(default_return=None)
+def _get_last_update_timestamp(cache_key: str) -> datetime | None:
+    """Get last update timestamp from Redis cache."""
+    timestamp_str = redis_client.get(cache_key)
+    if timestamp_str:
+        return datetime.fromtimestamp(float(timestamp_str.decode("utf-8")))
+    return None
+
+
+@redis_fallback()
+def _set_last_update_timestamp(cache_key: str, timestamp: datetime):
+    """Set last update timestamp in Redis cache with TTL."""
+    redis_client.setex(cache_key, _CACHE_TTL_SECONDS, str(timestamp.timestamp()))
 
 
 class _ProviderUpdateFilters(BaseModel):
@@ -25,8 +53,8 @@ class _ProviderUpdateFilters(BaseModel):
 
     tenant_id: str
     provider_name: str
-    provider_type: Optional[str] = None
-    quota_type: Optional[str] = None
+    provider_type: str | None = None
+    quota_type: str | None = None
 
 
 class _ProviderUpdateAdditionalFilters(BaseModel):
@@ -38,8 +66,8 @@ class _ProviderUpdateAdditionalFilters(BaseModel):
 class _ProviderUpdateValues(BaseModel):
     """Values to update in Provider records."""
 
-    last_used: Optional[datetime] = None
-    quota_used: Optional[Any] = None  # Can be Provider.quota_used + int expression
+    last_used: datetime | None = None
+    quota_used: Any | None = None  # Can be Provider.quota_used + int expression
 
 
 class _ProviderUpdateOperation(BaseModel):
@@ -112,7 +140,7 @@ def handle(sender: Message, **kwargs):
                 filters=_ProviderUpdateFilters(
                     tenant_id=tenant_id,
                     provider_name=ModelProviderID(model_config.provider).provider_name,
-                    provider_type=ProviderType.SYSTEM.value,
+                    provider_type=ProviderType.SYSTEM,
                     quota_type=provider_configuration.system_configuration.current_quota_type.value,
                 ),
                 values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),
@@ -139,7 +167,7 @@ def handle(sender: Message, **kwargs):
             provider_name,
         )
 
-    except Exception as e:
+    except Exception:
         # Log failure with timing and context
         duration = time_module.perf_counter() - start_time
 
@@ -155,7 +183,7 @@ def handle(sender: Message, **kwargs):
 
 def _calculate_quota_usage(
     *, message: Message, system_configuration: SystemConfiguration, model_name: str
-) -> Optional[int]:
+) -> int | None:
     """Calculate quota usage based on message tokens and quota type."""
     quota_unit = None
     for quota_configuration in system_configuration.quota_configurations:
@@ -177,7 +205,7 @@ def _calculate_quota_usage(
         elif quota_unit == QuotaUnit.TIMES:
             return 1
         return None
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to calculate quota usage")
         return None
 
@@ -215,8 +243,23 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Prepare values dict for SQLAlchemy update
             update_values = {}
-            # updateing to `last_used` is removed due to performance reason.
-            # ref: https://github.com/langgenius/dify/issues/24526
+
+            # NOTE: For frequently used providers under high load, this implementation may experience
+            # race conditions or update contention despite the time-window optimization:
+            # 1. Multiple concurrent requests might check the same cache key simultaneously
+            # 2. Redis cache operations are not atomic with database updates
+            # 3. Heavy providers could still face database lock contention during peak usage
+            # The current implementation is acceptable for most scenarios, but future optimization
+            # considerations could include: batched updates, or async processing.
+            if values.last_used is not None:
+                cache_key = _get_provider_cache_key(filters.tenant_id, filters.provider_name)
+                now = datetime_utils.naive_utc_now()
+                last_update = _get_last_update_timestamp(cache_key)
+
+                if last_update is None or (now - last_update).total_seconds() > LAST_USED_UPDATE_WINDOW_SECONDS:
+                    update_values["last_used"] = values.last_used
+                    _set_last_update_timestamp(cache_key, now)
+
             if values.quota_used is not None:
                 update_values["quota_used"] = values.quota_used
             # Skip the current update operation if no updates are required.
@@ -225,7 +268,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Build and execute the update statement
             stmt = update(Provider).where(*where_conditions).values(**update_values)
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             rows_affected = result.rowcount
 
             logger.debug(

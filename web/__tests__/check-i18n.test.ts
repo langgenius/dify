@@ -621,7 +621,7 @@ export default translation
                     && !trimmed.startsWith('//'))
                   break
               }
- else {
+              else {
                 break
               }
 

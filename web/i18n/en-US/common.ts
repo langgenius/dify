@@ -18,6 +18,10 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    yes: 'Yes',
+    no: 'No',
+    deleteConfirmTitle: 'Delete?',
+    confirmAction: 'Please confirm your action.',
     saveAndEnable: 'Save & Enable',
     edit: 'Edit',
     add: 'Add',
@@ -75,6 +79,9 @@ const translation = {
   placeholder: {
     input: 'Please enter',
     select: 'Please select',
+  },
+  label: {
+    optional: '(optional)',
   },
   voice: {
     language: {
@@ -319,6 +326,12 @@ const translation = {
       transfer: 'Transfer workspace ownership',
     },
   },
+  feedback: {
+    title: 'Provide Feedback',
+    subtitle: 'Please tell us what went wrong with this response',
+    content: 'Feedback Content',
+    placeholder: 'Please describe what went wrong or how we can improve...',
+  },
   integrations: {
     connected: 'Connected',
     google: 'Google',
@@ -484,6 +497,7 @@ const translation = {
     toBeConfigured: 'To be configured',
     configureTip: 'Set up api-key or add model to use',
     installProvider: 'Install model providers',
+    installDataSourceProvider: 'Install data source providers',
     discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',
@@ -492,10 +506,13 @@ const translation = {
       authRemoved: 'Auth removed',
       apiKeys: 'API Keys',
       addApiKey: 'Add API Key',
+      addModel: 'Add model',
       addNewModel: 'Add new model',
       addCredential: 'Add credential',
       addModelCredential: 'Add model credential',
+      editModelCredential: 'Edit model credential',
       modelCredentials: 'Model credentials',
+      modelCredential: 'Model credential',
       configModel: 'Config model',
       configLoadBalancing: 'Config Load Balancing',
       authorizationError: 'Authorization error',
@@ -508,7 +525,14 @@ const translation = {
         desc: 'After configuring credentials, all members within the workspace can use this model when orchestrating applications.',
         addModel: 'Add model',
       },
+      manageCredentials: 'Manage Credentials',
+      customModelCredentials: 'Custom Model Credentials',
+      addNewModelCredential: 'Add new model credential',
+      removeModel: 'Remove Model',
+      selectModelCredential: 'Select a model credential',
+      customModelCredentialsDeleteTip: 'Credential is in use and cannot be deleted',
     },
+    parametersInvalidRemoved: 'Some parameters are invalid and have been removed',
   },
   dataSource: {
     add: 'Add a data source',
@@ -607,6 +631,7 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
     noRelatedApp: 'No linked apps',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Speak now...',

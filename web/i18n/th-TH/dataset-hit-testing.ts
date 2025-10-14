@@ -3,7 +3,6 @@ const translation = {
   settingTitle: 'การตั้งค่าการดึงข้อมูล',
   desc: 'ทดสอบเอฟเฟกต์การตีของความรู้ตามข้อความแบบสอบถามที่กําหนด',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'ล่าสุด',
   table: {
     header: {
       source: 'ที่มา',

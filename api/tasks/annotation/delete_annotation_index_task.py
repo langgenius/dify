@@ -38,7 +38,7 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
             logger.exception("Delete annotation index failed when annotation deleted.")
         end_at = time.perf_counter()
         logger.info(click.style(f"App annotations index deleted : {app_id} latency: {end_at - start_at}", fg="green"))
-    except Exception as e:
+    except Exception:
         logger.exception("Annotation deleted index failed")
     finally:
         db.session.close()

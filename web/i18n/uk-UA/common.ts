@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Вимкнути все',
     selectAll: 'Вибрати все',
     config: 'Конфігурація',
+    yes: 'Так',
+    no: 'Ні',
+    deleteConfirmTitle: 'Видалити?',
+    confirmAction: 'Будь ласка, підтвердіть свої дії.',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -198,7 +202,6 @@ const translation = {
     showAppLength: 'Показати {{length}} програм',
     delete: 'Видалити обліковий запис',
     deleteTip: 'Видалення вашого облікового запису призведе до остаточного видалення всіх ваших даних, і їх неможливо буде відновити.',
-    deleteConfirmTip: 'Щоб підтвердити, будь ласка, надішліть наступне з вашої зареєстрованої електронної пошти на ',
     account: 'Рахунок',
     studio: 'Студія Dify',
     myAccount: 'Особистий кабінет',
@@ -492,7 +495,18 @@ const translation = {
       configLoadBalancing: 'Конфігурація балансування навантаження',
       addModelCredential: 'Додати облікові дані моделі',
       providerManagedTip: 'Поточна конфігурація розміщується провайдером.',
+      addModel: 'Додати модель',
+      removeModel: 'Видалити модель',
+      modelCredential: 'Облікові дані моделі',
+      manageCredentials: 'Керування обліковими даними',
+      selectModelCredential: 'Виберіть облікові дані моделі',
+      addNewModelCredential: 'Додайте нові облікові дані моделі',
+      customModelCredentials: 'Облікові дані користувацької моделі',
+      editModelCredential: 'Редагувати облікові дані моделі',
+      customModelCredentialsDeleteTip: 'Облікові дані використовуються і не можуть бути видалені',
     },
+    parametersInvalidRemoved: 'Деякі параметри є недійсними і були видалені',
+    installDataSourceProvider: 'Встановіть постачальників джерел даних',
   },
   dataSource: {
     add: 'Додати джерело даних',
@@ -591,6 +605,7 @@ const translation = {
     viewDoc: 'Переглянути документацію',
     relatedApp: 'пов\'язані програми',
     noRelatedApp: 'Немає пов\'язаних додатків',
+    pipeline: 'Трубопроводу',
   },
   voiceInput: {
     speaking: 'Говоріть зараз...',
@@ -743,6 +758,15 @@ const translation = {
   avatar: {
     deleteTitle: 'Видалити аватар',
     deleteDescription: 'Ви впевнені, що хочете видалити своє фото профілю? Ваш обліковий запис використовуватиме стандартний початковий аватар.',
+  },
+  feedback: {
+    title: 'Надати відгук',
+    content: 'Зміст відгуку',
+    placeholder: 'Будь ласка, опишіть, що пішло не так або як ми можемо покращити...',
+    subtitle: 'Будь ласка, скажіть нам, що пішло не так із цією відповіддю',
+  },
+  label: {
+    optional: '(необов\'язково)',
   },
 }
 

@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -45,7 +46,7 @@ def remove_document_from_index_task(document_id: str):
 
         index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
         index_node_ids = [segment.index_node_id for segment in segments]
         if index_node_ids:
             try:

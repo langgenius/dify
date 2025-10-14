@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytz  # pip install pytz
+import sqlalchemy as sa
 from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
@@ -8,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -22,13 +23,35 @@ from fields.conversation_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models import Conversation, EndUser, Message, MessageAnnotation
+from models import Account, Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 
 
+@console_ns.route("/apps/<uuid:app_id>/completion-conversations")
 class CompletionConversationApi(Resource):
+    @api.doc("list_completion_conversations")
+    @api.doc(description="Get completion conversations with pagination and filtering")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("keyword", type=str, location="args", help="Search keyword")
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+        .add_argument(
+            "annotation_status",
+            type=str,
+            location="args",
+            choices=["annotated", "not_annotated", "all"],
+            default="all",
+            help="Annotation status filter",
+        )
+        .add_argument("page", type=int, location="args", default=1, help="Page number")
+        .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
+    )
+    @api.response(200, "Success", conversation_pagination_fields)
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -48,7 +71,7 @@ class CompletionConversationApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(
+        query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
 
@@ -101,7 +124,14 @@ class CompletionConversationApi(Resource):
         return conversations
 
 
+@console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
+    @api.doc("get_completion_conversation")
+    @api.doc(description="Get completion conversation details with messages")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(200, "Success", conversation_message_detail_fields)
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -114,16 +144,24 @@ class CompletionConversationDetailApi(Resource):
 
         return _get_conversation(app_model, conversation_id)
 
+    @api.doc("delete_completion_conversation")
+    @api.doc(description="Delete a completion conversation")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(204, "Conversation deleted successfully")
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model, conversation_id):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -131,7 +169,38 @@ class CompletionConversationDetailApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
+    @api.doc("list_chat_conversations")
+    @api.doc(description="Get chat conversations with pagination, filtering and summary")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("keyword", type=str, location="args", help="Search keyword")
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+        .add_argument(
+            "annotation_status",
+            type=str,
+            location="args",
+            choices=["annotated", "not_annotated", "all"],
+            default="all",
+            help="Annotation status filter",
+        )
+        .add_argument("message_count_gte", type=int, location="args", help="Minimum message count")
+        .add_argument("page", type=int, location="args", default=1, help="Page number")
+        .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
+        .add_argument(
+            "sort_by",
+            type=str,
+            location="args",
+            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+            default="-updated_at",
+            help="Sort field and direction",
+        )
+    )
+    @api.response(200, "Success", conversation_with_summary_pagination_fields)
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -168,7 +237,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
+        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
             keyword_filter = f"%{args['keyword']}%"
@@ -239,8 +308,8 @@ class ChatConversationApi(Resource):
                 .having(func.count(Message.id) >= args["message_count_gte"])
             )
 
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
+        if app_model.mode == AppMode.ADVANCED_CHAT:
+            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
 
         match args["sort_by"]:
             case "created_at":
@@ -259,7 +328,14 @@ class ChatConversationApi(Resource):
         return conversations
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 class ChatConversationDetailApi(Resource):
+    @api.doc("get_chat_conversation")
+    @api.doc(description="Get chat conversation details")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(200, "Success", conversation_detail_fields)
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -272,6 +348,12 @@ class ChatConversationDetailApi(Resource):
 
         return _get_conversation(app_model, conversation_id)
 
+    @api.doc("delete_chat_conversation")
+    @api.doc(description="Delete a chat conversation")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(204, "Conversation deleted successfully")
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
@@ -282,17 +364,13 @@ class ChatConversationDetailApi(Resource):
         conversation_id = str(conversation_id)
 
         try:
+            if not isinstance(current_user, Account):
+                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
         return {"result": "success"}, 204
-
-
-api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
-api.add_resource(CompletionConversationDetailApi, "/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
-api.add_resource(ChatConversationApi, "/apps/<uuid:app_id>/chat-conversations")
-api.add_resource(ChatConversationDetailApi, "/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 
 
 def _get_conversation(app_model, conversation_id):

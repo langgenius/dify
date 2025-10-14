@@ -1,9 +1,10 @@
 import React, { type FC, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKeyPress } from 'ahooks'
-import { useDocumentContext } from '../../index'
+import { useDocumentContext } from '../../context'
 import Button from '@/app/components/base/button'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import { ChunkingMode } from '@/models/datasets'
 
 type IActionButtonsProps = {
   handleCancel: () => void
@@ -23,7 +24,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   isChildChunk = false,
 }) => {
   const { t } = useTranslation()
-  const mode = useDocumentContext(s => s.mode)
+  const docForm = useDocumentContext(s => s.docForm)
   const parentMode = useDocumentContext(s => s.parentMode)
 
   useKeyPress(['esc'], (e) => {
@@ -40,8 +41,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   { exactMatch: true, useCapture: true })
 
   const isParentChildParagraphMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'paragraph'
-  }, [mode, parentMode])
+    return docForm === ChunkingMode.parentChild && parentMode === 'paragraph'
+  }, [docForm, parentMode])
 
   return (
     <div className='flex items-center gap-x-2'>

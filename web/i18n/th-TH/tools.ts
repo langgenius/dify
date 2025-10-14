@@ -193,6 +193,16 @@ const translation = {
       confirm: 'เพิ่มและอนุญาต',
       timeout: 'หมดเวลา',
       sseReadTimeout: 'หมดเวลาการอ่าน SSE',
+      timeoutPlaceholder: 'สามสิบ',
+      headerValue: 'ค่าหัวข้อ',
+      addHeader: 'เพิ่มหัวเรื่อง',
+      headerKey: 'ชื่อหัวเรื่อง',
+      headerKeyPlaceholder: 'เช่น การอนุญาต',
+      headerValuePlaceholder: 'ตัวอย่าง: รหัสตัวแทน token123',
+      headers: 'หัวเรื่อง',
+      noHeaders: 'ไม่มีการกำหนดหัวข้อที่กำหนดเอง',
+      headersTip: 'HTTP header เพิ่มเติมที่จะส่งไปกับคำขอ MCP server',
+      maskedHeadersTip: 'ค่าหัวถูกปกปิดเพื่อความปลอดภัย การเปลี่ยนแปลงจะปรับปรุงค่าที่แท้จริง',
     },
     delete: 'ลบเซิร์ฟเวอร์ MCP',
     deleteConfirmTitle: 'คุณต้องการลบ {mcp} หรือไม่?',
@@ -234,6 +244,7 @@ const translation = {
       publishTip: 'แอปไม่ถูกเผยแพร่ กรุณาเผยแพร่แอปก่อน',
     },
   },
+  allTools: 'เครื่องมือทั้งหมด',
 }
 
 export default translation

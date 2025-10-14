@@ -1,10 +1,10 @@
 import base64
 import contextlib
 import logging
-from typing import Optional
 
 from bs4 import BeautifulSoup
 
+from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
@@ -17,7 +17,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, api_url: Optional[str] = None, api_key: str = ""):
+    def __init__(self, file_path: str, api_url: str | None = None, api_key: str = ""):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
@@ -47,7 +47,8 @@ class UnstructuredEmailExtractor(BaseExtractor):
 
         from unstructured.chunking.title import chunk_by_title
 
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
+        max_characters = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+        chunks = chunk_by_title(elements, max_characters=max_characters, combine_text_under_n_chars=max_characters)
         documents = []
         for chunk in chunks:
             text = chunk.text.strip()

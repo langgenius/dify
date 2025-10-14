@@ -1,11 +1,11 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -34,7 +34,18 @@ from services.errors.audio import (
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
+    @api.doc("chat_message_audio_transcript")
+    @api.doc(description="Transcript audio to text for chat messages")
+    @api.doc(params={"app_id": "App ID"})
+    @api.response(
+        200,
+        "Audio transcription successful",
+        api.model("AudioTranscriptResponse", {"text": fields.String(description="Transcribed text from audio")}),
+    )
+    @api.response(400, "Bad request - No audio uploaded or unsupported type")
+    @api.response(413, "Audio file too large")
     @setup_required
     @login_required
     @account_initialization_required
@@ -76,11 +87,28 @@ class ChatMessageAudioApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
+    @api.doc("chat_message_text_to_speech")
+    @api.doc(description="Convert text to speech for chat messages")
+    @api.doc(params={"app_id": "App ID"})
+    @api.expect(
+        api.model(
+            "TextToSpeechRequest",
+            {
+                "message_id": fields.String(description="Message ID"),
+                "text": fields.String(required=True, description="Text to convert to speech"),
+                "voice": fields.String(description="Voice to use for TTS"),
+                "streaming": fields.Boolean(description="Whether to stream the audio"),
+            },
+        )
+    )
+    @api.response(200, "Text to speech conversion successful")
+    @api.response(400, "Bad request - Invalid parameters")
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def post(self, app_model: App):
         try:
             parser = reqparse.RequestParser()
@@ -124,11 +152,18 @@ class ChatMessageTextApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
+    @api.doc("get_text_to_speech_voices")
+    @api.doc(description="Get available TTS voices for a specific language")
+    @api.doc(params={"app_id": "App ID"})
+    @api.expect(api.parser().add_argument("language", type=str, required=True, location="args", help="Language code"))
+    @api.response(200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices")))
+    @api.response(400, "Invalid language parameter")
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     def get(self, app_model):
         try:
             parser = reqparse.RequestParser()
@@ -164,8 +199,3 @@ class TextModesApi(Resource):
         except Exception as e:
             logger.exception("Failed to handle get request to TextModesApi")
             raise InternalServerError()
-
-
-api.add_resource(ChatMessageAudioApi, "/apps/<uuid:app_id>/audio-to-text")
-api.add_resource(ChatMessageTextApi, "/apps/<uuid:app_id>/text-to-audio")
-api.add_resource(TextModesApi, "/apps/<uuid:app_id>/text-to-audio/voices")

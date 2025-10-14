@@ -1,3 +1,5 @@
+import time
+import uuid
 from unittest.mock import patch
 
 import pytest
@@ -57,10 +59,12 @@ class TestWebAppAuthService:
             tuple: (account, tenant) - Created account and tenant instances
         """
         fake = Faker()
+        import uuid
 
-        # Create account
+        # Create account with unique email to avoid collisions
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status="active",
@@ -83,7 +87,7 @@ class TestWebAppAuthService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -109,8 +113,11 @@ class TestWebAppAuthService:
         password = fake.password(length=12)
 
         # Create account with password
+        import uuid
+
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status="active",
@@ -143,7 +150,7 @@ class TestWebAppAuthService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -225,7 +232,7 @@ class TestWebAppAuthService:
         assert result.id == account.id
         assert result.email == account.email
         assert result.name == account.name
-        assert result.status == AccountStatus.ACTIVE.value
+        assert result.status == AccountStatus.ACTIVE
 
         # Verify database state
         from extensions.ext_database import db
@@ -243,9 +250,15 @@ class TestWebAppAuthService:
         - Proper error handling for non-existent accounts
         - Correct exception type and message
         """
-        # Arrange: Use non-existent email
-        fake = Faker()
-        non_existent_email = fake.email()
+        # Arrange: Generate a guaranteed non-existent email
+        # Use UUID and timestamp to ensure uniqueness
+        unique_id = str(uuid.uuid4()).replace("-", "")
+        timestamp = str(int(time.time() * 1000000))  # microseconds
+        non_existent_email = f"nonexistent_{unique_id}_{timestamp}@test-domain-that-never-exists.invalid"
+
+        # Double-check this email doesn't exist in the database
+        existing_account = db_session_with_containers.query(Account).filter_by(email=non_existent_email).first()
+        assert existing_account is None, f"Test email {non_existent_email} already exists in database"
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountNotFoundError):
@@ -267,7 +280,7 @@ class TestWebAppAuthService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.BANNED.value,
+            status=AccountStatus.BANNED,
         )
 
         # Hash password
@@ -322,9 +335,12 @@ class TestWebAppAuthService:
         """
         # Arrange: Create account without password
         fake = Faker()
+        import uuid
+
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status="active",
@@ -395,7 +411,7 @@ class TestWebAppAuthService:
         assert result.id == account.id
         assert result.email == account.email
         assert result.name == account.name
-        assert result.status == AccountStatus.ACTIVE.value
+        assert result.status == AccountStatus.ACTIVE
 
         # Verify database state
         from extensions.ext_database import db
@@ -431,12 +447,15 @@ class TestWebAppAuthService:
         """
         # Arrange: Create banned account
         fake = Faker()
+        import uuid
+
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.BANNED.value,
+            status=AccountStatus.BANNED,
         )
 
         from extensions.ext_database import db

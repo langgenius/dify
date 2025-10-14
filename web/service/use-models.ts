@@ -122,7 +122,7 @@ export const useDeleteModel = (provider: string) => {
     mutationFn: (data: {
       model: string
       model_type: ModelTypeEnum
-    }) => del<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+    }) => del<{ result: string }>(`/workspaces/current/model-providers/${provider}/models`, {
       body: data,
     }),
   })

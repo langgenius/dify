@@ -77,7 +77,7 @@ def clean_workflow_runlogs_precise():
 
         logger.info("Cleanup completed: %s expired workflow run logs deleted", total_deleted)
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         logger.exception("Unexpected error in workflow log cleanup")
         raise
@@ -93,7 +93,7 @@ def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) ->
         with db.session.begin_nested():
             message_data = (
                 db.session.query(Message.id, Message.conversation_id)
-                .filter(Message.workflow_run_id.in_(workflow_run_ids))
+                .where(Message.workflow_run_id.in_(workflow_run_ids))
                 .all()
             )
             message_id_list = [msg.id for msg in message_data]
@@ -149,7 +149,7 @@ def _delete_batch_with_retry(workflow_run_ids: list[str], attempt_count: int) ->
         db.session.commit()
         return True
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         logger.exception("Batch deletion failed (attempt %s)", attempt_count + 1)
         return False
