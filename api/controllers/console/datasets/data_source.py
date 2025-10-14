@@ -3,7 +3,6 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,12 +14,12 @@ from core.datasource.entities.datasource_entities import DatasourceProviderType,
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from libs.datetime_utils import naive_utc_now
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
@@ -37,10 +36,12 @@ class DataSourceApi(Resource):
     @account_initialization_required
     @marshal_with(integrate_list_fields)
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         # get workspace data source integrates
         data_source_integrates = db.session.scalars(
             select(DataSourceOauthBinding).where(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.tenant_id == current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
             )
         ).all()
@@ -120,13 +121,15 @@ class DataSourceNotionListApi(Resource):
     @account_initialization_required
     @marshal_with(integrate_notion_info_list_fields)
     def get(self):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         dataset_id = request.args.get("dataset_id", default=None, type=str)
         credential_id = request.args.get("credential_id", default=None, type=str)
         if not credential_id:
             raise ValueError("Credential id is required.")
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
@@ -146,7 +149,7 @@ class DataSourceNotionListApi(Resource):
                 documents = session.scalars(
                     select(Document).filter_by(
                         dataset_id=dataset_id,
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         data_source_type="notion_import",
                         enabled=True,
                     )
@@ -161,7 +164,7 @@ class DataSourceNotionListApi(Resource):
             datasource_runtime = DatasourceManager.get_datasource_runtime(
                 provider_id="langgenius/notion_datasource/notion_datasource",
                 datasource_name="notion_datasource",
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
             )
             datasource_provider_service = DatasourceProviderService()
@@ -210,12 +213,14 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, workspace_id, page_id, page_type):
+        _, current_tenant_id = current_account_with_tenant()
+
         credential_id = request.args.get("credential_id", default=None, type=str)
         if not credential_id:
             raise ValueError("Credential id is required.")
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
@@ -229,7 +234,7 @@ class DataSourceNotionApi(Resource):
             notion_obj_id=page_id,
             notion_page_type=page_type,
             notion_access_token=credential.get("integration_secret"),
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
         )
 
         text_docs = extractor.extract()
@@ -239,6 +244,8 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         parser = reqparse.RequestParser()
         parser.add_argument("notion_info_list", type=list, required=True, nullable=True, location="json")
         parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
@@ -256,20 +263,22 @@ class DataSourceNotionApi(Resource):
             credential_id = notion_info.get("credential_id")
             for page in notion_info["pages"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.NOTION.value,
-                    notion_info={
-                        "credential_id": credential_id,
-                        "notion_workspace_id": workspace_id,
-                        "notion_obj_id": page["page_id"],
-                        "notion_page_type": page["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    },
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": credential_id,
+                            "notion_workspace_id": workspace_id,
+                            "notion_obj_id": page["page_id"],
+                            "notion_page_type": page["type"],
+                            "tenant_id": current_tenant_id,
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
         indexing_runner = IndexingRunner()
         response = indexing_runner.indexing_estimate(
-            current_user.current_tenant_id,
+            current_tenant_id,
             extract_settings,
             args["process_rule"],
             args["doc_form"],
