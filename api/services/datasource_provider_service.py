@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask_login import current_user
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -18,6 +17,7 @@ from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.login import current_account_with_tenant
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
@@ -93,6 +93,8 @@ class DatasourceProviderService:
         """
         get credential by id
         """
+        current_user, _ = current_account_with_tenant()
+
         with Session(db.engine) as session:
             if credential_id:
                 datasource_provider = (
@@ -157,6 +159,8 @@ class DatasourceProviderService:
         """
         get all datasource credentials by provider
         """
+        current_user, _ = current_account_with_tenant()
+
         with Session(db.engine) as session:
             datasource_providers = (
                 session.query(DatasourceProvider)
@@ -604,6 +608,8 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
+        current_user, _ = current_account_with_tenant()
+
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
             with redis_client.lock(lock, timeout=20):
@@ -901,6 +907,8 @@ class DatasourceProviderService:
         """
         update datasource credentials.
         """
+        current_user, _ = current_account_with_tenant()
+
         with Session(db.engine) as session:
             datasource_provider = (
                 session.query(DatasourceProvider)
