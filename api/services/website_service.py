@@ -176,15 +176,16 @@ class WebsiteService:
     def _crawl_with_firecrawl(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
 
+        params: dict[str, Any]
         if not request.options.crawl_sub_pages:
-            params: dict[str, Any] = {
+            params = {
                 "includePaths": [],
                 "excludePaths": [],
                 "limit": 1,
                 "scrapeOptions": {"onlyMainContent": request.options.only_main_content},
             }
         else:
-            params: dict[str, Any] = {
+            params = {
                 "includePaths": request.options.get_include_paths(),
                 "excludePaths": request.options.get_exclude_paths(),
                 "limit": request.options.limit,
