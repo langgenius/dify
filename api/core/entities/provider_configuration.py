@@ -473,7 +473,7 @@ class ProviderConfiguration(BaseModel):
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
                 else:
-                    # some history data may has provider record but not set as valid
+                    # some historical data may have a provider record but not be set as valid
                     provider_record.is_valid = True
 
                 session.commit()
