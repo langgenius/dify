@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from extensions.ext_database import db
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_owner_transfer_task import (
@@ -159,7 +158,6 @@ class TestMailOwnerTransferTask:
         # Assert: Verify no email service calls were made
         mock_mail_dependencies["get_email_service"].assert_not_called()
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
-
 
     def test_send_owner_transfer_confirm_task_exception_handling(
         self, db_session_with_containers, mock_mail_dependencies
@@ -401,4 +399,3 @@ class TestMailOwnerTransferTask:
 
         # Verify email service was called despite the exception
         mock_mail_dependencies["email_service"].send_email.assert_called_once()
-
