@@ -1,7 +1,8 @@
 import logging
+from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -13,12 +14,12 @@ from controllers.console.app.error import (
     AudioTooLargeError,
     CompletionRequestError,
     ConversationCompletedError,
+    NeedAddIdsError,
     NoAudioUploadedError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
-    NeedAddIdsError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model_with_trial
@@ -43,6 +44,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from fields.app_fields import app_detail_fields_with_site
+from fields.dataset_fields import dataset_fields
 from fields.workflow_fields import workflow_fields
 from libs import helper
 from libs.helper import uuid_value
@@ -50,9 +52,11 @@ from libs.login import current_user
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
+from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.app_service import AppService
 from services.audio_service import AudioService
+from services.dataset_service import DatasetService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -67,11 +71,6 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
-from models.workflow import Workflow
-from services.dataset_service import DatasetService
-from fields.dataset_fields import dataset_fields
-from flask_restx import marshal
-from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -449,6 +448,7 @@ class AppApi(Resource):
 
         return app_model
 
+
 class AppWorkflowApi(Resource):
     @trial_feature_enable
     @get_app_model_with_trial
@@ -467,6 +467,7 @@ class AppWorkflowApi(Resource):
         )
         return workflow
 
+
 class DatasetListApi(Resource):
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)
@@ -479,11 +480,11 @@ class DatasetListApi(Resource):
         else:
             raise NeedAddIdsError()
 
-
         data = cast(list[dict[str, Any]], marshal(datasets, dataset_fields))
 
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response
+
 
 api.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
 
