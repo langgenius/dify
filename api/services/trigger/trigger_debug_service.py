@@ -57,7 +57,7 @@ class PluginTriggerDebugEvent(BaseDebugEvent):
         provider_id = kwargs["provider_id"]
         subscription_id = kwargs["subscription_id"]
         event_name = kwargs["event_name"]
-        return f"trigger_debug_waiting_pool:{tenant_id}:{str(provider_id)}:{subscription_id}:{event_name}"
+        return f"plugin_trigger_debug_waiting_pool:{tenant_id}:{str(provider_id)}:{subscription_id}:{event_name}"
 
 
 class WebhookDebugEvent(BaseDebugEvent):
@@ -79,7 +79,7 @@ class WebhookDebugEvent(BaseDebugEvent):
         tenant_id = kwargs["tenant_id"]
         app_id = kwargs["app_id"]
         node_id = kwargs["node_id"]
-        return f"trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
+        return f"webhook_trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
 
 
 class TriggerDebugService:
