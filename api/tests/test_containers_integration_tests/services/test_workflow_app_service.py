@@ -1083,15 +1083,15 @@ class TestWorkflowAppService:
         assert len(result_no_session["data"]) == 0
 
         # Test with account email that doesn't exist
-        result_no_account = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers,
-            app_model=app,
-            created_by_account="nonexistent@example.com",
-            page=1,
-            limit=20,
-        )
-        assert result_no_account["total"] == 0
-        assert len(result_no_account["data"]) == 0
+        with pytest.raises(ValueError) as exc_info:
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers,
+                app_model=app,
+                created_by_account="nonexistent@example.com",
+                page=1,
+                limit=20,
+            )
+        assert "Account not found" in str(exc_info.value)
 
     def test_get_paginate_workflow_app_logs_with_complex_query_combinations(
         self, db_session_with_containers, mock_external_service_dependencies
