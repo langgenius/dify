@@ -78,6 +78,8 @@
     "echarts": "^5.5.1",
     "echarts-for-react": "^3.0.2",
     "elkjs": "^0.9.3",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
     "emoji-mart": "^5.5.2",
     "fast-deep-equal": "^3.1.3",
     "html-to-image": "1.11.11",

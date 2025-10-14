@@ -11,14 +11,14 @@ const MIN_LOADING_HEIGHT = 168
 
 const Banner: FC = () => {
   const { locale } = useI18N()
-  const { data: banners, isLoading } = useGetBanners(locale)
+  const { data: banners, isLoading, isError } = useGetBanners(locale)
 
   const enabledBanners = useMemo(
     () => banners?.filter((banner: BannerData) => banner.status === 'enabled') ?? [],
     [banners],
   )
 
-  if (isLoading || !banners) {
+  if (isLoading) {
     return (
       <div
         className="flex items-center justify-center rounded-2xl bg-components-panel-on-panel-item-bg shadow-md"
@@ -29,7 +29,7 @@ const Banner: FC = () => {
     )
   }
 
-  if (enabledBanners.length === 0)
+  if (isError || enabledBanners.length === 0)
     return null
 
   return (
