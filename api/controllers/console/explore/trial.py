@@ -469,6 +469,8 @@ class AppWorkflowApi(Resource):
 
 
 class DatasetListApi(Resource):
+    @trial_feature_enable
+    @get_app_model_with_trial
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
