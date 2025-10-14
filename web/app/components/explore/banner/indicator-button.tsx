@@ -33,7 +33,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
       return
     }
 
-    // 重置并开始新动画
+    // reset and start new animation
     setProgress(0)
     animationIdRef.current += 1
 
