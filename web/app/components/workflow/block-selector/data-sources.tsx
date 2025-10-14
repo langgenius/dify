@@ -92,7 +92,7 @@ const DataSources = ({
   }, [searchText, enable_marketplace])
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
       <div
         ref={wrapElemRef}
         className='max-h-[464px] overflow-y-auto'
