@@ -21,10 +21,10 @@ class CrawlOptions:
     limit: int = 1
     crawl_sub_pages: bool = False
     only_main_content: bool = False
-    includes: Optional[str] = None
-    excludes: Optional[str] = None
-    prompt: Optional[str] = None
-    max_depth: Optional[int] = None
+    includes: str | None = None
+    excludes: str | None = None
+    prompt: str | None = None
+    max_depth: int | None = None
     use_sitemap: bool = True
 
     def get_include_paths(self) -> list[str]:
