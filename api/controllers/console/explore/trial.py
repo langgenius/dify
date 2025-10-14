@@ -18,6 +18,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    NeedAddIdsError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model_with_trial
@@ -42,6 +43,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from fields.app_fields import app_detail_fields_with_site
+from fields.workflow_fields import workflow_fields
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user
@@ -65,6 +67,11 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
+from models.workflow import Workflow
+from services.dataset_service import DatasetService
+from fields.dataset_fields import dataset_fields
+from flask_restx import marshal
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -442,6 +449,41 @@ class AppApi(Resource):
 
         return app_model
 
+class AppWorkflowApi(Resource):
+    @trial_feature_enable
+    @get_app_model_with_trial
+    @marshal_with(workflow_fields)
+    def get(self, app_model):
+        """Get workflow detail"""
+        if not app_model.workflow_id:
+            raise AppUnavailableError()
+
+        workflow = (
+            db.session.query(Workflow)
+            .where(
+                Workflow.id == app_model.workflow_id,
+            )
+            .first()
+        )
+        return workflow
+
+class DatasetListApi(Resource):
+    def get(self, app_model):
+        page = request.args.get("page", default=1, type=int)
+        limit = request.args.get("limit", default=20, type=int)
+        ids = request.args.getlist("ids")
+      
+        tenant_id = app_model.tenant_id
+        if ids:
+            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id)
+        else:
+            raise NeedAddIdsError()
+
+
+        data = cast(list[dict[str, Any]], marshal(datasets, dataset_fields))
+
+        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        return response
 
 api.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
 
@@ -464,3 +506,6 @@ api.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
 
 api.add_resource(TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run")
 api.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+
+api.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
+api.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")

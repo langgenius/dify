@@ -115,3 +115,8 @@ class InvokeRateLimitError(BaseHTTPException):
     error_code = "rate_limit_error"
     description = "Rate Limit Error"
     code = 429
+
+class NeedAddIdsError(BaseHTTPException):
+    error_code = "need_add_ids"
+    description = "Need to add ids."
+    code = 400
