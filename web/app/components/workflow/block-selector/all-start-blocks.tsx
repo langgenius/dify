@@ -1,5 +1,10 @@
 'use client'
-import { useCallback, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { TriggerDefaultValue } from './types'
@@ -12,6 +17,7 @@ import { RiArrowRightUpLine } from '@remixicon/react'
 import { getMarketplaceUrl } from '@/utils/var'
 import Button from '@/app/components/base/button'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { BlockEnum as BlockEnumValue } from '../types'
 
 type AllStartBlocksProps = {
   className?: string
@@ -25,12 +31,18 @@ const AllStartBlocks = ({
   className,
   searchText,
   onSelect,
+  availableBlocksTypes,
   tags = [],
 }: AllStartBlocksProps) => {
   const { t } = useTranslation()
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
+
+  const entryNodeTypes = availableBlocksTypes?.length
+    ? availableBlocksTypes
+    : ENTRY_NODE_TYPES
+  const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
     setHasStartBlocksContent(hasContent)
@@ -42,6 +54,11 @@ const AllStartBlocks = ({
 
   const hasAnyContent = hasStartBlocksContent || hasPluginContent
   const shouldShowEmptyState = searchText && !hasAnyContent
+
+  useEffect(() => {
+    if (!enableTriggerPlugin && hasPluginContent)
+      setHasPluginContent(false)
+  }, [enableTriggerPlugin, hasPluginContent])
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -75,16 +92,18 @@ const AllStartBlocks = ({
             <StartBlocks
               searchText={searchText}
               onSelect={onSelect as OnSelectBlock}
-              availableBlocksTypes={ENTRY_NODE_TYPES as unknown as BlockEnum[]}
+              availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
               onContentStateChange={handleStartBlocksContentChange}
             />
 
-            <TriggerPluginSelector
-              onSelect={onSelect}
-              searchText={searchText}
-              onContentStateChange={handlePluginContentChange}
-              tags={tags}
-            />
+            { (
+              <TriggerPluginSelector
+                onSelect={onSelect}
+                searchText={searchText}
+                onContentStateChange={handlePluginContentChange}
+                tags={tags}
+              />
+            )}
           </>
         )}
       </div>

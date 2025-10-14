@@ -18,6 +18,7 @@ import {
   useNodesReadOnly,
   usePanelInteractions,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import { useWorkflowStore } from '../store'
 import TipPopup from './tip-popup'
 import cn from '@/utils/classnames'
@@ -28,6 +29,7 @@ import type {
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
 
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode
@@ -46,6 +48,8 @@ const AddBlock = ({
   const [open, setOpen] = useState(false)
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const showStartTab = flowType !== FlowType.ragPipeline && !isChatMode
 
   const handleOpenChange = useCallback((open: boolean) => {
     setOpen(open)
@@ -110,7 +114,7 @@ const AddBlock = ({
       trigger={renderTrigger || renderTriggerElement}
       popupClassName='!min-w-[256px]'
       availableBlocksTypes={availableNextBlocks}
-      showStartTab={!isChatMode}
+      showStartTab={showStartTab}
     />
   )
 }
