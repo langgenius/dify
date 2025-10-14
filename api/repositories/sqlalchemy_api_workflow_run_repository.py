@@ -29,6 +29,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from libs.time_parser import get_time_threshold
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 
@@ -136,8 +137,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get workflow runs count statistics grouped by status.
         """
-        from libs.time_parser import get_time_threshold
-
         _initial_status_counts = {
             "running": 0,
             "succeeded": 0,
@@ -165,10 +164,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 count_stmt = select(func.count(WorkflowRun.id)).where(*base_conditions, WorkflowRun.status == status)
                 total = session.scalar(count_stmt) or 0
 
-                result = {
-                    "total": total,
-                    **_initial_status_counts,
-                }
+                result = {"total": total} | _initial_status_counts
 
                 # Set the count for the filtered status
                 if status in result:
@@ -195,10 +191,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 if status_val in status_counts:
                     status_counts[status_val] = count
 
-            return {
-                "total": total,
-                **status_counts,
-            }
+            return {"total": total} | status_counts
 
     def get_expired_runs_batch(
         self,
