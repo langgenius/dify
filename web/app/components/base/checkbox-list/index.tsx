@@ -1,10 +1,14 @@
 'use client'
 import Badge from '@/app/components/base/badge'
 import Checkbox from '@/app/components/base/checkbox'
+import SearchInput from '@/app/components/base/search-input'
+import SearchMenu from '@/assets/search-menu.svg'
 import cn from '@/utils/classnames'
+import Image from 'next/image'
 import type { FC } from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '../button'
 
 export type CheckboxListOption = {
   label: string
@@ -23,6 +27,7 @@ export type CheckboxListProps = {
   containerClassName?: string
   showSelectAll?: boolean
   showCount?: boolean
+  showSearch?: boolean
   maxHeight?: string | number
 }
 
@@ -37,9 +42,21 @@ const CheckboxList: FC<CheckboxListProps> = ({
   containerClassName,
   showSelectAll = true,
   showCount = true,
+  showSearch = true,
   maxHeight,
 }) => {
   const { t } = useTranslation()
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery?.trim())
+      return options
+
+    const query = searchQuery.toLowerCase()
+    return options.filter(option =>
+      option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
+    )
+  }, [options, searchQuery])
 
   const selectedCount = value.length
 
@@ -95,9 +112,9 @@ const CheckboxList: FC<CheckboxListProps> = ({
       )}
 
       <div className='rounded-lg border border-components-panel-border bg-components-panel-bg'>
-        {(showSelectAll || title) && (
+        {(showSelectAll || title || showSearch) && (
           <div className='relative flex items-center gap-2 border-b border-divider-subtle px-3 py-2'>
-            {showSelectAll && (
+            {!searchQuery && showSelectAll && (
               <Checkbox
                 checked={isAllSelected}
                 indeterminate={isIndeterminate}
@@ -105,7 +122,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                 disabled={disabled}
               />
             )}
-            <div className='flex flex-1 items-center gap-1'>
+            {!searchQuery ? <div className='flex flex-1 items-center gap-1'>
               {title && (
                 <span className='system-xs-semibold-uppercase leading-5 text-text-secondary'>
                   {title}
@@ -116,7 +133,18 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   {t('common.operation.selectCount', { count: selectedCount })}
                 </Badge>
               )}
-            </div>
+            </div> : <div className='system-sm-medium-uppercase flex-1 leading-6 text-text-secondary'>{
+              filteredOptions.length > 0
+                ? t('common.operation.searchCount', { count: filteredOptions.length, content: title })
+                : t('common.operation.noSearchCount', { content: title })}</div>}
+            {showSearch && (
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder={t('common.placeholder.search')}
+                className='w-40'
+              />
+            )}
           </div>
         )}
 
@@ -124,12 +152,16 @@ const CheckboxList: FC<CheckboxListProps> = ({
           className='p-1'
           style={maxHeight ? { maxHeight, overflowY: 'auto' } : {}}
         >
-          {!options.length ? (
+          {!filteredOptions.length ? (
             <div className='px-3 py-6 text-center text-sm text-text-tertiary'>
-              {t('common.noData')}
+              {searchQuery ? <div className='flex flex-col items-center justify-center gap-2'>
+                <Image alt='search menu' src={SearchMenu} width={32} />
+                <span className='system-sm-regular text-text-secondary'>{t('common.operation.noSearchResults', { content: title })}</span>
+                <Button variant='secondary-accent' size='small' onClick={() => setSearchQuery('')}>{t('common.operation.resetKeywords')}</Button>
+              </div> : t('common.noData')}
             </div>
           ) : (
-            options.map((option) => {
+            filteredOptions.map((option) => {
               const selected = value.includes(option.value)
 
               return (

@@ -143,6 +143,7 @@ const translation = {
         description: '此 URL 将接收Webhook事件',
         tooltip: '填写能被触发器提供方访问的公网地址，用于接收回调请求。',
         placeholder: '生成中...',
+        privateAddressWarning: '此 URL 似乎是一个内部地址，可能会导致 Webhook 请求失败。',
       },
     },
     errors: {
