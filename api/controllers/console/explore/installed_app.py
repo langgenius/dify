@@ -12,8 +12,8 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_user, login_required
-from models import Account, App, InstalledApp, RecommendedApp
+from libs.login import current_account_with_tenant, login_required
+from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -29,11 +29,7 @@ class InstalledAppsListApi(Resource):
     @marshal_with(installed_app_list_fields)
     def get(self):
         app_id = request.args.get("app_id", default=None, type=str)
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-        current_tenant_id = current_user.current_tenant_id
-        if current_tenant_id is None:
-            raise ValueError("The tenant information should be loaded for current_user.")
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if app_id:
             installed_apps = db.session.scalars(
@@ -123,9 +119,8 @@ class InstalledAppsListApi(Resource):
         if recommended_app is None:
             raise NotFound("App not found")
 
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-        current_tenant_id = current_user.current_tenant_id
+        _, current_tenant_id = current_account_with_tenant()
+
         app = db.session.query(App).where(App.id == args["app_id"]).first()
 
         if app is None:
@@ -166,9 +161,8 @@ class InstalledAppApi(InstalledAppResource):
     """
 
     def delete(self, installed_app):
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-        if installed_app.app_owner_tenant_id == current_user.current_tenant_id:
+        _, current_tenant_id = current_account_with_tenant()
+        if installed_app.app_owner_tenant_id == current_tenant_id:
             raise BadRequest("You can't uninstall an app owned by the current tenant")
 
         db.session.delete(installed_app)

@@ -9,6 +9,7 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
 from models.account import Account
@@ -165,7 +166,7 @@ class RagPipelineTransformService:
         if retrieval_model:
             retrieval_setting = RetrievalSetting.model_validate(retrieval_model)
             if indexing_technique == "economy":
-                retrieval_setting.search_method = "keyword_search"
+                retrieval_setting.search_method = RetrievalMethod.KEYWORD_SEARCH
             knowledge_configuration.retrieval_model = retrieval_setting
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()

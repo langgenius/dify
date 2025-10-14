@@ -182,7 +182,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-      "inputs": ${JSON.stringify(props.inputs)},
+    "inputs": ${JSON.stringify(props.inputs)},
     "response_mode": "streaming",
     "user": "abc-123"
 }'`}

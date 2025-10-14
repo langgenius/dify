@@ -1,6 +1,3 @@
-from typing import cast
-
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -13,8 +10,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
-from libs.login import login_required
-from models import Account
+from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
 from services.enterprise.enterprise_service import EnterpriseService
@@ -32,7 +28,8 @@ class AppImportApi(Resource):
     @cloud_edition_billing_resource_check("apps")
     def post(self):
         # Check user role first
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -51,7 +48,7 @@ class AppImportApi(Resource):
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             # Import app
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.import_app(
                 account=account,
                 import_mode=args["mode"],
@@ -85,14 +82,15 @@ class AppImportConfirmApi(Resource):
     @marshal_with(app_import_fields)
     def post(self, import_id):
         # Check user role first
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         # Create service with session
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             # Confirm import
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
             session.commit()
 
@@ -110,7 +108,8 @@ class AppImportCheckDependenciesApi(Resource):
     @account_initialization_required
     @marshal_with(app_import_check_dependencies_fields)
     def get(self, app_model: App):
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         with Session(db.engine) as session:

@@ -1,5 +1,5 @@
 import flask_restx
-from flask_login import current_user
+from flask import Response
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
 from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
@@ -58,7 +59,9 @@ class BaseApiKeyListResource(Resource):
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
+        _, current_tenant_id = current_account_with_tenant()
+
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
         keys = db.session.scalars(
             select(ApiToken).where(
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
@@ -70,8 +73,9 @@ class BaseApiKeyListResource(Resource):
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         current_key_count = (
@@ -92,6 +96,9 @@ class BaseApiKeyListResource(Resource):
         assert isinstance(current_user, Account)
         api_token = ApiToken(tenant_id=current_user.current_tenant_id, type=self.resource_type, token=key)
         setattr(api_token, self.resource_id_field, resource_id)
+        api_token.tenant_id = current_tenant_id
+        api_token.token = key
+        api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
         return api_token, 201
@@ -108,7 +115,8 @@ class BaseApiKeyResource(Resource):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
+        current_user, current_tenant_id = current_account_with_tenant()
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
@@ -152,7 +160,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return super().post(resource_id)
 
-    def after_request(self, resp):
+    def after_request(self, resp: Response):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
@@ -202,7 +210,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
-    def after_request(self, resp):
+    def after_request(self, resp: Response):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
@@ -223,7 +231,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
 
-    def after_request(self, resp):
+    def after_request(self, resp: Response):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
