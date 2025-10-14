@@ -113,9 +113,9 @@ class TestMCPToolManageService:
         mcp_provider = MCPToolProvider(
             tenant_id=tenant_id,
             name=fake.company(),
-            server_identifier=fake.uuid4(),
+            server_identifier=str(fake.uuid4()),
             server_url="encrypted_server_url",
-            server_url_hash=fake.sha256(),
+            server_url_hash=str(fake.sha256()),
             user_id=user_id,
             authed=False,
             tools="[]",
@@ -364,6 +364,7 @@ class TestMCPToolManageService:
         )
 
         # Act: Execute the method under test
+        from core.entities.mcp_provider import MCPConfiguration
         from extensions.ext_database import db
 
         service = MCPToolManageService(db.session())
@@ -376,8 +377,10 @@ class TestMCPToolManageService:
             icon_type="emoji",
             icon_background="#FF6B6B",
             server_identifier="test_identifier_123",
-            timeout=30.0,
-            sse_read_timeout=300.0,
+            configuration=MCPConfiguration(
+                timeout=30.0,
+                sse_read_timeout=300.0,
+            ),
         )
 
         # Assert: Verify the expected outcomes
@@ -423,6 +426,7 @@ class TestMCPToolManageService:
         )
 
         # Create first provider
+        from core.entities.mcp_provider import MCPConfiguration
         from extensions.ext_database import db
 
         service = MCPToolManageService(db.session())
@@ -435,8 +439,10 @@ class TestMCPToolManageService:
             icon_type="emoji",
             icon_background="#FF6B6B",
             server_identifier="test_identifier_1",
-            timeout=30.0,
-            sse_read_timeout=300.0,
+            configuration=MCPConfiguration(
+                timeout=30.0,
+                sse_read_timeout=300.0,
+            ),
         )
 
         # Act & Assert: Verify proper error handling for duplicate name
@@ -450,8 +456,10 @@ class TestMCPToolManageService:
                 icon_type="emoji",
                 icon_background="#4ECDC4",
                 server_identifier="test_identifier_2",
-                timeout=45.0,
-                sse_read_timeout=400.0,
+                configuration=MCPConfiguration(
+                    timeout=45.0,
+                    sse_read_timeout=400.0,
+                ),
             )
 
     def test_create_mcp_provider_duplicate_server_url(
@@ -472,6 +480,7 @@ class TestMCPToolManageService:
         )
 
         # Create first provider
+        from core.entities.mcp_provider import MCPConfiguration
         from extensions.ext_database import db
 
         service = MCPToolManageService(db.session())
@@ -484,8 +493,10 @@ class TestMCPToolManageService:
             icon_type="emoji",
             icon_background="#FF6B6B",
             server_identifier="test_identifier_1",
-            timeout=30.0,
-            sse_read_timeout=300.0,
+            configuration=MCPConfiguration(
+                timeout=30.0,
+                sse_read_timeout=300.0,
+            ),
         )
 
         # Act & Assert: Verify proper error handling for duplicate server URL
@@ -499,8 +510,10 @@ class TestMCPToolManageService:
                 icon_type="emoji",
                 icon_background="#4ECDC4",
                 server_identifier="test_identifier_2",
-                timeout=45.0,
-                sse_read_timeout=400.0,
+                configuration=MCPConfiguration(
+                    timeout=45.0,
+                    sse_read_timeout=400.0,
+                ),
             )
 
     def test_create_mcp_provider_duplicate_server_identifier(
@@ -521,6 +534,7 @@ class TestMCPToolManageService:
         )
 
         # Create first provider
+        from core.entities.mcp_provider import MCPConfiguration
         from extensions.ext_database import db
 
         service = MCPToolManageService(db.session())
@@ -533,8 +547,10 @@ class TestMCPToolManageService:
             icon_type="emoji",
             icon_background="#FF6B6B",
             server_identifier="test_identifier_123",
-            timeout=30.0,
-            sse_read_timeout=300.0,
+            configuration=MCPConfiguration(
+                timeout=30.0,
+                sse_read_timeout=300.0,
+            ),
         )
 
         # Act & Assert: Verify proper error handling for duplicate server identifier
@@ -548,8 +564,10 @@ class TestMCPToolManageService:
                 icon_type="emoji",
                 icon_background="#4ECDC4",
                 server_identifier="test_identifier_123",  # Duplicate identifier
-                timeout=45.0,
-                sse_read_timeout=400.0,
+                configuration=MCPConfiguration(
+                    timeout=45.0,
+                    sse_read_timeout=400.0,
+                ),
             )
 
     def test_retrieve_mcp_tools_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1057,6 +1075,8 @@ class TestMCPToolManageService:
         db.session.commit()
 
         # Act: Execute the method under test
+        from core.entities.mcp_provider import MCPConfiguration
+
         service = MCPToolManageService(db.session())
         service.update_provider(
             tenant_id=tenant.id,
@@ -1067,8 +1087,10 @@ class TestMCPToolManageService:
             icon_type="emoji",
             icon_background="#4ECDC4",
             server_identifier="updated_identifier_123",
-            timeout=45.0,
-            sse_read_timeout=400.0,
+            configuration=MCPConfiguration(
+                timeout=45.0,
+                sse_read_timeout=400.0,
+            ),
         )
 
         # Assert: Verify the expected outcomes
@@ -1082,7 +1104,7 @@ class TestMCPToolManageService:
         # Verify icon was updated
         import json
 
-        icon_data = json.loads(mcp_provider.icon)
+        icon_data = json.loads(mcp_provider.icon or "{}")
         assert icon_data["content"] == "🚀"
         assert icon_data["background"] == "#4ECDC4"
 
@@ -1122,6 +1144,7 @@ class TestMCPToolManageService:
             }
 
             # Act: Execute the method under test
+            from core.entities.mcp_provider import MCPConfiguration
             from extensions.ext_database import db
 
             service = MCPToolManageService(db.session())
@@ -1134,8 +1157,10 @@ class TestMCPToolManageService:
                 icon_type="emoji",
                 icon_background="#4ECDC4",
                 server_identifier="updated_identifier_123",
-                timeout=45.0,
-                sse_read_timeout=400.0,
+                configuration=MCPConfiguration(
+                    timeout=45.0,
+                    sse_read_timeout=400.0,
+                ),
             )
 
         # Assert: Verify the expected outcomes
@@ -1183,6 +1208,7 @@ class TestMCPToolManageService:
         db.session.commit()
 
         # Act & Assert: Verify proper error handling for duplicate name
+        from core.entities.mcp_provider import MCPConfiguration
         from extensions.ext_database import db
 
         service = MCPToolManageService(db.session())
@@ -1196,8 +1222,10 @@ class TestMCPToolManageService:
                 icon_type="emoji",
                 icon_background="#4ECDC4",
                 server_identifier="unique_identifier",
-                timeout=45.0,
-                sse_read_timeout=400.0,
+                configuration=MCPConfiguration(
+                    timeout=45.0,
+                    sse_read_timeout=400.0,
+                ),
             )
 
     def test_update_mcp_provider_credentials_success(
@@ -1258,7 +1286,7 @@ class TestMCPToolManageService:
         # Verify credentials were encrypted and merged
         import json
 
-        credentials = json.loads(mcp_provider.encrypted_credentials)
+        credentials = json.loads(mcp_provider.encrypted_credentials or "{}")
         assert "existing_key" in credentials
         assert "new_key" in credentials
 
