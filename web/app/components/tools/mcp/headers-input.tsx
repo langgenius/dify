@@ -113,7 +113,7 @@ const HeadersInput = ({
                 className='flex-1 rounded-none border-0'
                 readOnly={readonly}
               />
-              {!readonly && headerItems.length > 1 && (
+              {!readonly && !!headerItems.length && (
                 <ActionButton
                   onClick={() => handleRemoveItem(index)}
                   className='mr-2'

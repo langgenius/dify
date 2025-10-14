@@ -64,6 +64,16 @@ export type Collection = {
   masked_headers?: Record<string, string>
   is_authorized?: boolean
   provider?: string
+  is_dynamic_registration?: boolean
+  authentication?: {
+    client_id?: string
+    client_secret?: string
+    grant_type?: string
+  }
+  configurations?: {
+    timeout?: number
+    sse_read_timeout?: number
+  }
 }
 
 export type ToolParameter = {

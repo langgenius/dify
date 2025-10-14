@@ -33,9 +33,17 @@ export type DuplicateAppModalProps = {
     icon: string
     icon_background?: string | null
     server_identifier: string
-    timeout: number
-    sse_read_timeout: number
     headers?: Record<string, string>
+    is_dynamic_registration?: boolean
+    authentication?: {
+      client_id?: string
+      client_secret?: string
+      grant_type?: string
+    }
+    configurations: {
+      timeout: number
+      sse_read_timeout: number
+    }
   }) => void
   onHide: () => void
 }
@@ -96,9 +104,9 @@ const MCPModal = ({
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
   const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
-  const [useDynamicClientRegistration, setUseDynamicClientRegistration] = useState(data?.use_dynamic_client_registration || false)
-  const [clientID, setClientID] = useState(data?.client_id || '')
-  const [credentials, setCredentials] = useState(data?.credentials || '')
+  const [isDynamicRegistration, setIsDynamicRegistration] = useState(data?.is_dynamic_registration || false)
+  const [clientID, setClientID] = useState(data?.authentication?.client_id || '')
+  const [credentials, setCredentials] = useState(data?.authentication?.client_secret || '')
 
   // Update states when data changes (for edit mode)
   React.useEffect(() => {
@@ -178,9 +186,17 @@ const MCPModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
-      timeout: timeout || 30,
-      sse_read_timeout: sseReadTimeout || 300,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
+      is_dynamic_registration: isDynamicRegistration,
+      authentication: {
+        client_id: clientID,
+        client_secret: credentials,
+        grant_type: 'client_credentials',
+      },
+      configurations: {
+        timeout: timeout || 30,
+        sse_read_timeout: sseReadTimeout || 300,
+      },
     })
     if(isCreate)
       onHide()
@@ -279,14 +295,15 @@ const MCPModal = ({
                 <div>
                   <div className='mb-1 flex h-6 items-center'>
                     <Switch
-                      defaultValue={useDynamicClientRegistration}
-                      onChange={setUseDynamicClientRegistration}
+                      className='mr-2'
+                      defaultValue={isDynamicRegistration}
+                      onChange={setIsDynamicRegistration}
                     />
                     <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
                   </div>
                 </div>
                 <div>
-                  <div className='mb-1 flex h-6 items-center'>
+                  <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
                     <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientID')}</span>
                   </div>
                   <Input
@@ -294,10 +311,11 @@ const MCPModal = ({
                     onChange={e => setClientID(e.target.value)}
                     onBlur={e => handleBlur(e.target.value.trim())}
                     placeholder={t('tools.mcp.modal.clientID')}
+                    disabled={isDynamicRegistration}
                   />
                 </div>
                 <div>
-                  <div className='mb-1 flex h-6 items-center'>
+                  <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
                     <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.credentials')}</span>
                   </div>
                   <Input
@@ -305,6 +323,7 @@ const MCPModal = ({
                     onChange={e => setCredentials(e.target.value)}
                     onBlur={e => handleBlur(e.target.value.trim())}
                     placeholder={t('tools.mcp.modal.credentialsPlaceholder')}
+                    disabled={isDynamicRegistration}
                   />
                 </div>
               </>
