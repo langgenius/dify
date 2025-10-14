@@ -472,6 +472,9 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
+                else:
+                    # some history data may has provider record but not set as valid
+                    provider_record.is_valid = True
 
                 session.commit()
             except Exception:
