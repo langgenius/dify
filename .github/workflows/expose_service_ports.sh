@@ -1,6 +1,7 @@
 #!/bin/bash
 
 yq eval '.services.weaviate.ports += ["8080:8080"]' -i docker/docker-compose.yaml
+yq eval '.services.weaviate.ports += ["50051:50051"]' -i docker/docker-compose.yaml
 yq eval '.services.qdrant.ports += ["6333:6333"]' -i docker/docker-compose.yaml
 yq eval '.services.chroma.ports += ["8000:8000"]' -i docker/docker-compose.yaml
 yq eval '.services["milvus-standalone"].ports += ["19530:19530"]' -i docker/docker-compose.yaml
