@@ -38,7 +38,7 @@ const Banner: FC = () => {
       plugins={[
         Carousel.Plugin.Autoplay({
           delay: AUTOPLAY_DELAY,
-          stopOnInteraction: true,
+          stopOnInteraction: false,
         }),
       ]}
       className="rounded-2xl"

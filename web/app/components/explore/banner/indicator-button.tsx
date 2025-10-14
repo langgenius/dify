@@ -7,6 +7,7 @@ type IndicatorButtonProps = {
   selectedIndex: number
   isNextSlide: boolean
   autoplayDelay: number
+  resetKey: number
   onClick: () => void
 }
 
@@ -18,11 +19,26 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
   selectedIndex,
   isNextSlide,
   autoplayDelay,
+  resetKey,
   onClick,
 }) => {
   const [progress, setProgress] = useState(0)
-  const animationIdRef = useRef(0)
+  const [isPageVisible, setIsPageVisible] = useState(true)
   const frameIdRef = useRef<number | undefined>(undefined)
+  const pausedTimeRef = useRef(0)
+  const startTimeRef = useRef(0)
+
+  // Listen to page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden)
+    }
+    setIsPageVisible(!document.hidden)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isNextSlide) {
@@ -35,26 +51,32 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
 
     // reset and start new animation
     setProgress(0)
-    animationIdRef.current += 1
-
-    const startTime = Date.now()
+    startTimeRef.current = Date.now()
+    pausedTimeRef.current = 0
 
     const animate = () => {
-      const elapsed = Date.now() - startTime
-      const newProgress = Math.min((elapsed / autoplayDelay) * PROGRESS_MAX, PROGRESS_MAX)
-      setProgress(newProgress)
+      // Only continue animation when page is visible
+      if (!document.hidden) {
+        const now = Date.now()
+        const elapsed = now - startTimeRef.current - pausedTimeRef.current
+        const newProgress = Math.min((elapsed / autoplayDelay) * PROGRESS_MAX, PROGRESS_MAX)
+        setProgress(newProgress)
 
-      if (newProgress < PROGRESS_MAX)
+        if (newProgress < PROGRESS_MAX)
+          frameIdRef.current = requestAnimationFrame(animate)
+      }
+      else {
         frameIdRef.current = requestAnimationFrame(animate)
+      }
     }
-
-    frameIdRef.current = requestAnimationFrame(animate)
+    if (!document.hidden)
+      frameIdRef.current = requestAnimationFrame(animate)
 
     return () => {
       if (frameIdRef.current)
         cancelAnimationFrame(frameIdRef.current)
     }
-  }, [isNextSlide, autoplayDelay])
+  }, [isNextSlide, autoplayDelay, resetKey, isPageVisible])
 
   const isActive = index === selectedIndex
 
@@ -76,7 +98,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
       {/* progress border for next slide */}
       {isNextSlide && !isActive && (
         <span
-          key={animationIdRef.current}
+          key={resetKey}
           className="absolute inset-[-1px] rounded-[7px]"
           style={{
             background: `conic-gradient(

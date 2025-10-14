@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RiArrowRightLine } from '@remixicon/react'
 import { useCarousel } from '@/app/components/base/carousel'
 import { IndicatorButton } from './indicator-button'
@@ -27,6 +27,7 @@ type BannerItemProps = {
 export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay }) => {
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
+  const [resetKey, setResetKey] = useState(0)
 
   const slideInfo = useMemo(() => {
     const slides = api?.slideNodes() ?? []
@@ -35,22 +36,33 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay }) => {
     return { slides, totalSlides, nextIndex }
   }, [api, selectedIndex])
 
+  // Reset progress when slide changes
+  useEffect(() => {
+    setResetKey(prev => prev + 1)
+  }, [selectedIndex])
+
   const handleClick = useCallback(() => {
+    setResetKey(prev => prev + 1)
     if (banner.link)
       window.open(banner.link, '_blank', 'noopener,noreferrer')
   }, [banner.link])
 
+  const handleIndicatorClick = useCallback((index: number) => {
+    setResetKey(prev => prev + 1)
+    api?.scrollTo(index)
+  }, [api])
+
   return (
     <div
       className={cn(
-        'relative flex w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-md transition-shadow',
+        'relative flex w-full cursor-pointer overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg pr-[256px] shadow-md transition-shadow',
         'hover:shadow-lg',
       )}
       onClick={handleClick}
     >
       {/* Left content area */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-col gap-3 py-6 pl-8 pr-0">
+        <div className="flex h-full flex-col gap-3 py-6 pl-8 pr-0">
           {/* Text section */}
           <div className="flex min-h-24 flex-wrap items-end gap-1 py-1">
             {/* Title area */}
@@ -89,20 +101,22 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay }) => {
                   selectedIndex={selectedIndex}
                   isNextSlide={index === slideInfo.nextIndex}
                   autoplayDelay={autoplayDelay}
-                  onClick={() => api?.scrollTo(index)}
+                  resetKey={resetKey}
+                  onClick={() => handleIndicatorClick(index)}
                 />
               ))}
             </div>
+
           </div>
         </div>
       </div>
-
       {/* Right image area */}
-      <div className="flex w-[296px] shrink-0 items-stretch self-stretch p-2">
+      <div className="absolute right-0 top-0 flex h-full items-center p-2">
         <img
           src={banner.content['img-src']}
           alt={banner.content.title}
-          className="h-full w-full rounded-xl object-cover"
+          className="h-full rounded-xl object-cover"
+          style={{ aspectRatio: '4/3' }}
         />
       </div>
     </div>
