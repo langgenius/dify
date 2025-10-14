@@ -19,6 +19,7 @@ import { ModelModeType } from '@/types/app'
 
 const Config: FC = () => {
   const {
+    readonly,
     mode,
     isAdvancedMode,
     modelModeType,
@@ -66,16 +67,20 @@ const Config: FC = () => {
           promptTemplate={promptTemplate}
           promptVariables={promptVariables}
           onChange={handlePromptChange}
+          readonly={readonly}
         />
 
         {/* Variables */}
         <ConfigVar
           promptVariables={promptVariables}
           onPromptVariablesChange={handlePromptVariablesNameChange}
+          readonly={readonly}
         />
 
         {/* Dataset */}
-        <DatasetConfig />
+        <DatasetConfig
+          // readonly={readonly}
+        />
 
         {/* Tools */}
         {isAgent && (

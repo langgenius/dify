@@ -21,7 +21,7 @@ import type { Features as FeaturesData, FileUpload } from '@/app/components/base
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
-import { useGetTryAppInfo } from '@/service/use-try-app'
+import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { noop } from 'lodash'
 import { correctModelProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -57,12 +57,36 @@ const Configuration: FC<Props> = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { data: appDetail, isLoading } = useGetTryAppInfo(appId)
+  const { data: appDetail, isLoading: isLoadingAppDetail } = useGetTryAppInfo(appId)
+  const datasetIds = (() => {
+    if(isLoadingAppDetail)
+      return []
+    const modelConfig = appDetail?.model_config
+    if(!modelConfig)
+      return []
+    let datasets: any = null
+
+    if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
+      datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
+    // new dataset struct
+    else if (modelConfig.dataset_configs.datasets?.datasets?.length > 0)
+      datasets = modelConfig.dataset_configs?.datasets?.datasets
+
+    if (datasets?.length && datasets?.length > 0)
+      return datasets.map(({ dataset }: any) => dataset.id)
+
+    return []
+  })()
+  const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(appId, datasetIds)
+  const dataSets = dataSetData?.data || []
+  const isLoading = isLoadingAppDetail || isLoadingDatasets
+
   const modelConfig = ((modelConfig?: BackendModelConfig) => {
     if(isLoading || !modelConfig)
       return defaultModelConfig
 
     const model = modelConfig.model
+
     const newModelConfig = {
       provider: correctModelProvider(model.provider),
       model_id: model.name,
@@ -105,7 +129,7 @@ const Configuration: FC<Props> = ({
       retriever_resource: modelConfig.retriever_resource,
       annotation_reply: modelConfig.annotation_reply,
       external_data_tools: modelConfig.external_data_tools,
-      dataSets: [],
+      dataSets,
       agentConfig: appDetail?.mode === 'agent-chat' ? {
         max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
         ...modelConfig.agent_mode,
@@ -142,12 +166,6 @@ const Configuration: FC<Props> = ({
   const moderationConfig = modelConfig?.sensitive_word_avoidance || { enabled: false }
   // completion configuration
   const completionPromptConfig = modelConfig?.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any
-
-  // datasets
-  const dataSets = (() => {
-    return []
-  })()
-  // const selectedIds = dataSets.map(item => item.id)
 
   // prompt & model config
   const inputs = {}
@@ -209,6 +227,7 @@ const Configuration: FC<Props> = ({
     </div>
   }
   const value = {
+    readonly: true,
     appId,
     isAPIKeySet: true,
     isTrailFinished: false,
