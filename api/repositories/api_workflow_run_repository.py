@@ -115,6 +115,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         app_id: str,
         triggered_from: str,
         status: str | None = None,
+        time_range: str | None = None,
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics.
@@ -127,6 +128,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
             app_id: Application identifier
             triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
             status: Optional filter by specific status
+            time_range: Optional time range filter (e.g., "7d", "4h", "30m", "30s")
+                       Filters records based on created_at field
 
         Returns:
             Dictionary containing:

@@ -14,6 +14,7 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account, App, AppMode, EndUser
@@ -61,6 +62,14 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @api.doc(description="Get advanced chat workflow runs count statistics")
     @api.doc(params={"app_id": "Application ID"})
     @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
+    @api.doc(
+        params={
+            "time_range": (
+                "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
+                "30m (30 minutes), 30s (30 seconds). Filters by created_at field."
+            )
+        }
+    )
     @api.response(200, "Workflow runs count retrieved successfully", workflow_run_count_fields)
     @setup_required
     @login_required
@@ -79,10 +88,19 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
             location="args",
             required=False,
         )
+        parser.add_argument(
+            "time_range",
+            type=time_duration,
+            location="args",
+            required=False,
+            help="Time range filter (e.g., 7d, 4h, 30m, 30s)",
+        )
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_runs_count(app_model=app_model, status=args.get("status"))
+        result = workflow_run_service.get_workflow_runs_count(
+            app_model=app_model, status=args.get("status"), time_range=args.get("time_range")
+        )
 
         return result
 
@@ -128,6 +146,14 @@ class WorkflowRunCountApi(Resource):
     @api.doc(description="Get workflow runs count statistics")
     @api.doc(params={"app_id": "Application ID"})
     @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
+    @api.doc(
+        params={
+            "time_range": (
+                "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
+                "30m (30 minutes), 30s (30 seconds). Filters by created_at field."
+            )
+        }
+    )
     @api.response(200, "Workflow runs count retrieved successfully", workflow_run_count_fields)
     @setup_required
     @login_required
@@ -146,10 +172,19 @@ class WorkflowRunCountApi(Resource):
             location="args",
             required=False,
         )
+        parser.add_argument(
+            "time_range",
+            type=time_duration,
+            location="args",
+            required=False,
+            help="Time range filter (e.g., 7d, 4h, 30m, 30s)",
+        )
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_runs_count(app_model=app_model, status=args.get("status"))
+        result = workflow_run_service.get_workflow_runs_count(
+            app_model=app_model, status=args.get("status"), time_range=args.get("time_range")
+        )
 
         return result
 

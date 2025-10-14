@@ -94,12 +94,15 @@ class WorkflowRunService:
             run_id=run_id,
         )
 
-    def get_workflow_runs_count(self, app_model: App, status: str | None = None) -> dict[str, int]:
+    def get_workflow_runs_count(
+        self, app_model: App, status: str | None = None, time_range: str | None = None
+    ) -> dict[str, int]:
         """
         Get workflow runs count statistics
 
         :param app_model: app model
         :param status: optional status filter
+        :param time_range: optional time range filter (e.g., "7d", "4h", "30m", "30s")
         :return: dict with total and status counts
         """
         return self._workflow_run_repo.get_workflow_runs_count(
@@ -107,6 +110,7 @@ class WorkflowRunService:
             app_id=app_model.id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             status=status,
+            time_range=time_range,
         )
 
     def get_workflow_run_node_executions(

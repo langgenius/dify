@@ -131,10 +131,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         triggered_from: str,
         status: str | None = None,
+        time_range: str | None = None,
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics grouped by status.
         """
+        from libs.time_parser import get_time_threshold
+
         _initial_status_counts = {
             "running": 0,
             "succeeded": 0,
@@ -144,14 +147,22 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         }
 
         with self._session_maker() as session:
+            # Build base where conditions
+            base_conditions = [
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from == triggered_from,
+            ]
+
+            # Add time range filter if provided
+            if time_range:
+                time_threshold = get_time_threshold(time_range)
+                if time_threshold:
+                    base_conditions.append(WorkflowRun.created_at >= time_threshold)
+
             # If status filter is provided, return simple count
             if status:
-                count_stmt = select(func.count(WorkflowRun.id)).where(
-                    WorkflowRun.tenant_id == tenant_id,
-                    WorkflowRun.app_id == app_id,
-                    WorkflowRun.triggered_from == triggered_from,
-                    WorkflowRun.status == status,
-                )
+                count_stmt = select(func.count(WorkflowRun.id)).where(*base_conditions, WorkflowRun.status == status)
                 total = session.scalar(count_stmt) or 0
 
                 result = {
@@ -168,11 +179,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # No status filter - get counts grouped by status
             base_stmt = (
                 select(WorkflowRun.status, func.count(WorkflowRun.id).label("count"))
-                .where(
-                    WorkflowRun.tenant_id == tenant_id,
-                    WorkflowRun.app_id == app_id,
-                    WorkflowRun.triggered_from == triggered_from,
-                )
+                .where(*base_conditions)
                 .group_by(WorkflowRun.status)
             )
 
