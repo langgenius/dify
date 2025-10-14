@@ -24,7 +24,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
@@ -43,6 +43,79 @@ def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError("Name must be between 1 to 40 characters.")
     return name
+
+
+def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
+    """
+    Get supported retrieval methods based on vector database type.
+
+    Args:
+        vector_type: Vector database type, can be None
+        is_mock: Whether this is a Mock API, affects MILVUS handling
+
+    Returns:
+        Dictionary containing supported retrieval methods
+
+    Raises:
+        ValueError: If vector_type is None or unsupported
+    """
+    if vector_type is None:
+        raise ValueError("Vector store type is not configured.")
+
+    # Define vector database types that only support semantic search
+    semantic_only_types = {
+        VectorType.RELYT,
+        VectorType.TIDB_VECTOR,
+        VectorType.CHROMA,
+        VectorType.PGVECTO_RS,
+        VectorType.VIKINGDB,
+        VectorType.UPSTASH,
+    }
+
+    # Define vector database types that support all retrieval methods
+    full_search_types = {
+        VectorType.QDRANT,
+        VectorType.WEAVIATE,
+        VectorType.OPENSEARCH,
+        VectorType.ANALYTICDB,
+        VectorType.MYSCALE,
+        VectorType.ORACLE,
+        VectorType.ELASTICSEARCH,
+        VectorType.ELASTICSEARCH_JA,
+        VectorType.PGVECTOR,
+        VectorType.VASTBASE,
+        VectorType.TIDB_ON_QDRANT,
+        VectorType.LINDORM,
+        VectorType.COUCHBASE,
+        VectorType.OPENGAUSS,
+        VectorType.OCEANBASE,
+        VectorType.TABLESTORE,
+        VectorType.HUAWEI_CLOUD,
+        VectorType.TENCENT,
+        VectorType.MATRIXONE,
+        VectorType.CLICKZETTA,
+        VectorType.BAIDU,
+        VectorType.ALIBABACLOUD_MYSQL,
+    }
+
+    semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+    full_methods = {
+        "retrieval_method": [
+            RetrievalMethod.SEMANTIC_SEARCH.value,
+            RetrievalMethod.FULL_TEXT_SEARCH.value,
+            RetrievalMethod.HYBRID_SEARCH.value,
+        ]
+    }
+
+    if vector_type == VectorType.MILVUS:
+        return semantic_methods if is_mock else full_methods
+
+    if vector_type in semantic_only_types:
+        return semantic_methods
+    elif vector_type in full_search_types:
+        return full_methods
+    else:
+        raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 @console_ns.route("/datasets")
@@ -500,7 +573,7 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE.value,
+                        datasource_type=DatasourceType.FILE,
                         upload_file=file_detail,
                         document_model=args["doc_form"],
                     )
@@ -512,14 +585,16 @@ class DatasetIndexingEstimateApi(Resource):
                 credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION.value,
-                        notion_info={
-                            "credential_id": credential_id,
-                            "notion_workspace_id": workspace_id,
-                            "notion_obj_id": page["page_id"],
-                            "notion_page_type": page["type"],
-                            "tenant_id": current_user.current_tenant_id,
-                        },
+                        datasource_type=DatasourceType.NOTION,
+                        notion_info=NotionInfo.model_validate(
+                            {
+                                "credential_id": credential_id,
+                                "notion_workspace_id": workspace_id,
+                                "notion_obj_id": page["page_id"],
+                                "notion_page_type": page["type"],
+                                "tenant_id": current_user.current_tenant_id,
+                            }
+                        ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
@@ -527,15 +602,17 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args["info_list"]["website_info_list"]
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE.value,
-                    website_info={
-                        "provider": website_info_list["provider"],
-                        "job_id": website_info_list["job_id"],
-                        "url": url,
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": "crawl",
-                        "only_main_content": website_info_list["only_main_content"],
-                    },
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": website_info_list["provider"],
+                            "job_id": website_info_list["job_id"],
+                            "url": url,
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": "crawl",
+                            "only_main_content": website_info_list["only_main_content"],
+                        }
+                    ),
                     document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
@@ -773,49 +850,7 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = dify_config.VECTOR_STORE
-        match vector_type:
-            case (
-                VectorType.RELYT
-                | VectorType.TIDB_VECTOR
-                | VectorType.CHROMA
-                | VectorType.PGVECTO_RS
-                | VectorType.VIKINGDB
-                | VectorType.UPSTASH
-            ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-            case (
-                VectorType.QDRANT
-                | VectorType.WEAVIATE
-                | VectorType.OPENSEARCH
-                | VectorType.ANALYTICDB
-                | VectorType.MYSCALE
-                | VectorType.ORACLE
-                | VectorType.ELASTICSEARCH
-                | VectorType.ELASTICSEARCH_JA
-                | VectorType.PGVECTOR
-                | VectorType.VASTBASE
-                | VectorType.TIDB_ON_QDRANT
-                | VectorType.LINDORM
-                | VectorType.COUCHBASE
-                | VectorType.MILVUS
-                | VectorType.OPENGAUSS
-                | VectorType.OCEANBASE
-                | VectorType.TABLESTORE
-                | VectorType.HUAWEI_CLOUD
-                | VectorType.TENCENT
-                | VectorType.MATRIXONE
-                | VectorType.CLICKZETTA
-                | VectorType.BAIDU
-            ):
-                return {
-                    "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
-                    ]
-                }
-            case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=False)
 
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
@@ -828,48 +863,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        match vector_type:
-            case (
-                VectorType.MILVUS
-                | VectorType.RELYT
-                | VectorType.TIDB_VECTOR
-                | VectorType.CHROMA
-                | VectorType.PGVECTO_RS
-                | VectorType.VIKINGDB
-                | VectorType.UPSTASH
-            ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-            case (
-                VectorType.QDRANT
-                | VectorType.WEAVIATE
-                | VectorType.OPENSEARCH
-                | VectorType.ANALYTICDB
-                | VectorType.MYSCALE
-                | VectorType.ORACLE
-                | VectorType.ELASTICSEARCH
-                | VectorType.ELASTICSEARCH_JA
-                | VectorType.COUCHBASE
-                | VectorType.PGVECTOR
-                | VectorType.VASTBASE
-                | VectorType.LINDORM
-                | VectorType.OPENGAUSS
-                | VectorType.OCEANBASE
-                | VectorType.TABLESTORE
-                | VectorType.TENCENT
-                | VectorType.HUAWEI_CLOUD
-                | VectorType.MATRIXONE
-                | VectorType.CLICKZETTA
-                | VectorType.BAIDU
-            ):
-                return {
-                    "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
-                    ]
-                }
-            case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=True)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")

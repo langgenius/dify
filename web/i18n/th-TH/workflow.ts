@@ -444,6 +444,7 @@ const translation = {
       },
       outputVars: {
         output: 'สร้างเนื้อหา',
+        reasoning_content: 'เนื้อหาการให้เหตุผล',
         usage: 'ข้อมูลการใช้งานรุ่น',
       },
       singleRun: {
