@@ -146,9 +146,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         with self._session_maker() as session:
             # If status filter is provided, return simple count
             if status:
-                count_stmt = select(
-                    func.count(WorkflowRun.id)
-                ).where(
+                count_stmt = select(func.count(WorkflowRun.id)).where(
                     WorkflowRun.tenant_id == tenant_id,
                     WorkflowRun.app_id == app_id,
                     WorkflowRun.triggered_from == triggered_from,
@@ -168,14 +166,15 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 return result
 
             # No status filter - get counts grouped by status
-            base_stmt = select(
-                WorkflowRun.status,
-                func.count(WorkflowRun.id).label("count")
-            ).where(
-                WorkflowRun.tenant_id == tenant_id,
-                WorkflowRun.app_id == app_id,
-                WorkflowRun.triggered_from == triggered_from,
-            ).group_by(WorkflowRun.status)
+            base_stmt = (
+                select(WorkflowRun.status, func.count(WorkflowRun.id).label("count"))
+                .where(
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.triggered_from == triggered_from,
+                )
+                .group_by(WorkflowRun.status)
+            )
 
             # Execute query
             results = session.execute(base_stmt).all()

@@ -1,7 +1,7 @@
 """Unit tests for workflow run repository with status filter."""
 
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -30,7 +30,7 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         app_id = str(uuid.uuid4())
         mock_session = MagicMock()
         mock_session_maker.return_value.__enter__.return_value = mock_session
-        
+
         mock_runs = [MagicMock(spec=WorkflowRun) for _ in range(3)]
         mock_session.scalars.return_value.all.return_value = mock_runs
 
@@ -56,7 +56,7 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         app_id = str(uuid.uuid4())
         mock_session = MagicMock()
         mock_session_maker.return_value.__enter__.return_value = mock_session
-        
+
         mock_runs = [MagicMock(spec=WorkflowRun, status="succeeded") for _ in range(2)]
         mock_session.scalars.return_value.all.return_value = mock_runs
 
@@ -81,7 +81,7 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         app_id = str(uuid.uuid4())
         mock_session = MagicMock()
         mock_session_maker.return_value.__enter__.return_value = mock_session
-        
+
         # Mock the GROUP BY query results
         mock_results = [
             ("succeeded", 5),
@@ -113,7 +113,7 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         app_id = str(uuid.uuid4())
         mock_session = MagicMock()
         mock_session_maker.return_value.__enter__.return_value = mock_session
-        
+
         # Mock the count query for succeeded status
         mock_session.scalar.return_value = 5
 
@@ -140,7 +140,7 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         app_id = str(uuid.uuid4())
         mock_session = MagicMock()
         mock_session_maker.return_value.__enter__.return_value = mock_session
-        
+
         # Mock count query returning 0 for invalid status
         mock_session.scalar.return_value = 0
 
