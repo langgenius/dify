@@ -148,7 +148,7 @@ class ApiToolManageService:
             description=extra_info.get("description", ""),
             schema_type_str=schema_type,
             tools_str=json.dumps(jsonable_encoder(tool_bundles)),
-            credentials_str={},
+            credentials_str="{}",
             privacy_policy=privacy_policy,
             custom_disclaimer=custom_disclaimer,
         )

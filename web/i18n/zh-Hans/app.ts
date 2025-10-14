@@ -192,6 +192,10 @@ const translation = {
       title: '云监控',
       description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
     },
+    tencent: {
+      title: '腾讯云 APM',
+      description: '腾讯云应用性能监控，提供 LLM 应用全链路追踪和多维分析',
+    },
   },
   appSelector: {
     label: '应用',
