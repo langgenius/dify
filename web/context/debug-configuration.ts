@@ -29,6 +29,7 @@ import type { Collection } from '@/app/components/tools/types'
 import { noop } from 'lodash-es'
 
 type IDebugConfiguration = {
+  readonly?: boolean
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
@@ -108,6 +109,7 @@ type IDebugConfiguration = {
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
+  readonly: false,
   appId: '',
   isAPIKeySet: false,
   isTrailFinished: false,

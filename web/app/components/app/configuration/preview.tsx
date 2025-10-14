@@ -209,6 +209,7 @@ const Configuration: FC<Props> = ({
     </div>
   }
   const value = {
+    readonly: true,
     appId,
     isAPIKeySet: true,
     isTrailFinished: false,
