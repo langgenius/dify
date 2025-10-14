@@ -6,6 +6,7 @@ import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
+import { useAppContext } from '@/context/app-context'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -31,6 +32,7 @@ export const useWorkflowComment = () => {
   const setReplyUpdating = useStore(s => s.setReplyUpdating)
   const commentDetailCache = useStore(s => s.commentDetailCache)
   const setCommentDetailCache = useStore(s => s.setCommentDetailCache)
+  const { userProfile } = useAppContext()
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
 
@@ -113,16 +115,63 @@ export const useWorkflowComment = () => {
 
       console.log('Comment created successfully:', newComment)
 
+      const createdAt = (newComment as any)?.created_at
+      const createdByAccount = {
+        id: userProfile?.id ?? '',
+        name: userProfile?.name ?? '',
+        email: userProfile?.email ?? '',
+        avatar_url: userProfile?.avatar_url || userProfile?.avatar || undefined,
+      }
+
+      const composedComment: WorkflowCommentList = {
+        id: newComment.id,
+        position_x: flowPosition.x,
+        position_y: flowPosition.y,
+        content,
+        created_by: createdByAccount.id,
+        created_by_account: createdByAccount,
+        created_at: createdAt,
+        updated_at: createdAt,
+        resolved: false,
+        mention_count: mentionedUserIds.length,
+        reply_count: 0,
+        participants: createdByAccount.id ? [createdByAccount] : [],
+      }
+
+      const composedDetail: WorkflowCommentDetail = {
+        id: newComment.id,
+        position_x: flowPosition.x,
+        position_y: flowPosition.y,
+        content,
+        created_by: createdByAccount.id,
+        created_by_account: createdByAccount,
+        created_at: createdAt,
+        updated_at: createdAt,
+        resolved: false,
+        replies: [],
+        mentions: mentionedUserIds.map(mentionedId => ({
+          mentioned_user_id: mentionedId,
+          mentioned_user_account: null,
+          reply_id: null,
+        })),
+      }
+
+      setComments([...comments, composedComment])
+      commentDetailCacheRef.current = {
+        ...commentDetailCacheRef.current,
+        [newComment.id]: composedDetail,
+      }
+      setCommentDetailCache(commentDetailCacheRef.current)
+
       collaborationManager.emitCommentsUpdate(appId)
 
-      await loadComments()
       setPendingComment(null)
     }
     catch (error) {
       console.error('Failed to create comment:', error)
       setPendingComment(null)
     }
-  }, [appId, pendingComment, setPendingComment, loadComments, reactflow])
+  }, [appId, pendingComment, setPendingComment, reactflow, comments, setComments, userProfile, setCommentDetailCache])
 
   const handleCommentCancel = useCallback(() => {
     setPendingComment(null)
