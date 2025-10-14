@@ -26,7 +26,9 @@ export const useNodeIterationInteractions = () => {
     const { nodes, setNodes } = collaborativeWorkflow.getState()
 
     const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
+    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
+    if (!childrenNodes.length)
+      return
     let rightNode: Node
     let bottomNode: Node
 
