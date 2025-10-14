@@ -40,6 +40,8 @@ import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/v
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 
 import {
   AGENT_OUTPUT_STRUCT,
@@ -630,6 +632,17 @@ const formatItem = (
           { schemaTypeDefinitions },
         ) || []
       res.vars = dataSourceVars
+      break
+    }
+
+    case BlockEnum.TriggerPlugin: {
+      const outputSchema = PluginTriggerNodeDefault.getOutputVars?.(
+        data as PluginTriggerNodeType,
+        allPluginInfoList,
+        [],
+        { schemaTypeDefinitions },
+      ) || []
+      res.vars = outputSchema
       break
     }
 
