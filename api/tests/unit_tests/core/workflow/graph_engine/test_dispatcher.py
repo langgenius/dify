@@ -96,9 +96,9 @@ def _make_succeeded_event() -> NodeRunSucceededEvent:
 
 
 def test_dispatcher_checks_commands_after_node_completion() -> None:
-    """Dispatcher should trigger a second command check after completion events."""
+    """Dispatcher should trigger exactly one command check per processed event."""
     started_checks = _run_dispatcher_for_event(_make_started_event())
     succeeded_checks = _run_dispatcher_for_event(_make_succeeded_event())
 
-    # Completion events should result in exactly one additional command check
-    assert succeeded_checks == started_checks + 1
+    assert started_checks == 1
+    assert succeeded_checks == 1

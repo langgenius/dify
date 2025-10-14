@@ -60,6 +60,7 @@ class Dispatcher:
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._start_time: float | None = None
+        self._skip_next_idle_command_check = False
 
     def start(self) -> None:
         """Start the dispatcher thread."""
@@ -87,9 +88,6 @@ class Dispatcher:
         """Main dispatcher loop."""
         try:
             while not self._stop_event.is_set():
-                # Check for commands
-                self._execution_coordinator.check_commands()
-
                 # Check for scaling
                 self._execution_coordinator.check_scaling()
 
@@ -100,8 +98,14 @@ class Dispatcher:
                     self._event_handler.dispatch(event)
                     if self._should_check_commands(event):
                         self._execution_coordinator.check_commands()
+                        self._skip_next_idle_command_check = True
+                    else:
+                        self._skip_next_idle_command_check = False
                     self._event_queue.task_done()
                 except queue.Empty:
+                    if not self._skip_next_idle_command_check:
+                        self._execution_coordinator.check_commands()
+                    self._skip_next_idle_command_check = False
                     # Check if execution is complete
                     if self._execution_coordinator.is_execution_complete():
                         break
