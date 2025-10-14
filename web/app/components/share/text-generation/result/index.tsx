@@ -20,7 +20,9 @@ import type { SiteInfo } from '@/models/share'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   getFilesInLogs,
+  getProcessedFiles,
 } from '@/app/components/base/file-uploader/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
@@ -78,15 +80,15 @@ const Result: FC<IResultProps> = ({
       setRespondingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, doSetCompletionRes] = useState<any>('')
-  const completionResRef = useRef<any>()
-  const setCompletionRes = (res: any) => {
+  const [completionRes, doSetCompletionRes] = useState<string>('')
+  const completionResRef = useRef<string>('')
+  const setCompletionRes = (res: string) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
   const setWorkflowProcessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
@@ -160,8 +162,22 @@ const Result: FC<IResultProps> = ({
     if (!checkCanSend())
       return
 
+    // Process inputs: convert file entities to API format
+    const processedInputs = { ...formatBooleanInputs(promptConfig?.prompt_variables, inputs) }
+    promptConfig?.prompt_variables.forEach((variable) => {
+      const value = processedInputs[variable.key]
+      if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
+        // Convert single file entity to API format
+        processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]
+      }
+      else if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0) {
+        // Convert file entity array to API format
+        processedInputs[variable.key] = getProcessedFiles(value as FileEntity[])
+      }
+    })
+
     const data: Record<string, any> = {
-      inputs: formatBooleanInputs(promptConfig?.prompt_variables, inputs),
+      inputs: processedInputs,
     }
     if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {

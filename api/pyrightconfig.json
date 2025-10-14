@@ -15,7 +15,8 @@
     "opentelemetry.instrumentation.httpx",
     "opentelemetry.instrumentation.requests",
     "opentelemetry.instrumentation.sqlalchemy",
-    "opentelemetry.instrumentation.redis"
+    "opentelemetry.instrumentation.redis",
+    "opentelemetry.instrumentation.httpx"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
@@ -24,9 +25,7 @@
   "reportUnknownLambdaType": "hint",
   "reportMissingParameterType": "hint",
   "reportMissingTypeArgument": "hint",
-  "reportUnnecessaryContains": "hint",
   "reportUnnecessaryComparison": "hint",
-  "reportUnnecessaryCast": "hint",
   "reportUnnecessaryIsInstance": "hint",
   "reportUntypedFunctionDecorator": "hint",
 

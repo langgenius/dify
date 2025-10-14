@@ -47,7 +47,7 @@ WHERE
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
-            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
+            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
 
         timezone = pytz.timezone(account.timezone)
@@ -115,7 +115,7 @@ WHERE
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
-            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
+            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
 
         timezone = pytz.timezone(account.timezone)
@@ -183,7 +183,7 @@ WHERE
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
-            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
+            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
 
         timezone = pytz.timezone(account.timezone)
@@ -269,7 +269,7 @@ GROUP BY
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
-            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
+            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
 
         timezone = pytz.timezone(account.timezone)

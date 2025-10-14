@@ -42,6 +42,12 @@ match dify_config.VECTOR_STORE:
         from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
 
         VECTOR_FACTORY_CLS = MilvusVectorFactory
+    case VectorType.ALIBABACLOUD_MYSQL:
+        from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
+            AlibabaCloudMySQLVectorFactory,
+        )
+
+        VECTOR_FACTORY_CLS = AlibabaCloudMySQLVectorFactory
     case VectorType.MYSCALE:
         from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
 
