@@ -5,16 +5,8 @@ from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginPermissionDeniedError
-from libs.login import current_user, login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from services.plugin.endpoint_service import EndpointService
-
-
-def _current_account_with_tenant() -> tuple[Account, str]:
-    assert isinstance(current_user, Account)
-    tenant_id = current_user.current_tenant_id
-    assert tenant_id is not None
-    return current_user, tenant_id
 
 
 @console_ns.route("/workspaces/current/endpoints/create")
@@ -41,7 +33,7 @@ class EndpointCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
         if not user.is_admin_or_owner:
             raise Forbidden()
 
@@ -87,7 +79,7 @@ class EndpointListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
@@ -130,7 +122,7 @@ class EndpointListForSinglePluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
@@ -172,7 +164,7 @@ class EndpointDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
@@ -212,7 +204,7 @@ class EndpointUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
@@ -255,7 +247,7 @@ class EndpointEnableApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
@@ -288,7 +280,7 @@ class EndpointDisableApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user, tenant_id = _current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)

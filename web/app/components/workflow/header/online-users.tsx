@@ -5,7 +5,6 @@ import Avatar from '@/app/components/base/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { useStore } from '../store'
 import cn from '@/utils/classnames'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows'
 import { getUserColor } from '../collaboration/utils/user-color'
 import Tooltip from '@/app/components/base/tooltip'
 import {
@@ -15,6 +14,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
+import { ChevronDownIcon } from '@heroicons/react/24/solid'
 
 const useAvatarUrls = (users: any[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
@@ -143,7 +143,7 @@ const OnlineUsers = () => {
                   >
                     +{remainingCount}
                   </div>
-                  <ChevronDown className="ml-1 h-3 w-3 text-gray-500" />
+                  <ChevronDownIcon className="ml-1 h-3 w-3 text-gray-500" />
                 </div>
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent

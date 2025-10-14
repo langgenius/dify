@@ -23,10 +23,10 @@
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
-    "lint": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint:fix": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
-    "lint:quiet": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
-    "lint:complexity": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
+    "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
+    "lint:complexity": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.mjs",
     "uglify-embed": "node ./bin/uglify-embed",
@@ -210,10 +210,10 @@
   },
   "lint-staged": {
     "**/*.js?(x)": [
-      "eslint --concurrency=auto --fix"
+      "eslint --fix"
     ],
     "**/*.ts?(x)": [
-      "eslint --concurrency=auto --fix"
+      "eslint --fix"
     ]
   },
   "pnpm": {

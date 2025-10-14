@@ -3,12 +3,14 @@ import json
 from collections.abc import Generator
 from typing import Any
 
-from core.mcp.error import MCPAuthError, MCPConnectionError
-from core.mcp.mcp_client import MCPClient
-from core.mcp.types import ImageContent, TextContent
+from core.mcp.auth.auth_flow import auth
+from core.mcp.auth_client import MCPClientWithAuthRetry
+from core.mcp.error import MCPConnectionError
+from core.mcp.types import CallToolResult, ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
+from core.tools.errors import ToolInvokeError
 
 
 class MCPTool(Tool):
@@ -44,40 +46,32 @@ class MCPTool(Tool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        from core.tools.errors import ToolInvokeError
-
-        try:
-            with MCPClient(
-                self.server_url,
-                self.provider_id,
-                self.tenant_id,
-                authed=True,
-                headers=self.headers,
-                timeout=self.timeout,
-                sse_read_timeout=self.sse_read_timeout,
-            ) as mcp_client:
-                tool_parameters = self._handle_none_parameter(tool_parameters)
-                result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
-        except MCPAuthError as e:
-            raise ToolInvokeError("Please auth the tool first") from e
-        except MCPConnectionError as e:
-            raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
-        except Exception as e:
-            raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
-
+        result = self.invoke_remote_mcp_tool(tool_parameters)
+        # handle dify tool output
         for content in result.content:
             if isinstance(content, TextContent):
                 yield from self._process_text_content(content)
             elif isinstance(content, ImageContent):
                 yield self._process_image_content(content)
+        # handle MCP structured output
+        if self.entity.output_schema and result.structuredContent:
+            for k, v in result.structuredContent.items():
+                yield self.create_variable_message(k, v)
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""
-        try:
-            content_json = json.loads(content.text)
-            yield from self._process_json_content(content_json)
-        except json.JSONDecodeError:
-            yield self.create_text_message(content.text)
+        # Check if content looks like JSON before attempting to parse
+        text = content.text.strip()
+        if text and text[0] in ("{", "[") and text[-1] in ("}", "]"):
+            try:
+                content_json = json.loads(text)
+                yield from self._process_json_content(content_json)
+                return
+            except json.JSONDecodeError:
+                pass
+
+        # If not JSON or parsing failed, treat as plain text
+        yield self.create_text_message(content.text)
 
     def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
         """Process JSON content based on its type."""
@@ -126,3 +120,76 @@ class MCPTool(Tool):
             for key, value in parameter.items()
             if value is not None and not (isinstance(value, str) and value.strip() == "")
         }
+
+    def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any]) -> CallToolResult:
+        headers = self.headers.copy() if self.headers else {}
+        tool_parameters = self._handle_none_parameter(tool_parameters)
+
+        # Get provider entity to access tokens
+
+        # Get MCP service from invoke parameters or create new one
+        provider_entity = None
+        mcp_service = None
+
+        # Check if mcp_service is passed in tool_parameters
+        if "_mcp_service" in tool_parameters:
+            mcp_service = tool_parameters.pop("_mcp_service")
+            if mcp_service:
+                provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
+                headers = provider_entity.decrypt_headers()
+                # Try to get existing token and add to headers
+                if not headers:
+                    tokens = provider_entity.retrieve_tokens()
+                    if tokens and tokens.access_token:
+                        headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
+
+            # Use MCPClientWithAuthRetry to handle authentication automatically
+            try:
+                with MCPClientWithAuthRetry(
+                    server_url=provider_entity.decrypt_server_url() if provider_entity else self.server_url,
+                    headers=headers,
+                    timeout=self.timeout,
+                    sse_read_timeout=self.sse_read_timeout,
+                    provider_entity=provider_entity,
+                    auth_callback=auth if mcp_service else None,
+                    mcp_service=mcp_service,
+                ) as mcp_client:
+                    return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+            except MCPConnectionError as e:
+                raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
+            except (ValueError, TypeError, KeyError) as e:
+                # Catch specific exceptions that might occur during tool invocation
+                raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
+        else:
+            # Fallback to creating service with database session
+            from sqlalchemy.orm import Session
+
+            from extensions.ext_database import db
+            from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+            with Session(db.engine, expire_on_commit=False) as session:
+                mcp_service = MCPToolManageService(session=session)
+                provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
+                headers = provider_entity.decrypt_headers()
+                # Try to get existing token and add to headers
+                if not headers:
+                    tokens = provider_entity.retrieve_tokens()
+                    if tokens and tokens.access_token:
+                        headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
+
+                # Use MCPClientWithAuthRetry to handle authentication automatically
+                try:
+                    with MCPClientWithAuthRetry(
+                        server_url=provider_entity.decrypt_server_url() if provider_entity else self.server_url,
+                        headers=headers,
+                        timeout=self.timeout,
+                        sse_read_timeout=self.sse_read_timeout,
+                        provider_entity=provider_entity,
+                        auth_callback=auth if mcp_service else None,
+                        mcp_service=mcp_service,
+                    ) as mcp_client:
+                        return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+                except MCPConnectionError as e:
+                    raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
+                except Exception as e:
+                    raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
