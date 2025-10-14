@@ -5,7 +5,7 @@ Event handler implementations for different event types.
 import logging
 from collections.abc import Mapping
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, Protocol, final
 
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import ErrorStrategy, NodeExecutionType
@@ -41,6 +41,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class CommandProcessorProtocol(Protocol):
+    """Minimal protocol for processing external commands."""
+
+    def process_commands(self) -> None: ...
+
+
 @final
 class EventHandler:
     """
@@ -60,6 +66,7 @@ class EventHandler:
         edge_processor: "EdgeProcessor",
         state_manager: "GraphStateManager",
         error_handler: "ErrorHandler",
+        command_processor: CommandProcessorProtocol,
     ) -> None:
         """
         Initialize the event handler registry.
@@ -73,6 +80,7 @@ class EventHandler:
             edge_processor: Edge processor for edge traversal
             state_manager: Unified state manager
             error_handler: Error handler
+            command_processor: Processor for external commands
         """
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
@@ -82,6 +90,7 @@ class EventHandler:
         self._edge_processor = edge_processor
         self._state_manager = state_manager
         self._error_handler = error_handler
+        self._command_processor = command_processor
 
     def dispatch(self, event: GraphNodeEventBase) -> None:
         """
@@ -198,6 +207,7 @@ class EventHandler:
 
         # Collect the event
         self._event_collector.collect(event)
+        self._process_command_check()
 
     @_dispatch.register
     def _(self, event: NodeRunFailedEvent) -> None:
@@ -215,6 +225,7 @@ class EventHandler:
         result = self._error_handler.handle_node_failure(event)
 
         if result:
+            self._process_command_check()
             # Process the resulting event (retry, exception, etc.)
             self.dispatch(result)
         else:
@@ -222,6 +233,7 @@ class EventHandler:
             self._graph_execution.fail(RuntimeError(event.error))
             self._event_collector.collect(event)
             self._state_manager.finish_execution(event.node_id)
+            self._process_command_check()
 
     @_dispatch.register
     def _(self, event: NodeRunExceptionEvent) -> None:
@@ -264,6 +276,7 @@ class EventHandler:
 
         # Collect the exception event for observers
         self._event_collector.collect(event)
+        self._process_command_check()
 
     @_dispatch.register
     def _(self, event: NodeRunRetryEvent) -> None:
@@ -309,3 +322,7 @@ class EventHandler:
                     self._graph_runtime_state.set_output("answer", value)
             else:
                 self._graph_runtime_state.set_output(key, value)
+
+    def _process_command_check(self) -> None:
+        """Trigger a command check after node completion."""
+        self._command_processor.process_commands()
