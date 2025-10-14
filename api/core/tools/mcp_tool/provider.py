@@ -61,10 +61,7 @@ class MCPToolProviderController(ToolProviderController):
         """
         create a MCPToolProviderController from a MCPProviderEntity
         """
-        try:
-            remote_mcp_tools = [RemoteMCPTool(**tool) for tool in entity.tools]
-        except Exception:
-            remote_mcp_tools = []
+        remote_mcp_tools = [RemoteMCPTool(**tool) for tool in entity.tools]
 
         tools = [
             ToolEntity(
@@ -87,7 +84,7 @@ class MCPToolProviderController(ToolProviderController):
             )
             for remote_mcp_tool in remote_mcp_tools
         ]
-        if not db_provider.icon:
+        if not entity.icon:
             raise ValueError("Database provider icon is required")
         return cls(
             entity=ToolProviderEntityWithPlugin(

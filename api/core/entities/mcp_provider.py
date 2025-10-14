@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from models.tools import MCPToolProvider
 
 # Constants
-DEFAULT_GRANT_TYPE = "authorization_code"
 CLIENT_NAME = "Dify"
 CLIENT_URI = "https://github.com/langgenius/dify"
 DEFAULT_TOKEN_TYPE = "Bearer"
@@ -34,12 +33,12 @@ class MCPSupportGrantType(StrEnum):
 
     AUTHORIZATION_CODE = "authorization_code"
     CLIENT_CREDENTIALS = "client_credentials"
+    REFRESH_TOKEN = "refresh_token"
 
 
 class MCPAuthentication(BaseModel):
     client_id: str
     client_secret: str | None = None
-    grant_type: MCPSupportGrantType = Field(default=MCPSupportGrantType.AUTHORIZATION_CODE)
 
 
 class MCPConfiguration(BaseModel):
@@ -110,7 +109,7 @@ class MCPProviderEntity(BaseModel):
         credentials = self.decrypt_credentials()
 
         # Try to get grant_type from different locations
-        grant_type = credentials.get("grant_type", DEFAULT_GRANT_TYPE)
+        grant_type = credentials.get("grant_type", MCPSupportGrantType.AUTHORIZATION_CODE)
 
         # For nested structure, check if client_information has grant_types
         if "client_information" in credentials and isinstance(credentials["client_information"], dict):
@@ -118,12 +117,12 @@ class MCPProviderEntity(BaseModel):
             # If grant_types is specified in client_information, use it to determine grant_type
             if "grant_types" in client_info and isinstance(client_info["grant_types"], list):
                 if "client_credentials" in client_info["grant_types"]:
-                    grant_type = "client_credentials"
+                    grant_type = MCPSupportGrantType.CLIENT_CREDENTIALS
                 elif "authorization_code" in client_info["grant_types"]:
-                    grant_type = "authorization_code"
+                    grant_type = MCPSupportGrantType.AUTHORIZATION_CODE
 
         # Configure based on grant type
-        is_client_credentials = grant_type == "client_credentials"
+        is_client_credentials = grant_type == MCPSupportGrantType.CLIENT_CREDENTIALS
 
         grant_types = ["refresh_token"]
         grant_types.append("client_credentials" if is_client_credentials else "authorization_code")
@@ -212,10 +211,7 @@ class MCPProviderEntity(BaseModel):
         json_fields = ["redirect_uris", "grant_types", "response_types"]
         for field in json_fields:
             if field in credentials:
-                try:
-                    client_info[field] = json.loads(credentials[field])
-                except:
-                    client_info[field] = []
+                client_info[field] = json.loads(credentials[field])
 
         if "scope" in credentials:
             client_info["scope"] = credentials["scope"]
@@ -237,10 +233,10 @@ class MCPProviderEntity(BaseModel):
     def masked_server_url(self) -> str:
         """Masked server URL for display"""
         parsed = urlparse(self.decrypt_server_url())
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
         if parsed.path and parsed.path != "/":
-            return f"{base_url}/******"
-        return base_url
+            masked = parsed._replace(path="/******")
+            return masked.geturl()
+        return parsed.geturl()
 
     def _mask_value(self, value: str) -> str:
         """Mask a sensitive value for display"""
@@ -289,45 +285,40 @@ class MCPProviderEntity(BaseModel):
 
     def _decrypt_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Generic method to decrypt dictionary fields"""
-        try:
-            if not data:
-                return {}
-
-            # Only decrypt fields that are actually encrypted
-            # For nested structures, client_information is not encrypted as a whole
-            encrypted_fields = []
-            for key, value in data.items():
-                # Skip nested objects - they are not encrypted
-                if isinstance(value, dict):
-                    continue
-                # Only process string values that might be encrypted
-                if isinstance(value, str) and value:
-                    encrypted_fields.append(key)
-
-            if not encrypted_fields:
-                return data
-
-            # Create dynamic config only for encrypted fields
-            config = [
-                BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in encrypted_fields
-            ]
-
-            encrypter_instance, _ = create_provider_encrypter(
-                tenant_id=self.tenant_id,
-                config=config,
-                cache=NoOpProviderCredentialCache(),
-            )
-
-            # Decrypt only the encrypted fields
-            decrypted_data = encrypter_instance.decrypt({k: data[k] for k in encrypted_fields})
-
-            # Merge decrypted data with original data (preserving non-encrypted fields)
-            result = data.copy()
-            result.update(decrypted_data)
-
-            return result
-        except Exception:
+        if not data:
             return {}
+
+        # Only decrypt fields that are actually encrypted
+        # For nested structures, client_information is not encrypted as a whole
+        encrypted_fields = []
+        for key, value in data.items():
+            # Skip nested objects - they are not encrypted
+            if isinstance(value, dict):
+                continue
+            # Only process string values that might be encrypted
+            if isinstance(value, str) and value:
+                encrypted_fields.append(key)
+
+        if not encrypted_fields:
+            return data
+
+        # Create dynamic config only for encrypted fields
+        config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in encrypted_fields]
+
+        encrypter_instance, _ = create_provider_encrypter(
+            tenant_id=self.tenant_id,
+            config=config,
+            cache=NoOpProviderCredentialCache(),
+        )
+
+        # Decrypt only the encrypted fields
+        decrypted_data = encrypter_instance.decrypt({k: data[k] for k in encrypted_fields})
+
+        # Merge decrypted data with original data (preserving non-encrypted fields)
+        result = data.copy()
+        result.update(decrypted_data)
+
+        return result
 
     def decrypt_headers(self) -> dict[str, Any]:
         """Decrypt headers"""
@@ -336,3 +327,15 @@ class MCPProviderEntity(BaseModel):
     def decrypt_credentials(self) -> dict[str, Any]:
         """Decrypt credentials"""
         return self._decrypt_dict(self.credentials)
+
+    def decrypt_authentication(self) -> dict[str, Any]:
+        """Decrypt authentication"""
+        # Option 1: if headers is provided, use it and don't need to get token
+        headers = self.decrypt_headers()
+
+        # Option 2: Add OAuth token if authed and no headers provided
+        if not self.headers and self.authed:
+            token = self.retrieve_tokens()
+            if token:
+                headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"
+        return headers

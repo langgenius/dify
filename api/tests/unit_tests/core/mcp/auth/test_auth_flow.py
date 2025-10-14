@@ -139,7 +139,7 @@ class TestRedisStateManagement:
 class TestOAuthDiscovery:
     """Test OAuth discovery functions."""
 
-    @patch("httpx.get")
+    @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery_success(self, mock_get):
         """Test successful resource discovery check."""
         mock_response = Mock()
@@ -152,11 +152,11 @@ class TestOAuthDiscovery:
         assert supported is True
         assert auth_url == "https://auth.example.com"
         mock_get.assert_called_once_with(
-            "https://api.example.com/.well-known/oauth-protected-resource/endpoint",
+            "https://api.example.com/.well-known/oauth-protected-resource",
             headers={"MCP-Protocol-Version": "2025-03-26", "User-Agent": "Dify"},
         )
 
-    @patch("httpx.get")
+    @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery_not_supported(self, mock_get):
         """Test resource discovery not supported."""
         mock_response = Mock()
@@ -168,7 +168,7 @@ class TestOAuthDiscovery:
         assert supported is False
         assert auth_url == ""
 
-    @patch("httpx.get")
+    @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery_with_query_fragment(self, mock_get):
         """Test resource discovery with query and fragment."""
         mock_response = Mock()
@@ -181,11 +181,11 @@ class TestOAuthDiscovery:
         assert supported is True
         assert auth_url == "https://auth.example.com"
         mock_get.assert_called_once_with(
-            "https://api.example.com/.well-known/oauth-protected-resource/path?query=1#fragment",
+            "https://api.example.com/.well-known/oauth-protected-resource?query=1#fragment",
             headers={"MCP-Protocol-Version": "2025-03-26", "User-Agent": "Dify"},
         )
 
-    @patch("httpx.get")
+    @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_metadata_with_resource_discovery(self, mock_get):
         """Test OAuth metadata discovery with resource discovery support."""
         with patch("core.mcp.auth.auth_flow.check_support_resource_discovery") as mock_check:
@@ -207,11 +207,11 @@ class TestOAuthDiscovery:
             assert metadata.authorization_endpoint == "https://auth.example.com/authorize"
             assert metadata.token_endpoint == "https://auth.example.com/token"
             mock_get.assert_called_once_with(
-                "https://auth.example.com/.well-known/openid-configuration",
+                "https://auth.example.com/.well-known/oauth-authorization-server",
                 headers={"MCP-Protocol-Version": "2025-03-26"},
             )
 
-    @patch("httpx.get")
+    @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_metadata_without_resource_discovery(self, mock_get):
         """Test OAuth metadata discovery without resource discovery."""
         with patch("core.mcp.auth.auth_flow.check_support_resource_discovery") as mock_check:
@@ -236,7 +236,7 @@ class TestOAuthDiscovery:
                 headers={"MCP-Protocol-Version": "2025-03-26"},
             )
 
-    @patch("httpx.get")
+    @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_metadata_not_found(self, mock_get):
         """Test OAuth metadata discovery when not found."""
         with patch("core.mcp.auth.auth_flow.check_support_resource_discovery") as mock_check:
@@ -336,7 +336,7 @@ class TestAuthorizationFlow:
 
         assert "does not support response type code" in str(exc_info.value)
 
-    @patch("httpx.post")
+    @patch("core.helper.ssrf_proxy.post")
     def test_exchange_authorization_success(self, mock_post):
         """Test successful authorization code exchange."""
         mock_response = Mock()
@@ -384,7 +384,7 @@ class TestAuthorizationFlow:
             },
         )
 
-    @patch("httpx.post")
+    @patch("core.helper.ssrf_proxy.post")
     def test_exchange_authorization_failure(self, mock_post):
         """Test failed authorization code exchange."""
         mock_response = Mock()
@@ -406,7 +406,7 @@ class TestAuthorizationFlow:
 
         assert "Token exchange failed: HTTP 400" in str(exc_info.value)
 
-    @patch("httpx.post")
+    @patch("core.helper.ssrf_proxy.post")
     def test_refresh_authorization_success(self, mock_post):
         """Test successful token refresh."""
         mock_response = Mock()
@@ -442,7 +442,7 @@ class TestAuthorizationFlow:
             },
         )
 
-    @patch("httpx.post")
+    @patch("core.helper.ssrf_proxy.post")
     def test_register_client_success(self, mock_post):
         """Test successful client registration."""
         mock_response = Mock()
@@ -576,7 +576,12 @@ class TestAuthOrchestration:
     def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, mock_provider, mock_service):
         """Test auth flow for new client registration."""
         # Setup
-        mock_discover.return_value = None
+        mock_discover.return_value = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            grant_types_supported=["authorization_code"],
+        )
         mock_register.return_value = OAuthClientInformationFull(
             client_id="new-client-id",
             client_name="Dify",
@@ -679,7 +684,12 @@ class TestAuthOrchestration:
         mock_refresh.return_value = new_tokens
 
         with patch("core.mcp.auth.auth_flow.discover_oauth_metadata") as mock_discover:
-            mock_discover.return_value = None
+            mock_discover.return_value = OAuthMetadata(
+                authorization_endpoint="https://auth.example.com/authorize",
+                token_endpoint="https://auth.example.com/token",
+                response_types_supported=["code"],
+                grant_types_supported=["authorization_code"],
+            )
 
             result = auth(mock_provider, mock_service)
 

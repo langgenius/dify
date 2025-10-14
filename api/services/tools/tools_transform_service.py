@@ -6,6 +6,7 @@ from typing import Any, Union
 from yarl import URL
 
 from configs import dify_config
+from core.entities.mcp_provider import MCPConfiguration
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
@@ -245,6 +246,13 @@ class ToolTransformService:
             db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
         )
         response["server_identifier"] = db_provider.server_identifier
+
+        # Convert configuration dict to MCPConfiguration object
+        if "configuration" in response and isinstance(response["configuration"], dict):
+            response["configuration"] = MCPConfiguration(
+                timeout=float(response["configuration"]["timeout"]),
+                sse_read_timeout=float(response["configuration"]["sse_read_timeout"]),
+            )
 
         return ToolProviderApiEntity(**response)
 

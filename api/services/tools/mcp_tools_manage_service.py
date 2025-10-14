@@ -9,8 +9,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from configs import dify_config
-from core.entities.mcp_provider import MCPProviderEntity
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -24,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 # Constants
 UNCHANGED_SERVER_URL_PLACEHOLDER = "[__HIDDEN__]"
-DEFAULT_GRANT_TYPE = "authorization_code"
 CLIENT_NAME = "Dify"
 EMPTY_TOOLS_JSON = "[]"
 EMPTY_CREDENTIALS_JSON = "{}"
@@ -88,12 +86,9 @@ class MCPToolManageService:
         icon_type: str,
         icon_background: str,
         server_identifier: str,
-        timeout: float,
-        sse_read_timeout: float,
+        configuration: MCPConfiguration,
+        authentication: MCPAuthentication | None = None,
         headers: dict[str, str] | None = None,
-        client_id: str | None = None,
-        client_secret: str | None = None,
-        grant_type: str = DEFAULT_GRANT_TYPE,
     ) -> ToolProviderApiEntity:
         """Create a new MCP provider."""
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
@@ -104,9 +99,11 @@ class MCPToolManageService:
         # Encrypt sensitive data
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         encrypted_headers = self._prepare_encrypted_dict(headers, tenant_id) if headers else None
-        if client_id and client_secret:
+        if authentication is not None:
             # Build the full credentials structure with encrypted client_id and client_secret
-            encrypted_credentials = self._build_and_encrypt_credentials(client_id, client_secret, grant_type, tenant_id)
+            encrypted_credentials = self._build_and_encrypt_credentials(
+                authentication.client_id, authentication.client_secret, tenant_id
+            )
         else:
             encrypted_credentials = None
         # Create provider
@@ -120,16 +117,16 @@ class MCPToolManageService:
             tools=EMPTY_TOOLS_JSON,
             icon=self._prepare_icon(icon, icon_type, icon_background),
             server_identifier=server_identifier,
-            timeout=timeout,
-            sse_read_timeout=sse_read_timeout,
+            timeout=configuration.timeout,
+            sse_read_timeout=configuration.sse_read_timeout,
             encrypted_headers=encrypted_headers,
             encrypted_credentials=encrypted_credentials,
         )
 
         self._session.add(mcp_tool)
-        self._session.commit()
-
-        return ToolTransformService.mcp_provider_to_user_provider(mcp_tool, for_list=True)
+        self._session.flush()
+        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool, for_list=True)
+        return mcp_providers
 
     def update_provider(
         self,
@@ -142,12 +139,9 @@ class MCPToolManageService:
         icon_type: str,
         icon_background: str,
         server_identifier: str,
-        timeout: float | None = None,
-        sse_read_timeout: float | None = None,
         headers: dict[str, str] | None = None,
-        client_id: str | None = None,
-        client_secret: str | None = None,
-        grant_type: str | None = None,
+        configuration: MCPConfiguration,
+        authentication: MCPAuthentication | None = None,
     ) -> None:
         """Update an MCP provider."""
         mcp_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
@@ -185,10 +179,10 @@ class MCPToolManageService:
                     mcp_provider.encrypted_credentials = reconnect_result["encrypted_credentials"]
 
             # Update optional fields
-            if timeout is not None:
-                mcp_provider.timeout = timeout
-            if sse_read_timeout is not None:
-                mcp_provider.sse_read_timeout = sse_read_timeout
+            if configuration.timeout is not None:
+                mcp_provider.timeout = configuration.timeout
+            if configuration.sse_read_timeout is not None:
+                mcp_provider.sse_read_timeout = configuration.sse_read_timeout
             if headers is not None:
                 if headers:
                     # Build headers preserving unchanged masked values
@@ -200,20 +194,18 @@ class MCPToolManageService:
                     mcp_provider.encrypted_headers = None
 
             # Update credentials if provided
-            if client_id is not None and client_secret is not None:
+            if authentication is not None:
                 # Merge with existing credentials to handle masked values
                 (
                     final_client_id,
                     final_client_secret,
-                    final_grant_type,
-                ) = self._merge_credentials_with_masked(client_id, client_secret, grant_type, mcp_provider)
-
-                # Use default grant_type if none found
-                final_grant_type = final_grant_type or DEFAULT_GRANT_TYPE
+                ) = self._merge_credentials_with_masked(
+                    authentication.client_id, authentication.client_secret, mcp_provider
+                )
 
                 # Build and encrypt new credentials
                 encrypted_credentials = self._build_and_encrypt_credentials(
-                    final_client_id, final_client_secret, final_grant_type, tenant_id
+                    final_client_id, final_client_secret, tenant_id
                 )
                 mcp_provider.encrypted_credentials = encrypted_credentials
 
@@ -221,7 +213,11 @@ class MCPToolManageService:
         except IntegrityError as e:
             self._session.rollback()
             self._handle_integrity_error(e, name, server_url, server_identifier)
-        except Exception:
+        except (ValueError, AttributeError, TypeError) as e:
+            # Catch specific exceptions that might occur during update
+            # ValueError: invalid data provided
+            # AttributeError: missing required attributes
+            # TypeError: type conversion errors
             self._session.rollback()
             raise
 
@@ -271,7 +267,7 @@ class MCPToolManageService:
         db_provider.tools = json.dumps([tool.model_dump() for tool in tools])
         db_provider.authed = True
         db_provider.updated_at = datetime.now()
-        self._session.commit()
+        self._session.flush()
 
         # Build API response
         return self._build_tool_provider_response(db_provider, provider_entity, tools)
@@ -309,7 +305,7 @@ class MCPToolManageService:
             if not authed:
                 provider.tools = EMPTY_TOOLS_JSON
 
-        self._session.commit()
+        self._session.flush()
 
     def save_oauth_data(self, provider_id: str, tenant_id: str, data: dict[str, Any], data_type: str = "mixed") -> None:
         """
@@ -495,20 +491,21 @@ class MCPToolManageService:
     def _merge_credentials_with_masked(
         self,
         client_id: str,
-        client_secret: str,
-        grant_type: str | None,
+        client_secret: str | None,
         mcp_provider: MCPToolProvider,
-    ) -> tuple[str, str, str | None]:
+    ) -> tuple[
+        str,
+        str | None,
+    ]:
         """Merge incoming credentials with existing ones, preserving unchanged masked values.
 
         Args:
             client_id: Client ID from frontend (may be masked)
             client_secret: Client secret from frontend (may be masked)
-            grant_type: Grant type from frontend
             mcp_provider: The MCP provider instance
 
         Returns:
-            Tuple of (final_client_id, final_client_secret, grant_type)
+            Tuple of (final_client_id, final_client_secret)
         """
         mcp_provider_entity = mcp_provider.to_entity()
         existing_decrypted = mcp_provider_entity.decrypt_credentials()
@@ -526,35 +523,18 @@ class MCPToolManageService:
             # Use existing decrypted value
             final_client_secret = existing_decrypted.get("client_secret", client_secret)
 
-        final_grant_type = grant_type if grant_type is not None else existing_decrypted.get("grant_type")
+        return final_client_id, final_client_secret
 
-        return final_client_id, final_client_secret, final_grant_type
-
-    def _build_and_encrypt_credentials(
-        self, client_id: str, client_secret: str, grant_type: str, tenant_id: str
-    ) -> str:
+    def _build_and_encrypt_credentials(self, client_id: str, client_secret: str | None, tenant_id: str) -> str:
         """Build credentials and encrypt sensitive fields."""
         # Create a flat structure with all credential data
         credentials_data = {
             "client_id": client_id,
             "client_secret": client_secret,
-            "grant_type": grant_type,
             "client_name": CLIENT_NAME,
             "is_dynamic_registration": False,
         }
 
-        # Add grant types and response types based on grant_type
-        if grant_type == "client_credentials":
-            credentials_data["grant_types"] = json.dumps(["client_credentials"])
-            credentials_data["response_types"] = json.dumps([])
-            credentials_data["redirect_uris"] = json.dumps([])
-        else:
-            credentials_data["grant_types"] = json.dumps(["authorization_code", "refresh_token"])
-            credentials_data["response_types"] = json.dumps(["code"])
-            credentials_data["redirect_uris"] = json.dumps(
-                [f"{dify_config.CONSOLE_API_URL}/console/api/mcp/oauth/callback"]
-            )
-
         # Only client_id and client_secret need encryption
-        secret_fields = ["client_id", "client_secret"]
+        secret_fields = ["client_id", "client_secret"] if client_secret else ["client_id"]
         return self._encrypt_dict_fields(credentials_data, secret_fields, tenant_id)

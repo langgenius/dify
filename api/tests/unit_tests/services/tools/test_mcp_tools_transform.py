@@ -228,8 +228,7 @@ class TestMCPToolTransform:
             "masked_headers": {"Authorization": "Bearer *****"},
             "updated_at": 1234567890,
             "labels": [],
-            "timeout": 30,
-            "sse_read_timeout": 300,
+            "configuration": {"timeout": "30", "sse_read_timeout": "300"},
             "original_headers": {"Authorization": "Bearer secret-token"},
             "author": "Test User",
             "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
@@ -246,8 +245,9 @@ class TestMCPToolTransform:
         assert isinstance(result, ToolProviderApiEntity)
         assert result.id == "server-identifier-456"  # Should use server_identifier when for_list=False
         assert result.server_identifier == "server-identifier-456"
-        assert result.timeout == 30
-        assert result.sse_read_timeout == 300
+        assert result.configuration is not None
+        assert result.configuration.timeout == 30
+        assert result.configuration.sse_read_timeout == 300
         assert result.original_headers == {"Authorization": "Bearer secret-token"}
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == "Tool description"

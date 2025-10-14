@@ -99,7 +99,11 @@ class MCPClientWithAuthRetry(MCPClient):
             # Clear authorization code after first use
             self.authorization_code = None
 
+        except MCPAuthError:
+            # Re-raise MCPAuthError as is
+            raise
         except Exception as e:
+            # Catch all exceptions during auth retry
             logger.exception("Authentication retry failed")
             raise MCPAuthError(f"Authentication retry failed: {e}") from e
 
