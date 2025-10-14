@@ -790,6 +790,7 @@ const translation = {
       subscriptionNameDescription: 'Enter a unique name for this trigger subscription',
       subscriptionNamePlaceholder: 'Enter subscription name...',
       subscriptionNameRequired: 'Subscription name is required',
+      subscriptionRequired: 'Subscription is required',
     },
     questionClassifiers: {
       model: 'model',

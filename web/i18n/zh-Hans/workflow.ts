@@ -1117,6 +1117,7 @@ const translation = {
       subscriptionNameDescription: '为此触发器订阅输入一个唯一名称',
       subscriptionNamePlaceholder: '输入订阅名称...',
       subscriptionNameRequired: '订阅名称是必需的',
+      subscriptionRequired: '需要配置订阅',
     },
   },
   tracing: {

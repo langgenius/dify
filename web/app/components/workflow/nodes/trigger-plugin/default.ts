@@ -221,10 +221,15 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     // event_type: '',
     config: {},
   },
-  checkValid(_payload: PluginTriggerNodeType, _t: any) {
+  checkValid(payload: PluginTriggerNodeType, t: any) {
+    let errorMessage = ''
+
+    if (!payload.subscription_id)
+      errorMessage = t('workflow.nodes.triggerPlugin.subscriptionRequired')
+
     return {
-      isValid: true,
-      errorMessage: '',
+      isValid: !errorMessage,
+      errorMessage,
     }
   },
   getOutputVars(payload, _allPluginInfoList, _ragVars, { schemaTypeDefinitions } = { schemaTypeDefinitions: [] }) {
