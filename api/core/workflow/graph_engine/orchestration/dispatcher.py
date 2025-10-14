@@ -8,7 +8,12 @@ import threading
 import time
 from typing import TYPE_CHECKING, final
 
-from core.workflow.graph_events.base import GraphNodeEventBase
+from core.workflow.graph_events import (
+    GraphNodeEventBase,
+    NodeRunExceptionEvent,
+    NodeRunFailedEvent,
+    NodeRunSucceededEvent,
+)
 
 from ..event_management import EventManager
 from .execution_coordinator import ExecutionCoordinator
@@ -72,6 +77,12 @@ class Dispatcher:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=10.0)
 
+    _COMMAND_TRIGGER_EVENTS = (
+        NodeRunSucceededEvent,
+        NodeRunFailedEvent,
+        NodeRunExceptionEvent,
+    )
+
     def _dispatcher_loop(self) -> None:
         """Main dispatcher loop."""
         try:
@@ -87,6 +98,8 @@ class Dispatcher:
                     event = self._event_queue.get(timeout=0.1)
                     # Route to the event handler
                     self._event_handler.dispatch(event)
+                    if self._should_check_commands(event):
+                        self._execution_coordinator.check_commands()
                     self._event_queue.task_done()
                 except queue.Empty:
                     # Check if execution is complete
@@ -102,3 +115,7 @@ class Dispatcher:
             # Signal the event emitter that execution is complete
             if self._event_emitter:
                 self._event_emitter.mark_complete()
+
+    def _should_check_commands(self, event: GraphNodeEventBase) -> bool:
+        """Return True if the event represents a node completion."""
+        return isinstance(event, self._COMMAND_TRIGGER_EVENTS)

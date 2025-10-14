@@ -133,6 +133,19 @@ class GraphEngine:
             skip_propagator=self._skip_propagator,
         )
 
+        # === Event Handler Registry ===
+        # Central registry for handling all node execution events
+        self._event_handler_registry = EventHandler(
+            graph=self._graph,
+            graph_runtime_state=self._graph_runtime_state,
+            graph_execution=self._graph_execution,
+            response_coordinator=self._response_coordinator,
+            event_collector=self._event_manager,
+            edge_processor=self._edge_processor,
+            state_manager=self._state_manager,
+            error_handler=self._error_handler,
+        )
+
         # === Command Processing ===
         # Processes external commands (e.g., abort requests)
         self._command_processor = CommandProcessor(
@@ -145,20 +158,6 @@ class GraphEngine:
         self._command_processor.register_handler(
             AbortCommand,
             abort_handler,
-        )
-
-        # === Event Handler Registry ===
-        # Central registry for handling all node execution events
-        self._event_handler_registry = EventHandler(
-            graph=self._graph,
-            graph_runtime_state=self._graph_runtime_state,
-            graph_execution=self._graph_execution,
-            response_coordinator=self._response_coordinator,
-            event_collector=self._event_manager,
-            edge_processor=self._edge_processor,
-            state_manager=self._state_manager,
-            error_handler=self._error_handler,
-            command_processor=self._command_processor,
         )
 
         # === Worker Pool Setup ===
