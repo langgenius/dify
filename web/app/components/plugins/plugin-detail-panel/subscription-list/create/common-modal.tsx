@@ -284,19 +284,18 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         subscriptionBuilderId: subscriptionBuilder.id,
         name: subscriptionNameValue,
         parameters: autoCommonParametersFormValues.values,
-        // properties: formValues.values,
       },
       {
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: 'Subscription created successfully',
+            message: t('pluginTrigger.subscription.createSuccess'),
           })
           onClose()
           refresh?.()
         },
         onError: async (error: any) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.errors.createFailed')
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.createFailed')
           Toast.notify({
             type: 'error',
             message: errorMessage,

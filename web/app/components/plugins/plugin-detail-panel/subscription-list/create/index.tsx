@@ -1,4 +1,4 @@
-import { ActionButton } from '@/app/components/base/action-button'
+import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { Button } from '@/app/components/base/button'
 import type { Option } from '@/app/components/base/select/custom'
@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../store'
+import { useSubscriptionList } from '../use-subscription-list'
 import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
 
@@ -29,10 +30,14 @@ type Props = {
   shape?: 'square' | 'circle'
 }
 
+const MAX_COUNT = 10
+
 export const DEFAULT_METHOD = 'default'
 
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON, shape = 'square' }: Props) => {
   const { t } = useTranslation()
+  const { subscriptions } = useSubscriptionList()
+  const subscriptionCount = subscriptions?.length || 0
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{ type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder } | null>(null)
 
   const detail = usePluginStore(state => state.detail)
@@ -74,12 +79,16 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         tag: !showCustomBadge ? null : <Badge className='ml-1 mr-0.5'>
           {t('plugin.auth.custom')}
         </Badge>,
-        extra: <ActionButton onClick={onClickClientSettings}><RiEqualizer2Line className='h-4 w-4 text-text-tertiary' /></ActionButton>,
+        extra: <Tooltip popupContent={t('pluginTrigger.subscription.addType.options.oauth.clientSettings')}>
+          <ActionButton onClick={onClickClientSettings}>
+            <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+          </ActionButton>
+        </Tooltip>,
         show: supportedMethods.includes(SupportedCreationMethods.OAUTH),
       },
       {
         value: SupportedCreationMethods.APIKEY,
-        label: t('pluginTrigger.subscription.addType.options.apiKey.title'),
+        label: t('pluginTrigger.subscription.addType.options.apikey.title'),
         show: supportedMethods.includes(SupportedCreationMethods.APIKEY),
       },
       {
@@ -124,7 +133,12 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   }
 
   const onClickCreate = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (methodType === DEFAULT_METHOD)
+    if (subscriptionCount >= MAX_COUNT) {
+      e.stopPropagation()
+      return
+    }
+
+    if (methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1))
       return
 
     e.stopPropagation()
@@ -141,7 +155,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       value={methodType}
       onChange={value => onChooseCreateType(value as any)}
       containerProps={{
-        open: methodType === DEFAULT_METHOD ? undefined : false,
+        open: (methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1)) ? undefined : false,
         placement: 'bottom-start',
         offset: 4,
         triggerPopupSameWidth: buttonType === CreateButtonType.FULL_BUTTON,
@@ -157,32 +171,44 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           <Button
             variant='primary'
             size='medium'
-            className='w-full'
+            className='flex w-full items-center justify-between pl-0 pr-1'
             onClick={onClickCreate}
           >
-            <RiAddLine className='mr-2 size-4' />
-            {buttonTextMap[methodType]}
-            {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && <Badge
-              className='ml-1 mr-0.5 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface'
-            >
-              {t('plugin.auth.custom')}
-            </Badge>}
+            <div className='flex flex-1 items-center justify-center'>
+              <RiAddLine className='mr-2 size-4' />
+              {buttonTextMap[methodType]}
+              {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && <Badge
+                className='ml-1 mr-0.5 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface'
+              >
+                {t('plugin.auth.custom')}
+              </Badge>}
+            </div>
             {methodType === SupportedCreationMethods.OAUTH
-              && <ActionButton onClick={onClickClientSettings}>
-                <RiEqualizer2Line className='size-4 text-text-tertiary' />
-              </ActionButton>
+              && <div className='ml-auto flex items-center gap-1'>
+                <div className="h-4 w-px bg-text-primary-on-surface opacity-15" />
+                <Tooltip popupContent={t('pluginTrigger.subscription.addType.options.oauth.clientSettings')}>
+                  <ActionButton onClick={onClickClientSettings} >
+                    <RiEqualizer2Line className='size-4 text-components-button-primary-text' />
+                  </ActionButton>
+                </Tooltip>
+              </div>
             }
           </Button>
         ) : (
-          <ActionButton
-            onClick={onClickCreate}
-            className={cn(
-              'float-right',
-              shape === 'circle' && '!rounded-full border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs',
-            )}
-          >
-            <RiAddLine className='size-4' />
-          </ActionButton>
+          <Tooltip
+            popupContent={subscriptionCount >= MAX_COUNT ? t('pluginTrigger.subscription.maxCount', { num: MAX_COUNT }) : t(`pluginTrigger.subscription.addType.options.${methodType.toLowerCase()}.description`)}
+            disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}>
+            <ActionButton
+              onClick={onClickCreate}
+              className={cn(
+                'float-right',
+                shape === 'circle' && '!rounded-full border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs',
+              )}
+              state={subscriptionCount >= MAX_COUNT ? ActionButtonState.Disabled : ActionButtonState.Default}
+            >
+              <RiAddLine className='size-4' />
+            </ActionButton>
+          </Tooltip>
         )
       }}
       CustomOption={option => (

@@ -12,6 +12,9 @@ const translation = {
       apiKey: '通过 API Key 新建订阅',
       manual: '粘贴 URL 以创建新订阅',
     },
+    createSuccess: '订阅创建成功',
+    createFailed: '订阅创建失败',
+    maxCount: '最多 {{num}} 个订阅',
     list: {
       title: '订阅列表',
       addButton: '添加',
@@ -27,7 +30,9 @@ const translation = {
         actions: {
           delete: '删除',
           deleteConfirm: {
-            title: '删除 {{name}} ？',
+            title: '删除 {{name}}？',
+            success: '订阅 {{name}} 删除成功',
+            error: '订阅 {{name}} 删除失败',
             content: '删除后，该订阅将无法恢复，请确认。',
             contentWithApps: '该订阅正在被 {{count}} 个应用使用，删除它将导致这些应用停止接收订阅事件。',
             confirm: '确认删除',
@@ -49,13 +54,14 @@ const translation = {
       title: '添加订阅',
       description: '选择创建触发器订阅的方式',
       options: {
-        apiKey: {
+        apikey: {
           title: '通过 API Key',
-          description: '使用API凭据自动创建订阅',
+          description: '使用 API 凭据自动创建订阅',
         },
         oauth: {
           title: '通过 OAuth',
           description: '与第三方平台授权以创建订阅',
+          clientSettings: 'OAuth 客户端设置',
         },
         manual: {
           title: '手动设置',
@@ -163,12 +169,6 @@ const translation = {
     item: {
       parameters: '{{count}}个参数',
     },
-  },
-  provider: {
-    github: 'GitHub',
-    gitlab: 'GitLab',
-    notion: 'Notion',
-    webhook: 'Webhook',
   },
 }
 

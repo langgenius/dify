@@ -37,7 +37,7 @@ export const DeleteConfirm = (props: Props) => {
       onSuccess: () => {
         Toast.notify({
           type: 'success',
-          message: t(`${tPrefix}.title`, { name: currentName }),
+          message: t(`${tPrefix}.success`, { name: currentName }),
           className: 'z-[10000001]',
         })
         refresh?.()
@@ -46,7 +46,7 @@ export const DeleteConfirm = (props: Props) => {
       onError: (error: any) => {
         Toast.notify({
           type: 'error',
-          message: error?.message || 'Failed to delete subscription',
+          message: error?.message || t(`${tPrefix}.error`, { name: currentName }),
           className: 'z-[10000001]',
         })
       },

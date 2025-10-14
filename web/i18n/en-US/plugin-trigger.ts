@@ -12,6 +12,9 @@ const translation = {
       apiKey: 'New subscription with API Key',
       manual: 'Paste URL to create a new subscription',
     },
+    createSuccess: 'Subscription created successfully',
+    createFailed: 'Failed to create subscription',
+    maxCount: 'Max {{num}} subscriptions',
     list: {
       title: 'Subscriptions',
       addButton: 'Add',
@@ -28,6 +31,8 @@ const translation = {
           delete: 'Delete',
           deleteConfirm: {
             title: 'Delete {{name}}?',
+            success: 'Subscription {{name}} deleted successfully',
+            error: 'Failed to delete subscription {{name}}',
             content: 'Once deleted, this subscription cannot be recovered. Please confirm.',
             contentWithApps: 'The current subscription is referenced by {{count}} applications. Deleting it will cause the configured applications to stop receiving subscription events.',
             confirm: 'Confirm Delete',
@@ -49,13 +54,14 @@ const translation = {
       title: 'Add subscription',
       description: 'Choose how you want to create your trigger subscription',
       options: {
-        apiKey: {
+        apikey: {
           title: 'Via API Key',
           description: 'Automatically create subscription using API credentials',
         },
         oauth: {
           title: 'Via OAuth',
           description: 'Authorize with third-party platform to create subscription',
+          clientSettings: 'OAuth Client Settings',
         },
         manual: {
           title: 'Manual Setup',
@@ -163,12 +169,6 @@ const translation = {
     item: {
       parameters: '{{count}} parameters',
     },
-  },
-  provider: {
-    github: 'GitHub',
-    gitlab: 'GitLab',
-    notion: 'Notion',
-    webhook: 'Webhook',
   },
 }
 

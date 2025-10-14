@@ -44,7 +44,7 @@ export const CreateTypeDropdown = ({ onSelect, onClose, position = 'bottom', cla
     },
     {
       key: SupportedCreationMethods.APIKEY,
-      title: t('pluginTrigger.subscription.addType.options.apiKey.title'),
+      title: t('pluginTrigger.subscription.addType.options.apikey.title'),
       show: supportedMethods.includes(SupportedCreationMethods.APIKEY),
     },
     {
