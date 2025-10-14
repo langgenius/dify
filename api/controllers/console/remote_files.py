@@ -14,8 +14,7 @@ from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
-from libs.login import current_user
-from models.account import Account
+from libs.login import current_account_with_tenant
 from services.file_service import FileService
 
 from . import console_ns
@@ -64,8 +63,7 @@ class RemoteFileUploadApi(Resource):
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 
         try:
-            assert isinstance(current_user, Account)
-            user = current_user
+            user, _ = current_account_with_tenant()
             upload_file = FileService(db.engine).upload_file(
                 filename=file_info.filename,
                 content=content,
