@@ -1,7 +1,7 @@
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
+import { fetchBanners, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { AppSourceType, fetchAppMeta, fetchAppParams } from './share'
 
 const NAME_SPACE = 'explore'
@@ -77,5 +77,14 @@ export const useGetInstalledAppMeta = (appId: string | null) => {
       return fetchAppMeta(AppSourceType.installedApp, appId)
     },
     enabled: !!appId,
+  })
+}
+
+export const useGetBanners = (locale?: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'banners', locale],
+    queryFn: () => {
+      return fetchBanners(locale)
+    },
   })
 }

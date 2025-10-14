@@ -22,9 +22,9 @@ import {
 } from '@/models/app'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
-import Banner from '../banner'
-import Button from '../../base/button'
+import Banner from '@/app/components/explore/banner/banner'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Button from '@/app/components/base/button'
 
 type AppsProps = {
   onSuccess?: () => void

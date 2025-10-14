@@ -46,6 +46,9 @@ const translation = {
     Workflow: '工作流',
     Entertainment: '娱乐',
   },
+  banner: {
+    viewMore: '查看更多',
+  },
 }
 
 export default translation

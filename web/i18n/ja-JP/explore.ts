@@ -46,6 +46,9 @@ const translation = {
     Agent: 'エージェント',
     Entertainment: 'エンターテイメント',
   },
+  banner: {
+    viewMore: 'もっと見る',
+  },
 }
 
 export default translation

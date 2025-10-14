@@ -44,3 +44,8 @@ export const getToolProviders = () => {
 export const getAppAccessModeByAppId = (appId: string) => {
   return get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
 }
+
+export const fetchBanners = (language?: string): Promise<any> => {
+  const url = language ? `/explore/banners?language=${language}` : '/explore/banners'
+  return get(url)
+}

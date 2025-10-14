@@ -45,6 +45,9 @@ const translation = {
     Workflow: 'Workflow',
     Entertainment: 'Entertainment',
   },
+  banner: {
+    viewMore: 'VIEW MORE',
+  },
 }
 
 export default translation

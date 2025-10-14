@@ -1,0 +1,21 @@
+import { EmblaCarouselType } from './EmblaCarousel';
+import { AnimationsType } from './Animations';
+import { CounterType } from './Counter';
+import { DragTrackerType, PointerEventType } from './DragTracker';
+import { EventHandlerType } from './EventHandler';
+import { AxisType } from './Axis';
+import { ScrollBodyType } from './ScrollBody';
+import { ScrollTargetType } from './ScrollTarget';
+import { ScrollToType } from './ScrollTo';
+import { Vector1DType } from './Vector1d';
+import { PercentOfViewType } from './PercentOfView';
+import { WindowType } from './utils';
+type DragHandlerCallbackType = (emblaApi: EmblaCarouselType, evt: PointerEventType) => boolean | void;
+export type DragHandlerOptionType = boolean | DragHandlerCallbackType;
+export type DragHandlerType = {
+    init: (emblaApi: EmblaCarouselType) => void;
+    destroy: () => void;
+    pointerDown: () => boolean;
+};
+export declare function DragHandler(axis: AxisType, rootNode: HTMLElement, ownerDocument: Document, ownerWindow: WindowType, target: Vector1DType, dragTracker: DragTrackerType, location: Vector1DType, animation: AnimationsType, scrollTo: ScrollToType, scrollBody: ScrollBodyType, scrollTarget: ScrollTargetType, index: CounterType, eventHandler: EventHandlerType, percentOfView: PercentOfViewType, dragFree: boolean, dragThreshold: number, skipSnaps: boolean, baseFriction: number, watchDrag: DragHandlerOptionType): DragHandlerType;
+export {};
