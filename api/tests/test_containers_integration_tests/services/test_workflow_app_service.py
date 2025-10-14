@@ -807,26 +807,13 @@ class TestWorkflowAppService:
         )
         assert result_with_new_email["total"] == 3
         assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_with_new_email["data"])
-        
-        # Old email unbound, is expected to be 0
-        result_with_old_email = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers, 
-            app_model=app, 
-            created_by_account=original_email, 
-            page=1, 
-            limit=20
-        )
-        assert result_with_old_email["total"] == 0
 
-        # Result with unknown email, is expected to be 0
-        result_with_unknown_email = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers, 
-            app_model=app, 
-            created_by_account="unknown@example.com", 
-            page=1, 
-            limit=20
-        )
-        assert result_with_unknown_email["total"] == 0
+        # Old email unbound, is unexpected input, should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers, app_model=app, created_by_account=original_email, page=1, limit=20
+            )
+        assert "Account not found" in str(exc_info.value)
 
         account.email = original_email
         db_session_with_containers.commit()
@@ -841,15 +828,16 @@ class TestWorkflowAppService:
         )
         assert result_no_session["total"] == 0
 
-        # Test filtering by non-existent account email
-        result_no_account = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers,
-            app_model=app,
-            created_by_account="nonexistent@example.com",
-            page=1,
-            limit=20,
-        )
-        assert result_no_account["total"] == 0
+        # Test filtering by non-existent account email, is unexpected input, should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers,
+                app_model=app,
+                created_by_account="nonexistent@example.com",
+                page=1,
+                limit=20,
+            )
+        assert "Account not found" in str(exc_info.value)
 
     def test_get_paginate_workflow_app_logs_with_uuid_keyword_search(
         self, db_session_with_containers, mock_external_service_dependencies
