@@ -41,6 +41,7 @@ class RedisChannel:
         self._redis = redis_client
         self._key = channel_key
         self._command_ttl = command_ttl
+        self._pending_key = f"{channel_key}:pending"
 
     def fetch_commands(self) -> list[GraphEngineCommand]:
         """
@@ -49,6 +50,9 @@ class RedisChannel:
         Returns:
             List of pending commands (drains the Redis list)
         """
+        if not self._has_pending_commands():
+            return []
+
         commands: list[GraphEngineCommand] = []
 
         # Use pipeline for atomic operations
@@ -85,6 +89,7 @@ class RedisChannel:
         with self._redis.pipeline() as pipe:
             pipe.rpush(self._key, command_json)
             pipe.expire(self._key, self._command_ttl)
+            pipe.set(self._pending_key, "1", ex=self._command_ttl)
             pipe.execute()
 
     def _deserialize_command(self, data: dict[str, Any]) -> GraphEngineCommand | None:
@@ -112,3 +117,21 @@ class RedisChannel:
 
         except (ValueError, TypeError):
             return None
+
+    def _has_pending_commands(self) -> bool:
+        """
+        Check and consume the pending marker to avoid unnecessary list reads.
+
+        Returns:
+            True if commands should be fetched from Redis.
+        """
+        with self._redis.pipeline() as pipe:
+            pipe.get(self._pending_key)
+            pipe.delete(self._pending_key)
+            pending_value, _ = pipe.execute()
+
+        if pending_value is not None:
+            return True
+
+        # Fallback check for legacy data without a pending marker
+        return bool(self._redis.llen(self._key))
