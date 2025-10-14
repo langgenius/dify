@@ -475,7 +475,7 @@ class DatasetListApi(Resource):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
-      
+
         tenant_id = app_model.tenant_id
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id)

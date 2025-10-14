@@ -24,11 +24,7 @@ def _load_app_model(app_id: str) -> App | None:
 
 def _load_app_model_with_trial(app_id: str) -> App | None:
     assert isinstance(current_user, Account)
-    app_model = (
-        db.session.query(App)
-        .where(App.id == app_id, App.status == "normal")
-        .first()
-    )
+    app_model = db.session.query(App).where(App.id == app_id, App.status == "normal").first()
     return app_model
 
 
