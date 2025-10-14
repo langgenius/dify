@@ -24,7 +24,7 @@ class ToolParameterConfigurationManager:
 
     def __init__(
         self, tenant_id: str, tool_runtime: Tool, provider_name: str, provider_type: ToolProviderType, identity_id: str
-    ) -> None:
+    ):
         self.tenant_id = tenant_id
         self.tool_runtime = tool_runtime
         self.provider_name = provider_name

@@ -4,7 +4,7 @@ from Crypto.PublicKey import RSA
 from libs import gmpy2_pkcs10aep_cipher
 
 
-def test_gmpy2_pkcs10aep_cipher() -> None:
+def test_gmpy2_pkcs10aep_cipher():
     rsa_key_pair = pyrsa.newkeys(2048)
     public_key = rsa_key_pair[0].save_pkcs1()
     private_key = rsa_key_pair[1].save_pkcs1()

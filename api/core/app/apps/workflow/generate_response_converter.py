@@ -17,16 +17,16 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = WorkflowAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
-        return dict(blocking_response.to_dict())
+        return blocking_response.model_dump()
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -51,7 +51,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, object] = {
                 "event": sub_stream_response.event.value,
                 "workflow_run_id": chunk.workflow_run_id,
             }
@@ -60,7 +60,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk
 
     @classmethod
@@ -80,7 +80,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, object] = {
                 "event": sub_stream_response.event.value,
                 "workflow_run_id": chunk.workflow_run_id,
             }
@@ -91,5 +91,5 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
                 response_chunk.update(sub_stream_response.to_ignore_detail_dict())  # ty: ignore [unresolved-attribute]
             else:
-                response_chunk.update(sub_stream_response.to_dict())
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk

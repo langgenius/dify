@@ -7,7 +7,7 @@ This module provides the interface for invoking and authenticating various model
 
 ## Features
 
-- Supports capability invocation for 5 types of models
+- Supports capability invocation for 6 types of models
 
   - `LLM` - LLM text completion, dialogue, pre-computed tokens capability
   - `Text Embedding Model` - Text Embedding, pre-computed tokens capability

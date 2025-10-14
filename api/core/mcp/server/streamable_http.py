@@ -38,6 +38,7 @@ def handle_mcp_request(
     """
 
     request_type = type(request.root)
+    request_root = request.root
 
     def create_success_response(result_data: mcp_types.Result) -> mcp_types.JSONRPCResponse:
         """Create success response with business result data"""
@@ -58,21 +59,20 @@ def handle_mcp_request(
             error=error_data,
         )
 
-    # Request handler mapping using functional approach
-    request_handlers = {
-        mcp_types.InitializeRequest: lambda: handle_initialize(mcp_server.description),
-        mcp_types.ListToolsRequest: lambda: handle_list_tools(
-            app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
-        ),
-        mcp_types.CallToolRequest: lambda: handle_call_tool(app, request, user_input_form, end_user),
-        mcp_types.PingRequest: lambda: handle_ping(),
-    }
-
     try:
-        # Dispatch request to appropriate handler
-        handler = request_handlers.get(request_type)
-        if handler:
-            return create_success_response(handler())
+        # Dispatch request to appropriate handler based on instance type
+        if isinstance(request_root, mcp_types.InitializeRequest):
+            return create_success_response(handle_initialize(mcp_server.description))
+        elif isinstance(request_root, mcp_types.ListToolsRequest):
+            return create_success_response(
+                handle_list_tools(
+                    app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+                )
+            )
+        elif isinstance(request_root, mcp_types.CallToolRequest):
+            return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
+        elif isinstance(request_root, mcp_types.PingRequest):
+            return create_success_response(handle_ping())
         else:
             return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
 
@@ -142,7 +142,7 @@ def handle_call_tool(
         end_user,
         args,
         InvokeFrom.SERVICE_API,
-        streaming=app.mode == AppMode.AGENT_CHAT.value,
+        streaming=app.mode == AppMode.AGENT_CHAT,
     )
 
     answer = extract_answer_from_response(app, response)
@@ -157,7 +157,7 @@ def build_parameter_schema(
     """Build parameter schema for the tool"""
     parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
 
-    if app_mode in {AppMode.COMPLETION.value, AppMode.WORKFLOW.value}:
+    if app_mode in {AppMode.COMPLETION, AppMode.WORKFLOW}:
         return {
             "type": "object",
             "properties": parameters,
@@ -175,9 +175,9 @@ def build_parameter_schema(
 
 def prepare_tool_arguments(app: App, arguments: dict[str, Any]) -> dict[str, Any]:
     """Prepare arguments based on app mode"""
-    if app.mode == AppMode.WORKFLOW.value:
+    if app.mode == AppMode.WORKFLOW:
         return {"inputs": arguments}
-    elif app.mode == AppMode.COMPLETION.value:
+    elif app.mode == AppMode.COMPLETION:
         return {"query": "", "inputs": arguments}
     else:
         # Chat modes - create a copy to avoid modifying original dict
@@ -218,13 +218,13 @@ def process_streaming_response(response: RateLimitGenerator) -> str:
 def process_mapping_response(app: App, response: Mapping) -> str:
     """Process mapping response based on app mode"""
     if app.mode in {
-        AppMode.ADVANCED_CHAT.value,
-        AppMode.COMPLETION.value,
-        AppMode.CHAT.value,
-        AppMode.AGENT_CHAT.value,
+        AppMode.ADVANCED_CHAT,
+        AppMode.COMPLETION,
+        AppMode.CHAT,
+        AppMode.AGENT_CHAT,
     }:
         return response.get("answer", "")
-    elif app.mode == AppMode.WORKFLOW.value:
+    elif app.mode == AppMode.WORKFLOW:
         return json.dumps(response["data"]["outputs"], ensure_ascii=False)
     else:
         raise ValueError("Invalid app mode: " + str(app.mode))
@@ -258,5 +258,5 @@ def convert_input_form_to_parameters(
             parameters[item.variable]["type"] = "string"
             parameters[item.variable]["enum"] = item.options
         elif item.type == VariableEntityType.NUMBER:
-            parameters[item.variable]["type"] = "float"
+            parameters[item.variable]["type"] = "number"
     return parameters, required

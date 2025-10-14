@@ -119,8 +119,8 @@ const translation = {
       explanation: 'Mudah diintegrasikan ke dalam aplikasi Anda',
     },
     status: {
-      disable: 'Cacat',
-      running: 'Dalam Layanan',
+      disable: 'Nonaktif',
+      running: 'Berjalan',
     },
     title: 'Ikhtisar',
   },

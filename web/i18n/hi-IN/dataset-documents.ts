@@ -100,6 +100,9 @@ const translation = {
       upload_file: 'फाइल अपलोड करें',
       notion: 'नोशन से सिंक करें',
       github: 'गिटहब से सिंक करें',
+      local_file: 'स्थानीय फ़ाइल',
+      online_document: 'ऑनलाइन दस्तावेज़',
+      website_crawl: 'वेबसाइट क्रॉल',
     },
     type: {
       book: 'पुस्तक',
@@ -337,6 +340,7 @@ const translation = {
     pause: 'रुकना',
     hierarchical: 'माता-पिता का बच्चा',
     childMaxTokens: 'बच्चा',
+    waiting: 'इनपुट की प्रतीक्षा कर रहा हूं...',
   },
   segment: {
     paragraphs: 'पैराग्राफ',

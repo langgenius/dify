@@ -1,26 +1,28 @@
 """ClickZetta Volume file lifecycle management
 
-This module provides file lifecycle management features including version control, automatic cleanup, backup and restore.
+This module provides file lifecycle management features including version control,
+automatic cleanup, backup and restore.
 Supports complete lifecycle management for knowledge base files.
 """
 
 import json
 import logging
+import operator
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum, auto
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class FileStatus(Enum):
+class FileStatus(StrEnum):
     """File status enumeration"""
 
-    ACTIVE = "active"  # Active status
-    ARCHIVED = "archived"  # Archived
-    DELETED = "deleted"  # Deleted (soft delete)
-    BACKUP = "backup"  # Backup file
+    ACTIVE = auto()  # Active status
+    ARCHIVED = auto()  # Archived
+    DELETED = auto()  # Deleted (soft delete)
+    BACKUP = auto()  # Backup file
 
 
 @dataclass
@@ -33,11 +35,11 @@ class FileMetadata:
     modified_at: datetime
     version: int | None
     status: FileStatus
-    checksum: Optional[str] = None
-    tags: Optional[dict[str, str]] = None
-    parent_version: Optional[int] = None
+    checksum: str | None = None
+    tags: dict[str, str] | None = None
+    parent_version: int | None = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         """Convert to dictionary format"""
         data = asdict(self)
         data["created_at"] = self.created_at.isoformat()
@@ -58,7 +60,7 @@ class FileMetadata:
 class FileLifecycleManager:
     """File lifecycle manager"""
 
-    def __init__(self, storage, dataset_id: Optional[str] = None):
+    def __init__(self, storage, dataset_id: str | None = None):
         """Initialize lifecycle manager
 
         Args:
@@ -73,9 +75,9 @@ class FileLifecycleManager:
         self._deleted_prefix = ".deleted/"
 
         # Get permission manager (if exists)
-        self._permission_manager: Optional[Any] = getattr(storage, "_permission_manager", None)
+        self._permission_manager: Any | None = getattr(storage, "_permission_manager", None)
 
-    def save_with_lifecycle(self, filename: str, data: bytes, tags: Optional[dict[str, str]] = None) -> FileMetadata:
+    def save_with_lifecycle(self, filename: str, data: bytes, tags: dict[str, str] | None = None) -> FileMetadata:
         """Save file and manage lifecycle
 
         Args:
@@ -149,7 +151,7 @@ class FileLifecycleManager:
             logger.exception("Failed to save file with lifecycle")
             raise
 
-    def get_file_metadata(self, filename: str) -> Optional[FileMetadata]:
+    def get_file_metadata(self, filename: str) -> FileMetadata | None:
         """Get file metadata
 
         Args:
@@ -262,7 +264,7 @@ class FileLifecycleManager:
                 logger.warning("File %s not found in metadata", filename)
                 return False
 
-            metadata_dict[filename]["status"] = FileStatus.ARCHIVED.value
+            metadata_dict[filename]["status"] = FileStatus.ARCHIVED
             metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
 
             self._save_metadata(metadata_dict)
@@ -307,7 +309,7 @@ class FileLifecycleManager:
             # Update metadata
             metadata_dict = self._load_metadata()
             if filename in metadata_dict:
-                metadata_dict[filename]["status"] = FileStatus.DELETED.value
+                metadata_dict[filename]["status"] = FileStatus.DELETED
                 metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
                 self._save_metadata(metadata_dict)
 
@@ -355,7 +357,7 @@ class FileLifecycleManager:
                 # Cleanup old versions for each file
                 for base_filename, versions in file_versions.items():
                     # Sort by version number
-                    versions.sort(key=lambda x: x[0], reverse=True)
+                    versions.sort(key=operator.itemgetter(0), reverse=True)
 
                     # Keep the newest max_versions versions, delete the rest
                     if len(versions) > max_versions:

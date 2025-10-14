@@ -15,7 +15,7 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
@@ -149,7 +149,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert call_args["execution_data"] == sample_workflow_node_execution.model_dump()
         assert call_args["tenant_id"] == mock_account.current_tenant_id
         assert call_args["app_id"] == "test-app"
-        assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         assert call_args["creator_user_id"] == mock_account.id
 
         # Verify execution is cached

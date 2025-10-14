@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.http import parse_options_header
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
@@ -44,7 +45,7 @@ def build_from_message_file(
     }
 
     # Set the correct ID field based on transfer method
-    if message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+    if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
         mapping["tool_file_id"] = message_file.upload_file_id
     else:
         mapping["upload_file_id"] = message_file.upload_file_id
@@ -63,12 +64,16 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
 ) -> File:
-    transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
+    transfer_method_value = mapping.get("transfer_method")
+    if not transfer_method_value:
+        raise ValueError("transfer_method is required in file mapping")
+    transfer_method = FileTransferMethod.value_of(transfer_method_value)
 
     build_functions: dict[FileTransferMethod, Callable] = {
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
         FileTransferMethod.REMOTE_URL: _build_from_remote_url,
         FileTransferMethod.TOOL_FILE: _build_from_tool_file,
+        FileTransferMethod.DATASOURCE_FILE: _build_from_datasource_file,
     }
 
     build_func = build_functions.get(transfer_method)
@@ -102,6 +107,8 @@ def build_from_mappings(
 ) -> Sequence[File]:
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
+    # Filter out None/empty mappings to avoid errors
+    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -109,7 +116,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
         )
-        for mapping in mappings
+        for mapping in valid_mappings
     ]
 
     if (
@@ -246,6 +253,25 @@ def _build_from_remote_url(
     )
 
 
+def _extract_filename(url_path: str, content_disposition: str | None) -> str | None:
+    filename = None
+    # Try to extract from Content-Disposition header first
+    if content_disposition:
+        _, params = parse_options_header(content_disposition)
+        # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
+        filename = params.get("filename*") or params.get("filename")
+    # Fallback to URL path if no filename from header
+    if not filename:
+        filename = os.path.basename(url_path)
+    return filename or None
+
+
+def _guess_mime_type(filename: str) -> str:
+    """Guess MIME type from filename, returning empty string if None."""
+    guessed_mime, _ = mimetypes.guess_type(filename)
+    return guessed_mime or ""
+
+
 def _get_remote_file_info(url: str):
     file_size = -1
     parsed_url = urllib.parse.urlparse(url)
@@ -253,22 +279,25 @@ def _get_remote_file_info(url: str):
     filename = os.path.basename(url_path)
 
     # Initialize mime_type from filename as fallback
-    mime_type, _ = mimetypes.guess_type(filename)
-    if mime_type is None:
-        mime_type = ""
+    mime_type = _guess_mime_type(filename)
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
-        if content_disposition := resp.headers.get("Content-Disposition"):
-            filename = str(content_disposition.split("filename=")[-1].strip('"'))
-            # Re-guess mime_type from updated filename
-            mime_type, _ = mimetypes.guess_type(filename)
-            if mime_type is None:
-                mime_type = ""
+        content_disposition = resp.headers.get("Content-Disposition")
+        extracted_filename = _extract_filename(url_path, content_disposition)
+        if extracted_filename:
+            filename = extracted_filename
+            mime_type = _guess_mime_type(filename)
         file_size = int(resp.headers.get("Content-Length", file_size))
         # Fallback to Content-Type header if mime_type is still empty
         if not mime_type:
             mime_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
+
+    if not filename:
+        extension = mimetypes.guess_extension(mime_type) or ".bin"
+        filename = f"{uuid.uuid4().hex}{extension}"
+        if not mime_type:
+            mime_type = _guess_mime_type(filename)
 
     return mime_type, filename, file_size
 
@@ -313,6 +342,52 @@ def _build_from_tool_file(
         mime_type=tool_file.mimetype,
         size=tool_file.size,
         storage_key=tool_file.file_key,
+    )
+
+
+def _build_from_datasource_file(
+    *,
+    mapping: Mapping[str, Any],
+    tenant_id: str,
+    transfer_method: FileTransferMethod,
+    strict_type_validation: bool = False,
+) -> File:
+    datasource_file = (
+        db.session.query(UploadFile)
+        .where(
+            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+    if datasource_file is None:
+        raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
+
+    extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
+
+    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
+
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+
+    return File(
+        id=mapping.get("datasource_file_id"),
+        tenant_id=tenant_id,
+        filename=datasource_file.name,
+        type=file_type,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        remote_url=datasource_file.source_url,
+        related_id=datasource_file.id,
+        extension=extension,
+        mime_type=datasource_file.mime_type,
+        size=datasource_file.size,
+        storage_key=datasource_file.key,
+        url=datasource_file.source_url,
     )
 
 
@@ -403,7 +478,7 @@ class StorageKeyLoader:
     This loader is batched, the database query count is constant regardless of the input size.
     """
 
-    def __init__(self, session: Session, tenant_id: str) -> None:
+    def __init__(self, session: Session, tenant_id: str):
         self._session = session
         self._tenant_id = tenant_id
 
@@ -462,9 +537,9 @@ class StorageKeyLoader:
                 upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
                     raise ValueError(f"Upload file not found for id: {model_id}")
-                file._storage_key = upload_file_row.key
+                file.storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
                 tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
                     raise ValueError(f"Tool file not found for id: {model_id}")
-                file._storage_key = tool_file_row.file_key
+                file.storage_key = tool_file_row.file_key

@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
@@ -17,7 +17,7 @@ type Params = {
   id: string,
   payload: ParameterExtractorNodeType,
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]

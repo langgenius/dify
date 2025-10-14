@@ -1,17 +1,17 @@
 const translation = {
   daysInWeek: {
-    Wed: 'Bertaruh',
+    Wed: 'Rabu',
     Thu: 'Kamis',
-    Sun: 'Matahari',
-    Tue: 'Membunuh',
-    Mon: 'Mon',
-    Sat: 'Hari sabtu',
-    Fri: 'Bebas',
+    Sun: 'Minggu',
+    Tue: 'Selasa',
+    Mon: 'Senin',
+    Sat: 'Sabtu',
+    Fri: 'Jumat',
   },
   months: {
     August: 'Agustus',
     October: 'Oktober',
-    May: 'Menjahit',
+    May: 'Mei',
     September: 'September',
     December: 'Desember',
     November: 'November',
@@ -34,7 +34,7 @@ const translation = {
   dateFormats: {
     display: 'MMMM D, YYYY',
     input: 'YYYY-MM-DD',
-    outputWithTime: 'YYYY-MM-DDTHH:mm:ss. SSSZ',
+    outputWithTime: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
     output: 'YYYY-MM-DD',
     displayWithTime: 'MMMM D, YYYY hh:mm A',
   },

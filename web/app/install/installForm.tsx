@@ -134,7 +134,7 @@ const InstallForm = () => {
                   <input
                     {...register('email')}
                     placeholder={t('login.emailPlaceholder') || ''}
-                    className={'w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal py-[7px] pl-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
                   {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
                 </div>
@@ -149,7 +149,7 @@ const InstallForm = () => {
                   <input
                     {...register('name')}
                     placeholder={t('login.namePlaceholder') || ''}
-                    className={'w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal py-[7px] pl-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
                 </div>
                 {errors.name && <span className='text-sm text-red-400'>{t(`${errors.name.message}`)}</span>}
@@ -164,7 +164,7 @@ const InstallForm = () => {
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal py-[7px] pl-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
 
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -178,7 +178,7 @@ const InstallForm = () => {
                   </div>
                 </div>
 
-                <div className={classNames('mt-1 text-xs text-text-tertiary', {
+                <div className={classNames('mt-1 text-xs text-text-secondary', {
                   'text-red-400 !text-sm': errors.password,
                 })}>{t('login.error.passwordInvalid')}</div>
               </div>
@@ -189,7 +189,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            <div className="mt-2 block w-full text-xs text-text-tertiary">
+            <div className="mt-2 block w-full text-xs text-text-secondary">
               {t('login.license.tip')}
               &nbsp;
               <Link

@@ -67,12 +67,22 @@ jobs:
         working-directory: ./web
         run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
 
+      - name: Generate i18n type definitions
+        if: env.FILES_CHANGED == 'true'
+        working-directory: ./web
+        run: pnpm run gen:i18n-types
+
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: Update i18n files based on en-US changes
-          title: 'chore: translate i18n files'
-          body: This PR was automatically created to update i18n files based on changes in en-US locale.
+          commit-message: Update i18n files and type definitions based on en-US changes
+          title: 'chore: translate i18n files and update type definitions'
+          body: |
+            This PR was automatically created to update i18n files and TypeScript type definitions based on changes in en-US locale.
+            
+            **Changes included:**
+            - Updated translation files for all locales
+            - Regenerated TypeScript type definitions for type safety
           branch: chore/automated-i18n-updates

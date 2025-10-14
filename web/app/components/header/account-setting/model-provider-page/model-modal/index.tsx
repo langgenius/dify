@@ -114,8 +114,8 @@ const ModelModal: FC<ModelModalProps> = ({
   const formRef1 = useRef<FormRefObject>(null)
   const [selectedCredential, setSelectedCredential] = useState<Credential & { addNewCredential?: boolean } | undefined>()
   const formRef2 = useRef<FormRefObject>(null)
-  const isEditMode = !!Object.keys(formValues).filter((key) => {
-    return key !== '__model_name' && key !== '__model_type'
+  const isEditMode = !!credential && !!Object.keys(formSchemasValue || {}).filter((key) => {
+    return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
   }).length && isCurrentWorkspaceManager
 
   const handleSave = useCallback(async () => {
@@ -167,7 +167,7 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type && __authorization_name__) {
+    if (__model_name && __model_type) {
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
@@ -376,16 +376,16 @@ const ModelModal: FC<ModelModalProps> = ({
                     <a
                       href={provider.help?.url[language] || provider.help?.url.en_US}
                       target='_blank' rel='noopener noreferrer'
-                      className='system-xs-regular mt-2 inline-flex items-center text-text-accent'
+                      className='system-xs-regular mt-2 inline-block  align-middle text-text-accent'
                       onClick={e => !provider.help.url && e.preventDefault()}
                     >
                       {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                      <LinkExternal02 className='ml-1 h-3 w-3' />
+                      <LinkExternal02 className='ml-1 mt-[-2px] inline-block h-3 w-3' />
                     </a>
                   )
                   : <div />
               }
-              <div className='flex items-center justify-end space-x-2'>
+              <div className='ml-2 flex items-center justify-end space-x-2'>
                 {
                   isEditMode && (
                     <Button

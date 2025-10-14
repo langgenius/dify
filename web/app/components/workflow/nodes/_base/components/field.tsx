@@ -38,7 +38,7 @@ const Field: FC<Props> = ({
     <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
         onClick={() => supportFold && toggleFold()}
-        className={cn('sticky top-0 flex items-center justify-between bg-components-panel-bg', supportFold && 'cursor-pointer')}>
+        className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}>
         <div className='flex h-6 items-center'>
           <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
             {title} {required && <span className='text-text-destructive'>*</span>}

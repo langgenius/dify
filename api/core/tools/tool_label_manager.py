@@ -87,9 +87,7 @@ class ToolLabelManager:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
             provider_ids.append(controller.provider_id)  # ty: ignore [unresolved-attribute]
 
-        labels: list[ToolLabelBinding] = (
-            db.session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids)).all()
-        )
+        labels = db.session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all()
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 

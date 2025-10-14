@@ -89,7 +89,7 @@ export default function CheckCode() {
 
     <form action="">
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>
@@ -97,7 +97,7 @@ export default function CheckCode() {
       <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
     </div>
     <div onClick={() => router.back()} className='flex h-9 cursor-pointer items-center justify-center text-text-tertiary'>
-      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
+      <div className='inline-block rounded-full bg-background-default-dimmed p-1'>
         <RiArrowLeftLine size={12} />
       </div>
       <span className='system-xs-regular ml-2'>{t('login.back')}</span>

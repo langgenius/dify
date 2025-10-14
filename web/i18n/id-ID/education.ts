@@ -60,7 +60,7 @@ const translation = {
     },
     dateFormat: 'MM / DD / YYYY',
   },
-  submit: 'Tunduk',
+  submit: 'Kirim',
   toVerified: 'Dapatkan Pendidikan Terverifikasi',
   currentSigned: 'SAAT INI MASUK SEBAGAI',
   successTitle: 'Anda telah mendapatkan Dify Education Verified',

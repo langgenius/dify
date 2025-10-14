@@ -35,7 +35,7 @@ class AgentChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-    ) -> None:
+    ):
         """
         Run assistant application
         :param application_generate_entity: application generate entity
@@ -198,9 +198,9 @@ class AgentChatAppRunner(AppRunner):
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             # check LLM mode
-            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
+            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
                 runner_cls = CotChatAgentRunner
-            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION.value:
+            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION:
                 runner_cls = CotCompletionAgentRunner
             else:
                 raise ValueError(f"Invalid LLM mode: {model_schema.model_properties.get(ModelPropertyKey.MODE)}")

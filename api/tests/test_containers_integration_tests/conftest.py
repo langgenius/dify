@@ -11,7 +11,6 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from flask import Flask
@@ -19,12 +18,13 @@ from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
 from app_factory import create_app
-from models import db
+from extensions.ext_database import db
 
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -42,14 +42,15 @@ class DifyTestContainers:
 
     def __init__(self):
         """Initialize container management with default configurations."""
-        self.postgres: Optional[PostgresContainer] = None
-        self.redis: Optional[RedisContainer] = None
-        self.dify_sandbox: Optional[DockerContainer] = None
-        self.dify_plugin_daemon: Optional[DockerContainer] = None
+        self.network: Network | None = None
+        self.postgres: PostgresContainer | None = None
+        self.redis: RedisContainer | None = None
+        self.dify_sandbox: DockerContainer | None = None
+        self.dify_plugin_daemon: DockerContainer | None = None
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 
-    def start_containers_with_env(self) -> None:
+    def start_containers_with_env(self):
         """
         Start all required containers for integration testing.
 
@@ -63,12 +64,18 @@ class DifyTestContainers:
 
         logger.info("Starting test containers for Dify integration tests...")
 
+        # Create Docker network for container communication
+        logger.info("Creating Docker network for container communication...")
+        self.network = Network()
+        self.network.create()
+        logger.info("Docker network created successfully with name: %s", self.network.name)
+
         # Start PostgreSQL container for main application database
         # PostgreSQL is used for storing user data, workflows, and application state
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
             image="postgres:14-alpine",
-        )
+        ).with_network(self.network)
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
         db_port = self.postgres.get_exposed_port(5432)
@@ -138,7 +145,7 @@ class DifyTestContainers:
         # Start Redis container for caching and session management
         # Redis is used for storing session data, cache entries, and temporary data
         logger.info("Initializing Redis container...")
-        self.redis = RedisContainer(image="redis:6-alpine", port=6379)
+        self.redis = RedisContainer(image="redis:6-alpine", port=6379).with_network(self.network)
         self.redis.start()
         redis_host = self.redis.get_container_host_ip()
         redis_port = self.redis.get_exposed_port(6379)
@@ -154,7 +161,7 @@ class DifyTestContainers:
         # Start Dify Sandbox container for code execution environment
         # Dify Sandbox provides a secure environment for executing user code
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest")
+        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest").with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
@@ -174,22 +181,28 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.2.0-local")
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(
+            self.network
+        )
         self.dify_plugin_daemon.with_exposed_ports(5002)
+        # Get container internal network addresses
+        postgres_container_name = self.postgres.get_wrapped_container().name
+        redis_container_name = self.redis.get_wrapped_container().name
+
         self.dify_plugin_daemon.env = {
-            "DB_HOST": db_host,
-            "DB_PORT": str(db_port),
+            "DB_HOST": postgres_container_name,  # Use container name for internal network communication
+            "DB_PORT": "5432",  # Use internal port
             "DB_USERNAME": self.postgres.username,
             "DB_PASSWORD": self.postgres.password,
             "DB_DATABASE": "dify_plugin",
-            "REDIS_HOST": redis_host,
-            "REDIS_PORT": str(redis_port),
+            "REDIS_HOST": redis_container_name,  # Use container name for internal network communication
+            "REDIS_PORT": "6379",  # Use internal port
             "REDIS_PASSWORD": "",
             "SERVER_PORT": "5002",
             "SERVER_KEY": "test_plugin_daemon_key",
             "MAX_PLUGIN_PACKAGE_SIZE": "52428800",
             "PPROF_ENABLED": "false",
-            "DIFY_INNER_API_URL": f"http://{db_host}:5001",
+            "DIFY_INNER_API_URL": f"http://{postgres_container_name}:5001",
             "DIFY_INNER_API_KEY": "test_inner_api_key",
             "PLUGIN_REMOTE_INSTALLING_HOST": "0.0.0.0",
             "PLUGIN_REMOTE_INSTALLING_PORT": "5003",
@@ -230,7 +243,7 @@ class DifyTestContainers:
         self._containers_started = True
         logger.info("All test containers started successfully")
 
-    def stop_containers(self) -> None:
+    def stop_containers(self):
         """
         Stop and clean up all test containers.
 
@@ -253,6 +266,15 @@ class DifyTestContainers:
                 except Exception as e:
                     # Log error but don't fail the test cleanup
                     logger.warning("Failed to stop container %s: %s", container, e)
+
+        # Stop and remove the network
+        if self.network:
+            try:
+                logger.info("Removing Docker network...")
+                self.network.remove()
+                logger.info("Successfully removed Docker network")
+            except Exception as e:
+                logger.warning("Failed to remove Docker network: %s", e)
 
         self._containers_started = False
         logger.info("All test containers stopped and cleaned up successfully")
@@ -345,6 +367,12 @@ def _create_app_with_containers() -> Flask:
         with db.engine.connect() as conn, conn.begin():
             conn.execute(text(_UUIDv7SQL))
         db.create_all()
+        # migration_dir = _get_migration_dir()
+        # alembic_config = Config()
+        # alembic_config.config_file_name = str(migration_dir / "alembic.ini")
+        # alembic_config.set_main_option("sqlalchemy.url", _get_engine_url(db.engine))
+        # alembic_config.set_main_option("script_location", str(migration_dir))
+        # alembic_command.upgrade(revision="head", config=alembic_config)
     logger.info("Database schema created successfully")
 
     logger.info("Flask application configured and ready for testing")

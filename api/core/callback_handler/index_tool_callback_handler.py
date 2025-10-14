@@ -21,14 +21,14 @@ class DatasetIndexToolCallbackHandler:
 
     def __init__(
         self, queue_manager: AppQueueManager, app_id: str, message_id: str, user_id: str, invoke_from: InvokeFrom
-    ) -> None:
+    ):
         self._queue_manager = queue_manager
         self._app_id = app_id
         self._message_id = message_id
         self._user_id = user_id
         self._invoke_from = invoke_from
 
-    def on_query(self, query: str, dataset_id: str) -> None:
+    def on_query(self, query: str, dataset_id: str):
         """
         Handle query.
         """
@@ -46,7 +46,7 @@ class DatasetIndexToolCallbackHandler:
         db.session.add(dataset_query)
         db.session.commit()
 
-    def on_tool_end(self, documents: list[Document]) -> None:
+    def on_tool_end(self, documents: list[Document]):
         """Handle tool end."""
         for document in documents:
             if document.metadata is not None:

@@ -4,10 +4,13 @@ WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
 VERSION=latest
 
+# Default target - show help
+.DEFAULT_GOAL := help
+
 # Backend Development Environment Setup
 .PHONY: dev-setup prepare-docker prepare-web prepare-api
 
-# Default dev setup target
+# Dev setup target
 dev-setup: prepare-docker prepare-web prepare-api
 	@echo "✅ Backend development environment setup complete!"
 
@@ -23,14 +26,13 @@ prepare-web:
 	@echo "🌐 Setting up web environment..."
 	@cp -n web/.env.example web/.env 2>/dev/null || echo "Web .env already exists"
 	@cd web && pnpm install
-	@cd web && pnpm build
 	@echo "✅ Web environment prepared (not started)"
 
 # Step 3: Prepare API environment
 prepare-api:
 	@echo "🔧 Setting up API environment..."
 	@cp -n api/.env.example api/.env 2>/dev/null || echo "API .env already exists"
-	@cd api && uv sync --dev --extra all
+	@cd api && uv sync --dev
 	@cd api && uv run flask db upgrade
 	@echo "✅ API environment prepared (not started)"
 
@@ -45,6 +47,28 @@ dev-clean:
 	@rm -rf docker/volumes/weaviate
 	@rm -rf api/storage
 	@echo "✅ Cleanup complete"
+
+# Backend Code Quality Commands
+format:
+	@echo "🎨 Running ruff format..."
+	@uv run --project api --dev ruff format ./api
+	@echo "✅ Code formatting complete"
+
+check:
+	@echo "🔍 Running ruff check..."
+	@uv run --project api --dev ruff check ./api
+	@echo "✅ Code check complete"
+
+lint:
+	@echo "🔧 Running ruff format, check with fixes, and import linter..."
+	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@uv run --directory api --dev lint-imports
+	@echo "✅ Linting complete"
+
+type-check:
+	@echo "📝 Running type check with basedpyright..."
+	@uv run --directory api --dev basedpyright
+	@echo "✅ Type check complete"
 
 # Build Docker images
 build-web:
@@ -90,6 +114,12 @@ help:
 	@echo "  make prepare-api    - Set up API environment"
 	@echo "  make dev-clean      - Stop Docker middleware containers"
 	@echo ""
+	@echo "Backend Code Quality:"
+	@echo "  make format         - Format code with ruff"
+	@echo "  make check          - Check code with ruff"
+	@echo "  make lint           - Format and fix code with ruff"
+	@echo "  make type-check     - Run type checking with basedpyright"
+	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
 	@echo "  make build-api      - Build API Docker image"
@@ -98,4 +128,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help
+.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check

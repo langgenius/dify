@@ -66,7 +66,7 @@ const ChunkDetailModal: FC<Props> = ({
             />
           )}
           {answer && (
-            <div>
+            <div className='break-all'>
               <div className='flex gap-x-1'>
                 <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
                 <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>

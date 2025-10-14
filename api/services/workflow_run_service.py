@@ -1,6 +1,5 @@
 import threading
 from collections.abc import Sequence
-from typing import Optional
 
 from sqlalchemy.orm import sessionmaker
 
@@ -75,12 +74,12 @@ class WorkflowRunService:
         return self._workflow_run_repo.get_paginated_workflow_runs(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING.value,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             limit=limit,
             last_id=last_id,
         )
 
-    def get_workflow_run(self, app_model: App, run_id: str) -> Optional[WorkflowRun]:
+    def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun | None:
         """
         Get workflow run detail
 

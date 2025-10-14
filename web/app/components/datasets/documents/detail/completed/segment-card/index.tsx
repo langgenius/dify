@@ -1,14 +1,14 @@
 import React, { type FC, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { StatusItem } from '../../../list'
-import { useDocumentContext } from '../../index'
+import StatusItem from '../../../status-item'
+import { useDocumentContext } from '../../context'
 import ChildSegmentList from '../child-segment-list'
 import Tag from '../common/tag'
 import Dot from '../common/dot'
 import { SegmentIndexTag } from '../common/segment-index-tag'
 import ParentChunkCardSkeleton from '../skeleton/parent-chunk-card-skeleton'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import { formatNumber } from '@/utils/format'
@@ -69,39 +69,39 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     updated_at,
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
-  const mode = useDocumentContext(s => s.mode)
+  const docForm = useDocumentContext(s => s.docForm)
   const parentMode = useDocumentContext(s => s.parentMode)
 
   const isGeneralMode = useMemo(() => {
-    return mode === 'custom'
-  }, [mode])
+    return docForm === ChunkingMode.text
+  }, [docForm])
 
   const isParentChildMode = useMemo(() => {
-    return mode === 'hierarchical'
-  }, [mode])
+    return docForm === ChunkingMode.parentChild
+  }, [docForm])
 
   const isParagraphMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'paragraph'
-  }, [mode, parentMode])
+    return docForm === ChunkingMode.parentChild && parentMode === 'paragraph'
+  }, [docForm, parentMode])
 
   const isFullDocMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'full-doc'
-  }, [mode, parentMode])
+    return docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
+  }, [docForm, parentMode])
 
   const chunkEdited = useMemo(() => {
-    if (mode === 'hierarchical' && parentMode === 'full-doc')
+    if (docForm === ChunkingMode.parentChild && parentMode === 'full-doc')
       return false
     return isAfter(updated_at * 1000, created_at * 1000)
-  }, [mode, parentMode, updated_at, created_at])
+  }, [docForm, parentMode, updated_at, created_at])
 
   const contentOpacity = useMemo(() => {
     return (enabled || focused.segmentContent) ? '' : 'opacity-50 group-hover/card:opacity-100'
   }, [enabled, focused.segmentContent])
 
   const handleClickCard = useCallback(() => {
-    if (mode !== 'hierarchical' || parentMode !== 'full-doc')
+    if (docForm !== ChunkingMode.parentChild || parentMode !== 'full-doc')
       onClick?.()
-  }, [mode, parentMode, onClick])
+  }, [docForm, parentMode, onClick])
 
   const wordCountText = useMemo(() => {
     const total = formatNumber(word_count)
@@ -118,7 +118,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   return (
     <div
       className={cn(
-        'group/card w-full rounded-xl px-3',
+        'chunk-card group/card w-full rounded-xl px-3',
         isFullDocMode ? '' : 'pb-2 pt-2.5 hover:bg-dataset-chunk-detail-card-hover-bg',
         focused.segmentContent ? 'bg-dataset-chunk-detail-card-hover-bg' : '',
         className,
@@ -228,15 +228,15 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       }
       {
         isParagraphMode && child_chunks.length > 0
-          && <ChildSegmentList
-            parentChunkId={id}
-            childChunks={child_chunks}
-            enabled={enabled}
-            onDelete={onDeleteChildChunk!}
-            handleAddNewChildChunk={handleAddNewChildChunk}
-            onClickSlice={onClickSlice}
-            focused={focused.segmentContent}
-          />
+        && <ChildSegmentList
+          parentChunkId={id}
+          childChunks={child_chunks}
+          enabled={enabled}
+          onDelete={onDeleteChildChunk!}
+          handleAddNewChildChunk={handleAddNewChildChunk}
+          onClickSlice={onClickSlice}
+          focused={focused.segmentContent}
+        />
       }
       {showModal
         && <Confirm

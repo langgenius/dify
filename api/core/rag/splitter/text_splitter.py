@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from typing import (
     Any,
     Literal,
-    Optional,
     TypeVar,
     Union,
 )
@@ -47,7 +46,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         length_function: Callable[[list[str]], list[int]] = lambda x: [len(x) for x in x],
         keep_separator: bool = False,
         add_start_index: bool = False,
-    ) -> None:
+    ):
         """Create a new TextSplitter.
 
         Args:
@@ -71,7 +70,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
-    def create_documents(self, texts: list[str], metadatas: Optional[list[dict]] = None) -> list[Document]:
+    def create_documents(self, texts: list[str], metadatas: list[dict] | None = None) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []
@@ -94,7 +93,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             metadatas.append(doc.metadata or {})
         return self.create_documents(texts, metadatas=metadatas)
 
-    def _join_docs(self, docs: list[str], separator: str) -> Optional[str]:
+    def _join_docs(self, docs: list[str], separator: str) -> str | None:
         text = separator.join(docs)
         text = text.strip()
         if text == "":
@@ -110,9 +109,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         docs = []
         current_doc: list[str] = []
         total = 0
-        index = 0
-        for d in splits:
-            _len = lengths[index]
+        for d, _len in zip(splits, lengths):
             if total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size:
                 if total > self._chunk_size:
                     logger.warning(
@@ -134,7 +131,6 @@ class TextSplitter(BaseDocumentTransformer, ABC):
                         current_doc = current_doc[1:]
             current_doc.append(d)
             total += _len + (separator_len if len(current_doc) > 1 else 0)
-            index += 1
         doc = self._join_docs(current_doc, separator)
         if doc is not None:
             docs.append(doc)
@@ -197,11 +193,11 @@ class TokenTextSplitter(TextSplitter):
     def __init__(
         self,
         encoding_name: str = "gpt2",
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         allowed_special: Union[Literal["all"], Set[str]] = set(),
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",
         **kwargs: Any,
-    ) -> None:
+    ):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         try:
@@ -248,10 +244,10 @@ class RecursiveCharacterTextSplitter(TextSplitter):
 
     def __init__(
         self,
-        separators: Optional[list[str]] = None,
+        separators: list[str] | None = None,
         keep_separator: bool = True,
         **kwargs: Any,
-    ) -> None:
+    ):
         """Create a new TextSplitter."""
         super().__init__(keep_separator=keep_separator, **kwargs)
         self._separators = separators or ["\n\n", "\n", " ", ""]

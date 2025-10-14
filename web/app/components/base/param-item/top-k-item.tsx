@@ -24,7 +24,6 @@ const VALUE_LIMIT = {
   max: maxTopK,
 }
 
-const key = 'top_k'
 const TopKItem: FC<Props> = ({
   className,
   value,
@@ -41,9 +40,9 @@ const TopKItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id={key}
-      name={t(`appDebug.datasetConfig.${key}`)}
-      tip={t(`appDebug.datasetConfig.${key}Tip`) as string}
+      id='top_k'
+      name={t('appDebug.datasetConfig.top_k')}
+      tip={t('appDebug.datasetConfig.top_kTip') as string}
       {...VALUE_LIMIT}
       value={value}
       enable={enable}

@@ -1,10 +1,10 @@
 const translation = {
   sidebar: {
     action: {
-      unpin: 'Lepaskan pin',
-      pin: 'Pin',
-      delete: 'Menghapus',
-      rename: 'Ubah nama',
+      unpin: 'Lepaskan sematan',
+      pin: 'Sematkan',
+      delete: 'Hapus',
+      rename: 'Ganti nama',
     },
     delete: {
       content: 'Apakah Anda yakin ingin menghapus aplikasi ini?',

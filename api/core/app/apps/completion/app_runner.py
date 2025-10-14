@@ -27,7 +27,7 @@ class CompletionAppRunner(AppRunner):
 
     def run(
         self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity
@@ -124,7 +124,9 @@ class CompletionAppRunner(AppRunner):
                 config=dataset_config,
                 query=query or "",
                 invoke_from=application_generate_entity.invoke_from,
-                show_retrieve_source=app_config.additional_features.show_retrieve_source,
+                show_retrieve_source=app_config.additional_features.show_retrieve_source
+                if app_config.additional_features
+                else False,
                 hit_callback=hit_callback,
                 message_id=message.id,
                 inputs=inputs,

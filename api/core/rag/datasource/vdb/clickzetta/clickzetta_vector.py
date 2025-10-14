@@ -49,7 +49,7 @@ class ClickzettaConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         """
@@ -84,7 +84,7 @@ class ClickzettaConnectionPool:
         self._pool_locks: dict[str, threading.Lock] = {}
         self._max_pool_size = 5  # Maximum connections per configuration
         self._connection_timeout = 300  # 5 minutes timeout
-        self._cleanup_thread: Optional[threading.Thread] = None
+        self._cleanup_thread: threading.Thread | None = None
         self._shutdown = False
         self._start_cleanup_thread()
 
@@ -134,7 +134,7 @@ class ClickzettaConnectionPool:
 
         raise RuntimeError(f"Failed to create ClickZetta connection after {max_retries} attempts")
 
-    def _configure_connection(self, connection: "Connection") -> None:
+    def _configure_connection(self, connection: "Connection"):
         """Configure connection session settings."""
         try:
             with connection.cursor() as cursor:
@@ -221,7 +221,7 @@ class ClickzettaConnectionPool:
             # No valid connection found, create new one
             return self._create_connection(config)
 
-    def return_connection(self, config: ClickzettaConfig, connection: "Connection") -> None:
+    def return_connection(self, config: ClickzettaConfig, connection: "Connection"):
         """Return a connection to the pool."""
         config_key = self._get_config_key(config)
 
@@ -243,7 +243,7 @@ class ClickzettaConnectionPool:
                 with contextlib.suppress(Exception):
                     connection.close()
 
-    def _cleanup_expired_connections(self) -> None:
+    def _cleanup_expired_connections(self):
         """Clean up expired connections from all pools."""
         current_time = time.time()
 
@@ -265,7 +265,7 @@ class ClickzettaConnectionPool:
 
                     self._pools[config_key] = valid_connections
 
-    def _start_cleanup_thread(self) -> None:
+    def _start_cleanup_thread(self):
         """Start background thread for connection cleanup."""
 
         def cleanup_worker():
@@ -280,7 +280,7 @@ class ClickzettaConnectionPool:
         self._cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
         self._cleanup_thread.start()
 
-    def shutdown(self) -> None:
+    def shutdown(self):
         """Shutdown connection pool and close all connections."""
         self._shutdown = True
 
@@ -303,8 +303,8 @@ class ClickzettaVector(BaseVector):
     """
 
     # Class-level write queue and lock for serializing writes
-    _write_queue: Optional[queue.Queue] = None
-    _write_thread: Optional[threading.Thread] = None
+    _write_queue: queue.Queue | None = None
+    _write_thread: threading.Thread | None = None
     _write_lock = threading.Lock()
     _shutdown = False
 
@@ -319,7 +319,7 @@ class ClickzettaVector(BaseVector):
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
 
-    def _return_connection(self, connection: "Connection") -> None:
+    def _return_connection(self, connection: "Connection"):
         """Return a connection to the pool."""
         self._connection_pool.return_connection(self._config, connection)
 
@@ -328,7 +328,7 @@ class ClickzettaVector(BaseVector):
 
         def __init__(self, vector_instance: "ClickzettaVector"):
             self.vector = vector_instance
-            self.connection: Optional[Connection] = None
+            self.connection: Connection | None = None
 
         def __enter__(self) -> "Connection":
             self.connection = self.vector._get_connection()
@@ -342,7 +342,7 @@ class ClickzettaVector(BaseVector):
         """Get a connection context manager."""
         return self.ConnectionContext(self)
 
-    def _parse_metadata(self, raw_metadata: str, row_id: str) -> dict:
+    def _parse_metadata(self, raw_metadata: str, row_id: str):
         """
         Parse metadata from JSON string with proper error handling and fallback.
 
@@ -488,9 +488,9 @@ class ClickzettaVector(BaseVector):
         create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self._config.schema_name}.{self._table_name} (
             id STRING NOT NULL COMMENT 'Unique document identifier',
-            {Field.CONTENT_KEY.value} STRING NOT NULL COMMENT 'Document text content for search and retrieval',
-            {Field.METADATA_KEY.value} JSON COMMENT 'Document metadata including source, type, and other attributes',
-            {Field.VECTOR.value} VECTOR(FLOAT, {dimension}) NOT NULL COMMENT
+            {Field.CONTENT_KEY} STRING NOT NULL COMMENT 'Document text content for search and retrieval',
+            {Field.METADATA_KEY} JSON COMMENT 'Document metadata including source, type, and other attributes',
+            {Field.VECTOR} VECTOR(FLOAT, {dimension}) NOT NULL COMMENT
                 'High-dimensional embedding vector for semantic similarity search',
             PRIMARY KEY (id)
         ) COMMENT 'Dify RAG knowledge base vector storage table for document embeddings and content'
@@ -519,15 +519,15 @@ class ClickzettaVector(BaseVector):
             existing_indexes = cursor.fetchall()
             for idx in existing_indexes:
                 # Check if vector index already exists on the embedding column
-                if Field.VECTOR.value in str(idx).lower():
-                    logger.info("Vector index already exists on column %s", Field.VECTOR.value)
+                if Field.VECTOR in str(idx).lower():
+                    logger.info("Vector index already exists on column %s", Field.VECTOR)
                     return
         except (RuntimeError, ValueError) as e:
             logger.warning("Failed to check existing indexes: %s", e)
 
         index_sql = f"""
         CREATE VECTOR INDEX IF NOT EXISTS {index_name}
-        ON TABLE {self._config.schema_name}.{self._table_name}({Field.VECTOR.value})
+        ON TABLE {self._config.schema_name}.{self._table_name}({Field.VECTOR})
         PROPERTIES (
             "distance.function" = "{self._config.vector_distance_function}",
             "scalar.type" = "f32",
@@ -560,17 +560,17 @@ class ClickzettaVector(BaseVector):
                 # More precise check: look for inverted index specifically on the content column
                 if (
                     "inverted" in idx_str
-                    and Field.CONTENT_KEY.value.lower() in idx_str
+                    and Field.CONTENT_KEY.lower() in idx_str
                     and (index_name.lower() in idx_str or f"idx_{self._table_name}_text" in idx_str)
                 ):
-                    logger.info("Inverted index already exists on column %s: %s", Field.CONTENT_KEY.value, idx)
+                    logger.info("Inverted index already exists on column %s: %s", Field.CONTENT_KEY, idx)
                     return
         except (RuntimeError, ValueError) as e:
             logger.warning("Failed to check existing indexes: %s", e)
 
         index_sql = f"""
         CREATE INVERTED INDEX IF NOT EXISTS {index_name}
-        ON TABLE {self._config.schema_name}.{self._table_name} ({Field.CONTENT_KEY.value})
+        ON TABLE {self._config.schema_name}.{self._table_name} ({Field.CONTENT_KEY})
         PROPERTIES (
             "analyzer" = "{self._config.analyzer_type}",
             "mode" = "{self._config.analyzer_mode}"
@@ -588,13 +588,13 @@ class ClickzettaVector(BaseVector):
                 or "with the same type" in error_msg
                 or "cannot create inverted index" in error_msg
             ) and "already has index" in error_msg:
-                logger.info("Inverted index already exists on column %s", Field.CONTENT_KEY.value)
+                logger.info("Inverted index already exists on column %s", Field.CONTENT_KEY)
                 # Try to get the existing index name for logging
                 try:
                     cursor.execute(f"SHOW INDEX FROM {self._config.schema_name}.{self._table_name}")
                     existing_indexes = cursor.fetchall()
                     for idx in existing_indexes:
-                        if "inverted" in str(idx).lower() and Field.CONTENT_KEY.value.lower() in str(idx).lower():
+                        if "inverted" in str(idx).lower() and Field.CONTENT_KEY.lower() in str(idx).lower():
                             logger.info("Found existing inverted index: %s", idx)
                             break
                 except (RuntimeError, ValueError):
@@ -641,7 +641,7 @@ class ClickzettaVector(BaseVector):
 
         for doc, embedding in zip(batch_docs, batch_embeddings):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata if doc.metadata else {}
+            metadata = doc.metadata or {}
 
             if not isinstance(metadata, dict):
                 metadata = {}
@@ -669,7 +669,7 @@ class ClickzettaVector(BaseVector):
 
         # Use parameterized INSERT with executemany for better performance and security
         # Cast JSON and VECTOR in SQL, pass raw data as parameters
-        columns = f"id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}, {Field.VECTOR.value}"
+        columns = f"id, {Field.CONTENT_KEY}, {Field.METADATA_KEY}, {Field.VECTOR}"
         insert_sql = (
             f"INSERT INTO {self._config.schema_name}.{self._table_name} ({columns}) "
             f"VALUES (?, ?, CAST(? AS JSON), CAST(? AS VECTOR({vector_dimension})))"
@@ -723,7 +723,7 @@ class ClickzettaVector(BaseVector):
                 result = cursor.fetchone()
                 return result[0] > 0 if result else False
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """Delete documents by IDs."""
         if not ids:
             return
@@ -736,7 +736,7 @@ class ClickzettaVector(BaseVector):
         # Execute delete through write queue
         self._execute_write(self._delete_by_ids_impl, ids)
 
-    def _delete_by_ids_impl(self, ids: list[str]) -> None:
+    def _delete_by_ids_impl(self, ids: list[str]):
         """Implementation of delete by IDs (executed in write worker thread)."""
         safe_ids = [self._safe_doc_id(id) for id in ids]
 
@@ -748,7 +748,7 @@ class ClickzettaVector(BaseVector):
             with connection.cursor() as cursor:
                 cursor.execute(sql, binding_params=safe_ids)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         """Delete documents by metadata field."""
         # Check if table exists before attempting delete
         if not self._table_exists():
@@ -758,7 +758,7 @@ class ClickzettaVector(BaseVector):
         # Execute delete through write queue
         self._execute_write(self._delete_by_metadata_field_impl, key, value)
 
-    def _delete_by_metadata_field_impl(self, key: str, value: str) -> None:
+    def _delete_by_metadata_field_impl(self, key: str, value: str):
         """Implementation of delete by metadata field (executed in write worker thread)."""
         with self.get_connection_context() as connection:
             with connection.cursor() as cursor:
@@ -767,7 +767,7 @@ class ClickzettaVector(BaseVector):
                 # Use json_extract_string function for ClickZetta compatibility
                 sql = (
                     f"DELETE FROM {self._config.schema_name}.{self._table_name} "
-                    f"WHERE json_extract_string({Field.METADATA_KEY.value}, '$.{key}') = ?"
+                    f"WHERE json_extract_string({Field.METADATA_KEY}, '$.{key}') = ?"
                 )
                 cursor.execute(sql, binding_params=[value])
 
@@ -795,9 +795,7 @@ class ClickzettaVector(BaseVector):
             safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
             # Use json_extract_string function for ClickZetta compatibility
-            filter_clauses.append(
-                f"json_extract_string({Field.METADATA_KEY.value}, '$.document_id') IN ({doc_ids_str})"
-            )
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})")
 
         # No need for dataset_id filter since each dataset has its own table
 
@@ -808,23 +806,21 @@ class ClickzettaVector(BaseVector):
             distance_func = "COSINE_DISTANCE"
             if score_threshold > 0:
                 query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
-                filter_clauses.append(
-                    f"{distance_func}({Field.VECTOR.value}, {query_vector_str}) < {2 - score_threshold}"
-                )
+                filter_clauses.append(f"{distance_func}({Field.VECTOR}, {query_vector_str}) < {2 - score_threshold}")
         else:
             # For L2 distance, smaller is better
             distance_func = "L2_DISTANCE"
             if score_threshold > 0:
                 query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
-                filter_clauses.append(f"{distance_func}({Field.VECTOR.value}, {query_vector_str}) < {score_threshold}")
+                filter_clauses.append(f"{distance_func}({Field.VECTOR}, {query_vector_str}) < {score_threshold}")
 
         where_clause = " AND ".join(filter_clauses) if filter_clauses else "1=1"
 
         # Execute vector search query
         query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
         search_sql = f"""
-        SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value},
-               {distance_func}({Field.VECTOR.value}, {query_vector_str}) AS distance
+        SELECT id, {Field.CONTENT_KEY}, {Field.METADATA_KEY},
+               {distance_func}({Field.VECTOR}, {query_vector_str}) AS distance
         FROM {self._config.schema_name}.{self._table_name}
         WHERE {where_clause}
         ORDER BY distance
@@ -887,9 +883,7 @@ class ClickzettaVector(BaseVector):
             safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
             # Use json_extract_string function for ClickZetta compatibility
-            filter_clauses.append(
-                f"json_extract_string({Field.METADATA_KEY.value}, '$.document_id') IN ({doc_ids_str})"
-            )
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})")
 
         # No need for dataset_id filter since each dataset has its own table
 
@@ -897,13 +891,13 @@ class ClickzettaVector(BaseVector):
         # match_all requires all terms to be present
         # Use simple quote escaping for MATCH_ALL since it needs to be in the WHERE clause
         escaped_query = query.replace("'", "''")
-        filter_clauses.append(f"MATCH_ALL({Field.CONTENT_KEY.value}, '{escaped_query}')")
+        filter_clauses.append(f"MATCH_ALL({Field.CONTENT_KEY}, '{escaped_query}')")
 
         where_clause = " AND ".join(filter_clauses)
 
         # Execute full-text search query
         search_sql = f"""
-        SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}
+        SELECT id, {Field.CONTENT_KEY}, {Field.METADATA_KEY}
         FROM {self._config.schema_name}.{self._table_name}
         WHERE {where_clause}
         LIMIT {top_k}
@@ -986,19 +980,17 @@ class ClickzettaVector(BaseVector):
             safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
             # Use json_extract_string function for ClickZetta compatibility
-            filter_clauses.append(
-                f"json_extract_string({Field.METADATA_KEY.value}, '$.document_id') IN ({doc_ids_str})"
-            )
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY}, '$.document_id') IN ({doc_ids_str})")
 
         # No need for dataset_id filter since each dataset has its own table
 
         # Use simple quote escaping for LIKE clause
         escaped_query = query.replace("'", "''")
-        filter_clauses.append(f"{Field.CONTENT_KEY.value} LIKE '%{escaped_query}%'")
+        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%'")
         where_clause = " AND ".join(filter_clauses)
 
         search_sql = f"""
-        SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}
+        SELECT id, {Field.CONTENT_KEY}, {Field.METADATA_KEY}
         FROM {self._config.schema_name}.{self._table_name}
         WHERE {where_clause}
         LIMIT {top_k}
@@ -1027,7 +1019,7 @@ class ClickzettaVector(BaseVector):
 
         return documents
 
-    def delete(self) -> None:
+    def delete(self):
         """Delete the entire collection."""
         with self.get_connection_context() as connection:
             with connection.cursor() as cursor:

@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 
@@ -39,14 +39,12 @@ class WorkflowTool(Tool):
         entity: ToolEntity,
         runtime: ToolRuntime,
         label: str = "Workflow",
-        thread_pool_id: Optional[str] = None,
     ):
         self.workflow_app_id = workflow_app_id
         self.workflow_as_tool_id = workflow_as_tool_id
         self.version = version
         self.workflow_entities = workflow_entities
         self.workflow_call_depth = workflow_call_depth
-        self.thread_pool_id = thread_pool_id
         self.label = label
 
         super().__init__(entity=entity, runtime=runtime)
@@ -63,9 +61,9 @@ class WorkflowTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke the tool
@@ -90,7 +88,6 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
-            workflow_thread_pool_id=self.thread_pool_id,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
@@ -223,7 +220,7 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict) -> dict:
+    def _update_file_mapping(self, file_dict: dict):
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
         if transfer_method == FileTransferMethod.TOOL_FILE:
             file_dict["tool_file_id"] = file_dict.get("related_id")

@@ -7,7 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -44,8 +44,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
     _session_factory: sessionmaker
     _tenant_id: str
-    _app_id: Optional[str]
-    _triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom]
+    _app_id: str | None
+    _triggered_from: WorkflowNodeExecutionTriggeredFrom | None
     _creator_user_id: str
     _creator_user_role: CreatorUserRole
     _execution_cache: dict[str, WorkflowNodeExecution]
@@ -55,8 +55,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
         """
         Initialize the repository with Celery task configuration and context information.
@@ -94,10 +94,10 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # In-memory cache for workflow node executions
-        self._execution_cache: dict[str, WorkflowNodeExecution] = {}
+        self._execution_cache = {}
 
         # Cache for mapping workflow_execution_ids to execution IDs for efficient retrieval
-        self._workflow_execution_mapping: dict[str, list[str]] = {}
+        self._workflow_execution_mapping = {}
 
         logger.info(
             "Initialized CeleryWorkflowNodeExecutionRepository for tenant %s, app %s, triggered_from %s",
@@ -106,7 +106,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._triggered_from,
         )
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
 
@@ -151,7 +151,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all WorkflowNodeExecution instances for a specific workflow run from cache.

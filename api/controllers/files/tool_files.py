@@ -8,7 +8,7 @@ from controllers.common.errors import UnsupportedFileTypeError
 from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from models import db as global_db
+from extensions.ext_database import db as global_db
 
 
 @files_ns.route("/tools/<uuid:file_id>.<string:extension>")

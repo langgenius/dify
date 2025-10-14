@@ -46,9 +46,9 @@ def enterprise_inner_api_only(view: Callable[P, R]):
     return decorated
 
 
-def enterprise_inner_api_user_auth(view):
+def enterprise_inner_api_user_auth(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.INNER_API:
             return view(*args, **kwargs)
 

@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from core.rag.extractor.watercrawl.client import WaterCrawlAPIClient
 
@@ -9,7 +9,7 @@ class WaterCrawlProvider:
     def __init__(self, api_key, base_url: str | None = None):
         self.client = WaterCrawlAPIClient(api_key, base_url)
 
-    def crawl_url(self, url, options: Optional[dict | Any] = None) -> dict:
+    def crawl_url(self, url, options: dict | Any | None = None):
         options = options or {}
         spider_options = {
             "max_depth": 1,
@@ -41,7 +41,7 @@ class WaterCrawlProvider:
 
         return {"status": "active", "job_id": result.get("uuid")}
 
-    def get_crawl_status(self, crawl_request_id) -> dict:
+    def get_crawl_status(self, crawl_request_id):
         response = self.client.get_crawl_request(crawl_request_id)
         data = []
         if response["status"] in ["new", "running"]:
@@ -82,11 +82,11 @@ class WaterCrawlProvider:
 
         return None
 
-    def scrape_url(self, url: str) -> dict:
+    def scrape_url(self, url: str):
         response = self.client.scrape_url(url=url, sync=True, prefetched=True)
         return self._structure_data(response)
 
-    def _structure_data(self, result_object: dict) -> dict:
+    def _structure_data(self, result_object: dict):
         if isinstance(result_object.get("result", {}), str):
             raise ValueError("Invalid result object. Expected a dictionary.")
 

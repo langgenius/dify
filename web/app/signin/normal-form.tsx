@@ -15,6 +15,7 @@ import Toast from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
+import Split from './split'
 
 const NormalForm = () => {
   const { t } = useTranslation()
@@ -166,8 +167,19 @@ const NormalForm = () => {
                   <span className='system-xs-medium text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
                 </div>}
               </>}
+              <Split className='mb-5 mt-4' />
             </>
           }
+
+          {systemFeatures.is_allow_register && authType === 'password' && (
+            <div className='mb-3 text-[13px] font-medium leading-4 text-text-secondary'>
+              <span>{t('login.signup.noAccount')}</span>
+              <Link
+                className='text-text-accent'
+                href='/signup'
+              >{t('login.signup.signUp')}</Link>
+            </div>
+          )}
           {allMethodsAreDisabled && <>
             <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
               <div className='shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow'>
@@ -207,7 +219,6 @@ const NormalForm = () => {
               >{t('login.setAdminAccount')}</Link>
             </div>}
           </>}
-
         </div>
       </div>
     </>

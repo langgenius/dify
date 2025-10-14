@@ -3,7 +3,7 @@ const translation = {
     retrievalSetting: {
       title: 'Pengaturan Pengambilan',
       description: 'tentang metode pengambilan.',
-      longDescription: 'tentang metode pengambilan, Anda dapat mengudagnya kapan saja di pengaturan Pengetahuan.',
+      longDescription: 'tentang metode pengambilan, Anda dapat mengunduhnya kapan saja di pengaturan Pengetahuan.',
       method: 'Metode Pengambilan',
       learnMore: 'Pelajari lebih lanjut',
     },
@@ -35,6 +35,14 @@ const translation = {
     indexMethodHighQualityTip: 'Memanggil model penyematan untuk memproses dokumen untuk pengambilan yang lebih tepat membantu LLM menghasilkan jawaban berkualitas tinggi.',
     permissionsOnlyMe: 'Hanya saya',
     indexMethodEconomyTip: 'Menggunakan 10 kata kunci per potongan untuk pengambilan, tidak ada token yang dikonsumsi dengan mengorbankan penurunan akurasi pengambilan.',
+    chunkStructure: {
+      learnMore: 'Pelajari lebih lanjut',
+      description: 'tentang Struktur Potongan.',
+      title: 'Struktur Potongan',
+    },
+    nameAndIcon: 'Nama & Ikon',
+    onSearchResults: 'Tidak ada anggota yang cocok dengan kueri penelusuran Anda.\nCoba cari lagi.',
+    numberOfKeywords: 'Jumlah Kata Kunci',
   },
   desc: 'Di sini Anda dapat memodifikasi properti dan pengaturan pengambilan Pengetahuan ini.',
   title: 'Setelan pengetahuan',

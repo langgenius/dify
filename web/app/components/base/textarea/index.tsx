@@ -24,13 +24,18 @@ export type TextareaProps = {
   disabled?: boolean
   destructive?: boolean
   styleCss?: CSSProperties
+  ref?: React.Ref<HTMLTextAreaElement>
+  onFocus?: () => void
+  onBlur?: () => void
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement> & VariantProps<typeof textareaVariants>
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, value, onChange, disabled, size, destructive, styleCss, ...props }, ref) => {
+  ({ className, value, onChange, disabled, size, destructive, styleCss, onFocus, onBlur, ...props }, ref) => {
     return (
       <textarea
         ref={ref}
+        onFocus={onFocus}
+        onBlur={onBlur}
         style={styleCss}
         className={cn(
           'min-h-20 w-full appearance-none border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',

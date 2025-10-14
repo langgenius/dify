@@ -1,7 +1,8 @@
 import json
 import logging
 import math
-from typing import Any, Optional
+from collections.abc import Iterable
+from typing import Any
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -21,15 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 class TableStoreConfig(BaseModel):
-    access_key_id: Optional[str] = None
-    access_key_secret: Optional[str] = None
-    instance_name: Optional[str] = None
-    endpoint: Optional[str] = None
-    normalize_full_text_bm25_score: Optional[bool] = False
+    access_key_id: str | None = None
+    access_key_secret: str | None = None
+    instance_name: str | None = None
+    endpoint: str | None = None
+    normalize_full_text_bm25_score: bool | None = False
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["access_key_id"]:
             raise ValueError("config ACCESS_KEY_ID is required")
         if not values["access_key_secret"]:
@@ -54,7 +55,7 @@ class TableStoreVector(BaseVector):
         self._normalize_full_text_bm25_score = config.normalize_full_text_bm25_score
         self._table_name = f"{collection_name}"
         self._index_name = f"{collection_name}_idx"
-        self._tags_field = f"{Field.METADATA_KEY.value}_tags"
+        self._tags_field = f"{Field.METADATA_KEY}_tags"
 
     def create_collection(self, embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
@@ -63,7 +64,7 @@ class TableStoreVector(BaseVector):
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         docs = []
         request = BatchGetRowRequest()
-        columns_to_get = [Field.METADATA_KEY.value, Field.CONTENT_KEY.value]
+        columns_to_get = [Field.METADATA_KEY, Field.CONTENT_KEY]
         rows_to_get = [[("id", _id)] for _id in ids]
         request.add(TableInBatchGetRowItem(self._table_name, rows_to_get, columns_to_get, None, 1))
 
@@ -72,11 +73,7 @@ class TableStoreVector(BaseVector):
         for item in table_result:
             if item.is_ok and item.row:
                 kv = {k: v for k, v, _ in item.row.attribute_columns}
-                docs.append(
-                    Document(
-                        page_content=kv[Field.CONTENT_KEY.value], metadata=json.loads(kv[Field.METADATA_KEY.value])
-                    )
-                )
+                docs.append(Document(page_content=kv[Field.CONTENT_KEY], metadata=json.loads(kv[Field.METADATA_KEY])))
         return docs
 
     def get_type(self) -> str:
@@ -94,21 +91,24 @@ class TableStoreVector(BaseVector):
             self._write_row(
                 primary_key=uuids[i],
                 attributes={
-                    Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],
-                    Field.METADATA_KEY.value: documents[i].metadata,
+                    Field.CONTENT_KEY: documents[i].page_content,
+                    Field.VECTOR: embeddings[i],
+                    Field.METADATA_KEY: documents[i].metadata,
                 },
             )
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        _, return_row, _ = self._tablestore_client.get_row(
+        result = self._tablestore_client.get_row(
             table_name=self._table_name, primary_key=[("id", id)], columns_to_get=["id"]
         )
+        assert isinstance(result, tuple | list)
+        # Unpack the tuple result
+        _, return_row, _ = result
 
         return return_row is not None
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
@@ -117,7 +117,7 @@ class TableStoreVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         return self._search_by_metadata(key, value)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -139,7 +139,7 @@ class TableStoreVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._search_by_full_text(query, filtered_list, top_k, score_threshold)
 
-    def delete(self) -> None:
+    def delete(self):
         self._delete_table_if_exist()
 
     def _create_collection(self, dimension: int):
@@ -154,7 +154,7 @@ class TableStoreVector(BaseVector):
             self._create_search_index_if_not_exist(dimension)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _create_table_if_not_exist(self) -> None:
+    def _create_table_if_not_exist(self):
         table_list = self._tablestore_client.list_table()
         if self._table_name in table_list:
             logger.info("Tablestore system table[%s] already exists", self._table_name)
@@ -167,15 +167,16 @@ class TableStoreVector(BaseVector):
         self._tablestore_client.create_table(table_meta, table_options, reserved_throughput)
         logger.info("Tablestore create table[%s] successfully.", self._table_name)
 
-    def _create_search_index_if_not_exist(self, dimension: int) -> None:
+    def _create_search_index_if_not_exist(self, dimension: int):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
+        assert isinstance(search_index_list, Iterable)
         if self._index_name in [t[1] for t in search_index_list]:
             logger.info("Tablestore system index[%s] already exists", self._index_name)
             return None
 
         field_schemas = [
             tablestore.FieldSchema(
-                Field.CONTENT_KEY.value,
+                Field.CONTENT_KEY,
                 tablestore.FieldType.TEXT,
                 analyzer=tablestore.AnalyzerType.MAXWORD,
                 index=True,
@@ -183,7 +184,7 @@ class TableStoreVector(BaseVector):
                 store=False,
             ),
             tablestore.FieldSchema(
-                Field.VECTOR.value,
+                Field.VECTOR,
                 tablestore.FieldType.VECTOR,
                 vector_options=tablestore.VectorOptions(
                     data_type=tablestore.VectorDataType.VD_FLOAT_32,
@@ -192,7 +193,7 @@ class TableStoreVector(BaseVector):
                 ),
             ),
             tablestore.FieldSchema(
-                Field.METADATA_KEY.value,
+                Field.METADATA_KEY,
                 tablestore.FieldType.KEYWORD,
                 index=True,
                 store=False,
@@ -212,6 +213,7 @@ class TableStoreVector(BaseVector):
 
     def _delete_table_if_exist(self):
         search_index_list = self._tablestore_client.list_search_index(table_name=self._table_name)
+        assert isinstance(search_index_list, Iterable)
         for resp_tuple in search_index_list:
             self._tablestore_client.delete_search_index(resp_tuple[0], resp_tuple[1])
             logger.info("Tablestore delete index[%s] successfully.", self._index_name)
@@ -219,30 +221,30 @@ class TableStoreVector(BaseVector):
         self._tablestore_client.delete_table(self._table_name)
         logger.info("Tablestore delete system table[%s] successfully.", self._index_name)
 
-    def _delete_search_index(self) -> None:
+    def _delete_search_index(self):
         self._tablestore_client.delete_search_index(self._table_name, self._index_name)
         logger.info("Tablestore delete index[%s] successfully.", self._index_name)
 
-    def _write_row(self, primary_key: str, attributes: dict[str, Any]) -> None:
+    def _write_row(self, primary_key: str, attributes: dict[str, Any]):
         pk = [("id", primary_key)]
 
         tags = []
-        for key, value in attributes[Field.METADATA_KEY.value].items():
+        for key, value in attributes[Field.METADATA_KEY].items():
             tags.append(str(key) + "=" + str(value))
 
         attribute_columns = [
-            (Field.CONTENT_KEY.value, attributes[Field.CONTENT_KEY.value]),
-            (Field.VECTOR.value, json.dumps(attributes[Field.VECTOR.value])),
+            (Field.CONTENT_KEY, attributes[Field.CONTENT_KEY]),
+            (Field.VECTOR, json.dumps(attributes[Field.VECTOR])),
             (
-                Field.METADATA_KEY.value,
-                json.dumps(attributes[Field.METADATA_KEY.value]),
+                Field.METADATA_KEY,
+                json.dumps(attributes[Field.METADATA_KEY]),
             ),
             (self._tags_field, json.dumps(tags)),
         ]
         row = tablestore.Row(pk, attribute_columns)
         self._tablestore_client.put_row(self._table_name, row)
 
-    def _delete_row(self, id: str) -> None:
+    def _delete_row(self, id: str):
         primary_key = [("id", id)]
         row = tablestore.Row(primary_key)
         self._tablestore_client.delete_row(self._table_name, row, None)
@@ -264,12 +266,12 @@ class TableStoreVector(BaseVector):
                 index_name=self._index_name,
                 search_query=query,
                 columns_to_get=tablestore.ColumnsToGet(
-                    column_names=[Field.PRIMARY_KEY.value], return_type=tablestore.ColumnReturnType.SPECIFIED
+                    column_names=[Field.PRIMARY_KEY], return_type=tablestore.ColumnReturnType.SPECIFIED
                 ),
             )
 
             if search_response is not None:
-                rows.extend([row[0][0][1] for row in search_response.rows])
+                rows.extend([row[0][0][1] for row in list(search_response.rows)])
 
             if search_response is None or search_response.next_token == b"":
                 break
@@ -282,7 +284,7 @@ class TableStoreVector(BaseVector):
         self, query_vector: list[float], document_ids_filter: list[str] | None, top_k: int, score_threshold: float
     ) -> list[Document]:
         knn_vector_query = tablestore.KnnVectorQuery(
-            field_name=Field.VECTOR.value,
+            field_name=Field.VECTOR,
             top_k=top_k,
             float32_query_vector=query_vector,
         )
@@ -305,8 +307,8 @@ class TableStoreVector(BaseVector):
                 for col in search_hit.row[1]:
                     ots_column_map[col[0]] = col[1]
 
-                vector_str = ots_column_map.get(Field.VECTOR.value)
-                metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
+                vector_str = ots_column_map.get(Field.VECTOR)
+                metadata_str = ots_column_map.get(Field.METADATA_KEY)
 
                 vector = json.loads(vector_str) if vector_str else None
                 metadata = json.loads(metadata_str) if metadata_str else {}
@@ -315,7 +317,7 @@ class TableStoreVector(BaseVector):
 
                 documents.append(
                     Document(
-                        page_content=ots_column_map.get(Field.CONTENT_KEY.value) or "",
+                        page_content=ots_column_map.get(Field.CONTENT_KEY) or "",
                         vector=vector,
                         metadata=metadata,
                     )
@@ -337,7 +339,7 @@ class TableStoreVector(BaseVector):
         self, query: str, document_ids_filter: list[str] | None, top_k: int, score_threshold: float
     ) -> list[Document]:
         bool_query = tablestore.BoolQuery(must_queries=[], filter_queries=[], should_queries=[], must_not_queries=[])
-        bool_query.must_queries.append(tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY.value))
+        bool_query.must_queries.append(tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY))
 
         if document_ids_filter:
             bool_query.filter_queries.append(tablestore.TermsQuery(self._tags_field, document_ids_filter))
@@ -368,10 +370,10 @@ class TableStoreVector(BaseVector):
             for col in search_hit.row[1]:
                 ots_column_map[col[0]] = col[1]
 
-            metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
+            metadata_str = ots_column_map.get(Field.METADATA_KEY)
             metadata = json.loads(metadata_str) if metadata_str else {}
 
-            vector_str = ots_column_map.get(Field.VECTOR.value)
+            vector_str = ots_column_map.get(Field.VECTOR)
             vector = json.loads(vector_str) if vector_str else None
 
             if score:
@@ -379,7 +381,7 @@ class TableStoreVector(BaseVector):
 
             documents.append(
                 Document(
-                    page_content=ots_column_map.get(Field.CONTENT_KEY.value) or "",
+                    page_content=ots_column_map.get(Field.CONTENT_KEY) or "",
                     vector=vector,
                     metadata=metadata,
                 )

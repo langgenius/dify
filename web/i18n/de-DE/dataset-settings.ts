@@ -37,6 +37,14 @@ const translation = {
     helpText: 'Erfahren Sie, wie Sie eine gute Datensatzbeschreibung schreiben.',
     indexMethodChangeToEconomyDisabledTip: 'Nicht verfügbar für ein Downgrade von HQ auf ECO',
     searchModel: 'Modell suchen',
+    chunkStructure: {
+      learnMore: 'Weitere Informationen',
+      title: 'Chunk-Struktur',
+      description: 'über Chunk Structure.',
+    },
+    nameAndIcon: 'Name & Symbol',
+    onSearchResults: 'Kein Mitglied stimmt mit Ihrer Suchanfrage überein.\nVersuchen Sie Ihre Suche erneut.',
+    numberOfKeywords: 'Anzahl der Schlüsselwörter',
   },
 }
 

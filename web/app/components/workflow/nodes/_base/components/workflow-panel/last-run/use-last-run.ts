@@ -19,6 +19,7 @@ import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
+import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
 
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
@@ -32,6 +33,7 @@ import {
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -50,6 +52,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IfElse]: useIfElseSingleRunFormParams,
   [BlockEnum.VariableAggregator]: useVariableAggregatorSingleRunFormParams,
   [BlockEnum.Assigner]: useVariableAssignerSingleRunFormParams,
+  [BlockEnum.KnowledgeBase]: useKnowledgeBaseSingleRunFormParams,
   [BlockEnum.VariableAssigner]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
@@ -57,6 +60,8 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.DataSource]: undefined,
+  [BlockEnum.DataSourceEmpty]: undefined,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
@@ -89,6 +94,9 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Assigner]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.DataSource]: undefined,
+  [BlockEnum.DataSourceEmpty]: undefined,
+  [BlockEnum.KnowledgeBase]: undefined,
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
@@ -111,6 +119,7 @@ const useLastRun = <T>({
   const isIterationNode = blockType === BlockEnum.Iteration
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
+  const isCustomRunNode = isSupportCustomRunForm(blockType)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
@@ -119,6 +128,8 @@ const useLastRun = <T>({
 
   const {
     id,
+    flowId,
+    flowType,
     data,
   } = oneStepRunParams
   const oneStepRunRes = useOneStepRun({
@@ -129,7 +140,6 @@ const useLastRun = <T>({
   })
 
   const {
-    appId,
     hideSingleRun,
     handleRun: doCallRunApi,
     getInputVars,
@@ -164,7 +174,7 @@ const useLastRun = <T>({
   })
 
   const toSubmitData = useCallback((data: Record<string, any>) => {
-    if(!isIterationNode && !isLoopNode)
+    if (!isIterationNode && !isLoopNode)
       return data
 
     const allVarObject = singleRunParams?.allVarObject || {}
@@ -173,7 +183,7 @@ const useLastRun = <T>({
       const [varSectorStr, nodeId] = key.split(DELIMITER)
       formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
     })
-    if(isIterationNode) {
+    if (isIterationNode) {
       const iteratorInputKey = `${id}.input_selector`
       formattedData[iteratorInputKey] = data[iteratorInputKey]
     }
@@ -193,16 +203,16 @@ const useLastRun = <T>({
   const initShowLastRunTab = useStore(s => s.initShowLastRunTab)
   const [tabType, setTabType] = useState<TabType>(initShowLastRunTab ? TabType.lastRun : TabType.settings)
   useEffect(() => {
-    if(initShowLastRunTab)
+    if (initShowLastRunTab)
       setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab])
-  const invalidLastRun = useInvalidLastRun(appId!, id)
+  const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     const { isValid } = checkValid()
-    if(!isValid)
+    if (!isValid)
       return
     setNodeRunning()
     setIsRunAfterSingleRun(true)
@@ -226,14 +236,14 @@ const useLastRun = <T>({
       const values: Record<string, boolean> = {}
       form.inputs.forEach(({ variable, getVarValueFromDependent }) => {
         const isGetValueFromDependent = getVarValueFromDependent || !variable.includes('.')
-        if(isGetValueFromDependent && !singleRunParams?.getDependentVar)
+        if (isGetValueFromDependent && !singleRunParams?.getDependentVar)
           return
 
         const selector = isGetValueFromDependent ? (singleRunParams?.getDependentVar(variable) || []) : variable.slice(1, -1).split('.')
-        if(!selector || selector.length === 0)
+        if (!selector || selector.length === 0)
           return
         const [nodeId, varName] = selector.slice(0, 2)
-        if(!isStartNode && nodeId === id) { // inner vars like loop vars
+        if (!isStartNode && nodeId === id) { // inner vars like loop vars
           values[variable] = true
           return
         }
@@ -247,7 +257,7 @@ const useLastRun = <T>({
   }
 
   const isAllVarsHasValue = (vars?: ValueSelector[]) => {
-    if(!vars || vars.length === 0)
+    if (!vars || vars.length === 0)
       return true
     return vars.every((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
@@ -257,7 +267,7 @@ const useLastRun = <T>({
   }
 
   const isSomeVarsHasValue = (vars?: ValueSelector[]) => {
-    if(!vars || vars.length === 0)
+    if (!vars || vars.length === 0)
       return true
     return vars.some((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
@@ -284,7 +294,7 @@ const useLastRun = <T>({
   }
 
   const checkAggregatorVarsSet = (vars: ValueSelector[][]) => {
-    if(!vars || vars.length === 0)
+    if (!vars || vars.length === 0)
       return true
     // in each group, at last one set is ok
     return vars.every((varItem) => {
@@ -292,10 +302,20 @@ const useLastRun = <T>({
     })
   }
 
+  const handleAfterCustomSingleRun = () => {
+    invalidLastRun()
+    setTabType(TabType.lastRun)
+    hideSingleRun()
+  }
+
   const handleSingleRun = () => {
     const { isValid } = checkValid()
-    if(!isValid)
+    if (!isValid)
       return
+    if (isCustomRunNode) {
+      showSingleRun()
+      return
+    }
     const vars = singleRunParams?.getDependentVars?.()
     // no need to input params
     if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
@@ -315,7 +335,9 @@ const useLastRun = <T>({
     ...oneStepRunRes,
     tabType,
     isRunAfterSingleRun,
+    setIsRunAfterSingleRun,
     setTabType: handleTabClicked,
+    handleAfterCustomSingleRun,
     singleRunParams,
     nodeInfo,
     setRunInputData,

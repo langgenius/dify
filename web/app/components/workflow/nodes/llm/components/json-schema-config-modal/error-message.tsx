@@ -17,7 +17,7 @@ const ErrorMessage: FC<ErrorMessageProps> = ({
       className,
     )}>
       <RiErrorWarningFill className='h-4 w-4 shrink-0 text-text-destructive' />
-      <div className='system-xs-medium max-h-12 grow overflow-y-auto break-words text-text-primary'>
+      <div className='system-xs-medium max-h-12 grow overflow-y-auto whitespace-pre-line break-words text-text-primary'>
         {message}
       </div>
     </div>

@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from threading import Thread
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -31,14 +31,9 @@ from core.app.entities.queue_entities import (
     QueueMessageReplaceEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent,
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
@@ -65,8 +60,8 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.entities import GraphRuntimeState
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -101,7 +96,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
-    ) -> None:
+    ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -174,7 +169,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
 
-        if self._base_task_pipeline._stream:
+        if self._base_task_pipeline.stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
@@ -233,7 +228,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         return None
 
     def _wrapper_process_stream_response(
-        self, trace_manager: Optional[TraceQueueManager] = None
+        self, trace_manager: TraceQueueManager | None = None
     ) -> Generator[StreamResponse, None, None]:
         tts_publisher = None
         task_id = self._application_generate_entity.task_id
@@ -289,12 +284,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                 session.rollback()
                 raise
 
-    def _ensure_workflow_initialized(self) -> None:
+    def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
 
-    def _ensure_graph_runtime_initialized(self, graph_runtime_state: Optional[GraphRuntimeState]) -> GraphRuntimeState:
+    def _ensure_graph_runtime_initialized(self, graph_runtime_state: GraphRuntimeState | None) -> GraphRuntimeState:
         """Fluent validation for graph runtime state."""
         if not graph_runtime_state:
             raise ValueError("graph runtime state not initialized.")
@@ -302,15 +297,15 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
-        yield self._base_task_pipeline._ping_stream_response()
+        yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
         """Handle error events."""
         with self._database_session() as session:
-            err = self._base_task_pipeline._handle_error(event=event, session=session, message_id=self._message_id)
-        yield self._base_task_pipeline._error_to_stream_response(err)
+            err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
-    def _handle_workflow_started_event(self, **kwargs) -> Generator[StreamResponse, None, None]:
+    def _handle_workflow_started_event(self, *args, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle workflow started events."""
         with self._database_session() as session:
             workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start()
@@ -387,9 +382,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _handle_node_failed_events(
         self,
-        event: Union[
-            QueueNodeFailedEvent, QueueNodeInIterationFailedEvent, QueueNodeInLoopFailedEvent, QueueNodeExceptionEvent
-        ],
+        event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle various node failure events."""
@@ -411,8 +404,8 @@ class AdvancedChatAppGenerateTaskPipeline:
         self,
         event: QueueTextChunkEvent,
         *,
-        tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
-        queue_message: Optional[Union[WorkflowQueueMessage, MessageQueueMessage]] = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
@@ -433,32 +426,6 @@ class AdvancedChatAppGenerateTaskPipeline:
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
         )
-
-    def _handle_parallel_branch_started_event(
-        self, event: QueueParallelBranchRunStartedEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
-        """Handle parallel branch started events."""
-        self._ensure_workflow_initialized()
-
-        parallel_start_resp = self._workflow_response_converter.workflow_parallel_branch_start_to_stream_response(
-            task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
-            event=event,
-        )
-        yield parallel_start_resp
-
-    def _handle_parallel_branch_finished_events(
-        self, event: Union[QueueParallelBranchRunSucceededEvent, QueueParallelBranchRunFailedEvent], **kwargs
-    ) -> Generator[StreamResponse, None, None]:
-        """Handle parallel branch finished events."""
-        self._ensure_workflow_initialized()
-
-        parallel_finish_resp = self._workflow_response_converter.workflow_parallel_branch_finished_to_stream_response(
-            task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
-            event=event,
-        )
-        yield parallel_finish_resp
 
     def _handle_iteration_start_event(
         self, event: QueueIterationStartEvent, **kwargs
@@ -538,8 +505,8 @@ class AdvancedChatAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowSucceededEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow succeeded events."""
@@ -569,8 +536,8 @@ class AdvancedChatAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowPartialSuccessEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow partial success events."""
@@ -584,7 +551,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 total_steps=validated_state.node_run_steps,
                 outputs=event.outputs,
                 exceptions_count=event.exceptions_count,
-                conversation_id=None,
+                conversation_id=self._conversation_id,
                 trace_manager=trace_manager,
                 external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
@@ -601,8 +568,8 @@ class AdvancedChatAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowFailedEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow failed events."""
@@ -627,17 +594,17 @@ class AdvancedChatAppGenerateTaskPipeline:
                 workflow_execution=workflow_execution,
             )
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_execution.error_message}"))
-            err = self._base_task_pipeline._handle_error(event=err_event, session=session, message_id=self._message_id)
+            err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
 
         yield workflow_finish_resp
-        yield self._base_task_pipeline._error_to_stream_response(err)
+        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_stop_event(
         self,
         event: QueueStopEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle stop events."""
@@ -677,13 +644,13 @@ class AdvancedChatAppGenerateTaskPipeline:
         self,
         event: QueueAdvancedChatMessageEndEvent,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
         self._ensure_graph_runtime_initialized(graph_runtime_state)
 
-        output_moderation_answer = self._base_task_pipeline._handle_output_moderation_when_task_finished(
+        output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
         )
         if output_moderation_answer:
@@ -751,8 +718,6 @@ class AdvancedChatAppGenerateTaskPipeline:
             QueueNodeRetryEvent: self._handle_node_retry_event,
             QueueNodeStartedEvent: self._handle_node_started_event,
             QueueNodeSucceededEvent: self._handle_node_succeeded_event,
-            # Parallel branch events
-            QueueParallelBranchRunStartedEvent: self._handle_parallel_branch_started_event,
             # Iteration events
             QueueIterationStartEvent: self._handle_iteration_start_event,
             QueueIterationNextEvent: self._handle_iteration_next_event,
@@ -775,10 +740,10 @@ class AdvancedChatAppGenerateTaskPipeline:
         self,
         event: Any,
         *,
-        graph_runtime_state: Optional[GraphRuntimeState] = None,
-        tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-        queue_message: Optional[Union[WorkflowQueueMessage, MessageQueueMessage]] = None,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
     ) -> Generator[StreamResponse, None, None]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()
@@ -800,23 +765,10 @@ class AdvancedChatAppGenerateTaskPipeline:
             event,
             (
                 QueueNodeFailedEvent,
-                QueueNodeInIterationFailedEvent,
-                QueueNodeInLoopFailedEvent,
                 QueueNodeExceptionEvent,
             ),
         ):
             yield from self._handle_node_failed_events(
-                event,
-                graph_runtime_state=graph_runtime_state,
-                tts_publisher=tts_publisher,
-                trace_manager=trace_manager,
-                queue_message=queue_message,
-            )
-            return
-
-        # Handle parallel branch finished events with isinstance check
-        if isinstance(event, (QueueParallelBranchRunSucceededEvent, QueueParallelBranchRunFailedEvent)):
-            yield from self._handle_parallel_branch_finished_events(
                 event,
                 graph_runtime_state=graph_runtime_state,
                 tts_publisher=tts_publisher,
@@ -830,15 +782,15 @@ class AdvancedChatAppGenerateTaskPipeline:
 
     def _process_stream_response(
         self,
-        tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        trace_manager: TraceQueueManager | None = None,
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 57-if-statement version.
         """
         # Initialize graph runtime state
-        graph_runtime_state: Optional[GraphRuntimeState] = None
+        graph_runtime_state: GraphRuntimeState | None = None
 
         for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
@@ -847,11 +799,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                 case QueueWorkflowStartedEvent():
                     graph_runtime_state = event.graph_runtime_state
                     yield from self._handle_workflow_started_event(event)
-
-                case QueueTextChunkEvent():
-                    yield from self._handle_text_chunk_event(
-                        event, tts_publisher=tts_publisher, queue_message=queue_message
-                    )
 
                 case QueueErrorEvent():
                     yield from self._handle_error_event(event)
@@ -888,7 +835,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
+    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
         message = self._get_message(session=session)
 
         # If there are assistant files, remove markdown image links from answer
@@ -899,7 +846,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()
-        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
+        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(
@@ -955,9 +902,9 @@ class AdvancedChatAppGenerateTaskPipeline:
         :param text: text
         :return: True if output moderation should direct output, otherwise False
         """
-        if self._base_task_pipeline._output_moderation_handler:
-            if self._base_task_pipeline._output_moderation_handler.should_direct_output():
-                self._task_state.answer = self._base_task_pipeline._output_moderation_handler.get_final_output()
+        if self._base_task_pipeline.output_moderation_handler:
+            if self._base_task_pipeline.output_moderation_handler.should_direct_output():
+                self._task_state.answer = self._base_task_pipeline.output_moderation_handler.get_final_output()
                 self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
                 )
@@ -967,7 +914,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
                 return True
             else:
-                self._base_task_pipeline._output_moderation_handler.append_new_token(text)
+                self._base_task_pipeline.output_moderation_handler.append_new_token(text)
 
         return False
 

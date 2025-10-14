@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -84,7 +84,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
+    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
         if conversation:
             stmt = select(AppModelConfig).where(
                 AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
@@ -112,7 +112,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AgentChatAppGenerateEntity,
             AdvancedChatAppGenerateEntity,
         ],
-        conversation: Optional[Conversation] = None,
+        conversation: Conversation | None = None,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records

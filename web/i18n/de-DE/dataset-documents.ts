@@ -99,6 +99,9 @@ const translation = {
       upload_file: 'Datei hochladen',
       notion: 'Von Notion synchronisieren',
       github: 'Von Github synchronisieren',
+      online_document: 'Online-Dokument',
+      local_file: 'Lokale Datei',
+      website_crawl: 'Website-Crawl',
     },
     type: {
       book: 'Buch',
@@ -336,6 +339,7 @@ const translation = {
     childMaxTokens: 'Kind',
     hierarchical: 'Eltern-Kind',
     pause: 'Pause',
+    waiting: 'Einbettung wartet...',
   },
   segment: {
     paragraphs: 'Absätze',

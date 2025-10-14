@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, ConfigDict
@@ -27,11 +27,11 @@ class OutputModeration(BaseModel):
     rule: ModerationRule
     queue_manager: AppQueueManager
 
-    thread: Optional[threading.Thread] = None
+    thread: threading.Thread | None = None
     thread_running: bool = True
     buffer: str = ""
     is_final_chunk: bool = False
-    final_output: Optional[str] = None
+    final_output: str | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def should_direct_output(self) -> bool:
@@ -40,7 +40,7 @@ class OutputModeration(BaseModel):
     def get_final_output(self) -> str:
         return self.final_output or ""
 
-    def append_new_token(self, token: str) -> None:
+    def append_new_token(self, token: str):
         self.buffer += token
 
         if not self.thread:
@@ -127,7 +127,7 @@ class OutputModeration(BaseModel):
                 if result.action == ModerationAction.DIRECT_OUTPUT:
                     break
 
-    def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> Optional[ModerationOutputsResult]:
+    def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
         try:
             moderation_factory = ModerationFactory(
                 name=self.rule.type, app_id=app_id, tenant_id=tenant_id, config=self.rule.config

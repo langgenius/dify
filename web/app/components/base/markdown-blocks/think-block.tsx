@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useChatContext } from '../chat/chat/context'
 
 const hasEndThink = (children: any): boolean => {
   if (typeof children === 'string')
@@ -35,7 +36,8 @@ const removeEndThink = (children: any): any => {
 }
 
 const useThinkTimer = (children: any) => {
-  const [startTime] = useState(Date.now())
+  const { isResponding } = useChatContext()
+  const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const timerRef = useRef<NodeJS.Timeout>()
@@ -54,14 +56,14 @@ const useThinkTimer = (children: any) => {
   }, [startTime, isComplete])
 
   useEffect(() => {
-    if (hasEndThink(children))
+    if (hasEndThink(children) || !isResponding)
       setIsComplete(true)
-  }, [children])
+  }, [children, isResponding])
 
   return { elapsedTime, isComplete }
 }
 
-export const ThinkBlock = ({ children, ...props }: any) => {
+const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()

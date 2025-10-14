@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 import chromadb
 from chromadb import QueryResult, Settings
@@ -20,8 +20,8 @@ class ChromaConfig(BaseModel):
     port: int
     tenant: str
     database: str
-    auth_provider: Optional[str] = None
-    auth_credentials: Optional[str] = None
+    auth_provider: str | None = None
+    auth_credentials: str | None = None
 
     def to_chroma_params(self):
         settings = Settings(
@@ -82,7 +82,7 @@ class ChromaVector(BaseVector):
     def delete(self):
         self._client.delete_collection(self._collection_name)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         collection = self._client.get_or_create_collection(self._collection_name)

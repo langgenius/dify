@@ -36,7 +36,7 @@ class CouchbaseConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values.get("connection_string"):
             raise ValueError("config COUCHBASE_CONNECTION_STRING is required")
         if not values.get("user"):
@@ -234,7 +234,7 @@ class CouchbaseVector(BaseVector):
             return bool(row["count"] > 0)
         return False  # Return False if no rows are returned
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         query = f"""
             DELETE FROM `{self._bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE META().id IN $doc_ids;
@@ -261,7 +261,7 @@ class CouchbaseVector(BaseVector):
     #     result = self._cluster.query(query, named_parameters={'value':value})
     #     return [row['id'] for row in result.rows()]
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         query = f"""
             DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE metadata.{key} = $value;

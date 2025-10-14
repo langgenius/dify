@@ -85,7 +85,7 @@ export type PromptEditorProps = {
   compact?: boolean
   wrapperClassName?: string
   className?: string
-  placeholder?: string | React.JSX.Element
+  placeholder?: string | React.ReactNode
   placeholderClassName?: string
   style?: React.CSSProperties
   value?: string

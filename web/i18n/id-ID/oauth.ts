@@ -17,11 +17,11 @@ const translation = {
     authorizeFailed: 'Otorisasi gagal',
     authAppInfoFetchFailed: 'Gagal mengambil info aplikasi untuk otorisasi',
   },
-  continue: 'Terus',
-  unknownApp: 'Aplikasi Tidak Dikenal',
-  login: 'Login',
-  connect: 'Hubungkan ke',
-  switchAccount: 'Beralih Akun',
+  continue: 'Lanjut',
+  unknownApp: 'Aplikasi tidak dikenal',
+  login: 'Masuk',
+  connect: 'Hubungkan',
+  switchAccount: 'Ganti Akun',
 }
 
 export default translation

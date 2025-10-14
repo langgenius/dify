@@ -192,7 +192,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message_id: str,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -262,12 +262,17 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             raise MessageNotExistsError()
 
         current_app_model_config = app_model.app_model_config
+        if not current_app_model_config:
+            raise MoreLikeThisDisabledError()
+
         more_like_this = current_app_model_config.more_like_this_dict
 
         if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
             raise MoreLikeThisDisabledError()
 
         app_model_config = message.app_model_config
+        if not app_model_config:
+            raise ValueError("Message app_model_config is None")
         override_model_config_dict = app_model_config.to_dict()
         model_dict = override_model_config_dict["model"]
         completion_params = model_dict.get("completion_params")

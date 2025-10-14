@@ -77,6 +77,8 @@ const translation = {
     hideTemplates: '返回应用类型选择',
     Create: '创建',
     Cancel: '取消',
+    Confirm: '确认',
+    import: '导入',
     nameNotEmpty: '名称不能为空',
     appTemplateNotSelected: '请选择应用模版',
     appTypeRequired: '请选择应用类型',
@@ -90,7 +92,6 @@ const translation = {
     appCreateDSLErrorPart4: '系统支持 DSL 版本：',
     appCreateFailed: '应用创建失败',
     dropDSLToCreateApp: '拖放 DSL 文件到此处创建应用',
-    Confirm: '确认',
   },
   newAppFromTemplate: {
     byCategories: '分类',
@@ -191,6 +192,10 @@ const translation = {
       title: '云监控',
       description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
     },
+    tencent: {
+      title: '腾讯云 APM',
+      description: '腾讯云应用性能监控，提供 LLM 应用全链路追踪和多维分析',
+    },
   },
   appSelector: {
     label: '应用',
@@ -265,6 +270,10 @@ const translation = {
     inScope: '在 {{scope}}s 中',
     clearToSearchAll: '清除 @ 以搜索全部',
     useAtForSpecific: '使用 @ 进行特定类型搜索',
+    selectToNavigate: '选择以导航',
+    startTyping: '开始输入以搜索',
+    tips: '按 ↑↓ 导航',
+    pressEscToClose: '按 ESC 关闭',
     selectSearchType: '选择搜索内容',
     searchHint: '开始输入即可立即搜索所有内容',
     commandHint: '输入 @ 按类别浏览',

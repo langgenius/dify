@@ -91,6 +91,7 @@ const translation = {
     workflowUserDescription: 'ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築',
     completionUserDescription: '簡単な構成でテキスト生成タスク用の AI アシスタントをすばやく構築します。',
     dropDSLToCreateApp: 'アプリを作成するにはここにDSLファイルをドロップしてください',
+    import: '輸入',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',
@@ -173,6 +174,10 @@ const translation = {
     aliyun: {
       title: 'クラウドモニター',
       description: 'Alibaba Cloud が提供する完全管理型でメンテナンスフリーの可観測性プラットフォームは、Dify アプリケーションの即時監視、トレース、評価を可能にします。',
+    },
+    tencent: {
+      title: 'テンセントAPM',
+      description: 'Tencent アプリケーションパフォーマンスモニタリングは、LLM アプリケーションに対して包括的なトレーシングと多次元分析を提供します。',
     },
   },
   answerIcon: {
@@ -265,9 +270,14 @@ const translation = {
     inScope: '{{scope}}s 内',
     clearToSearchAll: '@ をクリアしてすべてを検索',
     useAtForSpecific: '特定のタイプには @ を使用',
+    selectToNavigate: '選択してナビゲート',
+    startTyping: '入力を開始して検索',
+    tips: '↑↓ でナビゲート',
+    pressEscToClose: 'ESC で閉じる',
     selectSearchType: '検索対象を選択',
     searchHint: '入力を開始してすべてを瞬時に検索',
     commandHint: '@ を入力してカテゴリ別に参照',
+    slashHint: '/ を入力してすべてのコマンドを表示',
     actions: {
       searchApplications: 'アプリケーションを検索',
       searchApplicationsDesc: 'アプリケーションを検索してナビゲート',
@@ -314,7 +324,6 @@ const translation = {
     },
     noMatchingCommands: '一致するコマンドが見つかりません',
     tryDifferentSearch: '別の検索語句をお試しください',
-    slashHint: '/を入力して、利用可能なすべてのコマンドを表示します。',
   },
 }
 

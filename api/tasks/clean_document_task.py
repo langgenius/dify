@@ -1,9 +1,9 @@
 import logging
 import time
-from typing import Optional
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: Optional[str]):
+def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: str | None):
     """
     Clean document when document deleted.
     :param document_id: document id
@@ -35,7 +35,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         if not dataset:
             raise Exception("Document has no dataset")
 
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]

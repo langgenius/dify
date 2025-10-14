@@ -16,7 +16,7 @@ class UpdatedVariable(BaseModel):
     name: str
     selector: Sequence[str]
     value_type: SegmentType
-    new_value: Any
+    new_value: Any = None
 
 
 _T = TypeVar("_T", bound=MutableMapping[str, Any])

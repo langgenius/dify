@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import Protocol, cast
 
 import json_repair
 
@@ -20,7 +20,7 @@ from core.llm_generator.prompts import (
 )
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.entities.trace_entity import TraceTaskName
@@ -28,16 +28,26 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_engine.entities.event import AgentLogEvent
-from models import App, Message, WorkflowNodeExecutionModel, db
+from extensions.ext_database import db
+from extensions.ext_storage import storage
+from models import App, Message, WorkflowNodeExecutionModel
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowServiceInterface(Protocol):
+    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+        pass
+
+    def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
+        pass
 
 
 class LLMGenerator:
     @classmethod
     def generate_conversation_name(
-        cls, tenant_id: str, query, conversation_id: Optional[str] = None, app_id: Optional[str] = None
+        cls, tenant_id: str, query, conversation_id: str | None = None, app_id: str | None = None
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
@@ -127,7 +137,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool):
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
@@ -262,9 +272,7 @@ class LLMGenerator:
         return rule_config
 
     @classmethod
-    def generate_code(
-        cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"
-    ) -> dict:
+    def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):
         if code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:
@@ -315,13 +323,19 @@ class LLMGenerator:
             model_type=ModelType.LLM,
         )
 
-        prompt_messages = [SystemPromptMessage(content=prompt), UserPromptMessage(content=query)]
+        prompt_messages: list[PromptMessage] = [SystemPromptMessage(content=prompt), UserPromptMessage(content=query)]
 
-        response: LLMResult = model_instance.invoke_llm(
+        # Explicitly use the non-streaming overload
+        result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters={"temperature": 0.01, "max_tokens": 2000},
             stream=False,
         )
+
+        # Runtime type check since pyright has issues with the overload
+        if not isinstance(result, LLMResult):
+            raise TypeError("Expected LLMResult when stream=False")
+        response = result
 
         answer = cast(str, response.message.content)
         return answer.strip()
@@ -373,7 +387,7 @@ class LLMGenerator:
     @staticmethod
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
-    ) -> dict:
+    ):
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
         )
@@ -413,16 +427,17 @@ class LLMGenerator:
         instruction: str,
         model_config: dict,
         ideal_output: str | None,
-    ) -> dict:
-        from services.workflow_service import WorkflowService
+        workflow_service: WorkflowServiceInterface,
+    ):
+        session = db.session()
 
-        app: App | None = db.session.query(App).where(App.id == flow_id).first()
+        app: App | None = session.query(App).where(App.id == flow_id).first()
         if not app:
             raise ValueError("App not found.")
-        workflow = WorkflowService().get_draft_workflow(app_model=app)
+        workflow = workflow_service.get_draft_workflow(app_model=app)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
-        last_run = WorkflowService().get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
+        last_run = workflow_service.get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
         try:
             node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
         except Exception:
@@ -446,22 +461,22 @@ class LLMGenerator:
             )
 
         def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
-            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG, [])
             if not raw_agent_log:
                 return []
-            parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
 
-            def dict_of_event(event: AgentLogEvent) -> dict:
-                return {
-                    "status": event.status,
-                    "error": event.error,
-                    "data": event.data,
+            return [
+                {
+                    "status": event["status"],
+                    "error": event["error"],
+                    "data": event["data"],
                 }
+                for event in raw_agent_log
+            ]
 
-            return [dict_of_event(event) for event in parsed]
-
+        inputs = last_run.load_full_inputs(session, storage)
         last_run_dict = {
-            "inputs": last_run.inputs_dict,
+            "inputs": inputs,
             "status": last_run.status,
             "error": last_run.error,
             "agent_log": agent_log_of(last_run),
@@ -488,7 +503,7 @@ class LLMGenerator:
         instruction: str,
         node_type: str,
         ideal_output: str | None,
-    ) -> dict:
+    ):
         LAST_RUN = "{{#last_run#}}"
         CURRENT = "{{#current#}}"
         ERROR_MESSAGE = "{{#error_message#}}"

@@ -324,7 +324,7 @@ const translation = {
   },
   variableTable: {
     action: 'Tindakan',
-    typeString: 'Tali',
+    typeString: 'String',
     optional: 'Fakultatif',
     typeSelect: 'Pilih',
     type: 'Jenis Masukan',
@@ -346,7 +346,7 @@ const translation = {
         name: 'Audio',
       },
       document: {
-        name: 'Surat',
+        name: 'Dokumen',
       },
       video: {
         name: 'Video',
@@ -396,6 +396,19 @@ const translation = {
     'maxNumberOfUploads': 'Jumlah upload maksimal',
     'both': 'Keduanya',
     'uploadFileTypes': 'Unggah Jenis File',
+    'unit': 'Satuan',
+    'startChecked': 'Mulai diperiksa',
+    'placeholder': 'Placeholder',
+    'uploadMethod': 'Metode Unggah',
+    'noDefaultSelected': 'Jangan pilih',
+    'defaultValuePlaceholder': 'Masukkan nilai default untuk mengisi kolom sebelumnya',
+    'showAllSettings': 'Tampilkan Semua Pengaturan',
+    'tooltips': 'Tooltip',
+    'displayName': 'Nama Tampilan',
+    'tooltipsPlaceholder': 'Masukkan teks bermanfaat yang ditampilkan saat mengarahkan kursor ke label',
+    'startSelectedOption': 'Mulai opsi yang dipilih',
+    'unitPlaceholder': 'Tampilkan unit setelah angka, misalnya token',
+    'placeholderPlaceholder': 'Masukkan teks untuk ditampilkan saat bidang kosong',
   },
   vision: {
     visionSettings: {
@@ -421,7 +434,7 @@ const translation = {
       language: 'Bahasa',
       title: 'Pengaturan Suara',
       autoPlay: 'Putar Otomatis',
-      autoPlayDisabled: 'Off',
+      autoPlayDisabled: 'Dinonaktifkan',
       resolutionTooltip: 'Bahasa pendukung suara text-to-speech。',
     },
     settings: 'Pengaturan',
@@ -448,7 +461,7 @@ const translation = {
   },
   inputs: {
     queryPlaceholder: 'Silakan masukkan teks permintaan.',
-    run: 'LARI',
+    run: 'Jalankan',
     completionVarTip: 'Isi nilai variabel, yang akan secara otomatis diganti dengan kata-kata prompt setiap kali pertanyaan diajukan.',
     noVar: 'Isi nilai variabel, yang akan secara otomatis diganti dalam kata prompt setiap kali sesi baru dimulai.',
     noPrompt: 'Coba tulis beberapa prompt dalam input pra-prompt',

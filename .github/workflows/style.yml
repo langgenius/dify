@@ -12,7 +12,6 @@ permissions:
   statuses: write
   contents: read
 
-
 jobs:
   python-style:
     name: Python Style
@@ -44,9 +43,17 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
+      - name: Run Import Linter
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --directory api --dev lint-imports
+
       - name: Run Basedpyright Checks
         if: steps.changed-files.outputs.any_changed == 'true'
         run: dev/basedpyright-check
+
+      - name: Run Mypy Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -95,7 +102,6 @@ jobs:
         working-directory: ./web
         run: |
           pnpm run lint
-          pnpm run eslint
 
   docker-compose-template:
     name: Docker Compose Template

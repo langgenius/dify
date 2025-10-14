@@ -83,9 +83,7 @@ const OpeningSettingModal = ({
   }, [handleSave, hideConfirmAddVar])
 
   const autoAddVar = useCallback(() => {
-    onAutoAddPromptVariable?.([
-      ...notIncludeKeys.map(key => getNewVar(key, 'string')),
-    ])
+    onAutoAddPromptVariable?.(notIncludeKeys.map(key => getNewVar(key, 'string')))
     hideConfirmAddVar()
     handleSave(true)
   }, [handleSave, hideConfirmAddVar, notIncludeKeys, onAutoAddPromptVariable])

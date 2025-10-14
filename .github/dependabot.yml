@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+  - package-ecosystem: "uv"
+    directory: "/api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2

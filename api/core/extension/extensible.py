@@ -1,10 +1,10 @@
-import enum
 import importlib.util
 import json
 import logging
 import os
+from enum import StrEnum, auto
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -13,18 +13,18 @@ from core.helper.position_helper import sort_to_dict_by_position_map
 logger = logging.getLogger(__name__)
 
 
-class ExtensionModule(enum.Enum):
-    MODERATION = "moderation"
-    EXTERNAL_DATA_TOOL = "external_data_tool"
+class ExtensionModule(StrEnum):
+    MODERATION = auto()
+    EXTERNAL_DATA_TOOL = auto()
 
 
 class ModuleExtension(BaseModel):
-    extension_class: Optional[Any] = None
+    extension_class: Any | None = None
     name: str
-    label: Optional[dict] = None
-    form_schema: Optional[list] = None
+    label: dict | None = None
+    form_schema: list | None = None
     builtin: bool = True
-    position: Optional[int] = None
+    position: int | None = None
 
 
 class Extensible:
@@ -32,9 +32,9 @@ class Extensible:
 
     name: str
     tenant_id: str
-    config: Optional[dict] = None
+    config: dict | None = None
 
-    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+    def __init__(self, tenant_id: str, config: dict | None = None):
         self.tenant_id = tenant_id
         self.config = config
 

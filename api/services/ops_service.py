@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
@@ -15,7 +15,7 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -102,6 +102,15 @@ class OpsService:
             except Exception:
                 new_decrypt_tracing_config.update({"project_url": "https://arms.console.aliyun.com/"})
 
+        if tracing_provider == "tencent" and (
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+        ):
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update({"project_url": project_url})
+            except Exception:
+                new_decrypt_tracing_config.update({"project_url": "https://console.cloud.tencent.com/apm"})
+
         trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
 
@@ -123,7 +132,7 @@ class OpsService:
         config_class: type[BaseTracingConfig] = provider_config["config_class"]
         other_keys: list[str] = provider_config["other_keys"]
 
-        default_config_instance: BaseTracingConfig = config_class(**tracing_config)
+        default_config_instance = config_class.model_validate(tracing_config)
         for key in other_keys:
             if key in tracing_config and tracing_config[key] == "":
                 tracing_config[key] = getattr(default_config_instance, key, None)
@@ -144,7 +153,7 @@ class OpsService:
                 project_url = f"{tracing_config.get('host')}/project/{project_key}"
             except Exception:
                 project_url = None
-        elif tracing_provider in ("langsmith", "opik"):
+        elif tracing_provider in ("langsmith", "opik", "tencent"):
             try:
                 project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
             except Exception:
@@ -153,7 +162,7 @@ class OpsService:
             project_url = None
 
         # check if trace config already exists
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()

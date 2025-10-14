@@ -120,7 +120,7 @@ def _create_workflow_run_from_execution(
     return workflow_run
 
 
-def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution) -> None:
+def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution):
     """
     Update a WorkflowRun database model from a WorkflowExecution domain entity.
     """

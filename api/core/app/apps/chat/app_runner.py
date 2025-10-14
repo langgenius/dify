@@ -33,7 +33,7 @@ class ChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity
@@ -164,7 +164,9 @@ class ChatAppRunner(AppRunner):
                 config=app_config.dataset,
                 query=query,
                 invoke_from=application_generate_entity.invoke_from,
-                show_retrieve_source=app_config.additional_features.show_retrieve_source,
+                show_retrieve_source=(
+                    app_config.additional_features.show_retrieve_source if app_config.additional_features else False
+                ),
                 hit_callback=hit_callback,
                 memory=memory,
                 message_id=message.id,
