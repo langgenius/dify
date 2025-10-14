@@ -58,11 +58,12 @@ def dispatch_triggered_workflows_async(
 
     try:
         logger.info(
-            "Starting async trigger dispatching for endpoint=%s, events=%s, request_id=%s, timestamp=%s",
+            "Starting trigger dispatching endpoint=%s, events=%s, request_id=%s, subscription_id=%s, provider_id=%s",
             endpoint_id,
             events,
             request_id,
-            timestamp,
+            subscription_id,
+            provider_id,
         )
 
         # Verify request exists in storage
@@ -155,14 +156,25 @@ def dispatch_triggered_workflows_async(
                         event=event,
                         pool_key=pool_key,
                     )
+                    logger.debug(
+                        "Trigger debug dispatched %d sessions to pool %s for event %s for subscription %s provider %s",
+                        debug_dispatched,
+                        pool_key,
+                        event_name,
+                        subscription_id,
+                        provider_id,
+                    )
+
             except Exception:
                 # Silent failure for debug dispatch
                 logger.exception("Failed to dispatch to debug sessions")
 
             logger.info(
-                "Completed async trigger dispatching: processed %d/%d triggers",
+                "Completed async trigger dispatching: processed %d/%d triggers for subscription %s and provider %s",
                 dispatched_count,
                 len(events),
+                subscription_id,
+                provider_id,
             )
 
             return {
@@ -174,9 +186,11 @@ def dispatch_triggered_workflows_async(
 
     except Exception as e:
         logger.exception(
-            "Error in async trigger dispatching for endpoint %s data %s",
+            "Error in async trigger dispatching for endpoint %s data %s for subscription %s and provider %s",
             endpoint_id,
             dispatch_data,
+            subscription_id,
+            provider_id,
         )
         return {
             "status": "failed",

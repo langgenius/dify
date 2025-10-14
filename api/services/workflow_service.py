@@ -38,6 +38,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeEx
 from repositories.factory import DifyAPIRepositoryFactory
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
+from services.workflow.entities import PluginTriggerData, ScheduleTriggerData
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -633,6 +634,10 @@ class WorkflowService:
                 )
                 if node_type == NodeType.TRIGGER_WEBHOOK:
                     start_data = WebhookData.model_validate(node_data)
+                elif node_type == NodeType.TRIGGER_PLUGIN:
+                    start_data = PluginTriggerData.model_validate(node_data)
+                elif node_type == NodeType.TRIGGER_SCHEDULE:
+                    start_data = ScheduleTriggerData.model_validate(node_data)
                 else:
                     start_data = StartNodeData.model_validate(node_data)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
