@@ -32,7 +32,8 @@ def upgrade():
     
     # Use a more efficient UPDATE with JOIN
     # This query updates messages.app_mode from conversations.mode
-    update_query = """
+    # Using string formatting for LIMIT since it's a constant
+    update_query = f"""
         UPDATE messages m
         SET app_mode = c.mode
         FROM conversations c
@@ -41,24 +42,32 @@ def upgrade():
           AND m.id IN (
               SELECT id FROM messages 
               WHERE app_mode IS NULL 
-              LIMIT :batch_size
+              LIMIT {batch_size}
           )
     """
     
     # Execute batched updates
     total_updated = 0
+    iteration = 0
     while True:
-        result = conn.execute(sa.text(update_query), {"batch_size": batch_size})
-        rows_updated = result.rowcount
+        iteration += 1
+        result = conn.execute(sa.text(update_query))
+        
+        # Check if result is None or has no rowcount
+        if result is None:
+            print("Warning: Query returned None, stopping backfill")
+            break
+            
+        rows_updated = result.rowcount if hasattr(result, 'rowcount') else 0
         total_updated += rows_updated
         
         if rows_updated == 0:
             break
             
-        print(f"Updated {rows_updated} messages (total: {total_updated})")
+        print(f"Iteration {iteration}: Updated {rows_updated} messages (total: {total_updated})")
         
-        # Commit each batch to release locks
-        # Note: Alembic auto-commits in upgrade() by default
+        # For very large tables, add a small delay to reduce load
+        # Uncomment if needed: import time; time.sleep(0.1)
     
     print(f"Backfill completed. Total messages updated: {total_updated}")
 
