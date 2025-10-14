@@ -1,10 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
+import { v4 as uuid4 } from 'uuid'
+import { ReactSortable } from 'react-sortablejs'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
 import VarItem from './var-item'
@@ -22,6 +24,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
@@ -218,6 +221,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
 
     showEditModal()
   }
+
+  const promptVariablesWithIds = useMemo(() => promptVariables.map((item) => {
+    const id = uuid4()
+    return {
+      id,
+      variable: { ...item },
+    }
+  }), [promptVariables])
+
+  const canDrag = !readonly && promptVariables.length > 1
+
   return (
     <Panel
       className="mt-2"
@@ -245,18 +259,29 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       )}
       {hasVar && (
         <div className='mt-1 px-3 pb-3'>
-          {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
-            <VarItem
-              key={index}
-              readonly={readonly}
-              name={key}
-              label={name}
-              required={!!required}
-              type={type}
-              onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
-              onRemove={() => handleRemoveVar(index)}
-            />
-          ))}
+          <ReactSortable
+            className='space-y-1'
+            list={promptVariablesWithIds}
+            setList={(list) => { onPromptVariablesChange(list.map(item => item.variable)) }}
+            handle='.handle'
+            ghostClass='opacity-50'
+            animation={150}
+          >
+            {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
+              <VarItem
+                className={cn(canDrag && 'handle')}
+                key={index}
+                readonly={readonly}
+                name={key}
+                label={name}
+                required={!!required}
+                type={type}
+                onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
+                onRemove={() => handleRemoveVar(index)}
+                canDrag={canDrag}
+              />
+            ))}
+          </ReactSortable>
         </div>
       )}
 

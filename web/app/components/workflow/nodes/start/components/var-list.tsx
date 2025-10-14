@@ -88,6 +88,8 @@ const VarList: FC<Props> = ({
     )
   }
 
+  const canDrag = !readonly && varCount > 1
+
   return (
     <ReactSortable
       className='space-y-1'
@@ -97,30 +99,23 @@ const VarList: FC<Props> = ({
       ghostClass='opacity-50'
       animation={150}
     >
-      {list.map((item, index) => {
-        const canDrag = (() => {
-          if (readonly)
-            return false
-          return varCount > 1
-        })()
-        return (
-          <div key={index} className='group relative'>
-            <VarItem
-              className={cn(canDrag && 'handle')}
-              readonly={readonly}
-              payload={item}
-              onChange={handleVarChange(index)}
-              onRemove={handleVarRemove(index)}
-              varKeys={list.map(item => item.variable)}
-              canDrag={canDrag}
-            />
-            {canDrag && <RiDraggable className={cn(
-              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
-              'group-hover:block',
-            )} />}
-          </div>
-        )
-      })}
+      {list.map((item, index) => (
+        <div key={index} className='group relative'>
+          <VarItem
+            className={cn(canDrag && 'handle')}
+            readonly={readonly}
+            payload={item}
+            onChange={handleVarChange(index)}
+            onRemove={handleVarRemove(index)}
+            varKeys={list.map(item => item.variable)}
+            canDrag={canDrag}
+          />
+          {canDrag && <RiDraggable className={cn(
+            'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+            'group-hover:block',
+          )} />}
+        </div>
+      ))}
     </ReactSortable>
   )
 }
