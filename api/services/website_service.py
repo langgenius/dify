@@ -1,7 +1,7 @@
 import datetime
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from flask_login import current_user
@@ -177,14 +177,14 @@ class WebsiteService:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
 
         if not request.options.crawl_sub_pages:
-            params = {
+            params: dict[str, Any] = {
                 "includePaths": [],
                 "excludePaths": [],
                 "limit": 1,
                 "scrapeOptions": {"onlyMainContent": request.options.only_main_content},
             }
         else:
-            params = {
+            params: dict[str, Any] = {
                 "includePaths": request.options.get_include_paths(),
                 "excludePaths": request.options.get_exclude_paths(),
                 "limit": request.options.limit,
