@@ -1,5 +1,6 @@
 from typing import Iterator
 
+
 class StreamingHTMLStripper:
     """
     Stream-safe stripper that removes a <details><summary>...</summary></details>
@@ -23,13 +24,13 @@ class StreamingHTMLStripper:
         idx = b.find(">")
         if idx == -1:
             return False
-        rest = b[idx+1:].lstrip()
+        rest = b[idx + 1 :].lstrip()
         if not rest.startswith("<summary"):
             return False
         s_idx = rest.find(">")
         if s_idx == -1:
             return False
-        after_summary = rest[s_idx+1:]
+        after_summary = rest[s_idx + 1 :]
         end_summary_idx = after_summary.find("</summary>")
         if end_summary_idx == -1:
             return False
@@ -80,7 +81,6 @@ class StreamingHTMLStripper:
             self.buffer = self.buffer[safe_cut:]
             if out:
                 yield out
-
 
     def finish(self) -> Iterator[str]:
         """Flush any remaining buffer at stream end."""
