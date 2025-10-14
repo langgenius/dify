@@ -71,7 +71,9 @@ class WorkflowToolProviderController(ToolProviderController):
                 provider_id=provider.id or "",
             )
 
-            controller.tools = [controller._get_db_provider_tool(provider, app, session=session)]
+            controller.tools = [
+                controller._get_db_provider_tool(provider, app, session=session, user=user),
+            ]
 
         return controller
 
@@ -79,7 +81,14 @@ class WorkflowToolProviderController(ToolProviderController):
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 
-    def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App, *, session: Session) -> WorkflowTool:
+    def _get_db_provider_tool(
+        self,
+        db_provider: WorkflowToolProvider,
+        app: App,
+        *,
+        session: Session,
+        user: Account | None = None,
+    ) -> WorkflowTool:
         """
         get db provider tool
         :param db_provider: the db provider
@@ -105,8 +114,6 @@ class WorkflowToolProviderController(ToolProviderController):
 
         def fetch_workflow_variable(variable_name: str) -> VariableEntity | None:
             return next(filter(lambda x: x.variable == variable_name, variables), None)
-
-        user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
 
         workflow_tool_parameters = []
         for parameter in parameters:
@@ -209,7 +216,8 @@ class WorkflowToolProviderController(ToolProviderController):
             if not app:
                 raise ValueError("app not found")
 
-            self.tools = [self._get_db_provider_tool(db_provider, app, session=session)]
+            user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
+            self.tools = [self._get_db_provider_tool(db_provider, app, session=session, user=user)]
 
         return self.tools
 
