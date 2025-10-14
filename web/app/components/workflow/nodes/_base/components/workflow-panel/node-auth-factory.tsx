@@ -37,7 +37,6 @@ const NodeAuth: FC<NodeAuthProps> = ({ data, onAuthorizationChange, onSubscripti
       <SubscriptionMenu
         // @ts-expect-error TODO: fix this
         payload={data}
-        selectedSubscriptionId={data.subscription_id}
         onSubscriptionSelect={({ id, name }) => onSubscriptionChange?.(id, name)}
       />
     )

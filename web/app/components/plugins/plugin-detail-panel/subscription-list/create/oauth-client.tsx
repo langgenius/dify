@@ -185,12 +185,12 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         )
       }
     >
-      <span className='system-sm-semibold mb-2 text-text-secondary'>OAuth Client</span>
+      <div className='system-sm-medium mb-2 text-text-secondary'>{t('pluginTrigger.subscription.addType.options.oauth.clientTitle')}</div>
       <div className='mb-4 flex w-full items-start justify-between gap-2'>
         {[ClientTypeEnum.Default, ClientTypeEnum.Custom].map(option => (
           <OptionCard
             key={option}
-            title={option}
+            title={t(`pluginTrigger.subscription.addType.options.oauth.${option}`)}
             onSelect={() => setClientType(option)}
             selected={clientType === option}
             className="flex-1"

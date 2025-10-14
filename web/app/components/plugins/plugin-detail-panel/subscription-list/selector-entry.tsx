@@ -31,18 +31,18 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
     if (!selectedId) {
       if (isOpen) {
         return {
-          label: t('workflow.nodes.triggerPlugin.selectSubscription'),
+          label: t('pluginTrigger.subscription.selectPlaceholder'),
           color: 'yellow' as const,
         }
       }
       return {
-        label: 'No subscription selected',
+        label: t('pluginTrigger.subscription.noSubscriptionSelected'),
         color: 'red' as const,
       }
     }
 
     return {
-      label: subscriptions?.find(sub => sub.id === selectedId)?.name || '--',
+      label: subscriptions?.find(sub => sub.id === selectedId)?.name || t('pluginTrigger.subscription.selectPlaceholder'),
       color: 'green' as const,
     }
   }, [selectedId, subscriptions, t, isOpen])
@@ -57,7 +57,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       )}
       onClick={onClick}
     >
-      <RiWebhookLine className='h-3.5 w-3.5 shrink-0 text-text-secondary' />
+      <RiWebhookLine className={cn('h-3.5 w-3.5 shrink-0 text-text-secondary', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')} />
       <span className={cn('system-xs-medium truncate text-components-button-ghost-text', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}>
         {statusConfig.label}
       </span>
@@ -65,6 +65,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
         className={cn(
           'ml-auto h-4 w-4 shrink-0 text-text-quaternary transition-transform',
           isOpen && 'rotate-180',
+          statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text',
         )}
       />
     </button>

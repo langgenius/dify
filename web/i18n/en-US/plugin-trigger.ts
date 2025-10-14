@@ -15,6 +15,8 @@ const translation = {
     createSuccess: 'Subscription created successfully',
     createFailed: 'Failed to create subscription',
     maxCount: 'Max {{num}} subscriptions',
+    selectPlaceholder: 'Select subscription',
+    noSubscriptionSelected: 'No subscription selected',
     list: {
       title: 'Subscriptions',
       addButton: 'Add',
@@ -62,6 +64,9 @@ const translation = {
           title: 'Via OAuth',
           description: 'Authorize with third-party platform to create subscription',
           clientSettings: 'OAuth Client Settings',
+          clientTitle: 'OAuth Client',
+          default: 'Default',
+          custom: 'Custom',
         },
         manual: {
           title: 'Manual Setup',
@@ -123,15 +128,6 @@ const translation = {
     manual: {
       title: 'Manual Setup',
       description: 'Configure your webhook subscription manually',
-      instruction: {
-        title: 'Setup Instructions',
-        step1: '1. Copy the callback URL below',
-        step2: '2. Go to your third-party platform webhook settings',
-        step3: '3. Add the callback URL as a webhook endpoint',
-        step4: '4. Configure the events you want to receive',
-        step5: '5. Test the webhook by triggering an event',
-        step6: '6. Return here to verify the webhook is working and complete setup',
-      },
       logs: {
         title: 'Request Logs',
         request: 'Request',

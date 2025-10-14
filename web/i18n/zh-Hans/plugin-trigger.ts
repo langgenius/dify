@@ -15,6 +15,8 @@ const translation = {
     createSuccess: '订阅创建成功',
     createFailed: '订阅创建失败',
     maxCount: '最多 {{num}} 个订阅',
+    selectPlaceholder: '选择订阅',
+    noSubscriptionSelected: '未选择订阅',
     list: {
       title: '订阅列表',
       addButton: '添加',
@@ -62,6 +64,9 @@ const translation = {
           title: '通过 OAuth',
           description: '与第三方平台授权以创建订阅',
           clientSettings: 'OAuth 客户端设置',
+          clientTitle: 'OAuth 客户端',
+          default: '默认',
+          custom: '自定义',
         },
         manual: {
           title: '手动设置',
@@ -92,8 +97,8 @@ const translation = {
       title: '通过API密钥创建',
       verify: {
         title: '验证凭据',
-        description: '请提供您的API凭据以验证访问权限',
-        error: '凭据验证失败，请检查您的API密钥。',
+        description: '请提供您的 API 凭据以验证访问权限',
+        error: '凭据验证失败，请检查您的 API 密钥。',
         success: '凭据验证成功',
       },
       configuration: {
@@ -102,9 +107,9 @@ const translation = {
       },
     },
     oauth: {
-      title: '通过OAuth创建',
+      title: '通过 OAuth 创建',
       authorization: {
-        title: 'OAuth授权',
+        title: 'OAuth 授权',
         description: '授权 Dify 访问您的账户',
         redirectUrl: '重定向 URL',
         redirectUrlHelp: '在您的 OAuth 应用配置中使用此 URL',
@@ -123,15 +128,6 @@ const translation = {
     manual: {
       title: '手动设置',
       description: '手动配置您的 Webhook 订阅',
-      instruction: {
-        title: '设置说明',
-        step1: '1. 复制下方的回调URL',
-        step2: '2. 前往您的第三方平台Webhook设置',
-        step3: '3. 将回调URL添加为Webhook端点',
-        step4: '4. 配置您想要接收的事件',
-        step5: '5. 通过触发事件来测试Webhook',
-        step6: '6. 返回此处验证Webhook正常工作并完成设置',
-      },
       logs: {
         title: '请求日志',
         request: '请求',
