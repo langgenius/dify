@@ -968,6 +968,7 @@ class Message(Base):
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         Index("message_created_at_idx", "created_at"),
+        Index("message_app_mode_idx", "app_mode"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
@@ -1001,6 +1002,7 @@ class Message(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    app_mode: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     @property
     def inputs(self) -> dict[str, Any]:
