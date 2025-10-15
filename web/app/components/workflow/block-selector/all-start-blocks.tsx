@@ -64,59 +64,61 @@ const AllStartBlocks = ({
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
       <div
         ref={wrapElemRef}
-        className='h-[640px] max-h-[640px] overflow-y-auto'
+        className='flex max-h-[640px] flex-col overflow-y-auto'
       >
-        {shouldShowEmptyState && (
-          <div className='flex flex-col items-center gap-1 pt-48'>
-            <SearchMenu className='h-8 w-8 text-text-quaternary' />
-            <div className='text-sm font-medium text-text-secondary'>
-              {t('workflow.tabs.noPluginsFound')}
-            </div>
-            <Link
-              href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
-              target='_blank'
-            >
-              <Button
-                size='small'
-                variant='secondary-accent'
-                className='h-6 px-3 text-xs'
+        <div className='flex-1'>
+          {shouldShowEmptyState && (
+            <div className='flex flex-col items-center gap-1 pt-48'>
+              <SearchMenu className='h-8 w-8 text-text-quaternary' />
+              <div className='text-sm font-medium text-text-secondary'>
+                {t('workflow.tabs.noPluginsFound')}
+              </div>
+              <Link
+                href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+                target='_blank'
               >
-                {t('workflow.tabs.requestToCommunity')}
-              </Button>
-            </Link>
-          </div>
-        )}
+                <Button
+                  size='small'
+                  variant='secondary-accent'
+                  className='h-6 px-3 text-xs'
+                >
+                  {t('workflow.tabs.requestToCommunity')}
+                </Button>
+              </Link>
+            </div>
+          )}
 
-        {!shouldShowEmptyState && (
-          <>
-            <StartBlocks
-              searchText={searchText}
-              onSelect={onSelect as OnSelectBlock}
-              availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
-              onContentStateChange={handleStartBlocksContentChange}
-            />
-
-            { (
-              <TriggerPluginSelector
-                onSelect={onSelect}
+          {!shouldShowEmptyState && (
+            <>
+              <StartBlocks
                 searchText={searchText}
-                onContentStateChange={handlePluginContentChange}
-                tags={tags}
+                onSelect={onSelect as OnSelectBlock}
+                availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
+                onContentStateChange={handleStartBlocksContentChange}
               />
-            )}
-          </>
-        )}
-      </div>
 
-      {/* Footer - Same as Tools tab marketplace footer */}
-      <Link
-        className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
-        href={getMarketplaceUrl('')}
-        target='_blank'
-      >
-        <span>{t('plugin.findMoreInMarketplace')}</span>
-        <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
-      </Link>
+              { (
+                <TriggerPluginSelector
+                  onSelect={onSelect}
+                  searchText={searchText}
+                  onContentStateChange={handlePluginContentChange}
+                  tags={tags}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer - Same as Tools tab marketplace footer */}
+        <Link
+          className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+          href={getMarketplaceUrl('')}
+          target='_blank'
+        >
+          <span>{t('plugin.findMoreInMarketplace')}</span>
+          <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+        </Link>
+      </div>
     </div>
   )
 }
