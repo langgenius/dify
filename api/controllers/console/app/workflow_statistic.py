@@ -118,7 +118,7 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
-        assert account.timezone
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
