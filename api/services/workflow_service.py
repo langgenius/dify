@@ -11,7 +11,7 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.memory.entities import MemoryCreatedBy, MemoryScope, MemoryBlockSpec
+from core.memory.entities import MemoryBlockSpec, MemoryCreatedBy, MemoryScope
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
