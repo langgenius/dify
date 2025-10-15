@@ -63,7 +63,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     }
   }, [t])
 
-  const onClickClientSettings = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const onClickClientSettings = (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
     showClientSettingsModal()
@@ -171,7 +171,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           <Button
             variant='primary'
             size='medium'
-            className='flex w-full items-center justify-between pl-0 pr-1'
+            className='flex w-full items-center justify-between px-0'
             onClick={onClickCreate}
           >
             <div className='flex flex-1 items-center justify-center'>
@@ -184,12 +184,12 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               </Badge>}
             </div>
             {methodType === SupportedCreationMethods.OAUTH
-              && <div className='ml-auto flex items-center gap-1'>
+              && <div className='ml-auto flex items-center'>
                 <div className="h-4 w-px bg-text-primary-on-surface opacity-15" />
                 <Tooltip popupContent={t('pluginTrigger.subscription.addType.options.oauth.clientSettings')}>
-                  <ActionButton onClick={onClickClientSettings} >
+                  <div onClick={onClickClientSettings} className='p-2'>
                     <RiEqualizer2Line className='size-4 text-components-button-primary-text' />
-                  </ActionButton>
+                  </div>
                 </Tooltip>
               </div>
             }

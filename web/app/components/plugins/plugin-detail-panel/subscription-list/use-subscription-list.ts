@@ -6,7 +6,7 @@ export const useSubscriptionList = () => {
   const detail = usePluginStore(state => state.detail)
   const { setRefresh } = usePluginSubscriptionStore()
 
-  const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(detail?.provider || '', !!detail?.provider)
+  const { data: subscriptions, isLoading, refetch } = useTriggerSubscriptions(detail?.provider || '')
 
   useEffect(() => {
     if (refetch)

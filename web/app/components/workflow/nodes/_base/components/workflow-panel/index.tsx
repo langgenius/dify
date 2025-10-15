@@ -76,7 +76,7 @@ import { DataSourceClassification } from '@/app/components/workflow/nodes/data-s
 import { useModalContext } from '@/context/modal-context'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import NodeAuth from './node-auth-factory'
+import { TriggerSubscription } from './trigger-subscription'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -275,21 +275,6 @@ const BasePanel: FC<BasePanelProps> = ({
     return triggerProviders.find(p => p.plugin_id === data.plugin_id && p.name === data.provider_name)
   }, [data.type, data.plugin_id, data.provider_name, triggerProviders])
 
-  // const supportedAuthMethods = useMemo(() => {
-  //   if (!currentTriggerProvider) return []
-  //   const methods = []
-  //   if (currentTriggerProvider.oauth_client_schema && currentTriggerProvider.oauth_client_schema.length > 0)
-  //     methods.push('oauth')
-  //   if (currentTriggerProvider.credentials_schema && currentTriggerProvider.credentials_schema.length > 0)
-  //     methods.push('api_key')
-  //   return methods
-  // }, [currentTriggerProvider])
-
-  // Simplified: Always show auth selector for trigger plugins
-  // const shouldShowTriggerAuthSelector = useMemo(() => {
-  //   return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider && supportedAuthMethods.length > 0
-  // }, [data.type, currentTriggerProvider, supportedAuthMethods.length])
-
   // Simplified: Always show tab for trigger plugins
   const shouldShowTriggerTab = useMemo(() => {
     return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider
@@ -301,10 +286,12 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [data.type, currCollection?.allow_delete])
 
   const dataSourceList = useStore(s => s.dataSourceList)
+
   const currentDataSource = useMemo(() => {
     if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
       return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
   }, [dataSourceList, data.plugin_id, data.type, data.provider_type])
+
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
       id,
@@ -313,7 +300,9 @@ const BasePanel: FC<BasePanelProps> = ({
       },
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
+
   const { setShowAccountSettingModal } = useModalContext()
+
   const handleJumpToDataSourcePage = useCallback(() => {
     setShowAccountSettingModal({ payload: 'data-source' })
   }, [setShowAccountSettingModal])
@@ -536,27 +525,17 @@ const BasePanel: FC<BasePanelProps> = ({
               </PluginAuthInDataSourceNode>
             )
           }
-          {/* {
-            shouldShowTriggerAuthSelector && (
-              <AuthMethodSelector
-                provider={currentTriggerProvider!}
-                supportedMethods={supportedAuthMethods}
-              />
-            )
-          } */}
           {
             shouldShowTriggerTab && (
-              <div className='flex items-center justify-between pl-4 pr-3'>
+              <TriggerSubscription
+                data={data}
+                onSubscriptionChange={handleSubscriptionChange}
+              >
                 <Tab
                   value={tabType}
                   onChange={setTabType}
                 />
-                <NodeAuth
-                  data={data}
-                  onAuthorizationChange={handleAuthorizationItemClick}
-                  onSubscriptionChange={handleSubscriptionChange}
-                />
-              </div>
+              </TriggerSubscription>
             )
           }
           {
