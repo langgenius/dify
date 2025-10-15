@@ -122,6 +122,28 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
                 database="test",
                 max_connection=5,
             )
+        
+        # Test invalid port
+        with pytest.raises(ValueError):
+            AlibabaCloudMySQLVectorConfig(
+                host="localhost",
+                port=0,  # Invalid port should raise error
+                user="test",
+                password="test",
+                database="test",
+                max_connection=5,
+            )
+        
+        # Test invalid max_connection
+        with pytest.raises(ValueError):
+            AlibabaCloudMySQLVectorConfig(
+                host="localhost",
+                port=3306,
+                user="test",
+                password="test",
+                database="test",
+                max_connection=0,  # Invalid max_connection should raise error
+            )
 
     @patch(
         "core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool"
