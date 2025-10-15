@@ -68,9 +68,8 @@ export type Collection = {
   authentication?: {
     client_id?: string
     client_secret?: string
-    grant_type?: string
   }
-  configurations?: {
+  configuration?: {
     timeout?: number
     sse_read_timeout?: number
   }

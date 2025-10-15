@@ -1,6 +1,7 @@
 'use client'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid } from 'uuid'
 import { getDomain } from 'tldts'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
@@ -11,6 +12,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import HeadersInput from './headers-input'
+import type { HeaderItem } from './headers-input'
 import type { AppIconType } from '@/types/app'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { noop } from 'lodash-es'
@@ -40,7 +42,7 @@ export type DuplicateAppModalProps = {
       client_secret?: string
       grant_type?: string
     }
-    configurations: {
+    configuration: {
       timeout: number
       sse_read_timeout: number
     }
@@ -97,8 +99,8 @@ const MCPModal = ({
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
   const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
   const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.sse_read_timeout || 300)
-  const [headers, setHeaders] = React.useState<Record<string, string>>(
-    data?.masked_headers || {},
+  const [headers, setHeaders] = React.useState<HeaderItem[]>(
+    Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })),
   )
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
@@ -116,7 +118,7 @@ const MCPModal = ({
       setServerIdentifier(data.server_identifier || '')
       setMcpTimeout(data.timeout || 30)
       setSseReadTimeout(data.sse_read_timeout || 300)
-      setHeaders(data.masked_headers || {})
+      setHeaders(Object.entries(data.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })))
       setAppIcon(getIcon(data))
     }
     else {
@@ -126,7 +128,7 @@ const MCPModal = ({
       setServerIdentifier('')
       setMcpTimeout(30)
       setSseReadTimeout(300)
-      setHeaders({})
+      setHeaders([])
       setAppIcon(DEFAULT_ICON as AppIconSelection)
     }
   }, [data])
@@ -179,6 +181,11 @@ const MCPModal = ({
       Toast.notify({ type: 'error', message: 'invalid server identifier' })
       return
     }
+    const formattedHeaders = headers.reduce((acc, item) => {
+      if (item.key.trim())
+        acc[item.key.trim()] = item.value
+      return acc
+    }, {} as Record<string, string>)
     await onConfirm({
       server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
       name,
@@ -186,14 +193,13 @@ const MCPModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      headers: Object.keys(formattedHeaders).length > 0 ? formattedHeaders : undefined,
       is_dynamic_registration: isDynamicRegistration,
       authentication: {
         client_id: clientID,
         client_secret: credentials,
-        grant_type: 'client_credentials',
       },
-      configurations: {
+      configuration: {
         timeout: timeout || 30,
         sse_read_timeout: sseReadTimeout || 300,
       },
@@ -337,10 +343,10 @@ const MCPModal = ({
                 </div>
                 <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
                 <HeadersInput
-                  headers={headers}
+                  headersItems={headers}
                   onChange={setHeaders}
                   readonly={false}
-                  isMasked={!isCreate && Object.keys(headers).length > 0}
+                  isMasked={!isCreate && headers.filter(item => item.key.trim()).length > 0}
                 />
               </div>
             )
