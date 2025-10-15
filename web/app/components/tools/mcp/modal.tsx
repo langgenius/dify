@@ -106,7 +106,7 @@ const MCPModal = ({
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
   const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
-  const [isDynamicRegistration, setIsDynamicRegistration] = useState(data?.is_dynamic_registration || false)
+  const [isDynamicRegistration, setIsDynamicRegistration] = useState(isCreate ? true : data?.is_dynamic_registration)
   const [clientID, setClientID] = useState(data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(data?.authentication?.client_secret || '')
 
@@ -120,6 +120,9 @@ const MCPModal = ({
       setSseReadTimeout(data.sse_read_timeout || 300)
       setHeaders(Object.entries(data.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })))
       setAppIcon(getIcon(data))
+      setIsDynamicRegistration(data.is_dynamic_registration)
+      setClientID(data.authentication?.client_id || '')
+      setCredentials(data.authentication?.client_secret || '')
     }
     else {
       // Reset for create mode
@@ -130,6 +133,9 @@ const MCPModal = ({
       setSseReadTimeout(300)
       setHeaders([])
       setAppIcon(DEFAULT_ICON as AppIconSelection)
+      setIsDynamicRegistration(true)
+      setClientID('')
+      setCredentials('')
     }
   }, [data])
 
@@ -322,13 +328,13 @@ const MCPModal = ({
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.credentials')}</span>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientSecret')}</span>
                   </div>
                   <Input
                     value={credentials}
                     onChange={e => setCredentials(e.target.value)}
                     onBlur={e => handleBlur(e.target.value.trim())}
-                    placeholder={t('tools.mcp.modal.credentialsPlaceholder')}
+                    placeholder={t('tools.mcp.modal.clientSecretPlaceholder')}
                     disabled={isDynamicRegistration}
                   />
                 </div>
