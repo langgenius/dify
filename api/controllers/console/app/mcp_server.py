@@ -101,7 +101,7 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_fields)
     def put(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise NotFound()
         parser = reqparse.RequestParser()

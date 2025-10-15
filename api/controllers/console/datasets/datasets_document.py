@@ -840,7 +840,7 @@ class DocumentProcessingApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, action: Literal["pause", "resume"]):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
@@ -891,7 +891,7 @@ class DocumentMetadataApi(DocumentResource):
     @login_required
     @account_initialization_required
     def put(self, dataset_id, document_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
@@ -939,7 +939,7 @@ class DocumentStatusApi(DocumentResource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
@@ -1086,7 +1086,7 @@ class DocumentRenameApi(DocumentResource):
     @marshal_with(document_fields)
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
@@ -1112,7 +1112,7 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @account_initialization_required
     def get(self, dataset_id, document_id):
         """sync website document."""
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:

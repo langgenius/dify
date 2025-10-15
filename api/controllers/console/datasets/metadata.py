@@ -23,7 +23,7 @@ class DatasetMetadataCreateApi(Resource):
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
     def post(self, dataset_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
@@ -59,7 +59,7 @@ class DatasetMetadataApi(Resource):
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
     def patch(self, dataset_id, metadata_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
@@ -80,7 +80,7 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def delete(self, dataset_id, metadata_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -110,7 +110,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, dataset_id, action: Literal["enable", "disable"]):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -131,7 +131,7 @@ class DocumentMetadataEditApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, dataset_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:

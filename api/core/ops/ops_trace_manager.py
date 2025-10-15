@@ -913,4 +913,4 @@ class TraceQueueManager:
                     "file_id": file_id,
                     "app_id": task.app_id,
                 }
-                process_trace_tasks.delay(file_info)
+                process_trace_tasks.delay(file_info) # type: ignore

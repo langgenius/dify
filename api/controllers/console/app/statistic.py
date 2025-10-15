@@ -52,6 +52,7 @@ WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -114,7 +115,7 @@ class DailyConversationStatistic(Resource):
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -190,7 +191,7 @@ WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -263,7 +264,7 @@ WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -432,7 +433,7 @@ WHERE
     m.app_id = :app_id
     AND m.invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -509,7 +510,7 @@ WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 

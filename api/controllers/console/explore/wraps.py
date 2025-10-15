@@ -52,7 +52,7 @@ def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] |
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
-            current_user, current_tenant_id = current_account_with_tenant()
+            current_user, _ = current_account_with_tenant()
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
                 app_id = installed_app.app_id

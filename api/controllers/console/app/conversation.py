@@ -57,7 +57,7 @@ class CompletionConversationApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
     def get(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -84,6 +84,7 @@ class CompletionConversationApi(Resource):
             )
 
         account = current_user
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -207,7 +208,7 @@ class ChatConversationApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
     def get(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -261,6 +262,7 @@ class ChatConversationApi(Resource):
             )
 
         account = current_user
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 

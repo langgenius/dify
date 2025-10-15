@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
@@ -76,7 +76,7 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)
@@ -106,7 +106,7 @@ class MessageFeedbackApi(InstalledAppResource):
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
     def get(self, installed_app, message_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -155,7 +155,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

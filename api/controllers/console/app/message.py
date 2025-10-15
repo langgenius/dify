@@ -61,7 +61,7 @@ class ChatMessageListApi(Resource):
     @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -154,7 +154,7 @@ class MessageFeedbackApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", required=True, type=uuid_value, location="json")
@@ -217,7 +217,7 @@ class MessageAnnotationApi(Resource):
     @get_app_model
     @marshal_with(annotation_fields)
     def post(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -268,7 +268,7 @@ class MessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model, message_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         message_id = str(message_id)
 
         try:

@@ -62,7 +62,7 @@ class DraftRagPipelineApi(Resource):
         Get draft rag pipeline's workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -85,7 +85,7 @@ class DraftRagPipelineApi(Resource):
         Sync draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -161,7 +161,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -197,7 +197,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -233,7 +233,7 @@ class DraftRagPipelineRunApi(Resource):
         Run draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -269,7 +269,7 @@ class PublishedRagPipelineRunApi(Resource):
         Run published workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -391,7 +391,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         Run rag pipeline datasource
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -435,7 +435,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         Run rag pipeline datasource
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -480,7 +480,7 @@ class RagPipelineDraftNodeRunApi(Resource):
         Run draft workflow node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -514,7 +514,7 @@ class RagPipelineTaskStopApi(Resource):
         Stop workflow task
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -535,7 +535,7 @@ class PublishedRagPipelineApi(Resource):
         Get published pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         if not pipeline.is_published:
@@ -556,7 +556,7 @@ class PublishedRagPipelineApi(Resource):
         Publish workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -592,7 +592,7 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
         Get default block config
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -612,7 +612,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         Get default block config
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -645,7 +645,7 @@ class PublishedAllRagPipelineApi(Resource):
         """
         Get published workflows
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -696,7 +696,7 @@ class RagPipelineByIdApi(Resource):
         Update workflow attributes
         """
         # Check permission
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -754,7 +754,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         Get second step parameters of rag pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -781,7 +781,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         Get first step parameters of rag pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -808,7 +808,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         Get first step parameters of rag pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -835,7 +835,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         Get second step parameters of rag pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
@@ -923,7 +923,7 @@ class DatasourceListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id))
 
 
@@ -955,7 +955,7 @@ class RagPipelineTransformApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, dataset_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
 
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
@@ -977,7 +977,7 @@ class RagPipelineDatasourceVariableApi(Resource):
         """
         Set datasource variables
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 

@@ -47,7 +47,7 @@ class SavedMessageListApi(InstalledAppResource):
         return SavedMessageService.pagination_by_last_id(app_model, current_user, args["last_id"], args["limit"])
 
     def post(self, installed_app):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -69,7 +69,7 @@ class SavedMessageListApi(InstalledAppResource):
 )
 class SavedMessageApi(InstalledAppResource):
     def delete(self, installed_app, message_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)

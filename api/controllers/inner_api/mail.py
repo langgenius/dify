@@ -17,7 +17,7 @@ class BaseMail(Resource):
 
     def post(self):
         args = _mail_parser.parse_args()
-        send_inner_email_task.delay(
+        send_inner_email_task.delay( # type: ignore
             to=args["to"],
             subject=args["subject"],
             body=args["body"],
