@@ -239,26 +239,18 @@ class MCPProviderEntity(BaseModel):
 
         masked = {}
 
-        # Check if we have nested client_information structure
-        if "client_information" in credentials and isinstance(credentials["client_information"], dict):
-            client_info = credentials["client_information"]
-            # Mask sensitive fields from nested structure
-            if client_info.get("client_id"):
-                masked["client_id"] = self._mask_value(client_info["client_id"])
-            if client_info.get("client_secret"):
-                masked["client_secret"] = self._mask_value(client_info["client_secret"])
-        else:
-            # Handle flat structure
-            # Mask sensitive fields
-            sensitive_fields = ["client_id", "client_secret"]
-            for field in sensitive_fields:
-                if credentials.get(field):
-                    masked[field] = self._mask_value(credentials[field])
-
-        # Include non-sensitive fields (check both flat and nested structures)
-        if "grant_type" in credentials:
-            masked["grant_type"] = credentials["grant_type"]
-
+        if "client_information" not in credentials or not isinstance(credentials["client_information"], dict):
+            return {}
+        client_info = credentials["client_information"]
+        # Mask sensitive fields from nested structure
+        if client_info.get("client_id"):
+            masked["client_id"] = self._mask_value(client_info["client_id"])
+        if client_info.get("encrypted_client_secret"):
+            masked["client_secret"] = self._mask_value(
+                encrypter.decrypt_token(self.tenant_id, client_info["encrypted_client_secret"])
+            )
+        if client_info.get("client_secret"):
+            masked["client_secret"] = self._mask_value(client_info["client_secret"])
         return masked
 
     def decrypt_server_url(self) -> str:
