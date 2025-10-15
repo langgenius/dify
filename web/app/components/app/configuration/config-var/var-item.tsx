@@ -33,7 +33,7 @@ const VarItem: FC<ItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
-    <div className={cn('group relative mb-1 flex h-[34px] w-full items-center  rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 pr-3 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover', readonly && 'cursor-not-allowed opacity-30')}>
+    <div className={cn('group relative mb-1 flex h-[34px] w-full items-center  rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 pr-3 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover', readonly && 'cursor-not-allowed')}>
       <VarIcon className='mr-1 h-4 w-4 shrink-0 text-text-accent' />
       <div className='flex w-0 grow items-center'>
         <div className='truncate' title={`${name} · ${label}`}>

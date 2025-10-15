@@ -56,6 +56,7 @@ const Item: FC<ItemProps> = ({
     <div className={cn(
       'group relative mb-1 flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover',
       isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
+      readonly && 'cursor-not-allowed',
     )}>
       <div className='flex w-0 grow items-center space-x-1.5'>
         <AppIcon
