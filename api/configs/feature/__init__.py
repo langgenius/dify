@@ -200,6 +200,11 @@ class PluginConfig(BaseSettings):
         default="plugin-api-key",
     )
 
+    PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
+        description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
+        default=300.0,
+    )
+
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
 
     PLUGIN_REMOTE_INSTALL_HOST: str = Field(

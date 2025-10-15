@@ -189,6 +189,11 @@ class ToolInvokeMessage(BaseModel):
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
         metadata: Mapping[str, Any] = Field(default_factory=dict, description="The metadata of the log")
 
+        @field_validator("metadata", mode="before")
+        @classmethod
+        def _normalize_metadata(cls, value: Mapping[str, Any] | None) -> Mapping[str, Any]:
+            return value or {}
+
     class RetrieverResourceMessage(BaseModel):
         retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
         context: str = Field(..., description="context")
@@ -376,6 +381,11 @@ class ToolEntity(BaseModel):
     @classmethod
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
+
+    @field_validator("output_schema", mode="before")
+    @classmethod
+    def _normalize_output_schema(cls, value: Mapping[str, object] | None) -> Mapping[str, object]:
+        return value or {}
 
 
 class OAuthSchema(BaseModel):
