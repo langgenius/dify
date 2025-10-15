@@ -16,7 +16,7 @@ const ConfigDocument: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowDocumentConfig } = useContext(ConfigContext)
+  const { isShowDocumentConfig, readonly } = useContext(ConfigContext)
 
   const isDocumentEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.document) ?? false
 
@@ -64,14 +64,16 @@ const ConfigDocument: FC = () => {
           }
         />
       </div>
-      <div className='flex shrink-0 items-center'>
-        <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle'></div>
-        <Switch
-          defaultValue={isDocumentEnabled}
-          onChange={handleChange}
-          size='md'
-        />
-      </div>
+      {!readonly && (
+        <div className='flex shrink-0 items-center'>
+          <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle'></div>
+          <Switch
+            defaultValue={isDocumentEnabled}
+            onChange={handleChange}
+            size='md'
+          />
+        </div>
+      )}
     </div>
   )
 }
