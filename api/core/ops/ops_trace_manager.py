@@ -120,6 +120,17 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                     "trace_instance": AliyunDataTrace,
                 }
 
+            case TracingProviderEnum.TENCENT:
+                from core.ops.entities.config_entity import TencentConfig
+                from core.ops.tencent_trace.tencent_trace import TencentDataTrace
+
+                return {
+                    "config_class": TencentConfig,
+                    "secret_keys": ["token"],
+                    "other_keys": ["endpoint", "service_name"],
+                    "trace_instance": TencentDataTrace,
+                }
+
             case _:
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
@@ -723,6 +734,7 @@ class TraceTask:
             end_time=timer.get("end"),
             metadata=metadata,
             message_data=message_data.to_dict(),
+            error=kwargs.get("error"),
         )
 
         return dataset_retrieval_trace_info
@@ -889,6 +901,7 @@ class TraceQueueManager:
                     continue
                 file_id = uuid4().hex
                 trace_info = task.execute()
+
                 task_data = TaskData(
                     app_id=task.app_id,
                     trace_info_type=type(trace_info).__name__,
