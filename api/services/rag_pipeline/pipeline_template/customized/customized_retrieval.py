@@ -1,8 +1,7 @@
 import yaml
 
 from extensions.ext_database import db
-from libs.login import current_user
-from models import Account
+from libs.login import current_account_with_tenant
 from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -14,10 +13,9 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     def get_pipeline_templates(self, language: str) -> dict:
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id
+        _, current_tenant_id = current_account_with_tenant()
         result = self.fetch_pipeline_templates_from_customized(
-            tenant_id=current_user.current_tenant_id, language=language
+            tenant_id=current_tenant_id, language=language
         )
         return result
 
