@@ -65,14 +65,46 @@ class HostedOpenAiConfig(BaseSettings):
 
     HOSTED_OPENAI_TRIAL_MODELS: str = Field(
         description="Comma-separated list of available models for trial access",
-        default="gpt-3.5-turbo,"
-        "gpt-3.5-turbo-1106,"
-        "gpt-3.5-turbo-instruct,"
+        default="gpt-4,"
+        "gpt-4-turbo-preview,"
+        "gpt-4-turbo-2024-04-09,"
+        "gpt-4-1106-preview,"
+        "gpt-4-0125-preview,"
+        "gpt-4-turbo,"
+        "gpt-4.1,"
+        "gpt-4.1-2025-04-14,"
+        "gpt-4.1-mini,"
+        "gpt-4.1-mini-2025-04-14,"
+        "gpt-4.1-nano,"
+        "gpt-4.1-nano-2025-04-14,"
+        "gpt-3.5-turbo,"
         "gpt-3.5-turbo-16k,"
         "gpt-3.5-turbo-16k-0613,"
+        "gpt-3.5-turbo-1106,"
         "gpt-3.5-turbo-0613,"
         "gpt-3.5-turbo-0125,"
-        "text-davinci-003",
+        "gpt-3.5-turbo-instruct,"
+        "text-davinci-003,"
+        "chatgpt-4o-latest,"
+        "gpt-4o,"
+        "gpt-4o-2024-05-13,"
+        "gpt-4o-2024-08-06,"
+        "gpt-4o-2024-11-20,"
+        "gpt-4o-audio-preview,"
+        "gpt-4o-audio-preview-2025-06-03,"
+        "gpt-4o-mini,"
+        "gpt-4o-mini-2024-07-18,"
+        "o3-mini,"
+        "o3-mini-2025-01-31,"
+        "gpt-5-mini-2025-08-07,"
+        "gpt-5-mini,"
+        "o4-mini,"
+        "o4-mini-2025-04-16,"
+        "gpt-5-chat-latest,"
+        "gpt-5,"
+        "gpt-5-2025-08-07,"
+        "gpt-5-nano,"
+        "gpt-5-nano-2025-08-07",
     )
 
     HOSTED_OPENAI_PAID_ENABLED: bool = Field(
@@ -87,6 +119,13 @@ class HostedOpenAiConfig(BaseSettings):
         "gpt-4-turbo-2024-04-09,"
         "gpt-4-1106-preview,"
         "gpt-4-0125-preview,"
+        "gpt-4-turbo,"
+        "gpt-4.1,"
+        "gpt-4.1-2025-04-14,"
+        "gpt-4.1-mini,"
+        "gpt-4.1-mini-2025-04-14,"
+        "gpt-4.1-nano,"
+        "gpt-4.1-nano-2025-04-14,"
         "gpt-3.5-turbo,"
         "gpt-3.5-turbo-16k,"
         "gpt-3.5-turbo-16k-0613,"
@@ -94,7 +133,27 @@ class HostedOpenAiConfig(BaseSettings):
         "gpt-3.5-turbo-0613,"
         "gpt-3.5-turbo-0125,"
         "gpt-3.5-turbo-instruct,"
-        "text-davinci-003",
+        "text-davinci-003,"
+        "chatgpt-4o-latest,"
+        "gpt-4o,"
+        "gpt-4o-2024-05-13,"
+        "gpt-4o-2024-08-06,"
+        "gpt-4o-2024-11-20,"
+        "gpt-4o-audio-preview,"
+        "gpt-4o-audio-preview-2025-06-03,"
+        "gpt-4o-mini,"
+        "gpt-4o-mini-2024-07-18,"
+        "o3-mini,"
+        "o3-mini-2025-01-31,"
+        "gpt-5-mini-2025-08-07,"
+        "gpt-5-mini,"
+        "o4-mini,"
+        "o4-mini-2025-04-16,"
+        "gpt-5-chat-latest,"
+        "gpt-5,"
+        "gpt-5-2025-08-07,"
+        "gpt-5-nano,"
+        "gpt-5-nano-2025-08-07",
     )
 
 
@@ -217,7 +276,7 @@ class HostedDeepseekConfig(BaseSettings):
 
     HOSTED_DEEPSEEK_PAID_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
-        default="grok-3,grok-3-mini,grok-3-mini-fast",
+        default="deepseek-chat,deepseek-reasoner",
     )
 
 
@@ -275,7 +334,6 @@ class HostedAnthropicConfig(BaseSettings):
     HOSTED_ANTHROPIC_TRIAL_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
         default="claude-opus-4-20250514,"
-        "claude-opus-4-20250514,"
         "claude-sonnet-4-20250514,"
         "claude-3-5-haiku-20241022,"
         "claude-3-opus-20240229,"
@@ -285,7 +343,6 @@ class HostedAnthropicConfig(BaseSettings):
     HOSTED_ANTHROPIC_PAID_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
         default="claude-opus-4-20250514,"
-        "claude-opus-4-20250514,"
         "claude-sonnet-4-20250514,"
         "claude-3-5-haiku-20241022,"
         "claude-3-opus-20240229,"
