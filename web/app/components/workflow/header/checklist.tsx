@@ -16,6 +16,7 @@ import {
   useChecklist,
   useNodesInteractions,
 } from '../hooks'
+import type { ChecklistItem } from '../hooks/use-checklist'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -44,6 +45,13 @@ const WorkflowChecklist = ({
   const edges = useEdges<CommonEdgeType>()
   const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
+
+  const handleChecklistItemClick = (item: ChecklistItem) => {
+    if (!item.canNavigate)
+      return
+    handleNodeSelect(item.id)
+    setOpen(false)
+  }
 
   return (
     <PortalToFollowElem
@@ -104,11 +112,11 @@ const WorkflowChecklist = ({
                       needWarningNodes.map(node => (
                         <div
                           key={node.id}
-                          className='group mb-2 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs last-of-type:mb-0'
-                          onClick={() => {
-                            handleNodeSelect(node.id)
-                            setOpen(false)
-                          }}
+                          className={cn(
+                            'group mb-2 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs last-of-type:mb-0',
+                            node.canNavigate ? 'cursor-pointer' : 'cursor-default opacity-80',
+                          )}
+                          onClick={() => handleChecklistItemClick(node)}
                         >
                           <div className='flex h-9 items-center p-2 text-xs font-medium text-text-secondary'>
                             <BlockIcon
@@ -119,12 +127,16 @@ const WorkflowChecklist = ({
                             <span className='grow truncate'>
                               {node.title}
                             </span>
-                            <div className='flex h-4 w-[60px] shrink-0 items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100'>
-                              <span className='whitespace-nowrap text-xs font-medium leading-4 text-primary-600'>
-                                {t('workflow.panel.goTo')}
-                              </span>
-                              <IconR className='h-3.5 w-3.5 text-primary-600' />
-                            </div>
+                            {
+                              node.canNavigate && (
+                                <div className='flex h-4 w-[60px] shrink-0 items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100'>
+                                  <span className='whitespace-nowrap text-xs font-medium leading-4 text-primary-600'>
+                                    {t('workflow.panel.goTo')}
+                                  </span>
+                                  <IconR className='h-3.5 w-3.5 text-primary-600' />
+                                </div>
+                              )
+                            }
                           </div>
                           <div
                             className={cn(

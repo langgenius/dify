@@ -43,6 +43,23 @@ import { MAX_TREE_DEPTH } from '@/config'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 
+export type ChecklistItem = {
+  id: string
+  type: BlockEnum | string
+  title: string
+  toolIcon?: string
+  unConnected?: boolean
+  errorMessage?: string
+  canNavigate: boolean
+}
+
+const START_NODE_TYPES: BlockEnum[] = [
+  BlockEnum.Start,
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+]
+
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -74,8 +91,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     return checkData
   }, [datasetsDetail])
 
-  const needWarningNodes = useMemo(() => {
-    const list = []
+  const needWarningNodes = useMemo<ChecklistItem[]>(() => {
+    const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
 
@@ -145,18 +162,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             toolIcon,
             unConnected: isUnconnected && !isStartNode,
             errorMessage,
+            canNavigate: true,
           })
         }
       }
     }
 
     // Check for start nodes (including triggers)
-    const startNodesFiltered = nodes.filter(node =>
-      node.data.type === BlockEnum.Start
-      || node.data.type === BlockEnum.TriggerSchedule
-      || node.data.type === BlockEnum.TriggerWebhook
-      || node.data.type === BlockEnum.TriggerPlugin,
-    )
+    const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
 
     if (startNodesFiltered.length === 0) {
       list.push({
@@ -164,6 +177,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         type: BlockEnum.Start,
         title: t('workflow.panel.startNode'),
         errorMessage: t('workflow.common.needStartNode'),
+        canNavigate: false,
       })
     }
 
@@ -176,6 +190,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           type,
           title: t(`workflow.blocks.${type}`),
           errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }),
+          canNavigate: false,
         })
       }
     })
@@ -316,12 +331,7 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    const startNodesFiltered = nodes.filter(node =>
-      node.data.type === BlockEnum.Start
-      || node.data.type === BlockEnum.TriggerSchedule
-      || node.data.type === BlockEnum.TriggerWebhook
-      || node.data.type === BlockEnum.TriggerPlugin,
-    )
+    const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
 
     if (startNodesFiltered.length === 0) {
       notify({ type: 'error', message: t('workflow.common.needStartNode') })
