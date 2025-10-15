@@ -22,9 +22,10 @@ export type BannerData = {
 type BannerItemProps = {
   banner: BannerData
   autoplayDelay: number
+  isPaused?: boolean
 }
 
-export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay }) => {
+export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPaused = false }) => {
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
   const [resetKey, setResetKey] = useState(0)
@@ -102,6 +103,7 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay }) => {
                   isNextSlide={index === slideInfo.nextIndex}
                   autoplayDelay={autoplayDelay}
                   resetKey={resetKey}
+                  isPaused={isPaused}
                   onClick={() => handleIndicatorClick(index)}
                 />
               ))}

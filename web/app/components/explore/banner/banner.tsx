@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Carousel } from '@/app/components/base/carousel'
 import { useGetBanners } from '@/service/use-explore'
 import Loading from '../../base/loading'
@@ -12,6 +12,7 @@ const MIN_LOADING_HEIGHT = 168
 const Banner: FC = () => {
   const { locale } = useI18N()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
+  const [isHovered, setIsHovered] = useState(false)
 
   const enabledBanners = useMemo(
     () => banners?.filter((banner: BannerData) => banner.status === 'enabled') ?? [],
@@ -39,14 +40,17 @@ const Banner: FC = () => {
         Carousel.Plugin.Autoplay({
           delay: AUTOPLAY_DELAY,
           stopOnInteraction: false,
+          stopOnMouseEnter: true,
         }),
       ]}
       className="rounded-2xl"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Carousel.Content>
         {enabledBanners.map((banner: BannerData) => (
           <Carousel.Item key={banner.id}>
-            <BannerItem banner={banner} autoplayDelay={AUTOPLAY_DELAY} />
+            <BannerItem banner={banner} autoplayDelay={AUTOPLAY_DELAY} isPaused={isHovered} />
           </Carousel.Item>
         ))}
       </Carousel.Content>
