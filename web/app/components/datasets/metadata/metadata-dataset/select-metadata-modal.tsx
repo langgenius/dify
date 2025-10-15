@@ -71,6 +71,7 @@ const SelectMetadataModal: FC<Props> = ({
             onSave={handleSave}
             hasBack
             onBack={() => setStep(Step.select)}
+            onClose={() => setStep(Step.select)}
           />
         )}
       </PortalToFollowElemContent>

@@ -1,21 +1,17 @@
 import uuid
 
-import pandas as pd
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal, reqparse
+from flask_restx import Resource, marshal, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
     InvalidActionError,
-    NoFileUploadedError,
-    TooManyFilesError,
 )
 from controllers.console.wraps import (
     account_initialization_required,
@@ -30,8 +26,9 @@ from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
+from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
@@ -39,11 +36,14 @@ from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingS
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class DatasetDocumentSegmentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, dataset_id, document_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -78,27 +78,27 @@ class DatasetDocumentSegmentListApi(Resource):
 
         query = (
             select(DocumentSegment)
-            .filter(
+            .where(
                 DocumentSegment.document_id == str(document_id),
-                DocumentSegment.tenant_id == current_user.current_tenant_id,
+                DocumentSegment.tenant_id == current_tenant_id,
             )
             .order_by(DocumentSegment.position.asc())
         )
 
         if status_list:
-            query = query.filter(DocumentSegment.status.in_(status_list))
+            query = query.where(DocumentSegment.status.in_(status_list))
 
         if hit_count_gte is not None:
-            query = query.filter(DocumentSegment.hit_count >= hit_count_gte)
+            query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         if args["enabled"].lower() != "all":
             if args["enabled"].lower() == "true":
-                query = query.filter(DocumentSegment.enabled == True)
+                query = query.where(DocumentSegment.enabled == True)
             elif args["enabled"].lower() == "false":
-                query = query.filter(DocumentSegment.enabled == False)
+                query = query.where(DocumentSegment.enabled == False)
 
         segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
@@ -116,6 +116,8 @@ class DatasetDocumentSegmentListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id):
+        current_user, _ = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -141,6 +143,7 @@ class DatasetDocumentSegmentListApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
 class DatasetDocumentSegmentApi(Resource):
     @setup_required
     @login_required
@@ -148,6 +151,8 @@ class DatasetDocumentSegmentApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, action):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
@@ -171,7 +176,7 @@ class DatasetDocumentSegmentApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -184,7 +189,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
         segment_ids = request.args.getlist("segment_id")
 
-        document_indexing_cache_key = "document_{}_indexing".format(document.id)
+        document_indexing_cache_key = f"document_{document.id}_indexing"
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
@@ -195,6 +200,7 @@ class DatasetDocumentSegmentApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 class DatasetDocumentSegmentAddApi(Resource):
     @setup_required
     @login_required
@@ -203,6 +209,8 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -220,7 +228,7 @@ class DatasetDocumentSegmentAddApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -246,6 +254,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetDocumentSegmentUpdateApi(Resource):
     @setup_required
     @login_required
@@ -253,6 +262,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -270,7 +281,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -285,7 +296,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -307,7 +318,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.update_segment(SegmentUpdateArgs(**args), segment, document, dataset)
+        segment = SegmentService.update_segment(SegmentUpdateArgs.model_validate(args), segment, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
     @setup_required
@@ -315,6 +326,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -331,7 +344,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -347,6 +360,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
+    "/datasets/batch_import_status/<uuid:job_id>",
+)
 class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
@@ -355,6 +372,8 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -365,37 +384,33 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        # get file from request
-        file = request.files["file"]
-        # check file
-        if "file" not in request.files:
-            raise NoFileUploadedError()
 
-        if len(request.files) > 1:
-            raise TooManyFilesError()
+        parser = reqparse.RequestParser()
+        parser.add_argument("upload_file_id", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        upload_file_id = args["upload_file_id"]
+
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+        if not upload_file:
+            raise NotFound("UploadFile not found.")
+
         # check file type
-        if not file.filename.endswith(".csv"):
+        if not upload_file.name or not upload_file.name.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
 
         try:
-            # Skip the first row
-            df = pd.read_csv(file)
-            result = []
-            for index, row in df.iterrows():
-                if document.doc_form == "qa_model":
-                    data = {"content": row.iloc[0], "answer": row.iloc[1]}
-                else:
-                    data = {"content": row.iloc[0]}
-                result.append(data)
-            if len(result) == 0:
-                raise ValueError("The CSV file is empty.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "segment_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"segment_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_create_segment_to_index_task.delay(
-                str(job_id), result, dataset_id, document_id, current_user.current_tenant_id, current_user.id
+                str(job_id),
+                upload_file_id,
+                dataset_id,
+                document_id,
+                current_tenant_id,
+                current_user.id,
             )
         except Exception as e:
             return {"error": str(e)}, 500
@@ -404,9 +419,11 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, job_id):
+    def get(self, job_id=None, dataset_id=None, document_id=None):
+        if job_id is None:
+            raise NotFound("The job does not exist.")
         job_id = str(job_id)
-        indexing_cache_key = "segment_batch_import_{}".format(job_id)
+        indexing_cache_key = f"segment_batch_import_{job_id}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -414,6 +431,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks")
 class ChildChunkAddApi(Resource):
     @setup_required
     @login_required
@@ -422,6 +440,8 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -436,7 +456,7 @@ class ChildChunkAddApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -448,7 +468,7 @@ class ChildChunkAddApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -468,7 +488,8 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            child_chunk = SegmentService.create_child_chunk(args.get("content"), segment, document, dataset)
+            content = args["content"]
+            child_chunk = SegmentService.create_child_chunk(content, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
@@ -477,6 +498,8 @@ class ChildChunkAddApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id, document_id, segment_id):
+        _, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -493,7 +516,7 @@ class ChildChunkAddApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -524,6 +547,8 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -540,7 +565,7 @@ class ChildChunkAddApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -557,19 +582,25 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("chunks", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            chunks = [ChildChunkUpdateArgs(**chunk) for chunk in args.get("chunks")]
+            chunks_data = args["chunks"]
+            chunks = [ChildChunkUpdateArgs.model_validate(chunk) for chunk in chunks_data]
             child_chunks = SegmentService.update_child_chunks(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunks, child_chunk_fields)}, 200
 
 
+@console_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
+)
 class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -586,7 +617,7 @@ class ChildChunkUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -595,7 +626,12 @@ class ChildChunkUpdateApi(Resource):
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
             db.session.query(ChildChunk)
-            .filter(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .where(
+                ChildChunk.id == str(child_chunk_id),
+                ChildChunk.tenant_id == current_tenant_id,
+                ChildChunk.segment_id == segment.id,
+                ChildChunk.document_id == document_id,
+            )
             .first()
         )
         if not child_chunk:
@@ -619,6 +655,8 @@ class ChildChunkUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -635,7 +673,7 @@ class ChildChunkUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
             .first()
         )
         if not segment:
@@ -644,7 +682,12 @@ class ChildChunkUpdateApi(Resource):
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
             db.session.query(ChildChunk)
-            .filter(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .where(
+                ChildChunk.id == str(child_chunk_id),
+                ChildChunk.tenant_id == current_tenant_id,
+                ChildChunk.segment_id == segment.id,
+                ChildChunk.document_id == document_id,
+            )
             .first()
         )
         if not child_chunk:
@@ -661,33 +704,8 @@ class ChildChunkUpdateApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            child_chunk = SegmentService.update_child_chunk(
-                args.get("content"), child_chunk, segment, document, dataset
-            )
+            content = args["content"]
+            child_chunk = SegmentService.update_child_chunk(content, child_chunk, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
-
-
-api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
-api.add_resource(
-    DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>"
-)
-api.add_resource(DatasetDocumentSegmentAddApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
-api.add_resource(
-    DatasetDocumentSegmentUpdateApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>",
-)
-api.add_resource(
-    DatasetDocumentSegmentBatchImportApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
-    "/datasets/batch_import_status/<uuid:job_id>",
-)
-api.add_resource(
-    ChildChunkAddApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks",
-)
-api.add_resource(
-    ChildChunkUpdateApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
-)

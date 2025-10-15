@@ -5,6 +5,8 @@ import type {
 import {
   memo,
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import type { ChatItem } from '../types'
@@ -52,6 +54,8 @@ const Question: FC<QuestionProps> = ({
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
+  const [contentWidth, setContentWidth] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const handleEdit = useCallback(() => {
     setIsEditing(true)
@@ -69,20 +73,41 @@ const Question: FC<QuestionProps> = ({
   }, [content])
 
   const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
-    if (direction === 'prev')
-      item.prevSibling && switchSibling?.(item.prevSibling)
-    else
-      item.nextSibling && switchSibling?.(item.nextSibling)
+    if (direction === 'prev') {
+      if (item.prevSibling)
+        switchSibling?.(item.prevSibling)
+    }
+    else {
+      if (item.nextSibling)
+        switchSibling?.(item.nextSibling)
+    }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
+  const getContentWidth = () => {
+    if (contentRef.current)
+      setContentWidth(contentRef.current?.clientWidth)
+  }
+
+  useEffect(() => {
+    if (!contentRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(contentRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
-    <div className='mb-2 flex justify-end pl-14 last:mb-0'>
-      <div className={cn('group relative mr-4 flex max-w-full items-start', isEditing && 'flex-1')}>
+    <div className='mb-2 flex justify-end last:mb-0'>
+      <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
-          <div className="
-            absolutegap-0.5 hidden rounded-[10px] border-[0.5px] border-components-actionbar-border
-            bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex
-          ">
+          <div
+            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
+            style={{ right: contentWidth + 8 }}
+          >
             <ActionButton onClick={() => {
               copy(content)
               Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
@@ -95,7 +120,8 @@ const Question: FC<QuestionProps> = ({
           </div>
         </div>
         <div
-          className='w-full rounded-2xl bg-[#D1E9FF]/50 px-4 py-3 text-sm text-gray-900'
+          ref={contentRef}
+          className='w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
@@ -108,7 +134,7 @@ const Question: FC<QuestionProps> = ({
               />
             )
           }
-          { !isEditing
+          {!isEditing
             ? <Markdown content={content} />
             : <div className="
                 flex flex-col gap-2 rounded-xl
@@ -129,8 +155,8 @@ const Question: FC<QuestionProps> = ({
                 <Button variant='ghost' onClick={handleCancelEditing}>{t('common.operation.cancel')}</Button>
                 <Button variant='primary' onClick={handleResend}>{t('common.chat.resend')}</Button>
               </div>
-            </div> }
-          { !isEditing && <ContentSwitch
+            </div>}
+          {!isEditing && <ContentSwitch
             count={item.siblingCount}
             currentIndex={item.siblingIndex}
             prevDisabled={!item.prevSibling}

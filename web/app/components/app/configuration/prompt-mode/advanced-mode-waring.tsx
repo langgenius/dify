@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 type Props = {
   onReturnToSimpleMode: () => void
 }
@@ -13,7 +11,7 @@ const AdvancedModeWarning: FC<Props> = ({
   onReturnToSimpleMode,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const [show, setShow] = React.useState(true)
   if (!show)
     return null
@@ -25,7 +23,7 @@ const AdvancedModeWarning: FC<Props> = ({
           <span className='text-gray-700'>{t('appDebug.promptMode.advancedWarning.description')}</span>
           <a
             className='font-medium text-[#155EEF]'
-            href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? '/guides/features/prompt-engineering' : 'features/prompt-engineering'}`}
+            href={docLink('/guides/features/prompt-engineering')}
             target='_blank' rel='noopener noreferrer'
           >
             {t('appDebug.promptMode.advancedWarning.learnMore')}

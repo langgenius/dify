@@ -21,7 +21,7 @@ TEST_REMOTE_URL = "http://example.com/test.jpg"
 
 # Test Config
 TEST_CONFIG = FileUploadConfig(
-    allowed_file_types=["image", "document"],
+    allowed_file_types=[FileType.IMAGE, FileType.DOCUMENT],
     allowed_file_extensions=[".jpg", ".pdf"],
     allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE, FileTransferMethod.TOOL_FILE],
     number_limits=10,
@@ -54,8 +54,7 @@ def mock_tool_file():
     mock.mimetype = "application/pdf"
     mock.original_url = "http://example.com/tool.pdf"
     mock.size = 2048
-    with patch("factories.file_factory.db.session.query") as mock_query:
-        mock_query.return_value.filter.return_value.first.return_value = mock
+    with patch("factories.file_factory.db.session.scalar", return_value=mock):
         yield mock
 
 
@@ -153,8 +152,7 @@ def test_build_from_remote_url(mock_http_head):
 
 def test_tool_file_not_found():
     """Test ToolFile not found in database."""
-    with patch("factories.file_factory.db.session.query") as mock_query:
-        mock_query.return_value.filter.return_value.first.return_value = None
+    with patch("factories.file_factory.db.session.scalar", return_value=None):
         mapping = tool_file_mapping()
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -173,10 +171,10 @@ def test_build_without_type_specification(mock_upload_file):
     mapping = {
         "transfer_method": "local_file",
         "upload_file_id": TEST_UPLOAD_FILE_ID,
-        # leave out the type
+        # type field is intentionally omitted
     }
     file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
-    # It should automatically infer the type as "image" based on the file extension
+    # Should automatically infer the type as "image" based on the file extension
     assert file.type == FileType.IMAGE
 
 
@@ -196,3 +194,81 @@ def test_file_validation_with_config(mock_upload_file, file_type, should_pass, e
     else:
         with pytest.raises(ValueError, match=expected_error):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=TEST_CONFIG)
+
+
+def test_invalid_transfer_method():
+    """Test that invalid transfer method raises ValueError."""
+    mapping = {
+        "transfer_method": "invalid_method",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "image",
+    }
+    with pytest.raises(ValueError, match="No matching enum found for value 'invalid_method'"):
+        build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+
+def test_invalid_uuid_format():
+    """Test that invalid UUID format raises ValueError."""
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": "not-a-valid-uuid",
+        "type": "image",
+    }
+    with pytest.raises(ValueError, match="Invalid upload file id format"):
+        build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+
+def test_tenant_mismatch():
+    """Test that tenant mismatch raises security error."""
+    # Create a mock upload file with a different tenant_id
+    mock_file = MagicMock(spec=UploadFile)
+    mock_file.id = TEST_UPLOAD_FILE_ID
+    mock_file.tenant_id = "different_tenant_id"
+    mock_file.name = "test.jpg"
+    mock_file.extension = "jpg"
+    mock_file.mime_type = "image/jpeg"
+    mock_file.source_url = TEST_REMOTE_URL
+    mock_file.size = 1024
+    mock_file.key = "test_key"
+
+    # Mock the database query to return None (no file found for this tenant)
+    with patch("factories.file_factory.db.session.scalar", return_value=None):
+        mapping = local_file_mapping()
+        with pytest.raises(ValueError, match="Invalid upload file"):
+            build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+
+def test_disallowed_file_types(mock_upload_file):
+    """Test that disallowed file types are rejected."""
+    # Config that only allows image and document types
+    restricted_config = FileUploadConfig(
+        allowed_file_types=[FileType.IMAGE, FileType.DOCUMENT],
+    )
+
+    # Try to upload a video file
+    mapping = local_file_mapping(file_type="video")
+    with pytest.raises(ValueError, match="File validation failed"):
+        build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)
+
+
+def test_disallowed_extensions(mock_upload_file):
+    """Test that disallowed file extensions are rejected for custom type."""
+    # Mock a file with .exe extension
+    mock_upload_file.return_value.extension = "exe"
+    mock_upload_file.return_value.name = "malicious.exe"
+    mock_upload_file.return_value.mime_type = "application/x-msdownload"
+
+    # Config that only allows specific extensions for custom files
+    restricted_config = FileUploadConfig(
+        allowed_file_extensions=[".txt", ".csv", ".json"],
+    )
+
+    # Mapping without specifying type (will be detected as custom)
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "custom",
+    }
+
+    with pytest.raises(ValueError, match="File validation failed"):
+        build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)

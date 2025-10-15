@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import {
   memo,
-  useCallback,
   useMemo,
 } from 'react'
 import { intersectionBy } from 'lodash-es'
@@ -16,9 +15,7 @@ import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
@@ -40,14 +37,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     selectedDatasets,
     selectedDatasetsLoaded,
     handleOnDatasetsChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    query,
-    setQuery,
-    runResult,
     rerankModelOpen,
     setRerankModelOpen,
     handleAddCondition,
@@ -63,10 +52,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     availableNumberNodesWithParent,
   } = useConfig(id, data)
 
-  const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
-    setRerankModelOpen(openFromProps)
-  }, [setRerankModelOpen])
-
   const metadataList = useMemo(() => {
     return intersectionBy(...selectedDatasets.filter((dataset) => {
       return !!dataset.doc_metadata
@@ -78,7 +63,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   return (
     <div className='pt-2'>
       <div className='space-y-4 px-4 pb-2'>
-        {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
           required
@@ -110,8 +94,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onSingleRetrievalModelChange={handleModelChanged as any}
                 onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
                 readonly={readOnly || !selectedDatasets.length}
-                openFromProps={rerankModelOpen}
-                onOpenFromPropsChange={handleOpenFromPropsChange}
+                rerankModalOpen={rerankModelOpen}
+                onRerankModelOpenChange={setRerankModelOpen}
                 selectedDatasets={selectedDatasets}
               />
               {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
@@ -191,28 +175,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
 
           </>
         </OutputVars>
-        {isShowSingleRun && (
-          <BeforeRunForm
-            nodeName={inputs.title}
-            onHide={hideSingleRun}
-            forms={[
-              {
-                inputs: [{
-                  label: t(`${i18nPrefix}.queryVariable`)!,
-                  variable: 'query',
-                  type: InputVarType.paragraph,
-                  required: true,
-                }],
-                values: { query },
-                onChange: keyValue => setQuery(keyValue.query),
-              },
-            ]}
-            runningStatus={runningStatus}
-            onRun={handleRun}
-            onStop={handleStop}
-            result={<ResultPanel {...runResult} showSteps={false} />}
-          />
-        )}
       </div>
     </div>
   )

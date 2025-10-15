@@ -16,7 +16,16 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
-import { checkKeys } from '@/utils/var'
+import BoolValue from './bool-value'
+import ArrayBoolList from './array-bool-list'
+import {
+  arrayBoolPlaceholder,
+  arrayNumberPlaceholder,
+  arrayObjectPlaceholder,
+  arrayStringPlaceholder,
+  objectPlaceholder,
+} from '@/app/components/workflow/panel/chat-variable-panel/utils'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -33,38 +42,13 @@ type ObjectValueItem = {
 const typeList = [
   ChatVarType.String,
   ChatVarType.Number,
+  ChatVarType.Boolean,
   ChatVarType.Object,
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
+  ChatVarType.ArrayBoolean,
   ChatVarType.ArrayObject,
 ]
-
-const objectPlaceholder = `#  example
-#  {
-#     "name": "ray",
-#     "age": 20
-#  }`
-const arrayStringPlaceholder = `#  example
-#  [
-#     "value1",
-#     "value2"
-#  ]`
-const arrayNumberPlaceholder = `#  example
-#  [
-#     100,
-#     200
-#  ]`
-const arrayObjectPlaceholder = `#  example
-#  [
-#     {
-#       "name": "ray",
-#       "age": 20
-#     },
-#     {
-#       "name": "lily",
-#       "age": 18
-#     }
-#  ]`
 
 const ChatVariableModal = ({
   chatVar,
@@ -80,7 +64,7 @@ const ChatVariableModal = ({
   const [objectValue, setObjectValue] = React.useState<ObjectValueItem[]>([DEFAULT_OBJECT_VALUE])
   const [editorContent, setEditorContent] = React.useState<string>()
   const [editInJSON, setEditInJSON] = React.useState(false)
-  const [des, setDes] = React.useState<string>('')
+  const [description, setDescription] = React.useState<string>('')
 
   const editorMinHeight = useMemo(() => {
     if (type === ChatVarType.ArrayObject)
@@ -94,6 +78,8 @@ const ChatVariableModal = ({
       return arrayNumberPlaceholder
     if (type === ChatVarType.ArrayObject)
       return arrayObjectPlaceholder
+    if (type === ChatVarType.ArrayBoolean)
+      return arrayBoolPlaceholder
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
@@ -122,12 +108,16 @@ const ChatVariableModal = ({
         return value || ''
       case ChatVarType.Number:
         return value || 0
+      case ChatVarType.Boolean:
+        return value === undefined ? true : value
       case ChatVarType.Object:
         return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
         return value?.filter(Boolean) || []
+      case ChatVarType.ArrayBoolean:
+        return value || []
     }
   }
 
@@ -143,6 +133,13 @@ const ChatVariableModal = ({
     return true
   }
 
+  const handleVarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
+    if (!!e.target.value && !checkVariableName(e.target.value))
+      return
+    setName(e.target.value || '')
+  }
+
   const handleTypeChange = (v: ChatVarType) => {
     setValue(undefined)
     setEditorContent(undefined)
@@ -150,6 +147,10 @@ const ChatVariableModal = ({
       setEditInJSON(true)
     if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
       setEditInJSON(false)
+    if(v === ChatVarType.Boolean)
+      setValue(false)
+    if (v === ChatVarType.ArrayBoolean)
+      setValue([false])
     setType(v)
   }
 
@@ -195,6 +196,11 @@ const ChatVariableModal = ({
         setValue(value?.length ? value : [undefined])
       }
     }
+
+    if(type === ChatVarType.ArrayBoolean) {
+      if(editInJSON)
+        setEditorContent(JSON.stringify(value.map((item: boolean) => item ? 'True' : 'False')))
+    }
     setEditInJSON(editInJSON)
   }
 
@@ -206,7 +212,16 @@ const ChatVariableModal = ({
     else {
       setEditorContent(content)
       try {
-        const newValue = JSON.parse(content)
+        let newValue = JSON.parse(content)
+        if(type === ChatVarType.ArrayBoolean) {
+          newValue = newValue.map((item: string | boolean) => {
+            if (item === 'True' || item === 'true' || item === true)
+              return true
+            if (item === 'False' || item === 'false' || item === false)
+              return false
+            return undefined
+          }).filter((item?: boolean) => item !== undefined)
+        }
         setValue(newValue)
       }
       catch {
@@ -230,7 +245,7 @@ const ChatVariableModal = ({
       name,
       value_type: type,
       value: formatValue(value),
-      description: des,
+      description,
     })
     onClose()
   }
@@ -240,7 +255,7 @@ const ChatVariableModal = ({
       setName(chatVar.name)
       setType(chatVar.value_type)
       setValue(chatVar.value)
-      setDes(chatVar.description)
+      setDescription(chatVar.description)
       setObjectValue(getObjectValue())
       if (chatVar.value_type === ChatVarType.ArrayObject) {
         setEditorContent(JSON.stringify(chatVar.value))
@@ -275,7 +290,7 @@ const ChatVariableModal = ({
             <Input
               placeholder={t('workflow.chatVariable.modal.namePlaceholder') || ''}
               value={name}
-              onChange={e => setName(e.target.value || '')}
+              onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
               type='text'
             />
@@ -297,7 +312,7 @@ const ChatVariableModal = ({
         <div className='mb-4'>
           <div className='system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary'>
             <div>{t('workflow.chatVariable.modal.value')}</div>
-            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) && (
+            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
                 variant='ghost'
                 size='small'
@@ -324,7 +339,7 @@ const ChatVariableModal = ({
             {type === ChatVarType.String && (
               // Input will remove \n\r, so use Textarea just like description area
               <textarea
-                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
                 value={value}
                 placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 onChange={e => setValue(e.target.value)}
@@ -336,6 +351,12 @@ const ChatVariableModal = ({
                 value={value}
                 onChange={e => setValue(Number(e.target.value))}
                 type='number'
+              />
+            )}
+            {type === ChatVarType.Boolean && (
+              <BoolValue
+                value={value}
+                onChange={setValue}
               />
             )}
             {type === ChatVarType.Object && !editInJSON && (
@@ -358,6 +379,13 @@ const ChatVariableModal = ({
                 onChange={setValue}
               />
             )}
+            {type === ChatVarType.ArrayBoolean && !editInJSON && (
+              <ArrayBoolList
+                list={value || [true]}
+                onChange={setValue}
+              />
+            )}
+
             {editInJSON && (
               <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
                 <CodeEditor
@@ -377,10 +405,10 @@ const ChatVariableModal = ({
           <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.chatVariable.modal.description')}</div>
           <div className='flex'>
             <textarea
-              className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
-              value={des}
+              className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+              value={description}
               placeholder={t('workflow.chatVariable.modal.descriptionPlaceholder') || ''}
-              onChange={e => setDes(e.target.value)}
+              onChange={e => setDescription(e.target.value)}
             />
           </div>
         </div>

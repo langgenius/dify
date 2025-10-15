@@ -25,7 +25,7 @@ const Collapse = ({
   const toggle = () => setOpen(!open)
 
   return (
-    <div className={classNames('bg-background-section-burn rounded-xl overflow-hidden', wrapperClassName)}>
+    <div className={classNames('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
       <div className='flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium leading-[18px] text-text-secondary' onClick={toggle}>
         {title}
         {
@@ -39,7 +39,7 @@ const Collapse = ({
           <div className='mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1'>
             {
               items.map(item => (
-                <div key={item.key} onClick={() => onSelect && onSelect(item)}>
+                <div key={item.key} onClick={() => onSelect?.(item)}>
                   {renderItem(item)}
                 </div>
               ))

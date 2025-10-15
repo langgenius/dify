@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import uuid
@@ -5,8 +6,8 @@ from contextlib import contextmanager
 from typing import Any
 
 import psycopg2.errors
-import psycopg2.extras  # type: ignore
-import psycopg2.pool  # type: ignore
+import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -17,6 +18,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class PGVectorConfig(BaseModel):
@@ -31,7 +34,7 @@ class PGVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
         if not values["port"]:
@@ -61,12 +64,12 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 """
 
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name}
+CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx_{index_hash} ON {table_name}
 USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
 SQL_CREATE_INDEX_PG_BIGM = """
-CREATE INDEX IF NOT EXISTS bigm_idx ON {table_name}
+CREATE INDEX IF NOT EXISTS bigm_idx_{index_hash} ON {table_name}
 USING gin (text gin_bigm_ops);
 """
 
@@ -76,6 +79,7 @@ class PGVector(BaseVector):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
+        self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.pg_bigm = config.pg_bigm
 
     def get_type(self) -> str:
@@ -142,7 +146,7 @@ class PGVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
         # Scenario 1: extract a document fails, resulting in a table not being created.
         # Then clicking the retry button triggers a delete operation on an empty list.
@@ -153,12 +157,12 @@ class PGVector(BaseVector):
                 cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
             except psycopg2.errors.UndefinedTable:
                 # table not exists
-                logging.warning(f"Table {self.table_name} not found, skipping delete operation.")
+                logger.warning("Table %s not found, skipping delete operation.", self.table_name)
                 return
             except Exception as e:
                 raise e
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
 
@@ -191,7 +195,7 @@ class PGVector(BaseVector):
                 metadata, text, distance = record
                 score = 1 - distance
                 metadata["score"] = score
-                if score > score_threshold:
+                if score >= score_threshold:
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
@@ -238,7 +242,7 @@ class PGVector(BaseVector):
 
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
@@ -256,10 +260,9 @@ class PGVector(BaseVector):
                 # PG hnsw index only support 2000 dimension or less
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
-                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
+                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
                 if self.pg_bigm:
-                    cur.execute("CREATE EXTENSION IF NOT EXISTS pg_bigm")
-                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name))
+                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name, index_hash=self.index_hash))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 

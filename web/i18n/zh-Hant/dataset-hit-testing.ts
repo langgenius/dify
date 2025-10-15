@@ -2,7 +2,6 @@ const translation = {
   title: '召回測試',
   desc: '基於給定的查詢文字測試知識庫的召回效果。',
   dateTimeFormat: 'YYYY-MM-DD HH:mm',
-  recents: '最近查詢',
   table: {
     header: {
       source: '資料來源',

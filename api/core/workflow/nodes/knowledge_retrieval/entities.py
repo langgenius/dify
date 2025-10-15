@@ -1,10 +1,10 @@
 from collections.abc import Sequence
-from typing import Any, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.llm.entities import VisionConfig
+from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 
 
 class RerankingModelConfig(BaseModel):
@@ -49,22 +49,11 @@ class MultipleRetrievalConfig(BaseModel):
     """
 
     top_k: int
-    score_threshold: Optional[float] = None
+    score_threshold: float | None = None
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: Optional[RerankingModelConfig] = None
-    weights: Optional[WeightedScoreConfig] = None
-
-
-class ModelConfig(BaseModel):
-    """
-    Model Config.
-    """
-
-    provider: str
-    name: str
-    mode: str
-    completion_params: dict[str, Any] = {}
+    reranking_model: RerankingModelConfig | None = None
+    weights: WeightedScoreConfig | None = None
 
 
 class SingleRetrievalConfig(BaseModel):
@@ -85,6 +74,8 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
+    "in",
+    "not in",
     # for number
     "=",
     "≠",
@@ -100,7 +91,7 @@ SupportedComparisonOperator = Literal[
 
 class Condition(BaseModel):
     """
-    Conditon detail
+    Condition detail
     """
 
     name: str
@@ -113,8 +104,8 @@ class MetadataFilteringCondition(BaseModel):
     Metadata Filtering Condition.
     """
 
-    logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
+    logical_operator: Literal["and", "or"] | None = "and"
+    conditions: list[Condition] | None = Field(default=None, deprecated=True)
 
 
 class KnowledgeRetrievalNodeData(BaseNodeData):
@@ -126,9 +117,18 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     query_variable_selector: list[str]
     dataset_ids: list[str]
     retrieval_mode: Literal["single", "multiple"]
-    multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
-    single_retrieval_config: Optional[SingleRetrievalConfig] = None
-    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
-    metadata_model_config: Optional[ModelConfig] = None
-    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
+    multiple_retrieval_config: MultipleRetrievalConfig | None = None
+    single_retrieval_config: SingleRetrievalConfig | None = None
+    metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
+    metadata_model_config: ModelConfig | None = None
+    metadata_filtering_conditions: MetadataFilteringCondition | None = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
+
+    @property
+    def structured_output_enabled(self) -> bool:
+        # NOTE(QuantumGhost): Temporary workaround for issue #20725
+        # (https://github.com/langgenius/dify/issues/20725).
+        #
+        # The proper fix would be to make `KnowledgeRetrievalNode` inherit
+        # from `BaseNode` instead of `LLMNode`.
+        return False

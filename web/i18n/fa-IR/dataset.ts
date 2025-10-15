@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'تغییر',
     changeRetrievalMethod: 'تغییر روش بازیابی',
+    keyword_search: {
+      title: 'شاخص معکوس',
+      description: 'شاخص معکوس ساختاری است که برای بازیابی کارآمد استفاده می شود. هر اصطلاح که بر اساس اصطلاحات سازماندهی شده است، به اسناد یا صفحات وب حاوی آن اشاره می کند.',
+    },
   },
   docsFailedNotice: 'اسناد نتوانستند فهرست‌بندی شوند',
   retry: 'تلاش مجدد',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'پدر و مادر و فرزند',
     general: 'عمومی',
+    graph: 'گراف',
+    qa: 'پرسش و پاسخ',
   },
   parentMode: {
     fullDoc: 'مستند کامل',
@@ -168,6 +174,58 @@ const translation = {
   localDocs: 'اسناد محلی',
   allKnowledge: 'همه دانش ها',
   allKnowledgeDescription: 'برای نمایش تمام دانش در این فضای کاری انتخاب کنید. فقط مالک فضای کاری می تواند تمام دانش را مدیریت کند.',
+  metadata: {
+    createMetadata: {
+      name: 'نام',
+      title: 'متادیتای جدید',
+      namePlaceholder: 'افزودن نام متاداده',
+      back: 'عقب',
+      type: 'نوع',
+    },
+    checkName: {
+      invalid: 'نام متاداده فقط می‌تواند شامل حروف کوچک، اعداد و زیرخط‌ها باشد و باید با یک حرف کوچک آغاز شود.',
+      empty: 'نام فراداده نمی‌تواند خالی باشد',
+      tooLong: 'نام متا داده نمی‌تواند بیشتر از {{max}} کاراکتر باشد',
+    },
+    batchEditMetadata: {
+      multipleValue: 'چندین ارزش',
+      editDocumentsNum: 'ویرایش {{num}} سند',
+      applyToAllSelectDocumentTip: 'به‌طور خودکار تمام متاداده‌های ویرایش شده و جدید فوق را برای تمام اسناد انتخاب شده ایجاد کنید، در غیر این صورت ویرایش متاداده فقط به اسنادی که دارای آن هستند اعمال خواهد شد.',
+      applyToAllSelectDocument: 'به تمام اسناد انتخاب شده اعمال کنید',
+      editMetadata: 'ویرایش متا داده ها',
+    },
+    selectMetadata: {
+      search: 'جستجوی متا داده',
+      newAction: 'متادیتای جدید',
+      manageAction: 'مدیریت',
+    },
+    datasetMetadata: {
+      deleteContent: 'آیا از حذف متاداده "{{name}}" اطمینان دارید؟',
+      builtIn: 'ساخته شده درون‌سازی',
+      description: 'شما می‌توانید تمام فراداده‌ها را در این دانش مدیریت کنید. تغییرات به هر سندی همزمان می‌شوند.',
+      deleteTitle: 'برای حذف تأیید کنید',
+      disabled: 'متعادل',
+      values: '{{num}} مقدار',
+      namePlaceholder: 'نام متادیتا',
+      addMetaData: 'متادیتا اضافه کنید',
+      builtInDescription: 'متاداده‌های داخلی به‌طور خودکار استخراج و تولید می‌شوند. قبل از استفاده باید فعال شود و قابل ویرایش نیست.',
+      name: 'نام',
+      rename: 'تغییر نام',
+    },
+    documentMetadata: {
+      technicalParameters: 'پارامترهای فنی',
+      documentInformation: 'اطلاعات سند',
+      startLabeling: 'شروع برچسب‌گذاری',
+      metadataToolTip: 'متادیتا به عنوان یک فیلتر حیاتی عمل می‌کند که دقت و ارتباط اطلاعات بازیابی را بهبود می‌بخشد. شما می‌توانید متادیتا را برای این سند در اینجا ویرایش و اضافه کنید.',
+    },
+    addMetadata: 'متادیتا اضافه کنید',
+    chooseTime: 'زمانی را انتخاب کنید...',
+    metadata: 'متادیتا',
+  },
+  embeddingModelNotAvailable: 'مدل جاسازی در دسترس نیست.',
+  updated: 'بروز رسانی',
+  createFromPipeline: 'ایجاد از پایپ لاین دانش',
+  externalKnowledgeBase: 'پایگاه دانش خارجی',
 }
 
 export default translation

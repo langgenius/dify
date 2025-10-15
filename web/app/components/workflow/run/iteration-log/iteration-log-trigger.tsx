@@ -28,7 +28,7 @@ const IterationLogTrigger = ({
     if (parallelNodes.length > 0)
       return parallelNodes
 
-    const serialIndex = parseInt(key, 10)
+    const serialIndex = Number.parseInt(key, 10)
     if (!isNaN(serialIndex)) {
       const serialNodes = allExecutions.filter(exec =>
         exec.execution_metadata?.iteration_id === nodeInfo.node_id
@@ -49,7 +49,6 @@ const IterationLogTrigger = ({
     const iterDurationMap = nodeInfo?.iterDurationMap || iterationNodeMeta?.iteration_duration_map || {}
 
     let structuredList: NodeTracing[][] = []
-
     if (iterationNodeMeta?.iteration_duration_map) {
       const instanceKeys = Object.keys(iterationNodeMeta.iteration_duration_map)
       structuredList = instanceKeys

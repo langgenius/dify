@@ -1,13 +1,7 @@
 name: Run Pytest
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - api/**
-      - docker/**
-      - .github/workflows/api-tests.yml
+  workflow_call:
 
 concurrency:
   group: api-tests-${{ github.head_ref || github.run_id }}
@@ -33,10 +27,11 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: ./.github/actions/setup-uv
+        uses: astral-sh/setup-uv@v6
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
-          uv-lockfile: api/uv.lock
+          cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
         run: uv lock --project api --check
@@ -47,27 +42,25 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
+
+      - name: Run pyrefly check
+        run: |
+          cd api
+          uv add --dev pyrefly
+          uv run pyrefly check || true
+      - name: Coverage Summary
+        run: |
+          set -x
           # Extract coverage percentage and create a summary
           TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
 
           # Create a detailed coverage summary
           echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
           echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          uv run --project api coverage report >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py
-
-      - name: MyPy Cache
-        uses: actions/cache@v4
-        with:
-          path: api/.mypy_cache
-          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/uv.lock') }}
-
-      - name: Run MyPy Checks
-        run: dev/mypy-check
 
       - name: Set up dotenvs
         run: |
@@ -83,11 +76,20 @@ jobs:
           compose-file: |
             docker/docker-compose.middleware.yaml
           services: |
+            db
+            redis
             sandbox
             ssrf_proxy
+
+      - name: setup test config
+        run: |
+          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
       - name: Run Workflow
         run: uv run --project api bash dev/pytest/pytest_workflow.sh
 
       - name: Run Tool
         run: uv run --project api bash dev/pytest/pytest_tools.sh
+
+      - name: Run TestContainers
+        run: uv run --project api bash dev/pytest/pytest_testcontainers.sh

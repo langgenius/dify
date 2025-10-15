@@ -34,7 +34,6 @@ const JsonImporter: FC<JsonImporterProps> = ({
       const rect = importBtnRef.current.getBoundingClientRect()
       updateBtnWidth(rect.width)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {

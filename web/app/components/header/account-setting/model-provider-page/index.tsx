@@ -8,8 +8,6 @@ import {
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard from './provider-added-card'
 import type {
-  ConfigurationMethodEnum,
-  CustomConfigurationModelFixedFields,
   ModelProvider,
 } from './declarations'
 import {
@@ -18,12 +16,11 @@ import {
 } from './declarations'
 import {
   useDefaultModel,
-  useModelModalHandler,
 } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   searchText: string
@@ -40,7 +37,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []
@@ -84,8 +81,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
-  const handleOpenModal = useModelModalHandler()
-
   return (
     <div className='relative -mt-2 pt-1'>
       <div className={cn('mb-2 flex items-center')}>
@@ -126,7 +121,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <ProviderAddedCard
               key={provider.provider}
               provider={provider}
-              onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields)}
             />
           ))}
         </div>
@@ -140,7 +134,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
                 notConfigured
                 key={provider.provider}
                 provider={provider}
-                onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields)}
               />
             ))}
           </div>

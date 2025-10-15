@@ -30,6 +30,7 @@ const translation = {
       description: ' dotyczące metody doboru.',
       longDescription:
         ' dotyczące metody doboru, możesz to zmienić w dowolnym momencie w ustawieniach wiedzy.',
+      method: 'Metoda pozyskiwania',
     },
     save: 'Zapisz',
     permissionsInvitedMembers: 'Częściowi członkowie zespołu',
@@ -41,6 +42,14 @@ const translation = {
     upgradeHighQualityTip: 'Po uaktualnieniu do trybu wysokiej jakości powrót do trybu ekonomicznego nie jest dostępny',
     indexMethodChangeToEconomyDisabledTip: 'Niedostępne w przypadku zmiany z HQ na ECO',
     searchModel: 'Szukaj modelu',
+    chunkStructure: {
+      learnMore: 'Dowiedz się więcej',
+      description: 'o strukturze porcji.',
+      title: 'Struktura porcji',
+    },
+    numberOfKeywords: 'Liczba słów kluczowych',
+    onSearchResults: 'Żaden członek nie pasuje do Twojego zapytania.\nSpróbuj ponownie wyszukać.',
+    nameAndIcon: 'Nazwa i ikona',
   },
 }
 

@@ -1,16 +1,18 @@
+import json
 import logging
 from argparse import ArgumentTypeError
-from datetime import UTC, datetime
-from typing import cast
+from collections.abc import Sequence
+from typing import Literal, cast
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
@@ -41,21 +43,24 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.datasource_type import DatasourceType
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.document_fields import (
     dataset_and_document_fields,
     document_fields,
     document_status_fields,
     document_with_segments_fields,
 )
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models.account import Account
+from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
-from tasks.add_document_to_index_task import add_document_to_index_task
-from tasks.remove_document_from_index_task import remove_document_from_index_task
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentResource(Resource):
@@ -79,7 +84,7 @@ class DocumentResource(Resource):
 
         return document
 
-    def get_batch_documents(self, dataset_id: str, batch: str) -> list[Document]:
+    def get_batch_documents(self, dataset_id: str, batch: str) -> Sequence[Document]:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -97,7 +102,12 @@ class DocumentResource(Resource):
         return documents
 
 
+@console_ns.route("/datasets/process-rule")
 class GetProcessRuleApi(Resource):
+    @api.doc("get_process_rule")
+    @api.doc(description="Get dataset document processing rules")
+    @api.doc(params={"document_id": "Document ID (optional)"})
+    @api.response(200, "Process rules retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -127,7 +137,7 @@ class GetProcessRuleApi(Resource):
             # get the latest process rule
             dataset_process_rule = (
                 db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.dataset_id == document.dataset_id)
+                .where(DatasetProcessRule.dataset_id == document.dataset_id)
                 .order_by(DatasetProcessRule.created_at.desc())
                 .limit(1)
                 .one_or_none()
@@ -139,7 +149,21 @@ class GetProcessRuleApi(Resource):
         return {"mode": mode, "rules": rules, "limits": limits}
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents")
 class DatasetDocumentListApi(Resource):
+    @api.doc("get_dataset_documents")
+    @api.doc(description="Get documents in a dataset")
+    @api.doc(
+        params={
+            "dataset_id": "Dataset ID",
+            "page": "Page number (default: 1)",
+            "limit": "Number of items per page (default: 20)",
+            "keyword": "Search keyword",
+            "sort": "Sort order (default: -created_at)",
+            "fetch": "Fetch full details (default: false)",
+        }
+    )
+    @api.response(200, "Documents retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -179,7 +203,7 @@ class DatasetDocumentListApi(Resource):
 
         if search:
             search = f"%{search}%"
-            query = query.filter(Document.name.like(search))
+            query = query.where(Document.name.like(search))
 
         if sort.startswith("-"):
             sort_logic = desc
@@ -189,13 +213,13 @@ class DatasetDocumentListApi(Resource):
 
         if sort == "hit_count":
             sub_query = (
-                db.select(DocumentSegment.document_id, db.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
                 .group_by(DocumentSegment.document_id)
                 .subquery()
             )
 
             query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
-                sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)),
+                sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
                 sort_logic(Document.position),
             )
         elif sort == "created_at":
@@ -215,7 +239,7 @@ class DatasetDocumentListApi(Resource):
             for document in documents:
                 completed_segments = (
                     db.session.query(DocumentSegment)
-                    .filter(
+                    .where(
                         DocumentSegment.completed_at.isnot(None),
                         DocumentSegment.document_id == str(document.id),
                         DocumentSegment.status != "re_segment",
@@ -224,7 +248,7 @@ class DatasetDocumentListApi(Resource):
                 )
                 total_segments = (
                     db.session.query(DocumentSegment)
-                    .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                    .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                     .count()
                 )
                 document.completed_segments = completed_segments
@@ -242,12 +266,10 @@ class DatasetDocumentListApi(Resource):
 
         return response
 
-    documents_and_batch_fields = {"documents": fields.List(fields.Nested(document_fields)), "batch": fields.String}
-
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(documents_and_batch_fields)
+    @marshal_with(dataset_and_document_fields)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
@@ -283,7 +305,7 @@ class DatasetDocumentListApi(Resource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         args = parser.parse_args()
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
 
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
@@ -293,6 +315,8 @@ class DatasetDocumentListApi(Resource):
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
+            dataset = DatasetService.get_dataset(dataset_id)
+
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -300,7 +324,7 @@ class DatasetDocumentListApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return {"documents": documents, "batch": batch}
+        return {"dataset": dataset, "documents": documents, "batch": batch}
 
     @setup_required
     @login_required
@@ -323,7 +347,23 @@ class DatasetDocumentListApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/init")
 class DatasetInitApi(Resource):
+    @api.doc("init_dataset")
+    @api.doc(description="Initialize dataset with documents")
+    @api.expect(
+        api.model(
+            "DatasetInitRequest",
+            {
+                "upload_file_id": fields.String(required=True, description="Upload file ID"),
+                "indexing_technique": fields.String(description="Indexing technique"),
+                "process_rule": fields.Raw(description="Processing rules"),
+                "data_source": fields.Raw(description="Data source configuration"),
+            },
+        )
+    )
+    @api.response(201, "Dataset initialized successfully", dataset_and_document_fields)
+    @api.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -355,10 +395,7 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
@@ -382,7 +419,9 @@ class DatasetInitApi(Resource):
 
         try:
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
-                tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
+                tenant_id=current_user.current_tenant_id,
+                knowledge_config=knowledge_config,
+                account=cast(Account, current_user),
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -396,7 +435,14 @@ class DatasetInitApi(Resource):
         return response
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate")
 class DocumentIndexingEstimateApi(DocumentResource):
+    @api.doc("estimate_document_indexing")
+    @api.doc(description="Estimate document indexing cost")
+    @api.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @api.response(200, "Indexing estimate calculated successfully")
+    @api.response(404, "Document not found")
+    @api.response(400, "Document already finished")
     @setup_required
     @login_required
     @account_initialization_required
@@ -409,7 +455,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.dataset_process_rule
-        data_process_rule_dict = data_process_rule.to_dict()
+        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
 
         response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
 
@@ -420,7 +466,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 file = (
                     db.session.query(UploadFile)
-                    .filter(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
+                    .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
                     .first()
                 )
 
@@ -429,7 +475,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
                 )
 
                 indexing_runner = IndexingRunner()
@@ -459,6 +505,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         return response, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(DocumentResource):
     @setup_required
     @login_required
@@ -470,32 +517,20 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         if not documents:
             return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
-        data_process_rule_dict = data_process_rule.to_dict()
-        info_list = []
+        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
         extract_settings = []
         for document in documents:
             if document.indexing_status in {"completed", "error"}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
-            # format document files info
-            if data_source_info and "upload_file_id" in data_source_info:
-                file_id = data_source_info["upload_file_id"]
-                info_list.append(file_id)
-            # format document notion info
-            elif (
-                data_source_info and "notion_workspace_id" in data_source_info and "notion_page_id" in data_source_info
-            ):
-                pages = []
-                page = {"page_id": data_source_info["notion_page_id"], "type": data_source_info["type"]}
-                pages.append(page)
-                notion_info = {"workspace_id": data_source_info["notion_workspace_id"], "pages": pages}
-                info_list.append(notion_info)
 
             if document.data_source_type == "upload_file":
+                if not data_source_info:
+                    continue
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
                     db.session.query(UploadFile)
-                    .filter(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id == file_id)
+                    .where(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id == file_id)
                     .first()
                 )
 
@@ -503,33 +538,42 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     raise NotFound("File not found.")
 
                 extract_setting = ExtractSetting(
-                    datasource_type="upload_file", upload_file=file_detail, document_model=document.doc_form
+                    datasource_type=DatasourceType.FILE, upload_file=file_detail, document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
 
             elif document.data_source_type == "notion_import":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
-                    notion_info={
-                        "notion_workspace_id": data_source_info["notion_workspace_id"],
-                        "notion_obj_id": data_source_info["notion_page_id"],
-                        "notion_page_type": data_source_info["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    },
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": data_source_info["credential_id"],
+                            "notion_workspace_id": data_source_info["notion_workspace_id"],
+                            "notion_obj_id": data_source_info["notion_page_id"],
+                            "notion_page_type": data_source_info["type"],
+                            "tenant_id": current_user.current_tenant_id,
+                        }
+                    ),
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
             elif document.data_source_type == "website_crawl":
+                if not data_source_info:
+                    continue
                 extract_setting = ExtractSetting(
-                    datasource_type="website_crawl",
-                    website_info={
-                        "provider": data_source_info["provider"],
-                        "job_id": data_source_info["job_id"],
-                        "url": data_source_info["url"],
-                        "tenant_id": current_user.current_tenant_id,
-                        "mode": data_source_info["mode"],
-                        "only_main_content": data_source_info["only_main_content"],
-                    },
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": data_source_info["provider"],
+                            "job_id": data_source_info["job_id"],
+                            "url": data_source_info["url"],
+                            "tenant_id": current_user.current_tenant_id,
+                            "mode": data_source_info["mode"],
+                            "only_main_content": data_source_info["only_main_content"],
+                        }
+                    ),
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
@@ -559,6 +603,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise IndexingEstimateError(str(e))
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 class DocumentBatchIndexingStatusApi(DocumentResource):
     @setup_required
     @login_required
@@ -571,7 +616,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
         for document in documents:
             completed_segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
                     DocumentSegment.status != "re_segment",
@@ -580,19 +625,36 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                 .count()
             )
-            document.completed_segments = completed_segments
-            document.total_segments = total_segments
-            if document.is_paused:
-                document.indexing_status = "paused"
-            documents_status.append(marshal(document, document_status_fields))
+            # Create a dictionary with document attributes and additional fields
+            document_dict = {
+                "id": document.id,
+                "indexing_status": "paused" if document.is_paused else document.indexing_status,
+                "processing_started_at": document.processing_started_at,
+                "parsing_completed_at": document.parsing_completed_at,
+                "cleaning_completed_at": document.cleaning_completed_at,
+                "splitting_completed_at": document.splitting_completed_at,
+                "completed_at": document.completed_at,
+                "paused_at": document.paused_at,
+                "error": document.error,
+                "stopped_at": document.stopped_at,
+                "completed_segments": completed_segments,
+                "total_segments": total_segments,
+            }
+            documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
         return data
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
 class DocumentIndexingStatusApi(DocumentResource):
+    @api.doc("get_document_indexing_status")
+    @api.doc(description="Get document indexing status")
+    @api.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @api.response(200, "Indexing status retrieved successfully")
+    @api.response(404, "Document not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -603,7 +665,7 @@ class DocumentIndexingStatusApi(DocumentResource):
 
         completed_segments = (
             db.session.query(DocumentSegment)
-            .filter(
+            .where(
                 DocumentSegment.completed_at.isnot(None),
                 DocumentSegment.document_id == str(document_id),
                 DocumentSegment.status != "re_segment",
@@ -612,20 +674,43 @@ class DocumentIndexingStatusApi(DocumentResource):
         )
         total_segments = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
+            .where(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
             .count()
         )
 
-        document.completed_segments = completed_segments
-        document.total_segments = total_segments
-        if document.is_paused:
-            document.indexing_status = "paused"
-        return marshal(document, document_status_fields)
+        # Create a dictionary with document attributes and additional fields
+        document_dict = {
+            "id": document.id,
+            "indexing_status": "paused" if document.is_paused else document.indexing_status,
+            "processing_started_at": document.processing_started_at,
+            "parsing_completed_at": document.parsing_completed_at,
+            "cleaning_completed_at": document.cleaning_completed_at,
+            "splitting_completed_at": document.splitting_completed_at,
+            "completed_at": document.completed_at,
+            "paused_at": document.paused_at,
+            "error": document.error,
+            "stopped_at": document.stopped_at,
+            "completed_segments": completed_segments,
+            "total_segments": total_segments,
+        }
+        return marshal(document_dict, document_status_fields)
 
 
-class DocumentDetailApi(DocumentResource):
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
+class DocumentApi(DocumentResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
+    @api.doc("get_document")
+    @api.doc(description="Get document details")
+    @api.doc(
+        params={
+            "dataset_id": "Dataset ID",
+            "document_id": "Document ID",
+            "metadata": "Metadata inclusion (all/only/without)",
+        }
+    )
+    @api.response(200, "Document retrieved successfully")
+    @api.response(404, "Document not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -642,7 +727,7 @@ class DocumentDetailApi(DocumentResource):
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -675,7 +760,7 @@ class DocumentDetailApi(DocumentResource):
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -711,45 +796,6 @@ class DocumentDetailApi(DocumentResource):
 
         return response, 200
 
-
-class DocumentProcessingApi(DocumentResource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, document_id, action):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
-
-        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-
-        if action == "pause":
-            if document.indexing_status != "indexing":
-                raise InvalidActionError("Document not in indexing state.")
-
-            document.paused_by = current_user.id
-            document.paused_at = datetime.now(UTC).replace(tzinfo=None)
-            document.is_paused = True
-            db.session.commit()
-
-        elif action == "resume":
-            if document.indexing_status not in {"paused", "error"}:
-                raise InvalidActionError("Document not in paused or error state.")
-
-            document.paused_by = None
-            document.paused_at = None
-            document.is_paused = False
-            db.session.commit()
-        else:
-            raise InvalidActionError()
-
-        return {"result": "success"}, 200
-
-
-class DocumentDeleteApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -773,7 +819,67 @@ class DocumentDeleteApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")
+class DocumentProcessingApi(DocumentResource):
+    @api.doc("update_document_processing")
+    @api.doc(description="Update document processing status (pause/resume)")
+    @api.doc(
+        params={"dataset_id": "Dataset ID", "document_id": "Document ID", "action": "Action to perform (pause/resume)"}
+    )
+    @api.response(200, "Processing status updated successfully")
+    @api.response(404, "Document not found")
+    @api.response(400, "Invalid action")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def patch(self, dataset_id, document_id, action: Literal["pause", "resume"]):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+        document = self.get_document(dataset_id, document_id)
+
+        # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        if action == "pause":
+            if document.indexing_status != "indexing":
+                raise InvalidActionError("Document not in indexing state.")
+
+            document.paused_by = current_user.id
+            document.paused_at = naive_utc_now()
+            document.is_paused = True
+            db.session.commit()
+
+        elif action == "resume":
+            if document.indexing_status not in {"paused", "error"}:
+                raise InvalidActionError("Document not in paused or error state.")
+
+            document.paused_by = None
+            document.paused_at = None
+            document.is_paused = False
+            db.session.commit()
+
+        return {"result": "success"}, 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
 class DocumentMetadataApi(DocumentResource):
+    @api.doc("update_document_metadata")
+    @api.doc(description="Update document metadata")
+    @api.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @api.expect(
+        api.model(
+            "UpdateDocumentMetadataRequest",
+            {
+                "doc_type": fields.String(description="Document type"),
+                "doc_metadata": fields.Raw(description="Document metadata"),
+            },
+        )
+    )
+    @api.response(200, "Document metadata updated successfully")
+    @api.response(404, "Document not found")
+    @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -811,19 +917,20 @@ class DocumentMetadataApi(DocumentResource):
                     document.doc_metadata[key] = value
 
         document.doc_type = doc_type
-        document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        document.updated_at = naive_utc_now()
         db.session.commit()
 
         return {"result": "success", "message": "Document metadata updated."}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, action):
+    def patch(self, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
@@ -840,80 +947,20 @@ class DocumentStatusApi(DocumentResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         document_ids = request.args.getlist("document_id")
-        for document_id in document_ids:
-            document = self.get_document(dataset_id, document_id)
 
-            indexing_cache_key = "document_{}_indexing".format(document.id)
-            cache_result = redis_client.get(indexing_cache_key)
-            if cache_result is not None:
-                raise InvalidActionError(f"Document:{document.name} is being indexed, please try again later")
+        try:
+            DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
+        except services.errors.document.DocumentIndexingError as e:
+            raise InvalidActionError(str(e))
+        except ValueError as e:
+            raise InvalidActionError(str(e))
+        except NotFound as e:
+            raise NotFound(str(e))
 
-            if action == "enable":
-                if document.enabled:
-                    continue
-                document.enabled = True
-                document.disabled_at = None
-                document.disabled_by = None
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                add_document_to_index_task.delay(document_id)
-
-            elif action == "disable":
-                if not document.completed_at or document.indexing_status != "completed":
-                    raise InvalidActionError(f"Document: {document.name} is not completed.")
-                if not document.enabled:
-                    continue
-
-                document.enabled = False
-                document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
-                document.disabled_by = current_user.id
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                remove_document_from_index_task.delay(document_id)
-
-            elif action == "archive":
-                if document.archived:
-                    continue
-
-                document.archived = True
-                document.archived_at = datetime.now(UTC).replace(tzinfo=None)
-                document.archived_by = current_user.id
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                if document.enabled:
-                    # Set cache to prevent indexing the same document multiple times
-                    redis_client.setex(indexing_cache_key, 600, 1)
-
-                    remove_document_from_index_task.delay(document_id)
-
-            elif action == "un_archive":
-                if not document.archived:
-                    continue
-                document.archived = False
-                document.archived_at = None
-                document.archived_by = None
-                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-                db.session.commit()
-
-                # Set cache to prevent indexing the same document multiple times
-                redis_client.setex(indexing_cache_key, 600, 1)
-
-                add_document_to_index_task.delay(document_id)
-
-            else:
-                raise InvalidActionError()
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
 class DocumentPauseApi(DocumentResource):
     @setup_required
     @login_required
@@ -947,6 +994,7 @@ class DocumentPauseApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 class DocumentRecoverApi(DocumentResource):
     @setup_required
     @login_required
@@ -977,6 +1025,7 @@ class DocumentRecoverApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(DocumentResource):
     @setup_required
     @login_required
@@ -1012,7 +1061,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception:
-                logging.exception(f"Failed to retry document, document id: {document_id}")
+                logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)
@@ -1020,6 +1069,7 @@ class DocumentRetryApi(DocumentResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 class DocumentRenameApi(DocumentResource):
     @setup_required
     @login_required
@@ -1030,7 +1080,9 @@ class DocumentRenameApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
-        DatasetService.check_dataset_operator_permission(current_user, dataset)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        DatasetService.check_dataset_operator_permission(cast(Account, current_user), dataset)
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
@@ -1043,6 +1095,7 @@ class DocumentRenameApi(DocumentResource):
         return document
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
 class WebsiteDocumentSyncApi(DocumentResource):
     @setup_required
     @login_required
@@ -1070,25 +1123,37 @@ class WebsiteDocumentSyncApi(DocumentResource):
         return {"result": "success"}, 200
 
 
-api.add_resource(GetProcessRuleApi, "/datasets/process-rule")
-api.add_resource(DatasetDocumentListApi, "/datasets/<uuid:dataset_id>/documents")
-api.add_resource(DatasetInitApi, "/datasets/init")
-api.add_resource(
-    DocumentIndexingEstimateApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate"
-)
-api.add_resource(DocumentBatchIndexingEstimateApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
-api.add_resource(DocumentBatchIndexingStatusApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
-api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
-api.add_resource(DocumentDetailApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
-api.add_resource(
-    DocumentProcessingApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>"
-)
-api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
-api.add_resource(DocumentMetadataApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
-api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
-api.add_resource(DocumentPauseApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
-api.add_resource(DocumentRecoverApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
-api.add_resource(DocumentRetryApi, "/datasets/<uuid:dataset_id>/retry")
-api.add_resource(DocumentRenameApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
+class DocumentPipelineExecutionLogApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
 
-api.add_resource(WebsiteDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        log = (
+            db.session.query(DocumentPipelineExecutionLog)
+            .filter_by(document_id=document_id)
+            .order_by(DocumentPipelineExecutionLog.created_at.desc())
+            .first()
+        )
+        if not log:
+            return {
+                "datasource_info": None,
+                "datasource_type": None,
+                "input_data": None,
+                "datasource_node_id": None,
+            }, 200
+        return {
+            "datasource_info": json.loads(log.datasource_info),
+            "datasource_type": log.datasource_type,
+            "input_data": log.input_data,
+            "datasource_node_id": log.datasource_node_id,
+        }, 200

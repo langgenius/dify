@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useChatContext } from '../chat/chat/context'
 
 const hasEndThink = (children: any): boolean => {
   if (typeof children === 'string')
@@ -35,7 +36,8 @@ const removeEndThink = (children: any): any => {
 }
 
 const useThinkTimer = (children: any) => {
-  const [startTime] = useState(Date.now())
+  const { isResponding } = useChatContext()
+  const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const timerRef = useRef<NodeJS.Timeout>()
@@ -54,14 +56,14 @@ const useThinkTimer = (children: any) => {
   }, [startTime, isComplete])
 
   useEffect(() => {
-    if (hasEndThink(children))
+    if (hasEndThink(children) || !isResponding)
       setIsComplete(true)
-  }, [children])
+  }, [children, isResponding])
 
   return { elapsedTime, isComplete }
 }
 
-export const ThinkBlock = ({ children, ...props }: any) => {
+const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
@@ -71,7 +73,7 @@ export const ThinkBlock = ({ children, ...props }: any) => {
 
   return (
     <details {...(!isComplete && { open: true })} className="group">
-      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-gray-500">
+      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-text-secondary">
         <div className="flex shrink-0 items-center">
           <svg
             className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"
@@ -89,7 +91,7 @@ export const ThinkBlock = ({ children, ...props }: any) => {
           {isComplete ? `${t('common.chat.thought')}(${elapsedTime.toFixed(1)}s)` : `${t('common.chat.thinking')}(${elapsedTime.toFixed(1)}s)`}
         </div>
       </summary>
-      <div className="ml-2 border-l border-gray-300 bg-gray-50 p-3 text-gray-500">
+      <div className="ml-2 border-l border-components-panel-border bg-components-panel-bg-alt p-3 text-text-secondary">
         {displayContent}
       </div>
     </details>

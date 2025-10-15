@@ -1,25 +1,26 @@
 import urllib.parse
-from typing import cast
 
 import httpx
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with, reqparse
 
 import services
 from controllers.common import helpers
-from controllers.common.errors import RemoteFileUploadError
-from core.file import helpers as file_helpers
-from core.helper import ssrf_proxy
-from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
-from models.account import Account
-from services.file_service import FileService
-
-from .error import (
+from controllers.common.errors import (
     FileTooLargeError,
+    RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
+from core.file import helpers as file_helpers
+from core.helper import ssrf_proxy
+from extensions.ext_database import db
+from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
+from libs.login import current_account_with_tenant
+from services.file_service import FileService
+
+from . import console_ns
 
 
+@console_ns.route("/remote-files/<path:url>")
 class RemoteFileInfoApi(Resource):
     @marshal_with(remote_file_info_fields)
     def get(self, url):
@@ -35,6 +36,7 @@ class RemoteFileInfoApi(Resource):
         }
 
 
+@console_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(Resource):
     @marshal_with(file_fields_with_signed_url)
     def post(self):
@@ -61,8 +63,8 @@ class RemoteFileUploadApi(Resource):
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 
         try:
-            user = cast(Account, current_user)
-            upload_file = FileService.upload_file(
+            user, _ = current_account_with_tenant()
+            upload_file = FileService(db.engine).upload_file(
                 filename=file_info.filename,
                 content=content,
                 mimetype=file_info.mimetype,

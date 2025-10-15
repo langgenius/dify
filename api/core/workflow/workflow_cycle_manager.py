@@ -1,72 +1,44 @@
-import json
-import time
-from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
-from uuid import uuid4
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Union
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
-    QueueAgentLogEvent,
-    QueueIterationCompletedEvent,
-    QueueIterationNextEvent,
-    QueueIterationStartEvent,
-    QueueLoopCompletedEvent,
-    QueueLoopNextEvent,
-    QueueLoopStartEvent,
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeInLoopFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent,
-)
-from core.app.entities.task_entities import (
-    AgentLogStreamResponse,
-    IterationNodeCompletedStreamResponse,
-    IterationNodeNextStreamResponse,
-    IterationNodeStartStreamResponse,
-    LoopNodeCompletedStreamResponse,
-    LoopNodeNextStreamResponse,
-    LoopNodeStartStreamResponse,
-    NodeFinishStreamResponse,
-    NodeRetryStreamResponse,
-    NodeStartStreamResponse,
-    ParallelBranchFinishedStreamResponse,
-    ParallelBranchStartStreamResponse,
-    WorkflowFinishStreamResponse,
-    WorkflowStartStreamResponse,
 )
 from core.app.task_pipeline.exc import WorkflowRunNotFoundError
-from core.file import FILE_MODEL_IDENTITY, File
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.enums import SystemVariableKey
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.tool.entities import ToolNodeData
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_entry import WorkflowEntry
-from models.account import Account
-from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
-from models.model import EndUser
-from models.workflow import (
-    Workflow,
+from core.workflow.entities import (
+    WorkflowExecution,
     WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
-    WorkflowNodeExecutionTriggeredFrom,
-    WorkflowRun,
-    WorkflowRunStatus,
 )
+from core.workflow.enums import (
+    SystemVariableKey,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+    WorkflowType,
+)
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.system_variable import SystemVariable
+from core.workflow.workflow_entry import WorkflowEntry
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+
+
+@dataclass
+class CycleManagerWorkflowInfo:
+    workflow_id: str
+    workflow_type: WorkflowType
+    version: str
+    graph_data: Mapping[str, Any]
 
 
 class WorkflowCycleManager:
@@ -74,875 +46,414 @@ class WorkflowCycleManager:
         self,
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
-        workflow_system_variables: dict[SystemVariableKey, Any],
+        workflow_system_variables: SystemVariable,
+        workflow_info: CycleManagerWorkflowInfo,
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-    ) -> None:
-        self._workflow_run: WorkflowRun | None = None
-        self._workflow_node_executions: dict[str, WorkflowNodeExecution] = {}
+    ):
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
+        self._workflow_info = workflow_info
+        self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
-    def _handle_workflow_run_start(
-        self,
-        *,
-        session: Session,
-        workflow_id: str,
-        user_id: str,
-        created_by_role: CreatedByRole,
-    ) -> WorkflowRun:
-        workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
-        workflow = session.scalar(workflow_stmt)
-        if not workflow:
-            raise ValueError(f"Workflow not found: {workflow_id}")
+        # Initialize caches for workflow execution cycle
+        # These caches avoid redundant repository calls during a single workflow execution
+        self._workflow_execution_cache: dict[str, WorkflowExecution] = {}
+        self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
 
-        max_sequence_stmt = select(func.max(WorkflowRun.sequence_number)).where(
-            WorkflowRun.tenant_id == workflow.tenant_id,
-            WorkflowRun.app_id == workflow.app_id,
-        )
-        max_sequence = session.scalar(max_sequence_stmt) or 0
-        new_sequence_number = max_sequence + 1
+    def handle_workflow_run_start(self) -> WorkflowExecution:
+        inputs = self._prepare_workflow_inputs()
+        execution_id = self._get_or_generate_execution_id()
 
-        inputs = {**self._application_generate_entity.inputs}
-        for key, value in (self._workflow_system_variables or {}).items():
-            if key.value == "conversation":
-                continue
-            inputs[f"sys.{key.value}"] = value
-
-        triggered_from = (
-            WorkflowRunTriggeredFrom.DEBUGGING
-            if self._application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
-            else WorkflowRunTriggeredFrom.APP_RUN
+        execution = WorkflowExecution.new(
+            id_=execution_id,
+            workflow_id=self._workflow_info.workflow_id,
+            workflow_type=self._workflow_info.workflow_type,
+            workflow_version=self._workflow_info.version,
+            graph=self._workflow_info.graph_data,
+            inputs=inputs,
+            started_at=naive_utc_now(),
         )
 
-        # handle special values
-        inputs = dict(WorkflowEntry.handle_special_values(inputs) or {})
+        return self._save_and_cache_workflow_execution(execution)
 
-        # init workflow run
-        # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
-        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
-
-        workflow_run = WorkflowRun()
-        workflow_run.id = workflow_run_id
-        workflow_run.tenant_id = workflow.tenant_id
-        workflow_run.app_id = workflow.app_id
-        workflow_run.sequence_number = new_sequence_number
-        workflow_run.workflow_id = workflow.id
-        workflow_run.type = workflow.type
-        workflow_run.triggered_from = triggered_from.value
-        workflow_run.version = workflow.version
-        workflow_run.graph = workflow.graph
-        workflow_run.inputs = json.dumps(inputs)
-        workflow_run.status = WorkflowRunStatus.RUNNING
-        workflow_run.created_by_role = created_by_role
-        workflow_run.created_by = user_id
-        workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
-
-        session.add(workflow_run)
-
-        return workflow_run
-
-    def _handle_workflow_run_success(
+    def handle_workflow_run_success(
         self,
         *,
-        session: Session,
         workflow_run_id: str,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
-        conversation_id: Optional[str] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-    ) -> WorkflowRun:
-        """
-        Workflow run success
-        :param workflow_run_id: workflow run id
-        :param start_at: start time
-        :param total_tokens: total tokens
-        :param total_steps: total steps
-        :param outputs: outputs
-        :param conversation_id: conversation id
-        :return:
-        """
-        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
+        conversation_id: str | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        external_trace_id: str | None = None,
+    ) -> WorkflowExecution:
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
-        outputs = WorkflowEntry.handle_special_values(outputs)
+        self._update_workflow_execution_completion(
+            workflow_execution,
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            outputs=outputs,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+        )
 
-        workflow_run.status = WorkflowRunStatus.SUCCEEDED
-        workflow_run.outputs = json.dumps(outputs or {})
-        workflow_run.elapsed_time = time.perf_counter() - start_at
-        workflow_run.total_tokens = total_tokens
-        workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        self._add_trace_task_if_needed(trace_manager, workflow_execution, conversation_id, external_trace_id)
 
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
-                    conversation_id=conversation_id,
-                    user_id=trace_manager.user_id,
-                )
-            )
+        self._workflow_execution_repository.save(workflow_execution)
+        return workflow_execution
 
-        return workflow_run
-
-    def _handle_workflow_run_partial_success(
+    def handle_workflow_run_partial_success(
         self,
         *,
-        session: Session,
         workflow_run_id: str,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
         exceptions_count: int = 0,
-        conversation_id: Optional[str] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-    ) -> WorkflowRun:
-        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
-        outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
+        conversation_id: str | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        external_trace_id: str | None = None,
+    ) -> WorkflowExecution:
+        execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
-        workflow_run.status = WorkflowRunStatus.PARTIAL_SUCCEEDED.value
-        workflow_run.outputs = json.dumps(outputs or {})
-        workflow_run.elapsed_time = time.perf_counter() - start_at
-        workflow_run.total_tokens = total_tokens
-        workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
-        workflow_run.exceptions_count = exceptions_count
-
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
-                    conversation_id=conversation_id,
-                    user_id=trace_manager.user_id,
-                )
-            )
-
-        return workflow_run
-
-    def _handle_workflow_run_failed(
-        self,
-        *,
-        session: Session,
-        workflow_run_id: str,
-        start_at: float,
-        total_tokens: int,
-        total_steps: int,
-        status: WorkflowRunStatus,
-        error: str,
-        conversation_id: Optional[str] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-        exceptions_count: int = 0,
-    ) -> WorkflowRun:
-        """
-        Workflow run failed
-        :param workflow_run_id: workflow run id
-        :param start_at: start time
-        :param total_tokens: total tokens
-        :param total_steps: total steps
-        :param status: status
-        :param error: error message
-        :return:
-        """
-        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
-
-        workflow_run.status = status.value
-        workflow_run.error = error
-        workflow_run.elapsed_time = time.perf_counter() - start_at
-        workflow_run.total_tokens = total_tokens
-        workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
-        workflow_run.exceptions_count = exceptions_count
-
-        # Use the instance repository to find running executions for a workflow run
-        running_workflow_node_executions = self._workflow_node_execution_repository.get_running_executions(
-            workflow_run_id=workflow_run.id
+        self._update_workflow_execution_completion(
+            execution,
+            status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+            outputs=outputs,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+            exceptions_count=exceptions_count,
         )
 
-        # Update the cache with the retrieved executions
-        for execution in running_workflow_node_executions:
-            if execution.node_execution_id:
-                self._workflow_node_executions[execution.node_execution_id] = execution
+        self._add_trace_task_if_needed(trace_manager, execution, conversation_id, external_trace_id)
 
-        for workflow_node_execution in running_workflow_node_executions:
-            now = datetime.now(UTC).replace(tzinfo=None)
-            workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
-            workflow_node_execution.error = error
-            workflow_node_execution.finished_at = now
-            workflow_node_execution.elapsed_time = (now - workflow_node_execution.created_at).total_seconds()
-
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
-                    conversation_id=conversation_id,
-                    user_id=trace_manager.user_id,
-                )
-            )
-
-        return workflow_run
-
-    def _handle_node_execution_start(
-        self, *, workflow_run: WorkflowRun, event: QueueNodeStartedEvent
-    ) -> WorkflowNodeExecution:
-        workflow_node_execution = WorkflowNodeExecution()
-        workflow_node_execution.id = str(uuid4())
-        workflow_node_execution.tenant_id = workflow_run.tenant_id
-        workflow_node_execution.app_id = workflow_run.app_id
-        workflow_node_execution.workflow_id = workflow_run.workflow_id
-        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
-        workflow_node_execution.workflow_run_id = workflow_run.id
-        workflow_node_execution.predecessor_node_id = event.predecessor_node_id
-        workflow_node_execution.index = event.node_run_index
-        workflow_node_execution.node_execution_id = event.node_execution_id
-        workflow_node_execution.node_id = event.node_id
-        workflow_node_execution.node_type = event.node_type.value
-        workflow_node_execution.title = event.node_data.title
-        workflow_node_execution.status = WorkflowNodeExecutionStatus.RUNNING.value
-        workflow_node_execution.created_by_role = workflow_run.created_by_role
-        workflow_node_execution.created_by = workflow_run.created_by
-        workflow_node_execution.execution_metadata = json.dumps(
-            {
-                NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
-                NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
-                NodeRunMetadataKey.LOOP_ID: event.in_loop_id,
-            }
-        )
-        workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
-
-        # Use the instance repository to save the workflow node execution
-        self._workflow_node_execution_repository.save(workflow_node_execution)
-
-        self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
-        return workflow_node_execution
-
-    def _handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
-        workflow_node_execution = self._get_workflow_node_execution(node_execution_id=event.node_execution_id)
-        inputs = WorkflowEntry.handle_special_values(event.inputs)
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-        outputs = WorkflowEntry.handle_special_values(event.outputs)
-        execution_metadata_dict = dict(event.execution_metadata or {})
-        execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
-        finished_at = datetime.now(UTC).replace(tzinfo=None)
-        elapsed_time = (finished_at - event.start_at).total_seconds()
-
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-
-        workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
-        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
-        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
-        workflow_node_execution.execution_metadata = execution_metadata
-        workflow_node_execution.finished_at = finished_at
-        workflow_node_execution.elapsed_time = elapsed_time
-
-        # Use the instance repository to update the workflow node execution
-        self._workflow_node_execution_repository.update(workflow_node_execution)
-        return workflow_node_execution
-
-    def _handle_workflow_node_execution_failed(
-        self,
-        *,
-        event: QueueNodeFailedEvent
-        | QueueNodeInIterationFailedEvent
-        | QueueNodeInLoopFailedEvent
-        | QueueNodeExceptionEvent,
-    ) -> WorkflowNodeExecution:
-        """
-        Workflow node execution failed
-        :param event: queue node failed event
-        :return:
-        """
-        workflow_node_execution = self._get_workflow_node_execution(node_execution_id=event.node_execution_id)
-
-        inputs = WorkflowEntry.handle_special_values(event.inputs)
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-        outputs = WorkflowEntry.handle_special_values(event.outputs)
-        finished_at = datetime.now(UTC).replace(tzinfo=None)
-        elapsed_time = (finished_at - event.start_at).total_seconds()
-        execution_metadata = (
-            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
-        )
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-        workflow_node_execution.status = (
-            WorkflowNodeExecutionStatus.FAILED.value
-            if not isinstance(event, QueueNodeExceptionEvent)
-            else WorkflowNodeExecutionStatus.EXCEPTION.value
-        )
-        workflow_node_execution.error = event.error
-        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
-        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
-        workflow_node_execution.finished_at = finished_at
-        workflow_node_execution.elapsed_time = elapsed_time
-        workflow_node_execution.execution_metadata = execution_metadata
-
-        self._workflow_node_execution_repository.update(workflow_node_execution)
-
-        return workflow_node_execution
-
-    def _handle_workflow_node_execution_retried(
-        self, *, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
-    ) -> WorkflowNodeExecution:
-        """
-        Workflow node execution failed
-        :param workflow_run: workflow run
-        :param event: queue node failed event
-        :return:
-        """
-        created_at = event.start_at
-        finished_at = datetime.now(UTC).replace(tzinfo=None)
-        elapsed_time = (finished_at - created_at).total_seconds()
-        inputs = WorkflowEntry.handle_special_values(event.inputs)
-        outputs = WorkflowEntry.handle_special_values(event.outputs)
-        origin_metadata = {
-            NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
-            NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
-            NodeRunMetadataKey.LOOP_ID: event.in_loop_id,
-        }
-        merged_metadata = (
-            {**jsonable_encoder(event.execution_metadata), **origin_metadata}
-            if event.execution_metadata is not None
-            else origin_metadata
-        )
-        execution_metadata = json.dumps(merged_metadata)
-
-        workflow_node_execution = WorkflowNodeExecution()
-        workflow_node_execution.id = str(uuid4())
-        workflow_node_execution.tenant_id = workflow_run.tenant_id
-        workflow_node_execution.app_id = workflow_run.app_id
-        workflow_node_execution.workflow_id = workflow_run.workflow_id
-        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
-        workflow_node_execution.workflow_run_id = workflow_run.id
-        workflow_node_execution.predecessor_node_id = event.predecessor_node_id
-        workflow_node_execution.node_execution_id = event.node_execution_id
-        workflow_node_execution.node_id = event.node_id
-        workflow_node_execution.node_type = event.node_type.value
-        workflow_node_execution.title = event.node_data.title
-        workflow_node_execution.status = WorkflowNodeExecutionStatus.RETRY.value
-        workflow_node_execution.created_by_role = workflow_run.created_by_role
-        workflow_node_execution.created_by = workflow_run.created_by
-        workflow_node_execution.created_at = created_at
-        workflow_node_execution.finished_at = finished_at
-        workflow_node_execution.elapsed_time = elapsed_time
-        workflow_node_execution.error = event.error
-        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
-        workflow_node_execution.execution_metadata = execution_metadata
-        workflow_node_execution.index = event.node_run_index
-
-        # Use the instance repository to save the workflow node execution
-        self._workflow_node_execution_repository.save(workflow_node_execution)
-
-        self._workflow_node_executions[event.node_execution_id] = workflow_node_execution
-        return workflow_node_execution
-
-    def _workflow_start_to_stream_response(
-        self,
-        *,
-        session: Session,
-        task_id: str,
-        workflow_run: WorkflowRun,
-    ) -> WorkflowStartStreamResponse:
-        _ = session
-        return WorkflowStartStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=WorkflowStartStreamResponse.Data(
-                id=workflow_run.id,
-                workflow_id=workflow_run.workflow_id,
-                sequence_number=workflow_run.sequence_number,
-                inputs=dict(workflow_run.inputs_dict or {}),
-                created_at=int(workflow_run.created_at.timestamp()),
-            ),
-        )
-
-    def _workflow_finish_to_stream_response(
-        self,
-        *,
-        session: Session,
-        task_id: str,
-        workflow_run: WorkflowRun,
-    ) -> WorkflowFinishStreamResponse:
-        created_by = None
-        if workflow_run.created_by_role == CreatedByRole.ACCOUNT:
-            stmt = select(Account).where(Account.id == workflow_run.created_by)
-            account = session.scalar(stmt)
-            if account:
-                created_by = {
-                    "id": account.id,
-                    "name": account.name,
-                    "email": account.email,
-                }
-        elif workflow_run.created_by_role == CreatedByRole.END_USER:
-            stmt = select(EndUser).where(EndUser.id == workflow_run.created_by)
-            end_user = session.scalar(stmt)
-            if end_user:
-                created_by = {
-                    "id": end_user.id,
-                    "user": end_user.session_id,
-                }
-        else:
-            raise NotImplementedError(f"unknown created_by_role: {workflow_run.created_by_role}")
-
-        return WorkflowFinishStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=WorkflowFinishStreamResponse.Data(
-                id=workflow_run.id,
-                workflow_id=workflow_run.workflow_id,
-                sequence_number=workflow_run.sequence_number,
-                status=workflow_run.status,
-                outputs=dict(workflow_run.outputs_dict) if workflow_run.outputs_dict else None,
-                error=workflow_run.error,
-                elapsed_time=workflow_run.elapsed_time,
-                total_tokens=workflow_run.total_tokens,
-                total_steps=workflow_run.total_steps,
-                created_by=created_by,
-                created_at=int(workflow_run.created_at.timestamp()),
-                finished_at=int(workflow_run.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict)),
-                exceptions_count=workflow_run.exceptions_count,
-            ),
-        )
-
-    def _workflow_node_start_to_stream_response(
-        self,
-        *,
-        event: QueueNodeStartedEvent,
-        task_id: str,
-        workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeStartStreamResponse]:
-        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
-            return None
-        if not workflow_node_execution.workflow_run_id:
-            return None
-
-        response = NodeStartStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
-            data=NodeStartStreamResponse.Data(
-                id=workflow_node_execution.id,
-                node_id=workflow_node_execution.node_id,
-                node_type=workflow_node_execution.node_type,
-                title=workflow_node_execution.title,
-                index=workflow_node_execution.index,
-                predecessor_node_id=workflow_node_execution.predecessor_node_id,
-                inputs=workflow_node_execution.inputs_dict,
-                created_at=int(workflow_node_execution.created_at.timestamp()),
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-                parallel_run_id=event.parallel_mode_run_id,
-                agent_strategy=event.agent_strategy,
-            ),
-        )
-
-        # extras logic
-        if event.node_type == NodeType.TOOL:
-            node_data = cast(ToolNodeData, event.node_data)
-            response.data.extras["icon"] = ToolManager.get_tool_icon(
-                tenant_id=self._application_generate_entity.app_config.tenant_id,
-                provider_type=node_data.provider_type,
-                provider_id=node_data.provider_id,
-            )
-
-        return response
-
-    def _workflow_node_finish_to_stream_response(
-        self,
-        *,
-        event: QueueNodeSucceededEvent
-        | QueueNodeFailedEvent
-        | QueueNodeInIterationFailedEvent
-        | QueueNodeInLoopFailedEvent
-        | QueueNodeExceptionEvent,
-        task_id: str,
-        workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeFinishStreamResponse]:
-        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
-            return None
-        if not workflow_node_execution.workflow_run_id:
-            return None
-        if not workflow_node_execution.finished_at:
-            return None
-
-        return NodeFinishStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
-            data=NodeFinishStreamResponse.Data(
-                id=workflow_node_execution.id,
-                node_id=workflow_node_execution.node_id,
-                node_type=workflow_node_execution.node_type,
-                index=workflow_node_execution.index,
-                title=workflow_node_execution.title,
-                predecessor_node_id=workflow_node_execution.predecessor_node_id,
-                inputs=workflow_node_execution.inputs_dict,
-                process_data=workflow_node_execution.process_data_dict,
-                outputs=workflow_node_execution.outputs_dict,
-                status=workflow_node_execution.status,
-                error=workflow_node_execution.error,
-                elapsed_time=workflow_node_execution.elapsed_time,
-                execution_metadata=workflow_node_execution.execution_metadata_dict,
-                created_at=int(workflow_node_execution.created_at.timestamp()),
-                finished_at=int(workflow_node_execution.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict or {}),
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-            ),
-        )
-
-    def _workflow_node_retry_to_stream_response(
-        self,
-        *,
-        event: QueueNodeRetryEvent,
-        task_id: str,
-        workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
-        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
-            return None
-        if not workflow_node_execution.workflow_run_id:
-            return None
-        if not workflow_node_execution.finished_at:
-            return None
-
-        return NodeRetryStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
-            data=NodeRetryStreamResponse.Data(
-                id=workflow_node_execution.id,
-                node_id=workflow_node_execution.node_id,
-                node_type=workflow_node_execution.node_type,
-                index=workflow_node_execution.index,
-                title=workflow_node_execution.title,
-                predecessor_node_id=workflow_node_execution.predecessor_node_id,
-                inputs=workflow_node_execution.inputs_dict,
-                process_data=workflow_node_execution.process_data_dict,
-                outputs=workflow_node_execution.outputs_dict,
-                status=workflow_node_execution.status,
-                error=workflow_node_execution.error,
-                elapsed_time=workflow_node_execution.elapsed_time,
-                execution_metadata=workflow_node_execution.execution_metadata_dict,
-                created_at=int(workflow_node_execution.created_at.timestamp()),
-                finished_at=int(workflow_node_execution.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict or {}),
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-                retry_index=event.retry_index,
-            ),
-        )
-
-    def _workflow_parallel_branch_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueParallelBranchRunStartedEvent
-    ) -> ParallelBranchStartStreamResponse:
-        _ = session
-        return ParallelBranchStartStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=ParallelBranchStartStreamResponse.Data(
-                parallel_id=event.parallel_id,
-                parallel_branch_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-                created_at=int(time.time()),
-            ),
-        )
-
-    def _workflow_parallel_branch_finished_to_stream_response(
-        self,
-        *,
-        session: Session,
-        task_id: str,
-        workflow_run: WorkflowRun,
-        event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
-    ) -> ParallelBranchFinishedStreamResponse:
-        _ = session
-        return ParallelBranchFinishedStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=ParallelBranchFinishedStreamResponse.Data(
-                parallel_id=event.parallel_id,
-                parallel_branch_id=event.parallel_start_node_id,
-                parent_parallel_id=event.parent_parallel_id,
-                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                iteration_id=event.in_iteration_id,
-                loop_id=event.in_loop_id,
-                status="succeeded" if isinstance(event, QueueParallelBranchRunSucceededEvent) else "failed",
-                error=event.error if isinstance(event, QueueParallelBranchRunFailedEvent) else None,
-                created_at=int(time.time()),
-            ),
-        )
-
-    def _workflow_iteration_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationStartEvent
-    ) -> IterationNodeStartStreamResponse:
-        _ = session
-        return IterationNodeStartStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=IterationNodeStartStreamResponse.Data(
-                id=event.node_id,
-                node_id=event.node_id,
-                node_type=event.node_type.value,
-                title=event.node_data.title,
-                created_at=int(time.time()),
-                extras={},
-                inputs=event.inputs or {},
-                metadata=event.metadata or {},
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-            ),
-        )
-
-    def _workflow_iteration_next_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationNextEvent
-    ) -> IterationNodeNextStreamResponse:
-        _ = session
-        return IterationNodeNextStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=IterationNodeNextStreamResponse.Data(
-                id=event.node_id,
-                node_id=event.node_id,
-                node_type=event.node_type.value,
-                title=event.node_data.title,
-                index=event.index,
-                pre_iteration_output=event.output,
-                created_at=int(time.time()),
-                extras={},
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parallel_mode_run_id=event.parallel_mode_run_id,
-                duration=event.duration,
-            ),
-        )
-
-    def _workflow_iteration_completed_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent
-    ) -> IterationNodeCompletedStreamResponse:
-        _ = session
-        return IterationNodeCompletedStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=IterationNodeCompletedStreamResponse.Data(
-                id=event.node_id,
-                node_id=event.node_id,
-                node_type=event.node_type.value,
-                title=event.node_data.title,
-                outputs=event.outputs,
-                created_at=int(time.time()),
-                extras={},
-                inputs=event.inputs or {},
-                status=WorkflowNodeExecutionStatus.SUCCEEDED
-                if event.error is None
-                else WorkflowNodeExecutionStatus.FAILED,
-                error=None,
-                elapsed_time=(datetime.now(UTC).replace(tzinfo=None) - event.start_at).total_seconds(),
-                total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
-                execution_metadata=event.metadata,
-                finished_at=int(time.time()),
-                steps=event.steps,
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-            ),
-        )
-
-    def _workflow_loop_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopStartEvent
-    ) -> LoopNodeStartStreamResponse:
-        _ = session
-        return LoopNodeStartStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=LoopNodeStartStreamResponse.Data(
-                id=event.node_id,
-                node_id=event.node_id,
-                node_type=event.node_type.value,
-                title=event.node_data.title,
-                created_at=int(time.time()),
-                extras={},
-                inputs=event.inputs or {},
-                metadata=event.metadata or {},
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-            ),
-        )
-
-    def _workflow_loop_next_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopNextEvent
-    ) -> LoopNodeNextStreamResponse:
-        _ = session
-        return LoopNodeNextStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=LoopNodeNextStreamResponse.Data(
-                id=event.node_id,
-                node_id=event.node_id,
-                node_type=event.node_type.value,
-                title=event.node_data.title,
-                index=event.index,
-                pre_loop_output=event.output,
-                created_at=int(time.time()),
-                extras={},
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-                parallel_mode_run_id=event.parallel_mode_run_id,
-                duration=event.duration,
-            ),
-        )
-
-    def _workflow_loop_completed_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopCompletedEvent
-    ) -> LoopNodeCompletedStreamResponse:
-        _ = session
-        return LoopNodeCompletedStreamResponse(
-            task_id=task_id,
-            workflow_run_id=workflow_run.id,
-            data=LoopNodeCompletedStreamResponse.Data(
-                id=event.node_id,
-                node_id=event.node_id,
-                node_type=event.node_type.value,
-                title=event.node_data.title,
-                outputs=event.outputs,
-                created_at=int(time.time()),
-                extras={},
-                inputs=event.inputs or {},
-                status=WorkflowNodeExecutionStatus.SUCCEEDED
-                if event.error is None
-                else WorkflowNodeExecutionStatus.FAILED,
-                error=None,
-                elapsed_time=(datetime.now(UTC).replace(tzinfo=None) - event.start_at).total_seconds(),
-                total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
-                execution_metadata=event.metadata,
-                finished_at=int(time.time()),
-                steps=event.steps,
-                parallel_id=event.parallel_id,
-                parallel_start_node_id=event.parallel_start_node_id,
-            ),
-        )
-
-    def _fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any]) -> Sequence[Mapping[str, Any]]:
-        """
-        Fetch files from node outputs
-        :param outputs_dict: node outputs dict
-        :return:
-        """
-        if not outputs_dict:
-            return []
-
-        files = [self._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
-        # Remove None
-        files = [file for file in files if file]
-        # Flatten list
-        # Flatten the list of sequences into a single list of mappings
-        flattened_files = [file for sublist in files if sublist for file in sublist]
-
-        # Convert to tuple to match Sequence type
-        return tuple(flattened_files)
-
-    def _fetch_files_from_variable_value(self, value: Union[dict, list]) -> Sequence[Mapping[str, Any]]:
-        """
-        Fetch files from variable value
-        :param value: variable value
-        :return:
-        """
-        if not value:
-            return []
-
-        files = []
-        if isinstance(value, list):
-            for item in value:
-                file = self._get_file_var_from_value(item)
-                if file:
-                    files.append(file)
-        elif isinstance(value, dict):
-            file = self._get_file_var_from_value(value)
-            if file:
-                files.append(file)
-
-        return files
-
-    def _get_file_var_from_value(self, value: Union[dict, list]) -> Mapping[str, Any] | None:
-        """
-        Get file var from value
-        :param value: variable value
-        :return:
-        """
-        if not value:
-            return None
-
-        if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-            return value
-        elif isinstance(value, File):
-            return value.to_dict()
-
-        return None
-
-    def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
-        if self._workflow_run and self._workflow_run.id == workflow_run_id:
-            cached_workflow_run = self._workflow_run
-            cached_workflow_run = session.merge(cached_workflow_run)
-            return cached_workflow_run
-        stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
-        workflow_run = session.scalar(stmt)
-        if not workflow_run:
-            raise WorkflowRunNotFoundError(workflow_run_id)
-        self._workflow_run = workflow_run
-
-        return workflow_run
-
-    def _get_workflow_node_execution(self, node_execution_id: str) -> WorkflowNodeExecution:
-        # First check the cache for performance
-        if node_execution_id in self._workflow_node_executions:
-            cached_execution = self._workflow_node_executions[node_execution_id]
-            # No need to merge with session since expire_on_commit=False
-            return cached_execution
-
-        # If not in cache, use the instance repository to get by node_execution_id
-        execution = self._workflow_node_execution_repository.get_by_node_execution_id(node_execution_id)
-
-        if not execution:
-            raise ValueError(f"Workflow node execution not found: {node_execution_id}")
-
-        # Update cache
-        self._workflow_node_executions[node_execution_id] = execution
+        self._workflow_execution_repository.save(execution)
         return execution
 
-    def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
+    def handle_workflow_run_failed(
+        self,
+        *,
+        workflow_run_id: str,
+        total_tokens: int,
+        total_steps: int,
+        status: WorkflowExecutionStatus,
+        error_message: str,
+        conversation_id: str | None = None,
+        trace_manager: TraceQueueManager | None = None,
+        exceptions_count: int = 0,
+        external_trace_id: str | None = None,
+    ) -> WorkflowExecution:
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
+        now = naive_utc_now()
+
+        self._update_workflow_execution_completion(
+            workflow_execution,
+            status=status,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+            error_message=error_message,
+            exceptions_count=exceptions_count,
+            finished_at=now,
+        )
+
+        self._fail_running_node_executions(workflow_execution.id_, error_message, now)
+        self._add_trace_task_if_needed(trace_manager, workflow_execution, conversation_id, external_trace_id)
+
+        self._workflow_execution_repository.save(workflow_execution)
+        return workflow_execution
+
+    def handle_node_execution_start(
+        self,
+        *,
+        workflow_execution_id: str,
+        event: QueueNodeStartedEvent,
+    ) -> WorkflowNodeExecution:
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
+
+        domain_execution = self._create_node_execution_from_event(
+            workflow_execution=workflow_execution,
+            event=event,
+            status=WorkflowNodeExecutionStatus.RUNNING,
+        )
+
+        return self._save_and_cache_node_execution(domain_execution)
+
+    def handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
+        domain_execution = self._get_node_execution_from_cache(event.node_execution_id)
+
+        self._update_node_execution_completion(
+            domain_execution,
+            event=event,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        )
+
+        self._workflow_node_execution_repository.save(domain_execution)
+        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        return domain_execution
+
+    def handle_workflow_node_execution_failed(
+        self,
+        *,
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
+    ) -> WorkflowNodeExecution:
         """
-        Handle agent log
-        :param task_id: task id
-        :param event: agent log event
+        Workflow node execution failed
+        :param event: queue node failed event
         :return:
         """
-        return AgentLogStreamResponse(
-            task_id=task_id,
-            data=AgentLogStreamResponse.Data(
-                node_execution_id=event.node_execution_id,
-                id=event.id,
-                parent_id=event.parent_id,
-                label=event.label,
-                error=event.error,
-                status=event.status,
-                data=event.data,
-                metadata=event.metadata,
-                node_id=event.node_id,
-            ),
+        domain_execution = self._get_node_execution_from_cache(event.node_execution_id)
+
+        status = (
+            WorkflowNodeExecutionStatus.EXCEPTION
+            if isinstance(event, QueueNodeExceptionEvent)
+            else WorkflowNodeExecutionStatus.FAILED
         )
+
+        self._update_node_execution_completion(
+            domain_execution,
+            event=event,
+            status=status,
+            error=event.error,
+            handle_special_values=True,
+        )
+
+        self._workflow_node_execution_repository.save(domain_execution)
+        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        return domain_execution
+
+    def handle_workflow_node_execution_retried(
+        self, *, workflow_execution_id: str, event: QueueNodeRetryEvent
+    ) -> WorkflowNodeExecution:
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
+
+        domain_execution = self._create_node_execution_from_event(
+            workflow_execution=workflow_execution,
+            event=event,
+            status=WorkflowNodeExecutionStatus.RETRY,
+            error=event.error,
+            created_at=event.start_at,
+        )
+
+        # Handle inputs and outputs
+        inputs = WorkflowEntry.handle_special_values(event.inputs)
+        outputs = event.outputs
+        metadata = self._merge_event_metadata(event)
+
+        domain_execution.update_from_mapping(inputs=inputs, outputs=outputs, metadata=metadata)
+
+        execution = self._save_and_cache_node_execution(domain_execution)
+        self._workflow_node_execution_repository.save_execution_data(execution)
+        return execution
+
+    def _get_workflow_execution_or_raise_error(self, id: str, /) -> WorkflowExecution:
+        # Check cache first
+        if id in self._workflow_execution_cache:
+            return self._workflow_execution_cache[id]
+
+        raise WorkflowRunNotFoundError(id)
+
+    def _prepare_workflow_inputs(self) -> dict[str, Any]:
+        """Prepare workflow inputs by merging application inputs with system variables."""
+        inputs = {**self._application_generate_entity.inputs}
+
+        if self._workflow_system_variables:
+            for field_name, value in self._workflow_system_variables.to_dict().items():
+                if field_name != SystemVariableKey.CONVERSATION_ID:
+                    inputs[f"sys.{field_name}"] = value
+
+        return dict(WorkflowEntry.handle_special_values(inputs) or {})
+
+    def _get_or_generate_execution_id(self) -> str:
+        """Get execution ID from system variables or generate a new one."""
+        if self._workflow_system_variables and self._workflow_system_variables.workflow_execution_id:
+            return str(self._workflow_system_variables.workflow_execution_id)
+        return str(uuidv7())
+
+    def _save_and_cache_workflow_execution(self, execution: WorkflowExecution) -> WorkflowExecution:
+        """Save workflow execution to repository and cache it."""
+        self._workflow_execution_repository.save(execution)
+        self._workflow_execution_cache[execution.id_] = execution
+        return execution
+
+    def _save_and_cache_node_execution(self, execution: WorkflowNodeExecution) -> WorkflowNodeExecution:
+        """Save node execution to repository and cache it if it has an ID.
+
+        This does not persist the `inputs` / `process_data` / `outputs` fields of the execution model.
+        """
+        self._workflow_node_execution_repository.save(execution)
+        if execution.node_execution_id:
+            self._node_execution_cache[execution.node_execution_id] = execution
+        return execution
+
+    def _get_node_execution_from_cache(self, node_execution_id: str) -> WorkflowNodeExecution:
+        """Get node execution from cache or raise error if not found."""
+        domain_execution = self._node_execution_cache.get(node_execution_id)
+        if not domain_execution:
+            raise ValueError(f"Domain node execution not found: {node_execution_id}")
+        return domain_execution
+
+    def _update_workflow_execution_completion(
+        self,
+        execution: WorkflowExecution,
+        *,
+        status: WorkflowExecutionStatus,
+        total_tokens: int,
+        total_steps: int,
+        outputs: Mapping[str, Any] | None = None,
+        error_message: str | None = None,
+        exceptions_count: int = 0,
+        finished_at: datetime | None = None,
+    ):
+        """Update workflow execution with completion data."""
+        execution.status = status
+        execution.outputs = outputs or {}
+        execution.total_tokens = total_tokens
+        execution.total_steps = total_steps
+        execution.finished_at = finished_at or naive_utc_now()
+        execution.exceptions_count = exceptions_count
+        if error_message:
+            execution.error_message = error_message
+
+    def _add_trace_task_if_needed(
+        self,
+        trace_manager: TraceQueueManager | None,
+        workflow_execution: WorkflowExecution,
+        conversation_id: str | None,
+        external_trace_id: str | None,
+    ):
+        """Add trace task if trace manager is provided."""
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.WORKFLOW_TRACE,
+                    workflow_execution=workflow_execution,
+                    conversation_id=conversation_id,
+                    user_id=trace_manager.user_id,
+                    external_trace_id=external_trace_id,
+                )
+            )
+
+    def _fail_running_node_executions(
+        self,
+        workflow_execution_id: str,
+        error_message: str,
+        now: datetime,
+    ):
+        """Fail all running node executions for a workflow."""
+        running_node_executions = [
+            node_exec
+            for node_exec in self._node_execution_cache.values()
+            if node_exec.workflow_execution_id == workflow_execution_id
+            and node_exec.status == WorkflowNodeExecutionStatus.RUNNING
+        ]
+
+        for node_execution in running_node_executions:
+            if node_execution.node_execution_id:
+                node_execution.status = WorkflowNodeExecutionStatus.FAILED
+                node_execution.error = error_message
+                node_execution.finished_at = now
+                node_execution.elapsed_time = (now - node_execution.created_at).total_seconds()
+                self._workflow_node_execution_repository.save(node_execution)
+
+    def _create_node_execution_from_event(
+        self,
+        *,
+        workflow_execution: WorkflowExecution,
+        event: QueueNodeStartedEvent,
+        status: WorkflowNodeExecutionStatus,
+        error: str | None = None,
+        created_at: datetime | None = None,
+    ) -> WorkflowNodeExecution:
+        """Create a node execution from an event."""
+        now = naive_utc_now()
+        created_at = created_at or now
+
+        metadata = {
+            WorkflowNodeExecutionMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
+            WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
+        }
+
+        domain_execution = WorkflowNodeExecution(
+            id=event.node_execution_id,
+            workflow_id=workflow_execution.workflow_id,
+            workflow_execution_id=workflow_execution.id_,
+            predecessor_node_id=event.predecessor_node_id,
+            index=event.node_run_index,
+            node_execution_id=event.node_execution_id,
+            node_id=event.node_id,
+            node_type=event.node_type,
+            title=event.node_title,
+            status=status,
+            metadata=metadata,
+            created_at=created_at,
+            error=error,
+        )
+
+        if status == WorkflowNodeExecutionStatus.RETRY:
+            domain_execution.finished_at = now
+            domain_execution.elapsed_time = (now - created_at).total_seconds()
+
+        return domain_execution
+
+    def _update_node_execution_completion(
+        self,
+        domain_execution: WorkflowNodeExecution,
+        *,
+        event: Union[
+            QueueNodeSucceededEvent,
+            QueueNodeFailedEvent,
+            QueueNodeExceptionEvent,
+        ],
+        status: WorkflowNodeExecutionStatus,
+        error: str | None = None,
+        handle_special_values: bool = False,
+    ):
+        """Update node execution with completion data."""
+        finished_at = naive_utc_now()
+        elapsed_time = (finished_at - event.start_at).total_seconds()
+
+        # Process data
+        if handle_special_values:
+            inputs = WorkflowEntry.handle_special_values(event.inputs)
+            process_data = WorkflowEntry.handle_special_values(event.process_data)
+        else:
+            inputs = event.inputs
+            process_data = event.process_data
+
+        outputs = event.outputs
+
+        # Convert metadata
+        execution_metadata_dict: dict[WorkflowNodeExecutionMetadataKey, Any] = {}
+        if event.execution_metadata:
+            execution_metadata_dict.update(event.execution_metadata)
+
+        # Update domain model
+        domain_execution.status = status
+        domain_execution.update_from_mapping(
+            inputs=inputs,
+            process_data=process_data,
+            outputs=outputs,
+            metadata=execution_metadata_dict,
+        )
+        domain_execution.finished_at = finished_at
+        domain_execution.elapsed_time = elapsed_time
+
+        if error:
+            domain_execution.error = error
+
+    def _merge_event_metadata(self, event: QueueNodeRetryEvent) -> dict[WorkflowNodeExecutionMetadataKey, str | None]:
+        """Merge event metadata with origin metadata."""
+        origin_metadata = {
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
+            WorkflowNodeExecutionMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+            WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
+        }
+
+        execution_metadata_dict: dict[WorkflowNodeExecutionMetadataKey, str | None] = {}
+        if event.execution_metadata:
+            execution_metadata_dict.update(event.execution_metadata)
+
+        return {**execution_metadata_dict, **origin_metadata} if execution_metadata_dict else origin_metadata

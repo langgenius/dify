@@ -1,7 +1,7 @@
 const translation = {
   title: '検索テスト',
   desc: '与えられたクエリテキストに基づいたナレッジのヒット効果をテストします。',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'YYYY/MM/DD hh:mm A',
   records: '記録',
   table: {
     header: {
@@ -13,7 +13,7 @@ const translation = {
   input: {
     title: 'ソーステキスト',
     placeholder: 'テキストを入力してください。短い記述文がおすすめです。',
-    countWarning: '最大200文字まで入力できます。',
+    countWarning: '最大 200 文字まで入力できます。',
     indexWarning: '高品質のナレッジのみ。',
     testing: 'テスト中',
   },

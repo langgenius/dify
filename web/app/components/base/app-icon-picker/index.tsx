@@ -5,7 +5,6 @@ import type { Area } from 'react-easy-crop'
 import Modal from '../modal'
 import Divider from '../divider'
 import Button from '../button'
-import { ImagePlus } from '../icons/src/vender/line/images'
 import { useLocalFileUploader } from '../image-uploader/hooks'
 import EmojiPickerInner from '../emoji-picker/Inner'
 import type { OnImageInput } from './ImageInput'
@@ -16,6 +15,7 @@ import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { noop } from 'lodash-es'
+import { RiImageCircleAiLine } from '@remixicon/react'
 
 export type AppIconEmojiSelection = {
   type: 'emoji'
@@ -46,7 +46,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
 
   const tabs = [
     { key: 'emoji', label: t('app.iconPicker.emoji'), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('app.iconPicker.image'), icon: <ImagePlus /> },
+    { key: 'image', label: t('app.iconPicker.image'), icon: <RiImageCircleAiLine className='size-4' /> },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
 
@@ -112,17 +112,17 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
     isShow
     closable={false}
     wrapperClassName={className}
-    className={cn(s.container, '!w-[362px] !p-0')}
+    className={cn(s.container, '!h-[462px] !w-[362px] !p-0')}
   >
     {!DISABLE_UPLOAD_IMAGE_AS_ICON && <div className="w-full p-2 pb-0">
-      <div className='flex items-center justify-center gap-2 rounded-xl bg-background-body p-1'>
+      <div className='flex items-center justify-center gap-2 rounded-xl bg-background-body p-1 text-text-primary'>
         {tabs.map(tab => (
-          <button
+          <button type="button"
             key={tab.key}
-            className={`
-                        flex h-8 flex-1 shrink-0 items-center justify-center rounded-xl p-2 text-sm font-medium
-                        ${activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active shadow-md'}
-                      `}
+            className={cn(
+              'system-sm-medium flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 text-text-tertiary',
+              activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
+            )}
             onClick={() => setActiveTab(tab.key as AppIconType)}
           >
             {tab.icon} &nbsp; {tab.label}
@@ -131,8 +131,8 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       </div>
     </div>}
 
-    <EmojiPickerInner className={cn(activeTab === 'emoji' ? 'block' : 'hidden', 'pt-2')} onSelect={handleSelectEmoji} />
-    <ImageInput className={activeTab === 'image' ? 'block' : 'hidden'} onImageInput={handleImageInput} />
+    {activeTab === 'emoji' && <EmojiPickerInner className={cn('flex-1 overflow-hidden pt-2')} onSelect={handleSelectEmoji} />}
+    {activeTab === 'image' && <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />}
 
     <Divider className='m-0' />
     <div className='flex w-full items-center justify-center gap-2 p-3'>

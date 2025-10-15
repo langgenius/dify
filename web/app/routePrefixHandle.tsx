@@ -9,8 +9,8 @@ export default function RoutePrefixHandle() {
   const handleRouteChange = () => {
     const addPrefixToImg = (e: HTMLImageElement) => {
       const url = new URL(e.src)
-      const prefix = url.pathname.substr(0, basePath.length)
-      if (prefix !== basePath) {
+      const prefix = url.pathname.slice(0, basePath.length)
+      if (prefix !== basePath && !url.href.startsWith('blob:') && !url.href.startsWith('data:') && !url.href.startsWith('http')) {
         url.pathname = basePath + url.pathname
         e.src = url.toString()
       }

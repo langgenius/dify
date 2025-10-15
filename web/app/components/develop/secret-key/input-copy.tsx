@@ -2,20 +2,18 @@
 import React, { useEffect, useState } from 'react'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
-import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
+import CopyFeedback from '@/app/components/base/copy-feedback'
 
 type IInputCopyProps = {
   value?: string
   className?: string
-  readOnly?: boolean
   children?: React.ReactNode
 }
 
 const InputCopy = ({
   value = '',
   className,
-  readOnly = true,
   children,
 }: IInputCopyProps) => {
   const [isCopied, setIsCopied] = useState(false)
@@ -45,23 +43,12 @@ const InputCopy = ({
               popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
               position='bottom'
             >
-              {value}
+              <span className='text-text-secondary'>{value}</span>
             </Tooltip>
           </div>
         </div>
-        <div className="h-4 shrink-0 border bg-divider-regular" />
-        <Tooltip
-          popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
-          position='bottom'
-        >
-          <div className="shrink-0 px-0.5">
-            <div className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={() => {
-              copy(value)
-              setIsCopied(true)
-            }}>
-            </div>
-          </div>
-        </Tooltip>
+        <div className="h-4 w-px shrink-0 bg-divider-regular" />
+        <div className='mx-1'><CopyFeedback content={value} /></div>
       </div>
     </div>
   )

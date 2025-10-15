@@ -1,13 +1,23 @@
-import datetime
+from datetime import datetime
 
 import pytz
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api
+from controllers.console import console_ns
+from controllers.console.auth.error import (
+    EmailAlreadyInUseError,
+    EmailChangeLimitError,
+    EmailCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+)
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -18,24 +28,30 @@ from controllers.console.workspace.error import (
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_enabled,
+    enable_change_email,
     enterprise_license_required,
     only_edition_cloud,
     setup_required,
 )
 from extensions.ext_database import db
 from fields.member_fields import account_fields
-from libs.helper import TimestampField, timezone
+from libs.datetime_utils import naive_utc_now
+from libs.helper import TimestampField, email, extract_remote_ip, timezone
 from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
+from models.account import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
+@console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @setup_required
     @login_required
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         if account.status == "active":
@@ -57,7 +73,7 @@ class AccountInitApi(Resource):
             # check invitation code
             invitation_code = (
                 db.session.query(InvitationCode)
-                .filter(
+                .where(
                     InvitationCode.code == args["invitation_code"],
                     InvitationCode.status == "unused",
                 )
@@ -68,7 +84,7 @@ class AccountInitApi(Resource):
                 raise InvalidInvitationCodeError()
 
             invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            invitation_code.used_at = naive_utc_now()
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
@@ -76,12 +92,13 @@ class AccountInitApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        account.initialized_at = naive_utc_now()
         db.session.commit()
 
         return {"result": "success"}
 
 
+@console_ns.route("/account/profile")
 class AccountProfileApi(Resource):
     @setup_required
     @login_required
@@ -89,15 +106,20 @@ class AccountProfileApi(Resource):
     @marshal_with(account_fields)
     @enterprise_license_required
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         return current_user
 
 
+@console_ns.route("/account/name")
 class AccountNameApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -111,12 +133,15 @@ class AccountNameApi(Resource):
         return updated_account
 
 
+@console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("avatar", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -126,12 +151,15 @@ class AccountAvatarApi(Resource):
         return updated_account
 
 
+@console_ns.route("/account/interface-language")
 class AccountInterfaceLanguageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("interface_language", type=supported_language, required=True, location="json")
         args = parser.parse_args()
@@ -141,12 +169,15 @@ class AccountInterfaceLanguageApi(Resource):
         return updated_account
 
 
+@console_ns.route("/account/interface-theme")
 class AccountInterfaceThemeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("interface_theme", type=str, choices=["light", "dark"], required=True, location="json")
         args = parser.parse_args()
@@ -156,12 +187,15 @@ class AccountInterfaceThemeApi(Resource):
         return updated_account
 
 
+@console_ns.route("/account/timezone")
 class AccountTimezoneApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("timezone", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -175,12 +209,15 @@ class AccountTimezoneApi(Resource):
         return updated_account
 
 
+@console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         parser = reqparse.RequestParser()
         parser.add_argument("password", type=str, required=False, location="json")
         parser.add_argument("new_password", type=str, required=True, location="json")
@@ -198,6 +235,7 @@ class AccountPasswordApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
     integrate_fields = {
         "provider": fields.String,
@@ -215,9 +253,13 @@ class AccountIntegrateApi(Resource):
     @account_initialization_required
     @marshal_with(integrate_list_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
-        account_integrates = db.session.query(AccountIntegrate).filter(AccountIntegrate.account_id == account.id).all()
+        account_integrates = db.session.scalars(
+            select(AccountIntegrate).where(AccountIntegrate.account_id == account.id)
+        ).all()
 
         base_url = request.url_root.rstrip("/")
         oauth_base_path = "/console/api/oauth/login"
@@ -250,11 +292,14 @@ class AccountIntegrateApi(Resource):
         return {"data": integrate_data}
 
 
+@console_ns.route("/account/delete/verify")
 class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         token, code = AccountService.generate_account_deletion_verification_code(account)
@@ -263,11 +308,14 @@ class AccountDeleteVerifyApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         parser = reqparse.RequestParser()
@@ -283,6 +331,7 @@ class AccountDeleteApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
     @setup_required
     def post(self):
@@ -296,6 +345,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
     verify_fields = {
         "token": fields.String,
@@ -308,14 +358,20 @@ class EducationVerifyApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(verify_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         return BillingService.EducationIdentity.verify(account.id, account.email)
 
 
+@console_ns.route("/account/education")
 class EducationApi(Resource):
     status_fields = {
         "result": fields.Boolean,
+        "is_student": fields.Boolean,
+        "expire_at": TimestampField,
+        "allow_refresh": fields.Boolean,
     }
 
     @setup_required
@@ -324,6 +380,8 @@ class EducationApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     def post(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
         parser = reqparse.RequestParser()
@@ -341,11 +399,18 @@ class EducationApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(status_fields)
     def get(self):
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
         account = current_user
 
-        return BillingService.EducationIdentity.is_active(account.id)
+        res = BillingService.EducationIdentity.status(account.id)
+        # convert expire_at to UTC timestamp from isoformat
+        if res and "expire_at" in res:
+            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
+        return res
 
 
+@console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
     data_fields = {
         "data": fields.List(fields.String),
@@ -369,21 +434,146 @@ class EducationAutoCompleteApi(Resource):
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
 
-# Register API resources
-api.add_resource(AccountInitApi, "/account/init")
-api.add_resource(AccountProfileApi, "/account/profile")
-api.add_resource(AccountNameApi, "/account/name")
-api.add_resource(AccountAvatarApi, "/account/avatar")
-api.add_resource(AccountInterfaceLanguageApi, "/account/interface-language")
-api.add_resource(AccountInterfaceThemeApi, "/account/interface-theme")
-api.add_resource(AccountTimezoneApi, "/account/timezone")
-api.add_resource(AccountPasswordApi, "/account/password")
-api.add_resource(AccountIntegrateApi, "/account/integrates")
-api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
-api.add_resource(AccountDeleteApi, "/account/delete")
-api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
-api.add_resource(EducationVerifyApi, "/account/education/verify")
-api.add_resource(EducationApi, "/account/education")
-api.add_resource(EducationAutoCompleteApi, "/account/education/autocomplete")
-# api.add_resource(AccountEmailApi, '/account/email')
-# api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
+@console_ns.route("/account/change-email")
+class ChangeEmailSendEmailApi(Resource):
+    @enable_change_email
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
+        parser.add_argument("phase", type=str, required=False, location="json")
+        parser.add_argument("token", type=str, required=False, location="json")
+        args = parser.parse_args()
+
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
+
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+        account = None
+        user_email = args["email"]
+        if args["phase"] is not None and args["phase"] == "new_email":
+            if args["token"] is None:
+                raise InvalidTokenError()
+
+            reset_data = AccountService.get_change_email_data(args["token"])
+            if reset_data is None:
+                raise InvalidTokenError()
+            user_email = reset_data.get("email", "")
+
+            if not isinstance(current_user, Account):
+                raise ValueError("Invalid user account")
+            if user_email != current_user.email:
+                raise InvalidEmailError()
+        else:
+            with Session(db.engine) as session:
+                account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
+            if account is None:
+                raise AccountNotFound()
+
+        token = AccountService.send_change_email_email(
+            account=account, email=args["email"], old_email=user_email, language=language, phase=args["phase"]
+        )
+        return {"result": "success", "data": token}
+
+
+@console_ns.route("/account/change-email/validity")
+class ChangeEmailCheckApi(Resource):
+    @enable_change_email
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        user_email = args["email"]
+
+        is_change_email_error_rate_limit = AccountService.is_change_email_error_rate_limit(args["email"])
+        if is_change_email_error_rate_limit:
+            raise EmailChangeLimitError()
+
+        token_data = AccountService.get_change_email_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if user_email != token_data.get("email"):
+            raise InvalidEmailError()
+
+        if args["code"] != token_data.get("code"):
+            AccountService.add_change_email_error_rate_limit(args["email"])
+            raise EmailCodeError()
+
+        # Verified, revoke the first token
+        AccountService.revoke_change_email_token(args["token"])
+
+        # Refresh token data by generating a new token
+        _, new_token = AccountService.generate_change_email_token(
+            user_email, code=args["code"], old_email=token_data.get("old_email"), additional_data={}
+        )
+
+        AccountService.reset_change_email_error_rate_limit(args["email"])
+        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+
+
+@console_ns.route("/account/change-email/reset")
+class ChangeEmailResetApi(Resource):
+    @enable_change_email
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(account_fields)
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("new_email", type=email, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        if AccountService.is_account_in_freeze(args["new_email"]):
+            raise AccountInFreezeError()
+
+        if not AccountService.check_email_unique(args["new_email"]):
+            raise EmailAlreadyInUseError()
+
+        reset_data = AccountService.get_change_email_data(args["token"])
+        if not reset_data:
+            raise InvalidTokenError()
+
+        AccountService.revoke_change_email_token(args["token"])
+
+        old_email = reset_data.get("old_email", "")
+        if not isinstance(current_user, Account):
+            raise ValueError("Invalid user account")
+        if current_user.email != old_email:
+            raise AccountNotFound()
+
+        updated_account = AccountService.update_account_email(current_user, email=args["new_email"])
+
+        AccountService.send_change_email_completed_notify_email(
+            email=args["new_email"],
+        )
+
+        return updated_account
+
+
+@console_ns.route("/account/change-email/check-email-unique")
+class CheckEmailUnique(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        args = parser.parse_args()
+        if AccountService.is_account_in_freeze(args["email"]):
+            raise AccountInFreezeError()
+        if not AccountService.check_email_unique(args["email"]):
+            raise EmailAlreadyInUseError()
+        return {"result": "success"}

@@ -2,7 +2,7 @@ import {
   memo,
   useCallback,
 } from 'react'
-import Link from 'next/link'
+import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
@@ -54,7 +54,7 @@ const Blocks = ({
       >
         <div className='flex h-[22px] w-full items-center justify-between pl-3 pr-1 text-xs font-medium text-gray-500'>
           {toolWithProvider.label[language]}
-          <Link className='hidden cursor-pointer items-center group-hover:flex' href={`/tools?category=${toolWithProvider.type}`} target='_blank'>{t('tools.addToolModal.manageInTools')}<ArrowUpRight className='ml-0.5 h-3 w-3' /></Link>
+          <a className='hidden cursor-pointer items-center group-hover:flex' href={`${basePath}/tools?category=${toolWithProvider.type}`} target='_blank'>{t('tools.addToolModal.manageInTools')}<ArrowUpRight className='ml-0.5 h-3 w-3' /></a>
         </div>
         {list.map((tool) => {
           const labelContent = (() => {

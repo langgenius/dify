@@ -6,6 +6,7 @@ const translation = {
     agents: 'กลยุทธ์ตัวแทน',
     all: 'ทั้งหมด',
     bundles: 'ชุดรวม',
+    datasources: 'แหล่งข้อมูล',
   },
   categorySingle: {
     tool: 'เครื่องมือ',
@@ -13,6 +14,7 @@ const translation = {
     agent: 'กลยุทธ์ตัวแทน',
     model: 'แบบ',
     bundle: 'มัด',
+    datasource: 'แหล่งข้อมูล',
   },
   list: {
     source: {
@@ -62,6 +64,8 @@ const translation = {
       uninstalledTitle: 'ไม่ได้ติดตั้งเครื่องมือ',
       descriptionPlaceholder: 'คําอธิบายสั้น ๆ เกี่ยวกับวัตถุประสงค์ของเครื่องมือ เช่น รับอุณหภูมิสําหรับตําแหน่งเฉพาะ',
       uninstalledContent: 'ปลั๊กอินนี้ติดตั้งจากที่เก็บในเครื่อง/GitHub กรุณาใช้หลังการติดตั้ง',
+      toolSetting: 'การตั้งค่าเครื่องมือ',
+      unsupportedMCPTool: 'รุ่นปลั๊กอินกลยุทธ์ตัวแทนที่เลือกในขณะนี้ไม่สนับสนุนเครื่องมือ MCP.',
     },
     endpointDisableContent: 'คุณต้องการปิดการใช้งาน {{name}} หรือไม่?',
     configureApp: 'กําหนดค่าแอป',
@@ -82,6 +86,16 @@ const translation = {
     endpointsTip: 'ปลั๊กอินนี้มีฟังก์ชันเฉพาะผ่านปลายทาง และคุณสามารถกําหนดค่าชุดปลายทางหลายชุดสําหรับพื้นที่ทํางานปัจจุบันได้',
     endpointsEmpty: 'คลิกปุ่ม \'+\' เพื่อเพิ่มปลายทาง',
     serviceOk: 'บริการตกลง',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'การโอนความเป็นเจ้าของ',
+        businessAdjustments: 'การปรับเปลี่ยนธุรกิจ',
+        noMaintainer: 'ไม่มีผู้ดูแล',
+      },
+      onlyReason: 'ปลั๊กอินนี้ถูกเลิกใช้เนื่องจาก {{deprecatedReason}} และจะไม่มีการอัปเดตอีกต่อไป.',
+      noReason: 'ปลั๊กอินนี้ได้ถูกยกเลิกใช้งานและจะไม่มีการอัปเดตอีกต่อไป.',
+      fullMessage: 'ปลั๊กอินนี้ถูกยกเลิกการใช้งานเนื่องจาก {{เหตุผลที่ถูกยกเลิก}} และจะไม่มีการอัปเดตอีกต่อไป กรุณาใช้ <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> แทน.',
+    },
   },
   debugInfo: {
     viewDocs: 'ดูเอกสาร',
@@ -136,6 +150,7 @@ const translation = {
     installedSuccessfully: 'การติดตั้งสําเร็จ',
     installComplete: 'การติดตั้งเสร็จสมบูรณ์',
     pluginLoadError: 'ข้อผิดพลาดในการโหลดปลั๊กอิน',
+    installWarning: 'ไม่อนุญาตให้ติดตั้งปลั๊กอินนี้',
   },
   installFromGitHub: {
     updatePlugin: 'อัปเดตปลั๊กอินจาก GitHub',
@@ -180,6 +195,8 @@ const translation = {
     noPluginFound: 'ไม่พบปลั๊กอิน',
     empower: 'เพิ่มศักยภาพในการพัฒนา AI ของคุณ',
     difyMarketplace: 'ตลาด Dify',
+    partnerTip: 'ได้รับการตรวจสอบโดยพันธมิตรของ Dify',
+    verifiedTip: 'ได้รับการตรวจสอบโดย Dify',
   },
   task: {
     installing: 'การติดตั้งปลั๊กอิน {{installingLength}} 0 เสร็จแล้ว',
@@ -202,8 +219,93 @@ const translation = {
   searchTools: 'เครื่องมือค้นหา...',
   installFrom: 'ติดตั้งจาก',
   fromMarketplace: 'จาก Marketplace',
-  submitPlugin: 'ส่งปลั๊กอิน',
   allCategories: 'หมวดหมู่ทั้งหมด',
+  metadata: {
+    title: 'ปลั๊กอิน',
+  },
+  difyVersionNotCompatible: 'เวอร์ชั่นปัจจุบันของ Dify ไม่สามารถใช้งานร่วมกับปลั๊กอินนี้ได้ กรุณาอัปเกรดไปยังเวอร์ชั่นขั้นต่ำที่ต้องการ: {{minimalDifyVersion}}',
+  requestAPlugin: 'ขอปลั๊กอิน',
+  publishPlugins: 'เผยแพร่ปลั๊กอิน',
+  auth: {
+    saveOnly: 'บันทึกเฉพาะ',
+    oauthClientSettings: 'การตั้งค่าไคลเอนต์ OAuth',
+    addApi: 'เพิ่มคีย์ API',
+    setDefault: 'ตั้งเป็นค่าเริ่มต้น',
+    addOAuth: 'เพิ่ม OAuth',
+    authRemoved: 'ผู้แต่งถูกลบออก',
+    default: 'ค่าเริ่มต้น',
+    setupOAuth: 'ตั้งค่า OAuth Client',
+    useOAuthAuth: 'ใช้การอนุญาต OAuth',
+    workspaceDefault: 'พื้นที่ทำงานเริ่มต้น',
+    authorization: 'การอนุญาต',
+    saveAndAuth: 'บันทึกและอนุญาต',
+    useApi: 'ใช้รหัส API',
+    authorizations: 'การอนุญาต',
+    oauthClient: 'ไคลเอนต์ OAuth',
+    authorizationName: 'ชื่อผู้มีอำนาจ',
+    useApiAuth: 'การกำหนดค่าการอนุญาตคีย์ API',
+    useOAuth: 'ใช้ OAuth',
+    custom: 'ที่กำหนดเอง',
+    useApiAuthDesc: 'หลังจากตั้งค่าข้อมูลประจำตัวแล้ว สมาชิกทุกคนภายในพื้นที่ทำงานสามารถใช้เครื่องมือนี้เมื่อจัดการแอปพลิเคชันได้',
+    clientInfo: 'เนื่องจากไม่พบความลับของลูกค้าสำหรับผู้ให้บริการเครื่องมือนี้ จำเป็นต้องตั้งค่าแบบแมนนวล สำหรับ redirect_uri กรุณาใช้',
+    unavailable: 'ไม่มีให้บริการ',
+    customCredentialUnavailable: 'ข้อมูลรับรองที่กำหนดเองขณะนี้ไม่สามารถใช้ได้',
+    credentialUnavailable: 'ข้อมูลรับรองไม่สามารถใช้งานได้ในขณะนี้ กรุณาติดต่อผู้ดูแลระบบ.',
+    credentialUnavailableInButton: 'ข้อมูลรับรองไม่พร้อมใช้งาน',
+    connectedWorkspace: 'พื้นที่ทํางานที่เชื่อมต่อ',
+    emptyAuth: 'โปรดกําหนดค่าการรับรองความถูกต้อง',
+  },
+  deprecated: 'เลิกใช้',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'ผู้พิการ',
+        description: 'ปลั๊กอินจะไม่อัปเดตอัตโนมัติ',
+      },
+      fixOnly: {
+        name: 'ซ่อมเฉพาะ',
+        selectedDescription: 'อัปเดตอัตโนมัติเฉพาะเวอร์ชันแพตช์เท่านั้น',
+        description: 'การอัปเดตอัตโนมัติสำหรับเฉพาะเวอร์ชันแพทช์ (เช่น 1.0.1 → 1.0.2) การเปลี่ยนแปลงเวอร์ชันย่อยจะไม่ทำให้เกิดการอัปเดต',
+      },
+      latest: {
+        name: 'ล่าสุด',
+        selectedDescription: 'อัปเดตเป็นเวอร์ชันล่าสุดเสมอ',
+        description: 'อัปเดตเป็นเวอร์ชันล่าสุดเสมอ',
+      },
+    },
+    upgradeMode: {
+      partial: 'เฉพาะที่เลือกไว้',
+      exclude: 'ยกเว้นที่เลือกไว้',
+      all: 'อัปเดตทั้งหมด',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'ปลั๊กอินที่เลือกจะไม่อัปเดตอัตโนมัติ',
+      partial: 'เฉพาะปลั๊กอินที่เลือกจะอัปเดตโดยอัตโนมัติ ขณะนี้ไม่มีปลั๊กอินใดที่ถูกเลือก ดังนั้นจะไม่มีปลั๊กอินใดที่อัปเดตโดยอัตโนมัติ',
+    },
+    operation: {
+      clearAll: 'ล้างทั้งหมด',
+      select: 'เลือกปลั๊กอิน',
+    },
+    pluginDowngradeWarning: {
+      title: 'การลดเวอร์ชันปลั๊กอิน',
+      downgrade: 'ลดระดับอยู่ดี',
+      exclude: 'ไม่รวมในการอัปเดตอัตโนมัติ',
+      description: 'ฟีเจอร์การอัปเดตอัตโนมัติเปิดใช้งานอยู่สำหรับปลั๊กอินนี้ การลดระดับเวอร์ชันอาจทำให้การเปลี่ยนแปลงของคุณหายไปในระหว่างการอัปเดตอัตโนมัติต่อไป',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'ไม่มีปลั๊กอินติดตั้ง',
+      noFound: 'ไม่พบปลั๊กอิน',
+    },
+    specifyPluginsToUpdate: 'ระบุปลั๊กอินที่จะแ atualizar',
+    updateTime: 'เวลาที่อัปเดต',
+    updateTimeTitle: 'เวลาที่อัปเดต',
+    updateSettings: 'อัปเดตการตั้งค่า',
+    nextUpdateTime: 'การอัปเดตอัตโนมัติครั้งถัดไป: {{time}}',
+    automaticUpdates: 'การอัปเดตอัตโนมัติ',
+    excludeUpdate: 'ปลั๊กอิน {{num}} ต่อไปนี้จะไม่อัพเดตอัตโนมัติ',
+    partialUPdate: 'ปลั๊กอิน {{num}} ตัวต่อไปนี้จะอัปเดตให้อัตโนมัติเท่านั้น',
+    changeTimezone: 'ในการเปลี่ยนเขตเวลา ให้ไปที่ <setTimezone>การตั้งค่า</setTimezone>',
+  },
 }
 
 export default translation

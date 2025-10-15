@@ -3,6 +3,8 @@ const translation = {
   chunkingMode: {
     general: '通用',
     parentChild: '父子',
+    qa: '问答',
+    graph: '图',
   },
   parentMode: {
     paragraph: '段落',
@@ -20,14 +22,21 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: '了解如何编写良好的知识库描述',
   externalAPIPanelDescription: '外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。',
   externalAPIPanelDocumentation: '了解如何创建外部知识库 API',
+  externalKnowledgeBase: '外部知识库',
   localDocs: '本地文档',
   documentCount: ' 文档',
+  docAllEnabled_one: '{{count}} 个文档可用',
+  docAllEnabled_other: '所有 {{count}} 个文档均可用',
+  partialEnabled_one: '共计 {{count}} 个文档, {{num}} 可用',
+  partialEnabled_other: '共计 {{count}} 个文档, {{num}} 可用',
   wordCount: ' 千字符',
   appCount: ' 关联应用',
+  updated: '更新于',
   createDataset: '创建知识库',
+  createFromPipeline: '通过知识流水线创建知识库',
   noExternalKnowledge: '还没有外部知识库 API，点击此处创建',
   createExternalAPI: '添加外部知识库 API',
-  createNewExternalAPI: '创建新的外部知识库API',
+  createNewExternalAPI: '创建新的外部知识库 API',
   editExternalAPIFormTitle: '编辑外部知识库 API',
   editExternalAPITooltipTitle: '个关联知识库',
   editExternalAPIConfirmWarningContent: {
@@ -69,8 +78,8 @@ const translation = {
   createDatasetIntro: '导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。',
   deleteDatasetConfirmTitle: '要删除知识库吗？',
   deleteDatasetConfirmContent:
-    '删除知识库是不可逆的。用户将无法再访问您的知识库,所有的提示配置和日志将被永久删除。',
-  datasetUsedByApp: '某些应用正在使用该知识库。应用将无法再使用该知识库,所有的提示配置和日志将被永久删除。',
+    '删除知识库是不可逆的。用户将无法再访问您的知识库，所有的提示配置和日志将被永久删除。',
+  datasetUsedByApp: '某些应用正在使用该知识库。应用将无法再使用该知识库，所有的提示配置和日志将被永久删除。',
   datasetDeleted: '知识库已删除',
   datasetDeleteFailed: '删除知识库失败',
   selectExternalKnowledgeAPI: {
@@ -117,7 +126,7 @@ const translation = {
       description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，用户可以选择设置权重或配置重新排序模型。',
       recommend: '推荐',
     },
-    invertedIndex: {
+    keyword_search: {
       title: '倒排索引',
       description: '倒排索引是一种用于高效检索的结构。按术语组织，每个术语指向包含它的文档或网页',
     },
@@ -183,6 +192,7 @@ const translation = {
     checkName: {
       empty: '元数据名称不能为空',
       invalid: '元数据名称只能包含小写字母、数字和下划线，并且必须以小写字母开头',
+      tooLong: '元数据名称不得超过{{max}}个字符',
     },
     batchEditMetadata: {
       editMetadata: '编辑元数据',
@@ -207,13 +217,24 @@ const translation = {
       builtIn: '内置',
       builtInDescription: '内置元数据是系统预定义的元数据，您可以在此处查看和管理内置元数据。',
       deleteTitle: '确定删除',
-      deleteContent: '你确定要删除元数据 "{{name}}" 吗?',
+      deleteContent: '你确定要删除元数据 "{{name}}" 吗？',
     },
     documentMetadata: {
       metadataToolTip: '元数据是关于文档的数据，用于描述文档的属性。元数据可以帮助您更好地组织和管理文档。',
       startLabeling: '开始标注',
       documentInformation: '文档信息',
       technicalParameters: '技术参数',
+    },
+  },
+  serviceApi: {
+    title: '服务 API',
+    enabled: '运行中',
+    disabled: '已停用',
+    card: {
+      title: '后端服务 API',
+      endpoint: 'API 端点',
+      apiKey: 'API 密钥',
+      apiReference: 'API 文档',
     },
   },
 }

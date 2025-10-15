@@ -16,7 +16,7 @@ export default function Support() {
 `
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const { userProfile, langeniusVersionInfo } = useAppContext()
+  const { userProfile, langGeniusVersionInfo } = useAppContext()
   const canEmailSupport = plan.type === Plan.professional || plan.type === Plan.team || plan.type === Plan.enterprise
 
   return <Menu as="div" className="relative h-full w-full">
@@ -42,7 +42,7 @@ export default function Support() {
           >
             <MenuItems
               className={cn(
-                `absolute top-[1px] z-10 max-h-[70vh] w-[216px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-scroll
+                `absolute top-[1px] z-10 max-h-[70vh] w-[216px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-auto
                 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus:outline-none
               `,
               )}
@@ -53,7 +53,7 @@ export default function Support() {
                     className={cn(itemClassName, 'group justify-between',
                       'data-[active]:bg-state-base-hover',
                     )}
-                    href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
+                    href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo.current_version)}
                     target='_blank' rel='noopener noreferrer'>
                     <RiMailSendLine className='size-4 shrink-0 text-text-tertiary' />
                     <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.emailSupport')}</div>

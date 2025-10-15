@@ -18,6 +18,7 @@ const translation = {
       bulkImport: 'Importazione Bulk',
       bulkExport: 'Esportazione Bulk',
       clearAll: 'Cancella Tutte le Annotazioni',
+      clearAllConfirm: 'Eliminare tutte le annotazioni?',
     },
   },
   editModal: {
@@ -84,6 +85,16 @@ const translation = {
   },
   embeddingModelSwitchTip:
     'Modello di vettorizzazione del testo di annotazione, il cambio di modello comporterà una nuova integrazione, comportando costi aggiuntivi.',
+  list: {
+    delete: {
+      title: 'Sei sicuro di voler eliminare?',
+    },
+  },
+  batchAction: {
+    delete: 'Elimina',
+    cancel: 'Annulla',
+    selected: 'selezionato',
+  },
 }
 
 export default translation

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
@@ -14,14 +14,21 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { noop } from 'lodash-es'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
 }
+
+type InstallMethod = {
+  icon: React.FC<{ className?: string }>
+  text: string
+  action: string
+}
+
 const InstallPluginDropdown = ({
   onSwitchToMarketplaceTab,
 }: Props) => {
@@ -30,7 +37,7 @@ const InstallPluginDropdown = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace, plugin_installation_permission } = useGlobalPublicStore(s => s.systemFeatures)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -53,6 +60,22 @@ const InstallPluginDropdown = ({
   //   const res = await post('workspaces/current/plugin/uninstall', { body: { plugin_installation_id: id } })
   //   console.log(res)
   // }
+
+  const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
+  useEffect(() => {
+    const methods = []
+    if (enable_marketplace)
+      methods.push({ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' })
+
+    if (plugin_installation_permission.restrict_to_marketplace_only) {
+      setInstallMethods(methods)
+    }
+    else {
+      methods.push({ icon: Github, text: t('plugin.source.github'), action: 'github' })
+      methods.push({ icon: FileZip, text: t('plugin.source.local'), action: 'local' })
+      setInstallMethods(methods)
+    }
+  }, [plugin_installation_permission, enable_marketplace, t])
 
   return (
     <PortalToFollowElem
@@ -84,15 +107,7 @@ const InstallPluginDropdown = ({
               accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
             />
             <div className='w-full'>
-              {[
-                ...(
-                  (enable_marketplace)
-                    ? [{ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' }]
-                    : []
-                ),
-                { icon: Github, text: t('plugin.source.github'), action: 'github' },
-                { icon: FileZip, text: t('plugin.source.local'), action: 'local' },
-              ].map(({ icon: Icon, text, action }) => (
+              {installMethods.map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}
                   className='flex w-full !cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'

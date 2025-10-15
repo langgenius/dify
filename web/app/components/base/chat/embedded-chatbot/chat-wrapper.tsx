@@ -25,6 +25,7 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
+import Avatar from '../../avatar'
 
 const ChatWrapper = () => {
   const {
@@ -48,6 +49,8 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
     setIsResponding,
+    allInputsHidden,
+    initUserVariables,
   } = useEmbeddedChatbotContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -59,9 +62,9 @@ const ChatWrapper = () => {
         fileUploadConfig: (config as any).system_parameters,
       },
       supportFeedback: true,
-      opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
+      opening_statement: currentConversationItem?.introduction || (config as any).opening_statement,
     } as ChatConfig
-  }, [appParams, currentConversationItem?.introduction, currentConversationId])
+  }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
     setTargetMessageId,
@@ -82,9 +85,12 @@ const ChatWrapper = () => {
   )
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
+    if (allInputsHidden)
+      return false
+
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox) // boolean can be not checked
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -111,7 +117,7 @@ const ChatWrapper = () => {
     if (fileIsUploading)
       return true
     return false
-  }, [inputsFormValue, inputsForms])
+  }, [inputsFormValue, inputsForms, allInputsHidden])
 
   useEffect(() => {
     if (currentChatInstanceRef.current)
@@ -152,15 +158,16 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
-    if (currentConversationId)
+    if (currentConversationId || chatList.length > 1)
       return chatList
+    // Without messages we are in the welcome screen, so hide the opening statement from chatlist
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
   const chatNode = useMemo(() => {
-    if (!inputsForms.length)
+    if (allInputsHidden || !inputsForms.length)
       return null
     if (isMobile) {
       if (!currentConversationId)
@@ -170,7 +177,7 @@ const ChatWrapper = () => {
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed])
+  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
@@ -180,7 +187,7 @@ const ChatWrapper = () => {
       return null
     if (!welcomeMessage)
       return null
-    if (!collapsed && inputsForms.length > 0)
+    if (!collapsed && inputsForms.length > 0 && !allInputsHidden)
       return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
@@ -215,7 +222,7 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState])
+  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
 
   const answerIcon = isDify()
     ? <LogoAvatar className='relative shrink-0' />
@@ -234,7 +241,7 @@ const ChatWrapper = () => {
       config={appConfig}
       chatList={messageList}
       isResponding={respondingState}
-      chatContainerInnerClassName={cn('mx-auto w-full max-w-full pt-4 tablet:px-4', isMobile && 'px-4')}
+      chatContainerInnerClassName={cn('mx-auto w-full max-w-full px-4', messageList.length && 'pt-4')}
       chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
       chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isMobile && 'px-2')}
       onSend={doSend}
@@ -257,6 +264,14 @@ const ChatWrapper = () => {
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       inputDisabled={inputDisabled}
       isMobile={isMobile}
+      questionIcon={
+        initUserVariables?.avatar_url
+          ? <Avatar
+            avatar={initUserVariables.avatar_url}
+            name={initUserVariables.name || 'user'}
+            size={40}
+          /> : undefined
+      }
     />
   )
 }

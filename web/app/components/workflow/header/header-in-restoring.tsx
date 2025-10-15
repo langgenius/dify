@@ -17,6 +17,10 @@ import {
 import Toast from '../../base/toast'
 import RestoringTitle from './restoring-title'
 import Button from '@/app/components/base/button'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useHooksStore } from '../hooks-store'
+import useTheme from '@/hooks/use-theme'
+import cn from '@/utils/classnames'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
@@ -25,7 +29,13 @@ const HeaderInRestoring = ({
   onRestoreSettled,
 }: HeaderInRestoringProps) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const {
+    deleteAllInspectVars,
+  } = workflowStore.getState()
   const currentVersion = useStore(s => s.currentVersion)
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
 
@@ -61,24 +71,32 @@ const HeaderInRestoring = ({
         onRestoreSettled?.()
       },
     })
-  }, [handleSyncWorkflowDraft, workflowStore, setShowWorkflowVersionHistoryPanel, onRestoreSettled, t])
+    deleteAllInspectVars()
+    invalidAllLastRun()
+  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>
       <div>
         <RestoringTitle />
       </div>
-      <div className='flex items-center justify-end gap-x-2'>
+      <div className=' flex items-center justify-end gap-x-2'>
         <Button
           onClick={handleRestore}
           disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
           variant='primary'
+          className={cn(
+            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+          )}
         >
           {t('workflow.common.restore')}
         </Button>
         <Button
-          className='text-components-button-secondary-accent-text'
           onClick={handleCancelRestore}
+          className={cn(
+            'text-components-button-secondary-accent-text',
+            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+          )}
         >
           <div className='flex items-center gap-x-0.5'>
             <RiHistoryLine className='h-4 w-4' />

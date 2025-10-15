@@ -1,5 +1,5 @@
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
 )
@@ -27,7 +27,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         model_config: ParameterExtractorModelConfig,
         instruction: str,
         query: str,
-    ) -> dict:
+    ):
         """
         Invoke parameter extractor node.
 
@@ -52,7 +52,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             instruction=instruction,  # instruct with variables are not supported
         )
         node_data_dict = node_data.model_dump()
-        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR.value
+        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR
         execution = workflow_service.run_free_workflow_node(
             node_data_dict,
             tenant_id=tenant_id,
@@ -64,9 +64,9 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return {
-            "inputs": execution.inputs_dict,
-            "outputs": execution.outputs_dict,
-            "process_data": execution.process_data_dict,
+            "inputs": execution.inputs,
+            "outputs": execution.outputs,
+            "process_data": execution.process_data,
         }
 
     @classmethod
@@ -78,7 +78,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         classes: list[ClassConfig],
         instruction: str,
         query: str,
-    ) -> dict:
+    ):
         """
         Invoke question classifier node.
 
@@ -113,7 +113,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return {
-            "inputs": execution.inputs_dict,
-            "outputs": execution.outputs_dict,
-            "process_data": execution.process_data_dict,
+            "inputs": execution.inputs,
+            "outputs": execution.outputs,
+            "process_data": execution.process_data,
         }

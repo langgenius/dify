@@ -7,11 +7,18 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
+  useAvailableNodesMetaData,
+  useConfigsMap,
+  useDSL,
+  useGetRunAndTraceUrl,
+  useInspectVarsCrud,
   useNodesSyncDraft,
+  useSetWorkflowVarsWithValue,
   useWorkflowRefreshDraft,
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -20,14 +27,28 @@ const WorkflowMain = ({
   viewport,
 }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
+  const workflowStore = useWorkflowStore()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
-    if (payload.features && featuresStore) {
+    const {
+      features,
+      conversation_variables,
+      environment_variables,
+    } = payload
+    if (features && featuresStore) {
       const { setFeatures } = featuresStore.getState()
 
-      setFeatures(payload.features)
+      setFeatures(features)
     }
-  }, [featuresStore])
+    if (conversation_variables) {
+      const { setConversationVariables } = workflowStore.getState()
+      setConversationVariables(conversation_variables)
+    }
+    if (environment_variables) {
+      const { setEnvironmentVariables } = workflowStore.getState()
+      setEnvironmentVariables(environment_variables)
+    }
+  }, [featuresStore, workflowStore])
 
   const {
     doSyncWorkflowDraft,
@@ -46,6 +67,33 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
+  const availableNodesMetaData = useAvailableNodesMetaData()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const {
+    exportCheck,
+    handleExportDSL,
+  } = useDSL()
+
+  const configsMap = useConfigsMap()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    ...configsMap,
+  })
+  const {
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
 
   const hooksStore = useMemo(() => {
     return {
@@ -60,6 +108,26 @@ const WorkflowMain = ({
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
+      availableNodesMetaData,
+      getWorkflowRunAndTraceUrl,
+      exportCheck,
+      handleExportDSL,
+      fetchInspectVars,
+      hasNodeInspectVars,
+      hasSetInspectVar,
+      fetchInspectVarValue,
+      editInspectVarValue,
+      renameInspectVarName,
+      appendNodeInspectVars,
+      deleteInspectVar,
+      deleteNodeInspectorVars,
+      deleteAllInspectorVars,
+      isInspectVarEdited,
+      resetToLastRunVar,
+      invalidateSysVarValues,
+      resetConversationVar,
+      invalidateConversationVarValues,
+      configsMap,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -73,6 +141,26 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
+    fetchInspectVars,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+    configsMap,
   ])
 
   return (
@@ -81,7 +169,7 @@ const WorkflowMain = ({
       edges={edges}
       viewport={viewport}
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
-      hooksStore={hooksStore}
+      hooksStore={hooksStore as any}
     >
       <WorkflowChildren />
     </WorkflowWithInnerContext>

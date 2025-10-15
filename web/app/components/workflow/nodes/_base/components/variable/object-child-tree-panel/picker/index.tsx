@@ -9,7 +9,7 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 
 type Props = {
   className?: string
-  root: { nodeId?: string, nodeName?: string, attrName: string }
+  root: { nodeId?: string, nodeName?: string, attrName: string, attrAlias?: string }
   payload: StructuredOutput
   readonly?: boolean
   onSelect?: (valueSelector: ValueSelector) => void
@@ -52,8 +52,7 @@ export const PickerPanelMain: FC<Props> = ({
           )}
           <div className='system-sm-medium text-text-secondary'>{root.attrName}</div>
         </div>
-        {/* It must be object */}
-        <div className='system-xs-regular ml-2 shrink-0 text-text-tertiary'>object</div>
+        <div className='system-xs-regular ml-2 truncate text-text-tertiary' title={root.attrAlias || 'object'}>{root.attrAlias || 'object'}</div>
       </div>
       {fieldNames.map(name => (
         <Field
@@ -74,7 +73,7 @@ const PickerPanel: FC<Props> = ({
   ...props
 }) => {
   return (
-    <div className={cn('w-[296px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pb-0 shadow-lg backdrop-blur-[5px]', className)}>
+    <div className={cn('w-[296px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]', className)}>
       <PickerPanelMain {...props} />
     </div>
   )

@@ -2,11 +2,14 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -18,23 +21,23 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
 
     Usage: clean_notion_document_task.delay(document_ids, dataset_id)
     """
-    logging.info(
-        click.style("Start clean document when import form notion document deleted: {}".format(dataset_id), fg="green")
-    )
+    logger.info(click.style(f"Start clean document when import form notion document deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
 
         if not dataset:
             raise Exception("Document has no dataset")
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         for document_id in document_ids:
-            document = db.session.query(Document).filter(Document.id == document_id).first()
+            document = db.session.query(Document).where(Document.id == document_id).first()
             db.session.delete(document)
 
-            segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+            segments = db.session.scalars(
+                select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            ).all()
             index_node_ids = [segment.index_node_id for segment in segments]
 
             index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
@@ -43,7 +46,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
                 db.session.delete(segment)
         db.session.commit()
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(
                 "Clean document when import form notion document deleted end :: {} latency: {}".format(
                     dataset_id, end_at - start_at
@@ -52,6 +55,6 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
             )
         )
     except Exception:
-        logging.exception("Cleaned document when import form notion document deleted  failed")
+        logger.exception("Cleaned document when import form notion document deleted  failed")
     finally:
         db.session.close()

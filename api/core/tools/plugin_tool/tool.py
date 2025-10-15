@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.plugin.impl.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
@@ -9,19 +9,14 @@ from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, Too
 
 
 class PluginTool(Tool):
-    tenant_id: str
-    icon: str
-    plugin_unique_identifier: str
-    runtime_parameters: Optional[list[ToolParameter]]
-
     def __init__(
         self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
-    ) -> None:
+    ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
-        self.runtime_parameters = None
+        self.runtime_parameters: list[ToolParameter] | None = None
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.PLUGIN
@@ -30,9 +25,9 @@ class PluginTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
 
@@ -44,6 +39,7 @@ class PluginTool(Tool):
             tool_provider=self.entity.identity.provider,
             tool_name=self.entity.identity.name,
             credentials=self.runtime.credentials,
+            credential_type=self.runtime.credential_type,
             tool_parameters=tool_parameters,
             conversation_id=conversation_id,
             app_id=app_id,
@@ -61,9 +57,9 @@ class PluginTool(Tool):
 
     def get_runtime_parameters(
         self,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> list[ToolParameter]:
         """
         get the runtime parameters

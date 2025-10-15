@@ -7,6 +7,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 ### Run by source code
 
 Before starting the web frontend service, please make sure the following environment is ready.
+
 - [Node.js](https://nodejs.org) >= v22.11.x
 - [pnpm](https://pnpm.io) v10.x
 
@@ -31,12 +32,10 @@ NEXT_PUBLIC_EDITION=SELF_HOSTED
 # different from api or web app domain.
 # example: http://cloud.dify.ai/console/api
 NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
-NEXT_PUBLIC_WEB_PREFIX=http://localhost:3000
 # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
 # console or api domain.
 # example: http://udify.app/api
 NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
-NEXT_PUBLIC_PUBLIC_WEB_PREFIX=http://localhost:3000
 
 # SENTRY
 NEXT_PUBLIC_SENTRY_DSN=
@@ -105,11 +104,9 @@ pnpm run test
 ```
 
 If you are not familiar with writing tests, here is some code to refer to:
-* [classnames.spec.ts](./utils/classnames.spec.ts)
-* [index.spec.tsx](./app/components/base/button/index.spec.tsx)
 
-
-
+- [classnames.spec.ts](./utils/classnames.spec.ts)
+- [index.spec.tsx](./app/components/base/button/index.spec.tsx)
 
 ## Documentation
 

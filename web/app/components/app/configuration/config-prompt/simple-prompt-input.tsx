@@ -10,11 +10,10 @@ import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import type { PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
-import type { CompletionParams } from '@/types/app'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
-import type { AutomaticRes } from '@/service/debug'
+import type { GenRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
@@ -62,8 +61,8 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   const {
+    appId,
     modelConfig,
-    completionParams,
     dataSets,
     setModelConfig,
     setPrevPromptConfig,
@@ -99,20 +98,31 @@ const Prompt: FC<ISimplePromptInput> = ({
       },
     })
   }
-  const promptVariablesObj = (() => {
-    const obj: Record<string, boolean> = {}
-    promptVariables.forEach((item) => {
-      obj[item.key] = true
-    })
-    return obj
-  })()
 
   const [newPromptVariables, setNewPromptVariables] = React.useState<PromptVariable[]>(promptVariables)
   const [newTemplates, setNewTemplates] = React.useState('')
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
 
   const handleChange = (newTemplates: string, keys: string[]) => {
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key, ''))
+    // Filter out keys that are not properly defined (either not exist or exist but without valid name)
+    const newPromptVariables = keys.filter((key) => {
+      // Check if key exists in external data tools
+      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key))
+        return false
+
+      // Check if key exists in prompt variables
+      const existingVar = promptVariables.find((item: PromptVariable) => item.key === key)
+      if (!existingVar) {
+        // Variable doesn't exist at all
+        return true
+      }
+
+      // Variable exists but check if it has valid name and key
+      return !existingVar.name || !existingVar.name.trim() || !existingVar.key || !existingVar.key.trim()
+
+      return false
+    }).map(key => getNewVar(key, ''))
+
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       setNewTemplates(newTemplates)
@@ -130,21 +140,21 @@ const Prompt: FC<ISimplePromptInput> = ({
   }
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = (res: AutomaticRes) => {
+  const handleAutomaticRes = (res: GenRes) => {
     // put eventEmitter in first place to prevent overwrite the configs.prompt_variables.But another problem is that prompt won't hight the prompt_variables.
     eventEmitter?.emit({
       type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-      payload: res.prompt,
+      payload: res.modified,
     } as any)
     const newModelConfig = produce(modelConfig, (draft) => {
-      draft.configs.prompt_template = res.prompt
-      draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
+      draft.configs.prompt_template = res.modified
+      draft.configs.prompt_variables = (res.variables || []).map(key => ({ key, name: key, type: 'string', required: true }))
     })
     setModelConfig(newModelConfig)
     setPrevPromptConfig(modelConfig.configs)
 
     if (mode !== AppType.completion) {
-      setIntroduction(res.opening_statement)
+      setIntroduction(res.opening_statement || '')
       const newFeatures = produce(features, (draft) => {
         draft.opening = {
           ...draft.opening,
@@ -212,14 +222,14 @@ const Prompt: FC<ISimplePromptInput> = ({
             }}
             variableBlock={{
               show: true,
-              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
+              variables: modelConfig.configs.prompt_variables.filter((item: PromptVariable) => item.type !== 'api' && item.key && item.key.trim() && item.name && item.name.trim()).map((item: PromptVariable) => ({
                 name: item.name,
                 value: item.key,
               })),
             }}
             externalToolBlock={{
               show: true,
-              externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
+              externalTools: modelConfig.configs.prompt_variables.filter((item: PromptVariable) => item.type === 'api').map((item: PromptVariable) => ({
                 name: item.name,
                 variableName: item.key,
                 icon: item.icon,
@@ -263,18 +273,13 @@ const Prompt: FC<ISimplePromptInput> = ({
 
       {showAutomatic && (
         <GetAutomaticResModal
+          flowId={appId}
           mode={mode as AppType}
-          model={
-            {
-              provider: modelConfig.provider,
-              name: modelConfig.model_id,
-              mode: modelConfig.mode,
-              completion_params: completionParams as CompletionParams,
-            }
-          }
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
+          currentPrompt={promptTemplate}
+          isBasicMode
         />
       )}
     </div>

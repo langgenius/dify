@@ -1,13 +1,14 @@
+'use client'
+
 import {
   useMemo,
 } from 'react'
-import useSWR from 'swr'
 import {
   SupportUploadFileTypes,
 } from '@/app/components/workflow/types'
 import {
   useWorkflowInit,
-} from './hooks'
+} from './hooks/use-workflow-init'
 import {
   initialEdges,
   initialNodes,
@@ -16,11 +17,12 @@ import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { fetchFileUploadConfig } from '@/service/common'
+import { useAppContext } from '@/context/app-context'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
 
@@ -28,8 +30,9 @@ const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
+    fileUploadConfigResponse,
   } = useWorkflowInit()
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
   const nodesData = useMemo(() => {
     if (data)
@@ -44,7 +47,7 @@ const WorkflowAppWithAdditionalContext = () => {
     return []
   }, [data])
 
-  if (!data || isLoading) {
+  if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
       <div className='relative flex h-full w-full items-center justify-center'>
         <Loading />
@@ -98,7 +101,7 @@ const WorkflowAppWithAdditionalContext = () => {
 const WorkflowAppWrapper = () => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice}
+      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
     >
       <WorkflowAppWithAdditionalContext />
     </WorkflowContextProvider>

@@ -1,4 +1,4 @@
-import { CodeGroup } from '../code.tsx'
+import { CodeGroup, Embed } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
 
 # Advanced Chat App API
@@ -7,10 +7,7 @@ Chat applications support session persistence, allowing previous chat history to
 
 <div>
   ### Base URL
-  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
-    ```javascript
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url} />
 
   ### Authentication
 
@@ -19,12 +16,7 @@ Chat applications support session persistence, allowing previous chat history to
 
   For all API requests, include your API Key in the `Authorization`HTTP Header, as shown below:
 
-  <CodeGroup title="Code">
-    ```javascript
-      Authorization: Bearer {API_KEY}
-
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode='Authorization: Bearer {API_KEY}' />
 </div>
 
 ---
@@ -59,26 +51,37 @@ Chat applications support session persistence, allowing previous chat history to
       </Property>
       <Property name='user' type='string' key='user'>
           User identifier, used to define the identity of the end-user for retrieval and statistics.
-          Should be uniquely defined by the developer within the application.
+          Should be uniquely defined by the developer within the application. The Service API does not share conversations created by the WebApp.
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: 
-            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
-            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
-            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
-            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
-            - `custom` (Other file types)
-          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
-          - `url` (string) Image URL (when the transfer method is `remote_url`)
-          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision/Video capability.
+          - `type` (string) Supported type:
+            - `document` Supported types include: 'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` Supported types include: 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` Supported types include: 'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` Supported types include: 'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` Supported types include: other file types
+          - `transfer_method` (string) Transfer method:
+            - `remote_url`: File URL.
+            - `local_file`: Upload file.
+          - `url` File URL. (Only when transfer method is `remote_url`).
+          - `upload_file_id` Upload file ID. (Only when transfer method is `local_file`).
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
       Auto-generate title, default is `true`.
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
+      </Property>
+      <Property name='workflow_id' type='string' key='workflow_id'>
+      (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
+      </Property>
+      <Property name='trace_id' type='string' key='trace_id'>
+        (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
+        - Header: via HTTP Header <code>X-Trace-Id</code>, highest priority.<br/>
+        - Query parameter: via URL query parameter <code>trace_id</code>.<br/>
+        - Request Body: via request body field <code>trace_id</code> (i.e., this field).<br/>
       </Property>
     </Properties>
 
@@ -152,7 +155,6 @@ Chat applications support session persistence, allowing previous chat history to
       - `data` (object) detail
         - `id` (string) Unique ID of workflow execution
         - `workflow_id` (string) ID of related workflow
-        - `sequence_number` (int) Self-increasing serial number, self-increasing in the App, starting from 1
         - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
     - `event: node_started` node execution started
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
@@ -220,33 +222,43 @@ Chat applications support session persistence, allowing previous chat history to
     - 400, `provider_not_initialize`, no available model credential configuration
     - 400, `provider_quota_exceeded`, model invocation quota insufficient
     - 400, `model_currently_not_support`, current model unavailable
+    - 400, `workflow_not_found`, specified workflow version not found
+    - 400, `draft_workflow_error`, cannot use draft workflow version
+    - 400, `workflow_id_format_error`, invalid workflow_id format, expected UUID format
     - 400, `completion_request_error`, text generation failed
     - 500, internal server error
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "What are the specs of the iPhone 13 Pro Max?",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123",\n    "files": [\n      {\n        "type": "image",\n        "transfer_method": "remote_url",\n        "url": "https://cloud.dify.ai/logo/logo-site.png"\n      }\n    ]\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/chat-messages' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "query": "eh",
-        "response_mode": "streaming",
-        "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/chat-messages"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "query": "What are the specs of the iPhone 13 Pro Max?",
+    "response_mode": "streaming",
+    "conversation_id": "",
+    "user": "abc-123",
+    "files": [
+        {
+            "type": "image",
+            "transfer_method": "remote_url",
+            "url": "https://cloud.dify.ai/logo/logo-site.png"
+        }
+    ]
+}'`}
+    />
     ### Blocking Mode
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
         "event": "message",
-        "task_id": "c3800678-a077-43df-a102-53f23ed20b88", 
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88",
         "id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
@@ -287,7 +299,7 @@ Chat applications support session persistence, allowing previous chat history to
     ### Streaming Mode
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
       data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
       data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
@@ -324,7 +336,7 @@ Chat applications support session persistence, allowing previous chat history to
   - `file` (File) Required
     The file to be uploaded.
   - `user` (string) Required
-    User identifier, defined by the developer's rules, must be unique within the application.
+    User identifier, defined by the developer's rules, must be unique within the application. The Service API does not share conversations created by the WebApp.
 
   ### Response
   After a successful upload, the server will return the file's ID and related information.
@@ -352,16 +364,15 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@"/path/to/file"'
-    ```
-
-    </CodeGroup>
-
+  <CodeGroup
+    title="Request"
+    tag="POST"
+    label="/files/upload"
+    targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+  />
 
   ### Response Example
   <CodeGroup title="Response">
@@ -382,6 +393,83 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
+  url='/files/:file_id/preview'
+  method='GET'
+  title='File Preview'
+  name='#file-preview'
+/>
+<Row>
+  <Col>
+    Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API.
+
+    <i>Files can only be accessed if they belong to messages within the requesting application.</i>
+
+    ### Path Parameters
+    - `file_id` (string) Required
+      The unique identifier of the file to preview, obtained from the File Upload API response.
+
+    ### Query Parameters
+    - `as_attachment` (boolean) Optional
+      Whether to force download the file as an attachment. Default is `false` (preview in browser).
+
+    ### Response
+    Returns the file content with appropriate headers for browser display or download.
+    - `Content-Type` Set based on file mime type
+    - `Content-Length` File size in bytes (if available)
+    - `Content-Disposition` Set to "attachment" if `as_attachment=true`
+    - `Cache-Control` Caching headers for performance
+    - `Accept-Ranges` Set to "bytes" for audio/video files
+
+    ### Errors
+    - 400, `invalid_param`, abnormal parameter input
+    - 403, `file_access_denied`, file access denied or file does not belong to current application
+    - 404, `file_not_found`, file not found or has been deleted
+    - 500, internal server error
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    ### Download as Attachment
+    <CodeGroup
+      title="Download Request"
+      tag="GET"
+      label="/files/:file_id/preview?as_attachment=true"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\
+--header 'Authorization: Bearer {api_key}' \\
+--output downloaded_file.png`}
+    />
+
+    ### Response Headers Example
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'Headers - Image Preview' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+
+    ### Download Response Headers
+    <CodeGroup title="Download Response Headers">
+    ```http {{ title: 'Headers - File Download' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Content-Disposition: attachment; filename*=UTF-8''example.png
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/chat-messages/:task_id/stop'
   method='POST'
   title='Stop Generate'
@@ -389,27 +477,28 @@ Chat applications support session persistence, allowing previous chat history to
 />
 <Row>
   <Col>
-  Only supported in streaming mode.
-  ### Path
-  - `task_id` (string) Task ID, can be obtained from the streaming chunk return
-  ### Request Body
-  - `user` (string) Required
-    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface.
-  ### Response
-  - `result` (string) Always returns "success"
+    Only supported in streaming mode.
+    ### Path
+    - `task_id` (string) Task ID, can be obtained from the streaming chunk return
+    ### Request Body
+    - `user` (string) Required
+      User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
+    ### Response
+    - `result` (string) Always returns "success"
   </Col>
   <Col sticky>
-  ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \
-    -H 'Authorization: Bearer {api_key}' \
-    -H 'Content-Type: application/json' \
-    --data-raw '{
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/chat-messages/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{
+    "user": "abc-123"
+}'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -448,7 +537,7 @@ Chat applications support session persistence, allowing previous chat history to
         Upvote as `like`, downvote as `dislike`, revoke upvote as `null`
       </Property>
       <Property name='user' type='string' key='user'>
-        User identifier, defined by the developer's rules, must be unique within the application.
+        User identifier, defined by the developer's rules, must be unique within the application. The Service API does not share conversations created by the WebApp.
       </Property>
       <Property name='content' type='string' key='content'>
         The specific content of message feedback.
@@ -460,20 +549,19 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "rating": "like",
-        "user": "abc-123",
-        "content": "message feedback information"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/messages/:message_id/feedbacks"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "rating": "like",
+    "user": "abc-123",
+    "content": "message feedback information"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -485,6 +573,68 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
 </Row>
 
+---
+
+<Heading
+  url='/app/feedbacks'
+  method='GET'
+  title='Get feedbacks of application'
+  name='#app-feedbacks'
+/>
+<Row>
+  <Col>
+    Get application's feedbacks.
+
+    ### Query
+    <Properties>
+      <Property name='page' type='string' key='page'>
+       （optional）pagination，default：1
+      </Property>
+    </Properties>
+
+    <Properties>
+      <Property name='limit' type='string' key='limit'>
+       （optional） records per page default：20
+      </Property>
+    </Properties>
+
+    ### Response
+    - `data` (List) return apps feedback list.
+  </Col>
+  <Col sticky>
+
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/app/feedbacks"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+      {
+          "data": [
+              {
+                  "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
+                  "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
+                  "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
+                  "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
+                  "rating": "like",
+                  "content": "message feedback information-3",
+                  "from_source": "user",
+                  "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
+                  "from_account_id": null,
+                  "created_at": "2025-04-24T09:24:38",
+                  "updated_at": "2025-04-24T09:24:38"
+              }
+          ]
+      }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 ---
 
 <Heading
@@ -515,15 +665,14 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123& \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --header 'Content-Type: application/json' \
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages/{message_id}/suggested"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123' \\
+--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\
+--header 'Content-Type: application/json'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -572,34 +721,34 @@ Chat applications support session persistence, allowing previous chat history to
 
     ### Response
     - `data` (array[object]) Message list
-    - `id` (string) Message ID
-    - `conversation_id` (string) Conversation ID
-    - `inputs` (object) User input parameters.
-    - `query` (string) User input / question content.
-    - `message_files` (array[object]) Message files
-      - `id` (string) ID
-      - `type` (string) File type, image for images
-      - `url` (string) Preview image URL
-      - `belongs_to` (string) belongs to，user orassistant
-    - `answer` (string) Response message content
-    - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
-    - `feedback` (object) Feedback information
-      - `rating` (string) Upvote as `like` / Downvote as `dislike`
-    - `retriever_resources` (array[RetrieverResource]) Citation and Attribution List
-  - `has_more` (bool) Whether there is a next page
-  - `limit` (int) Number of returned items, if input exceeds system limit, returns system limit amount
+      - `id` (string) Message ID
+      - `conversation_id` (string) Conversation ID
+      - `inputs` (object) User input parameters.
+      - `query` (string) User input / question content.
+      - `message_files` (array[object]) Message files
+        - `id` (string) ID
+        - `type` (string) File type, image for images
+        - `url` (string) File preview URL, use the File Preview API (`/files/{file_id}/preview`) to access the file
+        - `belongs_to` (string) belongs to，user orassistant
+      - `answer` (string) Response message content
+      - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+      - `feedback` (object) Feedback information
+        - `rating` (string) Upvote as `like` / Downvote as `dislike`
+      - `retriever_resources` (array[RetrieverResource]) Citation and Attribution List
+    - `has_more` (bool) Whether there is a next page
+    - `limit` (int) Number of returned items, if input exceeds system limit, returns system limit amount
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id={conversation_id}'
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
     ### Response Example
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -685,14 +834,13 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\\n --header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/conversations"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -750,19 +898,18 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/:conversation_id" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/:conversation_id' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-        curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \
-        --header 'Content-Type: application/json' \
-        --header 'Accept: application/json' \
-        --header 'Authorization: Bearer {api_key}' \
-        --data '{
-            "user": "abc-123"
-        }'
-      ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/conversations/:conversation_id"
+      targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Accept: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data '{
+    "user": "abc-123"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```text {{ title: 'Response' }}
@@ -810,20 +957,19 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "auto_generate": true, \n "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
-    --header 'Content-Type: application/json' \
-    --header 'Authorization: Bearer {api_key}' \
-    --data-raw '{
-        "name": "",
-        "auto_generate": true,
-        "user": "abc-123"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/conversations/:conversation_id/name"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "name": "",
+    "auto_generate": true,
+    "user": "abc-123"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -894,21 +1040,20 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/conversations/:conversation_id/variables"
+      debug="true"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\
+--header 'Authorization: Bearer {api_key}'`} />
 
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Request with variable name filter">
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request with variable name filter"
+      language="bash"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -944,10 +1089,126 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
+  url='/conversations/:conversation_id/variables/:variable_id'
+  method='PUT'
+  title='Update Conversation Variable'
+  name='#update-conversation-variable'
+/>
+<Row>
+  <Col>
+    Update the value of a specific conversation variable. This endpoint allows you to modify the value of a variable that was captured during the conversation while preserving its name, type, and description.
+
+    ### Path Parameters
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        The ID of the conversation containing the variable to update.
+      </Property>
+      <Property name='variable_id' type='string' key='variable_id'>
+        The ID of the variable to update.
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='value' type='any' key='value'>
+        The new value for the variable. Must match the variable's expected type (string, number, object, etc.).
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the application.
+      </Property>
+    </Properties>
+
+    ### Response
+
+    Returns the updated variable object with:
+    - `id` (string) Variable ID
+    - `name` (string) Variable name
+    - `value_type` (string) Variable type (string, number, object, etc.)
+    - `value` (any) Updated variable value
+    - `description` (string) Variable description
+    - `created_at` (int) Creation timestamp
+    - `updated_at` (int) Last update timestamp
+
+    ### Errors
+    - 400, `Type mismatch: variable expects {expected_type}, but got {actual_type} type`, Value type doesn't match variable's expected type
+    - 404, `conversation_not_exists`, Conversation not found
+    - 404, `conversation_variable_not_exists`, Variable not found
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup
+      title="Request"
+      tag="PUT"
+      label="/conversations/:conversation_id/variables/:variable_id"
+      targetCode={`curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": "Updated Value",
+    "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup
+      title="Update with different value types"
+      targetCode={[
+        {
+          title: 'String',
+          code: `curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": "New string value",
+    "user": "abc-123"
+}'`,
+        }, {
+          title: 'Number',
+          code: `curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": 42,
+    "user": "abc-123"
+}'`,
+        }, {
+          title: 'Object',
+          code: `curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": {"product": "Widget", "quantity": 10, "price": 29.99},
+    "user": "abc-123"
+}'`,
+        },
+      ]}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "variable-uuid-1",
+      "name": "customer_name",
+      "value_type": "string",
+      "value": "Updated Value",
+      "description": "Customer name extracted from the conversation",
+      "created_at": 1650000000000,
+      "updated_at": 1650000001000
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='Speech to Text'
-  name='#audio'
+  name='#audio-to-text'
 />
 <Row>
   <Col>
@@ -972,15 +1233,14 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/name' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@localfile;type=audio/mp3'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/audio-to-text"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -998,7 +1258,7 @@ Chat applications support session persistence, allowing previous chat history to
   url='/text-to-audio'
   method='POST'
   title='Text to Audio'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>
@@ -1020,20 +1280,19 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "Hello Dify",\n    "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-        "text": "Hello Dify",
-        "user": "abc-123",
-        "streaming": false
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/text-to-audio"
+      targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+    "text": "Hello Dify",
+    "user": "abc-123",
+}'`}
+    />
 
     <CodeGroup title="headers">
     ```json {{ title: 'headers' }}
@@ -1060,14 +1319,18 @@ Chat applications support session persistence, allowing previous chat history to
   - `name` (string) application name
   - `description` (string) application description
   - `tags` (array[string]) application tags
+  - `mode` (string) application mode
+  - `author_name` (string) application author name
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info' \
-      -H 'Authorization: Bearer {api_key}'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
+
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -1076,7 +1339,9 @@ Chat applications support session persistence, allowing previous chat history to
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "advanced-chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -1102,6 +1367,13 @@ Chat applications support session persistence, allowing previous chat history to
       - `enabled` (bool) Whether it is enabled
     - `speech_to_text` (object) Speech to text
       - `enabled` (bool) Whether it is enabled
+    - `text_to_speech` (object) Text to speech
+      - `enabled` (bool) Whether it is enabled
+      - `voice` (string) Voice type
+      - `language` (string) Language
+      - `autoPlay` (string) Auto play
+        - `enabled`   Enabled
+        - `disabled`  Disabled
     - `retriever_resource` (object) Citation and Attribution
       - `enabled` (bool) Whether it is enabled
     - `annotation_reply` (object) Annotation reply
@@ -1124,11 +1396,30 @@ Chat applications support session persistence, allowing previous chat history to
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
+      - `document` (object) Document settings
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Document number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
       - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.
         - `enabled` (bool) Whether it is enabled
         - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `audio` (object) Audio settings
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Audio number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `video` (object) Video settings
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Video number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `custom` (object) Custom settings
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Custom number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)
@@ -1138,14 +1429,12 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1156,6 +1445,12 @@ Chat applications support session persistence, allowing previous chat history to
       },
       "speech_to_text": {
           "enabled": true
+      },
+      "text_to_speech": {
+          "enabled": true,
+          "voice": "sambert-zhinan-v1",
+          "language": "zh-Hans",
+          "autoPlay": "disabled"
       },
       "retriever_resource": {
           "enabled": true
@@ -1217,13 +1512,13 @@ Chat applications support session persistence, allowing previous chat history to
         - (string) url of icon
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/meta' \
-    -H 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/meta"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1241,6 +1536,64 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
 </Row>
 ---
+
+<Heading
+  url='/site'
+  method='GET'
+  title='Get Application WebApp Settings'
+  name='#site'
+/>
+<Row>
+  <Col>
+  Used to get the WebApp settings of the application.
+  ### Response
+  - `title` (string) WebApp name
+  - `chat_color_theme` (string) Chat color theme, in hex format
+  - `chat_color_theme_inverted` (bool) Whether the chat color theme is inverted
+  - `icon_type` (string) Icon type, `emoji` - emoji, `image` - picture
+  - `icon` (string) Icon. If it's `emoji` type, it's an emoji symbol; if it's `image` type, it's an image URL
+  - `icon_background` (string) Background color in hex format
+  - `icon_url` (string) Icon URL
+  - `description` (string) Description
+  - `copyright` (string) Copyright information
+  - `privacy_policy` (string) Privacy policy link
+  - `custom_disclaimer` (string) Custom disclaimer
+  - `default_language` (string) Default language
+  - `show_workflow_steps` (bool) Whether to show workflow details
+  - `use_icon_as_answer_icon` (bool) Whether to replace 🤖 in chat with the WebApp icon
+  </Col>
+  <Col>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/site"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "chat_color_theme": "#ff4a4a",
+      "chat_color_theme_inverted": false,
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+      "use_icon_as_answer_icon": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___
 
 <Heading
   url='/apps/annotations'
@@ -1265,13 +1618,9 @@ Chat applications support session persistence, allowing previous chat history to
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotations?page=1&limit=20' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1319,18 +1668,14 @@ Chat applications support session persistence, allowing previous chat history to
       title="Request"
       tag="POST"
       label="/apps/annotations"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "question": "What is your name?",
-        "answer": "I am Dify."
-    }'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "question": "What is your name?",
+    "answer": "I am Dify."
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1373,18 +1718,14 @@ Chat applications support session persistence, allowing previous chat history to
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "question": "What is your name?",
-        "answer": "I am Dify."
-    }'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request PUT '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "question": "What is your name?",
+    "answer": "I am Dify."
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1419,15 +1760,12 @@ Chat applications support session persistence, allowing previous chat history to
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="PUT"
+      tag="DELETE"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json'`}
+    />
 
     <CodeGroup title="Response">
     ```text {{ title: 'Response' }}
@@ -1468,19 +1806,15 @@ Chat applications support session persistence, allowing previous chat history to
       title="Request"
       tag="POST"
       label="/apps/annotation-reply/{action}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/apps/annotation-reply/{action}' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "score_threshold": 0.9,
-        "embedding_provider_name": "zhipu",
-        "embedding_model_name": "embedding_3"
-    }'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotation-reply/{action}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "score_threshold": 0.9,
+    "embedding_provider_name": "zhipu",
+    "embedding_model_name": "embedding_3"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1518,13 +1852,9 @@ Chat applications support session persistence, allowing previous chat history to
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotation-reply/{action}/status/{job_id}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}

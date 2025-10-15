@@ -1,13 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   showWarning: boolean
@@ -19,7 +17,7 @@ const HistoryPanel: FC<Props> = ({
   onShowEditModal,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
 
   return (
     <Panel
@@ -45,9 +43,8 @@ const HistoryPanel: FC<Props> = ({
       {showWarning && (
         <div className='flex justify-between rounded-b-xl bg-background-section-burn px-3 py-2 text-xs text-text-secondary'>
           <div>{t('appDebug.feature.conversationHistory.tip')}
-            <a href={`${locale === LanguagesSupported[1]
-              ? 'https://docs.dify.ai/zh-hans/learn-more/extended-reading/prompt-engineering/README'
-              : 'https://docs.dify.ai/en/features/prompt-engineering'}`}
+            <a href={docLink('/learn-more/extended-reading/what-is-llmops',
+              { 'zh-Hans': '/learn-more/extended-reading/prompt-engineering/README' })}
             target='_blank' rel='noopener noreferrer'
             className='text-[#155EEF]'>{t('appDebug.feature.conversationHistory.learnMore')}
             </a>

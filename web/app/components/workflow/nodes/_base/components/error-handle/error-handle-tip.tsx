@@ -17,7 +17,7 @@ const ErrorHandleTip = ({
 
     if (type === ErrorHandleTypeEnum.defaultValue)
       return t('workflow.nodes.common.errorHandle.defaultValue.inLog')
-  }, [])
+  }, [t, type])
 
   if (!type)
     return null

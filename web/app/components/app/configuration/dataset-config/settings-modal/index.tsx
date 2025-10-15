@@ -6,7 +6,7 @@ import { isEqual } from 'lodash-es'
 import { RiCloseLine } from '@remixicon/react'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import cn from '@/utils/classnames'
-import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
+import IndexMethod from '@/app/components/datasets/settings/index-method'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -31,6 +31,8 @@ import {
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { useDocLink } from '@/context/i18n'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -54,10 +56,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: embeddingsModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useToastContext()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
@@ -73,6 +74,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [keywordNumber, setKeywordNumber] = useState(currentDataset.keyword_number ?? 10)
 
   const handleValueChange = (type: string, value: string) => {
     setLocaleCurrentDataset({ ...localeCurrentDataset, [type]: value })
@@ -124,6 +126,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           description,
           permission,
           indexing_technique: indexMethod,
+          keyword_number: keywordNumber,
           retrieval_model: {
             ...retrievalConfig,
             score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
@@ -245,17 +248,18 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
             </div>
             <div className='grow'>
-              <IndexMethodRadio
-                disable={!localeCurrentDataset?.embedding_available}
+              <IndexMethod
+                disabled={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
-                onChange={v => setIndexMethod(v!)}
-                docForm={currentDataset.doc_form}
+                onChange={setIndexMethod}
                 currentValue={currentDataset.indexing_technique}
+                keywordNumber={keywordNumber}
+                onKeywordNumberChange={setKeywordNumber}
               />
             </div>
           </div>
         )}
-        {indexMethod === 'high_quality' && (
+        {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
               <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
@@ -328,13 +332,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <div>
                 <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                 <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                  <a target='_blank' rel='noopener noreferrer' href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.description')}
                 </div>
               </div>
             </div>
             <div>
-              {indexMethod === 'high_quality'
+              {indexMethod === IndexingType.QUALIFIED
                 ? (
                   <RetrievalMethodConfig
                     value={retrievalConfig}

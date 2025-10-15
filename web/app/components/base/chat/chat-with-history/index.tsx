@@ -1,3 +1,4 @@
+'use client'
 import type { FC } from 'react'
 import {
   useEffect,
@@ -20,6 +21,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import cn from '@/utils/classnames'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -28,9 +30,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
-    appInfoError,
     appData,
-    appInfoLoading,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
@@ -45,25 +45,14 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
 
   useEffect(() => {
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-    if (site) {
-      if (customConfig)
-        document.title = `${site.title}`
-      else
-        document.title = `${site.title} - Powered by Dify`
-    }
   }, [site, customConfig, themeBuilder])
 
-  if (appInfoLoading) {
-    return (
-      <Loading type='app' />
-    )
-  }
+  useEffect(() => {
+    if (!isSidebarCollapsed)
+      setShowSidePanel(false)
+  }, [isSidebarCollapsed])
 
-  if (appInfoError) {
-    return (
-      <AppUnavailable />
-    )
-  }
+  useDocumentTitle(site?.title || 'Chat')
 
   return (
     <div className={cn(
@@ -92,7 +81,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             onMouseEnter={() => setShowSidePanel(true)}
             onMouseLeave={() => setShowSidePanel(false)}
           >
-            <Sidebar isPanel />
+            <Sidebar isPanel panelVisible={showSidePanel} />
           </div>
         )}
         <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
@@ -122,8 +111,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const themeBuilder = useThemeContext()
 
   const {
-    appInfoError,
-    appInfoLoading,
     appData,
     appParams,
     appMeta,
@@ -159,12 +146,12 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    allInputsHidden,
+    initUserVariables,
   } = useChatWithHistory(installedAppInfo)
 
   return (
     <ChatWithHistoryContext.Provider value={{
-      appInfoError,
-      appInfoLoading,
       appData,
       appParams,
       appMeta,
@@ -202,6 +189,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setIsResponding,
       currentConversationInputs,
       setCurrentConversationInputs,
+      allInputsHidden,
+      initUserVariables,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

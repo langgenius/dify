@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Дізнатися більше',
       description: ' про метод вибірки.',
       longDescription: ' про метод вибірки, ви можете змінити це будь-коли в налаштуваннях бази знань.',
+      method: 'Метод отримання',
     },
     save: 'Зберегти',
     me: '(Ви)',
@@ -36,6 +37,14 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Недоступно для пониження з HQ до ECO',
     upgradeHighQualityTip: 'Після оновлення до режиму високої якості повернення до економного режиму недоступне',
     searchModel: 'Пошук моделі',
+    chunkStructure: {
+      learnMore: 'Дізнатися більше',
+      description: 'про структуру шматків.',
+      title: 'Структура шматків',
+    },
+    nameAndIcon: 'Ім\'я та піктограма',
+    numberOfKeywords: 'Кількість ключових слів',
+    onSearchResults: 'Жодні учасники не відповідають вашому пошуковому запиту.\nСпробуйте виконати пошук ще раз.',
   },
 }
 

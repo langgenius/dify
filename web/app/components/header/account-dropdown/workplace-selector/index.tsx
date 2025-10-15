@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { WEB_PREFIX } from '@/config'
+import { basePath } from '@/utils/var'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
@@ -23,7 +23,7 @@ const WorkplaceSelector = () => {
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      location.assign(WEB_PREFIX)
+      location.assign(`${location.origin}${basePath}`)
     }
     catch {
       notify({ type: 'error', message: t('common.provider.saveFailed') })
@@ -31,22 +31,22 @@ const WorkplaceSelector = () => {
   }
 
   return (
-    <Menu as="div" className="relative h-full w-full">
+    <Menu as="div" className="min-w-0">
       {
         ({ open }) => (
           <>
             <MenuButton className={cn(
               `
                 group flex w-full cursor-pointer items-center
-                gap-1.5 p-0.5 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} rounded-[10px]
+                p-0.5 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} rounded-[10px]
               `,
             )}>
-              <div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
+              <div className='mr-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px] max-[800px]:mr-0'>
                 <span className='h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90'>{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
               </div>
-              <div className='flex flex-row'>
-                <div className={'system-sm-medium max-w-[160px] truncate text-text-secondary'}>{currentWorkspace?.name}</div>
-                <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />
+              <div className='flex min-w-0 items-center'>
+                <div className={'system-sm-medium min-w-0  max-w-[149px] truncate text-text-secondary max-[800px]:hidden'}>{currentWorkspace?.name}</div>
+                <RiArrowDownSLine className='h-4 w-4 shrink-0 text-text-secondary' />
               </div>
             </MenuButton>
             <Transition
@@ -59,10 +59,11 @@ const WorkplaceSelector = () => {
               leaveTo="transform opacity-0 scale-95"
             >
               <MenuItems
+                anchor="bottom start"
                 className={cn(
                   `
-                    shadows-shadow-lg absolute left-[-15px] mt-1 flex max-h-[400px] w-[280px] flex-col items-start overflow-y-auto rounded-xl
-                    bg-components-panel-bg-blur backdrop-blur-[5px]
+                    shadows-shadow-lg absolute left-[-15px] z-[1000] mt-1 flex max-h-[400px] w-[280px] flex-col items-start overflow-y-auto
+                    rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px]
                   `,
                 )}
               >
@@ -73,7 +74,7 @@ const WorkplaceSelector = () => {
                   {
                     workspaces.map(workspace => (
                       <div className='flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
-                        <div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
+                        <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]'>
                           <span className='h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90'>{workspace?.name[0]?.toLocaleUpperCase()}</span>
                         </div>
                         <div className='system-md-regular line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary'>{workspace.name}</div>

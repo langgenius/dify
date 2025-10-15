@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
 import ConditionVariableSelector from './condition-variable-selector'
-import ConditionCommonVariableSelector from './condition-common-variable-selector.tsx'
+import ConditionCommonVariableSelector from './condition-common-variable-selector'
 import type {
   Node,
   NodeOutPutVar,

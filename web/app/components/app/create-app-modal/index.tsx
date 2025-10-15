@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
-import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
+import { useRouter } from 'next/navigation'
+import { useContext } from 'use-context-selector'
+import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
@@ -14,12 +14,11 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
-import { WEB_PREFIX } from '@/config'
-import AppsContext, { useAppContext } from '@/context/app-context'
+import { basePath } from '@/utils/var'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
-import { AppModes } from '@/types/app'
 import { createApp } from '@/service/apps'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -30,24 +29,26 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
+import { useDocLink } from '@/context/i18n'
 
 type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
+  defaultAppMode?: AppMode
 }
 
-function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps) {
+function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
   const { notify } = useContext(ToastContext)
-  const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
-  const [appMode, setAppMode] = useState<AppMode>('chat')
+  const [appMode, setAppMode] = useState<AppMode>(defaultAppMode || 'advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
@@ -55,13 +56,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
 
   const isCreatingRef = useRef(false)
 
-  const searchParams = useSearchParams()
-
   useEffect(() => {
-    const category = searchParams.get('category')
-    if (category && AppModes.includes(category as AppMode))
-      setAppMode(category as AppMode)
-  }, [searchParams])
+    if (appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion')
+      setIsAppTypeExpanded(true)
+  }, [appMode])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
@@ -87,15 +85,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       onSuccess()
       onClose()
-      mutateApps()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e.message || t('app.newApp.appCreateFailed'),
+      })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
@@ -116,57 +116,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
           </div>
           <div className='flex w-[660px] flex-col gap-4'>
             <div>
-              <div className='mb-2'>
-                <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
-              </div>
               <div className='flex flex-row gap-2'>
-                <AppTypeCard
-                  active={appMode === 'chat'}
-                  title={t('app.types.chatbot')}
-                  description={t('app.newApp.chatbotShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
-                    <ChatBot className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('chat')
-                  }} />
-                <AppTypeCard
-                  active={appMode === 'agent-chat'}
-                  title={t('app.types.agent')}
-                  description={t('app.newApp.agentShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid'>
-                    <Logic className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('agent-chat')
-                  }} />
-                <AppTypeCard
-                  active={appMode === 'completion'}
-                  title={t('app.newApp.completeApp')}
-                  description={t('app.newApp.completionShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid'>
-                    <ListSparkle className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('completion')
-                  }} />
-              </div>
-            </div>
-            <div>
-              <div className='mb-2'>
-                <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forAdvanced')}</span>
-              </div>
-              <div className='flex flex-row gap-2'>
-                <AppTypeCard
-                  active={appMode === 'advanced-chat'}
-                  title={t('app.types.advanced')}
-                  description={t('app.newApp.advancedShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid'>
-                    <BubbleTextMod className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('advanced-chat')
-                  }} />
                 <AppTypeCard
                   active={appMode === 'workflow'}
                   title={t('app.types.workflow')}
@@ -177,7 +127,62 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   onClick={() => {
                     setAppMode('workflow')
                   }} />
+                <AppTypeCard
+                  active={appMode === 'advanced-chat'}
+                  title={t('app.types.advanced')}
+                  description={t('app.newApp.advancedShortDescription')}
+                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid'>
+                    <BubbleTextMod className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
+                  onClick={() => {
+                    setAppMode('advanced-chat')
+                  }} />
               </div>
+            </div>
+            <div>
+              <div className='mb-2 flex items-center'>
+                <button type="button"
+                  className='flex cursor-pointer items-center border-0 bg-transparent p-0'
+                  onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
+                >
+                  <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
+                  <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                </button>
+              </div>
+              {isAppTypeExpanded && (
+                <div className='flex flex-row gap-2'>
+                  <AppTypeCard
+                    active={appMode === 'chat'}
+                    title={t('app.types.chatbot')}
+                    description={t('app.newApp.chatbotShortDescription')}
+                    icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
+                      <ChatBot className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                    </div>}
+                    onClick={() => {
+                      setAppMode('chat')
+                    }} />
+                  <AppTypeCard
+                    active={appMode === 'agent-chat'}
+                    title={t('app.types.agent')}
+                    description={t('app.newApp.agentShortDescription')}
+                    icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid'>
+                      <Logic className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                    </div>}
+                    onClick={() => {
+                      setAppMode('agent-chat')
+                    }} />
+                  <AppTypeCard
+                    active={appMode === 'completion'}
+                    title={t('app.newApp.completeApp')}
+                    description={t('app.newApp.completionShortDescription')}
+                    icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid'>
+                      <ListSparkle className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                    </div>}
+                    onClick={() => {
+                      setAppMode('completion')
+                    }} />
+                </div>
+              )}
             </div>
             <Divider style={{ margin: 0 }} />
             <div className='flex items-center space-x-3'>
@@ -265,7 +270,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
 type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
-const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate }: CreateAppDialogProps) => {
+const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppDialogProps) => {
   return (
     <FullScreenModal
       overflowVisible
@@ -273,7 +278,7 @@ const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate }: Crea
       open={show}
       onClose={onClose}
     >
-      <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} />
+      <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} defaultAppMode={defaultAppMode} />
     </FullScreenModal>
   )
 }
@@ -300,37 +305,47 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
   >
     {icon}
     <div className='system-sm-semibold mb-0.5 mt-2 text-text-secondary'>{title}</div>
-    <div className='system-xs-regular text-text-tertiary'>{description}</div>
+    <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={description}>{description}</div>
   </div>
 }
 
 function AppPreview({ mode }: { mode: AppMode }) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const modeToPreviewInfoMap = {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate/readme',
+      link: docLink('/guides/application-orchestrate/chatbot-application'),
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
     'agent-chat': {
       title: t('app.types.agent'),
       description: t('app.newApp.agentUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/application-orchestrate/agent',
+      link: docLink('/guides/application-orchestrate/agent'),
     },
     'completion': {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
-      link: null,
+      link: docLink('/guides/application-orchestrate/text-generator', {
+        'zh-Hans': '/guides/application-orchestrate/readme',
+        'ja-JP': '/guides/application-orchestrate/README',
+      }),
     },
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
@@ -353,11 +368,11 @@ function AppScreenShot({ mode, show }: { mode: AppMode; show: boolean }) {
     'workflow': 'Workflow',
   }
   return <picture>
-    <source media="(resolution: 1x)" srcSet={`${WEB_PREFIX}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
-    <source media="(resolution: 2x)" srcSet={`${WEB_PREFIX}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
-    <source media="(resolution: 3x)" srcSet={`${WEB_PREFIX}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
+    <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
+    <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
+    <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
     <Image className={show ? '' : 'hidden'}
-      src={`${WEB_PREFIX}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
+      src={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
       alt='App Screen Shot'
       width={664} height={448} />
   </picture>

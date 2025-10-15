@@ -4,8 +4,8 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient  # type: ignore
-from sqlalchemy import JSON, Column, String, func
+from pyobvector import VECTOR, ObVecClient, l2_distance  # type: ignore
+from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from configs import dify_config
@@ -35,7 +35,7 @@ class OceanBaseVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["host"]:
             raise ValueError("config OCEANBASE_VECTOR_HOST is required")
         if not values["port"]:
@@ -68,7 +68,7 @@ class OceanBaseVector(BaseVector):
         self._create_collection()
         self.add_texts(texts, embeddings)
 
-    def _create_collection(self) -> None:
+    def _create_collection(self):
         lock_name = "vector_indexing_lock_" + self._collection_name
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = "vector_indexing_" + self._collection_name
@@ -79,6 +79,23 @@ class OceanBaseVector(BaseVector):
                 return
 
             self.delete()
+
+            vals = []
+            params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
+            for row in params:
+                val = int(row[6])
+                vals.append(val)
+            if len(vals) == 0:
+                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
+            if any(val == 0 for val in vals):
+                try:
+                    self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
+                except Exception as e:
+                    raise Exception(
+                        "Failed to set ob_vector_memory_limit_percentage. "
+                        + "Maybe the database user has insufficient privilege.",
+                        e,
+                    )
 
             cols = [
                 Column("id", String(36), primary_key=True, autoincrement=False),
@@ -100,32 +117,40 @@ class OceanBaseVector(BaseVector):
                 columns=cols,
                 vidxs=vidx_params,
             )
-            try:
-                if self._hybrid_search_enabled:
-                    self._client.perform_raw_text_sql(f"""ALTER TABLE {self._collection_name}
-                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER ik""")
-            except Exception as e:
-                raise Exception(
-                    "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
-                    + "to support fulltext index and vector index in the same table",
-                    e,
-                )
-            vals = []
-            params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
-            for row in params:
-                val = int(row[6])
-                vals.append(val)
-            if len(vals) == 0:
-                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
-            if any(val == 0 for val in vals):
-                try:
-                    self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
-                except Exception as e:
-                    raise Exception(
-                        "Failed to set ob_vector_memory_limit_percentage. "
-                        + "Maybe the database user has insufficient privilege.",
-                        e,
+            logger.debug("DEBUG: Table '%s' created successfully", self._collection_name)
+
+            if self._hybrid_search_enabled:
+                # Get parser from config or use default ik parser
+                parser_name = dify_config.OCEANBASE_FULLTEXT_PARSER or "ik"
+
+                allowed_parsers = ["ngram", "beng", "space", "ngram2", "ik", "japanese_ftparser", "thai_ftparser"]
+                if parser_name not in allowed_parsers:
+                    raise ValueError(
+                        f"Invalid OceanBase full-text parser: {parser_name}. "
+                        f"Allowed values are: {', '.join(allowed_parsers)}"
                     )
+                logger.debug("Hybrid search is enabled, parser_name='%s'", parser_name)
+                logger.debug(
+                    "About to create fulltext index for collection '%s' using parser '%s'",
+                    self._collection_name,
+                    parser_name,
+                )
+                try:
+                    sql_command = f"""ALTER TABLE {self._collection_name}
+                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER {parser_name}"""
+                    logger.debug("DEBUG: Executing SQL: %s", sql_command)
+                    self._client.perform_raw_text_sql(sql_command)
+                    logger.debug("DEBUG: Fulltext index created successfully for '%s'", self._collection_name)
+                except Exception as e:
+                    logger.exception("Exception occurred while creating fulltext index")
+                    raise Exception(
+                        "Failed to add fulltext index to the target table, your OceanBase version must be "
+                        "4.3.5.1 or above to support fulltext index and vector index in the same table"
+                    ) from e
+            else:
+                logger.debug("DEBUG: Hybrid search is NOT enabled for '%s'", self._collection_name)
+
+            self._client.refresh_metadata([self._collection_name])
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _check_hybrid_search_support(self) -> bool:
@@ -144,9 +169,9 @@ class OceanBaseVector(BaseVector):
             ob_full_version = result.fetchone()[0]
             ob_version = ob_full_version.split()[1]
             logger.debug("Current OceanBase version is %s", ob_version)
-            return version.parse(ob_version).base_version >= version.parse("4.3.5.1").base_version
+            return version.parse(ob_version) >= version.parse("4.3.5.1")
         except Exception as e:
-            logger.warning(f"Failed to check OceanBase version: {str(e)}. Disabling hybrid search.")
+            logger.warning("Failed to check OceanBase version: %s. Disabling hybrid search.", str(e))
             return False
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -166,7 +191,7 @@ class OceanBaseVector(BaseVector):
         cur = self._client.get(table_name=self._collection_name, ids=id)
         return bool(cur.rowcount != 0)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         self._client.delete(table_name=self._collection_name, ids=ids)
@@ -182,7 +207,7 @@ class OceanBaseVector(BaseVector):
         )
         return [row[0] for row in cur]
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -221,14 +246,14 @@ class OceanBaseVector(BaseVector):
                         try:
                             metadata = json.loads(metadata_str)
                         except json.JSONDecodeError:
-                            print(f"Invalid JSON metadata: {metadata_str}")
+                            logger.warning("Invalid JSON metadata: %s", metadata_str)
                             metadata = {}
                         metadata["score"] = score
                         docs.append(Document(page_content=_text, metadata=metadata))
 
                     return docs
         except Exception as e:
-            logger.warning(f"Failed to fulltext search: {str(e)}.")
+            logger.warning("Failed to fulltext search: %s.", str(e))
             return []
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -251,7 +276,7 @@ class OceanBaseVector(BaseVector):
                 vec_column_name="vector",
                 vec_data=query_vector,
                 topk=topk,
-                distance_func=func.l2_distance,
+                distance_func=l2_distance,
                 output_column_names=["text", "metadata"],
                 with_dist=True,
                 where_clause=_where_clause,
@@ -270,7 +295,7 @@ class OceanBaseVector(BaseVector):
             )
         return docs
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.drop_table_if_exist(self._collection_name)
 
 

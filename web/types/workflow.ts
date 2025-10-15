@@ -1,11 +1,15 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { RefObject } from 'react'
 
 export type AgentLogItem = {
   node_execution_id: string,
-  id: string,
+  message_id: string,
   node_id: string,
   parent_id?: string,
   label: string,
@@ -34,8 +38,14 @@ export type NodeTracing = {
   node_type: BlockEnum
   title: string
   inputs: any
+  inputs_truncated: boolean
   process_data: any
-  outputs?: any
+  process_data_truncated: boolean
+  outputs?: Record<string, any>
+  outputs_truncated: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   status: string
   parallel_run_id?: string
   error?: string
@@ -120,6 +130,7 @@ export type FetchWorkflowDraftResponse = {
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  rag_pipeline_variables?: RAGPipelineVariables
   version: string
   marked_name: string
   marked_comment: string
@@ -128,7 +139,7 @@ export type FetchWorkflowDraftResponse = {
 export type VersionHistory = FetchWorkflowDraftResponse
 
 export type FetchWorkflowDraftPageParams = {
-  appId: string
+  url: string
   initialPage: number
   limit: number
   userId?: string
@@ -152,7 +163,6 @@ export type WorkflowStartedResponse = {
   data: {
     id: string
     workflow_id: string
-    sequence_number: number
     created_at: number
   }
 }
@@ -198,6 +208,7 @@ export type FileResponse = {
   type: string
   url: string
   upload_file_id: string
+  remote_url: string
 }
 
 export type NodeFinishedResponse = {
@@ -289,7 +300,6 @@ export type AgentLogResponse = {
 
 export type WorkflowRunHistory = {
   id: string
-  sequence_number: number
   version: string
   conversation_id?: string
   message_id?: string
@@ -343,12 +353,66 @@ export type WorkflowConfigResponse = {
 }
 
 export type PublishWorkflowParams = {
+  url: string
   title: string
   releaseNotes: string
 }
 
 export type UpdateWorkflowParams = {
-  workflowId: string
+  url: string
   title: string
   releaseNotes: string
+}
+
+export type PanelExposedType = {
+  singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
+}
+
+export type PanelProps = {
+  getInputVars: (textList: string[]) => InputVar[]
+  toVarInputs: (variables: Variable[]) => InputVar[]
+  runInputData: Record<string, any>
+  runInputDataRef: RefObject<Record<string, any>>
+  setRunInputData: (data: Record<string, any>) => void
+  runResult: any
+}
+
+export type NodeRunResult = NodeTracing
+
+// Var Inspect
+export enum VarInInspectType {
+  conversation = 'conversation',
+  environment = 'env',
+  node = 'node',
+  system = 'sys',
+}
+
+export type FullContent = {
+  size_bytes: number
+  download_url: string
+}
+
+export type VarInInspect = {
+  id: string
+  type: VarInInspectType
+  name: string
+  description: string
+  selector: ValueSelector // can get node id from selector[0]
+  value_type: VarType
+  value: any
+  edited: boolean
+  visible: boolean
+  is_truncated: boolean
+  full_content: FullContent
+  schemaType?: string
+}
+
+export type NodeWithVar = {
+  nodeId: string
+  nodePayload: CommonNodeType
+  nodeType: BlockEnum
+  title: string
+  vars: VarInInspect[]
+  isSingRunRunning?: boolean
+  isValueFetched?: boolean
 }

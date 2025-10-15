@@ -21,6 +21,8 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -45,7 +47,22 @@ const ChatWrapper = (
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const inputs = useStore(s => s.inputs)
+  const { inputs, setInputs } = useStore(s => ({
+    inputs: s.inputs,
+    setInputs: s.setInputs,
+  }))
+
+  const initialInputs = useMemo(() => {
+    const initInputs: Record<string, any> = {}
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          initInputs[variable.variable] = variable.default
+      })
+    }
+    return initInputs
+  }, [startVariables])
+
   const features = useFeatures(s => s.features)
   const config = useMemo(() => {
     return {
@@ -80,6 +97,11 @@ const ChatWrapper = (
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
 
+  const handleRestartChat = useCallback(() => {
+    handleRestart()
+    setInputs(initialInputs)
+  }, [handleRestart, setInputs, initialInputs])
+
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
       {
@@ -105,11 +127,26 @@ const ChatWrapper = (
     )
   }, [chatList, doSend])
 
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
+
   useImperativeHandle(ref, () => {
     return {
-      handleRestart,
+      handleRestart: handleRestartChat,
     }
-  }, [handleRestart])
+  }, [handleRestartChat])
+
+  useEffect(() => {
+    if (Object.keys(initialInputs).length > 0) {
+      setInputs({
+        ...initialInputs,
+        ...inputs,
+      })
+    }
+  }, [initialInputs])
 
   useEffect(() => {
     if (isResponding)

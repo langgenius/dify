@@ -26,135 +26,127 @@ import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import type { App } from '@/types/app'
 import cn from '@/utils/classnames'
+import { delAnnotations } from '@/service/annotation'
 
 type Props = {
   appDetail: App
 }
 
-const Annotation: FC<Props> = ({
-  appDetail,
-}) => {
+const Annotation: FC<Props> = (props) => {
+  const { appDetail } = props
   const { t } = useTranslation()
-  const [isShowEdit, setIsShowEdit] = React.useState(false)
+  const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
-  const [isChatApp, setIsChatApp] = useState(false)
+  const [isChatApp] = useState(appDetail.mode !== 'completion')
+  const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
+  const { plan, enableBilling } = useProviderContext()
+  const isAnnotationFull = enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
+  const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
+  const [queryParams, setQueryParams] = useState<QueryParam>({})
+  const [currPage, setCurrPage] = useState(0)
+  const [limit, setLimit] = useState(APP_PAGE_LIMIT)
+  const [list, setList] = useState<AnnotationItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
+  const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
+  const [isShowViewModal, setIsShowViewModal] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false)
 
   const fetchAnnotationConfig = async () => {
     const res = await doFetchAnnotationConfig(appDetail.id)
     setAnnotationConfig(res as AnnotationReplyConfig)
     return (res as AnnotationReplyConfig).id
   }
-  useEffect(() => {
-    const isChatApp = appDetail.mode !== 'completion'
-    setIsChatApp(isChatApp)
-    if (isChatApp)
-      fetchAnnotationConfig()
-  }, [])
-  const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
-  const { plan, enableBilling } = useProviderContext()
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
-  const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
-  const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
-    let isCompleted = false
-    while (!isCompleted) {
-      const res: any = await queryAnnotationJobStatus(appDetail.id, status, jobId)
-      isCompleted = res.job_status === JobStatus.completed
-      if (isCompleted)
-        break
 
+  useEffect(() => {
+    if (isChatApp) fetchAnnotationConfig()
+  }, [])
+
+  const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
+    while (true) {
+      const res: any = await queryAnnotationJobStatus(appDetail.id, status, jobId)
+      if (res.job_status === JobStatus.completed) break
       await sleep(2000)
     }
   }
 
-  const [queryParams, setQueryParams] = useState<QueryParam>({})
-  const [currPage, setCurrPage] = React.useState<number>(0)
-  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
-  const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
-  const query = {
-    page: currPage + 1,
-    limit,
-    keyword: debouncedQueryParams.keyword || '',
-  }
-
-  const [controlUpdateList, setControlUpdateList] = useState(Date.now())
-  const [list, setList] = useState<AnnotationItem[]>([])
-  const [total, setTotal] = useState(10)
-  const [isLoading, setIsLoading] = useState(false)
   const fetchList = async (page = 1) => {
     setIsLoading(true)
     try {
       const { data, total }: any = await fetchAnnotationList(appDetail.id, {
-        ...query,
         page,
+        limit,
+        keyword: debouncedQueryParams.keyword || '',
       })
       setList(data as AnnotationItem[])
       setTotal(total)
     }
-    catch {
-
+    finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   useEffect(() => {
     fetchList(currPage + 1)
-  }, [currPage])
-
-  useEffect(() => {
-    fetchList(1)
-    setControlUpdateList(Date.now())
-  }, [queryParams])
+  }, [currPage, limit, debouncedQueryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
-    await addAnnotation(appDetail.id, {
-      ...payload,
-    })
-    Toast.notify({
-      message: t('common.api.actionSuccess'),
-      type: 'success',
-    })
+    await addAnnotation(appDetail.id, payload)
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appDetail.id, id)
-    Toast.notify({
-      message: t('common.api.actionSuccess'),
-      type: 'success',
-    })
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
-  const [currItem, setCurrItem] = useState<AnnotationItem | null>(list[0])
-  const [isShowViewModal, setIsShowViewModal] = useState(false)
-  useEffect(() => {
-    if (!isShowEdit)
-      setControlRefreshSwitch(Date.now())
-  }, [isShowEdit])
+  const handleBatchDelete = async () => {
+    if (isBatchDeleting)
+      return
+    setIsBatchDeleting(true)
+    try {
+      await delAnnotations(appDetail.id, selectedIds)
+      Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+      fetchList()
+      setControlUpdateList(Date.now())
+      setSelectedIds([])
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: e.message || t('common.api.actionFailed') })
+    }
+    finally {
+      setIsBatchDeleting(false)
+    }
+  }
+
   const handleView = (item: AnnotationItem) => {
     setCurrItem(item)
     setIsShowViewModal(true)
   }
 
   const handleSave = async (question: string, answer: string) => {
-    await editAnnotation(appDetail.id, (currItem as AnnotationItem).id, {
-      question,
-      answer,
-    })
-    Toast.notify({
-      message: t('common.api.actionSuccess'),
-      type: 'success',
-    })
+    if (!currItem) return
+    await editAnnotation(appDetail.id, currItem.id, { question, answer })
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
+  useEffect(() => {
+    if (!isShowEdit) setControlRefreshSwitch(Date.now())
+  }, [isShowEdit])
+
   return (
     <div className='flex h-full flex-col'>
       <p className='system-sm-regular text-text-tertiary'>{t('appLog.description')}</p>
-      <div className='flex flex-1 flex-col py-4'>
+      <div className='flex h-full flex-1 flex-col py-4'>
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
             {isChatApp && (
@@ -211,11 +203,17 @@ const Annotation: FC<Props> = ({
         </Filter>
         {isLoading
           ? <Loading type='app' />
+          // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
             ? <List
               list={list}
               onRemove={handleRemove}
               onView={handleView}
+              selectedIds={selectedIds}
+              onSelectedIdsChange={setSelectedIds}
+              onBatchDelete={handleBatchDelete}
+              onCancel={() => setSelectedIds([])}
+              isBatchDeleting={isBatchDeleting}
             />
             : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
         }

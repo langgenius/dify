@@ -7,15 +7,14 @@ import {
   RiErrorWarningFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
-import { checkOrSetAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
+import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
@@ -25,7 +24,7 @@ import type {
 } from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { changeLanguage } from '@/i18n/i18next-config'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/share/text-generation/result'
@@ -36,8 +35,12 @@ import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useWebAppStore } from '@/context/web-app-context'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -78,17 +81,6 @@ const TextGeneration: FC<IMainProps> = ({
   const mode = searchParams.get('mode') || 'create'
   const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
 
-  const router = useRouter()
-  const pathname = usePathname()
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    if (params.has('mode')) {
-      params.delete('mode')
-      router.replace(`${pathname}?${params.toString()}`)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
@@ -98,9 +90,9 @@ const TextGeneration: FC<IMainProps> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
-  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
@@ -108,17 +100,17 @@ const TextGeneration: FC<IMainProps> = ({
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
-  const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
+  const fetchSavedMessage = useCallback(async () => {
+    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
     setSavedMessages(res.data)
-  }
+  }, [isInstalledApp, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    await saveMessage(messageId, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    await removeMessage(messageId, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
@@ -159,10 +151,9 @@ const TextGeneration: FC<IMainProps> = ({
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
-  const [currGroupNum, doSetCurrGroupNum] = useState(0)
   const currGroupNumRef = useRef(0)
+
   const setCurrGroupNum = (num: number) => {
-    doSetCurrGroupNum(num)
     currGroupNumRef.current = num
   }
   const getCurrGroupNum = () => {
@@ -172,10 +163,8 @@ const TextGeneration: FC<IMainProps> = ({
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTasksFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const allTasksRun = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
-  const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
   const batchCompletionResRef = useRef<Record<string, string>>({})
   const setBatchCompletionRes = (res: Record<string, string>) => {
-    doSetBatchCompletionRes(res)
     batchCompletionResRef.current = res
   }
   const getBatchCompletionRes = () => batchCompletionResRef.current
@@ -367,50 +356,30 @@ const TextGeneration: FC<IMainProps> = ({
     }
   }
 
-  const fetchInitData = async () => {
-    if (!isInstalledApp)
-      await checkOrSetAccessToken()
-
-    return Promise.all([
-      isInstalledApp
-        ? {
-          app_id: installedAppInfo?.id,
-          site: {
-            title: installedAppInfo?.app.name,
-            prompt_public: false,
-            copyright: '',
-            icon: installedAppInfo?.app.icon,
-            icon_background: installedAppInfo?.app.icon_background,
-          },
-          plan: 'basic',
-        }
-        : fetchAppInfo(),
-      fetchAppParams(isInstalledApp, installedAppInfo?.id),
-      !isWorkflow
-        ? fetchSavedMessage()
-        : {},
-    ])
-  }
-
+  const appData = useWebAppStore(s => s.appInfo)
+  const appParams = useWebAppStore(s => s.appParams)
+  const accessMode = useWebAppStore(s => s.webAppAccessMode)
   useEffect(() => {
     (async () => {
-      const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo, can_replace_logo, custom_config } = appData
+      if (!appData || !appParams)
+        return
+      if (!isWorkflow)
+        fetchSavedMessage()
+      const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
-      setCanReplaceLogo(can_replace_logo)
       setCustomConfig(custom_config)
-      changeLanguage(siteInfo.default_language)
+      await changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
+        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
-      })
+      } as any)
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for future
@@ -419,17 +388,10 @@ const TextGeneration: FC<IMainProps> = ({
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
     })()
-  }, [])
+  }, [appData, appParams, fetchSavedMessage, isWorkflow])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
-  useEffect(() => {
-    if (siteInfo?.title) {
-      if (canReplaceLogo)
-        document.title = `${siteInfo.title}`
-      else
-        document.title = `${siteInfo.title} - Powered by Dify`
-    }
-  }, [siteInfo?.title, canReplaceLogo])
+  useDocumentTitle(siteInfo?.title || t('share.generation.title'))
 
   useAppFavicon({
     enable: !isInstalledApp,
@@ -534,7 +496,6 @@ const TextGeneration: FC<IMainProps> = ({
         <Loading type='app' />
       </div>)
   }
-
   return (
     <div className={cn(
       'bg-background-default-burn',
@@ -559,7 +520,7 @@ const TextGeneration: FC<IMainProps> = ({
               imageUrl={siteInfo.icon_url}
             />
             <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
-            <MenuDropdown data={siteInfo} />
+            <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
             <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
@@ -631,12 +592,13 @@ const TextGeneration: FC<IMainProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}>
             <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-            {customConfig?.replace_webapp_logo && (
-              <img src={customConfig?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-            )}
-            {!customConfig?.replace_webapp_logo && (
-              <LogoSite className='!h-5' />
-            )}
+            {
+              systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                : customConfig?.replace_webapp_logo
+                  ? <img src={`${customConfig?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
+                  : <DifyLogo size='small' />
+            }
           </div>
         )}
       </div>
@@ -664,7 +626,7 @@ const TextGeneration: FC<IMainProps> = ({
                 showResultPanel()
             }}
           >
-            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid'/>
+            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid' />
           </div>
         )}
         {renderResWrap}

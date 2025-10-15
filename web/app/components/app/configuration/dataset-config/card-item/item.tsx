@@ -8,15 +8,13 @@ import {
 import { useTranslation } from 'react-i18next'
 import SettingsModal from '../settings-modal'
 import type { DataSet } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
-import FileIcon from '@/app/components/base/file-icon'
-import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
-import { Globe06 } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
+import AppIcon from '@/app/components/base/app-icon'
 
 type ItemProps = {
   className?: string
@@ -46,57 +44,60 @@ const Item: FC<ItemProps> = ({
 
   const [isDeleting, setIsDeleting] = useState(false)
 
+  const iconInfo = config.icon_info || {
+    icon: '📙',
+    icon_type: 'emoji',
+    icon_background: '#FFF4ED',
+    icon_url: '',
+  }
+
   return (
-    <div className={cn('group relative mb-1 flex w-full items-center  rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-2 pl-2.5 pr-3 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover')}>
-      {
-        config.data_source_type === DataSourceType.FILE && (
-          <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF]'>
-            <Folder className='h-4 w-4 text-[#444CE7]' />
-          </div>
-        )
-      }
-      {
-        config.data_source_type === DataSourceType.NOTION && (
-          <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5]'>
-            <FileIcon type='notion' className='h-4 w-4' />
-          </div>
-        )
-      }
-      {
-        config.data_source_type === DataSourceType.WEB && (
-          <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-blue-100 bg-[#F5FAFF]'>
-            <Globe06 className='h-4 w-4 text-blue-600' />
-          </div>
-        )
-      }
-      <div className='grow'>
-        <div className='flex h-[18px] items-center'>
-          <div className='grow truncate text-[13px] font-medium text-text-secondary' title={config.name}>{config.name}</div>
-          {config.provider === 'external'
-            ? <Badge text={t('dataset.externalTag') as string} />
-            : <Badge
-              text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
-            />}
-        </div>
-      </div >
-      <div className='absolute bottom-0 right-0 top-0 hidden w-[124px] items-center justify-end rounded-lg bg-gradient-to-r from-white/50 to-white to-50% pr-2 group-hover:flex'>
+    <div className={cn(
+      'group relative mb-1 flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover',
+      isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
+    )}>
+      <div className='flex w-0 grow items-center space-x-1.5'>
+        <AppIcon
+          size='tiny'
+          iconType={iconInfo.icon_type}
+          icon={iconInfo.icon}
+          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
+          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
+        />
+        <div className='system-sm-medium w-0 grow truncate text-text-secondary' title={config.name}>{config.name}</div>
+      </div>
+      <div className='ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex'>
         {
-          editable && <div
-            className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
-            onClick={() => setShowSettingsModal(true)}
+          editable && <ActionButton
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowSettingsModal(true)
+            }}
           >
-            <RiEditLine className='h-4 w-4 text-text-tertiary' />
-          </div>
+            <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
+          </ActionButton>
         }
-        <div
-          className='flex h-6 w-6 cursor-pointer items-center  justify-center text-text-tertiary hover:text-text-destructive'
+        <ActionButton
           onClick={() => onRemove(config.id)}
-          onMouseOver={() => setIsDeleting(true)}
+          state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
+          onMouseEnter={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <RiDeleteBinLine className='h-4 w-4' />
-        </div>
+          <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
+        </ActionButton>
       </div>
+      {
+        config.indexing_technique && <Badge
+          className='shrink-0 group-hover:hidden'
+          text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
+        />
+      }
+      {
+        config.provider === 'external' && <Badge
+          className='shrink-0 group-hover:hidden'
+          text={t('dataset.externalTag') as string}
+        />
+      }
       <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <SettingsModal
           currentDataset={config}
