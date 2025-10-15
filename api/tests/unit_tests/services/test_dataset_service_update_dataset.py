@@ -7,7 +7,7 @@ from unittest.mock import Mock, create_autospec, patch
 import pytest
 
 from core.model_runtime.entities.model_entities import ModelType
-from models import Account
+from models.account import Account
 from models.dataset import Dataset, ExternalKnowledgeBindings
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError

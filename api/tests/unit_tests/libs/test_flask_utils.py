@@ -102,7 +102,7 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
             try:
                 # Use preserve_flask_contexts to access current_user in a different thread
                 with preserve_flask_contexts(login_app, context_vars):
-                    from libs.login import current_user
+                    from flask_login import current_user
 
                     if current_user:
                         result["user_accessible"] = True

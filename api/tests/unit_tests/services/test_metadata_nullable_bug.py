@@ -3,7 +3,7 @@ from unittest.mock import Mock, create_autospec, patch
 import pytest
 from flask_restx import reqparse
 
-from models import Account
+from models.account import Account
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 

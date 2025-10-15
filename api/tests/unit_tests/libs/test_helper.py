@@ -1,7 +1,7 @@
 import pytest
 
 from libs.helper import extract_tenant_id
-from models import Account
+from models.account import Account
 from models.model import EndUser
 
 

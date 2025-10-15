@@ -12,7 +12,7 @@ from core.variables.types import SegmentType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import NodeType
 from libs.uuid_utils import uuidv7
-from models import Account
+from models.account import Account
 from models.enums import DraftVariableType
 from models.workflow import (
     Workflow,

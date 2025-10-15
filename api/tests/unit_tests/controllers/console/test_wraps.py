@@ -16,7 +16,7 @@ from controllers.console.wraps import (
     only_edition_self_hosted,
     setup_required,
 )
-from models import AccountStatus
+from models.account import AccountStatus
 from services.feature_service import LicenseStatus
 
 

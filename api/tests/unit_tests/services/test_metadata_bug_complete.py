@@ -5,7 +5,7 @@ import pytest
 from flask_restx import reqparse
 from werkzeug.exceptions import BadRequest
 
-from models import Account
+from models.account import Account
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 

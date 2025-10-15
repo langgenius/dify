@@ -23,7 +23,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
-from models import Account, Tenant
+from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 

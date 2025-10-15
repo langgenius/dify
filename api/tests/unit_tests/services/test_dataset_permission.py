@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from models import Account, TenantAccountRole
+from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, DatasetPermission, DatasetPermissionEnum
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError

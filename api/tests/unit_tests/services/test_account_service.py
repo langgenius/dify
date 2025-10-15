@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models import Account
+from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -1054,7 +1054,7 @@ class TestRegisterService:
                 mock_create_tenant.return_value = mock_tenant
 
                 # Execute test with pending status
-                from models import AccountStatus
+                from models.account import AccountStatus
 
                 result = RegisterService.register(
                     email="test@example.com",
