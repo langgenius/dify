@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -8,6 +9,7 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
@@ -16,6 +18,8 @@ from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+
+logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
@@ -35,11 +39,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transfrom_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset)
 
         doc_form = dataset.doc_form
         if not doc_form:
-            return self._transfrom_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset)
         retrieval_model = dataset.retrieval_model
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -146,23 +150,22 @@ class RagPipelineTransformService:
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
-        file_extensions = [file_extension.lower() for file_extension in file_extensions]
-        node["data"]["fileExtensions"] = DOCUMENT_EXTENSIONS
+        node["data"]["fileExtensions"] = [ext.lower() for ext in file_extensions if ext in DOCUMENT_EXTENSIONS]
         return node
 
     def _deal_knowledge_index(
         self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)
+        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            retrieval_setting = RetrievalSetting(**retrieval_model)
+            retrieval_setting = RetrievalSetting.model_validate(retrieval_model)
             if indexing_technique == "economy":
-                retrieval_setting.search_method = "keyword_search"
+                retrieval_setting.search_method = RetrievalMethod.KEYWORD_SEARCH
             knowledge_configuration.retrieval_model = retrieval_setting
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
@@ -212,7 +215,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=current_user.id,
@@ -224,7 +227,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=current_user.id,
@@ -257,10 +260,10 @@ class RagPipelineTransformService:
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:
-            print(need_install_plugin_unique_identifiers)
+            logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
-    def _transfrom_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,

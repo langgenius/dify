@@ -51,30 +51,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
 
-        # if only single iteration run is requested
-        if self.application_generate_entity.single_iteration_run:
-            # if only single iteration run is requested
-            graph_runtime_state = GraphRuntimeState(
-                variable_pool=VariablePool.empty(),
-                start_at=time.time(),
-            )
-            graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
+        # if only single iteration or single loop run is requested
+        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+            graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
-                node_id=self.application_generate_entity.single_iteration_run.node_id,
-                user_inputs=self.application_generate_entity.single_iteration_run.inputs,
-                graph_runtime_state=graph_runtime_state,
-            )
-        elif self.application_generate_entity.single_loop_run:
-            # if only single loop run is requested
-            graph_runtime_state = GraphRuntimeState(
-                variable_pool=VariablePool.empty(),
-                start_at=time.time(),
-            )
-            graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
-                workflow=self._workflow,
-                node_id=self.application_generate_entity.single_loop_run.node_id,
-                user_inputs=self.application_generate_entity.single_loop_run.inputs,
-                graph_runtime_state=graph_runtime_state,
+                single_iteration_run=self.application_generate_entity.single_iteration_run,
+                single_loop_run=self.application_generate_entity.single_loop_run,
             )
         else:
             inputs = self.application_generate_entity.inputs

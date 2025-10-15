@@ -5,6 +5,7 @@ Unified event manager for collecting and emitting events.
 import threading
 import time
 from collections.abc import Generator
+from contextlib import contextmanager
 from typing import final
 
 from core.workflow.graph_events import GraphEngineEvent
@@ -51,43 +52,23 @@ class ReadWriteLock:
         """Release a write lock."""
         self._read_ready.release()
 
-    def read_lock(self) -> "ReadLockContext":
+    @contextmanager
+    def read_lock(self):
         """Return a context manager for read locking."""
-        return ReadLockContext(self)
+        self.acquire_read()
+        try:
+            yield
+        finally:
+            self.release_read()
 
-    def write_lock(self) -> "WriteLockContext":
+    @contextmanager
+    def write_lock(self):
         """Return a context manager for write locking."""
-        return WriteLockContext(self)
-
-
-@final
-class ReadLockContext:
-    """Context manager for read locks."""
-
-    def __init__(self, lock: ReadWriteLock) -> None:
-        self._lock = lock
-
-    def __enter__(self) -> "ReadLockContext":
-        self._lock.acquire_read()
-        return self
-
-    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object) -> None:
-        self._lock.release_read()
-
-
-@final
-class WriteLockContext:
-    """Context manager for write locks."""
-
-    def __init__(self, lock: ReadWriteLock) -> None:
-        self._lock = lock
-
-    def __enter__(self) -> "WriteLockContext":
-        self._lock.acquire_write()
-        return self
-
-    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object) -> None:
-        self._lock.release_write()
+        self.acquire_write()
+        try:
+            yield
+        finally:
+            self.release_write()
 
 
 @final

@@ -242,7 +242,7 @@ class PluginMigration:
                     if data.get("type") == "tool":
                         provider_name = data.get("provider_name")
                         provider_type = data.get("provider_type")
-                        if provider_name not in excluded_providers and provider_type == ToolProviderType.BUILT_IN.value:
+                        if provider_name not in excluded_providers and provider_type == ToolProviderType.BUILT_IN:
                             result.append(ToolProviderID(provider_name).plugin_id)
 
             return result
@@ -269,9 +269,9 @@ class PluginMigration:
                     for tool in agent_config["tools"]:
                         if isinstance(tool, dict):
                             try:
-                                tool_entity = AgentToolEntity(**tool)
+                                tool_entity = AgentToolEntity.model_validate(tool)
                                 if (
-                                    tool_entity.provider_type == ToolProviderType.BUILT_IN.value
+                                    tool_entity.provider_type == ToolProviderType.BUILT_IN
                                     and tool_entity.provider_id not in excluded_providers
                                 ):
                                     result.append(ToolProviderID(tool_entity.provider_id).plugin_id)
@@ -471,7 +471,7 @@ class PluginMigration:
         total_failed_tenant = 0
         while True:
             # paginate
-            tenants = db.paginate(db.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
+            tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
             if tenants.items is None or len(tenants.items) == 0:
                 break
 

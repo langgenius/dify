@@ -17,6 +17,7 @@ export enum DatasourceType {
 
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
+  language?: string
 }
 
 export type PipelineTemplate = {

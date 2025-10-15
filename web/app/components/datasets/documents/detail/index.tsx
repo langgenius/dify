@@ -200,7 +200,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               onUpdate={handleOperate}
               className='!w-[200px]'
             />
-            <button
+            <button type="button"
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >

@@ -16,7 +16,13 @@ from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.web_conversation_service import WebConversationService
 
+from .. import console_ns
 
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations",
+    endpoint="installed_app_conversations",
+)
 class ConversationListApi(InstalledAppResource):
     @marshal_with(conversation_infinite_scroll_pagination_fields)
     def get(self, installed_app):
@@ -52,6 +58,10 @@ class ConversationListApi(InstalledAppResource):
             raise NotFound("Last Conversation Not Exists.")
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>",
+    endpoint="installed_app_conversation",
+)
 class ConversationApi(InstalledAppResource):
     def delete(self, installed_app, c_id):
         app_model = installed_app.app
@@ -70,6 +80,10 @@ class ConversationApi(InstalledAppResource):
         return {"result": "success"}, 204
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/name",
+    endpoint="installed_app_conversation_rename",
+)
 class ConversationRenameApi(InstalledAppResource):
     @marshal_with(simple_conversation_fields)
     def post(self, installed_app, c_id):
@@ -95,6 +109,10 @@ class ConversationRenameApi(InstalledAppResource):
             raise NotFound("Conversation Not Exists.")
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin",
+    endpoint="installed_app_conversation_pin",
+)
 class ConversationPinApi(InstalledAppResource):
     def patch(self, installed_app, c_id):
         app_model = installed_app.app
@@ -114,6 +132,10 @@ class ConversationPinApi(InstalledAppResource):
         return {"result": "success"}
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin",
+    endpoint="installed_app_conversation_unpin",
+)
 class ConversationUnPinApi(InstalledAppResource):
     def patch(self, installed_app, c_id):
         app_model = installed_app.app

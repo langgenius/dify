@@ -14,16 +14,6 @@ export const usePipelineConfig = () => {
   const pipelineId = useStore(s => s.pipelineId)
   const workflowStore = useWorkflowStore()
 
-  const handleUpdateWorkflowConfig = useCallback((config: Record<string, any>) => {
-    const { setWorkflowConfig } = workflowStore.getState()
-
-    setWorkflowConfig(config)
-  }, [workflowStore])
-  useWorkflowConfig(
-    pipelineId ? `/rag/pipelines/${pipelineId}/workflows/draft/config` : '',
-    handleUpdateWorkflowConfig,
-  )
-
   const handleUpdateNodesDefaultConfigs = useCallback((nodesDefaultConfigs: Record<string, any> | Record<string, any>[]) => {
     const { setNodesDefaultConfigs } = workflowStore.getState()
     let res: Record<string, any> = {}

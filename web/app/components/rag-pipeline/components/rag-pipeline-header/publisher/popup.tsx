@@ -21,7 +21,6 @@ import {
 import Button from '@/app/components/base/button'
 import {
   useChecklistBeforePublish,
-  useFormatTimeFromNow,
 } from '@/app/components/workflow/hooks'
 import Divider from '@/app/components/base/divider'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
@@ -33,6 +32,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useInvalid } from '@/service/use-base'
 import {
   publishedPipelineInfoQueryKeyPrefix,
+  useInvalidCustomizedTemplateList,
   usePublishAsCustomizedPipeline,
 } from '@/service/use-pipeline'
 import Confirm from '@/app/components/base/confirm'
@@ -46,6 +46,7 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContextSelector } from '@/context/modal-context'
 import Link from 'next/link'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
@@ -158,6 +159,8 @@ const Popup = () => {
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
   }, [datasetId, push])
 
+  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+
   const handlePublishAsKnowledgePipeline = useCallback(async (
     name: string,
     icon: IconInfo,
@@ -189,6 +192,7 @@ const Popup = () => {
           </div>
         ),
       })
+      invalidCustomizedTemplateList()
     }
     catch {
       notify({ type: 'error', message: t('datasetPipeline.publishTemplate.error.message') })

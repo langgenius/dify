@@ -420,7 +420,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             db.session.refresh(conversation)
 
         # get conversation dialogue count
-        self._dialogue_count = get_thread_messages_length(conversation.id)
+        # NOTE: dialogue_count should not start from 0,
+        # because during the first conversation, dialogue_count should be 1.
+        self._dialogue_count = get_thread_messages_length(conversation.id) + 1
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(

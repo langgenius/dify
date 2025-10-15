@@ -588,3 +588,11 @@ class TestIntegrationScenarios:
             if isinstance(result.result, ObjectSegment):
                 result_size = truncator.calculate_json_size(result.result.value)
                 assert result_size <= original_size
+
+    def test_file_and_array_file_variable_mapping(self, file):
+        truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)
+
+        mapping = {"array_file": [file]}
+        truncated_mapping, truncated = truncator.truncate_variable_mapping(mapping)
+        assert truncated is False
+        assert truncated_mapping == mapping

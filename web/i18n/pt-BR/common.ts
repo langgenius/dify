@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Desmarcar tudo',
     selectAll: 'Selecionar tudo',
     config: 'Configuração',
+    no: 'Não',
+    yes: 'Sim',
+    deleteConfirmTitle: 'Excluir?',
+    confirmAction: 'Por favor, confirme sua ação.',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -500,6 +504,8 @@ const translation = {
       customModelCredentialsDeleteTip: 'A credencial está em uso e não pode ser excluída',
       addNewModelCredential: 'Adicionar nova credencial de modelo',
     },
+    parametersInvalidRemoved: 'Alguns parâmetros são inválidos e foram removidos',
+    installDataSourceProvider: 'Instalar provedores de fontes de dados',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',

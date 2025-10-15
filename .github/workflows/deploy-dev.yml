@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
     branches:
-      - "deploy/rag-dev"
+      - "deploy/dev"
     types:
       - completed
 
@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'deploy/rag-dev'
+      github.event.workflow_run.head_branch == 'deploy/dev'
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v0.1.8
         with:
-          host: ${{ secrets.RAG_SSH_HOST }}
+          host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |

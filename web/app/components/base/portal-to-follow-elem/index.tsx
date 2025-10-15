@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   FloatingPortal,
   autoUpdate,
@@ -7,7 +7,6 @@ import {
   offset,
   shift,
   size,
-  useClick,
   useDismiss,
   useFloating,
   useFocus,
@@ -41,7 +40,6 @@ export function usePortalToFollowElem({
 }: PortalToFollowElemOptions = {}) {
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
-  const isControlled = controlledOpen !== undefined
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setLocalOpen(newOpen)
     setControlledOpen?.(newOpen)
@@ -73,24 +71,15 @@ export function usePortalToFollowElem({
 
   const hover = useHover(context, {
     move: false,
-    enabled: !isControlled,
+    enabled: controlledOpen === undefined,
   })
   const focus = useFocus(context, {
-    enabled: !isControlled,
+    enabled: controlledOpen === undefined,
   })
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
 
-  const click = useClick(context)
-
-  const interactionsArray = useMemo(() => {
-    const result = [hover, focus, dismiss, role]
-
-    if (!isControlled)
-      result.push(click)
-    return result
-  }, [isControlled, hover, focus, dismiss, role, click])
-  const interactions = useInteractions(interactionsArray)
+  const interactions = useInteractions([hover, focus, dismiss, role])
 
   return React.useMemo(
     () => ({

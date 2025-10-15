@@ -10,6 +10,7 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from constants.languages import languages
@@ -61,31 +62,30 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        try:
+            valid_password(new_password)
+        except:
+            click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
+            return
 
-    try:
-        valid_password(new_password)
-    except:
-        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
-        return
+        # generate password salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
 
-    # generate password salt
-    salt = secrets.token_bytes(16)
-    base64_salt = base64.b64encode(salt).decode()
-
-    # encrypt password with salt
-    password_hashed = hash_password(new_password, salt)
-    base64_password_hashed = base64.b64encode(password_hashed).decode()
-    account.password = base64_password_hashed
-    account.password_salt = base64_salt
-    db.session.commit()
-    AccountService.reset_login_error_rate_limit(email)
-    click.echo(click.style("Password reset successfully.", fg="green"))
+        # encrypt password with salt
+        password_hashed = hash_password(new_password, salt)
+        base64_password_hashed = base64.b64encode(password_hashed).decode()
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        AccountService.reset_login_error_rate_limit(email)
+        click.echo(click.style("Password reset successfully.", fg="green"))
 
 
 @click.command("reset-email", help="Reset the account email.")
@@ -100,22 +100,21 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        account = session.query(Account).where(Account.email == email).one_or_none()
 
-    account = db.session.query(Account).where(Account.email == email).one_or_none()
+        if not account:
+            click.echo(click.style(f"Account not found for email: {email}", fg="red"))
+            return
 
-    if not account:
-        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
-        return
+        try:
+            email_validate(new_email)
+        except:
+            click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
+            return
 
-    try:
-        email_validate(new_email)
-    except:
-        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
-        return
-
-    account.email = new_email
-    db.session.commit()
-    click.echo(click.style("Email updated successfully.", fg="green"))
+        account.email = new_email
+        click.echo(click.style("Email updated successfully.", fg="green"))
 
 
 @click.command(
@@ -139,25 +138,24 @@ def reset_encrypt_key_pair():
     if dify_config.EDITION != "SELF_HOSTED":
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        tenants = session.query(Tenant).all()
+        for tenant in tenants:
+            if not tenant:
+                click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
+                return
 
-    tenants = db.session.query(Tenant).all()
-    for tenant in tenants:
-        if not tenant:
-            click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
-            return
+            tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-        tenant.encrypt_public_key = generate_key_pair(tenant.id)
+            session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
+            session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
 
-        db.session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-        db.session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
-        db.session.commit()
-
-        click.echo(
-            click.style(
-                f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
-                fg="green",
+            click.echo(
+                click.style(
+                    f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
+                    fg="green",
+                )
             )
-        )
 
 
 @click.command("vdb-migrate", help="Migrate vector db.")
@@ -182,14 +180,15 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             per_page = 50
-            apps = (
-                db.session.query(App)
-                .where(App.status == "normal")
-                .order_by(App.created_at.desc())
-                .limit(per_page)
-                .offset((page - 1) * per_page)
-                .all()
-            )
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                apps = (
+                    session.query(App)
+                    .where(App.status == "normal")
+                    .order_by(App.created_at.desc())
+                    .limit(per_page)
+                    .offset((page - 1) * per_page)
+                    .all()
+                )
             if not apps:
                 break
         except SQLAlchemyError:
@@ -203,26 +202,27 @@ def migrate_annotation_vector_database():
             )
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
-                app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
-                )
+                with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                    app_annotation_setting = (
+                        session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
+                    )
 
-                if not app_annotation_setting:
-                    skipped_count = skipped_count + 1
-                    click.echo(f"App annotation setting disabled: {app.id}")
-                    continue
-                # get dataset_collection_binding info
-                dataset_collection_binding = (
-                    db.session.query(DatasetCollectionBinding)
-                    .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
-                    .first()
-                )
-                if not dataset_collection_binding:
-                    click.echo(f"App annotation collection binding not found: {app.id}")
-                    continue
-                annotations = db.session.scalars(
-                    select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
-                ).all()
+                    if not app_annotation_setting:
+                        skipped_count = skipped_count + 1
+                        click.echo(f"App annotation setting disabled: {app.id}")
+                        continue
+                    # get dataset_collection_binding info
+                    dataset_collection_binding = (
+                        session.query(DatasetCollectionBinding)
+                        .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                        .first()
+                    )
+                    if not dataset_collection_binding:
+                        click.echo(f"App annotation collection binding not found: {app.id}")
+                        continue
+                    annotations = session.scalars(
+                        select(MessageAnnotation).where(MessageAnnotation.app_id == app.id)
+                    ).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -739,18 +739,18 @@ where sites.id is null limit 1000"""
                 try:
                     app = db.session.query(App).where(App.id == app_id).first()
                     if not app:
-                        print(f"App {app_id} not found")
+                        logger.info("App %s not found", app_id)
                         continue
 
                     tenant = app.tenant
                     if tenant:
                         accounts = tenant.get_accounts()
                         if not accounts:
-                            print(f"Fix failed for app {app.id}")
+                            logger.info("Fix failed for app %s", app.id)
                             continue
 
                         account = accounts[0]
-                        print(f"Fixing missing site for app {app.id}")
+                        logger.info("Fixing missing site for app %s", app.id)
                         app_was_created.send(app, account=account)
                 except Exception:
                     failed_app_ids.append(app_id)
@@ -1448,41 +1448,52 @@ def transform_datasource_credentials():
                     notion_credentials_tenant_mapping[tenant_id] = []
                 notion_credentials_tenant_mapping[tenant_id].append(notion_credential)
             for tenant_id, notion_tenant_credentials in notion_credentials_tenant_mapping.items():
-                # check notion plugin is installed
-                installed_plugins = installer_manager.list_plugins(tenant_id)
-                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                if notion_plugin_id not in installed_plugins_ids:
-                    if notion_plugin_unique_identifier:
-                        # install notion plugin
-                        PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
-                auth_count = 0
-                for notion_tenant_credential in notion_tenant_credentials:
-                    auth_count += 1
-                    # get credential oauth params
-                    access_token = notion_tenant_credential.access_token
-                    # notion info
-                    notion_info = notion_tenant_credential.source_info
-                    workspace_id = notion_info.get("workspace_id")
-                    workspace_name = notion_info.get("workspace_name")
-                    workspace_icon = notion_info.get("workspace_icon")
-                    new_credentials = {
-                        "integration_secret": encrypter.encrypt_token(tenant_id, access_token),
-                        "workspace_id": workspace_id,
-                        "workspace_name": workspace_name,
-                        "workspace_icon": workspace_icon,
-                    }
-                    datasource_provider = DatasourceProvider(
-                        provider="notion_datasource",
-                        tenant_id=tenant_id,
-                        plugin_id=notion_plugin_id,
-                        auth_type=oauth_credential_type.value,
-                        encrypted_credentials=new_credentials,
-                        name=f"Auth {auth_count}",
-                        avatar_url=workspace_icon or "default",
-                        is_default=False,
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                if not tenant:
+                    continue
+                try:
+                    # check notion plugin is installed
+                    installed_plugins = installer_manager.list_plugins(tenant_id)
+                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                    if notion_plugin_id not in installed_plugins_ids:
+                        if notion_plugin_unique_identifier:
+                            # install notion plugin
+                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
+                    auth_count = 0
+                    for notion_tenant_credential in notion_tenant_credentials:
+                        auth_count += 1
+                        # get credential oauth params
+                        access_token = notion_tenant_credential.access_token
+                        # notion info
+                        notion_info = notion_tenant_credential.source_info
+                        workspace_id = notion_info.get("workspace_id")
+                        workspace_name = notion_info.get("workspace_name")
+                        workspace_icon = notion_info.get("workspace_icon")
+                        new_credentials = {
+                            "integration_secret": encrypter.encrypt_token(tenant_id, access_token),
+                            "workspace_id": workspace_id,
+                            "workspace_name": workspace_name,
+                            "workspace_icon": workspace_icon,
+                        }
+                        datasource_provider = DatasourceProvider(
+                            provider="notion_datasource",
+                            tenant_id=tenant_id,
+                            plugin_id=notion_plugin_id,
+                            auth_type=oauth_credential_type.value,
+                            encrypted_credentials=new_credentials,
+                            name=f"Auth {auth_count}",
+                            avatar_url=workspace_icon or "default",
+                            is_default=False,
+                        )
+                        db.session.add(datasource_provider)
+                        deal_notion_count += 1
+                except Exception as e:
+                    click.echo(
+                        click.style(
+                            f"Error transforming notion credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        )
                     )
-                    db.session.add(datasource_provider)
-                    deal_notion_count += 1
+                    continue
                 db.session.commit()
         # deal firecrawl credentials
         deal_firecrawl_count = 0
@@ -1495,37 +1506,56 @@ def transform_datasource_credentials():
                     firecrawl_credentials_tenant_mapping[tenant_id] = []
                 firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
             for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
-                # check firecrawl plugin is installed
-                installed_plugins = installer_manager.list_plugins(tenant_id)
-                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                if firecrawl_plugin_id not in installed_plugins_ids:
-                    if firecrawl_plugin_unique_identifier:
-                        # install firecrawl plugin
-                        PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                if not tenant:
+                    continue
+                try:
+                    # check firecrawl plugin is installed
+                    installed_plugins = installer_manager.list_plugins(tenant_id)
+                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                    if firecrawl_plugin_id not in installed_plugins_ids:
+                        if firecrawl_plugin_unique_identifier:
+                            # install firecrawl plugin
+                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
 
-                auth_count = 0
-                for firecrawl_tenant_credential in firecrawl_tenant_credentials:
-                    auth_count += 1
-                    # get credential api key
-                    credentials_json = json.loads(firecrawl_tenant_credential.credentials)
-                    api_key = credentials_json.get("config", {}).get("api_key")
-                    base_url = credentials_json.get("config", {}).get("base_url")
-                    new_credentials = {
-                        "firecrawl_api_key": api_key,
-                        "base_url": base_url,
-                    }
-                    datasource_provider = DatasourceProvider(
-                        provider="firecrawl",
-                        tenant_id=tenant_id,
-                        plugin_id=firecrawl_plugin_id,
-                        auth_type=api_key_credential_type.value,
-                        encrypted_credentials=new_credentials,
-                        name=f"Auth {auth_count}",
-                        avatar_url="default",
-                        is_default=False,
+                    auth_count = 0
+                    for firecrawl_tenant_credential in firecrawl_tenant_credentials:
+                        auth_count += 1
+                        if not firecrawl_tenant_credential.credentials:
+                            click.echo(
+                                click.style(
+                                    f"Skipping firecrawl credential for tenant {tenant_id} due to missing credentials.",
+                                    fg="yellow",
+                                )
+                            )
+                            continue
+                        # get credential api key
+                        credentials_json = json.loads(firecrawl_tenant_credential.credentials)
+                        api_key = credentials_json.get("config", {}).get("api_key")
+                        base_url = credentials_json.get("config", {}).get("base_url")
+                        new_credentials = {
+                            "firecrawl_api_key": api_key,
+                            "base_url": base_url,
+                        }
+                        datasource_provider = DatasourceProvider(
+                            provider="firecrawl",
+                            tenant_id=tenant_id,
+                            plugin_id=firecrawl_plugin_id,
+                            auth_type=api_key_credential_type.value,
+                            encrypted_credentials=new_credentials,
+                            name=f"Auth {auth_count}",
+                            avatar_url="default",
+                            is_default=False,
+                        )
+                        db.session.add(datasource_provider)
+                        deal_firecrawl_count += 1
+                except Exception as e:
+                    click.echo(
+                        click.style(
+                            f"Error transforming firecrawl credentials: {str(e)}, tenant_id: {tenant_id}", fg="red"
+                        )
                     )
-                    db.session.add(datasource_provider)
-                    deal_firecrawl_count += 1
+                    continue
                 db.session.commit()
         # deal jina credentials
         deal_jina_count = 0
@@ -1538,36 +1568,53 @@ def transform_datasource_credentials():
                     jina_credentials_tenant_mapping[tenant_id] = []
                 jina_credentials_tenant_mapping[tenant_id].append(jina_credential)
             for tenant_id, jina_tenant_credentials in jina_credentials_tenant_mapping.items():
-                # check jina plugin is installed
-                installed_plugins = installer_manager.list_plugins(tenant_id)
-                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                if jina_plugin_id not in installed_plugins_ids:
-                    if jina_plugin_unique_identifier:
-                        # install jina plugin
-                        print(jina_plugin_unique_identifier)
-                        PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                if not tenant:
+                    continue
+                try:
+                    # check jina plugin is installed
+                    installed_plugins = installer_manager.list_plugins(tenant_id)
+                    installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                    if jina_plugin_id not in installed_plugins_ids:
+                        if jina_plugin_unique_identifier:
+                            # install jina plugin
+                            logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
+                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
 
-                auth_count = 0
-                for jina_tenant_credential in jina_tenant_credentials:
-                    auth_count += 1
-                    # get credential api key
-                    credentials_json = json.loads(jina_tenant_credential.credentials)
-                    api_key = credentials_json.get("config", {}).get("api_key")
-                    new_credentials = {
-                        "integration_secret": api_key,
-                    }
-                    datasource_provider = DatasourceProvider(
-                        provider="jina",
-                        tenant_id=tenant_id,
-                        plugin_id=jina_plugin_id,
-                        auth_type=api_key_credential_type.value,
-                        encrypted_credentials=new_credentials,
-                        name=f"Auth {auth_count}",
-                        avatar_url="default",
-                        is_default=False,
+                    auth_count = 0
+                    for jina_tenant_credential in jina_tenant_credentials:
+                        auth_count += 1
+                        if not jina_tenant_credential.credentials:
+                            click.echo(
+                                click.style(
+                                    f"Skipping jina credential for tenant {tenant_id} due to missing credentials.",
+                                    fg="yellow",
+                                )
+                            )
+                            continue
+                        # get credential api key
+                        credentials_json = json.loads(jina_tenant_credential.credentials)
+                        api_key = credentials_json.get("config", {}).get("api_key")
+                        new_credentials = {
+                            "integration_secret": api_key,
+                        }
+                        datasource_provider = DatasourceProvider(
+                            provider="jina",
+                            tenant_id=tenant_id,
+                            plugin_id=jina_plugin_id,
+                            auth_type=api_key_credential_type.value,
+                            encrypted_credentials=new_credentials,
+                            name=f"Auth {auth_count}",
+                            avatar_url="default",
+                            is_default=False,
+                        )
+                        db.session.add(datasource_provider)
+                        deal_jina_count += 1
+                except Exception as e:
+                    click.echo(
+                        click.style(f"Error transforming jina credentials: {str(e)}, tenant_id: {tenant_id}", fg="red")
                     )
-                    db.session.add(datasource_provider)
-                    deal_jina_count += 1
+                    continue
                 db.session.commit()
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))

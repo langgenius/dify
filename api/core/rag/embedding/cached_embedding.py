@@ -42,6 +42,9 @@ class CacheEmbedding(Embeddings):
                 text_embeddings[i] = embedding.get_embedding()
             else:
                 embedding_queue_indices.append(i)
+
+        # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
+
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]
             embedding_queue_embeddings = []

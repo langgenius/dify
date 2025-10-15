@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'เลือกทั้งหมด',
     deSelectAll: 'ยกเลิกการเลือกทั้งหมด',
     config: 'การตั้งค่า',
+    no: 'ไม่',
+    deleteConfirmTitle: 'ลบหรือไม่?',
+    confirmAction: 'กรุณายืนยันการกระทำของคุณ',
+    yes: 'ใช่',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -499,6 +503,8 @@ const translation = {
       customModelCredentials: 'ข้อมูลประจําตัวของโมเดลแบบกําหนดเอง',
       addNewModelCredential: 'เพิ่มข้อมูลประจําตัวของโมเดลใหม่',
     },
+    parametersInvalidRemoved: 'บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก',
+    installDataSourceProvider: 'ติดตั้งผู้ให้บริการแหล่งข้อมูล',
   },
   dataSource: {
     add: 'เพิ่มแหล่งข้อมูล',

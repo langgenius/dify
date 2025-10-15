@@ -524,6 +524,21 @@ class ProviderManager:
         return provider_name_to_provider_load_balancing_model_configs_dict
 
     @staticmethod
+    def _get_provider_names(provider_name: str) -> list[str]:
+        """
+        provider_name: `openai` or `langgenius/openai/openai`
+        return: [`openai`, `langgenius/openai/openai`]
+        """
+        provider_names = [provider_name]
+        model_provider_id = ModelProviderID(provider_name)
+        if model_provider_id.is_langgenius():
+            if "/" in provider_name:
+                provider_names.append(model_provider_id.provider_name)
+            else:
+                provider_names.append(str(model_provider_id))
+        return provider_names
+
+    @staticmethod
     def get_provider_available_credentials(tenant_id: str, provider_name: str) -> list[CredentialConfiguration]:
         """
         Get provider all credentials.
@@ -535,7 +550,10 @@ class ProviderManager:
         with Session(db.engine, expire_on_commit=False) as session:
             stmt = (
                 select(ProviderCredential)
-                .where(ProviderCredential.tenant_id == tenant_id, ProviderCredential.provider_name == provider_name)
+                .where(
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
+                )
                 .order_by(ProviderCredential.created_at.desc())
             )
 
@@ -564,7 +582,7 @@ class ProviderManager:
                 select(ProviderModelCredential)
                 .where(
                     ProviderModelCredential.tenant_id == tenant_id,
-                    ProviderModelCredential.provider_name == provider_name,
+                    ProviderModelCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
                     ProviderModelCredential.model_name == model_name,
                     ProviderModelCredential.model_type == model_type,
                 )
@@ -602,7 +620,7 @@ class ProviderManager:
 
             provider_quota_to_provider_record_dict = {}
             for provider_record in provider_records:
-                if provider_record.provider_type != ProviderType.SYSTEM.value:
+                if provider_record.provider_type != ProviderType.SYSTEM:
                     continue
 
                 provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
@@ -619,8 +637,8 @@ class ProviderManager:
                                 tenant_id=tenant_id,
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM.value,
-                                quota_type=ProviderQuotaType.TRIAL.value,
+                                provider_type=ProviderType.SYSTEM,
+                                quota_type=ProviderQuotaType.TRIAL,
                                 quota_limit=quota.quota_limit,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
@@ -633,8 +651,8 @@ class ProviderManager:
                             stmt = select(Provider).where(
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == ProviderQuotaType.TRIAL.value,
+                                Provider.provider_type == ProviderType.SYSTEM,
+                                Provider.quota_type == ProviderQuotaType.TRIAL,
                             )
                             existed_provider_record = db.session.scalar(stmt)
                             if not existed_provider_record:
@@ -694,7 +712,7 @@ class ProviderManager:
         """Get custom provider configuration."""
         # Find custom provider record (non-system)
         custom_provider_record = next(
-            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM.value), None
+            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM), None
         )
 
         if not custom_provider_record:
@@ -897,7 +915,7 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}
         for provider_record in provider_records:
-            if provider_record.provider_type != ProviderType.SYSTEM.value:
+            if provider_record.provider_type != ProviderType.SYSTEM:
                 continue
 
             quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
@@ -1038,7 +1056,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables

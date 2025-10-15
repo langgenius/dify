@@ -93,7 +93,7 @@ logger = logging.getLogger(__name__)
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
-        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
+        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if user:
             # get permitted dataset ids
@@ -115,12 +115,12 @@ class DatasetService:
                     # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                     if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
                         query = query.where(
-                            db.or_(
+                            sa.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                db.and_(
+                                sa.and_(
                                     Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
                                 ),
-                                db.and_(
+                                sa.and_(
                                     Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
                                     Dataset.id.in_(permitted_dataset_ids),
                                 ),
@@ -128,9 +128,9 @@ class DatasetService:
                         )
                     else:
                         query = query.where(
-                            db.or_(
+                            sa.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                db.and_(
+                                sa.and_(
                                     Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
                                 ),
                             )
@@ -532,7 +532,8 @@ class DatasetService:
         filtered_data["updated_by"] = user.id
         filtered_data["updated_at"] = naive_utc_now()
         # update Retrieval model
-        filtered_data["retrieval_model"] = data["retrieval_model"]
+        if data.get("retrieval_model"):
+            filtered_data["retrieval_model"] = data["retrieval_model"]
         # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
@@ -1469,7 +1470,7 @@ class DocumentService:
                 dataset.collection_binding_id = dataset_collection_binding.id
                 if not dataset.retrieval_model:
                     default_retrieval_model = {
-                        "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+                        "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
                         "top_k": 4,
@@ -1751,7 +1752,7 @@ class DocumentService:
     #             dataset.collection_binding_id = dataset_collection_binding.id
     #             if not dataset.retrieval_model:
     #                 default_retrieval_model = {
-    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     #                     "reranking_enable": False,
     #                     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     #                     "top_k": 2,
@@ -1878,7 +1879,7 @@ class DocumentService:
     #                 for notion_info in notion_info_list:
     #                     workspace_id = notion_info.workspace_id
     #                     data_source_binding = DataSourceOauthBinding.query.filter(
-    #                         db.and_(
+    #                         sa.and_(
     #                             DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
     #                             DataSourceOauthBinding.provider == "notion",
     #                             DataSourceOauthBinding.disabled == False,
@@ -2204,7 +2205,7 @@ class DocumentService:
             retrieval_model = knowledge_config.retrieval_model
         else:
             retrieval_model = RetrievalModel(
-                search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
+                search_method=RetrievalMethod.SEMANTIC_SEARCH,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
                 top_k=4,
