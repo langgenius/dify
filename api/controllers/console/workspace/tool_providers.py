@@ -18,7 +18,7 @@ from controllers.console.wraps import (
 )
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.mcp.auth.auth_flow import auth, handle_callback
-from core.mcp.error import MCPAuthError, MCPError
+from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
@@ -1007,7 +1007,12 @@ class ToolMCPAuthApi(Resource):
                     return {"result": "success"}
             except MCPAuthError as e:
                 service = MCPToolManageService(session=session)
-                return auth(provider_entity, service, args.get("authorization_code"))
+                try:
+                    return auth(provider_entity, service, args.get("authorization_code"))
+                except MCPRefreshTokenError as e:
+                    with session.begin():
+                        service.clear_provider_credentials(provider=db_provider)
+                    raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
             except MCPError as e:
                 with session.begin():
                     service.clear_provider_credentials(provider=db_provider)
