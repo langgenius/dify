@@ -326,6 +326,7 @@ const translation = {
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
     scrollToSelectedNode: 'Zum ausgewählten Knoten scrollen',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {

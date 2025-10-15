@@ -367,6 +367,7 @@ const translation = {
     maximize: 'キャンバスを最大化する',
     minimize: '全画面を終了する',
     scrollToSelectedNode: '選択したノードまでスクロール',
+    optional_and_hidden: '（オプションおよび非表示）',
   },
   nodes: {
     common: {

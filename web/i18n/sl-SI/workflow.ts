@@ -333,6 +333,7 @@ const translation = {
     maximize: 'Maksimiziraj platno',
     optional: '(neobvezno)',
     scrollToSelectedNode: 'Pomaknite se do izbranega vozlišča',
+    optional_and_hidden: '(neobvezno in skrito)',
   },
   nodes: {
     common: {

@@ -326,6 +326,7 @@ const translation = {
     minimize: '退出全螢幕',
     maximize: '最大化畫布',
     scrollToSelectedNode: '捲動至選取的節點',
+    optional_and_hidden: '（可選且隱藏）',
   },
   nodes: {
     common: {

@@ -326,6 +326,7 @@ const translation = {
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
     scrollToSelectedNode: 'Cuộn đến nút đã chọn',
+    optional_and_hidden: '(tùy chọn & ẩn)',
   },
   nodes: {
     common: {

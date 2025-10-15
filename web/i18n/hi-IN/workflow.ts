@@ -338,6 +338,7 @@ const translation = {
     minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
     maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
     scrollToSelectedNode: 'चुने गए नोड पर स्क्रॉल करें',
+    optional_and_hidden: '(वैकल्पिक और छिपा हुआ)',
   },
   nodes: {
     common: {

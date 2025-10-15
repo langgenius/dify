@@ -326,6 +326,7 @@ const translation = {
     maximize: 'Maximize Canvas',
     minimize: 'Sair do Modo Tela Cheia',
     scrollToSelectedNode: 'Role até o nó selecionado',
+    optional_and_hidden: '(opcional & oculto)',
   },
   nodes: {
     common: {

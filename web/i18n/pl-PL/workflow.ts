@@ -326,6 +326,7 @@ const translation = {
     minimize: 'Wyjdź z trybu pełnoekranowego',
     maximize: 'Maksymalizuj płótno',
     scrollToSelectedNode: 'Przewiń do wybranego węzła',
+    optional_and_hidden: '(opcjonalne i ukryte)',
   },
   nodes: {
     common: {

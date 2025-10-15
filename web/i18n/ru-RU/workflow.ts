@@ -326,6 +326,7 @@ const translation = {
     minimize: 'Выйти из полноэкранного режима',
     maximize: 'Максимизировать холст',
     scrollToSelectedNode: 'Прокрутите до выбранного узла',
+    optional_and_hidden: '(необязательно и скрыто)',
   },
   nodes: {
     common: {

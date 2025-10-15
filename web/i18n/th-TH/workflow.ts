@@ -326,6 +326,7 @@ const translation = {
     minimize: 'ออกจากโหมดเต็มหน้าจอ',
     maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
     scrollToSelectedNode: 'เลื่อนไปยังโหนดที่เลือก',
+    optional_and_hidden: '(ตัวเลือก & ซ่อน)',
   },
   nodes: {
     common: {

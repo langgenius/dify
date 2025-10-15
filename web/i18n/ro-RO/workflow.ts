@@ -326,6 +326,7 @@ const translation = {
     maximize: 'Maximize Canvas',
     minimize: 'Iesi din modul pe tot ecranul',
     scrollToSelectedNode: 'Derulați la nodul selectat',
+    optional_and_hidden: '(opțional și ascuns)',
   },
   nodes: {
     common: {

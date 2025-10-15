@@ -370,6 +370,7 @@ const translation = {
     maximize: '最大化画布',
     minimize: '退出最大化',
     scrollToSelectedNode: '滚动至选中节点',
+    optional_and_hidden: '（选填 & 隐藏）',
   },
   nodes: {
     common: {

@@ -347,6 +347,7 @@ const translation = {
     minimize: '전체 화면 종료',
     maximize: '캔버스 전체 화면',
     scrollToSelectedNode: '선택한 노드로 스크롤',
+    optional_and_hidden: '(선택 사항 및 숨김)',
   },
   nodes: {
     common: {

@@ -326,6 +326,7 @@ const translation = {
     minimize: 'خروج از حالت تمام صفحه',
     maximize: 'بیشینه‌سازی بوم',
     scrollToSelectedNode: 'به گره انتخاب شده بروید',
+    optional_and_hidden: '(اختیاری و پنهان)',
   },
   nodes: {
     common: {

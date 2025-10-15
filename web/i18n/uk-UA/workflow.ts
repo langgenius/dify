@@ -326,6 +326,7 @@ const translation = {
     minimize: 'Вийти з повноекранного режиму',
     maximize: 'Максимізувати полотно',
     scrollToSelectedNode: 'Прокрутіть до вибраного вузла',
+    optional_and_hidden: '(необов\'язково & приховано)',
   },
   nodes: {
     common: {

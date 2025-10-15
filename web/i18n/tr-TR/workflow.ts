@@ -326,6 +326,7 @@ const translation = {
     minimize: 'Tam Ekrandan Çık',
     maximize: 'Kanvası Maksimize Et',
     scrollToSelectedNode: 'Seçili düğüme kaydırma',
+    optional_and_hidden: '(isteğe bağlı ve gizli)',
   },
   nodes: {
     common: {

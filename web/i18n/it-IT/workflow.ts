@@ -341,6 +341,7 @@ const translation = {
     minimize: 'Esci dalla modalità schermo intero',
     maximize: 'Massimizza Canvas',
     scrollToSelectedNode: 'Scorri fino al nodo selezionato',
+    optional_and_hidden: '(opzionale e nascosto)',
   },
   nodes: {
     common: {
