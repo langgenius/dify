@@ -102,14 +102,14 @@ const OnlineUsers = () => {
     return avatarUrls[user.sid] || user.avatar
   }
 
+  const hasCounter = remainingCount > 0
+
   return (
     <div
       className={cn(
-        'flex items-center',
-        'h-8 min-w-[87px]',
-        'gap-px rounded-full border-[0.5px] border-components-panel-border',
-        'bg-components-panel-bg py-1 pl-1 pr-1.5',
-        'shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]',
+        'flex h-8 items-center rounded-full border-[0.5px] border-components-panel-border',
+        'bg-components-panel-bg py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]',
+        hasCounter ? 'min-w-[87px] gap-px pl-1 pr-1.5' : 'gap-1 px-1.5',
       )}
     >
       <div className="flex h-6 items-center">
@@ -169,15 +169,13 @@ const OnlineUsers = () => {
                 <div className="flex items-center gap-1">
                   <div
                     className={cn(
-                      'flex size-6 items-center justify-center text-xs font-medium text-white',
-                      'cursor-pointer rounded-full bg-components-icon-bg-midnight-solid',
-                      'ring-1 ring-components-panel-bg',
+                      'flex h-6 w-6 cursor-pointer select-none items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-[10px] font-semibold uppercase leading-[12px] text-white ring-1 ring-components-panel-bg',
                       visibleUsers.length > 0 && '-ml-1',
                     )}
                   >
                     +{remainingCount}
                   </div>
-                  <ChevronDownIcon className="h-3 w-3 text-gray-500" />
+                  <ChevronDownIcon className="h-3 w-3 cursor-pointer text-gray-500" />
                 </div>
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent
